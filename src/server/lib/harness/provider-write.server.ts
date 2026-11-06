@@ -6,89 +6,65 @@
 /**
  * Write a provider into a harness's OWN registry, in that harness's own format.
  *
- * One writer per FORMAT, dispatched by `HARNESS_PROVIDER_FACTS`. The formats are
- * genuinely different, and the differences are the work:
+ * One writer per FORMAT, dispatched by `HARNESS_PROVIDER_FACTS`. Every format
+ * merges rather than rewrites — these files also hold plugins, agents, MCP
+ * servers and approval policy — refuses an unparseable file untouched, keeps a
+ * stored credential and the user's own dialect on update, and writes 0600
+ * because the file can hold a key.
  *
- * | Format | What a provider is |
- * |---|---|
- * | YAML `providers.<slug>` (omp) | `{baseUrl, apiKey, api, models: [{id, name}]}` |
- * | JSON `provider.<id>` (opencode) | `{npm, name, options:{baseURL, apiKey}, models:{<id>:{}}}` |
- * | TOML `model_providers.<id>` (codex) | `{name, base_url, env_key, wire_api}` |
- * | JSON `providers.<id>` (pi) | `{name, baseUrl, api, apiKey, models:[{id}]}` |
- * | TOML `providers.<id>` (kimi) | `{type, base_url, api_key}` |
- * | JSON `modelProviders.<protocol>` (qwen) | an ARRAY of `{id, baseUrl, envKey}` |
+ * Two rules decide whether an import is HONEST, and both live here because this
+ * is the only place that touches disk:
  *
- * Five rules apply to all of them, each a way this could silently break an agent:
- *
- *  - **the document is MERGED, never rewritten.** These files hold more than
- *    providers — opencode.json carries plugins, agents, MCP and permissions;
- *    codex config.toml carries the model, approval policy and hooks. Only the
- *    provider's own node is touched.
- *  - **an unparseable file is REFUSED, not repaired.** It is the agent's file, and
- *    guessing what a malformed entry meant is how a working install stops starting.
- *  - **the id is not invented.** An existing key is UPDATED (that is what an
- *    override means to these agents) while a new one is ADDED.
- *  - **a credential already stored wins.** An import brings an endpoint and a
- *    model list; overwriting a key the user set by hand is not what they asked for.
- *  - **the write is atomic and keeps the file's mode**, which for a file holding
- *    an api key means it stays 0600.
+ *  - **A vendor id is never written.** `anthropic` copied into codex would
+ *    override codex's own built-in provider instead of adding a gateway; the
+ *    import list filters those rows out (`vendors.ts`) and the writer refuses
+ *    one that arrives anyway.
+ *  - **A format that stores a VARIABLE NAME gets the value elsewhere.** codex's
+ *    `env_key` and qwen's `envKey` name an env var; writing the name and no
+ *    value leaves every request unauthenticated. The write answers with the env
+ *    lines the caller must save into the harness config, so the credential lands
+ *    where the agent actually reads it.
  */
 
-import YAML from 'yaml';
-import { parse as parseToml, stringify as stringifyToml } from 'smol-toml';
-
 import { writeFileAtomic } from '@/server/lib/fs/atomic-write';
+import { parseDocument, providerMap, serialise } from '@/server/lib/harness/provider-file.server';
 import { withConfigLock } from '@/server/lib/fs/config-lock';
 import { providerFacts, type ProviderRegistryKind } from '@/shared/lib/harness/provider-facts';
-import { registryFilePath, readProviderKey } from '@/server/lib/harness/provider-sources.server';
-import { asRecord, providerEntryFor, type ProviderDraft } from '@/server/lib/harness/provider-entry';
+import {
+  adaptBaseUrl,
+  dialectFor,
+  planProtocol,
+  supportedProtocols,
+  type CanonicalProtocol,
+} from '@/shared/lib/harness/dialects';
+import { isVendorProviderId } from '@/shared/lib/models/provider/vendors';
+import { registryFilePath, readProviderKey, readRegistryProviders } from '@/server/lib/harness/provider-sources.server';
+import { asRecord, modelRowsFor, providerEntryFor, type ProviderDraft } from '@/server/lib/harness/provider-entry';
 import { ProviderWriteError } from '@/server/lib/harness/provider-write-error';
 import type { HarnessId } from '@/shared/lib/harness/catalog';
 
-
-
-
-/** Serialise a document back in its own format. */
-function serialise(kind: ProviderRegistryKind, doc: Record<string, unknown>): string {
-  switch (kind) {
-    case 'yaml-providers': return YAML.stringify(doc);
-    case 'toml-model-providers':
-    case 'toml-providers': return `${stringifyToml(doc)}\n`;
-    default: return `${JSON.stringify(doc, null, 2)}\n`;
-  }
+/** What a successful write changed, so the card can report it rather than guess. */
+export interface ProviderWriteResult {
+  id: string;
+  replaced: boolean;
+  path: string;
+  /** The protocol that landed, at the target's own spelling. */
+  dialect: string;
+  /** Env lines the caller must save for a variable-name format (`KEY=VALUE`). */
+  env: Record<string, string>;
+  /** Facts the UI repeats verbatim — a restart, an injected variable name. */
+  notes: string[];
 }
 
-/** Parse a document in its own format, or throw with the reason. */
-function parseDocument(kind: ProviderRegistryKind, text: string, path: string): Record<string, unknown> {
-  try {
-    const parsed = kind === 'yaml-providers'
-      ? YAML.parse(text)
-      : kind === 'toml-model-providers' || kind === 'toml-providers'
-        ? parseToml(text)
-        : JSON.parse(text);
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      throw new ProviderWriteError(`${path} is not a document, so it was left untouched`);
-    }
-    return parsed as Record<string, unknown>;
-  } catch (cause) {
-    if (cause instanceof ProviderWriteError) throw cause;
-    throw new ProviderWriteError(`${path} could not be parsed, so it was left untouched: ${String(cause)}`);
-  }
-}
-
-/** The map a provider node lives in, created when absent and refused when wrong. */
-function providerMap(doc: Record<string, unknown>, pointer: string, path: string): Record<string, unknown> {
-  const head = pointer.split('.')[0];
-  if (doc[head] !== undefined && (typeof doc[head] !== 'object' || Array.isArray(doc[head]))) {
-    throw new ProviderWriteError(`${path}: "${head}" is not an object, so it was left untouched`);
-  }
-  const map = asRecord(doc[head]);
-  doc[head] = map;
-  return map;
-}
-
-/** A provider id each format accepts as a key. */
-const ID_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
+/**
+ * A provider id each format accepts as a key.
+ *
+ * `.` and `:` are legal in kimi's provider names (`managed:kimi-code`) and in
+ * opencode's model ids, so the pattern is the INTERSECTION that every format
+ * accepts rather than the strictest one — an id the source already holds must
+ * not be refused by a target that could spell it.
+ */
+const ID_PATTERN = /^[a-z0-9][a-z0-9._:-]{0,63}$/;
 
 /**
  * Under `bun test`, a write is confined to a temp `HOME`.
@@ -115,15 +91,60 @@ function assertWritableUnderTest(path: string): void {
 }
 
 /**
+ * The protocol a draft should land as, and the base URL that fits the target.
+ *
+ * `protocol` on the draft is authoritative when the target speaks it (a probe
+ * measured it against the live endpoint). Otherwise the source's own protocol is
+ * kept — the API is the source's, the file is the target's.
+ */
+function planFor(target: HarnessId, draft: ProviderDraft): { protocol: CanonicalProtocol; baseUrl: string } {
+  const facts = providerFacts(target);
+  const target_protocols = supportedProtocols(facts.registry.kind, facts.envProtocol);
+  const protocol = planProtocol(draft.protocol ?? null, target_protocols);
+  if (!protocol) {
+    throw new ProviderWriteError(
+      `${target} has no protocol that matches "${draft.id}" (${draft.protocol ?? 'unknown dialect'}). `
+      + `It accepts: ${target_protocols.join(', ') || 'none'}.`,
+    );
+  }
+  if (dialectFor(facts.registry.kind, protocol) === null) {
+    throw new ProviderWriteError(
+      `${target} cannot speak ${protocol}: it stores no such dialect.`,
+    );
+  }
+  // An env target is a vendor SDK, which appends the version itself: measured,
+  // Claude Code with `.../v1` requested `/v1/v1/messages` and answered an empty
+  // turn. A registry target appends only the route, so its base keeps `/v1`.
+  const baseUrl = adaptBaseUrl(draft.baseUrl ?? '', facts.registry.kind === 'env' ? 'root' : 'api-base');
+  return { protocol, baseUrl };
+}
+
+/**
+ * The variable NAME a variable-name format stores, and the env line it needs.
+ *
+ * Derived from the provider id rather than a fixed `OPENAI_API_KEY`: measured,
+ * two providers added to qwen both wrote that one name, so adding the second
+ * silently re-pointed the first at a different key. `KENARI_ID_API_KEY` is
+ * unique per provider by construction, and the env block carries its value.
+ */
+function credentialEnvFor(kind: ProviderRegistryKind, draft: ProviderDraft): Record<string, string> {
+  if (!draft.apiKey) return {};
+  if (kind !== 'toml-model-providers' && kind !== 'json-model-providers') return {};
+  const name = `${draft.id.toUpperCase().replace(/[^A-Z0-9]+/g, '_')}_API_KEY`;
+  return { [name]: draft.apiKey };
+}
+
+/**
  * Merge ONE provider into a harness's registry.
  *
- * Returns the id written and whether it replaced an entry, so the UI can say
- * "updated" instead of "added" — the same difference the agents make.
+ * Returns what changed — the id, whether it replaced an entry, the dialect that
+ * landed, the env lines a variable-name format needs, and the notes the card must
+ * repeat — so the UI reports facts instead of a bare success.
  */
 export async function writeProvider(
   target: HarnessId,
   draft: ProviderDraft,
-): Promise<{ id: string; replaced: boolean; path: string }> {
+): Promise<ProviderWriteResult> {
   const facts = providerFacts(target);
   // The ORDER matters for the message: an agent-managed registry (minimax) has
   // no path Kabmo owns, and telling that reader "no registry Kabmo writes" hides
@@ -141,34 +162,71 @@ export async function writeProvider(
 
   const id = draft.id.trim().toLowerCase();
   if (!ID_PATTERN.test(id)) {
-    throw new ProviderWriteError(`"${id}" is not a provider id ${target} accepts (lowercase, digits, . _ -)`);
+    throw new ProviderWriteError(`"${id}" is not a provider id ${target} accepts (lowercase, digits, . _ : -)`);
+  }
+  if (isVendorProviderId(id, facts.registry.bundledIds)) {
+    throw new ProviderWriteError(
+      `"${id}" is a provider ${target} ships itself, so writing it would override the vendor's entry instead of `
+      + 'adding a gateway. Only providers you registered yourself can be imported.',
+    );
   }
 
   const kind = facts.registry.kind;
+  const plan = planFor(target, draft);
+  const planned: ProviderDraft = { ...draft, protocol: plan.protocol, baseUrl: plan.baseUrl };
+  const dialect = dialectFor(kind, plan.protocol) ?? '';
+  const env = credentialEnvFor(kind, planned);
+  const notes: string[] = [];
+
   return withConfigLock(path, async () => {
     const file = Bun.file(path);
     const raw = (await file.exists()) ? await file.text() : '';
     const doc = raw.trim() ? parseDocument(kind, raw, path) : {};
 
     if (kind === 'json-model-providers') {
-      // Array-per-protocol: the protocol key is the bucket, and a row is a model.
+      // Array-per-protocol: the protocol key is the BUCKET, and every row is a
+      // model. The bucket comes from the planned protocol, not from the provider
+      // id: a provider called `gateway` used to land in an `openai` bucket by
+      // accident of the id, which routed an Anthropic endpoint through the
+      // OpenAI SDK.
       const groups = providerMap(doc, facts.registry.pointer, path);
-      const protocol = asRecord(groups)[id] === undefined ? 'openai' : String(id);
-      const list = Array.isArray(groups[protocol]) ? (groups[protocol] as unknown[]) : [];
-      const incoming = providerEntryFor(kind, draft);
-      const index = list.findIndex((entry) => asRecord(entry).id === incoming.id);
-      const replaced = index >= 0;
-      if (replaced) list[index] = { ...asRecord(list[index]), ...incoming };
-      else list.push(incoming);
-      groups[protocol] = list;
+      const bucket = dialect;
+      const list = Array.isArray(groups[bucket]) ? (groups[bucket] as unknown[]) : [];
+      // A provider is a SET of model rows here, and qwen identifies a row by
+      // protocol + id + baseUrl (its own docs). Finding a row by id alone made
+      // two gateways serving one model id collapse into one, so the second add
+      // silently replaced the first.
+      const baseUrl = planned.baseUrl;
+      let replaced = false;
+      for (const modelId of planned.models.length > 0 ? planned.models : [planned.id]) {
+        const incoming = providerEntryFor(kind, { ...planned, models: [modelId] }, target);
+        const index = list.findIndex((entry) => {
+          const row = asRecord(entry);
+          return row.id === incoming.id && (row.baseUrl ?? '') === (baseUrl ?? '');
+        });
+        if (index >= 0) {
+          list[index] = { ...asRecord(list[index]), ...incoming };
+          replaced = true;
+        } else {
+          list.push(incoming);
+        }
+      }
+      groups[bucket] = list;
+      // qwen reads the value from `env`, never from the row — its docs are
+      // explicit that `envKey` is a NAME.
+      const envBlock = asRecord(doc.env);
+      if (planned.apiKey) {
+        doc.env = { ...envBlock, ...env };
+        notes.push('The key was written to settings.json `env` — qwen reads `envKey` as a variable NAME.');
+      }
       await writeFileAtomic(path, serialise(kind, doc), { createMode: 0o600 });
-      return { id, replaced, path };
+      return { id, replaced, path, dialect: bucket, env, notes };
     }
 
     const providers = providerMap(doc, facts.registry.pointer, path);
     const replaced = Object.prototype.hasOwnProperty.call(providers, id);
     const existing = asRecord(providers[id]);
-    const incoming = providerEntryFor(kind, draft);
+    const incoming = providerEntryFor(kind, planned, target);
     // The user's own choices win over the import's defaults; the import still
     // brings the endpoint and the model rows.
     const merged = {
@@ -176,8 +234,41 @@ export async function writeProvider(
       ...(replaced ? pickExisting(existing, incoming) : {}),
     };
     providers[id] = merged;
+
+    // Formats that select models by ALIAS need the model table beside the
+    // provider, or the agent lists the provider and serves nothing from it.
+    if (facts.registry.modelsAreRows) {
+      const models = asRecord(doc[facts.registry.modelsField ?? 'models']);
+      const rows = modelRowsFor(kind, planned);
+      for (const [alias, row] of Object.entries(rows)) {
+        models[alias] = { ...asRecord(models[alias]), ...row };
+      }
+      doc[facts.registry.modelsField ?? 'models'] = models;
+      if (Object.keys(rows).length > 0) {
+        notes.push(`Wrote ${Object.keys(rows).length} model alias${Object.keys(rows).length === 1 ? '' : 'es'} into ${facts.registry.modelsField} — kimi selects models by alias.`);
+      } else {
+        // A provider with no alias is invisible to the agent's model picker. That
+        // is a legitimate intermediate state (the user may add models next), but
+        // reporting a bare success would read as "ready".
+        notes.push('No model ids were given, so this provider has no alias yet — it serves nothing until one is added.');
+      }
+    }
+
+    // Measured: omp serves NOTHING from an entry with no models and no
+    // `discovery` block, and says nothing about it. Reporting a bare success
+    // would let the user ship a provider that answers no model at all.
+    const modelCount = Array.isArray(merged.models) ? merged.models.length : 0;
+    const declaresDiscovery = asRecord(merged.discovery).type !== undefined;
+    if (modelCount === 0 && !declaresDiscovery && !facts.registry.modelsAreRows) {
+      notes.push('No models on this provider yet — the agent serves nothing from it until ids are added (or it is registered as discovery).');
+    }
+
+    if (env && Object.keys(env).length > 0) {
+      notes.push(`Set ${Object.keys(env).join(', ')} in this harness's environment — the file stores a variable NAME, not the key.`);
+    }
+
     await writeFileAtomic(path, serialise(kind, doc), { createMode: 0o600 });
-    return { id, replaced, path };
+    return { id, replaced, path, dialect, env, notes };
   });
 }
 
@@ -210,26 +301,48 @@ function pickExisting(existing: Record<string, unknown>, incoming: Record<string
   return keep;
 }
 
+/** The row the import list handed out, as the writer needs it. */
+export interface ListedProvider {
+  id: string;
+  name: string;
+  baseUrl?: string;
+  protocol?: CanonicalProtocol;
+  models: string[];
+  contextWindow?: Record<string, number>;
+}
+
 /**
  * The draft for importing `source`'s provider into a target.
  *
  * `readProviderKey` is called HERE, and only here: the list the browser holds has
  * a boolean `hasKey`, never the credential.
+ *
+ * `measured` is the protocol a live probe found, when the import ran one. It
+ * outranks the source's declared dialect because the endpoint is the authority:
+ * measured on kenari, whose models.yml entry says `openai-completions` while the
+ * host also answers Anthropic Messages — an import into claude has to use the
+ * latter or Claude Code fails every request.
  */
 export async function draftForImport(
   source: HarnessId,
-  providerId: string,
-  listed: { id: string; name: string; baseUrl?: string; dialect?: string; models: string[] },
+  listed: ListedProvider,
+  measured?: CanonicalProtocol | null,
 ): Promise<ProviderDraft> {
-  const apiKey = await readProviderKey(source, providerId);
+  const apiKey = await readProviderKey(source, listed.id);
   return {
     id: listed.id,
     name: listed.name,
     ...(listed.baseUrl ? { baseUrl: listed.baseUrl } : {}),
-    ...(listed.dialect ? { dialect: listed.dialect } : {}),
+    ...(measured ?? listed.protocol ? { protocol: (measured ?? listed.protocol) as CanonicalProtocol } : {}),
     models: listed.models,
+    ...(listed.contextWindow ? { contextWindow: listed.contextWindow } : {}),
     ...(apiKey ? { apiKey } : {}),
   };
+}
+
+/** Every provider a harness could import FROM, custom only. */
+export async function importableFrom(source: HarnessId) {
+  return readRegistryProviders(source);
 }
 
 /** Re-exported so a caller imports one module for a write. */

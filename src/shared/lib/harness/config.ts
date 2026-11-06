@@ -142,6 +142,26 @@ export function modelProvider(value: string): string {
 }
 
 /**
+ * Set these variables in a config's env, replacing any the user already had.
+ *
+ * Importing a provider into a harness whose credential is an ENV var (codex's
+ * `env_key`, an `environment` harness) writes the value here, and appending the
+ * line would leave two lines for one key — the same variable set twice in one
+ * form, where a reader cannot tell which the spawn uses. The merge is by KEY,
+ * through the same parser the spawn uses, so a line the parser rejects cannot
+ * survive as a duplicate.
+ */
+export function withEnvValues(config: HarnessConfig, values: Record<string, string>): HarnessConfig {
+  if (Object.keys(values).length === 0) return config;
+  const { env } = parseEnvLines(config.env);
+  const merged = { ...env, ...values };
+  return {
+    ...config,
+    env: Object.entries(merged).map(([key, value]) => `${key}=${value}`).join('\n'),
+  };
+}
+
+/**
  * Which model value a harness should start on, from its config and the models
  * the agent published.
  *

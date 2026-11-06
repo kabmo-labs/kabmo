@@ -13,6 +13,16 @@
  * field names, so a reader never guesses — and a harness added later is a row in
  * that table, not a new branch here.
  *
+ * Two rules decide what a row IS:
+ *
+ *  - **CUSTOM only.** A registry ships its own providers, and one of those
+ *    copied into another agent writes an override of the TARGET's vendor entry
+ *    instead of adding a gateway — which is why the census in `vendors.ts`
+ *    filters the list here and the writer refuses one that arrives anyway.
+ *  - **A protocol, not a spelling.** Every id carries the canonical protocol its
+ *    entry declares (`protocolOfSourceDialect`), so the card can say which
+ *    targets can take it before the user presses Import.
+ *
  * What is NEVER returned is the API KEY. A list is for CHOOSING a provider; the
  * key is read only by the request that writes the target, from the source file.
  * A list that carried keys would put them in every browser tab that opens
@@ -28,6 +38,8 @@ import YAML from 'yaml';
 import { parse as parseToml } from 'smol-toml';
 
 import { providerFacts, type ProviderRegistryKind } from '@/shared/lib/harness/provider-facts';
+import { protocolOfSourceDialect, type CanonicalProtocol } from '@/shared/lib/harness/dialects';
+import { isVendorProviderId } from '@/shared/lib/models/provider/vendors';
 import type { HarnessId } from '@/shared/lib/harness/catalog';
 
 /** One provider as a source registry holds it, minus its credential. */
@@ -37,7 +49,11 @@ export interface ImportableProvider {
   baseUrl?: string;
   /** The dialect/SDK/wire value the source declares, verbatim. */
   dialect?: string;
+  /** That dialect folded onto the shared protocol vocabulary. */
+  protocol?: CanonicalProtocol;
   models: string[];
+  /** Context window per model id, when the source declared one (kimi requires it). */
+  contextWindow?: Record<string, number>;
   /** The harness the entry came from — two sources can share an id. */
   source: HarnessId;
   /** True when the source has a credential stored. NOT the credential. */
@@ -120,14 +136,40 @@ function modelIds(value: unknown): string[] {
 }
 
 /**
- * Every provider `id`'s own registry holds.
+ * Context windows from a per-format model collection.
+ *
+ * kimi's `[models.<alias>]` table requires `max_context_size`, and models.yml /
+ * pi declare `contextWindow` per model — both spellings are read here so an
+ * import can carry the number the target needs instead of inventing one.
+ */
+function contextWindows(value: unknown): Record<string, number> {
+  const out: Record<string, number> = {};
+  const entries = Array.isArray(value)
+    ? value.map((entry) => asRecord(entry))
+    : Object.values(asRecord(value)).map((entry) => asRecord(entry));
+  for (const entry of entries) {
+    const id = typeof entry.id === 'string' ? entry.id : '';
+    const window = entry.contextWindow ?? entry.max_context_size ?? entry.limit;
+    const number = typeof window === 'number'
+      ? window
+      : typeof asRecord(window).context === 'number'
+        ? (asRecord(window).context as number)
+        : undefined;
+    if (id && number && number > 0) out[id] = number;
+  }
+  return out;
+}
+
+/**
+ * Every CUSTOM provider `id`'s own registry holds.
  *
  * A kind this build cannot read (`env`, `agent-managed`, `none`) yields nothing:
- * there is no file, so there is nothing to list.
+ * there is no file, so there is nothing to list. Vendor ids are dropped for the
+ * reason at the top of this file.
  */
 export async function readRegistryProviders(id: HarnessId): Promise<ImportableProvider[]> {
   const facts = providerFacts(id);
-  const { kind, pointer } = facts.registry;
+  const { kind, pointer, bundledIds } = facts.registry;
   if (kind === 'env' || kind === 'agent-managed' || kind === 'none') return [];
 
   const text = await readText(registryFilePath(id));
@@ -141,16 +183,21 @@ export async function readRegistryProviders(id: HarnessId): Promise<ImportablePr
     const groups = asRecord(atPointer(doc, pointer));
     const rows: ImportableProvider[] = [];
     for (const [protocol, entries] of Object.entries(groups)) {
+      const canonical = protocolOfSourceDialect(protocol);
       for (const entry of Array.isArray(entries) ? entries : []) {
         const model = asRecord(entry);
         const modelId = typeof model.id === 'string' ? model.id : '';
         if (!modelId) continue;
+        if (isVendorProviderId(modelId, bundledIds)) continue;
+        const size = asRecord(model.generationConfig).contextWindowSize;
         rows.push({
           id: modelId,
           name: typeof model.name === 'string' ? model.name : modelId,
           ...(typeof model.baseUrl === 'string' ? { baseUrl: model.baseUrl } : {}),
           dialect: protocol,
+          ...(canonical ? { protocol: canonical } : {}),
           models: [modelId],
+          ...(typeof size === 'number' && size > 0 ? { contextWindow: { [modelId]: size } } : {}),
           source: id,
           hasKey: typeof model.envKey === 'string' && model.envKey.length > 0,
         });
@@ -160,26 +207,47 @@ export async function readRegistryProviders(id: HarnessId): Promise<ImportablePr
   }
 
   const providers = asRecord(atPointer(doc, pointer));
-  return Object.entries(providers).map(([slug, raw]) => {
-    const entry = asRecord(raw);
-    const baseUrl = facts.registry.baseUrlField ? atPointer(entry, facts.registry.baseUrlField) : undefined;
-    const keyValue = facts.registry.apiKeyField ? atPointer(entry, facts.registry.apiKeyField) : undefined;
-    const dialect = facts.registry.dialectField ? atPointer(entry, facts.registry.dialectField) : undefined;
-    const models = facts.registry.modelsField ? modelIds(atPointer(entry, facts.registry.modelsField)) : [];
-    return {
-      id: slug,
-      name: typeof entry.name === 'string' ? entry.name : slug,
-      ...(typeof baseUrl === 'string' ? { baseUrl } : {}),
-      ...(typeof dialect === 'string' ? { dialect } : {}),
-      models,
-      source: id,
-      hasKey: typeof keyValue === 'string' && keyValue.length > 0,
-    };
-  });
+  return Object.entries(providers)
+    .filter(([slug]) => !isVendorProviderId(slug, bundledIds))
+    .map(([slug, raw]) => {
+      const entry = asRecord(raw);
+      const baseUrl = facts.registry.baseUrlField ? atPointer(entry, facts.registry.baseUrlField) : undefined;
+      const keyValue = facts.registry.apiKeyField ? atPointer(entry, facts.registry.apiKeyField) : undefined;
+      const dialect = facts.registry.dialectField ? atPointer(entry, facts.registry.dialectField) : undefined;
+      const rawModels = facts.registry.modelsField ? atPointer(entry, facts.registry.modelsField) : undefined;
+      // kimi's provider entry declares no models at all; its aliases live in a
+      // sibling table keyed by alias, each naming the provider it belongs to.
+      const aliasModels = kind === 'toml-providers'
+        ? Object.entries(asRecord(doc.models ?? {}))
+          .filter(([, row]) => asRecord(row).provider === slug)
+          .map(([alias, row]) => ({ alias, row: asRecord(row) }))
+        : [];
+      const models = aliasModels.length > 0
+        ? aliasModels.map(({ row }) => String(row.model ?? ''))
+        : modelIds(rawModels);
+      const windows = kind === 'toml-providers'
+        ? Object.fromEntries(aliasModels.map(({ row }) => [String(row.model ?? ''), Number(row.max_context_size)]))
+        : contextWindows(rawModels);
+      const protocol = protocolOfSourceDialect(typeof dialect === 'string' ? dialect : undefined);
+      return {
+        id: slug,
+        // The entry's own `name` when it declares one — an "Add provider" row
+        // stored the display name for exactly this, and printing the slug back
+        // makes the card look like it lost what the form asked for.
+        name: typeof entry.name === 'string' && entry.name.trim() ? entry.name : slug,
+        ...(typeof baseUrl === 'string' ? { baseUrl } : {}),
+        ...(typeof dialect === 'string' ? { dialect } : {}),
+        ...(protocol ? { protocol } : {}),
+        models,
+        ...(Object.keys(windows).length > 0 ? { contextWindow: windows } : {}),
+        source: id,
+        hasKey: typeof keyValue === 'string' && keyValue.length > 0,
+      };
+    });
 }
 
 /**
- * Every provider importable INTO `target`, from the sources its facts allow.
+ * Every CUSTOM provider importable INTO `target`, from the sources its facts allow.
  *
  * The list is per-target (`importFrom`), so a harness that cannot take a registry
  * offers none, and the rows carry the SOURCE because two entries can share an id

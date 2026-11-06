@@ -40,7 +40,7 @@ interface HarnessSettingsProps {
 
 export function HarnessSettings({ only }: HarnessSettingsProps = {}) {
   const {
-    harnesses, configs, providerSupport, isLoading, error, reload, probe, saveConfig, importProvider,
+    harnesses, configs, providerSupport, isLoading, error, reload, probe, saveConfig, importProvider, addProvider,
   } = useHarnesses();
   const [query, setQuery] = useState('');
 
@@ -120,6 +120,7 @@ export function HarnessSettings({ only }: HarnessSettingsProps = {}) {
               onSaveConfig={saveConfig}
               {...(providerSupport[summary.id] ? { providerSupport: providerSupport[summary.id] } : {})}
               onImportProvider={importProvider}
+              onAddProvider={addProvider}
             />
           ))}
           {filtered.length === 0 && (

@@ -18,7 +18,7 @@
  *    `[model_providers.<id>]` in `~/.codex/config.toml`, with `name`, `base_url`,
  *    `env_key`, `wire_api` and `http_headers`. It is a full registry.
  *  - `pi`, `kimi`, `qwen`, `minimax` and `dsh` were lumped in as "no registry".
- *    Each has one: `models.json`, `~/.kimi/config.toml` `[providers.<id>]`,
+ *    Each has one: `models.json`, `~/.kimi-code/config.toml` `[providers.<id>]`,
  *    `settings.json` `modelProviders`, BYOK providers, and a Cordis profile patch.
  *
  * Formats differ, and that difference is the work — not a detail to smooth over:
@@ -29,7 +29,7 @@
  * | opencode | `$XDG_CONFIG_HOME/opencode/opencode.json` | `provider.<id>` → `{npm, name, options:{baseURL, apiKey}, models: {<id>: {name}}}` |
  * | codex | `~/.codex/config.toml` | `[model_providers.<id>]` → `{name, base_url, env_key, wire_api, http_headers}` |
  * | pi | `~/.pi/agent/models.json` | `providers.<id>` → `{name, baseUrl, api, apiKey, models: [{id, name, contextWindow, cost}]}` |
- * | kimi | `~/.kimi/config.toml` | `[providers.<id>]` → `{type, base_url, api_key, custom_headers}` |
+ * | kimi | `~/.kimi-code/config.toml` | `[providers.<id>]` → `{type, base_url, api_key, custom_headers}` |
  * | qwen | `~/.qwen/settings.json` | `modelProviders.<protocol>` → array of `{id, baseUrl, envKey}` |
  * | minimax | its own BYOK store, written by `mcode` | not a file Kabmo may edit |
  * | claude | env only | `ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN` |
@@ -42,6 +42,7 @@
  */
 
 import type { HarnessId } from '@/shared/lib/harness/catalog';
+import type { CanonicalProtocol } from '@/shared/lib/harness/dialects';
 
 /** How a harness stores providers. */
 export type ProviderRegistryKind =
@@ -80,6 +81,19 @@ export interface ProviderRegistry {
   dialectField?: string;
   /** How this format spells a model entry, for the model list. */
   modelsField: string | null;
+  /**
+   * Provider ids this registry ships itself. An entry under one of these is the
+   * VENDOR's provider with an endpoint override — not a custom provider — and an
+   * import must never offer or write one: copying `anthropic` out of omp into
+   * codex would replace the vendor entry instead of adding a gateway.
+   */
+  bundledIds?: readonly string[];
+  /**
+   * False when this registry writes a MODEL TABLE beside the provider (kimi's
+   * `[models.<alias>]`, codex's `model`), so a provider alone serves nothing.
+   * The writer then emits the model rows too instead of leaving a husk.
+   */
+  modelsAreRows?: boolean;
 }
 
 /** The env names an `environment` harness reads, in the order its docs list. */
@@ -93,6 +107,13 @@ export interface HarnessProviderFacts {
   registry: ProviderRegistry;
   /** Present only for an `env` harness. */
   env?: EnvProviderContract;
+  /**
+   * The single wire protocol an `environment` harness's SDK speaks. Claude Code
+   * is Anthropic Messages and Antigravity is Google GenAI — an endpoint that
+   * speaks neither cannot be carried there, and an import has to say so instead
+   * of writing a URL the agent will fail every request against.
+   */
+  envProtocol?: CanonicalProtocol;
   /** True when adding a provider ADDS a choice; false when it replaces the
    *  agent's own endpoint (Claude Code, Antigravity). */
   createsChoice: boolean;
@@ -142,6 +163,9 @@ export const HARNESS_PROVIDER_FACTS: Readonly<Partial<Record<HarnessId, HarnessP
       kind: 'toml-model-providers', file: '.codex/config.toml', pointer: 'model_providers',
       writable: true, baseUrlField: 'base_url', apiKeyField: 'env_key',
       dialectField: 'wire_api', modelsField: null,
+      // Built-ins codex reserves: its own reference says they cannot be
+      // overridden, so an import under one of these ids is refused by codex.
+      bundledIds: ['openai', 'ollama', 'lmstudio', 'amazon-bedrock', 'amazon-bedrock-runtime', 'gcp'],
     },
     createsChoice: true,
     importFrom: ['omp-rpc', 'opencode', 'pi', 'kimi'],
@@ -159,19 +183,29 @@ export const HARNESS_PROVIDER_FACTS: Readonly<Partial<Record<HarnessId, HarnessP
   },
   kimi: {
     registry: {
-      kind: 'toml-providers', file: '.kimi/config.toml', pointer: 'providers',
+      // MEASURED: the binary this build updates is `@moonshot-ai/kimi-code`,
+      // which reads `~/.kimi-code/config.toml` (overridable with
+      // `KIMI_CODE_HOME`). `~/.kimi/` is the retired Python CLI's directory:
+      // `kimi migrate` copies out of it and deliberately leaves it in place, so
+      // reading it would show providers the running agent never sees.
+      kind: 'toml-providers', file: '.kimi-code/config.toml', pointer: 'providers',
       writable: true, baseUrlField: 'base_url', apiKeyField: 'api_key',
-      dialectField: 'type', modelsField: null,
+      dialectField: 'type', modelsField: 'models',
+      // A kimi provider serves nothing until `[models.<alias>]` names it, and
+      // that alias needs `provider`, `model` and `max_context_size`.
+      modelsAreRows: true,
     },
     createsChoice: true,
-    importFrom: ['omp-rpc', 'opencode', 'pi'],
-    summary: 'kimi reads [providers.<id>] from config.toml, with a `type` that names the wire protocol.',
+    importFrom: ['omp-rpc', 'opencode', 'pi', 'qwen'],
+    summary: 'kimi-code reads [providers.<id>] and [models.<alias>] from config.toml; `type` names the wire protocol and nothing serves until a model alias exists.',
   },
   qwen: {
     registry: {
       kind: 'json-model-providers', file: '.qwen/settings.json', pointer: 'modelProviders',
       writable: true, baseUrlField: 'baseUrl', apiKeyField: 'envKey',
       modelsField: null,
+      // `qwen` reports its own OAuth models and cannot be overridden.
+      bundledIds: ['qwen-oauth'],
     },
     createsChoice: true,
     importFrom: ['omp-rpc', 'opencode'],
@@ -205,6 +239,10 @@ export const HARNESS_PROVIDER_FACTS: Readonly<Partial<Record<HarnessId, HarnessP
       writable: true, baseUrlField: null, apiKeyField: null, modelsField: null,
     },
     env: { baseUrl: 'ANTHROPIC_BASE_URL', apiKey: 'ANTHROPIC_AUTH_TOKEN', model: 'ANTHROPIC_MODEL' },
+    // Claude Code speaks Anthropic Messages only, and appends `/v1/messages`
+    // itself — measured: BASE_URL with `/v1` still on it requested
+    // `/v1/v1/messages` and answered with an empty turn.
+    envProtocol: 'anthropic-messages',
     createsChoice: false,
     importFrom: ['omp-rpc', 'opencode', 'codex', 'pi', 'kimi', 'qwen'],
     summary: 'Claude Code has no provider registry: ANTHROPIC_BASE_URL and ANTHROPIC_AUTH_TOKEN point every request at one endpoint. Setting them REPLACES Anthropic.',
@@ -215,6 +253,7 @@ export const HARNESS_PROVIDER_FACTS: Readonly<Partial<Record<HarnessId, HarnessP
       writable: true, baseUrlField: null, apiKeyField: null, modelsField: null,
     },
     env: { baseUrl: 'GOOGLE_GEMINI_BASE_URL', apiKey: 'GEMINI_API_KEY' },
+    envProtocol: 'google-genai',
     createsChoice: false,
     importFrom: ['omp-rpc', 'opencode', 'codex', 'pi', 'kimi', 'qwen'],
     summary: 'Antigravity reads GEMINI_API_KEY and GOOGLE_GEMINI_BASE_URL, and only when modelProvider is `gemini`. It REPLACES the signed-in account.',

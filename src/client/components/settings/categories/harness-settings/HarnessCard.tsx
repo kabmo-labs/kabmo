@@ -24,8 +24,8 @@ import { harnessStatus, type HarnessState } from '@/shared/lib/harness/status';
 import { HarnessConfigForm } from '@/client/components/settings/categories/harness-settings/ConfigForm';
 import { EMPTY_HARNESS_CONFIG, type HarnessConfig } from '@/shared/lib/harness/config';
 import { HarnessProviderPanel } from '@/client/components/settings/categories/harness-settings/ProviderPanel';
-import type { HarnessProviderSupport } from '@/shared/types/harness';
-import type { HarnessSummary } from '@/shared/types/harness';
+import type { HarnessImportOutcome, HarnessProviderSupport, HarnessSummary } from '@/shared/types/harness';
+import type { AddProviderInput } from '@/client/components/settings/categories/harness-settings/AddProviderForm';
 
 interface HarnessCardProps {
   summary: HarnessSummary;
@@ -42,7 +42,9 @@ interface HarnessCardProps {
     id: string,
     sourceId: string,
     entry: HarnessProviderSupport['importable'][number],
-  ) => Promise<string | null>;
+  ) => Promise<HarnessImportOutcome>;
+  /** Add a provider by typing its endpoint and key into this harness's card. */
+  onAddProvider?: (id: string, input: AddProviderInput) => Promise<HarnessImportOutcome>;
 }
 
 /** One capability row: a label and a yes/no/never-probed answer. */
@@ -67,7 +69,7 @@ function Capability({ label, value, detail }: { label: string; value: boolean | 
 }
 
 export function HarnessCard({
-  summary, onProbe, install, config, onSaveConfig, providerSupport, onImportProvider,
+  summary, onProbe, install, config, onSaveConfig, providerSupport, onImportProvider, onAddProvider,
 }: HarnessCardProps) {
   const [probing, setProbing] = useState(false);
   const [problem, setProblem] = useState<string | null>(summary.probe?.capabilities.blocked ?? null);
@@ -211,6 +213,9 @@ export function HarnessCard({
               : {})}
             {...(onImportProvider
               ? { onImport: (sourceId: string, entry: HarnessProviderSupport['importable'][number]) => onImportProvider(summary.id, sourceId, entry) }
+              : {})}
+            {...(onAddProvider
+              ? { onAddProvider: (input: AddProviderInput) => onAddProvider(summary.id, input) }
               : {})}
           />
         )}

@@ -190,7 +190,7 @@ export function nativeProviderItem(
   const { slug, baseUrl } = info;
   return {
     id: `omp-native-${slug}`,
-    name: slug,
+    name: info.name ?? slug,
     slug,
     icon: slug,
     status: isDisabled ? 'disconnected' : 'connected',

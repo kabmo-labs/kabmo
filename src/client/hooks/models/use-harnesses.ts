@@ -22,7 +22,11 @@
  */
 
 import { useEffect, useState } from 'preact/hooks';
-import type { HarnessConfig, HarnessProviderSupport, HarnessesPayload, HarnessSummary } from '@/shared/types/harness';
+import type {
+  HarnessConfig, HarnessImportOutcome, HarnessProviderSupport, HarnessesPayload, HarnessSummary,
+} from '@/shared/types/harness';
+import type { AddProviderInput } from '@/client/components/settings/categories/harness-settings/AddProviderForm';
+import { addProvider, importProvider } from '@/client/hooks/models/provider-writes';
 
 export interface HarnessesController {
   harnesses: HarnessSummary[];
@@ -41,7 +45,9 @@ export interface HarnessesController {
     id: string,
     sourceId: string,
     entry: HarnessProviderSupport['importable'][number],
-  ) => Promise<string | null>;
+  ) => Promise<HarnessImportOutcome>;
+  /** Add a provider by typing its endpoint and key. */
+  addProvider: (id: string, input: AddProviderInput) => Promise<HarnessImportOutcome>;
   isLoading: boolean;
   error: string | null;
   /** Re-read the catalog. */
@@ -77,6 +83,17 @@ function emit(patch: Partial<HarnessStore>): void {
   Object.assign(store, patch);
   store.version += 1;
   for (const listener of listeners) listener();
+}
+
+/** Fold a landed provider write back into the store and re-read the catalog. */
+function announceProviderWrite(id: string, config?: HarnessConfig): void {
+  if (config) emit({ configs: { ...store.configs, [id]: config } });
+  // The write landed in a FILE, which is the only thing that proves it, so the
+  // list is re-read rather than patched: a card that kept the previous list would
+  // show "nothing added" after a successful add. The store caches its first
+  // answer on purpose, so the re-read has to clear it.
+  loaded = false;
+  void loadCatalog();
 }
 
 async function loadCatalog(): Promise<void> {
@@ -167,46 +184,6 @@ async function saveHarnessConfig(id: string, config: HarnessConfig): Promise<str
   }
 }
 
-/**
- * Copy one provider out of a source registry into a harness.
- *
- * The CREDENTIAL never travels from the browser: only the source id does, and
- * the route reads the key out of the source file in the same request that writes
- * the target.
- */
-async function importProvider(
-  id: string,
-  sourceId: string,
-  entry: HarnessProviderSupport['importable'][number],
-): Promise<string | null> {
-  try {
-    const response = await fetch('/api/harness', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        probe: id,
-        importProvider: {
-          from: entry.source,
-          id: sourceId,
-          entry: { name: entry.name, baseUrl: entry.baseUrl, dialect: entry.dialect, models: entry.models },
-        },
-      }),
-    });
-    const payload = (await response.json()) as {
-      imported?: { id: string; replaced: boolean };
-      config?: HarnessConfig;
-      error?: string;
-    };
-    if (!response.ok) return payload.error ?? `Import failed (HTTP ${response.status})`;
-    // An env-style target answered with a CONFIG; a registry target with the id
-    // it wrote. Both change what the card shows, so both are folded back in.
-    if (payload.config) emit({ configs: { ...store.configs, [id]: payload.config } });
-    return null;
-  } catch (cause) {
-    return cause instanceof Error ? cause.message : 'Import failed';
-  }
-}
-
 export function useHarnesses(): HarnessesController {
   const [snapshot, setSnapshot] = useState(() => ({ ...store }));
 
@@ -227,7 +204,8 @@ export function useHarnesses(): HarnessesController {
     configs: snapshot.configs,
     saveConfig: saveHarnessConfig,
     providerSupport: snapshot.providerSupport,
-    importProvider,
+    importProvider: (id, sourceId, entry) => importProvider(id, sourceId, entry, announceProviderWrite),
+    addProvider: (id, input) => addProvider(id, input, announceProviderWrite),
     isLoading: snapshot.isLoading,
     error: snapshot.error,
     reload: () => {

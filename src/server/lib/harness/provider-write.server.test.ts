@@ -64,7 +64,7 @@ const DRAFT = {
   id: 'gateway',
   name: 'My gateway',
   baseUrl: 'https://api.example.com/v1',
-  dialect: 'openai-completions',
+  protocol: 'openai-chat' as const,
   models: ['m-1', 'm-2'],
   apiKey: 'sk-test',
 };
@@ -149,34 +149,42 @@ describe('omp (YAML providers map)', () => {
 });
 
 describe('codex (TOML model_providers)', () => {
-  test('stores a VARIABLE NAME, never the secret', async () => {
+  test('stores a VARIABLE NAME, never the secret, and answers with the env it needs', async () => {
     // codex reads `env_key`, which names an env var. Writing `sk-test` into
-    // config.toml would put the credential in a file its docs keep it out of.
-    await writeProvider('codex', DRAFT);
+    // config.toml would put the credential in a file its docs keep it out of —
+    // so the value is handed back for the harness env instead.
+    const result = await writeProvider('codex', { ...DRAFT, protocol: 'openai-responses' });
     const text = await read('.codex/config.toml');
     expect(text).toContain('[model_providers.gateway]');
     expect(text).toContain('base_url = "https://api.example.com/v1"');
-    expect(text).toContain('env_key = "OPENAI_API_KEY"');
+    expect(text).toContain('env_key = "GATEWAY_API_KEY"');
     expect(text).not.toContain('sk-test');
-    expect(text).toContain('wire_api = "chat"');
+    // codex accepts ONE wire format now; `chat` makes every command fail.
+    expect(text).toContain('wire_api = "responses"');
+    expect(result.env).toEqual({ GATEWAY_API_KEY: 'sk-test' });
   });
 
-  test('a dialect codex cannot speak is REFUSED, not mislabelled', async () => {
+  test('a protocol codex cannot speak is REFUSED, not mislabelled', async () => {
     // An Anthropic endpoint written as `wire_api = "chat"` would fail on the
-    // first request against a gateway that never agreed to that protocol.
-    await expect(writeProvider('codex', { ...DRAFT, dialect: 'anthropic-messages' }))
-      .rejects.toThrow(/cannot speak "anthropic-messages"/);
+    // first request against a gateway that never agreed to that protocol, and
+    // codex rejects `chat` outright at config load.
+    await expect(writeProvider('codex', { ...DRAFT, protocol: 'anthropic-messages' }))
+      .rejects.toThrow(/no protocol|cannot speak/);
     expect(await fs.promises.stat(join(root, '.codex/config.toml')).catch(() => null)).toBeNull();
   });
 
+  test('a Chat-Completions source is refused by name, not relabelled', async () => {
+    await expect(writeProvider('codex', DRAFT)).rejects.toThrow(/no protocol that matches/);
+  });
+
   test('a Responses source becomes wire_api = "responses"', async () => {
-    const entry = providerEntryFor('toml-model-providers', { ...DRAFT, dialect: 'openai-responses' });
+    const entry = providerEntryFor('toml-model-providers', { ...DRAFT, protocol: 'openai-responses' }, 'codex');
     expect(entry.wire_api).toBe('responses');
   });
 
   test('the rest of config.toml survives', async () => {
     await seed('.codex/config.toml', 'model = "gpt-6"\napproval_policy = "on-request"\n');
-    await writeProvider('codex', DRAFT);
+    await writeProvider('codex', { ...DRAFT, protocol: 'openai-responses' });
     const text = await read('.codex/config.toml');
     expect(text).toContain('model = "gpt-6"');
     expect(text).toContain('approval_policy = "on-request"');
@@ -195,27 +203,70 @@ describe('pi (JSON providers map)', () => {
 });
 
 describe('kimi (TOML providers table)', () => {
-  test('maps the dialect onto kimi’s `type`', async () => {
-    await writeProvider('kimi', { ...DRAFT, dialect: 'anthropic-messages' });
-    const text = await read('.kimi/config.toml');
+  test('maps the protocol onto kimi-code’s `type` and writes the model aliases it needs', async () => {
+    // kimi-code replaced the retired CLI's `openai_legacy`/`gemini` spellings,
+    // and a provider with no `[models.<alias>]` serves nothing at all.
+    await writeProvider('kimi', { ...DRAFT, protocol: 'anthropic-messages' });
+    const text = await read('.kimi-code/config.toml');
     expect(text).toContain('[providers.gateway]');
     expect(text).toContain('type = "anthropic"');
     expect(text).toContain('base_url = "https://api.example.com/v1"');
     expect(text).toContain('api_key = "sk-test"');
+    expect(text).toContain('[models."gateway/m-1"]');
+    expect(text).toContain('provider = "gateway"');
+    expect(text).toContain('max_context_size = 128000');
+  });
+
+  test('writes a declared context window rather than the default', async () => {
+    await writeProvider('kimi', {
+      ...DRAFT, protocol: 'openai-chat', models: ['m-1'], contextWindow: { 'm-1': 1_048_576 },
+    });
+    expect(await read('.kimi-code/config.toml')).toContain('max_context_size = 1048576');
   });
 });
 
 describe('qwen (JSON modelProviders, array per protocol)', () => {
-  test('a route is a MODEL row under a protocol bucket, with envKey', async () => {
+  test('a route is a MODEL row under the BUCKET its protocol names, with envKey', async () => {
     await writeProvider('qwen', DRAFT);
     const doc = JSON.parse(await read('.qwen/settings.json'));
     const openai = doc.modelProviders.openai as { id: string; baseUrl: string; envKey: string }[];
-    expect(openai).toHaveLength(1);
-    expect(openai[0].id).toBe('m-1');
-    expect(openai[0].baseUrl).toBe('https://api.example.com/v1');
-    expect(openai[0].envKey).toBe('OPENAI_API_KEY');
-    // The secret stays out of settings.json, as its docs require.
-    expect(JSON.stringify(doc)).not.toContain('sk-test');
+    // One row PER MODEL: qwen's rows are model routes, so two ids are two rows.
+    expect(openai.map((row) => row.id)).toEqual(['m-1', 'm-2']);
+    expect(openai[0]!.baseUrl).toBe('https://api.example.com/v1');
+    expect(openai[0]!.envKey).toBe('GATEWAY_API_KEY');
+    // The secret stays out of the ROW, as its docs require; qwen reads the value
+    // from `env`, so that is where the writer puts it.
+    expect(JSON.stringify(doc.modelProviders)).not.toContain('sk-test');
+    expect(doc.env.GATEWAY_API_KEY).toBe('sk-test');
+  });
+
+  test('TWO providers keep two credentials, not one shared variable name', async () => {
+    // Measured before the fix: both rows wrote `OPENAI_API_KEY`, so adding the
+    // second provider silently re-pointed the first at a different key.
+    // Distinct models, because qwen identifies a row by PROTOCOL + id + baseUrl:
+    // two providers serving the same model at the same endpoint ARE one route.
+    await writeProvider('qwen', { ...DRAFT, id: 'gateway-one', models: ['m-1'], apiKey: 'sk-one' });
+    await writeProvider('qwen', { ...DRAFT, id: 'gateway-two', models: ['m-2'], apiKey: 'sk-two' });
+    const doc = JSON.parse(await read('.qwen/settings.json'));
+    const rows = doc.modelProviders.openai as { id: string; envKey: string }[];
+    expect(rows.map((row) => row.envKey)).toEqual(['GATEWAY_ONE_API_KEY', 'GATEWAY_TWO_API_KEY']);
+    expect(doc.env).toEqual({ GATEWAY_ONE_API_KEY: 'sk-one', GATEWAY_TWO_API_KEY: 'sk-two' });
+  });
+
+  test('an Anthropic route lands in the anthropic bucket, not under the provider id', async () => {
+    await writeProvider('qwen', { ...DRAFT, protocol: 'anthropic-messages' });
+    const doc = JSON.parse(await read('.qwen/settings.json'));
+    expect(doc.modelProviders.anthropic[0].id).toBe('m-1');
+    expect(doc.modelProviders.openai).toBeUndefined();
+  });
+});
+
+describe('vendor ids are never imported over', () => {
+  test('a provider the agent ships is refused by name', async () => {
+    await expect(writeProvider('codex', { ...DRAFT, id: 'openai', protocol: 'openai-responses' }))
+      .rejects.toThrow(/ships itself/);
+    await expect(writeProvider('qwen', { ...DRAFT, id: 'qwen-oauth' }))
+      .rejects.toThrow(/ships itself/);
   });
 });
 
@@ -227,6 +278,8 @@ describe('refusals', () => {
 
   test('an id the agent would reject is refused before anything is written', async () => {
     await expect(writeProvider('opencode', { ...DRAFT, id: 'Not Valid!' })).rejects.toThrow(/not a provider id/);
+    // A colon is legal in kimi's own provider names, so it must survive.
+    await expect(writeProvider('kimi', { ...DRAFT, id: 'managed:test' })).resolves.toBeTruthy();
     expect(await fs.promises.stat(join(root, '.config/opencode/opencode.json')).catch(() => null)).toBeNull();
   });
 

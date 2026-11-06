@@ -34,6 +34,9 @@ export async function getModelsConfigPath(): Promise<string> {
 export interface NativeProviderInfo {
   /** Provider slug, e.g. "deepseek" or "custom/my-gateway". */
   slug: string;
+  /** The entry's own `name`, when the file declares one. Absent means the slug
+   *  is the label, which is what omp itself prints. */
+  name?: string;
   /** Base URL of the provider API, when configured. */
   baseUrl?: string;
   /** Wire dialect from the entry's `api`, when it declares one. */
@@ -90,6 +93,7 @@ export async function readNativeProviders(): Promise<NativeProviderInfo[]> {
     return Object.entries(data.providers).map(([slug, value]) => {
       const info: NativeProviderInfo = { slug, modelIds: [], models: [] };
       if (isRecord(value)) {
+        if (typeof value.name === 'string' && value.name.trim()) info.name = value.name;
         if (typeof value.baseUrl === 'string') info.baseUrl = value.baseUrl;
         if (typeof value.api === 'string') info.api = value.api;
         if (typeof value.auth === 'string') info.auth = value.auth;

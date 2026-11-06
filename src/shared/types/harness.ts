@@ -14,6 +14,7 @@
 
 import type { HarnessCapabilities } from '@/server/lib/harness/capabilities';
 import type { HarnessConfig } from '@/shared/lib/harness/config';
+import type { CanonicalProtocol } from '@/shared/lib/harness/dialects';
 
 export type { HarnessConfig };
 
@@ -31,6 +32,10 @@ export interface HarnessSummary {
   builtIn?: true;
   install?: string;
   note?: string;
+  /** Whether this harness is in the user's roster. Always true for the built-in
+   *  transport, which has no switch. Optional so a summary written before the
+   *  roster existed still reads as present. */
+  enabled?: boolean;
   /** The live probe, or null when this harness has never been probed. */
   probe: {
     harness: string;
@@ -41,6 +46,23 @@ export interface HarnessSummary {
     probedAt: number;
   } | null;
   unavailable?: string;
+}
+
+/** One provider as a registry holds it, minus its credential. */
+export interface HarnessProviderRow {
+  id: string;
+  name: string;
+  baseUrl?: string;
+  /** The SOURCE's own dialect value, verbatim, for the row's footnote. */
+  dialect?: string;
+  /** That dialect on the shared vocabulary. Absent when Kabmo cannot name it. */
+  protocol?: CanonicalProtocol;
+  models: string[];
+  /** Context window per model id, when the source declared one. */
+  contextWindow?: Record<string, number>;
+  /** The harness the entry came from — two sources can share an id. */
+  source: string;
+  hasKey: boolean;
 }
 
 /**
@@ -67,16 +89,49 @@ export interface HarnessProviderSupport {
   /** The credential field's name in this format. `env_key`/`envKey` means a
    *  VARIABLE NAME, which the form says out loud. */
   credentialLabel?: string;
+  /** The single protocol an `environment` harness's SDK speaks. */
+  envProtocol?: CanonicalProtocol;
+  /**
+   * Every protocol this harness can carry, in the order an import prefers.
+   *
+   * Deliberately the TARGET's list, not a per-row verdict: whether a given
+   * endpoint can land here is not knowable without asking it, and the import
+   * does exactly that (`provider-probe.server.ts`). A row that declares a
+   * different protocol is therefore still offered — the probe decides, and a
+   * refusal names what the endpoint answered.
+   */
+  protocols: readonly CanonicalProtocol[];
+  /** The CUSTOM providers this harness's own registry already holds. */
+  configured: HarnessProviderRow[];
   importable: Array<{
     id: string;
     name: string;
     baseUrl?: string;
+    /** The SOURCE's own dialect value, verbatim, for the row's footnote. */
     dialect?: string;
+    /** That dialect on the shared vocabulary. Absent when Kabmo cannot name it. */
+    protocol?: CanonicalProtocol;
     models: string[];
+    /** Context window per model id, when the source declared one. */
+    contextWindow?: Record<string, number>;
     /** The harness the entry came from — two sources can share an id. */
     source: string;
     hasKey: boolean;
   }>;
+}
+
+/**
+ * What an import did, as the card repeats it.
+ *
+ * `problem` is the refusal (already a sentence a reader can act on); `detail`
+ * is the evidence for a SUCCESS — the protocol that landed, where it was written,
+ * and the env lines a variable-name format needed. Two fields because "copied"
+ * alone was a claim: measured imports differ in the protocol they chose, and a
+ * reader has to be able to check that.
+ */
+export interface HarnessImportOutcome {
+  problem: string | null;
+  detail: string | null;
 }
 
 export interface HarnessesPayload {

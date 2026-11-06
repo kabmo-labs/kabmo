@@ -23,15 +23,16 @@ import { HARNESS_LAUNCH, probeHarness } from '@/server/lib/harness/launch';
 import type { HarnessProbe } from '@/server/lib/harness/capabilities';
 import { forgetProbe, loadProbes, rememberProbe } from '@/server/lib/harness/probe-cache.server';
 import { loadHarnessConfig, probeInvalidatedBy, saveHarnessConfig } from '@/server/lib/harness/config.server';
-import { importableProvidersFor } from '@/server/lib/harness/provider-sources.server';
-import { draftForImport, writeProvider } from '@/server/lib/harness/provider-write.server';
+import { importableProvidersFor, readRegistryProviders } from '@/server/lib/harness/provider-sources.server';
+import { addProviderAction, importProviderAction, importSourceOf, isImportBody } from '@/server/routes/harness/import-action';
+import { supportedProtocols } from '@/shared/lib/harness/dialects';
 import {
   credentialFieldLabel,
-  providerEnv,
   providerLevel,
   registryLabel,
 } from '@/shared/lib/harness/providers';
 import { providerFacts } from '@/shared/lib/harness/provider-facts';
+import type { HarnessProviderSupport } from '@/shared/types/harness';
 import { parseHarnessConfig, type HarnessConfig } from '@/shared/lib/harness/config';
 import { resolveOmpBin } from '@/server/lib/omp/core/cli';
 
@@ -129,21 +130,21 @@ export async function loader({ request }: LoaderFunctionArgs) {
   // file, the field names, whether Kabmo may write it, and the credential-free
   // list of entries a copy could take. No credential travels here — the key is
   // read by the request that writes.
-  const providerSupportByHarness: Record<string, {
-    level: string;
-    file: string;
-    fileLabel: string;
-    summary: string;
-    createsChoice: boolean;
-    pointer: string;
-    credentialLabel: string;
-    env?: { baseUrl: string; apiKey: string; model?: string };
-    importable: Awaited<ReturnType<typeof importableProvidersFor>>;
-  }> = {};
+  const providerSupportByHarness: Record<string, HarnessProviderSupport> = {};
   for (const id of HARNESS_IDS) {
     const facts = providerFacts(id);
     const level = providerLevel(id);
     if (level === 'none') continue;
+    // CUSTOM providers only, and each row names the protocol its SOURCE declares.
+    // Whether it can land in THIS harness is not guessed here: it depends on what
+    // the endpoint answers, which the import measures at write time. The card
+    // states the target's own list once and lets the route refuse by name.
+    const targetProtocols = supportedProtocols(facts.registry.kind, facts.envProtocol);
+    const importable = await importableProvidersFor(id);
+    // The harness's OWN custom providers, so the card lists what is already
+    // there: without it an "Add provider" that worked and a form that silently
+    // wrote nothing looked identical.
+    const configured = await readRegistryProviders(id);
     providerSupportByHarness[id] = {
       level,
       file: facts.registry.file ?? '',
@@ -153,7 +154,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
       pointer: facts.registry.pointer,
       credentialLabel: credentialFieldLabel(id),
       ...(facts.env ? { env: facts.env } : {}),
-      importable: await importableProvidersFor(id),
+      ...(facts.envProtocol ? { envProtocol: facts.envProtocol } : {}),
+      protocols: targetProtocols,
+      importable,
+      configured,
     };
   }
 
@@ -162,8 +166,16 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export async function action({ request, params }: ActionFunctionArgs) {
   if (request.method !== 'POST') return methodNotAllowed({ request, params });
-  const body = await request.json().catch(() => null) as { probe?: unknown } | null;
-  const id = typeof body?.probe === 'string' ? body.probe : null;
+  // The body is UNTRUSTED and every branch below reads a different field, so it
+  // is narrowed to a record ONCE. `record` is a real runtime check, not a cast:
+  // a request that is not a JSON object falls through to the probe validation
+  // and is refused there, which is the same answer it got before.
+  const parsed: unknown = await request.json().catch(() => null);
+  const body: Record<string, unknown> =
+    parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : {};
+  const id = typeof body.probe === 'string' ? body.probe : null;
   if (!id || !HARNESS_IDS.includes(id as HarnessId)) {
     return json({ error: 'probe must name a known harness id' }, { status: 400 });
   }
@@ -175,64 +187,30 @@ export async function action({ request, params }: ActionFunctionArgs) {
   // An IMPORT: copy one provider out of another registry into this harness's.
   // `{ importProvider: { from, id, env? } }`. The credential is read HERE, from
   // the source file, so the list the browser holds never carries one.
-  const importBody = (body as { importProvider?: unknown }).importProvider;
-  if (importBody && typeof importBody === 'object') {
-    const request = importBody as { from?: unknown; id?: unknown; entry?: unknown };
-    const source = typeof request.from === 'string' ? request.from : '';
-    const sourceId = typeof request.id === 'string' ? request.id : '';
+  const importBody = body.importProvider;
+  if (isImportBody(importBody)) {
+    const requestBody = importBody as Record<string, unknown>;
+    const sourceId = typeof requestBody.id === 'string' ? requestBody.id : '';
     if (!sourceId) return json({ error: 'importProvider.id is required' }, { status: 400 });
-    if (!HARNESS_IDS.includes(source as HarnessId)) {
-      return json({ error: `No import source named "${source}"`, code: 'unknown_source' }, { status: 400 });
+    const source = importSourceOf(requestBody.from);
+    if (!source) {
+      return json({ error: `No import source named "${String(requestBody.from)}"`, code: 'unknown_source' }, { status: 400 });
     }
-    // The entry the LIST handed out — id, name, endpoint, dialect, models. The
-    // credential is NOT part of it: `draftForImport` reads that from the source
-    // file, in this request.
-    const entry = request.entry as { name?: unknown; baseUrl?: unknown; dialect?: unknown; models?: unknown } | undefined;
-    const listed = {
-      id: sourceId,
-      name: typeof entry?.name === 'string' ? entry.name : sourceId,
-      ...(typeof entry?.baseUrl === 'string' ? { baseUrl: entry.baseUrl } : {}),
-      ...(typeof entry?.dialect === 'string' ? { dialect: entry.dialect } : {}),
-      models: Array.isArray(entry?.models) ? entry.models.filter((m): m is string => typeof m === 'string') : [],
-    };
-
-    const level = providerLevel(id);
-    if (level === 'full') {
-      try {
-        const draft = await draftForImport(source as HarnessId, sourceId, listed);
-        const written = await writeProvider(id as HarnessId, draft);
-        return json({ imported: written, harness: id, target: registryLabel(id) });
-      } catch (cause) {
-        const message = cause instanceof Error ? cause.message : 'Could not write the registry';
-        return json({ error: message }, { status: 400 });
-      }
-    }
-
-    if (level === 'environment') {
-      // The same fields FLATTENED into the vars that agent reads. There is no
-      // registry to add to: this replaces its endpoint.
-      const draft = await draftForImport(source as HarnessId, sourceId, listed);
-      const env = providerEnv(id, { baseUrl: draft.baseUrl ?? '', apiKey: draft.apiKey ?? '' });
-      const previous = await loadHarnessConfig(id as HarnessId);
-      const merged = [previous.env.trim(), Object.entries(env).map(([key, value]) => `${key}=${value}`).join('\n')]
-        .filter(Boolean)
-        .join('\n');
-      const saved = { ...previous, env: merged };
-      await saveHarnessConfig(id as HarnessId, saved);
-      await forgetProbe(id as HarnessId);
-      return json({ config: saved, harness: id, envWritten: Object.keys(env) });
-    }
-
-    return json({
-      error: `${id} has no provider registry Kabmo can write — use its launch command and env`,
-      code: 'no_registry',
-    }, { status: 400 });
+    return importProviderAction(id as HarnessId, source, sourceId, requestBody.entry);
+  }
+  // AN ADD: the same landing path, with the endpoint typed here instead of
+  // copied — `{ addProvider: { name, baseUrl, apiKey, protocol?, models? } }`.
+  // Both actions go through `applyProvider`: the probe, the protocol choice, the
+  // refusal and the env flattening cannot drift between "copy" and "type".
+  const addBody = body.addProvider;
+  if (isImportBody(addBody)) {
+    return addProviderAction(id as HarnessId, addBody);
   }
 
   // A CONFIG write rides the same route: `{ config: { harness, ...fields } }`.
   // One endpoint for one subject, and the answer carries the saved shape so the
   // card re-renders from what the server actually holds.
-  const configBody = (body as { config?: unknown }).config;
+  const configBody = body.config;
   if (configBody !== undefined) {
     const saved = parseHarnessConfig(configBody);
     const previous = await loadHarnessConfig(id as HarnessId);
@@ -241,10 +219,10 @@ export async function action({ request, params }: ActionFunctionArgs) {
     if (probeInvalidated) await forgetProbe(id as HarnessId);
     return json({ config: saved, harness: id, probeInvalidated });
   }
-  const cwd = typeof (body as { cwd?: unknown }).cwd === 'string'
-    ? String((body as { cwd: string }).cwd)
-    : process.cwd();
-  const probe = await probeHarness(id as HarnessId, cwd);
+  const probe = await probeHarness(
+    id as HarnessId,
+    typeof body.cwd === 'string' ? body.cwd : process.cwd(),
+  );
   await rememberProbe(id as HarnessId, probe);
   return json({ probe });
 }
