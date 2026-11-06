@@ -26,7 +26,7 @@ import {
   iconTone,
 } from '@/shared/lib/icons/tint';
 import { ICON_HUES, ICON_TONES, ICON_TONES_DARK } from '@/shared/lib/icons/tint-hues.generated';
-import { oklchOf } from '@/shared/lib/icons/icon-tone';
+import { oklchOf, PAPER_BUCKETS, paperBucketOf } from '@/shared/lib/icons/icon-tone';
 import { THEMES } from '@/shared/lib/theme/catalog';
 import { BRAND_CONTRAST_FLOOR, contrastRatio } from '@/shared/lib/theme/legibility';
 
@@ -90,15 +90,22 @@ describe('the generated hues', () => {
     expect(check.exitCode, check.stderr.toString()).toBe(0);
   });
 
-  test('every light tone clears the non-text floor on every light palette', () => {
-    // The tone is SOLVED per hue (see `icon-tone.ts`); this is the property that
-    // let the mode carry 39% more chroma without losing a single row, so it is
-    // pinned per palette rather than against one hex.
-    const papers = THEMES.filter((theme) => theme.variant === 'light').map((theme) => theme.paper);
-    for (const [hue, tone] of Object.entries(ICON_TONES)) {
-      expect(tone, hue).toMatch(/^#[0-9a-f]{6}$/);
-      const worst = Math.min(...papers.map((paper) => contrastRatio(tone, paper)));
-      expect(worst, `hue ${hue} (${tone})`).toBeGreaterThanOrEqual(BRAND_CONTRAST_FLOOR);
+  test('every light tone clears the floor on every paper of ITS OWN bucket', () => {
+    // The light table is split by paper bucket, and that split is only legal
+    // because each bucket is solved against its own darkest paper. Clearing the
+    // floor on the catalog's darkest paper instead would make the buckets
+    // pointless; clearing it only against the bucket's paper is what makes a
+    // brighter palette paint a brighter icon.
+    for (const bucket of PAPER_BUCKETS) {
+      const papers = THEMES.filter((theme) => theme.variant === 'light' && paperBucketOf(theme.paper) === bucket).map(
+        (theme) => theme.paper,
+      );
+      expect(papers.length, `${bucket} has palettes`).toBeGreaterThan(0);
+      for (const [hue, tone] of Object.entries(ICON_TONES[bucket])) {
+        expect(tone, `${bucket} ${hue}`).toMatch(/^#[0-9a-f]{6}$/);
+        const worst = Math.min(...papers.map((paper) => contrastRatio(tone, paper)));
+        expect(worst, `${bucket} hue ${hue} (${tone})`).toBeGreaterThanOrEqual(BRAND_CONTRAST_FLOOR);
+      }
     }
   });
 
@@ -122,10 +129,11 @@ describe('the generated hues', () => {
     // the wheel uneven — a blue icon visibly heavier than the yellow beside it.
     // Measured after the solve, light spreads 0.04 and dark 0.08, and the
     // muddiest dark row goes from chroma 0.082 to 0.133.
-    for (const [label, table, maxSpread, minChroma] of [
-      ['light', ICON_TONES, 0.06, 0.09],
-      ['dark', ICON_TONES_DARK, 0.1, 0.12],
-    ] as const) {
+    const tables: ReadonlyArray<readonly [string, Readonly<Record<number, string>>, number, number]> = [
+      ...PAPER_BUCKETS.map((bucket) => [`light/${bucket}`, ICON_TONES[bucket], 0.06, 0.09] as const),
+      ['dark', ICON_TONES_DARK, 0.1, 0.12] as const,
+    ];
+    for (const [label, table, maxSpread, minChroma] of tables) {
       const tones = Object.values(table).map((tone) => oklchOf(tone));
       const lightnesses = tones.map((tone) => tone.lightness);
       const spread = Math.max(...lightnesses) - Math.min(...lightnesses);
@@ -137,8 +145,8 @@ describe('the generated hues', () => {
   test('a hue keeps its identity across variants', () => {
     // A glyph must be "the same colour" on both themes, or switching the palette
     // silently recolours every icon in the app.
-    for (const hue of Object.keys(ICON_TONES)) {
-      const light = oklchOf(ICON_TONES[Number(hue)]!).hue;
+    for (const hue of Object.keys(ICON_TONES.bright)) {
+      const light = oklchOf(ICON_TONES.bright[Number(hue)]!).hue;
       const dark = oklchOf(ICON_TONES_DARK[Number(hue)]!).hue;
       const drift = Math.min(Math.abs(light - dark), 360 - Math.abs(light - dark));
       expect(drift, `hue ${hue}`).toBeLessThan(12);
@@ -152,15 +160,15 @@ describe('the generated hues', () => {
     // every hue on the wheel. Solving per hue is what buys the colour back, and
     // this is the assertion that would fail if a future edit quietly put a
     // uniform pair back.
-    const hues = Object.keys(ICON_TONES).map(Number);
+    const hues = Object.keys(ICON_TONES.deepest).map(Number);
     const mean = (values: number[]) => values.reduce((a, b) => a + b, 0) / values.length;
     const before = hues.map((hue) => oklchOf(hslHex(hue, ICON_HUE_PAINT.light.saturation, ICON_HUE_PAINT.light.lightness)).chroma);
-    const after = hues.map((hue) => oklchOf(ICON_TONES[hue]!).chroma);
+    const after = hues.map((hue) => oklchOf(ICON_TONES.deepest[hue]!).chroma);
     expect(mean(after)).toBeGreaterThan(mean(before) * 1.3);
     // Every single hue must improve — a table that traded one muddy row for
     // another would still pass the mean.
     for (const hue of hues) {
-      expect(oklchOf(ICON_TONES[hue]!).chroma, `hue ${hue}`).toBeGreaterThan(
+      expect(oklchOf(ICON_TONES.deepest[hue]!).chroma, `hue ${hue}`).toBeGreaterThan(
         oklchOf(hslHex(hue, ICON_HUE_PAINT.light.saturation, ICON_HUE_PAINT.light.lightness)).chroma,
       );
     }
@@ -170,7 +178,7 @@ describe('the generated hues', () => {
     // Solved in OKLCH, but the hue is the OKLCH angle of the OLD paint: a tone
     // that drifted would recolour every icon in the app, which is not what
     // "more colour" means.
-    for (const [hue, tone] of Object.entries(ICON_TONES)) {
+    for (const [hue, tone] of Object.entries(ICON_TONES.deepest)) {
       const before = oklchOf(hslHex(Number(hue), ICON_HUE_PAINT.light.saturation, ICON_HUE_PAINT.light.lightness)).hue;
       const after = oklchOf(tone).hue;
       const circular = Math.min(Math.abs(before - after), 360 - Math.abs(before - after));
@@ -179,12 +187,14 @@ describe('the generated hues', () => {
   });
 
   test('the light tone is a table lookup, not a solve, and it snaps to the wheel', () => {
-    expect(iconTone(120)).toBe(ICON_TONES[120]!);
+    // No paper means the deepest bucket: the conservative answer, not the
+    // flattering one — a caller with no palette context still gets a legal colour.
+    expect(iconTone(120)).toBe(ICON_TONES.deepest[120]!);
     // `hashHue` only produces wheel steps, but a stored or plugin name could
     // still reach here with something else; the nearest step keeps it a colour.
-    expect(iconTone(124)).toBe(ICON_TONES[120]!);
-    expect(iconTone(356)).toBe(ICON_TONES[0]!);
-    expect(iconTone(-10)).toBe(ICON_TONES[350]!);
+    expect(iconTone(124)).toBe(ICON_TONES.deepest[120]!);
+    expect(iconTone(356)).toBe(ICON_TONES.deepest[0]!);
+    expect(iconTone(-10)).toBe(ICON_TONES.deepest[350]!);
   });
 
   test('the paint rule and the concrete colour share one formula', () => {
@@ -198,7 +208,7 @@ describe('the generated hues', () => {
     expect(iconHuePaint('dark')).toBe(
       `var(--icon-tone-dark, hsl(var(--icon-hue, ${DEFAULT_ICON_HUE}) ${ICON_HUE_PAINT.dark.saturation}% ${ICON_HUE_PAINT.dark.lightness}%))`,
     );
-    expect(iconTone(120, 'light')).toBe(ICON_TONES[120]!);
+    expect(iconTone(120, 'light')).toBe(ICON_TONES.deepest[120]!);
     expect(iconTone(120, 'dark')).toBe(ICON_TONES_DARK[120]!);
   });
 
@@ -253,5 +263,49 @@ describe('the generated hues', () => {
     const classes = ICON_HUE_ROWS.map((row) => row.className);
     expect(new Set(classes).size).toBe(classes.length);
     expect(classes.every((className) => className.startsWith('lucide-'))).toBe(true);
+  });
+});
+
+describe('the paper buckets', () => {
+  test('a brighter paper paints a brighter icon, monotonically', () => {
+    // The whole reason the table is split. Measured over the shipped palettes:
+    // deep 0.589, mid 0.624, bright 0.641, against dark's 0.782 and the old
+    // single table's 0.589 on every light palette.
+    const meanLightness = (bucket: (typeof PAPER_BUCKETS)[number]) => {
+      const tones = Object.values(ICON_TONES[bucket]);
+      return tones.reduce((sum, tone) => sum + oklchOf(tone).lightness, 0) / tones.length;
+    };
+    const values = PAPER_BUCKETS.map(meanLightness);
+    // STRICTLY increasing: each bucket is solved against its own darkest paper, so
+    // a brighter paper can never paint a darker icon. Measured across the six:
+    // 0.590, 0.619, 0.629, 0.636, 0.644, 0.657.
+    for (let i = 1; i < values.length; i += 1) {
+      expect(values[i]!, `${PAPER_BUCKETS[i]}`).toBeGreaterThan(values[i - 1]!);
+    }
+    expect(values[0]!).toBeLessThan(0.6);
+  });
+
+  test('every bucket groups the palettes it claims to', () => {
+    // The buckets are ranges of RELATIVE LUMINANCE, which is the quantity
+    // contrast is computed from. A paper on a boundary must land in exactly one
+    // bucket, and every light palette must be reachable by one.
+    for (const theme of THEMES.filter((entry) => entry.variant === 'light')) {
+      const bucket = paperBucketOf(theme.paper);
+      expect(PAPER_BUCKETS, `${theme.id}`).toContain(bucket);
+    }
+    // The catalog's darkest and lightest light papers land in different buckets,
+    // which is what makes the split worth having.
+    expect(paperBucketOf('#dee0ee')).toBe('deepest');
+    expect(paperBucketOf('#ffffff')).toBe('bright');
+  });
+
+  test('a caller with no palette gets the deepest bucket', () => {
+    // The conservative answer: a colour that every light palette clears, rather
+    // than the flattering one that only a bright paper allows.
+    expect(iconTone(120)).toBe(ICON_TONES.deepest[120]!);
+    expect(iconTone(120, 'light', '#ffffff')).toBe(ICON_TONES.bright[120]!);
+    expect(iconTone(120, 'light', '#faf8f3')).toBe(ICON_TONES.mid[120]!);
+    // Dark has one band, so a paper cannot change it.
+    expect(iconTone(120, 'dark', '#ffffff')).toBe(iconTone(120, 'dark', '#dee0ee'));
   });
 });

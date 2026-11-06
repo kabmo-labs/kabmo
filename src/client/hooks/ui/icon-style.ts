@@ -24,6 +24,31 @@ import {
   ICON_PAINT_STYLE_ELEMENT_ID,
   iconPaintStyleSheet,
 } from '@/shared/lib/icons/icon-paint-css';
+import { ICON_PAPER_ATTRIBUTE } from '@/shared/lib/icons/tint';
+import { paperBucketOf } from '@/shared/lib/icons/icon-tone';
+import { resolveTheme } from '@/shared/lib/theme/catalog';
+
+/**
+ * Point the document at the paper bucket of the palette it is painting.
+ *
+ * One `ICON_TONES` table had to clear the floor on the DARKEST light paper in
+ * the catalog, so a palette with a brighter paper painted every icon at
+ * lightness it did not need: measured on the default palette, mean L 0.582 where
+ * that paper allows 0.640, against dark's 0.782 — the reported "light mode
+ * kusam". The bucket is an ATTRIBUTE rather than a resolved colour so a theme
+ * switch only moves one attribute instead of re-stamping every mark on screen.
+ */
+export function applyIconPaper(theme?: string): void {
+  if (typeof document === 'undefined') return;
+  // The palette id is read from the document rather than from `theme.ts`, whose
+  // `applyDocumentTheme` is what CALLS this: importing its `currentThemeId`
+  // would close a module cycle and leave the export undefined at load.
+  const id = theme ?? document.documentElement.dataset.theme ?? '';
+  const palette = resolveTheme(id);
+  const root = document.documentElement;
+  if (palette.variant === 'dark') root.removeAttribute(ICON_PAPER_ATTRIBUTE);
+  else root.setAttribute(ICON_PAPER_ATTRIBUTE, paperBucketOf(palette.paper));
+}
 
 /**
  * Point the document at `style`.
@@ -37,6 +62,9 @@ export function applyIconStyle(style: unknown): void {
   const resolved = resolveIconStyle(style);
   if (resolved === DEFAULT_ICON_STYLE) root.removeAttribute(ICON_STYLE_ATTRIBUTE);
   else root.setAttribute(ICON_STYLE_ATTRIBUTE, resolved);
+  // The bucket belongs to the same writer: a document that states one style
+  // without the other paints a `mid` palette with the `deep` table.
+  applyIconPaper();
 }
 
 /**

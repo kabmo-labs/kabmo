@@ -32,7 +32,8 @@
 
 import type { ReactNode } from 'preact/compat';
 import { legiblePair } from '@/shared/lib/theme/legibility';
-import { hashHue, iconTone } from '@/shared/lib/icons/tint';
+import { hashHue, iconTone, PAPER_BUCKET_SAMPLE } from '@/shared/lib/icons/tint';
+import { PAPER_BUCKETS } from '@/shared/lib/icons/icon-tone';
 import { usePanelHues } from '@/client/hooks/workspace/panel-hues';
 import { panelHueOf } from '@/shared/lib/workspace/panel-hues';
 import { PluginMark } from '@/client/components/settings/categories/panel-plugins/PluginMark';
@@ -94,7 +95,15 @@ export function PanelMark({
       data-declared={declared ? '' : undefined}
       style={{
         '--panel-hue': String(hue),
-        '--panel-tone': iconTone(hue, 'light'),
+        // Every paper bucket AND dark, because a panel's hue is runtime-only:
+        // like the generated glyph rows, the STYLESHEET decides which one
+        // applies, so a theme switch does not re-stamp every mark on screen.
+        ...Object.fromEntries(
+          PAPER_BUCKETS.map((bucket) => [
+            bucket === 'deepest' ? '--panel-tone' : `--panel-tone-${bucket}`,
+            iconTone(hue, 'light', PAPER_BUCKET_SAMPLE[bucket]),
+          ]),
+        ),
         '--panel-tone-dark': iconTone(hue, 'dark'),
         ...(declared ? { '--panel-color-light': declared.light } : {}),
         ...(declared?.dark ? { '--panel-color-dark': declared.dark } : {}),

@@ -49,17 +49,21 @@ import { BRAND_COLORS } from '@/shared/lib/models/provider/brand-color';
 import { panelMarkRules } from '@/shared/lib/icons/icon-paint-panel';
 import { inkWeightRules } from '@/shared/lib/icons/icon-paint-weight';
 import {
-  SOLID_FILL_EXCLUSIONS,
   authorColourRules,
   monochromeSolidFillRules,
   solidSignalFillRules,
 } from '@/shared/lib/icons/icon-paint-authority';
+import { monochromeRules, smallGlyphStrokeRules, toolCardRules } from '@/shared/lib/icons/icon-paint-ink';
 import { FILE_BRAND_COLORS } from '@/shared/lib/icons/file-brand-color';
+import { HARNESS_BRAND_COLORS } from '@/shared/lib/harness/brand-color';
 import {
   DEFAULT_ICON_HUE,
   ICON_HUE_ROWS,
   ICON_TINT_ROWS,
   ICON_TINT_TOKENS,
+  ICON_TONE_BUCKETS,
+  ICON_PAPER_ATTRIBUTE,
+  ICON_TONE_VARIABLE,
   iconHuePaint,
   iconTone,
 } from '@/shared/lib/icons/tint';
@@ -87,14 +91,33 @@ function hueRules(): string[] {
     `:where([data-icon-style="color"][data-theme-variant="dark"]) :where(svg.lucide) { --icon-color: ${iconHuePaint('dark')}; }`,
   ];
   for (const { className, hue } of ICON_HUE_ROWS) {
-    // BOTH variants on one element, so the variant rule below only has to pick
-    // between two custom properties. Stamping `--icon-tone` alone is what left
-    // dark on a single `hsl()` pair for every hue.
+    // EVERY variant and EVERY paper bucket on one element, so the rules below
+    // only have to pick between custom properties. Stamping one value is what
+    // left dark on a single `hsl()` pair per hue, and what made every bright
+    // light palette paint an icon at the lightness the DARKEST paper merely
+    // tolerates.
     rules.push(
-      `:where([data-icon-style="color"]) :where(svg.${className}) { --icon-hue: ${hue}; --icon-tone: ${iconTone(hue, 'light')}; --icon-tone-dark: ${iconTone(hue, 'dark')}; }`,
+      `:where([data-icon-style="color"]) :where(svg.${className}) { --icon-hue: ${hue}; ${toneVariables(hue)} }`,
     );
   }
   return rules;
+}
+
+/**
+ * The tone custom properties for one hue: one per paper bucket, plus dark.
+ *
+ * `--icon-tone` stays the DEEP value, because that is the one every palette
+ * clears — a rule that reads it without a bucket gets the conservative colour
+ * rather than an illegible one.
+ */
+function toneVariables(hue: number): string {
+  return [
+    // Every light bucket, then dark. The FIRST bucket's variable keeps the bare
+    // `--icon-tone` name, so a document with no `data-icon-paper` still paints
+    // the legal colour rather than nothing.
+    ...ICON_TONE_BUCKETS.map(([bucket, table]) => `${ICON_TONE_VARIABLE[bucket]}: ${table[hue]};`),
+    `${ICON_TONE_VARIABLE.dark}: ${iconTone(hue, 'dark')};`,
+  ].join(' ');
 }
 
 /**
@@ -129,65 +152,7 @@ function paintRules(): string[] {
     // resolved to `oklab(… / 0.6)`). (0,2,1) beats a single utility, and the
     // rules that must still override it — a panel mark, a tool card, an inverted
     // surface, the project accent — are stated after this one with more weight.
-    `[data-icon-style="color"] :is(svg.lucide, svg[data-provider], svg[data-file-brand]) { --icon-paint: var(--icon-color); color: var(--icon-paint); }`,
-  ];
-}
-
-/**
- * MONOCHROME: an icon takes the ink of the text beside it.
- *
- * The colour mode is a generated sheet of hues; monochrome is the ABSENCE of the
- * attribute, and until this rule that absence only meant "no hue is added" — it
- * did not take away the colours an AUTHOR had written. So a `Check` with
- * `text-success` in a tool card stayed green with the setting on monochrome
- * ("di setting monochrome kenapa iconnya berwarna?"), and the same icon then
- * turned into a hue under `color`, which read as the mode being half-applied.
- *
- * `var(--theme-ink)`, not `currentColor`: a `Check` inside a green status chip
- * INHERITS the chip's green, so `currentColor` left it green — measured, two
- * icons survived a monochrome pass that way (`lucide-info` in an info chip, a
- * loader in a warning one). Icons that say `text-ink/…` are excluded (that IS
- * the ink, at the weight the caller chose), and an inverted `bg-ink` surface
- * keeps its own foreground.
- *
- * A SOLID SIGNAL FILL is excluded for the same reason as `bg-ink`: the ink is
- * the wrong end of the contrast on it. Measured over the 63 palettes, a glyph
- * on `bg-error` computed 1.04:1 on `osaka-jade-light`, and 44 of 63 sat under
- * the 3:1 floor for a graphic — the composer's newly filled Stop and Send
- * buttons would have been blank squares on any monochrome install. The
- * foreground comes from `monochromeSolidFillRules`, stated after this one.
- *
- * Specificity is the point: `:root:not(…)` plus the class beats a single utility
- * class, so this wins over `text-success` inside the same layer.
- */
-function monochromeRules(): string[] {
-  return [
-    `:root:not([data-icon-style="color"]) svg.lucide:not([class*="text-ink"]):not(.bg-ink *)${SOLID_FILL_EXCLUSIONS} { color: var(--theme-ink); }`,
-    ':root:not([data-icon-style="color"]) [data-plugin-mark] { --plugin-color: currentColor; }',
-  ];
-}
-
-/**
- * Inside a TOOL CARD, icons are ink in BOTH modes.
- *
- * A transcript is a reading surface: one turn can hold twenty cards, each with a
- * status chip, a file mark and a chevron, and a hue per icon turns the densest
- * part of the app into confetti. The codebase already said so for file-type
- * marks — `languageBrandIcon` passes `monochrome` for exactly this surface — but
- * the Lucide glyphs inside a card were never covered, so they followed the mode
- * and flipped colour the moment the setting changed.
- *
- * `var(--theme-ink)` rather than `currentColor`: the check inside a green status
- * chip inherits the chip's green, which is the colour this rule exists to remove.
- * Icons that declare `text-ink/…` are left alone (that is the ink, at the weight
- * the caller chose), and an inverted `bg-ink` surface or a solid signal fill
- * keeps its own foreground — that surface declares it, and this rule is about
- * the glyphs that declare nothing.
- */
-function toolCardRules(): string[] {
-  return [
-    `[data-tool-row] svg.lucide:not([class*="text-ink"]):not(.bg-ink *)${SOLID_FILL_EXCLUSIONS} { color: var(--theme-ink); }`,
-    '[data-tool-row] [data-plugin-mark] { --plugin-color: var(--theme-ink); }',
+    `[data-icon-style="color"] :is(svg.lucide, svg[data-provider], svg[data-file-brand], svg[data-harness]) { --icon-paint: var(--icon-color); color: var(--icon-paint); }`,
   ];
 }
 
@@ -277,6 +242,25 @@ function pluginMarkRules(): string[] {
   ];
 }
 
+/**
+ * The paper bucket picks which solved table paints the light glyph.
+ *
+ * `--icon-tone` already holds the DEEP value, and that is deliberate: an engine
+ * or a document with no `data-icon-paper` paints the colour every palette
+ * clears. The two rules below only RE-POINT a source that a generated row has
+ * already stamped, so they are gated on the attribute rather than on the mode
+ * and cost nothing when the bucket is `deep`.
+ *
+ * `:where()` throughout, like every other source rule: a caller's own colour
+ * still wins, and the paint rule that follows is what turns this into a `color`.
+ */
+function paperBucketRules(): string[] {
+  return ICON_TONE_BUCKETS.filter(([bucket]) => bucket !== 'deepest').map(
+    ([bucket]) =>
+      `:where([data-icon-style="color"][${ICON_PAPER_ATTRIBUTE}="${bucket}"]) :where(svg.lucide) { --icon-color: var(${ICON_TONE_VARIABLE[bucket]}, var(--icon-color)); }`,
+  );
+}
+
 /** The signal colours, which beat the hue because they are stated after it. */
 function signalRules(): string[] {
   return ICON_TINT_ROWS.map(
@@ -296,6 +280,7 @@ export function iconPaintStyleSheet(): string {
     '@layer theme, base, components, utilities;',
     '@layer utilities {',
     ...hueRules(),
+    ...paperBucketRules(),
     ...signalRules(),
     // An author's own signal class is a decision, so it is stated after the
     // table that would otherwise guess one for the same glyph.
@@ -315,11 +300,17 @@ export function iconPaintStyleSheet(): string {
     // After the ink pass it corrects: same subject, so order decides.
     ...monochromeSolidFillRules(),
     ...toolCardRules(),
+    ...smallGlyphStrokeRules(),
     ...Object.entries(BRAND_COLORS).flatMap(([name, entry]) =>
       brandRules(`svg[data-provider="${name}"]`, entry.light, entry.dark),
     ),
     ...Object.entries(FILE_BRAND_COLORS).flatMap(([name, entry]) =>
       brandRules(`svg[data-file-brand="${name}"]`, entry.light, entry.dark),
+    ),
+    // Harness marks: the agent's own brand colour, under the same rule as every
+    // other brand family — `color` mode paints it, `monochrome` leaves the ink.
+    ...Object.entries(HARNESS_BRAND_COLORS).flatMap(([name, entry]) =>
+      brandRules(`svg[data-harness="${name}"]`, entry.light, entry.dark),
     ),
     '}',
   ].join('\n');

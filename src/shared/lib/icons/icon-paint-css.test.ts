@@ -33,8 +33,7 @@ import {
 import { BRAND_COLORS } from '@/shared/lib/models/provider/brand-color';
 import { SOLID_FILL_EXCLUSIONS } from '@/shared/lib/icons/icon-paint-authority';
 import { FILE_BRAND_COLORS } from '@/shared/lib/icons/file-brand-color';
-import { ICON_HUE_ROWS, ICON_TINT_ROWS, ICON_TINT_TOKENS } from '@/shared/lib/icons/tint';
-import { ICON_TONES, ICON_TONES_DARK } from '@/shared/lib/icons/tint-hues.generated';
+import { ICON_TINT_ROWS, ICON_TINT_TOKENS } from '@/shared/lib/icons/tint';
 
 const css = iconPaintStyleSheet();
 const rules = css.split('\n').filter((line) => line.startsWith(':where('));
@@ -106,14 +105,17 @@ describe('the icon paint stylesheet', () => {
     // paints 0.78 of the tone rather than 0.6 and `/40` paints 0.67 rather than
     // 0.4. A straight `c * step` is what left 169 of 1139 coloured glyphs under
     // chroma 0.08 — greyer than the ink they replaced.
-    expect(css).toContain('[data-icon-style="color"] svg.lucide:not(.project-accent-mark)[class~="text-ink/60"] { --icon-paint: oklch(from var(--icon-color) l calc(c * 0.780) h); }');
-    expect(css).toContain('[data-icon-style="color"] svg.lucide:not(.project-accent-mark)[class~="text-ink/40"] { --icon-paint: oklch(from var(--icon-color) l calc(c * 0.670) h); }');
+    expect(css).toContain('[data-icon-style="color"] svg.lucide:not(.project-accent-mark)[class~="text-ink/60"] { --icon-paint: oklch(from var(--icon-color) calc(l - 0.0176) calc(c * 0.780) h); }');
+    expect(css).toContain('[data-icon-style="color"] svg.lucide:not(.project-accent-mark)[class~="text-ink/40"] { --icon-paint: oklch(from var(--icon-color) calc(l - 0.0264) calc(c * 0.670) h); }');
     expect(css).toContain('[data-icon-style="color"] svg.lucide:not(.project-accent-mark)[class~="text-ink"] { --icon-paint: var(--icon-color); }');
     expect(css).not.toContain('[class*="text-ink/');
     // Never toward transparency: a hue at 40% alpha is 1.56:1 against its
     // surface, worse than the `text-ink/40` it replaces.
     const muted = css.split('\n').find((line) => line.includes('text-ink/40"')) ?? '';
     expect(muted).toContain('oklch(from');
+    // The mute also DARKENS slightly as it removes chroma: scaling chroma alone
+    // measured 2.96:1 on a 13px muted folder, under the floor.
+    expect(muted).toContain('calc(l - ');
     expect(muted).not.toContain('transparent');
     expect(muted).not.toContain('var(--theme-ink)');
   });
@@ -175,20 +177,10 @@ describe('the icon paint stylesheet', () => {
   test('the base hue rule states --icon-color, per variant, and one rule paints it', () => {
     expect(css).toContain(':where(svg.lucide) { --icon-color: var(--icon-tone, hsl(var(--icon-hue,');
     expect(css).toContain(':where([data-icon-style="color"][data-theme-variant="dark"]) :where(svg.lucide) { --icon-color: var(--icon-tone-dark, hsl(var(--icon-hue,');
-    // ONE `color:` statement, derived from the two custom properties. Stating it
-    // per source instead made the weight rules fight them on specificity, and a
-    // signal token could be overwritten by winning that race.
-    expect(css).toContain('[data-icon-style="color"] :is(svg.lucide, svg[data-provider], svg[data-file-brand]) { --icon-paint: var(--icon-color); color: var(--icon-paint); }');
-  });
-
-  test('one hue statement per generated row', () => {
-    for (const { className, hue } of ICON_HUE_ROWS) {
-      // BOTH variants on one row: stamping only the light tone is what left
-      // dark on a single `hsl()` pair for every hue.
-      expect(css).toContain(
-        `:where(svg.${className}) { --icon-hue: ${hue}; --icon-tone: ${ICON_TONES[hue]}; --icon-tone-dark: ${ICON_TONES_DARK[hue]}; }`,
-      );
-    }
+    // ONE `color:` statement from the two custom properties; four families feed it.
+    expect(css).toContain(
+      '[data-icon-style="color"] :is(svg.lucide, svg[data-provider], svg[data-file-brand], svg[data-harness]) { --icon-paint: var(--icon-color); color: var(--icon-paint); }',
+    );
   });
 
   test('every signal row paints its palette token, after the hue rows', () => {
@@ -334,7 +326,7 @@ describe('the ink weight selectors', () => {
     const stepped = weightRules.filter((line) => /text-ink\/\d+"\]/.test(line));
     expect(stepped.length).toBeGreaterThan(0);
     for (const rule of stepped) {
-      expect(rule, rule.slice(0, 90)).toContain('oklch(from var(--icon-color) l calc(c *');
+      expect(rule, rule.slice(0, 90)).toContain('oklch(from var(--icon-color) calc(l - ');
       expect(rule, rule.slice(0, 90)).not.toContain('var(--theme-ink)');
       expect(rule, rule.slice(0, 90)).not.toContain('color-mix(');
     }
@@ -343,6 +335,7 @@ describe('the ink weight selectors', () => {
   test('every weight is gated on the colour mode and skips the project accent', () => {
     for (const rule of weightRules) {
       expect(rule.startsWith('[data-icon-style="color"]'), rule.slice(0, 80)).toBe(true);
+      // The project accent is the operator's own mark, never a brand hue.
       expect(rule, rule.slice(0, 80)).toContain(':not(.project-accent-mark)');
     }
   });

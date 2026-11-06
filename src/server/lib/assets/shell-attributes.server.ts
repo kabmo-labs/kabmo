@@ -31,6 +31,8 @@ import {
   ICON_STYLE_ATTRIBUTE,
   resolveIconStyle,
 } from '@/shared/lib/theme/icon-style';
+import { ICON_PAPER_ATTRIBUTE } from '@/shared/lib/icons/tint';
+import { paperBucketOf } from '@/shared/lib/icons/icon-tone';
 import {
   DEFAULT_SURFACE_STYLE,
   SURFACE_ATTRIBUTE,
@@ -53,12 +55,17 @@ const TEMPLATE_VARIANT = 'data-theme-variant="light"';
 const TEMPLATE_META = '<meta name="theme-color" content="#faf8f3" />';
 
 /** The extra `<html>` attributes for the stored presentation styles. */
-export function styleAttributes(surfaceStyle: unknown, iconStyle: unknown): string {
+export function styleAttributes(surfaceStyle: unknown, iconStyle: unknown, palette?: ThemePalette): string {
   const surface = resolveSurfaceStyle(surfaceStyle);
   const icon = resolveIconStyle(iconStyle);
   const parts: string[] = [];
   if (surface !== DEFAULT_SURFACE_STYLE) parts.push(`${SURFACE_ATTRIBUTE}="${surface}"`);
   if (icon !== DEFAULT_ICON_STYLE) parts.push(`${ICON_STYLE_ATTRIBUTE}="${icon}"`);
+  // The paper bucket is written for EVERY light palette, including the default
+  // one, because it is not a preference: without it the first frame paints the
+  // `deep` icon table on a `mid` paper — one step darker than the palette allows,
+  // which is the exact flash the client's `applyIconPaper` then corrects.
+  if (palette && palette.variant === 'light') parts.push(`${ICON_PAPER_ATTRIBUTE}="${paperBucketOf(palette.paper)}"`);
   return parts.length > 0 ? ` ${parts.join(' ')}` : '';
 }
 
@@ -73,7 +80,7 @@ export function applyShellDocumentFacts(html: string, facts: ShellDocumentFacts)
   return html
     .replace(
       TEMPLATE_THEME,
-      `data-theme="${facts.palette.id}"${styleAttributes(facts.surfaceStyle, facts.iconStyle)}`,
+      `data-theme="${facts.palette.id}"${styleAttributes(facts.surfaceStyle, facts.iconStyle, facts.palette)}`,
     )
     .replace(TEMPLATE_VARIANT, `data-theme-variant="${facts.palette.variant}"`)
     .replace(TEMPLATE_META, `<meta name="theme-color" content="${facts.chromeColor}" />`);

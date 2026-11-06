@@ -20,6 +20,7 @@
 import { useCallback, useEffect, useState } from 'preact/hooks';
 import { useKabmoSettingsWriter } from '@/client/hooks/settings/use-kabmo-setting';
 import { applyWindowChrome } from '@/client/hooks/ui/window-chrome';
+import { applyIconPaper } from '@/client/hooks/ui/icon-style';
 import { DEFAULT_THEME_ID, resolveTheme } from '@/shared/lib/theme/catalog';
 import { THEME_STYLE_ELEMENT_ID, themeStyleSheet } from '@/shared/lib/theme/css';
 import { FIRST_FRAME_STYLE_ELEMENT_ID, firstFrameStyle } from '@/shared/lib/theme/first-frame';
@@ -79,6 +80,11 @@ export function applyDocumentTheme(theme: string): void {
   const root = document.documentElement;
   root.dataset.theme = palette.id;
   root.dataset.themeVariant = palette.variant;
+  // The icon tone table is keyed by how bright the paper is, so a palette change
+  // has to move this attribute too — otherwise a switch from a deep paper to a
+  // bright one keeps the darker table, which is the "light mode kusam" the split
+  // exists to remove.
+  applyIconPaper(palette.id);
   // The inline first-frame rule is UNLAYERED, so it outranks `body` in the
   // bundle at any specificity — which is why it is still the winner after a
   // runtime switch, and why it has to be rewritten here. Measured: choosing a

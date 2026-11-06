@@ -31,7 +31,12 @@
  * is the single translation to `lucide-trash-2`.
  */
 
-import { ICON_HUES, ICON_TONES, ICON_TONES_DARK } from '@/shared/lib/icons/tint-hues.generated';
+import {
+  ICON_HUES,
+  ICON_TONES,
+  ICON_TONES_DARK,
+} from '@/shared/lib/icons/tint-hues.generated';
+import { paperBucketOf, type PaperBucket } from '@/shared/lib/icons/icon-tone';
 
 export type IconTintRole = 'error' | 'success' | 'warning' | 'info';
 
@@ -70,19 +75,74 @@ function wheelStep(hue: number): number {
  *
  * Measured, this is the difference the report named — on the light side the
  * muddiest row (hue 190) goes from OKLCH chroma 0.075 to 0.102, hue 200 from
- * 0.078 to 0.121, and the mean from 0.121 to 0.162 (×1.34), with every tone
- * still at 3.15:1 or better on all 32 light palettes. On the dark side the same
- * solve collapses a lightness spread of 0.25 into 0.08 while RAISING mean
+ * 0.078 to 0.121, and the mean from 0.121 to 0.162 (×1.34). On the dark side the
+ * same solve collapses a lightness spread of 0.25 into 0.08 while RAISING mean
  * chroma 0.126 → 0.170. `icon-tone.ts` states both measurements.
+ *
+ * **The light table is keyed by PAPER BUCKET, and that is the fix for "light mode
+ * kusam".** One table has to clear the floor on the darkest light paper in the
+ * catalog, so every palette with a brighter paper painted an icon at lightness
+ * it did not need: measured on the default `paper`, mean L 0.582 where the paper
+ * allows 0.640, against dark's 0.782. Passing the palette's own paper picks one
+ * of three solved tables — `deep` 0.589, `mid` 0.624, `bright` 0.641 — and every
+ * row still clears 3.15:1 on every paper of its own bucket.
+ *
+ * `paper` is optional so a caller with no palette context (a test, a preview)
+ * still gets a legal colour; it defaults to the deepest bucket, which is the
+ * conservative answer rather than the flattering one.
  *
  * A hue off the wheel snaps to the nearest step: every producer here is a
  * `hashHue` result (36 steps of 10°) or a table row, so the nearest step IS that
  * hue; snapping is what keeps this a table lookup rather than a solve on load.
  */
-export function iconTone(hue: number, variant: 'light' | 'dark' = 'light'): string {
-  const table = variant === 'light' ? ICON_TONES : ICON_TONES_DARK;
+export function iconTone(hue: number, variant: 'light' | 'dark' = 'light', paper?: string): string {
+  const table: Readonly<Record<number, string>> =
+    variant === 'dark' ? ICON_TONES_DARK : ICON_TONES[paper ? paperBucketOf(paper) : 'deepest'];
   return table[wheelStep(hue)] ?? table[0]!;
 }
+
+/**
+ * The custom property each bucket reads, and the attribute that selects it.
+ *
+ * `data-icon-paper` is written on `<html>` by `applyIconStyle`, from the palette
+ * the document is actually painting — the same single-writer contract as
+ * `data-icon-style`. It is an ATTRIBUTE rather than a resolved colour because the
+ * palette can change at runtime (`applyDocumentTheme`), and re-stamping every
+ * mark on screen is not something a theme switch should have to do.
+ */
+export const ICON_TONE_VARIABLE: Readonly<Record<PaperBucket | 'dark', string>> = {
+  deepest: '--icon-tone',
+  deeper: '--icon-tone-deeper',
+  deep: '--icon-tone-deep',
+  mid: '--icon-tone-mid',
+  light: '--icon-tone-light',
+  bright: '--icon-tone-bright',
+  dark: '--icon-tone-dark',
+};
+
+/**
+ * One representative paper per bucket, for a producer that must STAMP every
+ * bucket's tone (`PanelMark`, `PluginMark`).
+ *
+ * `iconTone` selects its table by the paper's bucket, so passing a sample paper
+ * from each bucket yields exactly the three solved values without exposing the
+ * table shape to a component.
+ */
+export const PAPER_BUCKET_SAMPLE: Readonly<Record<PaperBucket, string>> = {
+  deepest: '#dee0ee',
+  deeper: '#f1ebfb',
+  deep: '#f1f1f0',
+  mid: '#f0f5fa',
+  light: '#faf8f3',
+  bright: '#ffffff',
+};
+
+/** Document attribute carrying the paper bucket. Read by CSS only. */
+export const ICON_PAPER_ATTRIBUTE = 'data-icon-paper';
+
+/** The tone of a hue in every bucket, for the stylesheet's per-bucket variables. */
+export const ICON_TONE_BUCKETS: ReadonlyArray<readonly [PaperBucket, Readonly<Record<number, string>>]> =
+  Object.entries(ICON_TONES) as ReadonlyArray<readonly [PaperBucket, Readonly<Record<number, string>>]>;
 
 /**
  * The paint rule's value: the hue left to the custom property the class sets.

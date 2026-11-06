@@ -33,14 +33,20 @@ import {
 import { BRAND_COLORS } from '@/shared/lib/models/provider/brand-color';
 import { FILE_BRAND_COLORS } from '@/shared/lib/icons/file-brand-color';
 import { ICON_TINT_TOKENS, iconHue, iconTintRole, iconTone } from '@/shared/lib/icons/tint';
+import { resolveTheme } from '@/shared/lib/theme/catalog';
 
 interface IconStyleSectionProps {
   settings: SettingsState;
   onUpdate: (updater: Partial<SettingsState> | ((previous: SettingsState) => SettingsState)) => void;
 }
 
+/** The paper of the palette being previewed, so the sample shows THAT palette's tone. */
+function previewPaper(theme: string): string {
+  return resolveTheme(theme).paper;
+}
+
 /** One functional glyph, painted the way the chosen mode would paint it. */
-function GlyphSample({ name, Icon, colored }: { name: string; Icon: typeof Check; colored: boolean }) {
+function GlyphSample({ name, Icon, colored, paper }: { name: string; Icon: typeof Check; colored: boolean; paper: string }) {
   const role = iconTintRole(name);
   // The role wins over the hue, exactly as the stylesheet orders its rules.
   // Same formula as the stylesheet's light paint, through the same helper: the
@@ -49,7 +55,7 @@ function GlyphSample({ name, Icon, colored }: { name: string; Icon: typeof Check
     ? undefined
     : role
       ? ICON_TINT_TOKENS[role]
-      : iconTone(iconHue(name), 'light');
+      : iconTone(iconHue(name), 'light', paper);
   return <Icon size={13} strokeWidth={2} style={color ? { color } : undefined} aria-hidden="true" />;
 }
 
@@ -71,12 +77,12 @@ function BrandSample({ name, base, colored }: { name: string; base: string; colo
   );
 }
 
-function Miniature({ colored }: { colored: boolean }) {
+function Miniature({ colored, paper }: { colored: boolean; paper: string }) {
   return (
     <span className="flex h-full items-center gap-1.5 rounded-md border border-ink/10 bg-canvas/60 px-2">
-      <GlyphSample name="Trash2" Icon={Trash2} colored={colored} />
-      <GlyphSample name="Check" Icon={Check} colored={colored} />
-      <GlyphSample name="Sparkles" Icon={Sparkles} colored={colored} />
+      <GlyphSample name="Trash2" Icon={Trash2} colored={colored} paper={paper} />
+      <GlyphSample name="Check" Icon={Check} colored={colored} paper={paper} />
+      <GlyphSample name="Sparkles" Icon={Sparkles} colored={colored} paper={paper} />
       <span className="mx-0.5 h-4 w-px bg-ink/10" />
       <BrandSample name="claude" base={BRAND_COLORS.claude.light} colored={colored} />
       <BrandSample name="Typescript" base={FILE_BRAND_COLORS.Typescript.light} colored={colored} />
@@ -84,13 +90,16 @@ function Miniature({ colored }: { colored: boolean }) {
   );
 }
 
-const MINIATURES: Record<IconStyle, ComponentType> = {
-  monochrome: () => <Miniature colored={false} />,
-  color: () => <Miniature colored />,
-};
-
 export function IconStyleSection({ settings, onUpdate }: IconStyleSectionProps) {
   const selected = resolveIconStyle(settings.iconStyle);
+  // The tone is solved per PAPER bucket, so the sample has to read the palette
+  // the user is actually on — otherwise the preview promises a colour the
+  // document will not paint.
+  const paper = previewPaper(settings.theme);
+  const MINIATURES: Record<IconStyle, ComponentType> = {
+    monochrome: () => <Miniature colored={false} paper={paper} />,
+    color: () => <Miniature colored paper={paper} />,
+  };
 
   return (
     <section className="space-y-3">

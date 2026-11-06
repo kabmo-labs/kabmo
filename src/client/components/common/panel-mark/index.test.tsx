@@ -77,7 +77,7 @@ describe('PanelMark', () => {
     const hue = Number(mark.style.getPropertyValue('--panel-hue'));
 
     expect(hue).toBe(resolvePanelHues().get('files')!);
-    expect(mark.style.getPropertyValue('--panel-tone')).toBe(ICON_TONES[hue]!);
+    expect(mark.style.getPropertyValue('--panel-tone')).toBe(ICON_TONES.deepest[hue]!);
   });
 
   test('a plugin mark is keyed by its NAME, the same key its card uses', () => {
@@ -87,7 +87,7 @@ describe('PanelMark', () => {
     const hue = hashHue('git-forge');
 
     expect(Number(mark.style.getPropertyValue('--panel-hue'))).toBe(hue);
-    expect(mark.style.getPropertyValue('--panel-tone')).toBe(ICON_TONES[hue]!);
+    expect(mark.style.getPropertyValue('--panel-tone')).toBe(ICON_TONES.deepest[hue]!);
   });
 
   test('a declared brand colour rides alongside the tone, as a clamped pair', () => {

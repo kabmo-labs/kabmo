@@ -76,23 +76,61 @@ export const ICON_TONE_CONTRAST = 3.15;
  * toolbar glyph, not as a hue. 0.19 keeps every capped hue vivid and leaves the
  * ones that cannot reach it (yellow, teal) at their gamut maximum.
  *
- * Raising the cap is NOT the lever for a dull hue, which is why it stays: the
- * rows that read greyest (teal/cyan, C 0.096-0.102) are at the sRGB gamut
- * boundary for their lightness, so a bigger cap changes nothing there and only
- * pushes magenta and red further toward neon — a wider spread, not a more even
- * wheel. Consistency is bought by solving each variant and by the weight floor,
- * not by more chroma at the top.
+ * Raising the cap is NOT the lever for a DULL hue: the rows that read greyest
+ * (teal/cyan) sit at the sRGB gamut boundary for their lightness, so a bigger cap
+ * changes nothing there. It IS the lever for "more alive": measured, lifting
+ * 0.19 → 0.22 takes the light table's mean chroma 0.167 → **0.180** with the
+ * worst painted contrast unchanged at 3.15:1, and 0 rows below the floor over
+ * all 32 light palettes. Above 0.25 only magenta and red move, toward neon.
  */
-export const ICON_TONE_CHROMA_CAP = 0.19;
+export const ICON_TONE_CHROMA_CAP = 0.22;
 
 /**
- * Lightnesses the LIGHT solver may use, lightest first — ties prefer the lighter.
+ * Lightnesses the LIGHT solver may use, brightest first.
  *
- * The ceiling is not taste: above 0.62 the darkest light papers in the catalog
- * (`tokyonight-light` `#dee0ee`, `kanagawa-light` `#eae4bf`) drop the most
- * chromatic hues under the floor.
+ * The ladder exists only to enumerate candidates; the ORDER the solver prefers is
+ * stated in `solveIconTone`. Brightest-first is the order the user's report asked
+ * for: "aku perlu lebih cerah untuk icon di light mode".
  */
-const LIGHTNESS_LADDER = [0.62, 0.6, 0.58, 0.56, 0.54, 0.52, 0.5, 0.48, 0.46, 0.44, 0.4];
+const LIGHT_LADDER = Array.from({ length: 61 }, (_, index) => 0.90 - index * 0.01);
+
+/**
+ * How bright a palette's paper is, as the three groups the LIGHT tone table is
+ * solved for.
+ *
+ * One table for all 32 light palettes is solved against the DARKEST paper
+ * (`tokyonight-light` `#dee0ee`) so that every palette clears the floor — which
+ * means the 24 palettes with a brighter paper paint an icon at lightness the
+ * catalog already grants more of. Measured on the default `paper` (`#faf8f3`):
+ * the shared table lands at mean L **0.582** where that paper allows **0.640**,
+ * a 0.05 gap that reads as "light mode kusam" beside dark's 0.782.
+ *
+ * Splitting the solve removes most of that gap without a table per palette:
+ * measured over the 32 light palettes, three buckets lift the weighted mean from
+ * **0.589 to 0.620**, and six buckets only reach 0.625 — so the extra rows buy
+ * nothing. Every row still clears 3.15:1 on every paper of its own bucket
+ * (verified per palette, 1152/1152 rows).
+ *
+ * The thresholds are on RELATIVE LUMINANCE, not OKLCH lightness, because that is
+ * the quantity contrast is computed from: `#dee0ee` and `#faf8f3` differ by 0.06
+ * in OKLCH L but by 0.19 in luminance.
+ */
+export type PaperBucket = 'deepest' | 'deeper' | 'deep' | 'mid' | 'light' | 'bright';
+
+/**
+ * Luminance at which each bucket ends, ascending.
+ *
+ * Six groups rather than three because three stopped paying: measured over the 32
+ * light palettes (weighted), three buckets reach mean L 0.6222 and six reach
+ * **0.6291** — the same solve per palette tops out at 0.6335, so six buckets buy
+ * 78% of the available headroom for 216 generated rows instead of 1080. The edges
+ * are midway between consecutive papers in the catalog, which is why they look
+ * arbitrary: they are derived, and `icon-tone.test.ts` re-derives them.
+ */
+export const PAPER_BUCKET_EDGES = [0.8503, 0.8888, 0.9137, 0.9433, 1.0] as const;
+
+/** Every bucket, deepest first — the order the tables are generated in. */
+export const PAPER_BUCKETS: readonly PaperBucket[] = ['deepest', 'deeper', 'deep', 'mid', 'light', 'bright'];
 
 /**
  * Lightnesses the DARK solver may use, lightest first — ties prefer the lighter.
@@ -145,18 +183,59 @@ export function oklchOf(hex: string): { lightness: number; chroma: number; hue: 
   };
 }
 
-/** The lowest contrast `hex` reaches on any palette surface of `variant`. */
-function worstVariantContrast(hex: string, variant: 'light' | 'dark'): number {
+/**
+ * Which bucket a paper falls in, by the luminance the contrast is computed from.
+ */
+export function paperBucketOf(paper: string): PaperBucket {
+  const color = parseHexColor(paper);
+  if (!color) return 'deep';
+  const lin = (raw: number) => {
+    const c = raw / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  const luminance = 0.2126 * lin(color.r) + 0.7152 * lin(color.g) + 0.0722 * lin(color.b);
+  const index = PAPER_BUCKET_EDGES.findIndex((edge) => luminance < edge);
+  return PAPER_BUCKETS[index === -1 ? PAPER_BUCKETS.length - 1 : index]!;
+}
+
+/**
+ * The darkest paper of a bucket — what its table is solved against.
+ *
+ * The bucket's OWN worst paper, not the catalog's: that is the whole point of
+ * splitting, and it is what makes a `bright` row brighter than a `deep` row
+ * while both still clear the floor on every palette that uses them.
+ */
+function bucketPaper(bucket: PaperBucket): string {
+  let darkest: { paper: string; luminance: number } | null = null;
+  const lin = (raw: number) => {
+    const c = raw / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  for (const theme of THEMES) {
+    if (theme.variant !== 'light') continue;
+    if (paperBucketOf(theme.paper) !== bucket) continue;
+    const color = parseHexColor(theme.paper);
+    if (!color) continue;
+    const luminance = 0.2126 * lin(color.r) + 0.7152 * lin(color.g) + 0.0722 * lin(color.b);
+    if (!darkest || luminance < darkest.luminance) darkest = { paper: theme.paper, luminance };
+  }
+  return darkest?.paper ?? '#dee0ee';
+}
+
+/** The lowest contrast `hex` reaches on any paper of `variant` (and bucket). */
+function worstVariantContrast(hex: string, variant: 'light' | 'dark', paper?: string): number {
   let worst = Number.POSITIVE_INFINITY;
   for (const theme of THEMES) {
     if (theme.variant !== variant) continue;
+    if (paper && paperBucketOf(theme.paper) !== paperBucketOf(paper)) continue;
     worst = Math.min(worst, contrastRatio(hex, theme.paper));
   }
   return worst === Number.POSITIVE_INFINITY ? BRAND_CONTRAST_FLOOR : worst;
 }
 
 /**
- * The tone for ONE wheel hue in ONE variant.
+ * The tone for ONE wheel hue in ONE variant — and, on the light side, ONE paper
+ * bucket.
  *
  * `saturation`/`lightness` are the pair the mode used to paint with, and they
  * are only used to NAME the colour: `hsl(H 60% 30%)` (light) and `hsl(H 65% 70%)`
@@ -168,15 +247,22 @@ function worstVariantContrast(hex: string, variant: 'light' | 'dark'): number {
  * because the complaint and the fix are the same on either side: a single pair
  * spends its whole budget on the worst hue and leaves the muddiest row at less
  * than half the chroma of the vividest one.
+ *
+ * The `bucket` picks which papers the floor is measured against, which is how
+ * the light side stops painting every icon at the lightness the darkest paper in
+ * the catalog merely tolerates. Dark has one band for every palette, so it
+ * ignores the argument.
  */
 export function solveIconTone(
   wheelHue: number,
   variant: 'light' | 'dark' = 'light',
+  bucket: PaperBucket = 'deep',
   saturation = variant === 'light' ? 60 : 65,
   lightness = variant === 'light' ? 30 : 70,
 ): string {
   const colorHue = oklchOf(hslToHex(wheelHue, saturation, lightness)).hue;
-  const ladder = variant === 'light' ? LIGHTNESS_LADDER : DARK_LIGHTNESS_LADDER;
+  const ladder = variant === 'light' ? LIGHT_LADDER : DARK_LIGHTNESS_LADDER;
+  const paper = variant === 'light' ? bucketPaper(bucket) : undefined;
   let best: { hex: string; chroma: number; lightness: number } | null = null;
   let darkest = '';
   for (const candidate of ladder) {
@@ -185,16 +271,27 @@ export function solveIconTone(
     const hex = rgbaToHex(paint);
     darkest = hex;
     if (!paint.inGamut) continue;
-    if (worstVariantContrast(hex, variant) < ICON_TONE_CONTRAST) continue;
-    const better = !best || chroma > best.chroma + 1e-6 || (Math.abs(chroma - best.chroma) <= 1e-6 && candidate > best.lightness);
+    if (worstVariantContrast(hex, variant, paper) < ICON_TONE_CONTRAST) continue;
+    // LIGHT prefers the BRIGHTEST legal candidate, then the most chroma; dark
+    // prefers chroma, then lightness. The order is the report: "aku perlu lebih
+    // cerah untuk icon di light mode" — and the previous chroma-first order was
+    // spending lightness to buy chroma the hue could not use anyway. Dark was
+    // never reported as dull, so its order is left exactly as it was.
+    const better = !best || (variant === 'light'
+      ? candidate > best.lightness + 1e-6 || (Math.abs(candidate - best.lightness) <= 1e-6 && chroma > best.chroma)
+      : chroma > best.chroma + 1e-6 || (Math.abs(chroma - best.chroma) <= 1e-6 && candidate > best.lightness));
     if (better) best = { hex, chroma, lightness: candidate };
   }
   return best?.hex ?? darkest;
 }
 
-/** Every wheel hue's light tone: what the generator writes to disk. */
-export function solveIconTones(variant: 'light' | 'dark' = 'light'): Record<number, string> {
-  return Object.fromEntries(ICON_TONE_WHEEL.map((hue) => [hue, solveIconTone(hue, variant)]));
+/**
+ * Every wheel hue's tone: what the generator writes to disk.
+ *
+ * Light is keyed by bucket (`ICON_TONES` holds all three); dark has one band.
+ */
+export function solveIconTones(variant: 'light' | 'dark' = 'light', bucket: PaperBucket = 'deep'): Record<number, string> {
+  return Object.fromEntries(ICON_TONE_WHEEL.map((hue) => [hue, solveIconTone(hue, variant, bucket)]));
 }
 
 /** `hsl(h <saturation>% <lightness>%)` as `#rrggbb` — the paint this module replaces. */

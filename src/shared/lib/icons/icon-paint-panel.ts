@@ -18,7 +18,8 @@
  * to dim, and the colour comes from the mode.
  */
 
-import { DEFAULT_ICON_HUE, ICON_HUE_PAINT } from '@/shared/lib/icons/tint';
+import { DEFAULT_ICON_HUE, ICON_HUE_PAINT, ICON_PAPER_ATTRIBUTE } from '@/shared/lib/icons/tint';
+import type { PaperBucket } from '@/shared/lib/icons/icon-tone';
 
 /**
  * Three sources, in this order: the colour a PLUGIN DECLARED in its manifest
@@ -31,19 +32,23 @@ import { DEFAULT_ICON_HUE, ICON_HUE_PAINT } from '@/shared/lib/icons/tint';
  * same `legiblePair` rule the brand tables use, so the plugin's colour reaches
  * the mark without dropping it below the floor.
  */
-function panelPaint(variant: 'light' | 'dark'): string {
+function panelPaint(variant: 'light' | 'dark', bucket: PaperBucket = 'deepest'): string {
   const { saturation, lightness } = ICON_HUE_PAINT[variant];
   const hsl = `hsl(var(--panel-hue, var(--icon-hue, ${DEFAULT_ICON_HUE})) ${saturation}% ${lightness}%)`;
   // Both variants read a `--panel-tone*` stamped by `PanelMark` from the solved
   // table: a panel's hue is assigned at runtime, so it cannot be a generated CSS
   // row, and an unsolved `hsl()` on the dark side is the lightness spread this
-  // mode was fixed by removing.
-  const toned = variant === 'light' ? `var(--panel-tone, ${hsl})` : `var(--panel-tone-dark, ${hsl})`;
+  // mode was fixed by removing. Light picks the bucket the palette is painting,
+  // exactly like the generated glyph rows.
+  const toned = variant === 'light' ? `var(--panel-tone${bucket === 'deepest' ? '' : `-${bucket}`}, ${hsl})` : `var(--panel-tone-dark, ${hsl})`;
   return `var(--panel-color-${variant}, ${toned})`;
 }
 
 export function panelMarkRules(): string[] {
   const light = panelPaint('light');
+  const brighter = (['deeper', 'deep', 'mid', 'light', 'bright'] as const).map(
+    (bucket) => [bucket, panelPaint('light', bucket)] as const,
+  );
   const dark = panelPaint('dark');
   // `[data-panel-mark]`, not `.panel-rail-mark`: the rail is not the only surface
   // that draws a panel, and it used to be the only one that got the PANEL's
@@ -64,12 +69,22 @@ export function panelMarkRules(): string[] {
   // tuned for paper, and the chip already declares its own foreground.
   const scope = `:root[data-icon-style="color"] [data-panel-mark]:not(.bg-ink *) svg.lucide`;
   const scopeDark = `:root[data-icon-style="color"][data-theme-variant="dark"] [data-panel-mark]:not(.bg-ink *) svg.lucide`;
+  // The two brighter buckets, stated AFTER the deep one at the same specificity,
+  // so a `mid` or `bright` paper re-points the same mark the glyph rows use.
+  // Without these a panel would keep the deepest table on every light palette —
+  // the rail reading darker than the icons in the panels behind it.
+  const bucketRule = (bucket: string, paint: string) =>
+    `:root[data-icon-style="color"][${ICON_PAPER_ATTRIBUTE}="${bucket}"] [data-panel-mark]:not(.bg-ink *) svg.lucide { color: ${paint}; }`;
+  const bucketPluginRule = (bucket: string, paint: string) =>
+    `:root[data-icon-style="color"][${ICON_PAPER_ATTRIBUTE}="${bucket}"] [data-panel-mark] [data-plugin-mark] { --plugin-color: ${paint}; }`;
   return [
     `${scope} { color: ${light}; }`,
+    ...brighter.map(([bucket, paint]) => bucketRule(bucket, paint)),
     `${scopeDark} { color: ${dark}; }`,
     // A plugin's mark states its own `--plugin-color` from its name; inside a
     // panel mark the panel's declared colour (or assigned hue) is the authority.
     `:root[data-icon-style="color"] [data-panel-mark] [data-plugin-mark] { --plugin-color: ${light}; }`,
+    ...brighter.map(([bucket, paint]) => bucketPluginRule(bucket, paint)),
     `:root[data-icon-style="color"][data-theme-variant="dark"] [data-panel-mark] [data-plugin-mark] { --plugin-color: ${dark}; }`,
     // The idle state moves LUMINANCE, never alpha.
     //

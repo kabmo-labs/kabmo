@@ -93,11 +93,30 @@ const WEIGHT_STEPS = [20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90
  */
 const WEIGHT_CHROMA_FLOOR = 0.45;
 
+/**
+ * How far a weight DARKENS while it removes chroma, per unit of chroma lost.
+ *
+ * Scaling chroma alone is not contrast-neutral: the tone sits AT the floor
+ * (3.15-3.3:1), and a less chromatic colour at the same lightness measures
+ * slightly worse against paper. Measured on the mid bucket after the tone was
+ * brightened, `text-ink/50` on a 13px folder glyph read **2.96:1** — under the
+ * floor, on the sidebar's own marks. The correction is negative lightness
+ * proportional to the chroma actually removed: `sink 0.08` takes the quietest
+ * weight (`/20`) from min **3.02** to **3.48**, and `/40` from 3.06 to 3.41.
+ *
+ * It darkens only the MUTED steps, so the full-strength tone keeps the brightness
+ * it was solved for — which is the whole report.
+ */
+const WEIGHT_LIGHTNESS_SINK = 0.08;
+
 /** The weight at `step/100`, or the untouched colour. */
 function paintAt(step: number | null): string {
   if (step === null) return 'var(--icon-color)';
-  const scale = (WEIGHT_CHROMA_FLOOR + (1 - WEIGHT_CHROMA_FLOOR) * (step / 100)).toFixed(3);
-  return `oklch(from var(--icon-color) l calc(c * ${scale}) h)`;
+  const scale = WEIGHT_CHROMA_FLOOR + (1 - WEIGHT_CHROMA_FLOOR) * (step / 100);
+  // `l - SINK * (1 - scale)` is the same expression the measurement used: no sink
+  // at full strength, the deepest sink at the quietest step.
+  const sink = (WEIGHT_LIGHTNESS_SINK * (1 - scale)).toFixed(4);
+  return `oklch(from var(--icon-color) calc(l - ${sink}) calc(c * ${scale.toFixed(3)}) h)`;
 }
 
 /** Every variant prefix that carries a `text-ink` weight somewhere in this app. */

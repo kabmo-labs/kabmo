@@ -104,8 +104,16 @@ spin rides the shared `.animate-spin` so the reduced-motion rule slows it rather
 **Icons.** Lucide is the functional glyph set (346 files import it), and the colour mode tints each
 glyph by its own hue — solved per hue in **both** variants (`ICON_TONES`, `ICON_TONES_DARK`), never
 one `hsl()` pair for the whole wheel, because a single pair spends its legibility budget on the worst
-hue and leaves the muddiest row at a quarter of the vividest row's chroma. Monochrome paints them in
-the current ink. A brand mark that does not exist in Lucide is drawn from its own SVG
+hue and leaves the muddiest row at a quarter of the vividest row's chroma. The light table is further
+split into **six paper buckets** (`data-icon-paper`), solved against each bucket's own darkest paper:
+one table for all 32 light palettes has to be solved for the darkest, and that left every brighter
+palette painting icons at a lightness it did not need. Monochrome paints them in the current ink.
+
+A light glyph has a hard brightness ceiling and it is worth knowing before anyone asks for more: at
+3.15:1 on the darkest mid paper, the brightest legal lightness averages **0.632** — while dark sits
+at 0.78, because its ink gives contrast away for free. L 0.78 on that paper is **1.96:1**, i.e.
+invisible. Light is not "the same design, dimmer": it is the same hue at the brightest lightness
+paper allows, with a slightly heavier stroke on 10-14px glyphs to carry the definition colour cannot. A brand mark that does not exist in Lucide is drawn from its own SVG
 (`provider-icon/glyphs.ts`, `file-icon`). Never add a decorative sparkle, wand, or orb: a glyph that
 names nothing is noise in the densest part of the app.
 

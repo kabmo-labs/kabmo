@@ -137,7 +137,7 @@ describe('PluginMark', () => {
     const tone = badge?.style.getPropertyValue('--icon-tone') ?? '';
 
     expect(tone).toMatch(/^#[0-9a-f]{6}$/);
-    expect(tone).toBe(ICON_TONES[hue]);
+    expect(tone).toBe(ICON_TONES.deepest[hue]);
   });
 
   test('the initials fallback takes the same colour hook as a vector mark', () => {

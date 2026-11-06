@@ -40,7 +40,8 @@
  */
 
 import { providerInitials } from '@/shared/lib/models/provider/glyph';
-import { hashHue, iconTone } from '@/shared/lib/icons/tint';
+import { hashHue, iconTone, PAPER_BUCKET_SAMPLE } from '@/shared/lib/icons/tint';
+import { PAPER_BUCKETS } from '@/shared/lib/icons/icon-tone';
 import { legiblePair } from '@/shared/lib/theme/legibility';
 
 interface PluginMarkProps {
@@ -73,9 +74,15 @@ export function PluginMark({ name, iconUrl, color, size = 16, tile = false }: Pl
   const hueValue = hashHue(name);
   const hue = {
     '--icon-hue': String(hueValue),
-    // BOTH solved tones for that hue, from the same table the glyph rows emit: a
-    // plugin's hue is runtime-only, so it cannot be a generated CSS row.
-    '--icon-tone': iconTone(hueValue, 'light'),
+    // EVERY solved tone for that hue, from the same tables the glyph rows emit:
+    // a plugin's hue is runtime-only, so it cannot be a generated CSS row, and
+    // the stylesheet picks the bucket the palette is painting.
+    ...Object.fromEntries(
+      PAPER_BUCKETS.map((bucket) => [
+        bucket === 'deepest' ? '--icon-tone' : `--icon-tone-${bucket}`,
+        iconTone(hueValue, 'light', PAPER_BUCKET_SAMPLE[bucket]),
+      ]),
+    ),
     '--icon-tone-dark': iconTone(hueValue, 'dark'),
     ...(declared ? { '--plugin-declared-light': declared.light } : {}),
     ...(declared?.dark ? { '--plugin-declared-dark': declared.dark } : {}),

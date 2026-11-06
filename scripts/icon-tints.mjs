@@ -88,7 +88,7 @@ async function signalIcons() {
   return new Set([...block[1].matchAll(/^\s{2}([A-Za-z0-9]+):/gm)].map((m) => m[1]));
 }
 
-function render(rows, lightTones, darkTones) {
+function render(rows, lightByBucket, darkTones, buckets) {
   const lines = rows.map(([name, hue]) => `  ${name}: ${hue},`);
   const toneLines = (tones) => Object.entries(tones).map(([hue, hex]) => `  ${hue}: '${hex}',`).join('\n');
   return `/**
@@ -121,13 +121,21 @@ function render(rows, lightTones, darkTones) {
  * so a stale table cannot ship.
  */
 
+import type { PaperBucket } from '@/shared/lib/icons/icon-tone';
+
 export const ICON_HUES: Readonly<Record<string, number>> = {
 ${lines.join('\n')}
 };
 
-/** The light paint for each wheel hue, darkest-legible-but-most-chromatic. */
-export const ICON_TONES: Readonly<Record<number, string>> = {
-${toneLines(lightTones)}
+/**
+ * The light paint for each wheel hue, PER PAPER BUCKET, darkest-legible-but-most-
+ * chromatic. Keyed by bucket so a bright palette paints a brighter icon: one
+ * table for all 32 light palettes has to be solved against the darkest paper in
+ * the catalog, and measured that leaves the default palette painting icons at
+ * mean L 0.582 where the same paper allows 0.640.
+ */
+export const ICON_TONES: Readonly<Record<PaperBucket, Readonly<Record<number, string>>>> = {
+${buckets.map((bucket) => `  ${bucket}: {\n${Object.entries(lightByBucket[bucket]).map(([hue, hex]) => `    ${hue}: '${hex}',`).join('\n')}\n  },`).join('\n')}
 };
 
 /** The dark paint for each wheel hue: the same hue, solved for ink surfaces. */
@@ -148,7 +156,9 @@ const rows = icons
   .filter((name) => !signals.has(name))
   .map((name) => [name, (hash(name) % HUE_STEPS) * (360 / HUE_STEPS)]);
 
-const next = render(rows, solveIconTones('light'), solveIconTones('dark'));
+const { PAPER_BUCKETS } = await import('../src/shared/lib/icons/icon-tone.ts');
+const lightByBucket = Object.fromEntries(PAPER_BUCKETS.map((bucket) => [bucket, solveIconTones('light', bucket)]));
+const next = render(rows, lightByBucket, solveIconTones('dark'), PAPER_BUCKETS);
 const check = process.argv.includes('--check');
 const current = await readFile(TARGET, 'utf8').catch(() => '');
 
