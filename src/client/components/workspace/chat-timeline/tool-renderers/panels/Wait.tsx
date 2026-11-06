@@ -8,13 +8,15 @@
  * call blocked on.
  *
  * A `wait` is the only tool that can legitimately occupy minutes of a turn
- * (`WAIT_MAX_MS` is 30 minutes) while producing almost no output, so the card
- * has to answer one question the generic fallback could not: how long has this
- * been going, and is anything still moving. Before this the call had NO panel
- * (`toolPanelKind` returned null) and rendered as `Wait` + a "Wait" header +
- * an empty Output block, even though omp reports the whole picture in
- * `details` — every job's status, its elapsed `durationMs`, a subagent's
- * `completionPercent`, and whether the wait was interrupted.
+ * while producing almost no output, so the card has to answer one question the
+ * generic fallback could not: how long has this been going, and is anything
+ * still moving. (omp 18.17.0 removed its 30-minute ceiling: a window from a
+ * 5 s → 5 min ladder now ends the call, and the ladder climbs across back-to-back
+ * idle waits.) Before this the call had NO panel (`toolPanelKind` returned
+ * null) and rendered as `Wait` + a "Wait" header + an empty Output block, even
+ * though omp reports the whole picture in `details` — every job's status, its
+ * elapsed `durationMs`, a subagent's `completionPercent`, and whether the wait
+ * was interrupted.
  *
  * Three rules make the progress bar honest:
  *
@@ -33,22 +35,22 @@
  *    finished call.
  */
 
-import { useEffect, useMemo, useState } from 'preact/hooks';
+import { useMemo } from 'preact/hooks';
 import { CheckCircle2, CircleSlash, Hourglass, Loader2, MessageSquare, Radio, XCircle } from 'lucide-preact';
 import type { ToolCallData } from '@/shared/types';
 import {
   formatWaitClock,
-  WAIT_MAX_MS,
   waitCounts,
-  waitHitLimit,
   waitJobSpanMs,
   waitSummaryLine,
   waitViewOf,
   type WaitAgent,
   type WaitJob,
 } from '@/shared/lib/omp/session/wait';
+import { waitIdleLabel, waitIdleOf } from '@/shared/lib/omp/session/wait-idle';
 import { FallbackOutput } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/FallbackOutput';
 import { ToolPanelHeader } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/ToolPanelHeader';
+import { ProgressTrack, useStopwatch } from '@/client/components/workspace/chat-timeline/tool-renderers/panels/wait-parts';
 import { jobSubject, jobProgressLine } from '@/shared/lib/omp/session/job-progress';
 
 const TONE_CLASSES = {
@@ -63,68 +65,6 @@ function jobTone(status: string | undefined): keyof typeof TONE_CLASSES {
   if (status === 'failed') return 'error';
   if (status === 'cancelled') return 'warn';
   return 'muted';
-}
-
-/**
- * The stopwatch for a wait that is still blocking.
- *
- * Two sources, in order of honesty:
- *   - the call's own START clock (`startedAt`) — an absolute time, so the ticker
- *     only has to force a re-render and the value can never drift;
- *   - a relative base (a finished call's measured span, or a job's age as a last
- *     resort), which the ticker advances while the call is still running.
- *
- * A watched job's `durationMs` is deliberately NOT the clock: a job routinely
- * starts before the wait that watches it (measured on a real result — `bg_8`
- * had run 126 s while the `wait` call took 20 s).
- */
-function useStopwatch(startedAt: number | undefined, baseMs: number | undefined, running: boolean): number | undefined {
-  const [now, setNow] = useState(() => Date.now());
-  const [anchor, setAnchor] = useState(() => Date.now());
-  const live = running && (startedAt !== undefined || baseMs !== undefined);
-
-  useEffect(() => {
-    if (!live) return;
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, [live]);
-
-  // A new relative base is a new measurement; the ticker counts from it, never
-  // from mount, or the same seconds would be counted twice.
-  useEffect(() => {
-    if (baseMs === undefined) return;
-    setAnchor(Date.now());
-    setNow(Date.now());
-  }, [baseMs]);
-
-  if (running && startedAt !== undefined) return Math.max(0, now - startedAt);
-  if (baseMs === undefined) return undefined;
-  return running ? baseMs + Math.max(0, now - anchor) : baseMs;
-}
-
-/** A progress track. `percent` null means "no number to show" — the band sweeps
- *  instead of pretending to be half done. */
-function ProgressTrack({ percent, active }: { percent: number | null; active: boolean }) {
-  const clamped = percent === null ? null : Math.max(0, Math.min(100, percent));
-  return (
-    <div
-      className="relative h-1.5 overflow-hidden rounded-full bg-ink/8"
-      role="progressbar"
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-valuenow={clamped ?? undefined}
-      aria-label={clamped === null ? 'Waiting' : 'Wait progress'}
-    >
-      {clamped === null ? (
-        active && <span className="wait-bar-sweep absolute inset-y-0 w-1/3 rounded-full bg-ink/45" />
-      ) : (
-        <span
-          className={`absolute inset-y-0 left-0 rounded-full ${active ? 'bg-ink/60' : 'bg-success/70'}`}
-          style={{ width: `${clamped}%` }}
-        />
-      )}
-    </div>
-  );
 }
 
 /** One job row: what it is for, its status, and how long it has run. */
@@ -245,21 +185,18 @@ export function Wait({ tool }: { tool: ToolCallData }) {
       ? estimates.reduce((sum, value) => sum + value, 0) / estimates.length
       : null;
   const interrupted = view.interrupted;
-  const waited = view.waited;
-  // omp caps one `wait` at 30 minutes and cannot be asked for more (its schema
-  // takes no arguments). A blocking call is watched for minutes, so the ceiling
-  // and the remaining budget are part of what the card has to say — otherwise
-  // "still waiting" and "waiting for something that can never arrive" look
-  // identical. When the cap actually fired, the prose says so and this flags it.
-  const hitLimit = waitHitLimit(view, output);
-  const remainingMs = elapsed !== undefined ? Math.max(0, WAIT_MAX_MS - elapsed) : undefined;
+  // omp 18.17.0 removed the 30-minute ceiling, so there is no budget left to
+  // count down to. What a settled call CAN report is the window it gave up
+  // after, which omp states in its own sentence — without that the card called
+  // an idle return "no jobs", i.e. "the call looked and found none".
+  const idle = waitIdleOf(output);
 
   return (
     <div className="space-y-2.5">
       <ToolPanelHeader
         icon={<Hourglass size={12} />}
         label={view.op === 'wait' ? 'Waiting' : view.op}
-        badge={running ? 'running' : hitLimit ? 'limit reached' : interrupted ? 'interrupted' : tool.status === 'error' ? 'failed' : 'settled'}
+        badge={running ? 'running' : idle ? 'idle' : interrupted ? 'interrupted' : tool.status === 'error' ? 'failed' : 'settled'}
         copyText={output || undefined}
         copyLabel="Copy output"
       />
@@ -276,14 +213,12 @@ export function Wait({ tool }: { tool: ToolCallData }) {
               interrupted
             </span>
           )}
-          {!interrupted && running && remainingMs !== undefined && (
-            <span className="ml-auto font-mono text-[10px] tabular-nums text-ink/40" title="omp caps one wait at 30 minutes">
-              {formatWaitClock(remainingMs)} left of {formatWaitClock(WAIT_MAX_MS)}
-            </span>
-          )}
-          {!running && hitLimit && (
-            <span className={`ml-auto font-mono text-[10px] font-semibold uppercase tracking-wider ${TONE_CLASSES.warn}`}>
-              limit reached
+          {!running && idle && (
+            <span
+              className={`ml-auto font-mono text-[10px] font-semibold uppercase tracking-wider ${TONE_CLASSES.warn}`}
+              title="omp returns a blocking wait when its window elapses, and the window climbs across back-to-back idle waits"
+            >
+              {waitIdleLabel(idle)}
             </span>
           )}
         </div>
@@ -293,15 +228,24 @@ export function Wait({ tool }: { tool: ToolCallData }) {
         </div>
       </div>
 
-      {/* A peer message that ended the wait — the reason it returned early. */}
-      {waited && (
+      {/* The messages that ended the wait — the reason it returned early. omp
+          returns EVERY message queued by the wake (18.17.0), oldest first. */}
+      {view.waited.length > 0 && (
         <div className="overflow-hidden rounded-lg border border-ink/8 bg-paper px-3 py-2">
           <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink/40">
             <MessageSquare size={10} />
-            <span>Message</span>
-            {waited.from && <span className="font-mono normal-case tracking-normal text-ink/55">from {waited.from}</span>}
+            <span>{view.waited.length === 1 ? 'Message' : `${view.waited.length} messages`}</span>
           </div>
-          <div className="mt-1 whitespace-pre-wrap break-words text-[11.5px] text-ink/85">{waited.body ?? ''}</div>
+          <div className="mt-1 space-y-1.5">
+            {view.waited.map((message, index) => (
+              <div key={`${message.ts ?? index}-${index}`}>
+                {message.from && (
+                  <div className="font-mono text-[10px] normal-case tracking-normal text-ink/55">from {message.from}</div>
+                )}
+                <div className="whitespace-pre-wrap break-words text-[11.5px] text-ink/85">{message.body ?? ''}</div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

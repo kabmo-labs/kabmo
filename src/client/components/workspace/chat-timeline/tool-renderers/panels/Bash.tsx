@@ -56,7 +56,11 @@ export function Bash({ tool }: { tool: ToolCallData }) {
   const durationMs = typeof meta.durationMs === 'number' ? meta.durationMs : tool.durationMs;
   const duration = tool.duration || wallTime || (durationMs ? `${durationMs}ms` : undefined);
 
-  const isSilent = !output || output === '(no output)';
+  // omp 18.17.0 spells a clean run with no output out in full — "(no output,
+  // exit code 0)" — so matching only the older "(no output)" pushed a command
+  // that printed nothing into the console branch, with omp's placeholder as its
+  // body.
+  const isSilent = !output || /^\(no output(?:, exit code 0)?\)$/.test(output.trim());
 
   const jsonResult = useMemo(
     () => (!isSilent && !tool.isError ? tryParseJson(output) : { isValid: false }),

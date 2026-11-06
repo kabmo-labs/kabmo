@@ -59,9 +59,9 @@ describe('toolSummary — wait', () => {
     const summary = toolSummary(tool({
       type: 'wait',
       durationMs: 900,
-      details: { op: 'wait', from: 'main', waited: { from: 'Sleeper', body: 'done' } },
+      details: { op: 'wait', from: 'main', waited: [{ from: 'Sleeper', body: 'done' }] },
     }));
-    expect(summary?.line).toBe('900ms · message received');
+    expect(summary?.line).toBe('900ms · 1 message');
   });
 
   test('falls back to the measured call span when no job reports one', () => {
@@ -71,16 +71,26 @@ describe('toolSummary — wait', () => {
     expect(summary?.line).toBe('2m 6s · no jobs');
   });
 
-  test('a capped wait says so instead of “no jobs”', () => {
-    // The cap and a service wake share `{op:'wait', jobs:[]}`; only the prose
-    // separates them, and the chip has to carry that distinction.
+  test('an idle window says so instead of “no jobs”', () => {
+    // The idle return and a service wake share `{op:'wait', jobs:[]}`; only the
+    // prose separates them, and the chip has to carry that distinction.
     const summary = toolSummary(tool({
       type: 'wait',
-      durationMs: 1_800_000,
-      output: 'Wait limit reached; background work may still be running.',
+      durationMs: 10_000,
+      output: 'No reply within 10s.',
       details: { op: 'wait', jobs: [] },
     }));
-    expect(summary?.line).toBe('30m 0s · 30m limit reached');
+    expect(summary?.line).toBe('10s · idle 10s');
+  });
+
+  test('the streak omp names outranks the single window', () => {
+    const summary = toolSummary(tool({
+      type: 'wait',
+      durationMs: 15_000,
+      output: 'No reply within 10s.\n\n<system-notice>Nothing new after 15.0s of back-to-back waits. …</system-notice>',
+      details: { op: 'wait', jobs: [] },
+    }));
+    expect(summary?.line).toBe('15s · idle 15s total');
   });
 
   test('an unreadable result keeps the generic fallback', () => {

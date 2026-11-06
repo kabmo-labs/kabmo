@@ -15,14 +15,23 @@
  *
  * Insertion order is preserved, and unsubscribing is by identity, so a listener
  * added twice receives twice and each removal takes out one registration.
+ *
+ * It is also where omp's embedded-shell trace is dropped: 18.17.0 stamps every
+ * `bash` progress frame and result with `details.trace` (measured: 192 KB of
+ * frames for a 40-line command, against 19 KB on 18.16.0; ~300 KB for a large
+ * one), whose `history` repeats the output. No subscriber reads it, and this is
+ * the one place every subscriber is reached — the topic publishes straight to
+ * each open tab. See `shared/lib/omp/session/shell-trace.ts`.
  */
 
 import type { AgentEvent, EventListener } from '@/server/lib/omp/rpc/constants';
+import { stripShellTrace } from '@/shared/lib/omp/session/shell-trace';
 
 export class EventFanout {
   readonly #listeners: EventListener[] = [];
 
   emit(event: AgentEvent): void {
+    stripShellTrace(event);
     for (const listener of this.#listeners) {
       try {
         listener(event);

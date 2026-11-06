@@ -7,6 +7,7 @@ import type { ChatMessageData } from '@/shared/types/chat';
 import { extractInlinedTextAttachments, extractText, extractUserImageAttachments, parseAssistantContent, resultOutput, roleFor, stripInlinedTextAttachments, type OmpMessageEntry } from '@/shared/lib/omp/session/messages-parse';
 import { extractToolImages, type ToolImageRef } from '@/shared/lib/omp/session/tool-images';
 import { isRecord } from '@/shared/lib/util/guards';
+import { withoutShellTrace } from '@/shared/lib/omp/session/shell-trace';
 import { normalizeNoticeText } from '@/shared/lib/chat/notice-text';
 import { developerTurnNotice, reminderPartIndex } from '@/shared/lib/chat/notice-row';
 import { deriveTurnError } from '@/shared/lib/omp/session/turn-error';
@@ -228,7 +229,11 @@ export function collectToolOutputs(records: Record<string, unknown>[]): Map<stri
         output = `${existing.output}\n${text}`;
       }
     }
-    const details = (isRecord(msg.details) ? (msg.details as Record<string, unknown>) : undefined) || existing?.details;
+    // omp writes its embedded-shell trace into the JSONL too (18.17.0), so a
+    // reloaded `bash` result is as heavy as a live one until it is dropped here.
+    const details =
+      withoutShellTrace(isRecord(msg.details) ? (msg.details as Record<string, unknown>) : undefined) ||
+      existing?.details;
     const isError = msg.isError === true || existing?.isError;
     const images = extractToolImages(msg.content);
     // The result's own timestamp closes the span the start entry opened.

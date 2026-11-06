@@ -114,6 +114,17 @@ describe('EventFanout', () => {
     expect(seen).toEqual([1]);
   });
 
+  test('drops the shell trace omp 18.17.0 stamps on a bash frame', () => {
+    // Every downstream consumer receives what this emits and none reads it.
+    const fanout = new EventFanout();
+    let details: unknown;
+    fanout.on((e) => {
+      details = (e.result as { details?: unknown } | undefined)?.details;
+    });
+    fanout.emit({ type: 'tool_execution_end', result: { content: [], details: { exitCode: 0, trace: { v: 1 } } } } as unknown as AgentEvent);
+    expect(details).toEqual({ exitCode: 0 });
+  });
+
   test('a listener registered twice receives twice and each removal takes one out', () => {
     const fanout = new EventFanout();
     let calls = 0;

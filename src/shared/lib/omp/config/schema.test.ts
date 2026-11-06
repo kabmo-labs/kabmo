@@ -125,6 +125,42 @@ describe('OMP_SCHEMA', () => {
       });
     }
   });
+
+  test('the rows omp 18.17.0 adds are offered', () => {
+    // Measured against `omp config list --json` on 18.17.0: all twelve exist and
+    // every one is accepted by `omp config set`. Most are TUI-only surfaces
+    // Kabmo does not draw, but the panel is the only place a user CAN reach an
+    // omp setting, so a regenerated schema that drops them removes the row.
+    const expected: Record<string, { type: SchemaEntry['type']; tab: string; group: string }> = {
+      'display.shellVisualization': { type: 'boolean', tab: 'appearance', group: 'Display' },
+      'tui.colorfulMarkdown': { type: 'boolean', tab: 'appearance', group: 'Display' },
+      'tui.motion': { type: 'enum', tab: 'appearance', group: 'Display' },
+      'tui.maxFps': { type: 'number', tab: 'appearance', group: 'Display' },
+      'tui.spinnerInterval': { type: 'number', tab: 'appearance', group: 'Display' },
+      'extensionRenderers.transcriptPresenters': { type: 'boolean', tab: 'tools', group: 'Extensions' },
+      'spotlight.experiment.enabled': { type: 'boolean', tab: 'tools', group: 'Developer' },
+      'magicKeywords.chillax': { type: 'boolean', tab: 'interaction', group: 'Magic Keywords' },
+      'update.auto': { type: 'boolean', tab: 'interaction', group: 'Startup & Updates' },
+      'ovnfs.path': { type: 'string', tab: 'tasks', group: 'Isolation' },
+      'task.workerThreads': { type: 'number', tab: 'tasks', group: 'Subagents' },
+      'providers.openaiResponsesWebsockets': { type: 'boolean', tab: 'providers', group: 'Protocol' },
+    };
+    for (const [key, want] of Object.entries(expected)) {
+      const entry = OMP_SCHEMA.entries[key];
+      expect({ key, entry: entry && { type: entry.type, tab: entry.ui.tab, group: entry.ui.group } }).toEqual({
+        key,
+        entry: want,
+      });
+    }
+  });
+
+  test('a default that moved upstream moves here too', () => {
+    // 18.17.0 changed `textVerbosity`'s default from `medium` to `low` — the
+    // panel shows the schema's default, so a stale row would offer the old one.
+    expect(OMP_SCHEMA.entries.textVerbosity?.default).toBe('low');
+    // …and `edit.mode` gained `none`, which removes the `edit` tool.
+    expect(OMP_SCHEMA.entries['edit.mode']?.values).toContain('none');
+  });
 });
 
 describe('ALL_SCHEMA_ENTRIES', () => {

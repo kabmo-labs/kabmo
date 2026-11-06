@@ -4,7 +4,8 @@
  */
 
 /**
- * The `bash` card for a result omp's shell minimizer rewrote (18.16.0).
+ * The `bash` card for a result omp's shell minimizer rewrote (18.16.0) and for a
+ * command that produced nothing at all (18.17.0).
  *
  * The panel used to draw the compressed body with nothing saying so: a
  * `git --no-pager log` that lost 7 KB of commits looked like the command's own
@@ -48,7 +49,7 @@ afterAll(() => {
   }
 });
 
-async function mount(details: Record<string, unknown>): Promise<HTMLElement> {
+async function mount(details: Record<string, unknown>, output?: string): Promise<HTMLElement> {
   container = document.createElement('div');
   document.body.appendChild(container);
   const tool = {
@@ -57,7 +58,7 @@ async function mount(details: Record<string, unknown>): Promise<HTMLElement> {
     name: 'bash',
     title: 'bash',
     command: 'git --no-pager log',
-    output: 'b7b0b41 commit number 60\n6c1bd61 commit number 59',
+    output: output ?? 'b7b0b41 commit number 60\n6c1bd61 commit number 59',
     status: 'success',
     details,
   } as ToolCallData;
@@ -84,5 +85,22 @@ describe('bash panel — minimized output', () => {
   test('says nothing when the minimizer left the output alone', async () => {
     const el = await mount({ wallTimeMs: 12, meta: { limits: {} } });
     expect(el.textContent ?? '').not.toContain('Minimized');
+  });
+});
+
+describe('bash panel — a command that printed nothing', () => {
+  test('reads omp 18.17.0’s “(no output, exit code 0)” as silence, not as output', async () => {
+    // The placeholder became the tool's model-facing text in 18.17.0. Matching
+    // only the older "(no output)" put it in the console branch, so the card
+    // showed omp's own placeholder as if the command had printed it.
+    const el = await mount({ wallTimeMs: 8 }, '(no output, exit code 0)');
+    const text = el.textContent ?? '';
+    expect(text).toContain('Command executed successfully with no output');
+    expect(text).not.toContain('Console Output');
+  });
+
+  test('still reads the older placeholder', async () => {
+    const el = await mount({}, '(no output)');
+    expect(el.textContent ?? '').toContain('Command executed successfully with no output');
   });
 });

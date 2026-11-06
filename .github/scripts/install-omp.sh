@@ -191,7 +191,55 @@ fi
 # name); `title.refreshAfterPrompts` (gated by `PI_NO_TITLE`, which rpc-ui sets,
 # and Kabmo owns titling through its own `/rename` path); `task.perCallModel`
 # (it grants a MODEL per subagent call, a capability Kabmo never requests).
-OMP_VERSION="${OMP_VERSION:-18.16.0}"
+#
+# 18.17.0 (2026-11-06): the schema's `source` line moves to 602 settings and the
+# panel gains TWELVE rows — `display.shellVisualization`, `tui.colorfulMarkdown`,
+# `tui.motion`, `tui.maxFps`, `tui.spinnerInterval` (appearance / Display),
+# `extensionRenderers.transcriptPresenters` and `spotlight.experiment.enabled`
+# (tools), `magicKeywords.chillax` (interaction / Magic Keywords), `update.auto`
+# (interaction / Startup & Updates), `ovnfs.path` and `task.workerThreads`
+# (tasks), `providers.openaiResponsesWebsockets` (providers / Protocol).
+# `textVerbosity` also moves its DEFAULT (medium → low) and `edit.mode` gains
+# `none`, which removes the `edit` tool and keeps `bash`. No new `ui.condition`
+# arrives this time, so `isConditionMet` needs no arm.
+#
+# The RPC wire keeps its 74 commands and gains one ADDITIVE definition
+# (`LineRange`, referenced by the new `BashResult` fields) — 297 → 298, 0
+# removed, 0 changed — and all 33 `RpcAgentEvent` variants, `builtin-names.ts`
+# and `MODEL_ROLES` are byte-identical. The slash registry grows by `unpin`,
+# which carries a text-mode `handle` (not `handleTui`), so it is NOT a TUI-only
+# name and `tui-only.ts` needs no row; the 47-name TUI-only set is unchanged.
+#
+# Three upstream changes DO reach a Kabmo surface, each fixed with the bump:
+#   - `wait` LOSES its 30-minute cap: `WAIT_MAX_MS` and the "Wait limit
+#     reached" sentence are gone. A blocking wait now returns after a window
+#     from a ladder — 5 s, 10 s, 30 s, 60 s, 5 min — that climbs across
+#     back-to-back idle waits, and from the second rung on it appends a
+#     `wait-idle.md` notice telling the model that waiting is not progress.
+#     Kabmo's card stated the old ceiling and counted down to it (`0:07 left of
+#     30:00`), so after the removal it claimed a budget omp no longer has
+#     (`shared/lib/omp/session/wait.ts`, `panels/Wait.tsx`).
+#   - `details.waited` is now an ARRAY: one wake returns every message queued by
+#     then (`messageResult(senderId, waited: IrcMessage[])`). Kabmo parsed it
+#     with `isRecord`, which refuses arrays, so both the message block and the
+#     `message received` chip silently disappeared.
+#   - every `bash` progress frame and its final result now carry
+#     `details.trace`, the embedded shell's `ShellTrace`, emitted regardless of
+#     `display.shellVisualization` (that setting only gates omp's own drawing).
+#     Measured here: 40 output lines → 192 KB of frames against 19 KB on
+#     18.16.0; a 40k-line result → 311 KB frames and 1.15 MB in total;
+#     `seq 1 30000` → a 201 KB trace on the result alone, its `history` carrying
+#     the output a second time. Kabmo has no shell visualization, so the field
+#     is dropped before it reaches the transcript (`tool-results.ts`).
+#
+# Not adopted, deliberately (no Kabmo surface): the twelve rows are TUI-only
+# (shell visualization, motion/fps/spinner, colourful markdown, transcript
+# presenters, spotlight) or a MODEL capability (`ovnfs.path` changes what the
+# agent does with separate checkouts, `task.workerThreads` how it schedules its
+# own subagents). `update.auto` is omp's own updater running beside Kabmo's
+# explicit `omp update`; both stay because neither can see the other's intent,
+# and omp now refuses to update while another update is installing.
+OMP_VERSION="${OMP_VERSION:-18.17.0}"
 PACKAGE="@oh-my-pi/pi-coding-agent"
 WANTED="omp/${OMP_VERSION}"
 

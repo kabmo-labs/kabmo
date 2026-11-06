@@ -16,7 +16,8 @@
  */
 
 import type { ToolCallData } from '@/shared/types/chat';
-import { waitCounts, waitHitLimit, waitJobSpanMs, waitViewOf } from '@/shared/lib/omp/session/wait';
+import { waitCounts, waitJobSpanMs, waitViewOf } from '@/shared/lib/omp/session/wait';
+import { waitIdleLabel, waitIdleOf } from '@/shared/lib/omp/session/wait-idle';
 import { countPhrase, formatToolMs } from '@/shared/lib/chat/tool/labels';
 import type { ToolFact } from '@/shared/lib/chat/tool/summary';
 
@@ -37,18 +38,23 @@ export function waitFacts(tool: ToolCallData): ToolFact[] {
   // own `details: {}`) has an UNKNOWN job list, not an empty one: claiming
   // "no jobs" would say the call looked and found none.
   if (!view.reported) return facts;
+  // An idle window is the RESULT of this call, so it is read before the job
+  // count: a wait whose window elapsed with jobs still running reports both.
+  const idle = waitIdleOf(tool.output);
   if (counts.total > 0) {
     facts.push({ kind: 'count', label: countPhrase(counts.total, 'job') });
     if (counts.running > 0) facts.push({ kind: 'note', label: `${counts.running} running` });
     if (counts.failed > 0) facts.push({ kind: 'warn', label: `${counts.failed} failed`, tone: 'error' });
   }
   if (view.interrupted) facts.push({ kind: 'warn', label: 'interrupted', tone: 'warn' });
-  // The cap firing is an OUTCOME, not an absence: omp answers the same
-  // `{op:'wait', jobs:[]}` for a service wake, and only the prose tells them
-  // apart. Without this chip a capped wait read as `no jobs`, which says the
-  // call found nothing rather than that it ran out of time.
-  else if (waitHitLimit(view, tool.output)) facts.push({ kind: 'warn', label: '30m limit reached', tone: 'warn' });
-  else if (view.waited) facts.push({ kind: 'note', label: 'message received' });
-  else if (counts.total === 0) facts.push({ kind: 'note', label: 'no jobs' });
+  // An idle return is an OUTCOME, not an absence: omp answers the same
+  // `{op:'wait', jobs:[]}` for a service wake and for a reply that can no longer
+  // arrive, and only the prose tells them apart. Without this chip an idle wait
+  // read as `no jobs`, which says the call found nothing rather than that its
+  // window elapsed (omp 18.17.0 removed the 30-minute cap that used to name it).
+  else if (idle) facts.push({ kind: 'warn', label: waitIdleLabel(idle), tone: 'warn' });
+  else if (view.waited.length > 0) {
+    facts.push({ kind: 'note', label: countPhrase(view.waited.length, 'message') });
+  } else if (counts.total === 0) facts.push({ kind: 'note', label: 'no jobs' });
   return facts;
 }

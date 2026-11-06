@@ -15,7 +15,7 @@
  *            resolvedModel?,resolvedThinkingLevel?,resultText?,errorText?,
  *            agentUrlId?}] }
  *   { op:'wait', jobs:[], interrupted:true }            // cut short by a message
- *   { op:'wait', from:<sender>, waited:{from,to,body,ts} }  // a peer message woke it
+ *   { op:'wait', from:<sender>, waited:[{from,to,body,ts}] }  // peer messages woke it
  *   { op:'cancel', jobs:[...], cancelled:[{id,status}] }
  *
  * While the call is still blocking omp re-emits the SAME snapshot every 500 ms
@@ -93,7 +93,9 @@ export interface WaitView {
   /** The wait was cut short by steering, a peer message or a completion notice. */
   interrupted: boolean;
   cancelled: { id?: string; status?: string }[];
-  waited?: WaitMessage;
+  /** The messages a wake consumed, oldest first (omp 18.17.0 returns an array;
+   *  a session recorded earlier carries one object, which is still read). */
+  waited: WaitMessage[];
   /** The message a `send` delivered to, for the `send` op. */
   from?: string;
   to?: string;
@@ -169,6 +171,21 @@ function messageOf(value: unknown): WaitMessage | undefined {
   };
 }
 
+/**
+ * The messages a wake consumed, oldest first.
+ *
+ * omp 18.17.0 changed the field from ONE message to an ARRAY — a wake returns
+ * every message queued by then (`messageResult(senderId, waited: IrcMessage[])`)
+ * — and the old single-object shape is still read, because a session recorded
+ * on 18.16.0 keeps it in its JSONL. Reading only the array dropped the message
+ * block and the `message received` chip on every new wait, silently: `isRecord`
+ * refuses an array, so the old code answered `undefined` rather than failing.
+ */
+function messagesOf(value: unknown): WaitMessage[] {
+  const rows = Array.isArray(value) ? value : [value];
+  return rows.map(messageOf).filter(Boolean) as WaitMessage[];
+}
+
 const WAIT_OPS: Record<string, true> = { wait: true, send: true };
 
 /** The tool names that ARE a coordination call, independent of their result. */
@@ -190,10 +207,10 @@ function opOfTool(tool: { name?: string; type?: string }): string | undefined {
  * `jobs` belong to `proc://` and are already read by `procViewOf`.
  *
  * An EMPTY job list is a real answer, not an absence: omp returns
- * `{op:'wait', jobs:[]}` when the 30-minute cap elapses ("Wait limit reached;
- * background work may still be running") and when a service rather than a job
- * woke the call. Rejecting it drew the most interesting wait of all as a
- * generic card.
+ * `{op:'wait', jobs:[]}` when the call ran out its idle window with nothing new
+ * ("No reply within 10s."), when a service rather than a job woke the call, and
+ * when every agent asked can no longer answer. Rejecting it drew the most
+ * interesting wait of all as a generic card.
  *
  * A wait with NO result at all is still a wait, and the tool's own name is the
  * only evidence left — a page reloaded while the call blocks reads the JSONL's
@@ -213,7 +230,7 @@ export function waitViewOf(tool: {
   const op = reportedOp ?? opOfTool(tool);
   if (!op || !WAIT_OPS[op]) return undefined;
   if (!details) {
-    return { op, jobs: [], agents: [], interrupted: false, cancelled: [], reported: false };
+    return { op, jobs: [], agents: [], interrupted: false, cancelled: [], waited: [], reported: false };
   }
 
   return {
@@ -226,7 +243,7 @@ export function waitViewOf(tool: {
     cancelled: Array.isArray(details.cancelled)
       ? details.cancelled.filter(isRecord).map((row) => ({ id: asString(row.id), status: asString(row.status) }))
       : [],
-    waited: messageOf(details.waited),
+    waited: details.waited === undefined ? [] : messagesOf(details.waited),
     from: asString(details.from),
     to: asString(details.to),
     reported: reportedOp !== undefined,
@@ -287,35 +304,4 @@ export function formatWaitClock(ms: number): string {
   const minutes = Math.floor(totalSeconds / 60) % 60;
   const hours = Math.floor(totalSeconds / 3600);
   return hours > 0 ? `${hours}:${String(minutes).padStart(2, '0')}:${seconds}` : `${minutes}:${seconds}`;
-}
-
-/**
- * How long a single `wait` call may block, as omp enforces it.
- *
- * Hardcoded in omp's own tool (`WAIT_MAX_MS = 30 * 60_000`, verified on 18.12.0)
- * and NOT a parameter: its schema is `type({})`, so the model cannot ask for
- * more. When the timer wins the race, omp returns `{op:'wait', jobs:[]}` and the
- * sentence "Wait limit reached; background work may still be running."
- *
- * The panel shows this because a blocking call is watched for minutes, and
- * without the ceiling a reader has no way to tell "still waiting" from "waiting
- * for something that can never arrive".
- */
-export const WAIT_MAX_MS = 30 * 60_000;
-
-/** The sentence omp returns when its own cap fired. Matched on the text because
- *  the result carries no flag for it — `jobs: []` is also what a service wake
- *  answers, and those two must not be reported as the same event. */
-const WAIT_LIMIT_TEXT = /wait limit reached/i;
-
-/**
- * Whether this result is the cap firing rather than a normal settle.
- *
- * Text is the only signal: measured across 443 real `wait` results, the
- * limit-reached answer and a service wake both carry `{op:'wait', jobs:[]}`,
- * and only the prose distinguishes them.
- */
-export function waitHitLimit(view: WaitView, output: string | undefined): boolean {
-  if (view.jobs.length > 0) return false;
-  return WAIT_LIMIT_TEXT.test(output ?? '');
 }

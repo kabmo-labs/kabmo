@@ -8,9 +8,9 @@
  *
  * What this pins is the answer to one question the generic fallback could not
  * give: how long has this been waiting, and is anything still moving. Before
- * the panel existed a call that can block for 30 minutes rendered as a title
- * and an empty Output block, while `details` already carried every job's
- * status, its elapsed `durationMs` and a subagent's `completionPercent`.
+ * the panel existed a call that can block for minutes rendered as a title and an
+ * empty Output block, while `details` already carried every job's status, its
+ * elapsed `durationMs` and a subagent's `completionPercent`.
  *
  * The progress bar's honesty is the load-bearing part: a `bash` job reports NO
  * completion percentage, so the bar must sweep rather than claim a position,
@@ -19,8 +19,7 @@
  * Rendered with `h()` against happy-dom, following `panels/Proc.test.ts`.
  */
 
-import { afterAll, beforeAll, describe, expect, setSystemTime, test } from 'bun:test';
-import { WAIT_MAX_MS } from '@/shared/lib/omp/session/wait';
+import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { installWaitDom, mountWait as mount, restoreWaitDom, waitBar as bar } from '@/client/components/workspace/chat-timeline/tool-renderers/panels/wait-test-util';
 import type { ToolCallData } from '@/shared/types';
 
@@ -155,52 +154,42 @@ describe('Wait panel — running-task telemetry', () => {
   });
 });
 
-describe('Wait panel — the 30-minute cap', () => {
-  test('states the ceiling and the remaining budget while blocking', async () => {
-    // omp caps one `wait` at 30 minutes and takes no argument to raise it, so
-    // the ceiling belongs on the card: without it "still waiting" and "waiting
-    // for something that can never arrive" look the same.
-    //
-    // A FROZEN clock, not a start value chosen to be safe. The panel counts
-    // `now - startedAt`, so a real clock makes the rendered figure a function of
-    // how long the mount took: `Date.now() - 60_000` reads `28:59` a few
-    // milliseconds later and failed on every run (measured on both CI legs:
-    // expected "29:00", received "28:59"). Pinning `Date.now` to one instant
-    // makes the budget exact.
-    const now = Date.now();
-    setSystemTime(new Date(now));
-    try {
-      const el = await mount({
-        ...BLOCKING,
-        startedAt: now - 60_000,
-        details: { op: 'wait', jobs: [{ id: 'bg_1', type: 'bash', status: 'running', label: 'bun run e2e.ts', durationMs: 60_000 }] },
-      });
-      const text = el.textContent ?? '';
-      expect(text).toContain('29:00 left of 30:00');
-    } finally {
-      setSystemTime();
-    }
+describe('Wait panel — an idle return', () => {
+  test('a blocking wait claims no ceiling, because omp 18.17.0 has none', async () => {
+    // The card used to count down to a 30-minute cap. That cap is gone: a wait
+    // returns when a window from the 5 s → 5 min ladder elapses, and the ladder
+    // climbs across back-to-back idle waits, so any countdown was a budget omp
+    // no longer has.
+    const el = await mount({
+      ...BLOCKING,
+      startedAt: Date.now() - 60_000,
+      details: { op: 'wait', jobs: [{ id: 'bg_1', type: 'bash', status: 'running', label: 'bun run e2e.ts', durationMs: 60_000 }] },
+    });
+    const text = el.textContent ?? '';
+    expect(text).toContain('1:00');
+    expect(text).not.toContain('left of');
+    expect(text).not.toContain('30:00');
   });
 
-  test('a capped wait is named as such, not as “no jobs”', async () => {
-    // The cap answers `{op:'wait', jobs:[]}` — the same shape a service wake
-    // returns — so the prose is the only thing that tells them apart. Reading it
-    // as "no jobs" says the call found nothing rather than that it ran out of
-    // time.
+  test('names the window omp gave up after, not “no jobs”', async () => {
+    // The idle return answers `{op:'wait', jobs:[]}` — the same shape a service
+    // wake returns — so omp's own sentence is the only thing that tells them
+    // apart. Reading it as "no jobs" says the call looked and found none rather
+    // than that its window elapsed.
     const el = await mount({
       type: 'wait',
       name: 'wait',
       status: 'success',
-      durationMs: WAIT_MAX_MS,
-      output: 'Wait limit reached; background work may still be running. Read proc:// for status.',
+      durationMs: 5_000,
+      output: 'No reply within 5.0s.\n\n<system-notice>Nothing new after 15.0s of back-to-back waits. …</system-notice>',
       details: { op: 'wait', jobs: [] },
     });
     const text = el.textContent ?? '';
-    expect(text).toContain('limit reached');
-    expect(text).toContain('Wait limit reached');
+    expect(text).toContain('idle 15s total');
+    expect(text).not.toContain('no jobs');
   });
 
-  test('a service wake is not reported as the cap', async () => {
+  test('a service wake is not an idle return', async () => {
     const el = await mount({
       type: 'wait',
       name: 'wait',
@@ -209,7 +198,9 @@ describe('Wait panel — the 30-minute cap', () => {
       output: 'A service finished. Read proc:// for its status and output.',
       details: { op: 'wait', jobs: [] },
     });
-    expect(el.textContent ?? '').not.toContain('limit reached');
+    const text = el.textContent ?? '';
+    expect(text).not.toContain('idle');
+    expect(text).not.toContain('no jobs');
   });
 });
 
@@ -245,9 +236,9 @@ describe('Wait panel — a settled call', () => {
     expect(el.textContent ?? '').not.toContain('waiting');
   });
 
-  test('keeps the prose omp wrote, which is the only record of a cap or a refusal', async () => {
-    const el = await mount({ ...SETTLED, output: 'Wait limit reached; background work may still be running.' });
-    expect(el.textContent ?? '').toContain('Wait limit reached');
+  test('keeps the prose omp wrote, which is the only record of a refusal', async () => {
+    const el = await mount({ ...SETTLED, output: 'Nothing to wait for: no background job or service you started is running.' });
+    expect(el.textContent ?? '').toContain('Nothing to wait for');
   });
 });
 
@@ -265,6 +256,26 @@ describe('Wait panel — interrupted and messaged', () => {
     expect(text).not.toContain('Jobs');
   });
 
+  test('every message a wake carried is rendered, oldest first', async () => {
+    // omp 18.17.0: one wake returns every message queued by then.
+    const el = await mount({
+      type: 'wait',
+      name: 'wait',
+      status: 'success',
+      details: {
+        op: 'wait',
+        from: 'main',
+        waited: [
+          { from: 'Sleeper', to: 'main', body: 'sleeper reporting in', ts: 1 },
+          { from: 'Scout', to: 'main', body: 'map is ready', ts: 2 },
+        ],
+      },
+    });
+    const blocks = [...el.querySelectorAll('.whitespace-pre-wrap')].map((node) => node.textContent ?? '');
+    expect(el.textContent ?? '').toContain('2 messages');
+    expect(blocks).toEqual(['sleeper reporting in', 'map is ready']);
+  });
+
   test('a peer message that woke the wait is rendered with its sender', async () => {
     const el = await mount({
       type: 'wait',
@@ -273,7 +284,7 @@ describe('Wait panel — interrupted and messaged', () => {
       details: {
         op: 'wait',
         from: 'main',
-        waited: { from: 'Sleeper', to: 'main', body: 'sleeper reporting in', ts: 1_791_000_000_000 },
+        waited: [{ from: 'Sleeper', to: 'main', body: 'sleeper reporting in', ts: 1_791_000_000_000 }],
       },
     });
     const text = el.textContent ?? '';

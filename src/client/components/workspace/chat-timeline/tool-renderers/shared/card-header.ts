@@ -122,7 +122,8 @@ export function toolCardHeader(tool: ToolCallData, toolKey: string): ToolCardHea
   if (toolKey === 'wait') {
     const view = waitViewOf(tool);
     const job = view?.jobs[0];
-    const subject = (job ? jobSubject(job).primary?.split('\n')[0]?.trim() : undefined) || job?.id || view?.waited?.from;
+    const subject =
+      (job ? jobSubject(job).primary?.split('\n')[0]?.trim() : undefined) || job?.id || view?.waited[0]?.from;
     return { title: 'Wait', subtitle: subject ? clip(subject) : undefined };
   }
 

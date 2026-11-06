@@ -5,7 +5,7 @@ the installed binary was **18.8.3** (2026-10-07); the pin now matches (F9). This
 of everything between the two versions that Kabmo either gets wrong or
 does not use, and the phased plan to close it.
 
-Status: **done** — every phase closed; P4b–d and P5 were measured and deliberately not adopted, and the pin has since moved on to 18.16.0 (2026-11-03, `78dec3b2`).
+Status: **done** — every phase closed; P4b–d and P5 were measured and deliberately not adopted, and the pin has since moved on to 18.17.0 (2026-11-06).
 
 **Re-audited at 18.9.2 (2026-10-12)** — the pin moved on again and the schema had
 drifted 9 rows; see [the re-audit section](#omp-1892-re-audit-2026-10-12) at the
@@ -1401,3 +1401,140 @@ worker modules are unchanged.
 | R47 | schema + CI pin a release behind | regenerated (435 → 438) and `OMP_VERSION` 18.15.0 → 18.16.0 | `omp:schema:check` passes; 0/438 rows rejected; generator proved byte-identical at 18.15.0 first |
 | R48 | three new rows, no Kabmo surface | none needed | each verified TUI-only or model-capability only |
 | R49 | TUI/internal changes | none needed | wire diff 0 added/removed/changed; name and role tables byte-identical |
+
+# omp 18.17.0 adoption (2026-11-06)
+
+The installed pin moved **18.16.0 → 18.17.0**. Same three steps as every bump —
+regenerate the schema, re-read what the release changed, adopt whatever reaches a
+Kabmo surface — plus one operational fact this release exposed: the schema
+generator reads the **npm package**, not the `omp` binary, so a machine whose
+binary self-updated to 18.17.0 still regenerates the 18.16 schema until
+`bun add -g @oh-my-pi/pi-coding-agent@18.17.0` runs.
+
+## Method
+
+- `npm pack @oh-my-pi/pi-coding-agent@18.16.0` and `@18.17.0` into a temp tree,
+  then `diff -rq` over both packages (**431 differing paths**) and a targeted
+  read of each file whose subject Kabmo touches.
+- `rpc-wire.schema.json` from both versions compared as a whole and as a
+  flattened leaf map: **74 commands (unchanged), 297 → 298 definitions, 0
+  removed, 0 changed** beyond the additions listed under R52; all **33
+  `RpcAgentEvent` variants byte-identical**. `builtin-names.ts` and
+  `MODEL_ROLES` identical.
+- The schema generator was proved deterministic before trusting it: run against
+  a temp **18.16.0** tree it reproduces the committed file **byte-for-byte**
+  (438 entries), and against 18.17.0 it writes **450** — twice, from two
+  independent trees.
+- `bun run omp:schema` + `omp:schema:check`, then every merged row probed
+  against the **602** live keys of `omp config list --json` (0 rejected).
+- The slash-command registry extracted from both trees: 88 → 89 specs, and the
+  **47-name TUI-only set is unchanged**. `unpin` (the one addition) carries a
+  text-mode `handle`, so it is *not* TUI-only and `tui-only.ts` needs no row.
+- Live probes against a real 18.17.0 child: direct `bash` calls (truncation
+  fields), full agent turns (tool-result `details`, progress-frame volume,
+  protocol-v2 chunking).
+
+## Findings
+
+### R50 — `wait` lost its 30-minute cap, and the card kept counting down (fixed)
+
+18.17.0 deletes `WAIT_MAX_MS` and the `"Wait limit reached…"` answer. A blocking
+wait now returns when its window elapses with nothing new, and the window climbs
+a ladder — **5 s, 10 s, 30 s, 60 s, 5 min** — across back-to-back idle waits,
+resetting to the floor once the agent works in between. From the second rung it
+appends a `<system-notice>Nothing new after … of back-to-back waits` block saying
+waiting is not progress. Neither the rung nor the streak is a field: both are in
+that prose.
+
+Kabmo stated the old ceiling and counted down to it (`0:07 left of 30:00`),
+which after the removal claimed a budget omp no longer has. `shared/lib/omp/
+session/wait-idle.ts` now owns `WAIT_LADDER_MS` and parses the two sentences
+(`waitIdleOf` / `waitIdleLabel`); the card drops the countdown and reports the
+outcome (`idle 10s`, `idle 15s total`) instead of claiming "no jobs".
+
+### R51 — `details.waited` became an array (fixed)
+
+`messageResult(senderId, waited: IrcMessage[])`: one wake returns every message
+queued by then, oldest first. Kabmo parsed the field with `isRecord`, which
+refuses arrays, so `waited` came back `undefined` — the message block and the
+`message received` chip vanished silently on every new wait. `WaitView.waited`
+is now `WaitMessage[]`; the single-object shape is still read because the JSONL
+of a session recorded on 18.16.0 keeps it, and the transcript is what a reload
+reads.
+
+### R52 — every `bash` frame carries the embedded shell's trace (fixed)
+
+18.17.0 stamps `details.trace` (`{units, history}`) on every progress frame and
+on the final result, whether or not anyone draws it: the tool wires `onTrace`
+whenever it has an `onUpdate` callback, and `display.shellVisualization` only
+gates omp's own rendering. `history` repeats the command's output. Measured on
+this machine:
+
+| case | 18.16.0 | 18.17.0 |
+|---|---|---|
+| 40 output lines over 8 s | 43 updates / 19 KB | 82 updates / **192 KB** |
+| 120 lines over 73 s | — | 242 updates / **9.2 MB** (3.3/s) |
+| 40 000-line result | 3 updates / 153 KB, max frame 51 KB | 5 updates / **1.15 MB**, max frame **311 KB** |
+| `seq 1 30000` | — | trace **201 KB** on the result, `history` 201 KB of it |
+
+A >1 MiB frame is legal only because Kabmo negotiates protocol v2 (measured: a
+1005 KB frame arrived as **72 `rpc_chunk` records**). `stripShellTrace` drops the
+field at the fan-out — the one point every subscriber is reached, including the
+`session:<id>` topic that publishes to each open tab — and `withoutShellTrace`
+drops it again when a transcript is read from disk, because omp writes it into
+the JSONL too.
+
+### R53 — the silent `bash` result changed wording (fixed)
+
+`#formatResultOutput` now answers `"(no output, exit code 0)"` for a clean run
+with nothing printed (it was `"(no output)"`). The Bash card matched only the
+old string, so a command that printed nothing fell into the console branch with
+omp's placeholder as its body. Both spellings now read as silence.
+
+### R54 — `set_todos` moved its persistence (no action)
+
+`rpc_mode`'s `set_todos` now calls `session.commitTodoPhases`, and the
+`user_todo_edit` custom entry is appended inside that method instead of by the
+RPC handler. The entry type and body are identical, so `todo/snapshot.ts` and the
+reload path are unaffected — verified against both implementations.
+
+### R55 — `update.auto`, and `omp update` refuses a concurrent install (no action)
+
+`update.auto` (default `false`) lets omp install a release in the background;
+`omp update` now refuses while another update is installing. Kabmo still drives
+`omp update` explicitly from `/api/omp` and reads its exit code, so the refusal
+arrives as an error rather than a silent no-op. The row stays editable: it is a
+real omp setting, and the panel is the only place to reach it.
+
+### R56 — ovnfs changes what the agent does with worktrees (no action)
+
+When the `ovnfs` binary is found (or `ovnfs.path` is set), omp's system prompt
+tells the agent to open ovnfs checkouts instead of git worktrees or copies, and
+isolated subagents run in checkouts under `isolation.backend: auto`. That is
+agent behaviour, not a Kabmo surface — the workspace panels still read the repo
+the user opened, and a checkout is a separate path the agent reports itself.
+
+### R57 — settings rows with no Kabmo surface (no action)
+
+Twelve rows arrive (`display.shellVisualization`, `tui.colorfulMarkdown`,
+`tui.motion`, `tui.maxFps`, `tui.spinnerInterval`, `extensionRenderers.
+transcriptPresenters`, `spotlight.experiment.enabled`, `magicKeywords.chillax`,
+`update.auto`, `ovnfs.path`, `task.workerThreads`, `providers.
+openaiResponsesWebsockets`); all are TUI-only or a model capability, and all stay
+editable because the panel is the only path to an omp setting. `textVerbosity`'s
+**default moved `medium` → `low`** and `edit.mode` gained `none`, both carried by
+the regenerated schema. `skills.manualSkills` exists live but has no `ui` block,
+so it is absent from omp's own panel too — the generator drops it by design.
+
+## 18.17.0 outcomes
+
+| # | Finding | Action | Verification |
+|---|---|---|---|
+| R50 | wait cap gone, countdown lied | `wait-idle.ts` (ladder + prose parser); card badge and chip state the idle window | 8 unit tests on the parser/label; 3 panel tests (no `left of`, `idle 15s total`, a service wake is not idle) |
+| R51 | `waited` array dropped the message | `WaitView.waited: WaitMessage[]`, both shapes parsed; panel lists every message | unit tests for array + legacy object + empty; panel test renders two messages in order |
+| R52 | `details.trace` flooded frames and JSONL | `shell-trace.ts`; stripped at `EventFanout.emit` and on transcript reload | 8 strip tests (incl. a fan-out emit with a real-shaped frame) + reload test; measured the field's cost on a live child |
+| R53 | silent bash rendered the placeholder | `isSilent` matches both spellings | 2 panel tests (`(no output, exit code 0)`, `(no output)`) |
+| R54 | `set_todos` persistence moved | none needed | entry type and body compared in both implementations |
+| R55 | `update.auto` + concurrent-install refusal | none needed | Kabmo still runs `omp update` and surfaces its exit code |
+| R56 | ovnfs checkouts replace worktrees | none needed | agent behaviour, no Kabmo reader |
+| R57 | schema + CI pin a release behind | regenerated (438 → 450, 582 → 602 settings) and `OMP_VERSION` 18.16.0 → 18.17.0 | `omp:schema:check` passes; 0/450 rows rejected; generator byte-identical at 18.16.0 first, 450 deterministic at 18.17.0 |

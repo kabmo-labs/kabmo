@@ -9,8 +9,8 @@
  * The fixtures are the shapes omp actually sends (measured on 443 results in
  * the author's session store): a blocking snapshot with running jobs, a
  * settled snapshot with a completion, an interrupted wait with no jobs, a peer
- * message that woke it, and the 30-minute cap's empty result. The empty result
- * is the load-bearing one — it is a real ANSWER ("Wait limit reached"), and a
+ * message that woke it, and the empty result of an idle window. The empty result
+ * is the load-bearing one — it is a real ANSWER ("No reply within 5.0s."), and a
  * reader that treated "no jobs" as "not a wait" drew the most interesting wait
  * of all as a generic card.
  *
@@ -20,8 +20,6 @@
 import { describe, expect, test } from 'bun:test';
 import {
   formatWaitClock,
-  WAIT_MAX_MS,
-  waitHitLimit,
   waitCounts,
   waitJobSpanMs,
   waitSummaryLine,
@@ -76,8 +74,9 @@ describe('waitViewOf', () => {
   });
 
   test('an empty job list is an answer, not an absence', () => {
-    // `{op:'wait', jobs:[]}` is what omp returns when the 30-minute cap elapses
-    // and when a SERVICE rather than a job woke the call.
+    // `{op:'wait', jobs:[]}` is what omp returns when the call's idle window
+    // elapses, when a SERVICE rather than a job woke the call, and when every
+    // agent asked can no longer answer.
     const view = waitViewOf({ details: { op: 'wait', jobs: [] } });
     expect(view?.jobs).toEqual([]);
     expect(view?.interrupted).toBe(false);
@@ -88,11 +87,37 @@ describe('waitViewOf', () => {
     expect(view?.interrupted).toBe(true);
   });
 
-  test('reads the peer message that ended the wait', () => {
+  test('reads the peer messages that ended the wait', () => {
+    // omp 18.17.0: a wake returns EVERY message queued by then, oldest first.
     const view = waitViewOf({
-      details: { op: 'wait', from: 'main', waited: { from: 'Sleeper', to: 'main', body: 'done', ts: 1_791_000_000_000 } },
+      details: {
+        op: 'wait',
+        from: 'main',
+        waited: [
+          { from: 'Sleeper', to: 'main', body: 'done', ts: 1_791_000_000_000 },
+          { from: 'Scout', to: 'main', body: 'found it', ts: 1_791_000_000_001 },
+        ],
+      },
     });
-    expect(view?.waited).toMatchObject({ from: 'Sleeper', body: 'done' });
+    expect(view?.waited).toHaveLength(2);
+    expect(view?.waited[0]).toMatchObject({ from: 'Sleeper', body: 'done' });
+    expect(view?.waited[1]).toMatchObject({ from: 'Scout', body: 'found it' });
+  });
+
+  test('reads the single-message shape a session recorded before 18.17.0 keeps', () => {
+    // The JSONL is authoritative for reloads, and the field was an OBJECT until
+    // 18.17.0. `isRecord` refuses an array, so the old parser answered undefined
+    // — the message block vanished silently on every new wait.
+    const view = waitViewOf({
+      details: { op: 'wait', from: 'main', waited: { from: 'Sleeper', to: 'main', body: 'done', ts: 1 } },
+    });
+    expect(view?.waited).toHaveLength(1);
+    expect(view?.waited[0]).toMatchObject({ from: 'Sleeper', body: 'done' });
+  });
+
+  test('a wait that woke on nothing reports no messages', () => {
+    expect(waitViewOf({ details: { op: 'wait', jobs: [] } })?.waited).toEqual([]);
+    expect(waitViewOf({ name: 'wait' })?.waited).toEqual([]);
   });
 
   test('does not claim a proc:// or hub listing', () => {
@@ -176,30 +201,6 @@ describe('waitCounts and the summary line', () => {
 
   test('an empty result has an empty line, not a fabricated count', () => {
     expect(waitSummaryLine(waitViewOf({ details: { op: 'wait', jobs: [] } })!)).toBe('');
-  });
-});
-
-describe('the 30-minute cap', () => {
-  test('is the runtime’s own ceiling, not a client guess', () => {
-    // omp 18.12.0: `WAIT_MAX_MS = 30 * 60_000`, and the tool's schema is
-    // `type({})` — a caller cannot ask for a longer wait.
-    expect(WAIT_MAX_MS).toBe(1_800_000);
-    expect(formatWaitClock(WAIT_MAX_MS)).toBe('30:00');
-  });
-
-  test('the limit-reached result is recognised from its prose', () => {
-    // The result carries NO flag for this: `{op:'wait', jobs:[]}` is also what a
-    // service wake answers, so the sentence is the only discriminator.
-    const view = waitViewOf({ details: { op: 'wait', jobs: [] } })!;
-    expect(waitHitLimit(view, 'Wait limit reached; background work may still be running. Read proc:// for status.')).toBe(true);
-  });
-
-  test('a service wake and a normal settle are not the cap', () => {
-    const empty = waitViewOf({ details: { op: 'wait', jobs: [] } })!;
-    expect(waitHitLimit(empty, 'A service finished. Read proc:// for its status and output.')).toBe(false);
-    expect(waitHitLimit(empty, undefined)).toBe(false);
-    const settled = waitViewOf({ details: { op: 'wait', jobs: [{ id: 'bg_1', status: 'completed' }] } })!;
-    expect(waitHitLimit(settled, 'Wait limit reached')).toBe(false);
   });
 });
 
