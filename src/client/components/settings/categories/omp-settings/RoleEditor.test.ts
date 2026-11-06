@@ -14,11 +14,13 @@
  *     `MODEL_ROLE_IDS` at 18.12.6 (read from the installed package,
  *     `pi-tui/src/overlays/model-browser.ts`), so an upstream addition surfaces
  *     as a failure here rather than as a silently missing row.
- *   - **A role row is a SELECT, not a text field.** A free-text `provider/model`
- *     box cannot be typed reliably and a typo silently falls back to omp's own
- *     resolution. The candidates are grouped per provider, only the role's own
- *     kinds are offered, and the stored value stays selectable when the catalog
- *     no longer lists it.
+ *   - **A role row is a SEARCHABLE picker, not a text field.** A free-text
+ *     `provider/model` box cannot be typed reliably and a typo silently falls
+ *     back to omp's own resolution. It is not a native `<select>` either: omp
+ *     serves 221 models, which the OS popup shows as one scroll box with no
+ *     filter. The candidates are grouped per provider, only the role's own kinds
+ *     are offered, and the stored value stays selectable when the catalog no
+ *     longer lists it.
  *   - **The selection and "in use" are two facts.** `in use` is derived by
  *     comparing the live map with the preset, so there is no stored "last
  *     applied" flag to go stale. The SELECTION survives a hand edit, because it
@@ -31,6 +33,7 @@ import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { RoleEditor } from '@/client/components/settings/categories/omp-settings/RoleEditor';
+import { openPicker, openRows, pickRole, rolePicker } from '@/client/components/settings/categories/omp-settings/role-picker.test-util';
 import {
   MODEL_ROLES,
   ROLE_IDS,
@@ -98,7 +101,25 @@ afterAll(() => {
   }
 });
 
+/**
+ * Tear down the previous mount AND its portals.
+ *
+ * The picker's listbox is portalled to `document.body`, so a test that opens one
+ * and moves on leaves it in the DOM — and the next test's `[role="option"]` query
+ * then reads rows from a picker nobody is looking at.
+ */
+function cleanup(): void {
+  if (container) {
+    render(null, container);
+    container.remove();
+  }
+  for (const node of document.querySelectorAll('[role="listbox"]')) {
+    node.closest('.fixed')?.remove();
+  }
+}
+
 async function mount(roles: Record<string, string>, overrides: Partial<Parameters<typeof RoleEditor>[0]> = {}): Promise<HTMLElement> {
+  cleanup();
   container = document.createElement('div');
   document.body.appendChild(container);
   const props = {
@@ -127,8 +148,8 @@ describe('role table', () => {
   test('the roles the editor used to omit are each offered as a picker', async () => {
     const el = await mount({});
     for (const role of PREVIOUSLY_MISSING) {
-      const select = el.querySelector(`select[aria-label*="(${role})"]`);
-      expect(select, `${role} must be editable`).not.toBeNull();
+      const picker = el.querySelector(`button[role="combobox"][aria-label*="(${role})"]`);
+      expect(picker, `${role} must be editable`).not.toBeNull();
     }
   });
 
@@ -176,20 +197,36 @@ describe('role candidate rules', () => {
 describe('role rows', () => {
   test('the picker groups candidates by provider and carries the stored value', async () => {
     const el = await mount({ default: 'kenari/glm-5' });
-    const select = el.querySelector('select[aria-label*="(default)"]') as HTMLSelectElement;
-    expect(select.value).toBe('kenari/glm-5');
-    const groups = [...select.querySelectorAll('optgroup')].map((group) => group.getAttribute('label'));
+    // The trigger reads the model's NAME, not the stored selector.
+    expect(rolePicker(el, 'default').textContent).toContain('GLM-5');
+    await openPicker(el, 'default');
+    const groups = [...document.querySelectorAll('[role="listbox"] .uppercase')]
+      .map((node) => node.textContent?.trim());
     expect(groups).toEqual(['kenari']);
-    // "omp default" is always the first option — it is how an override is removed.
-    expect(select.options[0].value).toBe('');
+    // "omp default" is always the first row — it is how an override is removed.
+    expect(openRows()[0]?.textContent).toContain('omp default');
+  });
+
+  test('typing in the picker narrows across providers', async () => {
+    const el = await mount({ default: 'kenari/glm-5' });
+    await openPicker(el, 'default');
+    const search = document.querySelector('input[aria-label^="Search"]') as HTMLInputElement;
+    await act(async () => {
+      search.value = 'deepseek';
+      search.dispatchEvent(new window.Event('input', { bubbles: true }));
+      await Promise.resolve();
+    });
+    const labels = openRows().map((node) => node.textContent);
+    expect(labels).toHaveLength(2); // "omp default" + the one match
+    expect(labels[1]).toContain('DeepSeek V4 Flash');
   });
 
   test('a stored selector the catalog no longer lists stays selectable', async () => {
     const el = await mount({ default: 'gone/model-x' });
-    const select = el.querySelector('select[aria-label*="(default)"]') as HTMLSelectElement;
-    expect(select.value).toBe('gone/model-x');
-    const values = [...select.options].map((option) => option.value);
-    expect(values).toContain('gone/model-x');
+    expect(rolePicker(el, 'default').textContent).toContain('gone/model-x (not in catalog)');
+    await openPicker(el, 'default');
+    // Offered as a row of its own, directly under the empty one.
+    expect(openRows()[1]?.textContent).toContain('gone/model-x');
   });
 
   test('choosing a model writes the whole map with that role set', async () => {
@@ -197,11 +234,7 @@ describe('role rows', () => {
     const el = await mount({ tiny: 'local/gemma-3-1b' }, {
       onSaveRoles: async (roles) => { writes.push(roles); return true; },
     });
-    const select = el.querySelector('select[aria-label*="(default)"]') as HTMLSelectElement;
-    await act(async () => {
-      select.value = 'kenari/glm-5';
-      select.dispatchEvent(new window.Event('change'));
-    });
+    await pickRole(el, 'default', 'GLM-5');
     expect(writes).toEqual([{ tiny: 'local/gemma-3-1b', default: 'kenari/glm-5' }]);
   });
 
@@ -210,11 +243,7 @@ describe('role rows', () => {
     const el = await mount({ default: 'kenari/glm-5', tiny: 'local/gemma-3-1b' }, {
       onSaveRoles: async (roles) => { writes.push(roles); return true; },
     });
-    const select = el.querySelector('select[aria-label*="(default)"]') as HTMLSelectElement;
-    await act(async () => {
-      select.value = '';
-      select.dispatchEvent(new window.Event('change'));
-    });
+    await pickRole(el, 'default', 'omp default');
     expect(writes).toEqual([{ tiny: 'local/gemma-3-1b' }]);
   });
 });
@@ -244,11 +273,7 @@ describe('presets', () => {
 
   test('a hand edit keeps the selection and reads modified, so Update stays reachable', async () => {
     const el = await mount({ ...PRESETS[0].roles });
-    const select = el.querySelector('select[aria-label*="(default)"]') as HTMLSelectElement;
-    await act(async () => {
-      select.value = 'kenari/glm-5';
-      select.dispatchEvent(new window.Event('change'));
-    });
+    await pickRole(el, 'default', 'GLM-5');
     const picker = el.querySelector('select[aria-label="Model role preset"]') as HTMLSelectElement;
     expect(picker.value).toBe('p-cheap');
     expect(el.textContent).toContain('modified');
@@ -262,11 +287,7 @@ describe('presets', () => {
     const el = await mount({ ...PRESETS[0].roles }, {
       onUpdatePreset: async (preset) => { updates.push(preset); return true; },
     });
-    const select = el.querySelector('select[aria-label*="(default)"]') as HTMLSelectElement;
-    await act(async () => {
-      select.value = 'kenari/glm-5';
-      select.dispatchEvent(new window.Event('change'));
-    });
+    await pickRole(el, 'default', 'GLM-5');
     const update = [...el.querySelectorAll('button')].find((button) => button.textContent?.includes('Update'))!;
     await act(async () => { update.click(); });
     expect(updates.length).toBe(1);
@@ -295,10 +316,10 @@ describe('presets', () => {
     const el = await mount({ default: 'kenari/glm-5' }, { candidates: [], candidatesError: 'omp binary not found' });
     expect(el.textContent).toContain('Model catalog unavailable');
     expect(el.textContent).toContain('omp binary not found');
-    const select = el.querySelector('select[aria-label*="(default)"]') as HTMLSelectElement;
-    expect(select.disabled).toBe(false);
+    const picker = rolePicker(el, 'default');
+    expect(picker.disabled).toBe(false);
     // The stored selector survives even with no catalog to draw options from.
-    expect(select.value).toBe('kenari/glm-5');
+    expect(picker.textContent).toContain('kenari/glm-5 (not in catalog)');
   });
 
   test('a refused write is shown in place', async () => {

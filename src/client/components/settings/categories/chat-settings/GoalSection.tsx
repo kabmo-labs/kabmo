@@ -16,10 +16,10 @@ import { useEffect, useState } from 'preact/hooks';
 import { Check, Coins, ShieldCheck, Target } from 'lucide-preact';
 import type { AIModelOption, SettingsState } from '@/shared/types';
 import { fetchModelsData } from '@/shared/lib/models/client';
-import { modelKey } from '@/shared/lib/models/identity';
 import { providerLabel } from '@/shared/lib/models/provider/label';
 import { useProviderNames } from '@/client/hooks/models/use-provider-names';
 import { normalizeGoalBudget } from '@/shared/lib/omp/mode/budget';
+import { SearchSelect } from '@/client/components/common/search-select';
 
 interface ChatGoalSectionProps {
   settings: SettingsState;
@@ -135,23 +135,23 @@ export function ChatGoalSection({ settings, onUpdate }: ChatGoalSectionProps) {
         <div className="rounded-lg border border-ink/15 bg-paper p-3.5 space-y-3">
           <div>
             <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-ink/45">Auditor model</label>
-            <select
+            <SearchSelect
+              ariaLabel="Auditor model"
               value={auditModel}
-              onChange={(event) => onUpdate({ goalAuditModel: event.currentTarget.value })}
+              onChange={(next) => onUpdate({ goalAuditModel: next })}
               disabled={loading}
-              aria-label="Auditor model"
-              className="w-full rounded border border-ink/15 bg-paper px-2 py-1.5 font-mono text-[11.5px] outline-none focus:border-ink disabled:opacity-50"
-            >
-              {/* The session's own model is the default, not a fallback the UI
-                  hides: a goal runs on the provider the chat runs on unless the
-                  operator says otherwise. */}
-              <option value="">Session model (default)</option>
-              {models.map((model) => (
-                <option key={modelKey(model)} value={`${model.provider}/${model.id}`}>
-                  {model.name} — {providerLabel(model.provider, providerNames)}
-                </option>
-              ))}
-            </select>
+              // The session's own model is a real default, not a hidden fallback:
+              // a goal runs on the provider the chat runs on unless the operator
+              // says otherwise, so it is the placeholder row.
+              placeholder="Session model (default)"
+              className="w-full py-1.5 text-[11.5px]"
+              options={models.map((model) => ({
+                value: `${model.provider}/${model.id}`,
+                label: model.name,
+                hint: `${model.provider}/${model.id}`,
+                group: providerLabel(model.provider, providerNames),
+              }))}
+            />
             <p className="mt-1 text-[10.5px] text-ink/45">
               The audit is a classification, not a task: it runs with thinking off, one small call per turn.
             </p>

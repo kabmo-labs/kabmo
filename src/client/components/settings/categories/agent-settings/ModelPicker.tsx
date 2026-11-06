@@ -11,10 +11,14 @@
  * the model-role rows already avoid. The list is `/api/models` (the catalog the
  * composer uses), grouped by provider; a stored selector the catalog no longer
  * lists stays selectable so the form never rewrites a value it could not show.
+ *
+ * Searchable, not a native `<select>`: the catalog is close to a hundred rows on
+ * a real install, and picking one by scrolling an OS popup is the reason the
+ * roles' picker was rebuilt.
  */
 
-import { useMemo } from 'preact/hooks';
 import { useModelsCatalog } from '@/client/hooks/models/use-models-catalog';
+import { SearchSelect } from '@/client/components/common/search-select';
 
 interface ModelPickerProps {
   value: string;
@@ -34,38 +38,27 @@ export function AgentModelPicker({ value, disabled, onChange }: ModelPickerProps
     }));
   }) ?? [];
 
-  const groups = useMemo(() => {
-    const byProvider = new Map<string, Array<{ selector: string; name: string }>>();
-    for (const model of models) {
-      const bucket = byProvider.get(model.provider);
-      if (bucket) bucket.push(model);
-      else byProvider.set(model.provider, [model]);
-    }
-    return [...byProvider.entries()];
-  }, [models]);
-
   const known = models.some((model) => model.selector === value);
 
   return (
-    <select
-      aria-label="Override model"
-      value={value || NOT_SELECTED}
-      onChange={(event) => {
-        const next = event.currentTarget.value;
-        onChange(next === NOT_SELECTED ? '' : next);
-      }}
+    <SearchSelect
+      ariaLabel="Override model"
+      value={value}
+      // "Not selected" is a real choice — it is how the override is removed, and
+      // the row inherits the session model again.
+      placeholder={NOT_SELECTED}
+      onChange={onChange}
       disabled={disabled}
-      className="w-full cursor-pointer rounded-lg border border-ink/20 bg-paper py-2 pl-2 pr-3 font-mono text-xs text-ink transition-colors hover:border-ink/40 focus:border-ink focus:outline-none disabled:opacity-60"
-    >
-      <option value={NOT_SELECTED}>{NOT_SELECTED} — inherits the session model</option>
-      {value && !known && <option value={value}>{value} (not in catalog)</option>}
-      {groups.map(([provider, entries]) => (
-        <optgroup key={provider} label={provider}>
-          {entries.map((model) => (
-            <option key={model.selector} value={model.selector}>{model.name}</option>
-          ))}
-        </optgroup>
-      ))}
-    </select>
+      className="w-full rounded-lg py-2 pl-2 pr-3 text-xs hover:border-ink/40 focus:border-ink disabled:opacity-60"
+      options={[
+        ...(value && !known ? [{ value, label: `${value} (not in catalog)` }] : []),
+        ...models.map((model) => ({
+          value: model.selector,
+          label: model.name,
+          hint: model.selector,
+          group: model.provider,
+        })),
+      ]}
+    />
   );
 }
