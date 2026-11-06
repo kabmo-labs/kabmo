@@ -324,7 +324,7 @@ tab: a document on the Desktop is outside every workspace the fs routes may read
 - **No bundled server by default.** `LaunchPlan.Resolve()` prefers
   `server\kabmo.exe` beside the app, then `kabmo` on `PATH`, then `bun` + a source
   checkout. Shipping one install that needs nothing on `PATH` means building that
-  binary — `docs/desktop-mobile-packaging-plan.md` (P0) has the measured layout.
+  binary — `docs/milestones/M10-packaging-and-shells.md` (P0) has the measured layout.
 - **Snap Layouts is unavailable on the maximise button** (see above).
 - **No auto-update.** The shell has no updater; replacing it means replacing the
   folder.

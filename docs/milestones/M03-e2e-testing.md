@@ -9,8 +9,7 @@ opened a browser tab instead of navigating. None of those are visible to a
 happy-dom mount, because none of them are about the component tree — they are
 about a real browser, a real listener, and a real omp child.
 
-Status: **shipped (P0–P4)**. See the Status section at the end for what landed
-and what P5 still owes.
+Status: **partial** — P0–P4 shipped; P5 (firefox, webkit, a macOS leg) is declared in the config but not wired, because the browser will not launch here (2026-11-02, `af265280`). The Status section at the end has the detail.
 
 ## Reference research
 

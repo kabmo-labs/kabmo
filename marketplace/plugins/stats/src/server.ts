@@ -68,7 +68,7 @@ export default function plugin(api: KabmoPluginApi) {
    * because it must not depend on the host calling one: `background.service`'s
    * `stop` is recorded by the host and, as of this writing, never invoked (the
    * loaded plugin's `background` handle is stored and read by nothing — see the
-   * note in `docs/stats-plugin.md`). A loop that only ended on `stop` would
+   * note in `docs/milestones/M07-stats-plugin.md`). A loop that only ended on `stop` would
    * outlive every reload. This is self-contained and correct either way.
    */
   const abort = new AbortController();

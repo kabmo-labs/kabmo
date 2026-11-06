@@ -5,7 +5,7 @@ Audit of the chat timeline's tool cards against the **installed omp 18.10.3**
 HEAD `fbb04ab`). Everything below was measured, not read off a changelog. This
 file is the record of what was found and how each finding was closed.
 
-Status: **fixed.** F1, F2, F3 and F4 are closed; see "Resolution" below.
+Status: **done** — F1, F2, F3 and F4 are closed; see "Resolution" below (2026-10-18, `7335fc73`).
 
 ## How this was measured
 

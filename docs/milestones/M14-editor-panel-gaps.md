@@ -4,11 +4,7 @@ Research + plan for the code editor panel (`src/client/components/workspace/edit
 the shared surface in `src/client/components/common/code-surface/`, and the phone's
 full-screen editor in `src/client/components/mobile/mobile-right-sidebar/FullEditor.tsx`).
 
-Status: **P0–P5 implemented and verified**, with two items deliberately not built (§5:
-Save As, split editor) and one rejected (format-on-save). Every claim was read out of the
-tree at `ae318411` or measured with a throwaway script; the measurements that changed the
-plan are recorded verbatim in *Appendix A*, and *Appendix B* lists what shipped and what
-was found while building it.
+Status: **done** — P0–P5 landed, Save As and the split editor included (Appendix D), and format-on-save is the one item rejected with its reason (2026-11-02, `c5551aff`). Every claim was read out of the tree at `ae318411` or measured with a throwaway script; the measurements that changed the plan are recorded verbatim in *Appendix A*, and *Appendix B* lists what shipped and what was found while building it.
 
 Two things to read first, because they invalidate the obvious version of this document:
 

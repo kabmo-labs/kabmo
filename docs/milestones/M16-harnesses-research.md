@@ -11,6 +11,8 @@ Every number below was measured on this machine (omp 18.16.0, opencode 1.18.31,
 codex-cli 0.166.0, claude 2.1.223, pi 0.73.1) with throwaway stdio and HTTP
 probes, not read off documentation.
 
+Status: **done** — built as designed in [`M17`](M17-harnesses-design.md): one ACP adapter family, in `src/server/lib/harness/` (2026-11-06, `687c5adf`).
+
 ---
 
 ## 1. What exists today (the coupling, measured)

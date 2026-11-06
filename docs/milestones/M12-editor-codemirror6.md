@@ -5,11 +5,7 @@ Replacing the editor panel's hand-built editing surface (`CodeSurface` +
 Kabmo's own windowing, undo, multi-cursor, find bar and keymap) with
 CodeMirror 6.
 
-Status: **implemented.** Phases 1–3 shipped; Phase 4's desktop half is verified
-and its device run is not (see *Phase 4* below). The measurements in this
-document are the 2026-10-23 baseline, kept as the record the migration was
-decided on; the *Verification* section at the end states what was re-measured
-afterwards.
+Status: **partial** — phases 1–3 shipped and phase 4's desktop half is verified; phase 4's device run (soft keyboard, IME composition, selection handles, both mobile WebViews) is not (2026-10-25, `9b10ad33`). The measurements below are the 2026-10-23 baseline, kept as the record the migration was decided on; the *Verification* section at the end states what was re-measured afterwards.
 
 Baseline method: `@codemirror/view` 6.43.15 / `state` 6.7.6 / `merge` 6.12.3 in
 headless Chromium, and this repository's own editor through the e2e harness

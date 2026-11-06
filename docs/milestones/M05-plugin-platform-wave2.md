@@ -1,6 +1,6 @@
 # Plugin platform — wave 2: opening the agent surface
 
-Wave 1 (`docs/plugin-platform-plan.md`, shipped in `8ea446f`) gave a plugin a
+Wave 1 ([`M04`](M04-plugin-platform.md), shipped in `8ea446f`) gave a plugin a
 server half, storage, RPC, HTTP, a realtime topic, eight list slots, a test
 harness and a CLI. What it did NOT give a plugin is the ability to **act on the
 conversation**. A wave-1 plugin can draw into a slot and read per-session state;
@@ -24,8 +24,7 @@ This plan closes that, in the order value-per-cost, and stops where the gap is
 structural (bb's `providers`/`environments`/`machines` exist because bb ships its
 own agent runtime; see D1 of the wave-1 plan — that decision stands).
 
-Status: **W0–W6 shipped**; see the workstream table below for what each one
-verified.
+Status: **done** — W0–W6 shipped; W6 re-declined the component registry that wave 1 left open (2026-10-09, `751a3041`). The workstream table below records what each one verified.
 
 ## Workstreams
 
@@ -286,7 +285,7 @@ the answer is a new module in `@kabmo-labs/kabmo-ui`, not a registry.
 3. **W2, W3, W4** — independent surfaces, parallelizable once (1) is in.
 4. **W5** — its own lifecycle, its own surface.
 5. **W6** — evaluation only.
-6. **Docs** — `docs/panel-plugins/README.md` and this file.
+6. **Docs** — [`reference/plugin-sdk.md`](../reference/plugin-sdk.md) and this file.
 
 Every workstream must pass: `bun run lint`, `bunx tsc --noEmit --noUnusedLocals
 --noUnusedParameters`, the 350-line check, `bun run build`, `bun test`.

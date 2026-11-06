@@ -2,9 +2,7 @@
 
 Standalone desktop builds (macOS / Windows / Linux) and an Android APK for Kabmo.
 
-**Status: research complete, nothing implemented.** Every claim below is either read from
-this tree or measured on this machine; measured results are marked ⟦measured⟧ and the
-commands are in [Verification log](#verification-log).
+Status: **partial** — all five shells shipped as native ports (`packages/{macos,windows,linux,android,ios}`, each with its own release job); the bundled-server sidecar this document planned as P0–P3 is NOT built, so every shell still needs an existing Kabmo server (2026-11-04, `2ffe0270`).
 
 ## Target shapes (decided by the product owner)
 

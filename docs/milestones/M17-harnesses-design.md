@@ -1,8 +1,8 @@
 # Multi-harness UI design — ACP-first (omp keeps RPC)
 
-Design, 2026-11-05. Companion to `docs/multi-harness-research.md` (which holds
-the measurements). This document decides **one transport per harness** and
-designs every surface around that decision.
+Design, 2026-11-05. Companion to [`M16`](M16-harnesses-research.md), which holds the measurements. This document decides **one transport per harness** and designs every surface around that decision.
+
+Status: **done** — the ACP adapter family, the per-harness composer tabs and the per-harness settings all shipped (2026-11-06, `687c5adf`).
 
 ## 0. The decision, restated
 

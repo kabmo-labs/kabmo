@@ -11,9 +11,7 @@ switchable from the activity bar's right-click menu and from Settings → Panel
 Plugins, and ships as two bundles (`dist/app.js` for the panel, `dist/server.js`
 for the process registry).
 
-Status: **implemented.** P0–P6 landed; this file is kept as the record of what was
-built and WHY, and the corrections below are the places the plan was wrong before
-the code was written. Every claim about this repo was read from this tree; every
+Status: **done** — P0–P6 landed; this file is the record of what was built and why, and the corrections below are the places the plan was wrong before the code was written (2026-10-31, `23873063`). Every claim about this repo was read from this tree; every
 claim marked *measured* was run on this machine (Bun 1.4.2, macOS). The shipped
 plugin's own documentation is `marketplace/plugins/command-runner/README.md`.
 
@@ -233,7 +231,7 @@ prop is hardcoded null even though the layout HAS `rootPath` in the same props
 object. So a plugin reading its own prop sees no workspace, while
 `usePanelHost().rootPath` (the same object, published on the context) and
 `usePanelInfo().workspacePath` (published by `PluginBootstrap`) both carry it.
-`docs/panel-plugins/README.md` documents the rightPanel props as
+`docs/reference/plugin-sdk.md` documents the rightPanel props as
 `{ sessionId, workspacePath }` without saying it is always null, so the
 documentation is currently wrong about this slot.
 
@@ -843,7 +841,7 @@ B must survive a switch in session A. That is a decision, not an accident
 | **P3** | Discovery: the detector table, the bounded walk, PM resolution, the `list` RPC, and the grouped row UI. | A fixture repo with a root `package.json` (a `bun.lock`), `packages/api/package.json` (a `package-lock.json`, one script) and a `Makefile` (`.PHONY`, a variable with a colon, three targets) lists **three groups**, the right runner on each package row, exactly the three make targets, and no `node_modules` path. A file added afterwards appears after Refresh. |
 | **P4** | Execution: `start`/`stop`/`stop-others`, the ring buffer, the group kill with escalation, the `/logs` route, the run list and the log view. | Clicking `echo hi` shows `hi`; the row shows exit 0. `sleep 30` in the background appears under `Running` with a live byte count; Stop removes it and the process is gone. A command that does not exist reports `Failed to start …`. The 9th concurrent run is refused with a reason. |
 | **P5** | The repo-switch guarantee: the content-script watcher, the mount sweep, scope tagging. | With a background `sleep 60` running and the Commands panel CLOSED, switching repo from the Files panel kills it within one tick (verified by `ps`, and by the run list being empty when Commands is reopened). A run in another session on the same repo survives. |
-| **P6** | Docs (`docs/command-runner-plugin.md` finalised, a section in `AGENTS.md`, the plugin's `README.md`), the plugin's unit tests, and `tests/e2e/specs/commands.e2e.ts`. | The e2e spec installs the bundled plugin through the real API, seeds a temp workspace with a `Makefile`, opens the panel, runs a target, and asserts the output on screen and the exit status — then starts a background `sleep` and asserts the repo switch removes it. |
+| **P6** | Docs (this file finalised, a section in `AGENTS.md`, the plugin's `README.md`), the plugin's unit tests, and `tests/e2e/specs/commands.e2e.ts`. | The e2e spec installs the bundled plugin through the real API, seeds a temp workspace with a `Makefile`, opens the panel, runs a target, and asserts the output on screen and the exit status — then starts a background `sleep` and asserts the repo switch removes it. |
 
 Every phase runs the gates in §11. P0 and P1 are useful on their own (the mobile
 plugin context is a bug fix; the shared picker removes a duplication) — neither

@@ -408,7 +408,7 @@ memory a page-level collection can return (see `src/memory.rs`).
 - **No bundled server.** `resolve_launch()` prefers `server/kabmo` beside the
   binary, then `kabmo` on `PATH`, then `bun` + a source checkout. Shipping one
   install that needs nothing on `PATH` means building that binary per target —
-  `docs/desktop-mobile-packaging-plan.md` (P0).
+  `docs/milestones/M10-packaging-and-shells.md` (P0).
 - **No Flatpak or Snap.** `scripts/build-app.sh` produces a directory and an
   `install.sh`; a sandboxed package needs the WebKitGTK portal wiring, which is
   its own project.
@@ -446,7 +446,7 @@ memory a page-level collection can return (see `src/memory.rs`).
 - **WebGL in WebKitGTK is the least predictable of the three engines.** The
   terminal (`@xterm/addon-webgl`), Shiki and mermaid all work, but a driver
   without hardware acceleration falls back to software rendering. That is the
-  risk `docs/desktop-mobile-packaging-plan.md` names for this platform, and it is
+  risk `docs/milestones/M10-packaging-and-shells.md` names for this platform, and it is
   why the shell does not bundle a second engine.
 - **The tray is the server's, not the shell's.** `kabmo serve --tray` still works
   and raises its own icon, but the shell deliberately does not pass `--tray` —

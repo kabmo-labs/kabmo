@@ -1,8 +1,6 @@
 # Composer design research — desktop & mobile option catalog
 
-Status: **shipped** — the four styles below are selectable in `Chats › Composer`
-(`composerStyle` in the `kabmo_settings` blob). §8 is the contract that was
-implemented, kept as the reference for the next style.
+Status: **done** — five styles (`classic`, `calm`, `console`, `stage`, `glass`) are selectable in `Chats › Composer` through `composerStyle` in the `kabmo_settings` blob; §8 is the contract that was implemented, and §5.5 is the style added after it (2026-10-30, `86958972`).
 
 Purpose: turn "what should the composer look like" into a small set of selectable
 styles, each with a desktop and a mobile form, so a setting picks one instead of the

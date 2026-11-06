@@ -3,16 +3,14 @@
 A chat can start in its own git worktree: its own branch, its own folder, its
 own omp child. Parallel sessions stop stepping on each other's files.
 
-Status: **implemented** (`01fe3ac5`), with one design change against this plan:
-the composer's target is TWO controls, not one merged dropdown — §3.2 records
-what shipped and why the merge was wrong.
+Status: **done** — implemented with one design change against the plan: the composer's target is TWO controls, not one merged dropdown, and §3.2 records why the merge was wrong (2026-10-23, `01fe3ac5`).
 
 Two decisions up front, and everything below follows from them:
 
 1. **Kabmo owns the worktree, not omp.** No `/wt`, no `omp worktree`. The
    session is *born* in the worktree (`POST /api/agent/new { cwd }`), so nothing
-   is ever relocated — which removes the entire class of bugs measured in
-   `docs/omp-worktree-research` (stale `wrapper.sessionFile`, a `session_info_update`
+   is ever relocated — which removes the entire class of bugs a relocation path
+   would have had to handle (a stale `wrapper.sessionFile`, a `session_info_update`
    that carries no cwd, `resolveSpawnCwd` silently falling back).
 2. **The UI follows OpenChamber's shape.** Same entry points, same three-way
    "Start from", same composer target picker, same delete dialog. Their copy is

@@ -21,7 +21,7 @@
   <a href="AGENTS.md">Architecture</a> ·
   <a href="DESIGN.md">Design</a> ·
   <a href="CHANGELOG.md">Changelog</a> ·
-  <a href="docs/plugin-platform-plan.md">Plugins</a> ·
+  <a href="docs/milestones/M04-plugin-platform.md">Plugins</a> ·
   <a href="https://github.com/kabmo-labs/kabmo/issues">Issues</a>
 </p>
 

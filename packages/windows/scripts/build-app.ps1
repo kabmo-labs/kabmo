@@ -63,7 +63,7 @@ if ($ServerPath -and (Test-Path $ServerPath)) {
   Write-Host "bundled server: $ServerPath"
 
   # The compiled server resolves its assets from the PACKAGE directory
-  # (`docs/desktop-mobile-packaging-plan.md`, "Shipping the server binary"), and
+  # (`docs/milestones/M10-packaging-and-shells.md`, "Shipping the server binary"), and
   # `import.meta.dir` inside a compiled binary is `/$bunfs/root` — so `public/`,
   # `marketplace/` and the font sources have to sit beside it.
   $repo = Split-Path -Parent (Split-Path -Parent $here)

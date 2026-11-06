@@ -1,7 +1,9 @@
 # Git panel — merge/conflict, branch rename, branch management, and the rest
 
 Research for the Source Control panel (`src/client/components/workspace/git-panel/`,
-route `src/server/routes/fs/git.ts`). Status: **research only, nothing implemented.**
+route `src/server/routes/fs/git.ts`).
+
+Status: **done** — all four phases landed: merge and conflict resolution, branch rename, the branch manager, the repo modal, fetch and amend (2026-10-14, `d732fab3`). The research below is the record the feature was built from.
 
 Four questions, answered in order, each with the current state measured against
 the code and against real repositories:

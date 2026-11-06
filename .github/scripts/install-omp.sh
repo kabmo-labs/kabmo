@@ -17,7 +17,7 @@ if ! command -v bun >/dev/null 2>&1; then
 fi
 
 # Pinned to the version Kabmo's RPC surface was measured against — the
-# audit in docs/omp-18.8-adoption-plan.md names which features each phase
+# audit in docs/milestones/M02-omp-engine-adoption.md names which features each phase
 # depends on, and the RPC verbs they use (steer, set_event_filter, isSettled)
 # do not exist on the 18.3.0 this used to pin.
 #
@@ -84,7 +84,7 @@ fi
 # `builtin-names.ts` is byte-identical again. What this release DOES add is
 # `wait` / `proc://` telemetry (`requests`, `cost`, `contextTokens`,
 # `contextWindow`, `stage`), which Kabmo's job rows now draw — see R23 in
-# docs/omp-18.8-adoption-plan.md.
+# docs/milestones/M02-omp-engine-adoption.md.
 # 18.13.1 (2026-10-27): the schema's `source` line moves to 563 settings and the
 # panel gains ONE row, `tools.restrictedFolders` (interaction / Approvals) — the
 # folders where every read, write, edit, search or command asks in EVERY
@@ -156,7 +156,7 @@ fi
 # drew only `label` in the `wait` and `proc://` cards, so the purpose was
 # dropped while the raw command stood in for it. Both cards now lead with the
 # intent and keep the label beneath — see R39 in
-# docs/omp-18.8-adoption-plan.md.
+# docs/milestones/M02-omp-engine-adoption.md.
 #
 # 18.16.0 (2026-11-02): the schema's `source` line moves to 582 settings and the
 # panel gains THREE rows — `btw.inject` and `composer.predictionAlternatives`
@@ -177,7 +177,7 @@ fi
 # `git --no-pager log` in a 60-commit repo: `inputBytes: 10970`,
 # `outputBytes: 3905`, `artifactId: "0"`, and `[raw output: artifact://0]` at the
 # end of the inline text. The card now states the rewrite and the artifact chip
-# opens the original — see R45/R46 in docs/omp-18.8-adoption-plan.md.
+# opens the original — see R45/R46 in docs/milestones/M02-omp-engine-adoption.md.
 #
 # Not adopted, deliberately: `btw.inject` (it drafts an `<inject>` steering block
 # for omp's own Alt+I, a TUI keybinding; Kabmo's side panel has no inject path and

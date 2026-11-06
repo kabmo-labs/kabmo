@@ -4,8 +4,7 @@ One WebSocket per browser tab carries every server-originated event. Polling,
 per-session SSE, and the client-side event bus that mirrored server state are all
 replaced by a single hub with per-topic subscriptions.
 
-Status: **complete**. All four phases shipped; see the phase table at the
-bottom for what each one verified.
+Status: **done** — all four phases shipped; the phase table at the end records what each verified (2026-10-06, `27613908`).
 
 ## Decisions
 

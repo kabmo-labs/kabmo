@@ -10,8 +10,7 @@ switchable from the activity bar's right-click menu and from Settings → Panel
 Plugins, and ships as two bundles (`dist/app.js` for the panel, `dist/server.js`
 for the sampler).
 
-Status: **complete and verified end to end.** The measurements below are from
-this machine; the smoke run is described at the end.
+Status: **done** — verified end to end; the measurements below are from this machine and the smoke run is described at the end (2026-11-01, `8a8a6c4e`).
 
 ## Why a plugin rather than a built-in view
 

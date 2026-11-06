@@ -536,7 +536,7 @@ pins it.
 - **No bundled server.** `resolveLaunch()` prefers `Contents/Resources/server/kabmo`,
   then `kabmo` on `PATH`, then `bun` + a source checkout. Shipping one install
   that needs nothing on `PATH` means building that binary per target — the
-  packaging work in `docs/desktop-mobile-packaging-plan.md` (P0).
+  packaging work in `docs/milestones/M10-packaging-and-shells.md` (P0).
 - **macOS 13+ only.** The window uses `fullSizeContentView` with a transparent
   title bar and `WKWebView.isInspectable`; nothing here was written for, or tested
   on, an older release.

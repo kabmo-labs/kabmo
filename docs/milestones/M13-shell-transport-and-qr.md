@@ -1,6 +1,6 @@
 # End-to-end transport security for Kabmo shells, and QR pairing
 
-**Status: research only — nothing here is implemented.**
+Status: **planned** — research only, nothing implemented: no shell trusts a certificate and there is no QR pairing (2026-10-23, `0bd0bf29`).
 Every number marked ⟦measured⟧ was produced on this machine (macOS 27 / arm64,
 Bun 1.4.3, OpenSSL 4.0.3) with the scripts listed in
 [Verification log](#verification-log). Loopback throughput is CPU-bound and is

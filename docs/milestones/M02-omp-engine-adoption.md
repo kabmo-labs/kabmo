@@ -5,8 +5,7 @@ the installed binary was **18.8.3** (2026-10-07); the pin now matches (F9). This
 of everything between the two versions that Kabmo either gets wrong or
 does not use, and the phased plan to close it.
 
-Status: **complete**. Phase table and per-phase outcomes below; P4b–d and P5 were
-measured and deliberately NOT adopted (see the outcomes).
+Status: **done** — every phase closed; P4b–d and P5 were measured and deliberately not adopted, and the pin has since moved on to 18.16.0 (2026-11-03, `78dec3b2`).
 
 **Re-audited at 18.9.2 (2026-10-12)** — the pin moved on again and the schema had
 drifted 9 rows; see [the re-audit section](#omp-1892-re-audit-2026-10-12) at the

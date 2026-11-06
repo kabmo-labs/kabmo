@@ -4,8 +4,7 @@ Bring Kabmo's panel-plugin surface up to the shape `get-bb/bb` ships, so a
 plugin can do more than draw a view: own server-side state, contribute to more
 than four places, and be tested without Kabmo running.
 
-Status: **P0–P5 complete**; P6 deliberately not done (see below). The phase
-table at the bottom records what each phase verified.
+Status: **done** — P0–P5 landed; P6 was declined with its reason recorded below, and re-declined in [wave 2](M05-plugin-platform-wave2.md) once twelve slots had shipped without needing it (2026-10-09, `8ea446f4`).
 
 Reference implementation: `github.com/get-bb/bb` @ `main`, `packages/kabmo-sdk`
 (`@get-bb/plugin-sdk` 0.6.33). Every claim about bb below is read from that

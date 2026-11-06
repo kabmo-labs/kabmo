@@ -16,9 +16,9 @@ A plugin can also be a **participant**: `useRpc` calls its own server methods,
 composer's draft. That is what separates a plugin that draws from one that acts.
 
 The plans this surface was built from are
-[Plugin platform plan](../plugin-platform-plan.md) (the server half, the slots,
+[Plugin platform plan](../milestones/M04-plugin-platform.md) (the server half, the slots,
 the harness, the CLI) and
-[Wave 2](../plugin-platform-wave2-plan.md) (the participant hooks and the four
+[Wave 2](../milestones/M05-plugin-platform-wave2.md) (the participant hooks and the four
 slots that reach into the conversation).
 
 Two packages are provided by Kabmo itself:

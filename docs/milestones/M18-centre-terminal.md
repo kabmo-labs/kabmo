@@ -1,6 +1,6 @@
 # Multi-view centre stage: a terminal view, and xterm vs Ghostty
 
-Status: research only (2026-11-05). No code changed.
+Status: **planned** — research only, no code changed: no centre-stage terminal view exists (2026-11-05, `687c5adf`).
 
 The question: the centre column is the chat timeline; add a **terminal view** beside
 it. Should that terminal render with **xterm** or **Ghostty**?

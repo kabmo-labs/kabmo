@@ -23,7 +23,7 @@
 # `resolve_launch()` looks for `server/kabmo` beside the binary first, so a
 # compiled server dropped into `build/Kabmo/server/` is picked up with no
 # change here — that is the packaging work in
-# `docs/desktop-mobile-packaging-plan.md` (P0), and this script does not fake it.
+# `docs/milestones/M10-packaging-and-shells.md` (P0), and this script does not fake it.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
