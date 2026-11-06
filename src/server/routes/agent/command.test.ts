@@ -174,3 +174,143 @@ describe('agent snapshot for a non-omp harness', () => {
     }
   });
 });
+
+/**
+ * Mode commands on a harness that has no `/kabmo-mode` extension.
+ *
+ * The Plan/Goal toggles send an extension command that only omp carries.
+ * Forwarding it to another agent handed the MODEL the literal text — measured
+ * on claude, which opened a turn with `/kabmo-mode plan on` and then refused the
+ * next mode command as "already processing". The harness's own ACP `mode`
+ * selector is the honest equivalent, and a scope it cannot express is refused
+ * in words instead of being sent as prose.
+ */
+describe('mode commands on a non-omp harness', () => {
+  interface Recorder {
+    commands: Record<string, unknown>[];
+  }
+
+  function registerModeHarness(id: string, modes: string[], current: string): { recorder: Recorder; release: () => void } {
+    const commands: Record<string, unknown>[] = [];
+    let release: (() => void) | null = null;
+    const session = {
+      sessionId: id,
+      harness: 'claude',
+      sessionFile: '',
+      cwd: '/tmp',
+      isStreaming: false,
+      isPromptRunning: false,
+      runModel: null,
+      capabilities: {},
+      configOptions: [],
+      isAlive: () => true,
+      isRunning: () => false,
+      isBusy: () => false,
+      send: async (command: Record<string, unknown>) => {
+        commands.push(command);
+        if (command.type === 'get_state') {
+          return {
+            configOptions: [
+              {
+                id: 'mode',
+                name: 'Mode',
+                category: 'mode',
+                type: 'select',
+                currentValue: current,
+                options: modes.map((value) => ({ value, name: value })),
+              },
+            ],
+          };
+        }
+        return { ok: true };
+      },
+      getPendingUiDialogs: () => [],
+      resolvePendingUiDialog: () => {},
+      onEvent: () => () => {},
+      emit: () => {},
+      destroy: () => {},
+      destroyAndWait: async () => {},
+      onDestroy: (callback: () => void) => {
+        release = callback;
+      },
+    };
+    registerAcpSession(session as unknown as HarnessSession, id);
+    claimHarness(session as unknown as HarnessSession, 'claude');
+    return { recorder: { commands }, release: () => release?.() };
+  }
+
+  function postMode(id: string, body: Record<string, unknown>): Promise<Response> {
+    return sendCommand({
+      params: { sessionId: id },
+      request: new Request(`http://localhost/api/agent/${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-kabmo-peer-hop': '1' },
+        body: JSON.stringify(body),
+      }),
+    } as never) as Promise<Response>;
+  }
+
+  test('plan on drives the harness mode selector, never a prompt', async () => {
+    const { recorder, release } = registerModeHarness('mode-plan-on', ['default', 'plan', 'acceptEdits'], 'default');
+    try {
+      const response = await postMode('mode-plan-on', { type: 'kabmo_mode', scope: 'plan', action: 'on' });
+      expect(response.status).toBe(200);
+      expect(recorder.commands.some((command) => command.type === 'prompt')).toBe(false);
+      expect(recorder.commands.some((command) => command.type === 'set_mode' && command.mode === 'plan')).toBe(true);
+    } finally {
+      release();
+    }
+  });
+
+  test('plan off returns to `default`', async () => {
+    const { recorder, release } = registerModeHarness('mode-plan-off', ['default', 'plan'], 'plan');
+    try {
+      expect((await postMode('mode-plan-off', { type: 'kabmo_mode', scope: 'plan', action: 'off' })).status).toBe(200);
+      expect(recorder.commands.some((command) => command.type === 'set_mode' && command.mode === 'default')).toBe(true);
+    } finally {
+      release();
+    }
+  });
+
+  test('plan state answers from the selector without touching it', async () => {
+    const { recorder, release } = registerModeHarness('mode-plan-state', ['default', 'plan'], 'plan');
+    try {
+      const response = await postMode('mode-plan-state', { type: 'kabmo_mode', scope: 'plan', action: 'state' });
+      expect(await response.json()).toMatchObject({ success: true, data: { enabled: true } });
+      expect(recorder.commands.some((command) => command.type === 'set_mode')).toBe(false);
+    } finally {
+      release();
+    }
+  });
+
+  test('a harness with no plan value refuses in words, and sends no prompt', async () => {
+    const { recorder, release } = registerModeHarness('mode-no-plan', ['worker', 'plan-builder'], 'worker');
+    try {
+      const response = await postMode('mode-no-plan', { type: 'kabmo_mode', scope: 'plan', action: 'on' });
+      expect(response.status).toBe(400);
+      const body = (await response.json()) as { error: string; code: string };
+      expect(body.error).toContain('has no plan mode');
+      expect(body.code).toBe('mode_not_supported');
+      expect(recorder.commands.some((command) => command.type === 'prompt')).toBe(false);
+    } finally {
+      release();
+    }
+  });
+
+  test('goal is refused rather than sent to the model', async () => {
+    const { recorder, release } = registerModeHarness('mode-goal', ['default', 'plan'], 'default');
+    try {
+      const response = await postMode('mode-goal', {
+        type: 'kabmo_mode',
+        scope: 'goal',
+        action: 'create',
+        payload: { objective: 'ship it' },
+      });
+      expect(response.status).toBe(400);
+      expect(((await response.json()) as { error: string }).error).toContain('has no goal mode');
+      expect(recorder.commands.some((command) => command.type === 'prompt')).toBe(false);
+    } finally {
+      release();
+    }
+  });
+});
