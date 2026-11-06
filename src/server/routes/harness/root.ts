@@ -19,12 +19,12 @@ import { json } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { HARNESS_IDS, harnessDescriptor, type HarnessId } from '@/shared/lib/harness/catalog';
-import { HARNESS_LAUNCH, probeHarness } from '@/server/lib/harness/launch';
+import { HARNESS_LAUNCH, blockedProbe, probeHarness } from '@/server/lib/harness/launch';
 import type { HarnessProbe } from '@/server/lib/harness/capabilities';
 import { forgetProbe, loadProbes, rememberProbe } from '@/server/lib/harness/probe-cache.server';
 import { loadDisabledHarnesses, saveHarnessEnabled } from '@/server/lib/harness/enabled.server';
 import { harnessEnabled } from '@/shared/lib/harness/enabled';
-import { loadHarnessConfig, probeInvalidatedBy, saveHarnessConfig } from '@/server/lib/harness/config.server';
+import { loadHarnessConfig, probeInvalidatedBy, resolveLaunch, saveHarnessConfig } from '@/server/lib/harness/config.server';
 import { importableProvidersFor, readRegistryProviders } from '@/server/lib/harness/provider-sources.server';
 import { addProviderAction, importProviderAction, importSourceOf, isImportBody } from '@/server/routes/harness/import-action';
 import { supportedProtocols } from '@/shared/lib/harness/dialects';
@@ -109,6 +109,24 @@ export async function listHarnesses(): Promise<HarnessSummary[]> {
   });
 }
 
+/**
+ * Probe a harness the way a SPAWN would launch it: the user's command and env
+ * override are part of what is being measured.
+ *
+ * Without this, a harness that only works with its configured env — `CODEX_HOME`,
+ * a provider base URL, a wrapper that logs in — probed as "Authentication
+ * required" in Settings while its chats ran fine. A launch line that cannot even
+ * be resolved (an invalid env line) answers a `blocked` record instead of a 500.
+ */
+async function probeWithConfig(id: HarnessId, cwd: string): Promise<HarnessProbe> {
+  try {
+    const configured = await loadHarnessConfig(id);
+    return await probeHarness(id, cwd, resolveLaunch(id, configured));
+  } catch (cause) {
+    return blockedProbe(id, cause instanceof Error ? cause.message : String(cause));
+  }
+}
+
 export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
   const target = url.searchParams.get('probe');
@@ -124,7 +142,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       return json({ error: `${target} is built in and has no agent to probe`, code: 'builtin_not_probeable' }, { status: 400 });
     }
     const cwd = url.searchParams.get('cwd') || process.cwd();
-    const probe = await probeHarness(target as HarnessId, cwd);
+    const probe = await probeWithConfig(target as HarnessId, cwd);
     await rememberProbe(target as HarnessId, probe);
     return json({ probe });
   }
@@ -217,7 +235,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
       let probe: HarnessProbe | null = null;
       if (enabled && commandAvailable(id as HarnessId)) {
         const cwd = typeof body.cwd === 'string' ? body.cwd : process.cwd();
-        probe = await probeHarness(id as HarnessId, cwd).catch(() => null);
+        probe = await probeWithConfig(id as HarnessId, cwd).catch(() => null);
         if (probe) await rememberProbe(id as HarnessId, probe);
       }
       return json({
@@ -276,7 +294,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
     if (probeInvalidated) await forgetProbe(id as HarnessId);
     return json({ config: saved, harness: id, probeInvalidated });
   }
-  const probe = await probeHarness(
+  const probe = await probeWithConfig(
     id as HarnessId,
     typeof body.cwd === 'string' ? body.cwd : process.cwd(),
   );

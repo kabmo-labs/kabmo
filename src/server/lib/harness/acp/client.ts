@@ -114,7 +114,11 @@ export class AcpProcess {
     });
     void this.child.exited.then((code) => {
       this.exited = true;
-      this.rejectAll(new Error(`ACP agent exited (code ${code})`));
+      // The agent's own last words, when it left any: `exited (code 0)` is what
+      // a shadowed/deprecated binary prints while it explains itself on stderr,
+      // and without the tail the spawn failure names nothing actionable.
+      const detail = this.stderrTail.trim().split('\n').slice(-3).join(' · ');
+      this.rejectAll(new Error(`ACP agent exited (code ${code})${detail ? ` — ${detail}` : ''}`));
       this.options.onExit?.({ code, signal: null, stderrTail: this.stderrTail });
     });
   }

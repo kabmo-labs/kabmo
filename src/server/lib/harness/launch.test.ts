@@ -15,7 +15,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { capabilitiesFrom, configByCategory, selectValues, sessionLaunchCommand } from '@/server/lib/harness/launch';
+import { blockedProbe, capabilitiesFrom, configByCategory, probeHarness, selectValues, sessionLaunchCommand } from '@/server/lib/harness/launch';
 import type { AcpInitializeResult, AcpConfigOption } from '@/server/lib/harness/acp/protocol';
 
 const ompInit: AcpInitializeResult = {
@@ -148,5 +148,32 @@ describe('sessionLaunchCommand', () => {
     const base = ['omp', 'acp'];
     sessionLaunchCommand('omp-acp', base);
     expect(base).toEqual(['omp', 'acp']);
+  });
+});
+
+/**
+ * The probe measures the launch line it is GIVEN, not the table's.
+ *
+ * A harness whose env carries its provider config (`CODEX_HOME`, a base URL, a
+ * wrapper that logs in) read as "Authentication required" in Settings while its
+ * chats ran fine, because the probe ignored the user's command/env override.
+ * A launch line that cannot start reports that binary, which is the proof the
+ * override was used — and it needs no network or installed agent.
+ */
+describe('probeHarness launch override', () => {
+  test('a configured command is what gets executed', async () => {
+    const probe = await probeHarness('claude', '/tmp', {
+      id: 'claude',
+      command: ['definitely-not-a-real-binary-xyz'],
+      note: '',
+    });
+    expect(probe.capabilities.blocked).toContain('definitely-not-a-real-binary-xyz');
+    expect(probe.models).toEqual([]);
+  });
+
+  test('a blocked probe always carries a reason', async () => {
+    const probe = blockedProbe('pi', 'executable not found (command: pi)');
+    expect(probe.capabilities.blocked).toBe('executable not found (command: pi)');
+    expect(probe.harness).toBe('pi');
   });
 });

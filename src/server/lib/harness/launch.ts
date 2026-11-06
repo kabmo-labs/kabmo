@@ -206,18 +206,20 @@ export function selectValues(option: AcpConfigOption | undefined): { value: stri
  * cannot run here" is the normal state the settings page and the tab strip both
  * have to render — and the agent's own words are the only useful explanation
  * (`Authentication required`, `executable not found (command: pi)`).
+ *
+ * `launchOverride` is the USER's launch line (command + env), so the probe
+ * measures what a spawn would actually start. Without it a harness that only
+ * works with a configured env — `CODEX_HOME`, a provider base URL — read as
+ * "Authentication required" in Settings while its chats ran fine.
  */
-export async function probeHarness(id: HarnessId, cwd: string): Promise<HarnessProbe> {
-  const launch = HARNESS_LAUNCH[id];
+export async function probeHarness(
+  id: HarnessId,
+  cwd: string,
+  launchOverride?: HarnessLaunch,
+): Promise<HarnessProbe> {
+  const launch = launchOverride ?? HARNESS_LAUNCH[id];
   if (!launch) {
-    return {
-      harness: id,
-      capabilities: { ...UNPROBED_CAPABILITIES, blocked: 'No launch command is configured for this harness' },
-      models: [],
-      thinking: [],
-      modes: [],
-      probedAt: Date.now(),
-    };
+    return blockedProbe(id, 'No launch command is configured for this harness');
   }
 
   const observed = { usage: false, plan: false };
@@ -267,18 +269,21 @@ export async function probeHarness(id: HarnessId, cwd: string): Promise<HarnessP
     // reader nothing, while the stderr tail names the corrupt plugin or the
     // refused login that caused it.
     const lastLines = stderrTail.trim().split('\n').slice(-3).join(' · ');
-    return {
-      harness: id,
-      capabilities: {
-        ...UNPROBED_CAPABILITIES,
-        blocked: lastLines ? `${reason} — ${lastLines}` : reason,
-      },
-      models: [],
-      thinking: [],
-      modes: [],
-      probedAt: Date.now(),
-    };
+    return blockedProbe(id, lastLines ? `${reason} — ${lastLines}` : reason);
   } finally {
     await proc?.dispose(1_000).catch(() => {});
   }
+}
+
+/** One `blocked` probe record. The route uses it when the launch line itself is
+ *  unusable (an invalid env line) — the same shape every other refusal has. */
+export function blockedProbe(id: HarnessId, reason: string): HarnessProbe {
+  return {
+    harness: id,
+    capabilities: { ...UNPROBED_CAPABILITIES, blocked: reason },
+    models: [],
+    thinking: [],
+    modes: [],
+    probedAt: Date.now(),
+  };
 }
