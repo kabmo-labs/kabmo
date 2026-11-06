@@ -29,6 +29,7 @@ import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
 import { harnessDescriptor, type HarnessId } from '@/shared/lib/harness/catalog';
 import type { HarnessSession } from '@/server/lib/harness/session';
 import type { SelectedModel } from '@/shared/types/models';
+import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 
 export interface AcpSpawnRequest {
   harness: HarnessId;
@@ -40,6 +41,9 @@ export interface AcpSpawnRequest {
   model?: SelectedModel | null;
   thinkingLevel?: string | null;
   mode?: string | null;
+  /** The composer's access pick, applied to the ACP session's own approval
+   *  gate (this transport has no `--approval-mode` spawn flag). */
+  accessMode?: ApprovalMode | null;
 }
 
 export class HarnessNotLaunchableError extends Error {
@@ -83,6 +87,7 @@ export async function startAcpSession(
       model: startingModel,
       thinkingLevel: request.thinkingLevel ?? configured.thinking ?? null,
       mode: request.mode ?? configured.mode ?? null,
+      accessMode: request.accessMode ?? null,
     },
     {
       sessionId: request.sessionId,

@@ -26,6 +26,8 @@ import {
   removeQueueItem,
   reorderQueueItems,
 } from '@/server/routes/sessions/queue';
+import { registerAcpSession } from '@/server/lib/harness/register.server';
+import type { HarnessSession } from '@/server/lib/harness/session';
 
 // `tmpdir()`, not `/tmp`: there is no `/tmp` on Windows, so the literal
 // resolved against the current drive and the tree was never where the suite
@@ -233,5 +235,55 @@ describe('queue routes', () => {
     const res = await call.nudge('POST');
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ success: true, delivered: false, reason: 'session-not-live' });
+  });
+
+  test('a live ACP session gets its queued head delivered by the nudge', async () => {
+    await call.add('POST', { text: 'queued on acp' });
+    const sent: Record<string, unknown>[] = [];
+    const entry = { release: null as (() => void) | null };
+    // Structural stand-in for the ACP driver: the route only needs the
+    // `HarnessSession` surface it calls (isAlive / isBusy / send).
+    const fake = {
+      sessionId: SID,
+      harness: 'omp-acp',
+      sessionFile: '',
+      cwd: '/tmp',
+      isStreaming: false,
+      isPromptRunning: false,
+      runModel: null,
+      capabilities: {},
+      configOptions: [],
+      isAlive: () => true,
+      isRunning: () => false,
+      isBusy: () => false,
+      send: async (command: Record<string, unknown>) => {
+        sent.push(command);
+        return { agentInvoked: true };
+      },
+      getPendingUiDialogs: () => [],
+      resolvePendingUiDialog: () => {},
+      onEvent: () => () => {},
+      emit: () => {},
+      destroy: () => {},
+      destroyAndWait: async () => {},
+      onDestroy: (callback: () => void) => {
+        entry.release = callback;
+      },
+    };
+    registerAcpSession(fake as unknown as HarnessSession, SID);
+    try {
+      const res = await call.nudge('POST');
+      expect(res.status).toBe(200);
+      // The omp-only lookup used to answer `session-not-live` here while the ACP
+      // session was running — the client's three-second nudge never drained.
+      expect(await res.json()).toMatchObject({ success: true, delivered: true });
+      expect(sent).toHaveLength(1);
+      expect(sent[0]).toMatchObject({ type: 'prompt', message: 'queued on acp' });
+      expect(await texts(await call.get())).toEqual([]);
+    } finally {
+      // The registry is process-wide; a leftover row makes a later suite believe
+      // a session is still live.
+      entry.release?.();
+    }
   });
 });

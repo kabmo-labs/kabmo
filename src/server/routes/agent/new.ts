@@ -2,7 +2,7 @@ import { json } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { getDb } from '@/server/db.server';
 import { startNewRpcSession } from '@/server/lib/omp/rpc/manager';
-import { isApprovalMode } from '@/shared/lib/omp/config/access-mode';
+import { isApprovalMode, type ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 import { loadPersistedAccessMode } from '@/shared/lib/omp/config/access-mode.server';
 import { rpcErrorResponse } from '@/server/lib/omp/rpc/errors';
 import { kabmoModeEnv } from '@/server/lib/omp/extensions/locator';
@@ -80,6 +80,7 @@ export async function action({ request }: ActionFunctionArgs) {
         cwd,
         body: body as Record<string, unknown>,
         model: body.provider && body.modelId ? { provider: String(body.provider), modelId: String(body.modelId) } : null,
+        accessMode,
       });
     }
     const { session, realSessionId } = await startNewRpcSession(cwd, accessMode, modeEnv);
@@ -139,11 +140,12 @@ export async function action({ request }: ActionFunctionArgs) {
  * (`{sessionId, model}` / `{sessionId, data}`), and a client must not be able to
  * tell which transport served a new chat.
  */
-async function startAcpChat({ harness, cwd, body, model }: {
+async function startAcpChat({ harness, cwd, body, model, accessMode }: {
   harness: HarnessId;
   cwd: string;
   body: Record<string, unknown>;
   model: { provider: string; modelId: string } | null;
+  accessMode: ApprovalMode;
 }): Promise<Response> {
   const type = String(body.type ?? '');
   const projectModel = await projectModelForCwd(await getDb(), cwd);
@@ -156,6 +158,7 @@ async function startAcpChat({ harness, cwd, body, model }: {
     model: model ?? projectModel ?? await loadPersistedModel(),
     thinkingLevel,
     mode,
+    accessMode,
   });
 
   if (type === 'ensure_session') {

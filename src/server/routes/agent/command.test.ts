@@ -26,7 +26,10 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { sendCommand } from '@/server/routes/agent/command';
+import { buildAgentSnapshot, sendCommand } from '@/server/routes/agent/command';
+import { registerAcpSession } from '@/server/lib/harness/register.server';
+import { claimHarness } from '@/server/lib/harness/registry';
+import type { HarnessSession } from '@/server/lib/harness/session';
 
 /** Ids that no Kabmo instance manages and no session file backs. */
 const DEAD = 'spawn-guard-dead-session';
@@ -83,5 +86,91 @@ describe('agent command spawn guard', () => {
     // It reached the spawn path and failed there (no session file on disk),
     // which is the opposite of the guard's 409.
     expect(response.status).not.toBe(409);
+  });
+});
+
+/**
+ * The reattach snapshot for a NON-omp harness.
+ *
+ * The ACP driver reports its own run flags, and "the child is alive" is not
+ * "a turn is in flight". Reporting `running: true` for an idle ACP chat re-armed
+ * the generating indicator — and a reattaching tab's sidebar spinner — for a
+ * turn that had already finished (measured: `isStreaming` and `isPromptRunning`
+ * both false while the snapshot read `running: true`).
+ */
+describe('agent snapshot for a non-omp harness', () => {
+  interface FakeAcp {
+    running: boolean;
+    dialogs: unknown[];
+  }
+
+  function registerAcp(id: string, fake: FakeAcp): () => void {
+    let release: (() => void) | null = null;
+    const session = {
+      sessionId: id,
+      harness: 'omp-acp',
+      sessionFile: '',
+      cwd: '/tmp',
+      isStreaming: fake.running,
+      isPromptRunning: fake.running,
+      runModel: null,
+      capabilities: {},
+      configOptions: [],
+      isAlive: () => true,
+      isRunning: () => fake.running,
+      isBusy: () => fake.running || fake.dialogs.length > 0,
+      send: async () => ({
+        sessionId: id,
+        isStreaming: fake.running,
+        isPromptRunning: fake.running,
+        messageCount: 0,
+      }),
+      getPendingUiDialogs: () => fake.dialogs,
+      resolvePendingUiDialog: () => {},
+      onEvent: () => () => {},
+      emit: () => {},
+      destroy: () => {},
+      destroyAndWait: async () => {},
+      onDestroy: (callback: () => void) => {
+        release = callback;
+      },
+    };
+    registerAcpSession(session as unknown as HarnessSession, id);
+    claimHarness(session as unknown as HarnessSession, 'omp-acp');
+    return () => release?.();
+  }
+
+  test('an idle ACP chat is not reported as running', async () => {
+    const id = 'acp-snapshot-idle';
+    const release = registerAcp(id, { running: false, dialogs: [] });
+    try {
+      expect((await buildAgentSnapshot(id)).running).toBe(false);
+    } finally {
+      release();
+    }
+  });
+
+  test('a streaming ACP chat is running', async () => {
+    const id = 'acp-snapshot-streaming';
+    const release = registerAcp(id, { running: true, dialogs: [] });
+    try {
+      expect((await buildAgentSnapshot(id)).running).toBe(true);
+    } finally {
+      release();
+    }
+  });
+
+  test('a parked approval keeps an idle chat running and busy', async () => {
+    const id = 'acp-snapshot-dialog';
+    const dialog = { type: 'extension_ui_request', id: '7', method: 'confirm', title: 't', message: 'm', options: [] };
+    const release = registerAcp(id, { running: false, dialogs: [dialog] });
+    try {
+      const snapshot = await buildAgentSnapshot(id);
+      expect(snapshot.running).toBe(true);
+      expect(snapshot.busy).toBe(true);
+      expect(snapshot.pendingUiRequests).toHaveLength(1);
+    } finally {
+      release();
+    }
   });
 });

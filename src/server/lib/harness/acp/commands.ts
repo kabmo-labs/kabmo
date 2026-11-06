@@ -22,6 +22,7 @@
 
 import { configOption, promptBlocks } from '@/server/lib/harness/acp/prompt';
 import { acpOptionValues } from '@/server/lib/harness/acp/protocol';
+import { isApprovalMode, type ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 import type { AcpConfigOption } from '@/server/lib/harness/acp/protocol';
 import type { HarnessCapabilities } from '@/server/lib/harness/capabilities';
 import type { HarnessId } from '@/shared/lib/harness/catalog';
@@ -41,6 +42,8 @@ export interface AcpCommandHost {
   destroyAndWait(): Promise<void>;
   steer(blocks: unknown[], queue: 'steering' | 'followUp'): Promise<unknown>;
   cancelTurn(): void;
+  /** Adopt the composer's approval tier. ACP decides approvals in-process. */
+  setAccessMode(mode: ApprovalMode): void;
   setConfig(configId: string, value: string | boolean): Promise<unknown>;
   resolvePermission(dialogId: string, confirmed: boolean): unknown;
   webState(): Record<string, unknown>;
@@ -51,9 +54,21 @@ export interface AcpCommandHost {
     if (!host.isAlive()) throw new Error('ACP session is not running');
     const type = typeof command.type === 'string' ? command.type : '';
 
+    // The composer sends its access pick with each request (the warmup and the
+    // prompt both carry it). ACP has no spawn flag for it, so the tier is adopted
+    // here and used when `session/request_permission` arrives.
+    if (isApprovalMode(command.accessMode)) host.setAccessMode(command.accessMode);
+
     switch (type) {
       case 'prompt':
         return host.startTurn(String(command.message ?? ''), command.images);
+
+      case 'set_access_mode': {
+        const mode = command.mode;
+        if (!isApprovalMode(mode)) throw new Error(`Unknown access mode: ${String(mode)}`);
+        host.setAccessMode(mode);
+        return { mode };
+      }
 
       case 'steer': {
         const blocks = promptBlocks(String(command.message ?? ''), command.images);

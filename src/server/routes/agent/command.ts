@@ -200,10 +200,16 @@ export async function buildAgentSnapshot(sessionId: string): Promise<AgentSnapsh
   if (!session || !session.isAlive()) return { running: false };
   const omp = asOmpSession(session);
   if (!omp) {
+    // "Alive" is not "a turn is in flight": the driver's own flags answer that.
+    // Reporting `running: true` for an idle ACP chat re-armed the generating
+    // indicator and a reattaching tab's spinner for a turn that had already
+    // finished (measured: both turn flags false while `running` read true).
+    const dialogs = session.getPendingUiDialogs();
     return {
-      running: true,
+      running: session.isRunning() || dialogs.length > 0,
+      ...(dialogs.length > 0 ? { busy: true } : {}),
       state: await session.send({ type: 'get_state' }),
-      pendingUiRequests: session.getPendingUiDialogs(),
+      pendingUiRequests: dialogs,
     };
   }
 

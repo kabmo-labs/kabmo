@@ -18,6 +18,7 @@
  */
 
 import type { AcpId } from '@/server/lib/harness/acp/protocol';
+import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 
 export interface PermissionOption {
   optionId: string;
@@ -121,4 +122,34 @@ export function describePermission(toolCall: Record<string, unknown> | undefined
   }
   const title = toolCall?.title;
   return typeof title === 'string' ? title : 'This action needs your approval';
+}
+
+/** ACP tool kinds that cannot change the workspace. */
+const READ_KINDS: Record<string, true> = { read: true, search: true, fetch: true, think: true, switch_mode: true };
+
+/** ACP tool kinds that write to the workspace. */
+const WRITE_KINDS: Record<string, true> = { edit: true, delete: true, move: true };
+
+/**
+ * Whether `mode` answers this permission request without asking the user.
+ *
+ * The mapping is omp's own contract, so one label means one thing on both
+ * transports: `always-ask` auto-runs read-tier tools and asks for write+exec,
+ * `write` auto-runs read+write and asks for exec, `yolo` runs everything.
+ * ACP publishes the tier as `toolCall.kind`, so nothing is guessed from a title.
+ */
+export function autoApproval(mode: ApprovalMode, toolCall: Record<string, unknown> | undefined): boolean {
+  if (mode === 'yolo') return true;
+  const kind = typeof toolCall?.kind === 'string' ? toolCall.kind : 'other';
+  if (READ_KINDS[kind]) return true;
+  if (mode === 'write') return WRITE_KINDS[kind] === true;
+  return false;
+}
+
+/** The `allow_*` option id an auto-approval selects, or null when the agent
+ *  offered none — a request with no allow option still has to reach the user. */
+export function allowOption(options: readonly PermissionOption[]): string | null {
+  const option = options.find((entry) => entry.kind === 'allow_once')
+    ?? options.find((entry) => typeof entry.kind === 'string' && entry.kind.startsWith('allow_'));
+  return option?.optionId ?? null;
 }

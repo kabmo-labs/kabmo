@@ -23,6 +23,27 @@ export function configOption(options: AcpConfigOption[], category: string): AcpC
   return options.find((option) => option.category === category);
 }
 
+/**
+ * The provider/model a `model` selector names, read off its `currentValue`.
+ *
+ * ACP publishes the model as `provider/modelId`, and the FIRST slash is the
+ * separator because a model id may contain one. A value with no slash names no
+ * provider, so `fallbackProvider` stands in for it — the same fallback
+ * `setConfig` has always used, kept here so the session's start-up seed, its
+ * config writes and `webState()` cannot disagree about what a selector says.
+ */
+export function modelFromOption(
+  option: AcpConfigOption | undefined,
+  fallbackProvider: string,
+): { provider: string; modelId: string } | null {
+  const current = option?.currentValue;
+  if (typeof current !== 'string' || current.length === 0) return null;
+  const slash = current.indexOf('/');
+  return slash > 0
+    ? { provider: current.slice(0, slash), modelId: current.slice(slash + 1) }
+    : { provider: fallbackProvider, modelId: current };
+}
+
 /** A prompt in ACP content-block form. */
 export function promptBlocks(message: string, images: unknown): unknown[] {
   const blocks: unknown[] = [];

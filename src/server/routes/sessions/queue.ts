@@ -21,7 +21,7 @@ import {
   patchQueueItem,
   reorderQueue,
 } from '@/server/lib/queue/store.server';
-import { getRpcSession } from '@/server/lib/omp/rpc/manager';
+import { getLiveSession } from '@/server/lib/omp/rpc/session-registry';
 import { deliverQueueNow } from '@/server/lib/queue/delivery.server';
 
 /** GET — the session's queued follow-ups in delivery order. */
@@ -125,7 +125,12 @@ export async function nudgeQueueDelivery({ request, params }: ActionFunctionArgs
   if (!sessionId) return json({ error: 'Session ID is required' }, { status: 400 });
   if (request.method !== 'POST') return json({ error: 'Method not allowed' }, { status: 405 });
 
-  const session = getRpcSession(sessionId);
+  // ANY live harness, not just omp's RPC wrapper: an ACP chat has no
+  // `AgentSessionWrapper`, and the omp-only lookup answered `session-not-live`
+  // for a session that was running — so the client's three-second nudge (the
+  // only recovery path when a delivery timer is lost) never delivered a queued
+  // follow-up on an ACP chat.
+  const session = getLiveSession(sessionId);
   if (!session?.isAlive()) {
     return json({ success: true, delivered: false, reason: 'session-not-live', queue: await listQueue(sessionId) });
   }

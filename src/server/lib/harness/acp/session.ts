@@ -29,9 +29,11 @@ import { AcpTurns } from '@/server/lib/harness/acp/turn';
 import { AcpFrameMapper } from '@/server/lib/harness/acp/frames';
 import type { AcpConfigOption, AcpId, AcpSessionNewResult } from '@/server/lib/harness/acp/protocol';
 import { capabilitiesFrom } from '@/server/lib/harness/launch';
-import { applySelections, configOption, promptBlocks } from '@/server/lib/harness/acp/prompt';
-import { PendingPermissions } from '@/server/lib/harness/acp/permissions';
+import { applySelections, configOption, modelFromOption, promptBlocks } from '@/server/lib/harness/acp/prompt';
+import { PendingPermissions, allowOption, autoApproval, type PermissionOption } from '@/server/lib/harness/acp/permissions';
+import { DEFAULT_APPROVAL_MODE, isApprovalMode, type ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 import { dispatchCommand, type AcpCommandHost } from '@/server/lib/harness/acp/commands';
+import { scheduleQueueDelivery } from '@/server/lib/queue/delivery.server';
 import type { HarnessCapabilities } from '@/server/lib/harness/capabilities';
 import type { HarnessSession, HarnessSpawnRequest } from '@/server/lib/harness/session';
 import type { HarnessId } from '@/shared/lib/harness/catalog';
@@ -46,6 +48,9 @@ export interface AcpSessionOptions {
   model?: { provider: string; modelId: string } | null;
   thinkingLevel?: string | null;
   mode?: string | null;
+  /** The composer's access pick. ACP has no spawn flag for it, so the session
+   *  answers `session/request_permission` itself according to this tier. */
+  accessMode?: ApprovalMode | null;
 }
 
 export class AcpSession implements HarnessSession, AcpCommandHost {
@@ -56,6 +61,8 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
   /** The turn in flight — the only one whose frames are accepted. */
   private readonly turns: AcpTurns;
   runModel: { provider: string; modelId: string } | null = null;
+  /** The composer's approval tier. Answered in-process by {@link onClientRequest}. */
+  accessMode: ApprovalMode = DEFAULT_APPROVAL_MODE;
   capabilities: HarnessCapabilities = capabilitiesFrom({ protocolVersion: 1 }, [], { usage: false, plan: false });
   configOptions: AcpConfigOption[] = [];
 
@@ -90,10 +97,17 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
       resetMapper: () => this.mapper.reset(),
       closeMessage: () => this.mapper.closeMessage(),
       openCalls: () => this.mapper.openCalls(),
+      // The follow-up queue is armed from the turn's END, exactly as the omp
+      // wrapper arms it from its own terminal settle. Without this an ACP chat's
+      // queued follow-up stayed in `queued_messages` forever: nothing on this
+      // transport scheduled a delivery, and the client's nudge route only knew
+      // omp's wrapper.
+      onTurnEnd: () => scheduleQueueDelivery(this),
     });
     this.requestedModel = options.model ?? null;
     this.requestedThinking = options.thinkingLevel ?? null;
     this.requestedMode = options.mode ?? null;
+    this.accessMode = isApprovalMode(options.accessMode) ? options.accessMode : DEFAULT_APPROVAL_MODE;
   }
 
   private readonly requestedModel: { provider: string; modelId: string } | null;
@@ -116,6 +130,12 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
     }
     this.sessionId = session.sessionId || sessionIdToLoad || '';
     this.configOptions = session.configOptions ?? [];
+    // Seed the run's model from the selector the agent ALREADY reports. Nothing
+    // is written yet at this point, so without the seed `runModel` stayed null
+    // until some later config write — and `webState()` then answered
+    // `provider: 'omp-acp'` (the harness id) with the whole `provider/model`
+    // string as the model id, which is what the generating indicator names.
+    this.runModel = modelFromOption(configOption(this.configOptions, 'model'), this.harness);
     this.capabilities = capabilitiesFrom(init, this.configOptions, { usage: false, plan: false });
     await applySelections(this, {
       model: this.requestedModel,
@@ -189,6 +209,12 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
     this.turns.cancel();
   }
 
+  /** Dispatcher seam: adopt the composer's access pick. ACP answers approvals
+   *  in-process, so this needs no respawn — unlike omp's spawn-time flag. */
+  setAccessMode(mode: ApprovalMode): void {
+    this.accessMode = mode;
+  }
+
   /** Dispatcher seam: write one config selector and adopt the answer.
    *
    *  The agent's reply carries the whole config list, and the model selector's
@@ -199,13 +225,8 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
     const result = await this.proc.setConfigOption(this.sessionId, configId, value);
     if (result && typeof result === 'object' && 'configOptions' in result && Array.isArray(result.configOptions)) {
       this.configOptions = result.configOptions as AcpConfigOption[];
-      const current = configOption(this.configOptions, 'model')?.currentValue;
-      if (typeof current === 'string') {
-        const slash = current.indexOf('/');
-        this.runModel = slash > 0
-          ? { provider: current.slice(0, slash), modelId: current.slice(slash + 1) }
-          : { provider: this.harness, modelId: current };
-      }
+      const resolved = modelFromOption(configOption(this.configOptions, 'model'), this.harness);
+      if (resolved) this.runModel = resolved;
     }
     return result;
   }
@@ -227,19 +248,18 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
   }
 
   webState(): Record<string, unknown> {
-    const model = configOption(this.configOptions, 'model');
     const thinking = configOption(this.configOptions, 'thought_level');
+    // The run's model is seeded at `start()` and refreshed by every config
+    // write, so this is the value the agent RESOLVED. The fallback exists only
+    // for a session whose selector list never carried a model.
+    const serving = this.runModel ?? modelFromOption(configOption(this.configOptions, 'model'), this.harness);
     return {
       sessionId: this.sessionId,
       isStreaming: this.isStreaming,
       isPromptRunning: this.isPromptRunning,
       isCompacting: false,
       messageCount: 0,
-      model: this.runModel
-        ? { id: this.runModel.modelId, provider: this.runModel.provider }
-        : typeof model?.currentValue === 'string'
-          ? { id: model.currentValue, provider: this.harness }
-          : undefined,
+      model: serving ? { id: serving.modelId, provider: serving.provider } : undefined,
       thinkingLevel: typeof thinking?.currentValue === 'string' ? thinking.currentValue : undefined,
       configOptions: this.configOptions,
     };
@@ -289,6 +309,22 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
     params: Record<string, unknown>,
   ): Promise<{ answered: true; result: unknown } | { answered: false; message: string } | { answered: false; deferred: true }> {
     if (method === 'session/request_permission') {
+      // A tier that allows this kind is answered HERE, before a dialog exists:
+      // parking it would ask a question the operator's own selection already
+      // answered, and `isBusy()` would report a dialog nobody is meant to see.
+      const toolCall = params.toolCall && typeof params.toolCall === 'object'
+        ? Object.fromEntries(Object.entries(params.toolCall))
+        : undefined;
+      if (autoApproval(this.accessMode, toolCall)) {
+        const options = Array.isArray(params.options) ? (params.options as PermissionOption[]) : [];
+        const optionId = allowOption(options);
+        if (optionId) {
+          return Promise.resolve({
+            answered: true,
+            result: { outcome: { outcome: 'selected', optionId } },
+          });
+        }
+      }
       // The dialog id IS the JSON-RPC id: the answer arrives later through
       // `extension_ui_response`, and it has to name the exact parked call.
       const dialog = this.permissions.add(id, String(params.sessionId ?? this.sessionId), params);

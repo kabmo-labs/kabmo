@@ -26,6 +26,7 @@ import { describe, expect, test } from 'bun:test';
 import { AcpSession } from '@/server/lib/harness/acp/session';
 import { AcpFrameMapper } from '@/server/lib/harness/acp/frames';
 import { AcpTurns } from '@/server/lib/harness/acp/turn';
+import { PendingPermissions } from '@/server/lib/harness/acp/permissions';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
 
 interface Turn {
@@ -44,6 +45,8 @@ function mountSession(): {
   session: AcpSession;
   events: AgentEvent[];
   turn: Turn;
+  /** How many times the turn-end seam fired (the queue's arming hook). */
+  turnEnds: () => number;
 } {
   const events: AgentEvent[] = [];
   const dispatched = Promise.withResolvers<void>();
@@ -58,6 +61,7 @@ function mountSession(): {
 
   const session = Object.create(AcpSession.prototype) as AcpSession;
   const mapper = new AcpFrameMapper();
+  let turnEndCount = 0;
   const proc = {
     prompt: async (_message: string, _images: unknown) => {
       const pending = Promise.withResolvers<unknown>();
@@ -77,6 +81,9 @@ function mountSession(): {
     resetMapper: () => mapper.reset(),
     closeMessage: () => mapper.closeMessage(),
     openCalls: () => mapper.openCalls(),
+    onTurnEnd: () => {
+      turnEndCount += 1;
+    },
   });
   Object.assign(session as unknown as Record<string, unknown>, {
     harness: 'opencode',
@@ -84,11 +91,13 @@ function mountSession(): {
     sessionId: 'acp-1',
     turns,
     mapper,
+    permissions: new PendingPermissions(),
+    accessMode: 'always-ask',
     listeners: new Set<(event: AgentEvent) => void>([(event) => events.push(event)]),
     proc,
     destroyed: false,
   });
-  return { session, events, turn };
+  return { session, events, turn, turnEnds: () => turnEndCount };
 }
 
 describe('ACP prompt dispatch', () => {
@@ -126,6 +135,20 @@ describe('ACP prompt dispatch', () => {
     expect(events.some((event) => event.type === 'prompt_error')).toBe(true);
     expect(session.isPromptRunning).toBe(false);
   });
+
+  test('the turn end arms the follow-up queue, exactly once', async () => {
+    const { session, turn, turnEnds } = mountSession();
+    await session.send({ type: 'prompt', message: 'hello' });
+    await turn.started;
+    // Nothing has ended yet: the queue must not be offered a slot while the
+    // turn is still running, or the delivery tick would claim the head and
+    // dispatch it over the turn the user is watching.
+    expect(turnEnds()).toBe(0);
+
+    turn.finish({ stopReason: 'end_turn' });
+    for (let i = 0; i < 4; i += 1) await Promise.resolve();
+    expect(turnEnds()).toBe(1);
+  });
 });
 
 describe('ACP cancel', () => {
@@ -154,7 +177,7 @@ describe('ACP cancel', () => {
   });
 
   test('the cancel reports the turn as cancelled, once', async () => {
-    const { session, events, turn } = mountSession();
+    const { session, events, turn, turnEnds } = mountSession();
     (session as unknown as { proc: Record<string, unknown> }).proc.cancel = () => {};
     await session.send({ type: 'prompt', message: 'long job' });
     session.cancelTurn();
@@ -164,6 +187,9 @@ describe('ACP cancel', () => {
     const ends = events.filter((event) => event.type === 'agent_end');
     expect(ends).toHaveLength(1);
     expect(ends[0]).toMatchObject({ type: 'agent_end', isTerminal: true, cancelled: true });
+    // A Stop ends the turn, so the queue it was holding must be offered a slot
+    // rather than left waiting for the next user prompt.
+    expect(turnEnds()).toBe(1);
   });
 });
 
@@ -215,5 +241,90 @@ describe('ACP turn serialization', () => {
     for (let i = 0; i < 8; i += 1) await Promise.resolve();
     expect(events.filter((event) => event.type === 'agent_end')).toHaveLength(2);
     expect(session.isRunning()).toBe(false);
+  });
+});
+
+/**
+ * The access tier decides whether a permission request ever reaches the user.
+ *
+ * ACP has no `--approval-mode` flag: the CLIENT answers
+ * `session/request_permission`. That made the composer's access control inert
+ * on this transport (measured: "Full bypass" still raised the approval dialog
+ * for a bash call), and the tiers below are omp's own contract, so one label
+ * means one thing on both transports.
+ */
+describe('ACP permission gating', () => {
+  interface PermissionHost {
+    accessMode: string;
+    onClientRequest: (
+      id: number,
+      method: string,
+      params: Record<string, unknown>,
+    ) => Promise<unknown>;
+  }
+
+  const request = (kind: string): Record<string, unknown> => ({
+    sessionId: 'acp-1',
+    toolCall: { kind, title: `${kind} thing` },
+    options: [
+      { optionId: 'deny', kind: 'reject_once' },
+      { optionId: 'allow', kind: 'allow_once' },
+    ],
+  });
+
+  const permission = (session: AcpSession, id: number, kind: string): Promise<unknown> =>
+    (session as unknown as PermissionHost).onClientRequest(id, 'session/request_permission', request(kind));
+
+  const dialogs = (events: AgentEvent[]): number =>
+    events.filter((event) => event.type === 'extension_ui_request').length;
+
+  test('`yolo` answers an exec request itself, with no dialog', async () => {
+    const { session, events } = mountSession();
+    (session as unknown as PermissionHost).accessMode = 'yolo';
+    expect(await permission(session, 7, 'execute')).toEqual({
+      answered: true,
+      result: { outcome: { outcome: 'selected', optionId: 'allow' } },
+    });
+    expect(dialogs(events)).toBe(0);
+    expect(session.isBusy()).toBe(false);
+  });
+
+  test('`always-ask` still parks an exec request as a dialog', async () => {
+    const { session, events } = mountSession();
+    expect(await permission(session, 8, 'execute')).toEqual({ answered: false, deferred: true });
+    expect(dialogs(events)).toBe(1);
+    expect(session.isBusy()).toBe(true);
+  });
+
+  test('`always-ask` auto-runs a read-tier request, as omp does', async () => {
+    const { session } = mountSession();
+    expect(await permission(session, 9, 'read')).toMatchObject({ answered: true });
+  });
+
+  test('`write` auto-runs edits and still asks for exec', async () => {
+    const { session } = mountSession();
+    (session as unknown as PermissionHost).accessMode = 'write';
+    expect(await permission(session, 10, 'edit')).toMatchObject({ answered: true });
+    expect(await permission(session, 11, 'execute')).toEqual({ answered: false, deferred: true });
+  });
+
+  test('a request with no allow option still reaches the user', async () => {
+    const { session, events } = mountSession();
+    (session as unknown as PermissionHost).accessMode = 'yolo';
+    const answer = await (session as unknown as PermissionHost).onClientRequest(12, 'session/request_permission', {
+      sessionId: 'acp-1',
+      toolCall: { kind: 'execute' },
+      options: [{ optionId: 'deny', kind: 'reject_once' }],
+    });
+    expect(answer).toEqual({ answered: false, deferred: true });
+    expect(dialogs(events)).toBe(1);
+  });
+
+  test('a prompt carrying the access pick adopts it before the turn', async () => {
+    const { session, turn } = mountSession();
+    await session.send({ type: 'prompt', message: 'hi', accessMode: 'yolo' });
+    await turn.started;
+    expect((session as unknown as PermissionHost).accessMode).toBe('yolo');
+    turn.finish({ stopReason: 'end_turn' });
   });
 });
