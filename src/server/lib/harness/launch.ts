@@ -88,8 +88,8 @@ export const HARNESS_LAUNCH: Readonly<Partial<Record<HarnessId, HarnessLaunch>>>
   antigravity: {
     id: 'antigravity',
     command: ['agy', 'acp'],
-    install: 'curl -fsSL https://antigravity.google/install.sh | bash',
-    note: 'sign in once with `agy` (or `agy acp --login`); one process per project',
+    install: 'download agy_cli_<os>_<arch>.tar.gz from github.com/google-antigravity/antigravity-cli/releases',
+    note: 'ACP since 1.5; sign in once (`agy acp --login`) or authenticate with a Gemini API key; runs under Docker on Linux',
   },
   minimax: {
     id: 'minimax',
@@ -101,7 +101,7 @@ export const HARNESS_LAUNCH: Readonly<Partial<Record<HarnessId, HarnessLaunch>>>
     id: 'pi',
     command: ['npx', '-y', 'pi-acp@0.0.34'],
     install: 'npm i -g @earendil-works/pi-coding-agent pi-acp',
-    note: 'shells out to a `pi` binary on PATH; failure arrives as a session error',
+    note: 'shells out to a `pi` binary on PATH; needs `pi auth` before a turn succeeds',
   },
   qwen: {
     id: 'qwen',
@@ -112,8 +112,8 @@ export const HARNESS_LAUNCH: Readonly<Partial<Record<HarnessId, HarnessLaunch>>>
   kimi: {
     id: 'kimi',
     command: ['kimi', 'acp'],
-    install: 'registry binary (MoonshotAI/kimi-cli)',
-    note: 'registry shape, same as opencode',
+    install: 'curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash',
+    note: 'ACP needs an onboarded provider (config.toml) or a signed-in account',
   },
   cursor: {
     id: 'cursor',
@@ -232,6 +232,8 @@ export async function probeHarness(
   // instead of the `blocked` record the settings card renders. "This harness
   // cannot run here" is the normal state that card exists to show.
   let proc: AcpProcess | null = null;
+  /** `agentInfo` from a handshake that succeeded before a later step failed. */
+  let agent: AcpInitializeResult['agentInfo'] | undefined;
 
   try {
     proc = new AcpProcess({
@@ -253,6 +255,10 @@ export async function probeHarness(
       },
     });
     const init = await proc.initialize();
+    // Kept for the failure path below: an agent that answers `initialize` and
+    // then refuses `session/new` ("Authentication required") still told us who
+    // it is, and the card can name it beside the refusal.
+    agent = init.agentInfo;
     const session = await proc.newSession(cwd);
     const options = session.configOptions ?? [];
     return {
@@ -269,7 +275,7 @@ export async function probeHarness(
     // reader nothing, while the stderr tail names the corrupt plugin or the
     // refused login that caused it.
     const lastLines = stderrTail.trim().split('\n').slice(-3).join(' · ');
-    return blockedProbe(id, lastLines ? `${reason} — ${lastLines}` : reason);
+    return blockedProbe(id, lastLines ? `${reason} — ${lastLines}` : reason, agent);
   } finally {
     await proc?.dispose(1_000).catch(() => {});
   }
@@ -277,10 +283,19 @@ export async function probeHarness(
 
 /** One `blocked` probe record. The route uses it when the launch line itself is
  *  unusable (an invalid env line) — the same shape every other refusal has. */
-export function blockedProbe(id: HarnessId, reason: string): HarnessProbe {
+export function blockedProbe(
+  id: HarnessId,
+  reason: string,
+  agent?: AcpInitializeResult['agentInfo'],
+): HarnessProbe {
   return {
     harness: id,
-    capabilities: { ...UNPROBED_CAPABILITIES, blocked: reason },
+    capabilities: {
+      ...UNPROBED_CAPABILITIES,
+      ...(agent?.name ? { agentName: agent.name } : {}),
+      ...(agent?.version ? { agentVersion: agent.version } : {}),
+      blocked: reason,
+    },
     models: [],
     thinking: [],
     modes: [],

@@ -24,7 +24,7 @@ import type { HarnessProbe } from '@/server/lib/harness/capabilities';
 import { forgetProbe, loadProbes, rememberProbe } from '@/server/lib/harness/probe-cache.server';
 import { loadDisabledHarnesses, saveHarnessEnabled } from '@/server/lib/harness/enabled.server';
 import { harnessEnabled } from '@/shared/lib/harness/enabled';
-import { loadHarnessConfig, probeInvalidatedBy, resolveLaunch, saveHarnessConfig } from '@/server/lib/harness/config.server';
+import { launchFromConfig, loadHarnessConfig, probeInvalidatedBy, resolveLaunch, saveHarnessConfig } from '@/server/lib/harness/config.server';
 import { importableProvidersFor, readRegistryProviders } from '@/server/lib/harness/provider-sources.server';
 import { addProviderAction, importProviderAction, importSourceOf, isImportBody } from '@/server/routes/harness/import-action';
 import { supportedProtocols } from '@/shared/lib/harness/dialects';
@@ -61,13 +61,28 @@ export interface HarnessSummary {
   unavailable?: string;
 }
 
-/** Is a launch command first-token resolvable? The omp binary has its own
- *  resolver (KABMO_OMP_BIN, then PATH) and is never "missing" through PATH alone. */
-function commandAvailable(id: HarnessId): boolean {
+/**
+ * Is a launch command first-token resolvable? The omp binary has its own
+ * resolver (KABMO_OMP_BIN, then PATH) and is never "missing" through PATH alone.
+ *
+ * The USER's command override decides this, not the build's table: a harness
+ * whose binary lives behind a wrapper, a container (`docker run … agy acp`) or an
+ * absolute path read as "not installed" and could not even be switched on, while
+ * a spawn of that same configured command worked.
+ */
+function commandAvailable(id: HarnessId, config?: HarnessConfig): boolean {
   if (id === 'omp-acp') return Boolean(resolveOmpBin());
-  const launch = HARNESS_LAUNCH[id];
-  if (!launch) return false;
-  const [binary] = launch.command;
+  let command = HARNESS_LAUNCH[id]?.command;
+  if (config) {
+    try {
+      const configured = launchFromConfig(id, config);
+      if (configured?.command.length) command = configured.command;
+    } catch {
+      // An unusable env line is reported by the probe; availability falls back
+      // to the build's table rather than claiming "not installed".
+    }
+  }
+  const [binary] = command ?? [];
   if (!binary) return false;
   if (binary === 'npx') return Boolean(Bun.which('npx') ?? Bun.which('node'));
   return Boolean(Bun.which(binary));
@@ -83,6 +98,8 @@ export async function listHarnesses(): Promise<HarnessSummary[]> {
   // the composer's picker. Read in the same pass as the probes for the reason
   // above — this is the one catalog answer.
   const disabled = await loadDisabledHarnesses();
+  const configs: Record<string, HarnessConfig> = {};
+  for (const id of HARNESS_IDS) configs[id] = await loadHarnessConfig(id);
   return HARNESS_IDS.map((id) => {
     const descriptor = harnessDescriptor(id);
     const launch = HARNESS_LAUNCH[id];
@@ -93,7 +110,7 @@ export async function listHarnesses(): Promise<HarnessSummary[]> {
     // a ⚠ over the `omp` tab while DISABLING it, so the default harness could not
     // be selected at all. Measured: `?probe=omp-rpc` wrote exactly that record.
     const fresh = descriptor?.builtIn ? null : cached;
-    const available = id === 'omp-rpc' ? true : commandAvailable(id);
+    const available = id === 'omp-rpc' ? true : commandAvailable(id, configs[id]);
     return {
       id,
       label: descriptor?.label ?? id,
@@ -233,7 +250,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
       //    and the card explains the refusal; reporting a 400 here would leave the
       //    UI showing the previous value for a state the database holds.
       let probe: HarnessProbe | null = null;
-      if (enabled && commandAvailable(id as HarnessId)) {
+      if (enabled && commandAvailable(id as HarnessId, await loadHarnessConfig(id as HarnessId))) {
         const cwd = typeof body.cwd === 'string' ? body.cwd : process.cwd();
         probe = await probeWithConfig(id as HarnessId, cwd).catch(() => null);
         if (probe) await rememberProbe(id as HarnessId, probe);
