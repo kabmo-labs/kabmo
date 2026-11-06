@@ -4,15 +4,14 @@
  */
 
 /**
- * The short-lived feedback flags: the copy confirmation, the "show more" page
- * size, and the toast queue.
+ * The short-lived feedback flags: the copy confirmation and the "show more" page
+ * size. The toast queue has its own suite (`toast-queue.test.ts`).
  *
  * Each case pins a stale flag. The copy confirmation restarts a timer on a
  * repeat trigger — without the clearTimeout the first timer still fires and the
  * check mark disappears while the user is copying the next item. "Show more"
  * must keep counting past the list length (the hook has no total to clamp
- * against; callers slice), and a dismissed toast's id must never be handed out
- * again or the renderer reuses the key of the row it just removed.
+ * against; callers slice).
  *
  * Mounted with `h()` against happy-dom, the same way the other hook tests do.
  * The overlay-scrollbar fade lives in `lib/scrollbar-activity.test.ts`.
@@ -23,11 +22,9 @@ import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 
-import type { ToastData } from '@/client/components/common/Toast';
 import { useCopyFlag } from '@/client/hooks/ui/copy-flag';
 import { useShowMore } from '@/client/hooks/ui/show-more';
 import type { ShowMore } from '@/client/hooks/ui/show-more';
-import { useToasts } from '@/client/hooks/ui/toasts';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'Event', 'CustomEvent'] as const;
 /** The runner's own globals, restored on teardown (see the matching afterAll at the end of this file) so later files still see native Event/CustomEvent/window. */
@@ -57,20 +54,10 @@ function mount(vnode: Parameters<typeof render>[0]) {
   });
 }
 
-/** The return contracts of the two hooks here that export no named type. */
+/** The return contract of the hook here that exports no named type. */
 interface CopyFlagApi {
   copied: boolean;
   flagCopied: () => void;
-}
-
-interface ToastsApi {
-  toasts: ToastData[];
-  pushToast: (
-    message: string,
-    type?: 'success' | 'error',
-    options?: { action?: ToastData['action']; duration?: number },
-  ) => void;
-  dismissToast: (id: number) => void;
 }
 
 function CopyProbe({ resetMs, seen }: { resetMs: number; seen: { current: CopyFlagApi | null } }) {
@@ -217,80 +204,6 @@ describe('useShowMore', () => {
     expect(seen.current!.visibleCount).toBe(6);
     act(() => seen.current!.showLess());
     expect(seen.current!.visibleCount).toBe(2);
-  });
-});
-
-function ToastProbe({ seen }: { seen: { current: ToastsApi | null } }) {
-  seen.current = useToasts();
-  return h('span', null, String(seen.current.toasts.length));
-}
-
-describe('useToasts', () => {
-  test('pushes in order with monotonically increasing ids', () => {
-    const seen: { current: ToastsApi | null } = { current: null };
-    mount(h(ToastProbe, { seen }));
-
-    act(() => {
-      seen.current!.pushToast('first');
-      seen.current!.pushToast('second');
-    });
-    expect(seen.current!.toasts.map((t) => [t.id, t.message, t.type])).toEqual([
-      [1, 'first', 'error'],
-      [2, 'second', 'error'],
-    ]);
-  });
-
-  test('defaults to an error toast and carries the options through', () => {
-    const seen: { current: ToastsApi | null } = { current: null };
-    mount(h(ToastProbe, { seen }));
-    const action = { label: 'Send now', onClick: () => {} };
-
-    act(() => {
-      seen.current!.pushToast('failed', 'error', { action, duration: 250 });
-      seen.current!.pushToast('done', 'success');
-    });
-
-    const [failed, done] = seen.current!.toasts;
-    expect(failed.action).toBe(action);
-    expect(failed.duration).toBe(250);
-    expect(done.type).toBe('success');
-    expect(done.action).toBeUndefined();
-    expect(done.duration).toBeUndefined();
-  });
-
-  test('dismiss removes only the matching id and keeps the rest in order', () => {
-    const seen: { current: ToastsApi | null } = { current: null };
-    mount(h(ToastProbe, { seen }));
-
-    act(() => {
-      seen.current!.pushToast('a');
-      seen.current!.pushToast('b');
-      seen.current!.pushToast('c');
-    });
-    act(() => seen.current!.dismissToast(2));
-    expect(seen.current!.toasts.map((t) => t.message)).toEqual(['a', 'c']);
-
-    // An id that is not present is a no-op, not a wipe.
-    act(() => seen.current!.dismissToast(99));
-    expect(seen.current!.toasts.map((t) => t.message)).toEqual(['a', 'c']);
-  });
-
-  test('never reuses a dismissed id', () => {
-    const seen: { current: ToastsApi | null } = { current: null };
-    mount(h(ToastProbe, { seen }));
-
-    act(() => {
-      seen.current!.pushToast('a');
-      seen.current!.pushToast('b');
-    });
-    act(() => {
-      seen.current!.dismissToast(2);
-      seen.current!.pushToast('c');
-    });
-    expect(seen.current!.toasts.map((t) => [t.id, t.message])).toEqual([
-      [1, 'a'],
-      [3, 'c'],
-    ]);
   });
 });
 

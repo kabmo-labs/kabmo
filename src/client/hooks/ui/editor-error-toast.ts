@@ -26,10 +26,17 @@ import { useKabmoEvent } from '@/client/hooks/ui/window-event';
 import { EDITOR_ERROR_EVENT } from '@/client/lib/editor-errors';
 
 /** What `pushToast` accepts, named so this hook does not import the toast host. */
-type PushToast = (message: string, type?: 'success' | 'error', options?: { duration?: number }) => void;
+type PushToast = (
+  message: string,
+  type?: 'success' | 'error',
+  options?: { duration?: number | null },
+) => void;
 
-/** Longer than a normal toast: the message is a bug report, not a confirmation. */
-const EDITOR_ERROR_TOAST_MS = 8000;
+/**
+ * Longer than the policy would give it: the message is a bug report, and the
+ * name of a CodeMirror extension plus a stack message is read twice.
+ */
+const EDITOR_ERROR_TOAST_MS = 10_000;
 
 /** Events already shown by one listener. Weak, so a dispatched event is not retained. */
 const claimed = new WeakSet<Event>();

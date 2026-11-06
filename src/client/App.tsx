@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { Suspense, lazy } from 'preact/compat';
 import { useSearchParams } from '@/client/lib/router/search-params';
 import { DesktopLayout } from '@/client/components/layout/desktop-layout/index';
+import { ToastStack } from '@/client/components/common/ToastStack';
 import { SessionStateProvider } from '@/client/components/common/session-state-provider';
 import { LoginScreen } from '@/client/components/auth/login-screen';
 import { useAuthState } from '@/client/hooks/ui/auth';
@@ -111,29 +112,29 @@ export function App({ initialIsMobile = false, production = false, appSettings =
   // stream requests that can only come back 401.
   if (authState === 'required') return <LoginScreen />;
 
-  if (isMobileMode) {
-    return (
-      <SessionStateProvider sessionId={sessionId}>
-        <SidebarDataProvider>
-          <Suspense fallback={null}>
-            <MobileLayoutWrapper
-              onDesktopToggle={production ? undefined : handleSwitchToDesktop}
-              appSettings={appSettings}
-            />
-          </Suspense>
-        </SidebarDataProvider>
-      </SessionStateProvider>
-    );
-  }
+  // The toast host is mounted HERE, once, outside the layout switch: the queue
+  // is page state (see `hooks/ui/toasts`), so a layout change must not drop a
+  // message that is still on screen, and no surface may draw a second copy.
+  const shell = isMobileMode ? (
+    <Suspense fallback={null}>
+      <MobileLayoutWrapper
+        onDesktopToggle={production ? undefined : handleSwitchToDesktop}
+        appSettings={appSettings}
+      />
+    </Suspense>
+  ) : (
+    <DesktopLayout
+      sessionId={sessionId}
+      onSwitchToMobile={production ? undefined : handleSwitchToMobile}
+      appSettings={appSettings}
+    />
+  );
 
   return (
     <SessionStateProvider sessionId={sessionId}>
       <SidebarDataProvider>
-        <DesktopLayout
-          sessionId={sessionId}
-          onSwitchToMobile={production ? undefined : handleSwitchToMobile}
-          appSettings={appSettings}
-        />
+        {shell}
+        <ToastStack />
       </SidebarDataProvider>
     </SessionStateProvider>
   );

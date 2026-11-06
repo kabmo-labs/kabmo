@@ -9,7 +9,6 @@ import { GitChangesList } from '@/client/components/workspace/git-panel/ChangesL
 import { GitPanelModals } from '@/client/components/workspace/git-panel/PanelModals';
 import { GitStashSection } from '@/client/components/workspace/git-panel/StashSection';
 import { GitInitRepository } from '@/client/components/workspace/git-panel/InitRepository';
-import { ToastStack } from '@/client/components/common/ToastStack';
 import { useToasts } from '@/client/hooks/ui/toasts';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
 import { useGitPanelData } from '@/client/hooks/workspace/git-panel-data';
@@ -69,7 +68,7 @@ export function GitPanel({ className = '', enabled = true, rootPath, refreshKey 
   const [viewingOutput, setViewingOutput] = useState<CommitHistoryPage | null>(null);
   const [mounted, setMounted] = useState(false);
 
-  const { toasts, pushToast, dismissToast } = useToasts();
+  const { pushToast } = useToasts();
 
   useEffect(() => {
     setMounted(true);
@@ -218,7 +217,6 @@ export function GitPanel({ className = '', enabled = true, rootPath, refreshKey 
         }}
       />
 
-      <ToastStack toasts={toasts} onDismiss={dismissToast} />
 
       {/* Repo Switcher Header */}
       <GitRepoHeader 

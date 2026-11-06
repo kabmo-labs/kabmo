@@ -1,4 +1,3 @@
-import { ToastStack } from '@/client/components/common/ToastStack';
 import { useProviderSettings } from '@/client/hooks/settings/providers';
 import { ProviderSidebarList } from '@/client/components/settings/categories/provider-settings/SidebarList';
 import { ProviderHeader } from '@/client/components/settings/categories/provider-settings/Header';
@@ -39,9 +38,7 @@ export function ProviderSettings({
     isFetchingModels,
     isRefreshingIcon,
     handleRefreshIcon,
-    toasts,
     pushToast,
-    dismissToast,
     isAddModelModalOpen,
     setIsAddModelModalOpen,
     handleModelAdded,
@@ -148,7 +145,6 @@ export function ProviderSettings({
         }
       />
 
-      <ToastStack toasts={toasts} onDismiss={dismissToast} />
 
       <AddProviderModal
         isOpen={isAddModalOpen}

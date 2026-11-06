@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { AlertCircle, Check, ChevronLeft, X } from 'lucide-preact';
+import { ChevronLeft, X } from 'lucide-preact';
 import type { SettingsCategoryId, SettingsState } from '@/shared/types';
 import { mergeKabmoSettings } from '@/shared/lib/settings/client';
 import { diffSettings } from '@/shared/lib/settings/diff';
@@ -9,6 +9,7 @@ import { useReloadOmpEngine } from '@/client/hooks/settings/reload-engine';
 import { useRestartKabmo } from '@/client/hooks/settings/restart-kabmo';
 import { applySettingsSideEffects } from '@/client/components/settings/apply-side-effects';
 import { useKabmoEvent } from '@/client/hooks/ui/window-event';
+import { useToasts } from '@/client/hooks/ui/toasts';
 import { useDialogBehaviour } from '@/client/hooks/ui/dialog-behaviour';
 import { SETTINGS_CATEGORIES, SettingsSidebar } from '@/client/components/settings/Sidebar';
 import { AppearanceSettings } from '@/client/components/settings/categories/AppearanceSettings';
@@ -51,20 +52,11 @@ export function SettingsModal({
   const [autoOpenAdd, setAutoOpenAdd] = useState(autoOpenAddProvider);
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileDrilled, setIsMobileDrilled] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [toastTone, setToastTone] = useState<'success' | 'error'>('success');
   const writeKabmoSettings = useKabmoSettingsWriter();
   const { isReloading, reload: reloadEngine } = useReloadOmpEngine();
   const { isRestarting, restart: restartKabmo } = useRestartKabmo();
 
-  /** One toast slot for the whole modal: a later message replaces the earlier
-   *  one rather than queueing, and the tone is carried so a failed action
-   *  cannot render under a check mark. */
-  const showToast = (message: string, tone: 'success' | 'error' = 'success') => {
-    setToastMessage(message);
-    setToastTone(tone);
-    setTimeout(() => setToastMessage((current) => (current === message ? null : current)), 3000);
-  };
+  const { pushToast: showToast } = useToasts();
 
   const [settings, setSettings] = useState<SettingsState>(() =>
     mergeKabmoSettings(DEFAULT_SETTINGS, appSettings),
@@ -322,16 +314,6 @@ export function SettingsModal({
             />
           </div>
         </div>
-
-        {/* Toast Notification */}
-        {toastMessage && (
-          <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 bg-ink text-canvas px-4 py-2 rounded-lg text-xs font-semibold shadow-lg animate-in fade-in slide-in-from-bottom-2 z-50 flex items-center space-x-2 max-w-[calc(100%-2rem)]">
-            {toastTone === 'error'
-              ? <AlertCircle size={14} className="text-error shrink-0" />
-              : <Check size={14} className="text-success shrink-0" />}
-            <span>{toastMessage}</span>
-          </div>
-        )}
       </div>
     </div>
   );

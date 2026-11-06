@@ -14,7 +14,6 @@
  * expression rather than being buried between modals.
  */
 
-import { ToastStack } from '@/client/components/common/ToastStack';
 import { AboutModal, NewWorkspaceModal } from '@/client/components/layout/session-sidebar/Modals';
 import { SchedulerModal } from '@/client/components/layout/session-sidebar/scheduler-modal';
 import { UpdatePopup } from '@/client/components/layout/update-popup';
@@ -35,12 +34,9 @@ interface MobileDrawerDialogsProps {
   updates: UseUpdatesResult;
   pushToast: ToastsHandle['pushToast'];
   batchDelete: BatchDeleteRun;
-  /** The batch mode the confirmation names, and the way out of it. */
   batchMode: 'workspace' | 'session' | null;
   onEndBatch: () => void;
   scopeLabel?: string;
-  toasts: ToastsHandle['toasts'];
-  dismissToast: ToastsHandle['dismissToast'];
 }
 
 export function MobileDrawerDialogs({
@@ -57,8 +53,6 @@ export function MobileDrawerDialogs({
   batchMode,
   onEndBatch,
   scopeLabel,
-  toasts,
-  dismissToast,
 }: MobileDrawerDialogsProps) {
   return (
     <>
@@ -99,8 +93,6 @@ export function MobileDrawerDialogs({
           });
         }}
       />
-
-      <ToastStack toasts={toasts} onDismiss={dismissToast} />
     </>
   );
 }

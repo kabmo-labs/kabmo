@@ -5,7 +5,6 @@ import { AddProjectModal } from '@/client/components/settings/categories/project
 import { DeleteProjectModal } from '@/client/components/settings/categories/project-settings/DeleteProjectModal';
 import { WorktreeSettings } from '@/client/components/settings/categories/project-settings/WorktreeSettings';
 import { LoadingState } from '@/client/components/settings/LoadingState';
-import { ToastStack } from '@/client/components/common/ToastStack';
 import { SettingsMasterDetail } from '@/client/components/settings/master-detail';
 import { useSettingsMasterDetail } from '@/client/hooks/settings/master-detail';
 import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
@@ -24,7 +23,7 @@ import type { ProjectConfigItem } from '@/shared/types';
  */
 export function ProjectSettings() {
   const masterDetail = useSettingsMasterDetail();
-  const { toasts, pushToast, dismissToast } = useToasts();
+  const { pushToast } = useToasts();
 
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ProjectConfigItem | null>(null);
@@ -169,7 +168,6 @@ export function ProjectSettings() {
         onConfirm={() => void confirmDelete()}
       />
 
-      <ToastStack toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 }

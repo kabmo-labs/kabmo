@@ -45,7 +45,7 @@ export function useProviderSettings({
   const [isRefreshingList, setIsRefreshingList] = useState(false);
   const [isFetchingModels, setIsFetchingModels] = useState(false);
   const [isRefreshingIcon, setIsRefreshingIcon] = useState(false);
-  const { toasts, pushToast, dismissToast } = useToasts();
+  const { pushToast } = useToasts();
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(autoOpenAdd);
   const [isAddModelModalOpen, setIsAddModelModalOpen] = useState(false);
@@ -237,9 +237,7 @@ export function useProviderSettings({
     isFetchingModels,
     isRefreshingIcon,
     handleRefreshIcon,
-    toasts,
     pushToast,
-    dismissToast,
     isAddModelModalOpen,
     setIsAddModelModalOpen,
     handleModelAdded,

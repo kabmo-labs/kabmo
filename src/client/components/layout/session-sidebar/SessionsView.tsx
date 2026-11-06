@@ -4,7 +4,6 @@ import { NewWorkspaceModal } from '@/client/components/layout/session-sidebar/Mo
 import { SchedulerModal } from '@/client/components/layout/session-sidebar/scheduler-modal';
 import { ClassicSidebarView } from '@/client/components/layout/session-sidebar/ClassicView';
 import { ModernSidebarView } from '@/client/components/layout/session-sidebar/modern';
-import { ToastStack } from '@/client/components/common/ToastStack';
 import { spawnCwdForNewSession, triggerSessionPrewarm } from '@/shared/lib/omp/session/prewarm';
 import { useToasts } from '@/client/hooks/ui/toasts';
 import { useSessionSidebarController } from '@/client/hooks/chat/omp/session-sidebar-controller';
@@ -81,7 +80,7 @@ export function SessionsView({
   const [newWorkspaceOpen, setNewWorkspaceOpen] = useState(false);
   const [schedulerOpen, setSchedulerOpen] = useState(false);
   const scheduledCount = useScheduledTaskCount();
-  const { toasts, pushToast, dismissToast } = useToasts();
+  const { pushToast } = useToasts();
   const cancelWait = useCancelWait(pushToast);
   // Follows a held prompt to its session — in whichever tab or instance sent it.
   useWaitingDispatch({ onNotice: pushToast });
@@ -277,7 +276,6 @@ export function SessionsView({
         onToast={pushToast}
       />
 
-      <ToastStack toasts={toasts} onDismiss={dismissToast} />
     </>
   );
 }

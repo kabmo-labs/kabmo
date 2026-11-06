@@ -17,7 +17,6 @@ import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
 import { useMissingFiles } from '@/client/hooks/workspace/missing-files';
 import { startPendingSession } from '@/client/hooks/chat/omp/pending-sessions';
 import { useToasts } from '@/client/hooks/ui/toasts';
-import { ToastStack } from '@/client/components/common/ToastStack';
 import { useEditorDrop, type EditorDropResult } from '@/client/hooks/editor/use-editor-drop';
 import { EditorDropOverlay } from '@/client/components/workspace/editor/EditorDropOverlay';
 import { PluginBootstrap } from '@/client/lib/plugins/bootstrap';
@@ -68,7 +67,7 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
   // a nested-repo file against the workspace root and answered "gone" for a file
   // that had just been read.
   const mobileEditorMissingIds = useMissingFiles(mobileProbeTabs(mobileEditorFile), refreshKey);
-  const { toasts, pushToast, dismissToast } = useToasts();
+  const { pushToast } = useToasts();
   const handleDropResult = useCallback(
     (result: EditorDropResult) => pushToast(result.message, result.ok ? 'success' : 'error'),
     [pushToast],
@@ -330,11 +329,6 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
         autoOpenAddProvider={autoOpenAddProvider}
         appSettings={appSettings}
       />
-      {/* A drop on the full-screen editor either opens a file or is refused, and
-          the refusal names why. The phone's own toast stack lives in the
-          drawer, which is closed while the editor is up — so this layout needs
-          its own or the answer would go nowhere. */}
-      <ToastStack toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 }

@@ -629,7 +629,8 @@ test.describe('Source Control — sync', () => {
     // The press has no other observable effect ON SCREEN: the working tree is
     // byte-identical afterwards, so the toast is the panel's only report that
     // anything happened — which is the reported "sync does nothing". Asserted
-    // before the state poll because the toast dismisses itself after 4s.
+    // before the state poll because the toast dismisses itself after a few seconds
+    // (`toastDurationMs` in `shared/lib/ui/toast-duration.ts`).
     await expect(page.getByRole('status').filter({ hasText: 'Synced with upstream' })).toBeVisible();
 
     await waitUntil(async () =>

@@ -27,7 +27,6 @@ import { useWorkspaceKeybindings } from '@/client/hooks/workspace/keybindings';
 import { PluginBootstrap } from '@/client/lib/plugins/bootstrap';
 import { useToasts } from '@/client/hooks/ui/toasts';
 import type { EditorDropResult } from '@/client/hooks/editor/use-editor-drop';
-import { ToastStack } from '@/client/components/common/ToastStack';
 import { SessionDeleteModal } from '@/client/components/common/session-delete-modal';
 import { useNavbarSessionActions } from '@/client/hooks/workspace/navbar-session-actions';
 import { useCopyTabPath } from '@/client/hooks/workspace/copy-tab-path';
@@ -144,7 +143,7 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
   const streamStatus = useAgentStreamStatus();
   const settings = useSettingsModal();
 
-  const { toasts, pushToast, dismissToast } = useToasts();
+  const { pushToast } = useToasts();
 
   /**
    * A refused drop names its reason ("outside every workspace", "not text") —
@@ -340,7 +339,6 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
         onClose={sessionDelete.cancelDelete}
         onConfirm={() => void sessionDelete.confirmDelete()}
       />
-      <ToastStack toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 }

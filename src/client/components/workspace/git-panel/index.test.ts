@@ -24,6 +24,8 @@ import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { GitPanel } from '@/client/components/workspace/git-panel';
+import { ToastStack } from '@/client/components/common/ToastStack';
+import { resetToasts } from '@/client/hooks/ui/toasts';
 import { SessionStateProvider } from '@/client/components/common/session-state-provider/index';
 import { resetRealtimeClient } from '@/shared/lib/realtime/client';
 import { gitTopic, reposTopic } from '@/shared/lib/realtime/protocol';
@@ -69,6 +71,7 @@ afterEach(() => {
     container.remove();
   }
   resetRealtimeClient();
+  resetToasts();
   server?.stop();
 });
 
@@ -110,7 +113,14 @@ async function mount(options: {
     render(
       h(SessionStateProvider, {
         sessionId: SESSION,
-        children: h(GitPanel, { rootPath: ROOT, enabled: true }),
+        children: h(
+          'div',
+          null,
+          // The panel raises into the page's ONE queue; the host is mounted
+          // beside it, so the assertion covers the assembled path.
+          h(GitPanel, { rootPath: ROOT, enabled: true }),
+          h(ToastStack, {}),
+        ),
       }),
       container,
     );
@@ -230,8 +240,8 @@ describe('GitPanel sync badge', () => {
  * The change list is the answer for a stage or a discard, but a Sync leaves the
  * working tree byte-identical — without a toast the press has no observable
  * effect at all, which is the reported "sync does nothing". The toast is
- * portal-mounted to `document.body`, so the assertion is against the document
- * rather than the panel's own container.
+ * drawn by the page's single `ToastStack`, which portals to `document.body`, so
+ * the assertion is against the document rather than the panel's container.
  */
 describe('GitPanel action toast', () => {
   /** Click a toolbar control and let the request, the answer and the effect land. */

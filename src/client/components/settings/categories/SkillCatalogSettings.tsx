@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { Check, Loader2, RefreshCw, Search, X } from 'lucide-preact';
+import { Loader2, RefreshCw, Search, X } from 'lucide-preact';
 import type { CatalogSkillItem } from '@/shared/types';
 import { invalidateComposerCache } from '@/shared/lib/chat/composer/client';
+import { useToasts } from '@/client/hooks/ui/toasts';
 import { useSkillCatalog } from '@/client/hooks/settings/skill-catalog';
 import { useSkillGitImport } from '@/client/hooks/settings/skill-git-import';
 import { SkillCard } from '@/client/components/settings/categories/skill-catalog/SkillCard';
@@ -37,7 +38,6 @@ export function SkillCatalogSettings({ initialTab = 'browse' }: { initialTab?: C
   const [query, setQuery] = useState('');
   const [searching, setSearching] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
   const [busySkill, setBusySkill] = useState<string | null>(null);
   const [scanningSource, setScanningSource] = useState<string | null>(null);
   const [sourceBusy, setSourceBusy] = useState(false);
@@ -45,10 +45,7 @@ export function SkillCatalogSettings({ initialTab = 'browse' }: { initialTab?: C
 
   const installed = new Set(catalog.userSkills.map((skill) => skill.name));
 
-  const showToast = (message: string) => {
-    setToast(message);
-    setTimeout(() => setToast(null), 3000);
-  };
+  const { pushToast } = useToasts();
 
   useEffect(() => () => clearTimeout(debounce.current), []);
 
@@ -63,7 +60,7 @@ export function SkillCatalogSettings({ initialTab = 'browse' }: { initialTab?: C
       setSearching(true);
       catalog
         .search(value)
-        .catch((error) => showToast(error instanceof Error ? error.message : String(error)))
+        .catch((error) => pushToast(error instanceof Error ? error.message : String(error), 'error'))
         .finally(() => setSearching(false));
     }, SEARCH_DEBOUNCE_MS);
   };
@@ -81,9 +78,9 @@ export function SkillCatalogSettings({ initialTab = 'browse' }: { initialTab?: C
       if (!response.ok || data?.error) throw new Error(data?.error || `Request failed (${response.status})`);
       if (Array.isArray(data?.skills)) catalog.setUserSkills(data.skills);
       invalidateComposerCache('command');
-      showToast(isInstalled ? `Uninstalled "${skill.name}"` : `Installed "${skill.name}"`);
+      pushToast(isInstalled ? `Uninstalled "${skill.name}"` : `Installed "${skill.name}"`, 'success');
     } catch (error) {
-      showToast(error instanceof Error ? error.message : String(error));
+      pushToast(error instanceof Error ? error.message : String(error), 'error');
     } finally {
       setBusySkill(null);
     }
@@ -93,8 +90,8 @@ export function SkillCatalogSettings({ initialTab = 'browse' }: { initialTab?: C
     setRefreshing(true);
     catalog
       .reload()
-      .then(() => showToast('Catalog refreshed'))
-      .catch((error) => showToast(error instanceof Error ? error.message : String(error)))
+      .then(() => pushToast('Catalog refreshed', 'success'))
+      .catch((error) => pushToast(error instanceof Error ? error.message : String(error), 'error'))
       .finally(() => setRefreshing(false));
   };
 
@@ -102,8 +99,8 @@ export function SkillCatalogSettings({ initialTab = 'browse' }: { initialTab?: C
     setScanningSource(id);
     catalog
       .scanSource(id)
-      .then(({ skills }) => showToast(`Found ${skills.filter((skill) => skill.loadable).length} loadable skill(s)`))
-      .catch((error) => showToast(error instanceof Error ? error.message : String(error)))
+      .then(({ skills }) => pushToast(`Found ${skills.filter((skill) => skill.loadable).length} loadable skill(s)`, 'success'))
+      .catch((error) => pushToast(error instanceof Error ? error.message : String(error), 'error'))
       .finally(() => setScanningSource(null));
   };
 
@@ -116,8 +113,8 @@ export function SkillCatalogSettings({ initialTab = 'browse' }: { initialTab?: C
     setSourceBusy(true);
     catalog
       .removeSource(id)
-      .then(() => showToast('Source removed'))
-      .catch((error) => showToast(error instanceof Error ? error.message : String(error)))
+      .then(() => pushToast('Source removed', 'success'))
+      .catch((error) => pushToast(error instanceof Error ? error.message : String(error), 'error'))
       .finally(() => setSourceBusy(false));
   };
 
@@ -220,7 +217,7 @@ export function SkillCatalogSettings({ initialTab = 'browse' }: { initialTab?: C
             onInstalled={() => {
               catalog.reload().catch(console.error);
               invalidateComposerCache('command');
-              showToast('Skills installed — omp sessions were reloaded');
+              pushToast('Skills installed — omp sessions were reloaded', 'success');
             }}
           />
         ) : null}
@@ -237,13 +234,6 @@ export function SkillCatalogSettings({ initialTab = 'browse' }: { initialTab?: C
           />
         ) : null}
       </div>
-
-      {toast ? (
-        <div className="fixed bottom-6 right-6 z-50 bg-ink text-paper text-xs font-medium px-4 py-2.5 rounded-lg shadow-lg flex items-center gap-2 max-w-[calc(100vw-3rem)]">
-          <Check size={14} className="flex-shrink-0" />
-          <span className="leading-relaxed">{toast}</span>
-        </div>
-      ) : null}
     </div>
   );
 }

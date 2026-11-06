@@ -18,7 +18,6 @@ import { useRunIdentity } from '@/client/hooks/chat/timeline/run-identity';
 import { useProviderNames } from '@/client/hooks/models/use-provider-names';
 import { useToasts } from '@/client/hooks/ui/toasts';
 import { ChatOverlays } from '@/client/components/workspace/chat-timeline/ChatOverlays';
-import { ToastStack } from '@/client/components/common/ToastStack';
 import { composerRootFor } from '@/shared/lib/workspace/active-project';
 import { usePendingProjectModel } from '@/client/hooks/chat/timeline/pending-model';
 import { useNewChatOpen } from '@/client/hooks/chat/timeline/new-chat-open';
@@ -41,7 +40,7 @@ interface ChatTimelineProps {
 export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle, variant = 'desktop' }: ChatTimelineProps) {
   const { folders, streamStatusMap, titleHint } = useSidebarData();
   const isMobile = variant === 'mobile';
-  const { toasts, pushToast, dismissToast } = useToasts();
+  const { pushToast } = useToasts();
   const {
     sessionId,
     selectedFolderId,
@@ -339,7 +338,6 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
           planReview={planReview}
         />
 
-        <ToastStack toasts={toasts} onDismiss={dismissToast} />
       </div>
     </AskFramesContext.Provider>
   );

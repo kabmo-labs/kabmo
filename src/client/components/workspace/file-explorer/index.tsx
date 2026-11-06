@@ -17,7 +17,6 @@ import { useRepoList, useRepoScope } from '@/client/hooks/workspace/repo-scope';
 import { useRealtimeTopic } from '@/client/hooks/ui/realtime';
 import { useToasts } from '@/client/hooks/ui/toasts';
 import { useTouchDevice } from '@/client/hooks/ui/touch-device';
-import { ToastStack } from '@/client/components/common/ToastStack';
 import { fsTopic } from '@/shared/lib/realtime/protocol';
 import { unfoldChains } from '@/shared/lib/fs/folder-chain';
 import { useRootDropTarget } from '@/client/hooks/workspace/root-drop-target';
@@ -135,7 +134,7 @@ export function FileExplorer({ className = '', enabled = true, rootPath, onOpenF
   // A row is a drag source; on a finger the native drag is what turned a long
   // press into a text selection of the whole panel (see `useLongPress`).
   const touch = useTouchDevice();
-  const { toasts, pushToast, dismissToast } = useToasts();
+  const { pushToast } = useToasts();
   const clipboard = useFileClipboard({
     rootPath,
     repo: activeRepo,
@@ -306,7 +305,6 @@ export function FileExplorer({ className = '', enabled = true, rootPath, onOpenF
         />
       )}
 
-      <ToastStack toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 }

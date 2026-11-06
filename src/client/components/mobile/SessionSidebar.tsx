@@ -110,7 +110,7 @@ export function MobileSessionSidebar({
   // An update inside a native shell, an install on an Android browser, nothing
   // elsewhere — see `useShellOffer`.
   const shellDownload = useShellOffer();
-  const { toasts, pushToast, dismissToast } = useToasts();
+  const { pushToast } = useToasts();
   const cancelWait = useCancelWait(pushToast);
   useWaitingDispatch({ onNotice: pushToast });
 
@@ -312,8 +312,6 @@ export function MobileSessionSidebar({
         batchMode={selection.mode}
         onEndBatch={selection.end}
         scopeLabel={scopeFolder?.name}
-        toasts={toasts}
-        dismissToast={dismissToast}
       />
 
     </div>

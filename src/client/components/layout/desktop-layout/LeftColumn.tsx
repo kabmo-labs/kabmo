@@ -45,7 +45,6 @@ import { UpdatePopup } from '@/client/components/layout/update-popup';
 import { SettingsModal } from '@/client/components/settings/LazyModal';
 import { SessionSidebarFooter } from '@/client/components/layout/session-sidebar/Footer';
 import { SessionSidebarHeader } from '@/client/components/layout/session-sidebar/Header';
-import { ToastStack } from '@/client/components/common/ToastStack';
 import { useShellOffer } from '@/client/hooks/ui/updates/shell-download';
 import { useKabmoEvent } from '@/client/hooks/ui/window-event';
 import { useToasts } from '@/client/hooks/ui/toasts';
@@ -94,7 +93,7 @@ export function LeftColumn({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
   const updates = useUpdates();
-  const { toasts, pushToast, dismissToast } = useToasts();
+  const { pushToast } = useToasts();
   const shellDownload = useShellOffer();
 
   // The update popup's "Update now" hands the run to the About modal, which owns
@@ -163,7 +162,6 @@ export function LeftColumn({
       <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} appSettings={appSettings} />
       <AboutModal isOpen={infoOpen} onClose={() => setInfoOpen(false)} updates={updates} onToast={pushToast} />
       <UpdatePopup updates={updates} />
-      <ToastStack toasts={toasts} onDismiss={dismissToast} />
     </>
   );
 }
