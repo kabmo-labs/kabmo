@@ -221,20 +221,35 @@ export async function probeHarness(id: HarnessId, cwd: string): Promise<HarnessP
   }
 
   const observed = { usage: false, plan: false };
-  const proc = new AcpProcess({
-    command: launch.command,
-    cwd,
-    ...(launch.env ? { env: launch.env } : {}),
-    onNotification: (_method, params) => {
-      const update = params.update;
-      if (!update || typeof update !== 'object') return;
-      if (!('sessionUpdate' in update)) return;
-      if (update.sessionUpdate === 'usage_update') observed.usage = true;
-      if (update.sessionUpdate === 'plan') observed.plan = true;
-    },
-  });
+  /** The agent's own last words. A probe that fails usually fails with a reason
+   *  the transport never prints (a corrupt plugin, a missing login, a wrapper
+   *  that exits): without this tail the card can only say "exited (code 1)". */
+  let stderrTail = '';
+  // Constructed INSIDE the guarded block: a binary that is not on PATH makes the
+  // constructor throw, and a throw here answered the probe route with a 500
+  // instead of the `blocked` record the settings card renders. "This harness
+  // cannot run here" is the normal state that card exists to show.
+  let proc: AcpProcess | null = null;
 
   try {
+    proc = new AcpProcess({
+      command: launch.command,
+      cwd,
+      ...(launch.env ? { env: launch.env } : {}),
+      onStderr: (line) => {
+        stderrTail = `${stderrTail}${line}\n`.slice(-2_000);
+      },
+      onExit: (info) => {
+        stderrTail = info.stderrTail;
+      },
+      onNotification: (_method, params) => {
+        const update = params.update;
+        if (!update || typeof update !== 'object') return;
+        if (!('sessionUpdate' in update)) return;
+        if (update.sessionUpdate === 'usage_update') observed.usage = true;
+        if (update.sessionUpdate === 'plan') observed.plan = true;
+      },
+    });
     const init = await proc.initialize();
     const session = await proc.newSession(cwd);
     const options = session.configOptions ?? [];
@@ -247,11 +262,16 @@ export async function probeHarness(id: HarnessId, cwd: string): Promise<HarnessP
       probedAt: Date.now(),
     };
   } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    // The agent's own last lines, when it left any: `exited (code 1)` tells a
+    // reader nothing, while the stderr tail names the corrupt plugin or the
+    // refused login that caused it.
+    const lastLines = stderrTail.trim().split('\n').slice(-3).join(' · ');
     return {
       harness: id,
       capabilities: {
         ...UNPROBED_CAPABILITIES,
-        blocked: error instanceof Error ? error.message : String(error),
+        blocked: lastLines ? `${reason} — ${lastLines}` : reason,
       },
       models: [],
       thinking: [],
@@ -259,6 +279,6 @@ export async function probeHarness(id: HarnessId, cwd: string): Promise<HarnessP
       probedAt: Date.now(),
     };
   } finally {
-    await proc.dispose(1_000).catch(() => {});
+    await proc?.dispose(1_000).catch(() => {});
   }
 }
