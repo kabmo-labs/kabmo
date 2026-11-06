@@ -144,6 +144,13 @@ export interface SpawnOptions {
 export interface SpawnedSession {
   sessionId: string;
   model: { provider: string; modelId: string } | null;
+  /**
+   * The harness the SERVER actually spawned on. The ACP branch answers its own
+   * id; the omp branch omits the field, which means the RPC default. Read rather
+   * than assumed from the request, so a harness the server refused cannot be
+   * reported as the one running.
+   */
+  harness?: string | null;
 }
 
 /** Command surface returned by useOmpAgent — the live omp session handle the

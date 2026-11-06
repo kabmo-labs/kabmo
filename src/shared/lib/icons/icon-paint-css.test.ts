@@ -261,6 +261,11 @@ describe('the icon paint stylesheet', () => {
     // paint rule and win on order, and it cannot feed `currentColor` back into
     // `--icon-color` — that is a cycle on the property computing `color`.
     expect(css).toContain('[data-icon-style="color"] .bg-ink svg.lucide { color: currentColor; }');
+    // The harness mark fills the same badge in the generating indicator and the
+    // answer footer, and it is the ONE icon family with a brand hue of its own:
+    // without this rule an `opencode`/`claude` mark painted its brand colour on
+    // the palette's foreground, which is illegible in one of the two themes.
+    expect(css).toContain('[data-icon-style="color"] .bg-ink svg[data-harness] { color: currentColor; }');
     expect(css).toContain(':where([data-icon-style="color"]) :where(.bg-ink) :where([data-plugin-mark]) { --plugin-color: currentColor; }');
     // Same zero specificity as the base rules, so it has to come AFTER them.
     expect(css.indexOf('.bg-ink svg.lucide { color: currentColor; }')).toBeGreaterThan(

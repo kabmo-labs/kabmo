@@ -218,6 +218,7 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
         spawnTarget={spawnTarget}
         onSpawnTargetChange={setSpawnTarget}
         onWorktreeReport={(message) => pushToast(message, 'success', { duration: 6000 })}
+        {...activeHarness.picker}
       />
     );
   }
@@ -238,6 +239,7 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
                   onBack={handleSubagentBack}
                   provider={sessionProvider}
                   providerNames={providerNames}
+                  {...(activeHarness.harness ? { harness: activeHarness.harness } : {})}
                   isMobile={isMobile}
                 />
               ) : (
@@ -260,6 +262,7 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
                   modelName={sessionModelName}
                   modelNames={modelNames}
                   thinkingLevel={sessionData?.thinkingLevel}
+                  {...(activeHarness.harness ? { harness: activeHarness.harness } : {})}
                   onUndo={handleRequestUndo}
                   onRetry={handleRetry}
                   onNewChat={handleNewChat}
@@ -303,9 +306,7 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
                 deferredComposerPickRef={deferredComposerPickRef}
                 sessionModel={typeof sessionData?.model === 'object' ? sessionData.model : null}
                 sessionThinkingLevel={sessionData?.thinkingLevel}
-                {...(activeHarness.harness ? { harness: activeHarness.harness } : {})}
-                harnessEditable={activeHarness.editable}
-                onSelectHarness={activeHarness.pick}
+                {...activeHarness.picker}
                 variant={variant}
                 // The same scroll geometry that draws the scroll-to-bottom
                 // button, with hysteresis: the reader is back through the

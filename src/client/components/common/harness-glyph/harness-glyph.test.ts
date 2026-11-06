@@ -115,11 +115,18 @@ describe('brand art', () => {
     }
   });
 
-  test('the mark carries its OWN viewBox (omp is 64x64, the rest 24x24)', async () => {
+  test('every mark is cropped to its own ink, so one size means one size', async () => {
+    // The source viewport is not the mark: omp fills 62.5% of its 64x64 box,
+    // codex all of its 24x24. Drawing both at one `size` made the omp tab read
+    // smaller than its neighbour (11px of ink beside 18px freehand), so the
+    // viewBox is the measured ink box instead.
     const omp = await mount('omp-rpc');
-    expect(omp.querySelector('svg')?.getAttribute('viewBox')).toBe('0 0 64 64');
+    expect(omp.querySelector('svg')?.getAttribute('viewBox')).toBe('14 16 36 40');
     const claude = await mount('claude');
-    expect(claude.querySelector('svg')?.getAttribute('viewBox')).toBe('0 0 24 24');
+    expect(claude.querySelector('svg')?.getAttribute('viewBox')).toBe('0 5 24 15');
+    // A mark that fills its box keeps the whole box — the crop is per brand.
+    const codex = await mount('codex');
+    expect(codex.querySelector('svg')?.getAttribute('viewBox')).toBe('0 0 24 24');
   });
 
   test('no source plate or gradient survives into the DOM', async () => {
@@ -139,6 +146,18 @@ describe('brand art', () => {
     expect(rpc.querySelector('svg')?.innerHTML).toBe(acp.querySelector('svg')?.innerHTML);
     expect(rpc.querySelector('[role="img"]')?.getAttribute('aria-label')).toBe('omp');
     expect(acp.querySelector('[role="img"]')?.getAttribute('aria-label')).toBe('omp (ACP)');
+  });
+
+  test('the svg carries the HARNESS id, not only the brand key it shares', async () => {
+    // `data-harness` is the brand (`omp` for both transports) and therefore cannot
+    // colour them apart; `data-harness-id` is what the per-surface paint rule
+    // keys on, so it has to reach the element the paint rule selects.
+    const rpc = await mount('omp-rpc');
+    expect(rpc.querySelector('svg')?.getAttribute('data-harness')).toBe('omp');
+    expect(rpc.querySelector('svg')?.getAttribute('data-harness-id')).toBe('omp-rpc');
+    const acp = await mount('omp-acp');
+    expect(acp.querySelector('svg')?.getAttribute('data-harness')).toBe('omp');
+    expect(acp.querySelector('svg')?.getAttribute('data-harness-id')).toBe('omp-acp');
   });
 });
 

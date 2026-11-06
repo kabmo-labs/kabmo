@@ -35,6 +35,11 @@ interface HarnessCardProps {
   config?: HarnessConfig;
   /** Save this harness's config; resolves to the server's refusal, or null. */
   onSaveConfig?: (id: string, config: HarnessConfig) => Promise<string | null>;
+  /** Switch this harness on or off. Omitted by a surface that must not change
+   *  the roster. */
+  onSetEnabled?: (enabled: boolean) => void;
+  /** True while this card's switch or Check is in flight. */
+  busy?: boolean;
   /** Providers for this harness, at the level it actually supports. */
   providerSupport?: HarnessProviderSupport;
   /** Copy one provider from a source registry into this harness. */
@@ -70,6 +75,7 @@ function Capability({ label, value, detail }: { label: string; value: boolean | 
 
 export function HarnessCard({
   summary, onProbe, install, config, onSaveConfig, providerSupport, onImportProvider, onAddProvider,
+  onSetEnabled, busy = false,
 }: HarnessCardProps) {
   const [probing, setProbing] = useState(false);
   const [problem, setProblem] = useState<string | null>(summary.probe?.capabilities.blocked ?? null);
@@ -127,7 +133,7 @@ export function HarnessCard({
             // A built-in transport has no agent to ask, and a missing binary has
             // nothing to answer: the button is disabled with the REASON in its
             // title, never silently inert.
-            disabled={probing || !summary.canLaunch || summary.builtIn}
+            disabled={probing || busy || !summary.canLaunch || summary.builtIn}
             title={
               summary.builtIn
                 ? 'Nothing to probe: Kabmo runs this transport itself'
@@ -139,6 +145,32 @@ export function HarnessCard({
           >
             {probing ? <Loader2 size={12} className="animate-spin" /> : 'Check status'}
           </button>
+          {/* The roster switch, on the page that describes this agent. The
+              built-in transport has none: a build with it off could run no chat. */}
+          {onSetEnabled && !summary.builtIn && (
+            <button
+              type="button"
+              role="switch"
+              aria-checked={summary.enabled}
+              aria-label={`${summary.enabled ? 'Disable' : 'Enable'} ${summary.label}`}
+              disabled={probing || busy}
+              onClick={() => onSetEnabled(!summary.enabled)}
+              title={
+                summary.enabled
+                  ? 'Turn off — hides this page and removes the agent from the model picker'
+                  : 'Turn on — probes it once and adds its settings page'
+              }
+              className={`relative h-4 w-8 shrink-0 rounded-full transition-colors disabled:opacity-40 ${
+                summary.enabled ? 'bg-ink/70' : 'bg-ink/20'
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 h-3 w-3 rounded-full bg-canvas transition-all ${
+                  summary.enabled ? 'left-[18px]' : 'left-0.5'
+                }`}
+              />
+            </button>
+          )}
         </div>
       </header>
 

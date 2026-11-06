@@ -20,6 +20,7 @@ import { flushDeferredPick } from '@/client/hooks/chat/timeline/deferred-model';
 import { readTextAttachments } from '@/shared/lib/chat/attachments';
 import { buildOptimisticRows, collectImages, streamMockFallback } from '@/client/hooks/chat/timeline/send-helpers';
 import { adoptPendingSession, markPendingSessionSent } from '@/client/hooks/chat/omp/pending-sessions';
+import { recordSpawnHarness } from '@/client/hooks/chat/timeline/spawn-harness';
 import { postModeCommand } from '@/client/hooks/chat/timeline/mode-post';
 import type { ArmedGoal } from '@/shared/lib/omp/mode/actions';
 import { blockTuiOnlySend } from '@/client/hooks/chat/timeline/tui-only-guard';
@@ -273,6 +274,11 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
           armed ? (id) => startArmedGoal(id, armed, promptText) : undefined,
         );
         if (spawned) {
+          // The harness the SERVER answered with: `new.ts` reports it for an ACP
+          // spawn and omits it for the RPC branch, which means omp. Read rather
+          // than replayed from the request, so a pick the server did not honour
+          // cannot be reported as the agent running the chat.
+          recordSpawnHarness(spawned.sessionId, spawned.harness ?? 'omp-rpc');
           spawnSelectionRef.current = null;
           adoptedSessionIdRef.current = spawned.sessionId;
           // The sidebar's row moves with the id: `new-…` was the client's own

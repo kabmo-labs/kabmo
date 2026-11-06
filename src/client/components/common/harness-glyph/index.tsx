@@ -40,9 +40,33 @@ interface HarnessGlyphProps {
   /** Glyph size in px. */
   size?: number;
   className?: string;
+  /**
+   * Paint in the SURROUNDING `color` instead of the default muted ink.
+   *
+   * The default (`text-ink/55`) is right on paper, and invisible on an
+   * inverted surface: `bg-ink` is the palette's foreground used as a fill, so
+   * muted ink on it is nearly the same colour in one of the two themes. A badge
+   * that fills `bg-ink` says `text-canvas` and passes this, so the mark takes
+   * the badge's own foreground.
+   */
+  inherit?: boolean;
+  /**
+   * Draw the mark as DECORATION: no `title`, no `role="img"`, no `aria-label`.
+   *
+   * For a glyph that lives INSIDE a control which already names it. Two reasons,
+   * both measured:
+   *
+   *  - a `title` on the innermost element is the one the browser shows, so the
+   *    tab's own sentence ("this chat already started on omp") was replaced by
+   *    this component's generic "Session runs on claude" — the tab looked
+   *    uninformative while carrying a perfectly good explanation one level up;
+   *  - a `role="img"` with a label inside a named `<button>` contributes nothing
+   *    to the button's name and only adds a second thing to announce.
+   */
+  decorative?: boolean;
 }
 
-export function HarnessGlyph({ harness, size = 12, className = '' }: HarnessGlyphProps) {
+export function HarnessGlyph({ harness, size = 12, className = '', inherit = false, decorative = false }: HarnessGlyphProps) {
   const descriptor = harnessDescriptor(harness);
   if (!descriptor) return null;
   const glyph = HARNESS_BRAND_GLYPHS[descriptor.glyph];
@@ -50,17 +74,22 @@ export function HarnessGlyph({ harness, size = 12, className = '' }: HarnessGlyp
   const label = harnessBadgeLabel(harness);
   return (
     <span
-      className={`inline-flex shrink-0 items-center justify-center text-ink/55 ${className}`}
-      aria-label={label}
-      title={`Session runs on ${label}`}
+      className={`inline-flex shrink-0 items-center justify-center ${inherit ? '' : 'text-ink/55'} ${className}`}
+      aria-label={decorative ? undefined : label}
+      title={decorative ? undefined : `Session runs on ${label}`}
       data-harness={descriptor.id}
-      role="img"
+      role={decorative ? undefined : 'img'}
+      aria-hidden={decorative ? 'true' : undefined}
       style={{ width: size, height: size }}
     >
-      {/* The mark's own viewBox: omp's logo is 64x64 and the rest 24x24, so the
-          box travels with the art instead of being assumed. */}
+      {/* Cropped to the INK, not to the source box. Every mark is drawn at the
+          same `size`, and a viewport is not a mark: omp fills 62.5% of its 64x64
+          box while codex fills all of 24x24, so at one nominal size the two drew
+          as two different sizes (measured in the picker: 11px of omp ink beside
+          18px of codex). `preserveAspectRatio` keeps each brand's own shape, so
+          the crop normalises how LARGE a mark reads without distorting it. */}
       <svg
-        viewBox={glyph.viewBox}
+        viewBox={glyph.ink.join(' ')}
         width={size}
         height={size}
         fill="currentColor"
@@ -68,6 +97,11 @@ export function HarnessGlyph({ harness, size = 12, className = '' }: HarnessGlyp
         // paints from the harness brand table. Absent for a mark with no brand
         // hex, so the mode never invents a hue to fill a row.
         data-harness={descriptor.glyph}
+        // The HARNESS, not the brand. omp publishes one mark for two transports,
+        // so the brand key cannot tell `omp-rpc` from `omp-acp` — and a tab that
+        // is only a mark has no word left to do it. `harness/brand-color.ts`
+        // keys its per-surface table on this.
+        data-harness-id={descriptor.id}
         aria-hidden="true"
         focusable="false"
         // Inner markup only — the source files carry no colour of their own
@@ -78,15 +112,20 @@ export function HarnessGlyph({ harness, size = 12, className = '' }: HarnessGlyp
   );
 }
 
-/** Glyph size per surface, from one place so neighbouring rows never drift.
+/**
+ * Glyph size per surface, from one place so neighbouring rows never drift.
+ *
+ * The number is the mark's own INK box, not a source viewport: `HarnessGlyph`
+ * crops each brand to its measured `ink` and draws that at `size`, so 12 here is
+ * 12px of mark for omp and codex alike (before the crop, an `18` was 11px of omp
+ * ink beside 18px of codex and the strip looked uneven).
  *
  *  - `compact` — a desktop session row, where the mark sits in a 12px slot
  *    beside a 12px name and the row's height is already fixed by its density.
  *  - `touch` — a phone session row, one pixel larger for a finger.
  *  - `tab` — the composer's harness tab strip. Deliberately its OWN size: the
- *    strip is a primary control with three to five visible tabs, so a 12px mark
- *    read as smaller than the 12px label beside it at the same nominal size —
- *    the icon was drawn inside a 24px viewBox with padding, so equal numbers are
- *    not equal ink. Two pixels larger, and the label goes to 12px with it.
+ *    strip is a primary control with three to five visible tabs, and the tab is
+ *    the mark ALONE — no label beside it to carry the identity — so the mark is
+ *    sized as a standalone control glyph rather than as a supplement to text.
  */
-export const HARNESS_GLYPH_SIZE = { compact: 12, touch: 13, tab: 14 } as const;
+export const HARNESS_GLYPH_SIZE = { compact: 12, touch: 13, tab: 18 } as const;

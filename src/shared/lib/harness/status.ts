@@ -82,11 +82,25 @@ export function harnessStatus(summary: HarnessSummary): HarnessStatus {
   }
 
   if (summary.probe) {
-    const version = summary.probe.capabilities.agentVersion;
+    const agentVersion = summary.probe.capabilities.agentVersion;
+    const version = agentVersion ? `answered as version ${agentVersion}` : 'answered';
+    // An AGED record is still the last real answer, so the state stays `ready`
+    // (or `needs setup`, above) — but the sentence says WHEN, because a version
+    // reported an hour ago describes the binary as it was an hour ago and the
+    // user needs to know that before trusting an update decision.
+    if (summary.probe.stale) {
+      const minutes = Math.max(1, Math.round((Date.now() - summary.probe.probedAt) / 60_000));
+      const age = minutes < 60 ? `${minutes} min` : `${Math.round(minutes / 60)} h`;
+      return {
+        state: 'ready',
+        label: 'ready (aged)',
+        detail: `${summary.label} ${version} ${age} ago. Press Check status to read the version on disk now.`,
+      };
+    }
     return {
       state: 'ready',
       label: 'ready',
-      detail: version ? `${summary.label} answered as version ${version}.` : null,
+      detail: version ? `${summary.label} answered as version ${agentVersion}.` : null,
     };
   }
 

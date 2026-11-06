@@ -54,6 +54,9 @@ export interface HarnessesController {
   reload: () => void;
   /** Probe one harness (spawns that agent once) and merge the answer in. */
   probe: (id: string, cwd?: string) => Promise<string | null>;
+  /** Switch one harness on or off. Switching ON also probes it once, server-side,
+   *  so its models are ready for the composer. Resolves to the refusal, or null. */
+  setEnabled: (id: string, enabled: boolean) => Promise<string | null>;
 }
 
 interface HarnessStore {
@@ -184,6 +187,50 @@ async function saveHarnessConfig(id: string, config: HarnessConfig): Promise<str
   }
 }
 
+/**
+ * Switch one harness on or off.
+ *
+ * The server owns the roster (it is the only writer of `omp_harness_disabled`),
+ * so its answer is folded back in rather than the draft: a refusal has to leave
+ * the switch where the server actually has it.
+ *
+ * The switch SUCCEEDS for an agent that is not installed — that is a roster
+ * decision, and the user may want the tab before they install the binary. A
+ * probe rides the same response only when the server could actually run one, so
+ * an absent `probe` means "nothing new was measured", never "the switch failed".
+ */
+async function setHarnessEnabled(id: string, enabled: boolean): Promise<string | null> {
+  try {
+    const response = await fetch('/api/harness', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ probe: id, enabled }),
+    });
+    const payload = (await response.json()) as {
+      enabled?: boolean;
+      probe?: HarnessSummary['probe'];
+      error?: string;
+    };
+    if (!response.ok || typeof payload.enabled !== 'boolean') {
+      return payload.error ?? `Switch failed (HTTP ${response.status})`;
+    }
+    emit({
+      harnesses: store.harnesses.map((entry) => {
+        if (entry.id !== id) return entry;
+        const next = { ...entry, enabled: payload.enabled as boolean };
+        // An absent probe means the server measured nothing: either this was a
+        // switch OFF, or the binary is not installed so it did not spawn one.
+        // Neither says anything about what the agent can do, so the stored
+        // record stays exactly as it was.
+        return payload.probe === undefined ? next : { ...next, probe: payload.probe };
+      }),
+    });
+    return null;
+  } catch (cause) {
+    return cause instanceof Error ? cause.message : 'Switch failed';
+  }
+}
+
 export function useHarnesses(): HarnessesController {
   const [snapshot, setSnapshot] = useState(() => ({ ...store }));
 
@@ -213,6 +260,7 @@ export function useHarnesses(): HarnessesController {
       void loadCatalog();
     },
     probe: probeHarness,
+    setEnabled: setHarnessEnabled,
   };
 }
 

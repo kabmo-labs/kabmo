@@ -64,6 +64,17 @@ export interface PendingChatViewProps {
   spawnTarget?: SpawnTarget | null;
   onSpawnTargetChange?: (next: SpawnTarget | null) => void;
   onWorktreeReport?: (message: string) => void;
+  /**
+   * The harness this chat will spawn on, and the pick that writes it.
+   *
+   * This branch had neither, which is why a harness chosen in the model
+   * dropdown's tab strip never reached the spawn: the picker changed its own
+   * view and the server fell back to `omp-rpc`.
+   */
+  harness?: string;
+  /** False once the prompt was dispatched: the harness already rode the spawn. */
+  harnessEditable?: boolean;
+  onSelectHarness?: (harness: string) => void;
 }
 
 export function PendingChatView(props: PendingChatViewProps) {
@@ -109,6 +120,9 @@ export function PendingChatView(props: PendingChatViewProps) {
       spawnTarget={props.spawnTarget}
       onSpawnTargetChange={props.onSpawnTargetChange}
       onWorktreeReport={props.onWorktreeReport}
+      {...(props.harness ? { harness: props.harness } : {})}
+      harnessEditable={props.harnessEditable}
+      onSelectHarness={props.onSelectHarness}
     />
   );
 }

@@ -55,12 +55,20 @@ export interface HarnessSessionRow {
 /**
  * Every recorded session that did NOT come from omp's JSONL store.
  *
- * Those rows are the ones the sidebar cannot discover on its own: omp writes a
- * session file, an ACP agent does not, so a chat spawned on `opencode2` existed
- * in the registry and in no list at all — it vanished from the sidebar the moment
- * its tab closed. Filtering `harness <> 'omp-rpc'` is exact here because an
- * omp row is ALSO persisted (for the resume id), and listing it twice would draw
- * two rows for one chat.
+ * Those rows are the ones the sidebar cannot discover on its own: an ACP agent
+ * writes no session file, so a chat spawned on `opencode` existed in the
+ * registry and in no list at all — it vanished from the sidebar the moment its
+ * tab closed.
+ *
+ * `harness <> 'omp-rpc'` is a cheap PRE-FILTER, not the rule: an omp row is
+ * persisted here too (its resume id lives in this table), and loading one per
+ * discovered session only to discard it is work the scan already did.
+ *
+ * The rule that actually removes duplicates lives where the two lists MERGE
+ * (`sidebar-data.server.ts`), because the pre-filter cannot express it: `omp-acp`
+ * is omp itself over the Agent Client Protocol, so its chats are ordinary
+ * `.jsonl` files the scan finds — and, being neither `omp-rpc` nor an ACP
+ * adapter, they passed this filter and drew TWO rows carrying one id.
  */
 export async function loadAcpSessions(): Promise<HarnessSessionRow[]> {
   const db = await getDb();

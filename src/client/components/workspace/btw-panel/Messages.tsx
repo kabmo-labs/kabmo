@@ -31,6 +31,8 @@ export interface BtwMessagesProps {
   modelName?: string;
   /** Thinking level the side child runs at, for the run footer. */
   thinkingLevel?: string;
+  /** Harness the side child runs on. `omp-rpc`: BTW is omp's own side child. */
+  harness?: string;
   isMobile?: boolean;
 }
 
@@ -86,7 +88,7 @@ function turnRows(topic: BtwTopic, turn: BtwTurn): ChatMessageData[] {
   ];
 }
 
-export function BtwMessages({ topic, liveMessages, error, provider, providerNames, modelName, thinkingLevel, isMobile = false }: BtwMessagesProps) {
+export function BtwMessages({ topic, liveMessages, error, provider, providerNames, modelName, thinkingLevel, harness, isMobile = false }: BtwMessagesProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const turns = topic?.turns ?? [];
 
@@ -137,6 +139,7 @@ export function BtwMessages({ topic, liveMessages, error, provider, providerName
             providerNames={providerNames}
             modelName={modelName}
             thinkingLevel={thinkingLevel}
+            {...(harness ? { harness } : {})}
             isMobile={isMobile}
             userActions={false}
           />

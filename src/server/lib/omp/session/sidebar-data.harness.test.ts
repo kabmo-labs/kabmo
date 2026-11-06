@@ -145,6 +145,26 @@ describe('a sidebar row names its harness', () => {
     expect(matches[0].harness).toBe('omp-rpc');
   });
 
+  test('an omp (ACP) chat is listed ONCE, though the record and the scan both know it', async () => {
+    const folderId = await registerFolder(project);
+    // `omp-acp` launches `omp acp`: the same agent, so it writes a `.jsonl` file
+    // the scan finds AND a `harness_sessions` row the ACP listing reads. Both
+    // producers answering for one chat drew TWO sidebar rows under one id
+    // (reported: `01a1af9c-…` listed twice after a send on `omp (ACP)`).
+    await writeOmpSession('omp-acp-1', '2026-11-06T00:00:00.000Z');
+    await saveHarnessSession({
+      sessionId: 'omp-acp-1', harness: 'omp-acp', agentSessionId: 'omp-acp-1', cwd: project,
+    });
+
+    const sessions = await folderSessions(folderId);
+    const matches = sessions.filter((entry) => String(entry.id) === 'omp-acp-1');
+    expect(matches).toHaveLength(1);
+    // The SCAN's row wins: it carries the title the transcript gave it, where
+    // the record's row can only say "Untitled".
+    expect(matches[0].title).not.toBe('Untitled');
+    expect(matches[0].harness).toBe('omp-acp');
+  });
+
   test('the ACP row is interleaved by time, not appended to the end', async () => {
     const folderId = await registerFolder(project);
     await writeOmpSession('old-1', '2026-01-01T00:00:00.000Z');

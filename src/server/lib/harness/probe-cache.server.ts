@@ -20,8 +20,16 @@
  * of it: the settings page and the composer's tab strip both ask on every mount,
  * and a database round trip per row would be the cost this cache exists to avoid.
  *
- * `probedAt` still governs freshness. An update replaces the binary, so a row
- * older than `PROBE_TTL_MS` is treated as absent rather than as a stale truth.
+ * **`probedAt` ages a probe; it must not DELETE it.** A row older than
+ * `PROBE_TTL_MS` used to be read as absent, which reproduced the reported bug by
+ * another route: probe a harness, come back an hour later (or restart the app),
+ * and the card said `not probed` while `harness_probes` still held the answer.
+ * Measured on a cold process against this database: `omp-acp` (17 min old)
+ * answered, `claude` (61 min old) read as absent. So a stored record is now
+ * always returned and carries `stale: true` once it is past the TTL, and the
+ * card says when it was last checked instead of forgetting it. The real
+ * invalidators are the ones that change what was measured: a launch line or env
+ * edit (`forgetProbe` from `probeInvalidatedBy`) and an install (`update.ts`).
  */
 
 import { getDb } from '@/server/db.server';
@@ -33,8 +41,8 @@ declare global {
   var __kabmoHarnessProbes: Map<string, HarnessProbe> | undefined;
 }
 
-/** How long a probe stays fresh. Long, because the answer is a property of the
- *  installed binary: the settings page has an explicit re-probe. */
+/** How long a probe is reported as CURRENT. Past it the record is still
+ *  returned — see the header — and only flagged, never discarded. */
 export const PROBE_TTL_MS = 30 * 60_000;
 
 export function probes(): Map<string, HarnessProbe> {
@@ -42,9 +50,19 @@ export function probes(): Map<string, HarnessProbe> {
   return globalThis.__kabmoHarnessProbes;
 }
 
-/** True when the record is still young enough to answer with. */
-function isFresh(probe: HarnessProbe): boolean {
+/** True when the record is young enough to be reported without an age. */
+export function isFresh(probe: HarnessProbe): boolean {
   return Date.now() - probe.probedAt < PROBE_TTL_MS;
+}
+
+/** The probe as the wire reports it: the record plus whether it has aged past
+ *  the TTL. `stale` is a LABEL, not a filter — the card shows the answer with
+ *  its age instead of pretending the harness was never asked. */
+export type StoredProbe = HarnessProbe & { stale?: true };
+
+/** Attach the ageing label to a live record. */
+function labelled(probe: HarnessProbe): StoredProbe {
+  return isFresh(probe) ? probe : { ...probe, stale: true };
 }
 
 /**
@@ -81,10 +99,15 @@ export async function forgetProbe(id: HarnessId): Promise<void> {
   }
 }
 
-/** The stored record for a harness, from memory or from disk. */
-async function readProbe(id: HarnessId): Promise<HarnessProbe | null> {
+/** The stored record for a harness, from memory or from disk.
+ *
+ *  An AGED record is returned, never dropped: the user asked for it once, so a
+ *  card that says `not probed` an hour later is the bug this file exists to
+ *  fix. `labelled` marks how old it is; `harnessProbeModels` is the strict read
+ *  that refuses to act on a record past the TTL. */
+async function readProbe(id: HarnessId): Promise<StoredProbe | null> {
   const cached = probes().get(id);
-  if (cached) return isFresh(cached) ? cached : null;
+  if (cached) return labelled(cached);
   try {
     const db = await getDb();
     const row = (await db.get('SELECT payload FROM harness_probes WHERE harness = ?', [id])) as
@@ -93,24 +116,21 @@ async function readProbe(id: HarnessId): Promise<HarnessProbe | null> {
     if (!row?.payload) return null;
     const parsed = JSON.parse(row.payload) as HarnessProbe;
     if (!parsed || typeof parsed.probedAt !== 'number') return null;
-    // A stale row is treated as absent: the binary it described may have been
-    // replaced by an update, so its model list is not evidence any more.
-    if (!isFresh(parsed)) return null;
     probes().set(id, parsed);
-    return parsed;
+    return labelled(parsed);
   } catch {
     return null;
   }
 }
 
 /**
- * Every fresh probe, keyed by harness.
+ * Every stored probe, keyed by harness, aged rows included.
  *
  * `listHarnesses` builds the whole catalog in one pass, so it asks for all of
  * them at once rather than one await per row.
  */
-export async function loadProbes(): Promise<Map<string, HarnessProbe>> {
-  const out = new Map<string, HarnessProbe>();
+export async function loadProbes(): Promise<Map<string, StoredProbe>> {
+  const out = new Map<string, StoredProbe>();
   try {
     const db = await getDb();
     const rows = (await db.all('SELECT harness, payload FROM harness_probes')) as {
@@ -120,8 +140,8 @@ export async function loadProbes(): Promise<Map<string, HarnessProbe>> {
     for (const row of rows) {
       try {
         const parsed = JSON.parse(row.payload) as HarnessProbe;
-        if (!parsed || typeof parsed.probedAt !== 'number' || !isFresh(parsed)) continue;
-        out.set(row.harness, parsed);
+        if (!parsed || typeof parsed.probedAt !== 'number') continue;
+        out.set(row.harness, labelled(parsed));
         probes().set(row.harness, parsed);
       } catch {
         // A row written by an older build with a different shape: skip it rather
@@ -132,24 +152,26 @@ export async function loadProbes(): Promise<Map<string, HarnessProbe>> {
   } catch {
     // No database yet: memory is the whole answer for this process.
   }
-  // Anything fresh in MEMORY but not yet flushed wins, so a probe in flight is
-  // never hidden by a slower disk.
+  // Anything in MEMORY but not yet flushed wins, so a probe in flight is never
+  // hidden by a slower disk.
   for (const [id, probe] of probes()) {
-    if (!out.has(id) && isFresh(probe)) out.set(id, probe);
+    if (!out.has(id)) out.set(id, labelled(probe));
   }
   return out;
 }
 
-/** The models a harness published, if its probe is still fresh; else none.
+/** The models a harness published, if its probe is still CURRENT; else none.
  *
- *  An EMPTY list, never a guess: a spawn that inherited a model from a stale
- *  probe would write a selector the agent no longer offers. */
+ *  The strict read, deliberately: a spawn that inherited a model from an aged
+ *  probe could write a selector the agent no longer offers. Showing an old
+ *  answer on a card is honest; ACTING on one is not. */
 export async function harnessProbeModels(id: HarnessId): Promise<{ value: string; name: string }[]> {
   const probe = await readProbe(id);
-  return probe ? probe.models : [];
+  return probe && !probe.stale ? probe.models : [];
 }
 
-/** The fresh probe for a harness, or null. */
-export async function freshProbe(id: HarnessId): Promise<HarnessProbe | null> {
+/** The stored probe for a harness, aged or not, or null when it was never
+ *  recorded. */
+export async function freshProbe(id: HarnessId): Promise<StoredProbe | null> {
   return readProbe(id);
 }

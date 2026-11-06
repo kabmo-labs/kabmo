@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'preact/hooks';
-import { Bot } from 'lucide-preact';
+import { RunMark } from '@/client/components/workspace/chat-timeline/RunMark';
 import { providerLabel } from '@/shared/lib/models/provider/label';
 
 interface GeneratingIndicatorProps {
@@ -7,6 +7,14 @@ interface GeneratingIndicatorProps {
   generatingVerb?: string;
   provider?: string;
   providerNames?: Record<string, string>;
+  /**
+   * The harness running this turn (`omp-rpc`, `opencode`, `claude`, …). The
+   * mark answers "which agent is working", which is the question the row is
+   * asked — a generic robot beside an `opencode` session names the wrong thing.
+   * Absent or unknown falls back to that robot, so a pre-harness session still
+   * draws a mark.
+   */
+  harness?: string;
   /**
    * DOM id for the docked row. Two indicators can be mounted at once — the chat
    * run and a side question both streaming — so a second caller must pass its
@@ -42,7 +50,7 @@ function Dots() {
   );
 }
 
-export function GeneratingIndicator({ modelName, generatingVerb, provider, providerNames, id = 'generating-docked-indicator' }: GeneratingIndicatorProps) {
+export function GeneratingIndicator({ modelName, generatingVerb, provider, providerNames, harness, id = 'generating-docked-indicator' }: GeneratingIndicatorProps) {
   const [activeVerbIndex, setActiveVerbIndex] = useState(0);
 
   // Rotate action verb every 2.8s
@@ -84,9 +92,7 @@ export function GeneratingIndicator({ modelName, generatingVerb, provider, provi
             "working" at a glance; the dots are the spelling of it. */}
         <div className="relative w-4 h-4 rounded flex items-center justify-center shrink-0">
           <div aria-hidden="true" className="generating-mark-ring absolute -inset-[1.5px] rounded-[5px] animate-spin" />
-          <div className="relative w-full h-full rounded-[3px] bg-ink flex items-center justify-center text-canvas z-10 shadow-2xs">
-            <Bot size={10} className="text-canvas" />
-          </div>
+          <RunMark harness={harness} size={16} radiusClass="rounded-[3px]" className="relative z-10" />
         </div>
 
         {/* Provider & model name with dynamic verb + dots. When neither half is

@@ -22,6 +22,8 @@ import { HARNESS_IDS, harnessDescriptor, type HarnessId } from '@/shared/lib/har
 import { HARNESS_LAUNCH, probeHarness } from '@/server/lib/harness/launch';
 import type { HarnessProbe } from '@/server/lib/harness/capabilities';
 import { forgetProbe, loadProbes, rememberProbe } from '@/server/lib/harness/probe-cache.server';
+import { loadDisabledHarnesses, saveHarnessEnabled } from '@/server/lib/harness/enabled.server';
+import { harnessEnabled } from '@/shared/lib/harness/enabled';
 import { loadHarnessConfig, probeInvalidatedBy, saveHarnessConfig } from '@/server/lib/harness/config.server';
 import { importableProvidersFor, readRegistryProviders } from '@/server/lib/harness/provider-sources.server';
 import { addProviderAction, importProviderAction, importSourceOf, isImportBody } from '@/server/routes/harness/import-action';
@@ -76,6 +78,11 @@ export async function listHarnesses(): Promise<HarnessSummary[]> {
   // cache used to be process-only, so every restart — every `bun --hot` reload —
   // turned a harness the user had just checked back into `not probed`.
   const stored = await loadProbes();
+  // The user's roster: a switched-off harness keeps its row here (so
+  // `enabled: false` can be read) but is filtered out by the settings menu and
+  // the composer's picker. Read in the same pass as the probes for the reason
+  // above — this is the one catalog answer.
+  const disabled = await loadDisabledHarnesses();
   return HARNESS_IDS.map((id) => {
     const descriptor = harnessDescriptor(id);
     const launch = HARNESS_LAUNCH[id];
@@ -92,6 +99,7 @@ export async function listHarnesses(): Promise<HarnessSummary[]> {
       label: descriptor?.label ?? id,
       transport: descriptor?.transport ?? 'acp',
       canLaunch: available,
+      enabled: harnessEnabled(id, disabled),
       ...(descriptor?.builtIn ? { builtIn: true as const } : {}),
       ...(launch?.install ? { install: launch.install } : {}),
       ...(launch?.note ? { note: launch.note } : {}),
@@ -178,6 +186,55 @@ export async function action({ request, params }: ActionFunctionArgs) {
   const id = typeof body.probe === 'string' ? body.probe : null;
   if (!id || !HARNESS_IDS.includes(id as HarnessId)) {
     return json({ error: 'probe must name a known harness id' }, { status: 400 });
+  }
+  // A TOGGLE: `{ probe: id, enabled: boolean }`.
+  //
+  // The roster, not the probe: this is the one write that decides whether the
+  // harness appears in Settings and in the composer's picker at all. It sits
+  // BEFORE the built-in refusal because that refusal talks about probing, which
+  // is not what this request is doing — the built-in transport has its own
+  // answer below ("cannot be switched off").
+  //
+  // **Switching on is a ROSTER decision and always succeeds**, including for an
+  // agent that is not installed: the user may want the tab there now and install
+  // the binary afterwards, and refusing would make the switch look broken. The
+  // probe is therefore a BONUS, attempted only for a launchable harness and never
+  // able to fail the request — see below.
+  if (typeof body.enabled === 'boolean') {
+    const enabled = body.enabled;
+    try {
+      const disabled = await saveHarnessEnabled(id, enabled);
+      // Turning a harness ON probes it once so the composer has its models right
+      // away. Two guards, both measured concerns:
+      //
+      //  - a harness whose binary is not on PATH is NOT probed: spawning it can
+      //    only fail, and the card already says "not installed" with the install
+      //    line. Nothing is learned and an agent process is started for nothing.
+      //  - a probe that fails for any OTHER reason (no login, a timeout, a broken
+      //    adapter) must not undo the switch. The roster write already happened,
+      //    and the card explains the refusal; reporting a 400 here would leave the
+      //    UI showing the previous value for a state the database holds.
+      let probe: HarnessProbe | null = null;
+      if (enabled && commandAvailable(id as HarnessId)) {
+        const cwd = typeof body.cwd === 'string' ? body.cwd : process.cwd();
+        probe = await probeHarness(id as HarnessId, cwd).catch(() => null);
+        if (probe) await rememberProbe(id as HarnessId, probe);
+      }
+      return json({
+        enabled,
+        disabled,
+        // The switch is what this request means; `probed` says whether the bonus
+        // ran, so the UI can tell "on, not checked" from "on, and here is its
+        // answer" without inferring it from an absent probe.
+        probed: probe !== null,
+        ...(probe ? { probe } : {}),
+      });
+    } catch (cause) {
+      return json(
+        { error: cause instanceof Error ? cause.message : 'Could not switch this harness' },
+        { status: 400 },
+      );
+    }
   }
   // Same refusal as the loader: no agent exists behind a built-in transport, so
   // its "probe" would only cache a `blocked` record over the default tab.

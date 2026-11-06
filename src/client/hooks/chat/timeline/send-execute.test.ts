@@ -19,6 +19,7 @@ import {
   restoreDomGlobals,
   stubComposerFetch,
 } from '@/client/hooks/chat/timeline/send.test-util';
+import { resetSpawnHarness, spawnedHarnessFor } from '@/client/hooks/chat/timeline/spawn-harness';
 
 beforeAll(() => {
   installDomGlobals();
@@ -33,6 +34,7 @@ afterEach(() => {
 describe('executeSend', () => {
   beforeEach(() => {
     requests.length = 0;
+    resetSpawnHarness();
     stubComposerFetch();
   });
 
@@ -138,5 +140,41 @@ describe('executeSend', () => {
     expect(h1.seeds).toEqual([{ model: { provider: 'x', modelId: 'y' }, thinkingLevel: 'high' }]);
     expect(h1.spawnSelectionRef.current).toBeNull();
     expect(h1.params).toEqual(['sessionId=uuid-9']);
+  });
+
+  test('a harness picked on the pending view rides the spawn body', async () => {
+    const h1 = makeSendHarness({
+      isOmpSession: false,
+      sessionId: 'new-1',
+      folders: [{ id: 4, name: 'demo', project_path: '/tmp/demo' }],
+      selectedFolderId: 4,
+      agent: { spawnResult: { sessionId: 'uuid-10' } },
+    });
+    // This is the pick the tab strip records; before the fix nothing wrote it
+    // and the server fell back to `omp-rpc` for an `opencode` click.
+    h1.deps.pendingHarnessRef.current = 'opencode';
+    await act(async () => {
+      await h1.sends.executeSend('first prompt', []);
+    });
+    expect(h1.agent.calls.newPrompts[0]?.options).toMatchObject({ harness: 'opencode' });
+    // And it is cleared, so it cannot leak onto the next new chat.
+    expect(h1.deps.pendingHarnessRef.current).toBeNull();
+  });
+
+  test("the spawn's answered harness is what the run is reported as", async () => {
+    const h1 = makeSendHarness({
+      isOmpSession: false,
+      sessionId: 'new-1',
+      folders: [{ id: 4, name: 'demo', project_path: '/tmp/demo' }],
+      selectedFolderId: 4,
+      agent: { spawnResult: { sessionId: 'uuid-11', harness: 'claude' } },
+    });
+    await act(async () => {
+      await h1.sends.executeSend('hi', []);
+    });
+    // The row the sidebar will eventually draw is not here yet, and the tab
+    // strip already moved: the answer the server gave is the only honest source
+    // for the indicator and the run footer in that window.
+    expect(spawnedHarnessFor('uuid-11')).toBe('claude');
   });
 });

@@ -13,7 +13,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { acpModelOption, harnessModels } from '@/client/components/workspace/model-dropdown/harness-models';
+import { acpModelOption, harnessModels, pickerHarnesses } from '@/client/components/workspace/model-dropdown/harness-models';
 import type { HarnessSummary } from '@/shared/types/harness';
 import type { AIModelOption } from '@/shared/types';
 
@@ -28,6 +28,7 @@ function probed(id: string, models: { value: string; name: string }[], blocked?:
     label: id,
     transport: 'acp',
     canLaunch: true,
+    enabled: true,
     probe: {
       harness: id,
       capabilities: {
@@ -72,7 +73,7 @@ describe('harness model lists', () => {
   });
 
   test('an unprobed harness reports unprobed, never omp’s list as a stand-in', () => {
-    const summary: HarnessSummary = { id: 'gemini', label: 'gemini', transport: 'acp', canLaunch: true, probe: null };
+    const summary: HarnessSummary = { id: 'gemini', label: 'gemini', transport: 'acp', canLaunch: true, enabled: true, probe: null };
     const list = harnessModels([summary], 'gemini', ompModels);
     expect(list.models).toEqual([]);
     expect(list.unprobed).toBe(true);
@@ -80,7 +81,7 @@ describe('harness model lists', () => {
 
   test('a blocked harness carries the agent’s own refusal', () => {
     const summary: HarnessSummary = {
-      id: 'minimax', label: 'minimax', transport: 'acp', canLaunch: true,
+      id: 'minimax', label: 'minimax', transport: 'acp', canLaunch: true, enabled: true,
       probe: probed('minimax', []).probe, unavailable: 'Run `mcode login`',
     };
     const list = harnessModels([summary], 'minimax', ompModels);
@@ -102,5 +103,38 @@ describe('harness model lists', () => {
     const option = acpModelOption({ value: 'a/b', name: 'B' }, 'claude');
     expect(option.contextWindow).toBeUndefined();
     expect(option.cost).toBeUndefined();
+  });
+});
+
+describe('which harnesses the picker offers', () => {
+  const summary = (id: string, enabled: boolean): HarnessSummary => ({
+    id, label: id, transport: 'acp', canLaunch: true, enabled, probe: null,
+  });
+
+  test('a switched-off harness is gone from the tab strip', () => {
+    const list = pickerHarnesses(
+      [summary('omp-rpc', true), summary('claude', false), summary('codex', true)],
+      'omp-rpc',
+    );
+    expect(list.map((entry) => entry.id)).toEqual(['omp-rpc', 'codex']);
+  });
+
+  test('the harness owning the open chat survives, so a transcript can name it', () => {
+    // The one exception: switching an agent off must not make an existing
+    // conversation unnameable — its row and its history still say which agent ran
+    // it, and the picker has to agree with the sidebar.
+    const list = pickerHarnesses(
+      [summary('omp-rpc', true), summary('claude', false)],
+      'claude',
+    );
+    expect(list.map((entry) => entry.id)).toEqual(['omp-rpc', 'claude']);
+  });
+
+  test('before a chat exists there is no harness to keep, so the roster is the list', () => {
+    const list = pickerHarnesses(
+      [summary('omp-rpc', true), summary('claude', false)],
+      null,
+    );
+    expect(list.map((entry) => entry.id)).toEqual(['omp-rpc']);
   });
 });

@@ -130,7 +130,7 @@ export interface AgentCalls {
   sendPromptBusy: boolean;
   /** The server-supplied reason, when the send was refused. */
   sendPromptError: string | undefined;
-  spawnResult: { sessionId: string; model?: { provider: string; modelId: string } } | null;
+  spawnResult: { sessionId: string; model?: { provider: string; modelId: string }; harness?: string } | null;
 }
 
 export interface AgentRecorder {

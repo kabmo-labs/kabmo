@@ -25,7 +25,8 @@
  */
 
 import { AcpProcess } from '@/server/lib/harness/acp/client';
-import { AcpFrameMapper, turnEndFrame } from '@/server/lib/harness/acp/frames';
+import { AcpTurns } from '@/server/lib/harness/acp/turn';
+import { AcpFrameMapper } from '@/server/lib/harness/acp/frames';
 import type { AcpConfigOption, AcpId, AcpSessionNewResult } from '@/server/lib/harness/acp/protocol';
 import { capabilitiesFrom } from '@/server/lib/harness/launch';
 import { applySelections, configOption, promptBlocks } from '@/server/lib/harness/acp/prompt';
@@ -52,8 +53,8 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
   readonly cwd: string;
   readonly sessionFile = '';
   sessionId = '';
-  isStreaming = false;
-  isPromptRunning = false;
+  /** The turn in flight — the only one whose frames are accepted. */
+  private readonly turns: AcpTurns;
   runModel: { provider: string; modelId: string } | null = null;
   capabilities: HarnessCapabilities = capabilitiesFrom({ protocolVersion: 1 }, [], { usage: false, plan: false });
   configOptions: AcpConfigOption[] = [];
@@ -64,6 +65,10 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
   private readonly permissions = new PendingPermissions();
   private destroyHook: (() => void) | null = null;
   private destroyed = false;
+  /** Set when Kabmo is the one ending the process, so the exit is not reported
+   *  as an agent failure. `force_reset` is the Stop button's escalation, and the
+   *  user must not get an "agent exited" error for a stop they asked for. */
+  private closing = false;
 
   constructor(options: AcpSessionOptions, cwd: string) {
     this.harness = options.harness;
@@ -75,6 +80,16 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
       onNotification: (method, params) => this.onNotification(method, params),
       onClientRequest: (id, method, params) => this.onClientRequest(id, method, params),
       onExit: (info) => this.onExit(info),
+    });
+    this.turns = new AcpTurns({
+      emit: (event) => this.emit(event),
+      prompt: (message, images) =>
+        this.proc.prompt(this.sessionId, promptBlocks(message, images), 0) as Promise<{ stopReason?: string } | undefined>,
+      cancelAgent: () => this.proc.cancel(this.sessionId),
+      abandonPrompt: () => this.proc.abandonPrompt(this.sessionId),
+      resetMapper: () => this.mapper.reset(),
+      closeMessage: () => this.mapper.closeMessage(),
+      openCalls: () => this.mapper.openCalls(),
     });
     this.requestedModel = options.model ?? null;
     this.requestedThinking = options.thinkingLevel ?? null;
@@ -114,8 +129,16 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
     return !this.destroyed && this.proc.isAlive;
   }
 
+  get isStreaming(): boolean {
+    return this.turns.isStreaming;
+  }
+
+  get isPromptRunning(): boolean {
+    return this.turns.isPromptRunning;
+  }
+
   isRunning(): boolean {
-    return this.isAlive() && (this.isPromptRunning || this.isStreaming);
+    return this.isAlive() && (this.turns.isPromptRunning || this.turns.isStreaming);
   }
 
   isBusy(): boolean {
@@ -161,10 +184,9 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
     return this.proc.steer(this.sessionId, blocks, queue);
   }
 
-  /** Dispatcher seam: cancel the running turn. The turn's own answer clears the
-   *  flags; a cancel that never lands would otherwise leave the spinner up. */
+  /** Dispatcher seam: stop the turn. The rules live in `AcpTurns.cancel`. */
   cancelTurn(): void {
-    this.proc.cancel(this.sessionId);
+    this.turns.cancel();
   }
 
   /** Dispatcher seam: write one config selector and adopt the answer.
@@ -230,48 +252,27 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
    *  accept it and CANCEL the first turn (measured), throwing away the answer
    *  the user is reading. The refusal is the same wording omp uses, so the
    *  client's queue/steer recovery path is unchanged.
+   *
+   *  The DISPATCH answers an ACK, never the turn. `prompt` over the HTTP route
+   *  means "accepted" to every client — `sendNewPrompt` adopts the session id
+   *  and wires its stream on that answer — so returning the turn here parked a
+   *  brand-new ACP chat on `new-…` for the answer's whole duration: measured on
+   *  opencode, the URL stayed `?sessionId=new-…`, the docked indicator read
+   *  "Loading" and the transcript never appeared, while the turn itself was
+   *  running fine. omp's own `prompt` returns an ack for the same reason; the
+   *  turn's end is reported by the `agent_end` frame below.
    */
   startTurn(message: string, images: unknown): unknown {
-    if (this.isRunning()) {
-      throw new Error('Agent is already processing. Use steer() or followUp() to queue messages, or wait for completion.');
-    }
-    this.isPromptRunning = true;
-    this.isStreaming = true;
-    this.mapper.reset();
-    this.emit({ type: 'agent_start' });
-    this.emit({ type: 'turn_start' });
-
-    return this.proc
-      .prompt(this.sessionId, promptBlocks(message, images), 0)
-      .then((result) => {
-        this.finishTurn(result);
-        return result;
-      })
-      .catch((error: unknown) => {
-        this.emit({
-          type: 'prompt_error',
-          errorMessage: error instanceof Error ? error.message : String(error),
-        });
-        this.finishTurn(undefined);
-        return null;
-      });
-  }
-
-  /** Close the turn: flush the open message, fail abandoned cards, emit the
-   *  terminal frame. A call left open by a cancelled turn would spin forever —
-   *  the agent is never going to report an end for work it abandoned. */
-  private finishTurn(result: { stopReason?: string } | undefined): void {
-    for (const event of this.mapper.closeMessage()) this.emit(event);
-    for (const toolCallId of this.mapper.openCalls()) {
-      this.emit({ type: 'tool_execution_end', toolCallId, isError: true, result: { output: 'Cancelled' } });
-    }
-    this.isPromptRunning = false;
-    this.isStreaming = false;
-    this.emit(turnEndFrame(result));
+    return this.turns.start(message, images);
   }
 
   private onNotification(method: string, params: Record<string, unknown>): void {
     if (method !== 'session/update') return;
+    // No turn open: the user stopped it (or one is still queued), and anything
+    // the agent keeps emitting belongs to work nobody is watching. Forwarding it
+    // reopened the assistant message after Stop and streamed abandoned text into
+    // a transcript the client had already finalized.
+    if (!this.turns.acceptingFrames()) return;
     const update = params.update;
     if (!update || typeof update !== 'object') return;
     for (const event of this.mapper.mapUpdate(update as Record<string, unknown>)) this.emit(event);
@@ -301,6 +302,10 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
 
   private onExit(info: { code: number | null; stderrTail: string }): void {
     this.destroyed = true;
+    if (this.closing) {
+      this.destroyHook?.();
+      return;
+    }
     const detail = info.stderrTail.trim().split('\n').slice(-3).join(' · ');
     this.emit({
       type: 'prompt_error',
@@ -317,6 +322,7 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
   async destroyAndWait(): Promise<void> {
     if (this.destroyed) return;
     this.destroyed = true;
+    this.closing = true;
     this.permissions.clear();
     await this.proc.dispose().catch(() => {});
     this.destroyHook?.();

@@ -149,6 +149,7 @@ export function useOmpPromptSender(deps: OmpPromptSenderDeps): OmpPromptSender {
         success?: boolean;
         sessionId?: string;
         model?: { provider: string; modelId: string } | null;
+        harness?: string;
         error?: string;
       };
       if (!created.ok || !createdBody.sessionId) {
@@ -167,7 +168,7 @@ export function useOmpPromptSender(deps: OmpPromptSenderDeps): OmpPromptSender {
       // is what makes the order a fact rather than a race. An armed interview
       // answers true: it already opened the turn, so this prompt is not sent.
       if (beforePrompt && await beforePrompt(sid)) {
-        return { sessionId: sid, model: createdBody.model ?? null };
+        return { sessionId: sid, model: createdBody.model ?? null, ...(createdBody.harness ? { harness: createdBody.harness } : {}) };
       }
       const res = await fetch(`/api/agent/${encodeURIComponent(sid)}`, {
         method: 'POST',
@@ -183,7 +184,7 @@ export function useOmpPromptSender(deps: OmpPromptSenderDeps): OmpPromptSender {
         setState((prev) => ({ ...prev, isGenerating: false, error: body.error ?? `HTTP ${res.status}` }));
         return null;
       }
-      return { sessionId: sid, model: createdBody.model ?? null };
+      return { sessionId: sid, model: createdBody.model ?? null, ...(createdBody.harness ? { harness: createdBody.harness } : {}) };
     } catch (e) {
       setState((prev) => ({ ...prev, isGenerating: false, error: e instanceof Error ? e.message : String(e) }));
       return null;

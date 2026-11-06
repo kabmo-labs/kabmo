@@ -313,17 +313,25 @@ async function buildRealFolders(folderRows: FolderRow[], archivedIds: Set<string
     const folderAcp = rootKey
       ? await acpRowsFor(acpSessions, rootKey, folder.id, archivedIds)
       : [];
+    // ONE CHAT, ONE ROW. The two producers overlap whenever the agent writes a
+    // session file AND has a `harness_sessions` record, and that is not a
+    // corner case: `omp-acp` launches `omp acp`, so its chats are ordinary
+    // `.jsonl` files discovery finds — measured, an `omp (ACP)` chat appeared
+    // TWICE in the sidebar under the same id, one row from the scan and one
+    // from the record. The scan's row is authoritative (it carries the real
+    // title, timestamps and subagent state), so a recorded row whose id the
+    // scan already listed is dropped rather than replaced.
+    const discoveredIds = new Set(folderSessions.map((session) => String(session.id)));
+    const uniqueAcp = folderAcp.filter((row) => !discoveredIds.has(String(row.id)));
     // MERGED, then ordered as ONE list. Appending the ACP rows after omp's
     // already-sorted bucket put them at the bottom of a 240-row folder, which is
     // why a chat just spawned on `opencode2` never appeared above "Show more".
     // The scan's own rule is `b.modified.localeCompare(a.modified)`
     // (`groupSessionsByRoot`), so this uses the same key rather than a second
     // definition of "newest".
-    const allSessions = [...folderSessions, ...folderAcp].sort((a, b) => {
-      const left = a.updated_at ?? a.created_at ?? '';
-      const right = b.updated_at ?? b.created_at ?? '';
-      return right.localeCompare(left);
-    });
+    const allSessions = [...folderSessions, ...uniqueAcp].sort((a, b) =>
+      (b.updated_at ?? b.created_at ?? '').localeCompare(a.updated_at ?? a.created_at ?? ''),
+    );
     return {
       id: folder.id,
       name: folder.name,

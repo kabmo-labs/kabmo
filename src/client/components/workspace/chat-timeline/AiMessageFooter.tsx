@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'preact/hooks';
 import type { ReactNode } from 'preact/compat';
-import { Bot, Brain, Clock3, Coins, Hourglass, MessageSquarePlus, MoreHorizontal, RotateCcw, X } from 'lucide-preact';
+import { Brain, Clock3, Coins, Hourglass, MessageSquarePlus, MoreHorizontal, RotateCcw, X } from 'lucide-preact';
 import { CopyButton } from '@/client/components/common/CopyButton';
+import { RunMark } from '@/client/components/workspace/chat-timeline/RunMark';
 import { PluginMessageActions } from '@/client/components/workspace/chat-timeline/PluginMessageActions';
 import { formatDuration } from '@/shared/lib/chat/duration';
 import { providerLabel } from '@/shared/lib/models/provider/label';
@@ -22,6 +23,12 @@ interface AiMessageFooterProps {
   };
   /** Session thinking level (last `thinking_level_change`) shown next to the model. */
   thinkingLevel?: string;
+  /**
+   * The harness that produced this answer (`omp-rpc`, `opencode`, `claude`, …).
+   * The badge names the agent; without it the footer claimed omp for every
+   * harness, which is the wrong answer to "who wrote this".
+   */
+  harness?: string;
   content: string;
   msgId: string;
   onRetry?: (msgId: string) => void;
@@ -46,6 +53,7 @@ export function AiMessageFooter({
   content,
   msgId,
   thinkingLevel,
+  harness,
   onRetry,
   onNewChat,
   isMobile = false,
@@ -120,9 +128,7 @@ export function AiMessageFooter({
       <>
         <div className="w-full flex items-center gap-2 text-[11px] text-ink/60 px-1 pt-0.5 font-mono min-w-0 animate-in fade-in duration-200">
           <div className="flex items-center gap-1.5 min-w-0 truncate" title={titleLabel}>
-            <div className="w-4 h-4 rounded flex items-center justify-center bg-ink text-canvas shadow-2xs shrink-0">
-              <Bot size={10} />
-            </div>
+            <RunMark harness={harness} size={16} />
             {providerText && <span className="shrink-0 truncate">{providerText}</span>}
             {providerText && currentModel && <span className="text-ink/35 shrink-0">•</span>}
             {currentModel && <span className="font-semibold text-ink min-w-0 truncate">{currentModel}</span>}
@@ -238,9 +244,7 @@ export function AiMessageFooter({
         className="flex items-center space-x-1.5 border-r border-ink/15 pr-2.5 min-w-0 shrink overflow-hidden"
         title={titleLabel}
       >
-        <div className="w-4 h-4 rounded flex items-center justify-center bg-ink text-canvas shadow-2xs shrink-0">
-          <Bot size={10} />
-        </div>
+        <RunMark harness={harness} size={16} />
         {metadataItems.map(({ key, content, className, title }, index) => (
           <span key={key} className={`inline-flex items-center text-ink/60 ${key === 'model' ? 'min-w-0 shrink' : 'shrink-0'} whitespace-nowrap ${className ?? ''}`} title={title}>
             {index > 0 && <span className="text-ink/40 mr-1.5">•</span>}

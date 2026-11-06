@@ -102,3 +102,22 @@ export function harnessModels(
 export function defaultHarnessModel(list: HarnessModelList): AIModelOption | null {
   return list.models[0] ?? null;
 }
+
+/**
+ * The harnesses the composer's tab strip may offer.
+ *
+ * A harness the user switched OFF is absent — that is what switching it off
+ * means — but the harness OWNING the open chat is never removed: an existing
+ * conversation has to be able to name the agent that ran it, even after the user
+ * cleared their roster. Switching it back on is the All Harnesses page's job.
+ *
+ * Lives here rather than in the picker because this module already owns "which
+ * harnesses this list is about", and a second copy of the rule is how the tabs
+ * and the model rows start disagreeing about what is on the roster.
+ */
+export function pickerHarnesses(
+  harnesses: readonly HarnessSummary[],
+  activeHarness: string | null | undefined,
+): HarnessSummary[] {
+  return harnesses.filter((entry) => entry.enabled || entry.id === activeHarness);
+}

@@ -115,6 +115,7 @@ export function BtwForm({
           providerNames={providerNames}
           modelName={mode.activeTopic?.model?.name ?? modelName}
           thinkingLevel={mode.activeTopic?.thinkingLevel}
+          harness="omp-rpc"
           isMobile={variant === 'mobile'}
         />
 
@@ -128,6 +129,7 @@ export function BtwForm({
             modelName={mode.activeTopic?.model?.name ?? modelName}
             provider={mode.activeTopic?.model?.provider ?? provider}
             providerNames={providerNames}
+            harness="omp-rpc"
           />
         )}
       </div>

@@ -138,6 +138,7 @@ export function ComposerDock({
             generatingVerb={generatingVerb}
             provider={provider}
             providerNames={providerNames}
+            {...(harness ? { harness } : {})}
           />
         )}
         <QueueList

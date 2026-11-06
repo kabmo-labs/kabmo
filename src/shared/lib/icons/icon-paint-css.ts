@@ -55,7 +55,7 @@ import {
 } from '@/shared/lib/icons/icon-paint-authority';
 import { monochromeRules, smallGlyphStrokeRules, toolCardRules } from '@/shared/lib/icons/icon-paint-ink';
 import { FILE_BRAND_COLORS } from '@/shared/lib/icons/file-brand-color';
-import { HARNESS_BRAND_COLORS } from '@/shared/lib/harness/brand-color';
+import { harnessBrandRules, harnessTabSurfaceRules } from '@/shared/lib/icons/icon-paint-harness';
 import {
   DEFAULT_ICON_HUE,
   ICON_HUE_ROWS,
@@ -223,6 +223,11 @@ function invertedSurfaceRules(): string[] {
     // `currentColor` resolves FROM `color`: feeding it back into the property
     // that computes `color` is a cycle the browser drops.
     '[data-icon-style="color"] .bg-ink svg.lucide { color: currentColor; }',
+    // A HARNESS mark inside an inverted badge (the generating indicator and the
+    // answer footer fill `bg-ink` and set `text-canvas`): the brand hue and the
+    // muted ink both disappear against a fill that IS the palette's foreground,
+    // so the mark takes the badge's own foreground like every other icon here.
+    '[data-icon-style="color"] .bg-ink svg[data-harness] { color: currentColor; }',
     ':where([data-icon-style="color"]) :where(.bg-ink) :where([data-plugin-mark]) { --plugin-color: currentColor; }',
   ];
 }
@@ -307,11 +312,13 @@ export function iconPaintStyleSheet(): string {
     ...Object.entries(FILE_BRAND_COLORS).flatMap(([name, entry]) =>
       brandRules(`svg[data-file-brand="${name}"]`, entry.light, entry.dark),
     ),
-    // Harness marks: the agent's own brand colour, under the same rule as every
-    // other brand family — `color` mode paints it, `monochrome` leaves the ink.
-    ...Object.entries(HARNESS_BRAND_COLORS).flatMap(([name, entry]) =>
-      brandRules(`svg[data-harness="${name}"]`, entry.light, entry.dark),
-    ),
+    // Harness marks, brand rows then surface overrides — the order inside that
+    // module is what lets `omp-acp` beat the one `omp` brand it shares.
+    ...harnessBrandRules(),
+    // LAST, because it overrides the rows above in BOTH modes: the composer's tab
+    // strip tells its two omp marks apart by hue alone, so the hue survives
+    // monochrome there.
+    ...harnessTabSurfaceRules(),
     '}',
   ].join('\n');
   return cached;

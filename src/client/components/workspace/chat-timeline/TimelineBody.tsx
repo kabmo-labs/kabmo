@@ -30,6 +30,8 @@ interface TimelineBodyProps {
   modelName?: string;
   modelNames?: Record<string, string>;
   thinkingLevel?: string;
+  /** The harness that produced these runs; names the agent in each run footer. */
+  harness?: string;
   onUndo: (id: string, content?: string) => void;
   onRetry: (id: string) => void;
   onNewChat: (content: string, attachments?: Attachment[]) => void;
@@ -64,6 +66,7 @@ export function TimelineBody({
   modelName,
   modelNames,
   thinkingLevel,
+  harness,
   onUndo,
   onRetry,
   onNewChat,
@@ -116,6 +119,7 @@ export function TimelineBody({
             modelName={modelName}
             modelNames={modelNames}
             thinkingLevel={thinkingLevel}
+            {...(harness ? { harness } : {})}
             onUndo={onUndo}
             onRetry={onRetry}
             onNewChat={onNewChat}

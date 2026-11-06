@@ -58,6 +58,12 @@ export interface HarnessMenuEntry {
  * The BUILT-IN transport is left out for the reason it has no card: `omp` over
  * RPC has nothing to install, probe or configure, and a page whose only content
  * is "this is built in" is a dead entry in a menu.
+ *
+ * A harness the user SWITCHED OFF gets no row in the DRAWER, but it keeps its
+ * entry here: this list is the catalog's answer, and whether a given install
+ * currently shows an agent is the roster's (`omp_harness_disabled`). The sidebar
+ * filters with it, and the All Harnesses overview — which always lists every
+ * agent — is where a switched-off one is switched back on.
  */
 export function harnessMenuEntries(): HarnessMenuEntry[] {
   const entries: HarnessMenuEntry[] = [

@@ -1,0 +1,143 @@
+/**
+ * @license
+ * SPDX-License-Identifier: MIT
+ */
+
+/**
+ * The life of an ACP turn: one prompt, its frames, and how it ends.
+ *
+ * Split out of `AcpSession` because the rules here are the ones that took a bug
+ * each to learn, and a session that also owns spawning, config selectors and
+ * client requests buried them:
+ *
+ *  - **a prompt is CHAINED, never raced.** ACP has no queue: a second
+ *    `session/prompt` while one is open CANCELS the first (measured, twice).
+ *  - **a cancelled turn is closed HERE**, not by waiting for the agent.
+ *    `session/cancel` is a notification and the answer is not guaranteed.
+ *  - **frames are accepted only while a turn is open**, so abandoned output
+ *    cannot reach a client that already finalized the message.
+ */
+
+import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
+import { turnEndFrame } from '@/server/lib/harness/acp/frames';
+
+export interface AcpTurnSeams {
+  /** Push one frame at the session's listeners. */
+  emit: (event: AgentEvent) => void;
+  /** Send `session/prompt` and resolve when the AGENT ends the turn. */
+  prompt: (message: string, images: unknown) => Promise<{ stopReason?: string } | undefined>;
+  /** Send `session/cancel` — a notification the agent may never answer. */
+  cancelAgent: () => void;
+  /** Settle the outstanding request locally, as cancelled. */
+  abandonPrompt: () => void;
+  /** Start a clean mapper, so the previous turn cannot leak into this one. */
+  resetMapper: () => void;
+  /** Flush the message the turn left open. */
+  closeMessage: () => AgentEvent[];
+  /** Tool calls the turn abandoned, by id. */
+  openCalls: () => string[];
+}
+
+export class AcpTurns {
+  isStreaming = false;
+  isPromptRunning = false;
+  /** The turn whose frames are accepted, null when none is open. */
+  private open: number | null = null;
+  /** Identity of the last turn started; only ever grows, so a late reply can be
+   *  matched to the turn that produced it. */
+  private seq = 0;
+  /** The outstanding `session/prompt` request — the chain the next turn waits on. */
+  private request: Promise<unknown> | null = null;
+
+  constructor(private readonly seams: AcpTurnSeams) {}
+
+  /** The same field omp puts on its ack, so a client that inspects it reads one
+   *  vocabulary whichever transport served the chat. */
+  start(message: string, images: unknown): { agentInvoked: true } {
+    if (this.isPromptRunning || this.isStreaming) {
+      throw new Error('Agent is already processing. Use steer() or followUp() to queue messages, or wait for completion.');
+    }
+    this.seq += 1;
+    const turnId = this.seq;
+    this.isPromptRunning = true;
+    this.isStreaming = true;
+    this.seams.emit({ type: 'agent_start' });
+    this.seams.emit({ type: 'turn_start' });
+
+    const request = (this.request ?? Promise.resolve())
+      .catch(() => undefined)
+      .then(() => {
+        this.open = turnId;
+        this.seams.resetMapper();
+        return this.seams.prompt(message, images);
+      });
+    this.request = request;
+    void request
+      .then(
+        (result) => this.settle(turnId, () => this.finish(result)),
+        (error: unknown) =>
+          this.settle(turnId, () => {
+            this.seams.emit({
+              type: 'prompt_error',
+              errorMessage: error instanceof Error ? error.message : String(error),
+            });
+            this.finish(undefined);
+          }),
+      )
+      .finally(() => {
+        if (this.request === request) this.request = null;
+      });
+
+    return { agentInvoked: true };
+  }
+
+  /**
+   * Stop the turn AND close it here.
+   *
+   * Nothing guarantees the agent answers the cancel, and a session whose agent
+   * never does stayed `isStreaming` forever: the spinner cleared, and the NEXT
+   * prompt was refused with "Agent is already processing". The agent's own
+   * prompt request is settled locally for the same reason — it is what the next
+   * turn is chained behind.
+   */
+  cancel(): void {
+    if (this.open === null) {
+      // Nothing dispatched yet, but a turn may be queued behind the previous
+      // request: clear its flags too, or Stop leaves the session permanently
+      // "processing".
+      this.isPromptRunning = false;
+      this.isStreaming = false;
+      return;
+    }
+    this.open = null;
+    this.seams.cancelAgent();
+    this.seams.abandonPrompt();
+    this.finish({ stopReason: 'cancelled' });
+  }
+
+  /** Is a turn accepting the agent's frames right now? */
+  acceptingFrames(): boolean {
+    return this.open !== null;
+  }
+
+  /** Close a turn, unless it was cancelled first: a cancelled turn's late reply
+   *  must not close the one the user is now watching. */
+  private settle(turnId: number, close: () => void): void {
+    if (this.open !== turnId) return;
+    this.open = null;
+    close();
+  }
+
+  /** Flush the open message, fail abandoned cards, emit the terminal frame. A
+   *  call left open by a cancelled turn would spin forever — the agent is never
+   *  going to report an end for work it abandoned. */
+  private finish(result: { stopReason?: string } | undefined): void {
+    for (const event of this.seams.closeMessage()) this.seams.emit(event);
+    for (const toolCallId of this.seams.openCalls()) {
+      this.seams.emit({ type: 'tool_execution_end', toolCallId, isError: true, result: { output: 'Cancelled' } });
+    }
+    this.isPromptRunning = false;
+    this.isStreaming = false;
+    this.seams.emit(turnEndFrame(result));
+  }
+}

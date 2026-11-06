@@ -8,8 +8,9 @@ import { ProviderIconPlate } from '@/client/components/common/provider-icon/Plat
 import { useModelCatalog } from '@/client/components/workspace/model-dropdown/use-catalog';
 import { useCollapsedSections } from '@/client/components/workspace/model-dropdown/collapsed';
 import { useHarnesses } from '@/client/hooks/models/use-harnesses';
+import { harnessCategoryId } from '@/shared/lib/harness/menu';
 import { useFullscreenPicker } from '@/client/components/workspace/model-dropdown/fullscreen-picker';
-import { harnessModels } from '@/client/components/workspace/model-dropdown/harness-models';
+import { harnessModels, pickerHarnesses } from '@/client/components/workspace/model-dropdown/harness-models';
 import { useRowMutations } from '@/client/components/workspace/model-dropdown/row-mutations';
 import { HarnessGlyph, HARNESS_GLYPH_SIZE } from '@/client/components/common/harness-glyph';
 import { buildPickerGroups, type PickerRow } from '@/client/components/workspace/model-dropdown/groups';
@@ -46,7 +47,7 @@ export function ModelDropdown({
   harnessEditable = true,
   isMobile,
 }: ModelDropdownProps) {
-  const { harnesses, probe } = useHarnesses();
+  const { harnesses } = useHarnesses();
   /**
    * The harness whose list is on screen.
    *
@@ -90,6 +91,8 @@ export function ModelDropdown({
     () => harnessModels(harnesses, activeHarness, models),
     [harnesses, activeHarness, models],
   );
+  /** The tabs this picker may offer, from the same rule the model rows use. */
+  const tabsForPicker = pickerHarnesses(harnesses, activeHarness);
   const visibleModels = harnessList.models;
 
   /**
@@ -244,8 +247,11 @@ export function ModelDropdown({
           <>
             {/* Harness MARK, then the provider plate: the same two-mark order
                 the rows use, so the trigger and the list cannot describe two
-                different things. */}
-            <HarnessGlyph harness={activeHarness} size={HARNESS_GLYPH_SIZE.compact} />
+                different things. `decorative` for the same measured reason as
+                the tabs: a nested `title` is the one the browser shows, so this
+                component's "Session runs on omp" replaced the trigger's own
+                `provider • model`. */}
+            <HarnessGlyph harness={activeHarness} size={HARNESS_GLYPH_SIZE.compact} decorative />
             {selectedModel.isCmdAgent ? (
               <span className="inline-flex items-center justify-center w-[16px] h-[16px] rounded-[4px] border border-ink/20 bg-ink/5 text-ink/70 flex-shrink-0 font-mono text-[10px] font-bold">
                 ⌘
@@ -306,7 +312,7 @@ export function ModelDropdown({
             setHoveredRow(visibleFlatList[idx] ?? null);
           }}
           onMouseLeave={() => setHoveredRow(null)}
-          harnesses={harnesses}
+          harnesses={tabsForPicker}
           activeHarness={activeHarness}
           harnessEditable={harnessEditable}
           unprobedHarness={harnessList.unprobed}
@@ -321,18 +327,21 @@ export function ModelDropdown({
             setSearch('');
             onSelectHarness?.(id);
           }}
-          // A blocked tab probes once: the answer is the agent's own words
-          // (an auth command, a missing binary), and reporting it beats a
-          // silently unclickable tab.
           onClose={() => {
             setIsOpen(false);
             setHoveredRow(null);
           }}
           fullscreen={fullscreen}
+          // A blocked tab opens THAT agent's settings page — the block is a
+          // login or a missing binary, and both are fixed there. It used to fire
+          // a probe and `console.warn` the answer, which reported the problem to
+          // the devtools console instead of to the person clicking.
           onFixHarness={(id) => {
-            void probe(id).then((reason) => {
-              if (reason) console.warn(`[harness] ${id}: ${reason}`);
-            });
+            setIsOpen(false);
+            setHoveredRow(null);
+            window.dispatchEvent(
+              new CustomEvent('omp:open-settings', { detail: { category: harnessCategoryId(id) } }),
+            );
           }}
         />
       )}

@@ -64,6 +64,8 @@ interface SettingsSidebarProps {
   isReloading: boolean;
   onRestartKabmo: () => void;
   isRestarting: boolean;
+  /** Harness ids the user switched OFF: their rows leave the drawer. */
+  disabledHarnesses?: string[];
   className?: string;
 }
 
@@ -76,9 +78,16 @@ export function SettingsSidebar({
   isReloading,
   onRestartKabmo,
   isRestarting,
+  disabledHarnesses = [],
   className = ''
 }: SettingsSidebarProps) {
+  // A switched-off agent has no row here. The catalog list above stays complete
+  // on purpose — it is what the build KNOWS, and the All Harnesses page draws
+  // every entry in it with the switch that decides this. The ids arrive as a
+  // PROP rather than from `useHarnesses()` so the drawer stays presentational:
+  // it is drawn in table tests that must not fire a catalog read.
   const filteredCategories = SETTINGS_CATEGORIES.filter(cat => {
+    if (cat.harness && disabledHarnesses.includes(cat.harness)) return false;
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
     return cat.label.toLowerCase().includes(q) ||

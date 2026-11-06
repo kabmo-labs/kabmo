@@ -19,6 +19,7 @@
 
 import { openAcpSession } from '@/server/lib/harness/acp/session';
 import { loadHarnessConfig, resolveLaunch } from '@/server/lib/harness/config.server';
+import { sessionLaunchCommand } from '@/server/lib/harness/launch';
 import { resolveDefaultModel, modelProvider } from '@/shared/lib/harness/config';
 import { harnessProbeModels } from '@/server/lib/harness/probe-cache.server';
 import { claimHarness } from '@/server/lib/harness/registry';
@@ -77,7 +78,7 @@ export async function startAcpSession(
   const { session, realSessionId } = await openAcpSession(
     {
       harness: request.harness,
-      command: launch.command,
+      command: sessionLaunchCommand(request.harness, launch.command),
       ...(launch.env ? { env: launch.env } : {}),
       model: startingModel,
       thinkingLevel: request.thinkingLevel ?? configured.thinking ?? null,

@@ -19,6 +19,8 @@ interface SubagentViewProps {
   onBack: () => void;
   provider?: string;
   providerNames?: Record<string, string>;
+  /** Harness that owns the parent chat: a subagent runs on its parent's agent. */
+  harness?: string;
   /** Mobile renders the chat's compact footer variant (three-dot menu). */
   isMobile?: boolean;
   className?: string;
@@ -33,7 +35,7 @@ const STATUS_LABEL: Record<SubagentInfo['status'], string> = {
 
 /** Read-only subagent transcript: compact banner, live-growing message list,
  *  and a notice row where the main timeline's composer would be. */
-export function SubagentView({ sessionId, subagent, onBack, provider, providerNames, isMobile = false, className = '' }: SubagentViewProps) {
+export function SubagentView({ sessionId, subagent, onBack, provider, providerNames, harness, isMobile = false, className = '' }: SubagentViewProps) {
   const { messages, isLoading, status, isActive } = useSubagentTranscript(sessionId, subagent, onBack);
   const modelNames = useModelNames();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -150,6 +152,7 @@ export function SubagentView({ sessionId, subagent, onBack, provider, providerNa
                       modelName={modelName}
                       modelNames={modelNames}
                       thinkingLevel={progress?.resolvedThinkingLevel}
+                      {...(harness ? { harness } : {})}
                       durationMs={footer.durationMs}
                       answerText={footer.answerText}
                       isMobile={isMobile}

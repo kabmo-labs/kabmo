@@ -27,12 +27,18 @@ function postCommand(sessionId: string, body: Record<string, unknown>, signal?: 
 }
 
 /** Ask the session to stop, then reset its process if it does not stop in time.
- *  Failures are swallowed: the event stream is the source of truth for state. */
+ *  Failures are swallowed: the event stream is the source of truth for state.
+ *  A reply that did not succeed counts as a failure, not as a stop: the server
+ *  answers a broken `abort` with 500 and the turn keeps running, so treating
+ *  any HTTP status as success left the Stop button doing nothing at all
+ *  (measured on `omp-acp`: `{"error":"undefined is not an object
+ *  (evaluating 'this.write')"}` and no `session/cancel` on the wire). */
 export async function stopAgentSession(sessionId: string): Promise<void> {
   const grace = new AbortController();
   const timer = setTimeout(() => grace.abort(), ABORT_GRACE_MS);
   try {
-    const stopped = await postCommand(sessionId, { type: 'abort' }, grace.signal).then(() => true, () => false);
+    const stopped = await postCommand(sessionId, { type: 'abort' }, grace.signal)
+      .then((res) => res.ok, () => false);
     if (stopped) return;
     await postCommand(sessionId, { type: 'force_reset' }).catch(() => null);
   } finally {

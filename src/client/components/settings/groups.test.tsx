@@ -118,4 +118,43 @@ describe('settings groups', () => {
       expect(labels).toContain(category.label);
     }
   });
+
+  test('a switched-off harness has no row, and switching it back on restores it', () => {
+    // The roster decides the drawer, not the catalog: an agent the user turned
+    // off must not leave a settings entry behind that says only "this is off".
+    // Drawing it twice is the round trip the toggle actually performs.
+    const draw = (disabledHarnesses: string[]) => {
+      container = document.createElement('div');
+      document.body.append(container);
+      act(() =>
+        render(
+          h(SettingsSidebar, {
+            activeCategory: 'appearance',
+            onSelectCategory: () => {},
+            searchQuery: '',
+            onSearchChange: () => {},
+            onReloadOmp: () => {},
+            isReloading: false,
+            onRestartKabmo: () => {},
+            isRestarting: false,
+            disabledHarnesses,
+          }),
+          container,
+        ),
+      );
+      return Array.from(container.querySelectorAll('button'))
+        .map((button) => button.textContent?.trim() ?? '');
+    };
+
+    const on = draw([]);
+    expect(on).toContain('claude');
+    // The overview always stays: it is where a switched-off agent is switched on.
+    expect(on).toContain('All Harnesses');
+
+    const off = draw(['claude']);
+    expect(off).not.toContain('claude');
+    expect(off).toContain('All Harnesses');
+    // Its neighbours are untouched — this is one row, not the whole group.
+    expect(off).toContain('codex');
+  });
 });

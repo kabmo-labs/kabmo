@@ -105,13 +105,35 @@ describe('a probe survives a restart', () => {
     expect(await harnessProbeModels('claude')).toEqual([]);
   });
 
-  test('a probe older than the TTL is not evidence any more', async () => {
-    // An update replaces the binary the probe described, so a stale row is read
-    // as absent rather than as a stale truth.
+  test('an aged probe is still returned, labelled, never reported as absent', async () => {
+    // The reported bug, one route round: probe a harness, come back later, and
+    // the card said `not probed` while the row was still on disk. Measured on a
+    // cold process against the real database — `omp-acp` (17 min) answered and
+    // `claude` (61 min) read as absent.
     await rememberProbe('claude', probe({ probedAt: Date.now() - PROBE_TTL_MS - 1 }));
     simulateRestart();
-    expect(await freshProbe('claude')).toBeNull();
-    expect((await loadProbes()).has('claude')).toBe(false);
+
+    const aged = await freshProbe('claude');
+    expect(aged).not.toBeNull();
+    expect(aged?.stale).toBe(true);
+    expect(aged?.capabilities.agentVersion).toBe('0.100.0');
+    expect((await loadProbes()).has('claude')).toBe(true);
+  });
+
+  test('a current probe carries no stale flag', async () => {
+    await rememberProbe('claude', probe());
+    simulateRestart();
+    expect((await freshProbe('claude'))?.stale).toBeUndefined();
+  });
+
+  test('an aged probe is NOT used to choose a spawn model', async () => {
+    // Showing an old answer on a card is honest; ACTING on one is not — a model
+    // the agent dropped in the meantime would fail at the first prompt.
+    await rememberProbe('claude', probe({ probedAt: Date.now() - PROBE_TTL_MS - 1 }));
+    simulateRestart();
+    expect(await harnessProbeModels('claude')).toEqual([]);
+    // And the record is still there for the card to draw.
+    expect(await freshProbe('claude')).not.toBeNull();
   });
 
   test('re-probing REPLACES the row rather than piling up', async () => {

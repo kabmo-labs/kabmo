@@ -25,7 +25,6 @@ import { acpOptionValues } from '@/server/lib/harness/acp/protocol';
 import type { AcpConfigOption } from '@/server/lib/harness/acp/protocol';
 import type { HarnessCapabilities } from '@/server/lib/harness/capabilities';
 import type { HarnessId } from '@/shared/lib/harness/catalog';
-import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
 
 /** The slice of `AcpSession` this table drives. Narrow on purpose: the dispatch
  *  rules are testable against a stub, with no process and no protocol. */
@@ -34,10 +33,10 @@ export interface AcpCommandHost {
   readonly sessionId: string;
   readonly capabilities: HarnessCapabilities;
   readonly configOptions: AcpConfigOption[];
-  /** Read by the guard, and cleared by the cancel branch. */
-  isPromptRunning: boolean;
+  /** Dispatch one turn. Returns the ACK (`{agentInvoked:true}`), never the
+   *  turn: the route's answer means "accepted", and the turn's end arrives as
+   *  the session's `agent_end` frame. */
   startTurn(message: string, images: unknown): Promise<unknown> | unknown;
-  emit(event: AgentEvent): void;
   isAlive(): boolean;
   destroyAndWait(): Promise<void>;
   steer(blocks: unknown[], queue: 'steering' | 'followUp'): Promise<unknown>;
@@ -71,11 +70,14 @@ export interface AcpCommandHost {
       }
 
       case 'abort':
+        // `cancelTurn` stops the agent AND closes the turn locally: the cancel
+        // is a notification, so an agent that never answers it would otherwise
+        // leave `isStreaming` up and refuse the next prompt as "already
+        // processing" (reported: Stop cleared the spinner but the next send was
+        // rejected). The terminal `agent_end` comes from that close, not from a
+        // frame emitted here — two terminal frames finalized the assistant
+        // message twice.
         host.cancelTurn();
-        // The turn's own response clears the flags; a cancel that never lands
-        // would otherwise leave the spinner up for the rest of the process.
-        host.isPromptRunning = false;
-        host.emit({ type: 'agent_end', isTerminal: true, stopReason: 'cancelled' });
         return null;
 
       case 'force_reset':

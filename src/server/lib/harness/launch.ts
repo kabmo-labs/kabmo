@@ -22,6 +22,7 @@ import { AcpProcess } from '@/server/lib/harness/acp/client';
 import type { AcpConfigOption, AcpInitializeResult } from '@/server/lib/harness/acp/protocol';
 import { acpOptionValues } from '@/server/lib/harness/acp/protocol';
 import { UNPROBED_CAPABILITIES, type HarnessCapabilities, type HarnessProbe } from '@/server/lib/harness/capabilities';
+import { kabmoExtensionArgs } from '@/server/lib/omp/extensions/locator';
 import type { HarnessId } from '@/shared/lib/harness/catalog';
 
 /** One harness's launch configuration. */
@@ -121,6 +122,24 @@ export const HARNESS_LAUNCH: Readonly<Partial<Record<HarnessId, HarnessLaunch>>>
     note: 'registry shape; no CLI probe run here',
   },
 };
+
+/**
+ * The argv a SESSION spawns with, as opposed to the one a probe runs.
+ *
+ * `omp-acp` is omp itself over the Agent Client Protocol, so it gets the same
+ * mode extension the `--mode rpc-ui` child gets. Kabmo's plan/goal controls are
+ * extension commands (`/kabmo-mode …`), and omp's ACP path dispatches extension
+ * commands locally inside `session.prompt()` — without `-e` the command is just
+ * a string, so the client's republish on attach reached the MODEL as a prompt
+ * and started a turn on an `omp (ACP)` chat.
+ *
+ * Every other ACP agent is a different program with no `-e` flag, so its
+ * vector passes through untouched. A pruned install resolves no extension at
+ * all and also passes through (see `kabmoExtensionArgs`).
+ */
+export function sessionLaunchCommand(id: HarnessId, command: readonly string[]): string[] {
+  return id === 'omp-acp' ? [...command, ...kabmoExtensionArgs()] : [...command];
+}
 
 /** Which config category a `configOptions` entry belongs to. */
 export function configByCategory(options: AcpConfigOption[], category: string): AcpConfigOption | undefined {

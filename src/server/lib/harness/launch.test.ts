@@ -15,7 +15,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { capabilitiesFrom, configByCategory, selectValues } from '@/server/lib/harness/launch';
+import { capabilitiesFrom, configByCategory, selectValues, sessionLaunchCommand } from '@/server/lib/harness/launch';
 import type { AcpInitializeResult, AcpConfigOption } from '@/server/lib/harness/acp/protocol';
 
 const ompInit: AcpInitializeResult = {
@@ -116,5 +116,37 @@ describe('steering is advertised at the RESULT root', () => {
       { usage: false, plan: false },
     );
     expect(caps.steerMode).toBe('steer');
+  });
+});
+
+describe('sessionLaunchCommand', () => {
+  test('omp-acp loads the mode extension the rpc child gets', () => {
+    // omp's ACP path dispatches extension commands locally inside
+    // `session.prompt()`. Without `-e`, the client's `/kabmo-mode plan
+    // republish` (sent on every attach) is an ordinary prompt: measured, it
+    // started a MODEL turn on an `omp (ACP)` chat instead of re-announcing the
+    // parked plan review.
+    const argv = sessionLaunchCommand('omp-acp', ['omp', 'acp']);
+    expect(argv.slice(0, 2)).toEqual(['omp', 'acp']);
+    expect(argv).toContain('-e');
+    const entry = argv[argv.indexOf('-e') + 1] ?? '';
+    expect(entry.endsWith('/extensions/kabmo-modes/index.ts')).toBe(true);
+  });
+
+  test('a user command override still gets the extension appended', () => {
+    const argv = sessionLaunchCommand('omp-acp', ['/opt/omp/bin/omp', 'acp']);
+    expect(argv[0]).toBe('/opt/omp/bin/omp');
+    expect(argv).toContain('-e');
+  });
+
+  test('other ACP agents never see an -e flag they do not accept', () => {
+    const argv = sessionLaunchCommand('claude', ['npx', '-y', 'claude-agent-acp']);
+    expect(argv).toEqual(['npx', '-y', 'claude-agent-acp']);
+  });
+
+  test('the table vector is not mutated in place', () => {
+    const base = ['omp', 'acp'];
+    sessionLaunchCommand('omp-acp', base);
+    expect(base).toEqual(['omp', 'acp']);
   });
 });

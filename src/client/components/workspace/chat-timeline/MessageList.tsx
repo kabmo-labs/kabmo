@@ -21,6 +21,9 @@ export interface MessageListProps {
   modelNames?: Record<string, string>;
   /** Session thinking level shown in the AI footer. */
   thinkingLevel?: string;
+  /** The harness that produced these runs (`omp-rpc`, `opencode`, …), so each
+   *  run footer names the agent that wrote it instead of always omp's robot. */
+  harness?: string;
   onUndo?: (id: string, content?: string) => void;
   onRetry?: (id: string) => void;
   /** Seeds a new chat from a row. A user row also hands over its attachments. */
@@ -64,6 +67,7 @@ export const MessageList = memo(function MessageList({
   modelName,
   modelNames,
   thinkingLevel,
+  harness,
   onUndo,
   onRetry,
   onNewChat,
@@ -148,6 +152,7 @@ export const MessageList = memo(function MessageList({
                     modelName={modelName}
                     modelNames={modelNames}
                     thinkingLevel={thinkingLevel}
+                    {...(harness ? { harness } : {})}
                     durationMs={inlineFooter.durationMs}
                     answerText={inlineFooter.answerText}
                     retryTargetId={inlineFooter.runUserId}
@@ -169,6 +174,7 @@ export const MessageList = memo(function MessageList({
             modelName={modelName}
             modelNames={modelNames}
             thinkingLevel={thinkingLevel}
+            {...(harness ? { harness } : {})}
             durationMs={trailingFooter.durationMs}
             answerText={trailingFooter.answerText}
             retryTargetId={trailingFooter.runUserId}

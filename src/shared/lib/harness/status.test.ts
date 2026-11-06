@@ -30,6 +30,7 @@ function summary(overrides: Partial<HarnessSummary> = {}): HarnessSummary {
     label: 'cursor',
     transport: 'acp',
     canLaunch: true,
+    enabled: true,
     probe: null,
     ...overrides,
   };
@@ -94,6 +95,20 @@ describe('harness status', () => {
     expect(status.state).toBe('ready');
     expect(status.label).toBe('ready');
     expect(status.detail).toContain('18.14.0');
+  });
+
+  test('an AGED probe is still ready, and says how old it is', () => {
+    // The reported bug: a stored record past the TTL used to be reported as
+    // `not probed`, so a harness the user had checked an hour earlier looked
+    // like one that had never answered. It keeps its state and gains its age.
+    const aged = probe(null, '18.14.0');
+    const status = harnessStatus(summary({
+      probe: { ...(aged as NonNullable<HarnessSummary['probe']>), probedAt: Date.now() - 61 * 60_000, stale: true },
+    }));
+    expect(status.state).toBe('ready');
+    expect(status.label).toBe('ready (aged)');
+    expect(status.detail).toContain('18.14.0');
+    expect(status.detail).toContain('Check status');
   });
 
   test('never probed is unknown, NOT a problem', () => {

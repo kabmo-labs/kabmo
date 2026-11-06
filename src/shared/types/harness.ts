@@ -32,10 +32,11 @@ export interface HarnessSummary {
   builtIn?: true;
   install?: string;
   note?: string;
-  /** Whether this harness is in the user's roster. Always true for the built-in
-   *  transport, which has no switch. Optional so a summary written before the
-   *  roster existed still reads as present. */
-  enabled?: boolean;
+  /** False when the user switched this harness off: it then leaves the settings
+   *  menu and the composer's picker, so a roster of twelve becomes the agents
+   *  someone actually runs. Always true for the built-in transport, which has no
+   *  switch. */
+  enabled: boolean;
   /** The live probe, or null when this harness has never been probed. */
   probe: {
     harness: string;
@@ -44,6 +45,9 @@ export interface HarnessSummary {
     thinking: { value: string; name: string }[];
     modes: { value: string; name: string }[];
     probedAt: number;
+    /** True when the record is older than `PROBE_TTL_MS`. The answer is still
+     *  shown — with its age — rather than being reported as "never probed". */
+    stale?: true;
   } | null;
   unavailable?: string;
 }

@@ -13,6 +13,7 @@ import { useToasts } from '@/client/hooks/ui/toasts';
 import { useDialogBehaviour } from '@/client/hooks/ui/dialog-behaviour';
 import { SETTINGS_CATEGORIES, SettingsSidebar } from '@/client/components/settings/Sidebar';
 import { harnessIdFromCategory } from '@/shared/lib/harness/menu';
+import { useHarnesses } from '@/client/hooks/models/use-harnesses';
 import { AppearanceSettings } from '@/client/components/settings/categories/AppearanceSettings';
 import { ChatSettings } from '@/client/components/settings/categories/ChatSettings';
 import { ProjectSettings } from '@/client/components/settings/categories/ProjectSettings';
@@ -59,6 +60,15 @@ export function SettingsModal({
   const { isRestarting, restart: restartKabmo } = useRestartKabmo();
 
   const { pushToast: showToast } = useToasts();
+
+  // The roster, for the drawer and for the page being drawn. A harness the user
+  // switched off has no menu row AND no page: leaving the page reachable from a
+  // stale `activeCategory` would show a card for an agent that is not in the
+  // roster any more.
+  const { harnesses } = useHarnesses();
+  const disabledHarnesses = harnesses
+    .filter((entry) => !entry.builtIn && !entry.enabled)
+    .map((entry) => entry.id);
 
   const [settings, setSettings] = useState<SettingsState>(() =>
     mergeKabmoSettings(DEFAULT_SETTINGS, appSettings),
@@ -223,6 +233,7 @@ export function SettingsModal({
             isReloading={isReloading}
             onRestartKabmo={handleRestartKabmo}
             isRestarting={isRestarting}
+            disabledHarnesses={disabledHarnesses}
             className="w-full"
           />
         </div>
@@ -320,6 +331,7 @@ export function SettingsModal({
               isReloading={isReloading}
               onRestartKabmo={handleRestartKabmo}
               isRestarting={isRestarting}
+              disabledHarnesses={disabledHarnesses}
               className="w-full border-r-0"
             />
           </div>

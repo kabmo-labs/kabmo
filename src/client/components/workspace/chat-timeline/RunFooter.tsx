@@ -14,6 +14,8 @@ interface RunFooterProps {
   modelNames?: Record<string, string>;
   /** Session thinking level, used when the turn recorded none. */
   thinkingLevel?: string;
+  /** The harness that produced this run (`omp-rpc`, `opencode`, …). */
+  harness?: string;
   durationMs?: number | null;
   /**
    * The run's whole answer (`RunFooterSlot.answerText`) — what Copy and
@@ -52,6 +54,7 @@ export function RunFooter({
   modelName,
   modelNames,
   thinkingLevel,
+  harness,
   durationMs,
   answerText,
   retryTargetId,
@@ -67,6 +70,7 @@ export function RunFooter({
         providerNames={providerNames}
         currentModel={(msg.model ? (modelNames?.[msg.model] ?? msg.model) : '') || modelName || ''}
         thinkingLevel={msg.thinkingLevel ?? thinkingLevel}
+        harness={harness}
         dateStr={formatMessageStamp(msg)}
         durationMs={durationMs ?? msg.durationMs}
         usage={msg.usage}

@@ -82,6 +82,11 @@ interface EmptyWorkspacePromptProps {
    *  or cancelled, because there is no session to send a second prompt to. */
   heldWait?: { title: string | null } | null;
   onCancelWait?: () => void;
+  /** The harness this chat will spawn on, and the pick that writes it. */
+  harness?: string;
+  /** False once the prompt was dispatched: the harness already rode the spawn. */
+  harnessEditable?: boolean;
+  onSelectHarness?: (harness: string) => void;
 }
 
 export function EmptyWorkspacePrompt({
@@ -125,6 +130,9 @@ export function EmptyWorkspacePrompt({
   onWaitingForChange,
   heldWait = null,
   onCancelWait,
+  harness,
+  harnessEditable = true,
+  onSelectHarness,
 }: EmptyWorkspacePromptProps) {
   const timelineRef = useRef<HTMLDivElement>(null);
 
@@ -235,6 +243,7 @@ export function EmptyWorkspacePrompt({
                         modelName={modelName}
                         modelNames={modelNames}
                         thinkingLevel={sessionThinkingLevel ?? undefined}
+                        {...(harness ? { harness } : {})}
                         durationMs={footer.durationMs}
                         answerText={footer.answerText}
                         retryTargetId={footer.runUserId}
@@ -258,6 +267,7 @@ export function EmptyWorkspacePrompt({
             generatingVerb={generatingVerb}
             provider={provider}
             providerNames={providerNames}
+            {...(harness ? { harness } : {})}
           />
         )}
         {/* A held prompt owns this chat until it is released: there is no
@@ -301,6 +311,9 @@ export function EmptyWorkspacePrompt({
           modes={modes}
           composerModelRef={composerModelRef}
           deferredComposerPickRef={deferredComposerPickRef}
+          {...(harness ? { harness } : {})}
+          harnessEditable={harnessEditable}
+          {...(onSelectHarness ? { onSelectHarness } : {})}
           variant={variant}
           expandable
           // A brand-new chat has no turns: the `stage` composer style draws its

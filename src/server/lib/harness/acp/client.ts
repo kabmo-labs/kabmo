@@ -27,6 +27,7 @@
 
 import type { Subprocess } from 'bun';
 import { readLines } from '@/server/lib/omp/rpc/lines';
+import { PendingCalls } from '@/server/lib/harness/acp/calls';
 import { killProcessTree } from '@/server/lib/lifecycle/kill-tree';
 import { stripKabmoHostEnv, withToolchainPath } from '@kabmo-labs/kabmo-sdk';
 import * as verbs from '@/server/lib/harness/acp/verbs';
@@ -63,18 +64,12 @@ export interface AcpClientOptions {
   requestTimeoutMs?: number;
 }
 
-interface Pending {
-  resolve: (value: unknown) => void;
-  reject: (error: Error) => void;
-  timer?: NodeJS.Timeout;
-}
-
 const DEFAULT_REQUEST_TIMEOUT_MS = 60_000;
 const STDERR_TAIL_LIMIT = 8_000;
 
 export class AcpProcess {
   private readonly child: Subprocess<'pipe', 'pipe', 'pipe'>;
-  private readonly pending = new Map<AcpId, Pending>();
+  private readonly pending = new PendingCalls();
   private readonly options: AcpClientOptions;
   private nextId = 1;
   private exited = false;
@@ -186,6 +181,12 @@ export class AcpProcess {
     verbs.cancel(this.notify, sessionId);
   }
 
+  /** Settle this session's open `session/prompt` locally, as cancelled. The
+   *  rule, and why omp forces it, live in `PendingCalls.abandonPrompt`. */
+  abandonPrompt(sessionId: string): void {
+    this.pending.abandonPrompt(sessionId);
+  }
+
   setConfigOption(sessionId: string, configId: string, value: string | boolean, timeoutMs?: number) {
     return verbs.setConfigOption(this.call, sessionId, configId, value, timeoutMs);
   }
@@ -211,9 +212,17 @@ export class AcpProcess {
     this.write({ jsonrpc: '2.0', id, error: { code, message } });
   }
 
-  notify(method: string, params: unknown): void {
+  /**
+   * The notify seam `verbs.ts` binds to. Arrow, like `call`, and for the same
+   * measured reason: `cancel` hands this straight to `verbs.cancel`, and a
+   * method reference loses its receiver — the throw was
+   * `undefined is not an object (evaluating 'this.write')` from inside
+   * `notify`, so `session/cancel` was NEVER delivered and the Stop button
+   * answered 500 while the turn kept running.
+   */
+  readonly notify = (method: string, params: unknown): void => {
     this.write({ jsonrpc: '2.0', method, params });
-  }
+  };
 
   /** Graceful then forceful shutdown of the whole process group. */
   async dispose(gracePeriodMs = 5_000): Promise<void> {
@@ -251,19 +260,13 @@ export class AcpProcess {
         ? 0
         : (this.options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS);
     const id = `k${this.nextId++}`;
-    const { promise, resolve, reject } = Promise.withResolvers<T>();
-    const entry: Pending = { resolve: resolve as (value: unknown) => void, reject };
-    if (budget > 0) {
-      entry.timer = setTimeout(() => {
-        if (this.pending.get(id) !== entry) return;
-        this.pending.delete(id);
-        reject(new Error(`ACP ${method} timed out after ${budget}ms`));
-      }, budget);
-      entry.timer.unref?.();
-    }
-    this.pending.set(id, entry);
+    const promise = this.pending.begin<T>(id, method, params, budget);
     this.write({ jsonrpc: '2.0', id, method, params });
     return promise;
+  }
+
+  private rejectAll(error: Error): void {
+    this.pending.rejectAll(error);
   }
 
   private write(frame: AcpRequest | AcpNotification | AcpResponse): void {
@@ -305,16 +308,7 @@ export class AcpProcess {
       return;
     }
 
-    const response = record as unknown as AcpResponse;
-    const pending = this.pending.get(response.id);
-    if (!pending) return;
-    this.pending.delete(response.id);
-    clearTimeout(pending.timer);
-    if (response.error) {
-      pending.reject(new Error(`${response.error.message}${response.error.data ? `: ${JSON.stringify(response.error.data)}` : ''}`));
-      return;
-    }
-    pending.resolve(response.result);
+    this.pending.settle(record as unknown as AcpResponse);
   }
 
   /** Answer (or refuse) a call the AGENT made on this client. */
@@ -338,11 +332,4 @@ export class AcpProcess {
     }
   }
 
-  private rejectAll(error: Error): void {
-    for (const [, pending] of this.pending) {
-      clearTimeout(pending.timer);
-      pending.reject(error);
-    }
-    this.pending.clear();
-  }
 }
