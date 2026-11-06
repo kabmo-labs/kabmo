@@ -87,11 +87,14 @@ describe('resolveOmpBin', () => {
   });
 
   test('a cached miss suppresses probing until the miss TTL elapses', () => {
-    Bun.env.KABMO_OMP_BIN = join(tempDir('omp-miss'), 'omp');
+    // The SAME path all the way through: this is a miss cached, then the binary
+    // installed at it — not an override swap, which is a different request and
+    // therefore never a cache hit (a stale answer there ignored the new value).
+    const bin = join(tempDir('omp-miss'), 'omp');
+    Bun.env.KABMO_OMP_BIN = bin;
     invalidateOmpCliCache();
     expect(resolveOmpBin()).toBeNull();
-    const bin = fakeBinary();
-    Bun.env.KABMO_OMP_BIN = bin;
+    fs.writeFileSync(bin, '#!/bin/sh\nexit 0\n', { mode: 0o755 });
     // Still inside MISS_TTL_MS: the install that just appeared is invisible.
     expect(resolveOmpBin()).toBeNull();
     // An explicit invalidation (after `omp update`) makes it visible at once.

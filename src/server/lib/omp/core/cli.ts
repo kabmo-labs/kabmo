@@ -18,6 +18,10 @@ import { delimiter, join } from 'path';
 
 let cachedBin: string | null = null;
 let binMissAt = 0;
+/** The override the cache was resolved FOR. A changed override must re-probe:
+ *  `KABMO_OMP_BIN` is a seam tests and packaged shells both move at runtime, and
+ *  a hit cached under the previous value silently ignored the new one. */
+let cachedOverride: string | null = null;
 
 const BIN_NAME = process.platform === 'win32' ? 'omp.exe' : 'omp';
 
@@ -30,6 +34,7 @@ const MISS_TTL_MS = 30_000;
 export function invalidateOmpCliCache(): void {
   cachedBin = null;
   binMissAt = 0;
+  cachedOverride = null;
 }
 
 function probeOmpBin(): string | null {
@@ -54,6 +59,14 @@ function probeOmpBin(): string | null {
  * null when omp is not installed. A hit is cached for the process lifetime; a
  * miss is re-probed after MISS_TTL_MS. */
 export function resolveOmpBin(): string | null {
+  const override = Bun.env.KABMO_OMP_BIN ?? Bun.env.OMPCHAMBER_OMP_BIN ?? null;
+  if (override !== cachedOverride) {
+    // The override itself changed: the previous answer describes a different
+    // request, so it is not a cache hit.
+    cachedBin = null;
+    binMissAt = 0;
+    cachedOverride = override;
+  }
   // A global Bun/npm update can replace or remove its launcher while this
   // server process is still alive. Never keep returning a stale cache entry.
   if (cachedBin && existsSync(cachedBin)) return cachedBin;
