@@ -15,24 +15,34 @@
  *  - the action is chosen by what the harness can do — an `npm` update is a
  *    button, a self-updating CLI is its own copyable command, a vendor-managed
  *    one is the command Kabmo will not run;
+ *  - an adapter and the CLI under it are TWO number lines, each with its own move;
  *  - a row with no version shows a dash, never a fabricated number;
  *  - the built-in transport is not a row.
+ *
+ * The fixtures live in `@/test-support/harness-table.test-util`, so a second spec
+ * of the same rows cannot drift into a different wire shape.
  */
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
-import { Window } from 'happy-dom';
-import { h, render } from 'preact';
+import { render } from 'preact';
 import { act } from 'preact/test-utils';
 
-import { HarnessTable, harnessCategoryFor } from '@/client/components/layout/session-sidebar/about-modal/HarnessTable';
-import type { HarnessVersionRow } from '@/client/hooks/models/use-harness-versions';
-import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
-import type { HarnessSummary } from '@/shared/types/harness';
+import { harnessCategoryFor } from '@/client/components/layout/session-sidebar/about-modal/HarnessTable';
+import {
+  cliPart,
+  harnessRows as rows,
+  installHarnessTableDom,
+  mountHarnessTable as mountTo,
+  probed,
+  restoreHarnessTableDom,
+  summary,
+  version,
+} from '@/test-support/harness-table.test-util';
 
 let container: HTMLElement;
 
 beforeAll(() => {
-  installDomGlobals(new Window({ url: 'http://localhost' }));
+  installHarnessTableDom();
 });
 
 beforeEach(() => {
@@ -46,67 +56,24 @@ afterEach(() => {
 });
 
 afterAll(() => {
-  restoreDomGlobals();
+  restoreHarnessTableDom();
 });
 
-function summary(overrides: Partial<HarnessSummary> = {}): HarnessSummary {
-  return { id: 'claude', label: 'claude', transport: 'acp', canLaunch: true, probe: null, ...overrides };
-}
-
-function version(overrides: Partial<HarnessVersionRow> = {}): HarnessVersionRow {
-  return {
-    id: 'claude', label: 'claude', kind: 'npm', installed: true,
-    agentVersion: null, cli: null,
-    current: null, latest: null, updateAvailable: false, note: null, command: null,
-    ...overrides,
-  };
-}
-
-function probed(): HarnessSummary['probe'] {
-  return {
-    harness: 'claude',
-    capabilities: {
-      configModel: 5, configThinking: 0, configMode: 0, modeValues: [],
-      loadSession: true, listSessions: true, forkSession: false, deleteSession: false,
-      resumeSession: true, closeSession: true, hasUsage: false, hasPlan: false, steerMode: null,
-      agentVersion: '0.100.0',
-    },
-    models: [], thinking: [], modes: [], probedAt: Date.now(),
-  };
-}
-
+/** Mount into this file's container. */
 function mount(
-  harnesses: HarnessSummary[],
-  versions: HarnessVersionRow[],
-  onOpen?: (id: string) => void,
-  onUpdate?: (id: string) => Promise<string | null>,
+  harnesses: Parameters<typeof mountTo>[1],
+  versions: Parameters<typeof mountTo>[2],
+  onOpen?: Parameters<typeof mountTo>[3],
+  onUpdate?: Parameters<typeof mountTo>[4],
 ): HTMLElement {
-  act(() =>
-    render(
-      h(HarnessTable, {
-        harnesses,
-        versions,
-        onOpenHarness: onOpen ?? (() => {}),
-        onUpdate: onUpdate ?? (async () => null),
-        updating: null,
-      }),
-      container,
-    ),
-  );
-  return container;
-}
-
-/** The rows, which are the direct children of the scrolling grid. */
-function rows(el: HTMLElement): HTMLElement[] {
-  const scroll = el.querySelector('.scrollbar-overlay-container');
-  return scroll ? Array.from(scroll.children) as HTMLElement[] : [];
+  return mountTo(container, harnesses, versions, onOpen, onUpdate);
 }
 
 describe('About harness table', () => {
   test('ONE row per harness carries state AND version', () => {
     const el = mount(
       [summary({ probe: probed() })],
-      [version({ current: '0.100.0', latest: '0.101.0', updateAvailable: true })],
+      [version({ agent: { version: '0.100.0', latest: '0.101.0', updateAvailable: true } })],
     );
     expect(rows(el)).toHaveLength(1);
     const text = (rows(el)[0].textContent ?? '').replace(/\s+/g, ' ');
@@ -124,7 +91,7 @@ describe('About harness table', () => {
     // The defect being fixed: fourteen agents in a grid AND fourteen in a table.
     const el = mount(
       [summary({ probe: probed() })],
-      [version({ current: '0.100.0', updateAvailable: true, latest: '0.101.0' })],
+      [version({ agent: { version: '0.100.0', latest: '0.101.0', updateAvailable: true } })],
     );
     const occurrences = (el.textContent ?? '').match(/claude/g) ?? [];
     // The name, its aria-label and the title attribute aside, the VISIBLE label
@@ -138,7 +105,7 @@ describe('About harness table', () => {
     // still announced without being drawn.
     const withUpdate = mount(
       [summary()],
-      [version({ kind: 'npm', current: '1.0.0', latest: '1.0.1', updateAvailable: true })],
+      [version({ agent: { version: '1.0.0', latest: '1.0.1', updateAvailable: true }, kind: 'npm' })],
     );
     const action = Array.from(withUpdate.querySelectorAll('button')).find(
       (b) => b.getAttribute('aria-label')?.startsWith('Update claude'),
@@ -147,7 +114,7 @@ describe('About harness table', () => {
     expect(action?.textContent?.trim()).toBe('');
     expect(action?.getAttribute('aria-label')).toContain('1.0.1');
 
-    const current = mount([summary()], [version({ kind: 'npm', current: '1.0.1', latest: '1.0.1' })]);
+    const current = mount([summary()], [version({ agent: { version: '1.0.1', latest: '1.0.1', updateAvailable: false }, kind: 'npm' })]);
     expect(Array.from(current.querySelectorAll('button')).some(
       (b) => b.getAttribute('aria-label')?.startsWith('Update claude'),
     )).toBe(false);
@@ -170,8 +137,9 @@ describe('About harness table', () => {
     const el = mount(
       [summary()],
       [version({
-        kind: 'npm', current: '0.101.0', agentVersion: '0.101.0',
-        cli: { name: 'Claude Code', version: '2.1.318' },
+        kind: 'npm',
+        agent: { version: '0.101.0', latest: null, updateAvailable: false },
+        cli: cliPart('Claude Code', '2.1.318'),
       })],
     );
     const text = (rows(el)[0].textContent ?? '').replace(/\s+/g, ' ');
@@ -187,14 +155,14 @@ describe('About harness table', () => {
     // the claim that there is somewhere to move.
     const moving = mount(
       [summary()],
-      [version({ kind: 'npm', current: '0.100.0', latest: '0.101.0', updateAvailable: true })],
+      [version({ agent: { version: '0.100.0', latest: '0.101.0', updateAvailable: true }, kind: 'npm' })],
     );
     const movingText = (rows(moving)[0].textContent ?? '').replace(/\s+/g, ' ');
     expect(movingText).toContain('0.100.0');
     expect(movingText).toContain('→');
     expect(movingText).toContain('0.101.0');
 
-    const current = mount([summary()], [version({ kind: 'npm', current: '0.101.0', latest: '0.101.0' })]);
+    const current = mount([summary()], [version({ agent: { version: '0.101.0', latest: '0.101.0', updateAvailable: false }, kind: 'npm' })]);
     const currentText = (rows(current)[0].textContent ?? '').replace(/\s+/g, ' ');
     expect(currentText).toContain('0.101.0');
     // No newer version, so no direction to point at.
@@ -206,6 +174,53 @@ describe('About harness table', () => {
     const text = (rows(el)[0].textContent ?? '').replace(/\s+/g, ' ');
     expect(text).toContain('—');
     expect(text).not.toMatch(/\d+\.\d+\.\d+/);
+  });
+
+  test('the action icon is a DOWNLOAD, and only the part that is behind grows an arrow', () => {
+    // The icon says what the press does. It used to be `ArrowUpRight`, which reads
+    // as "open this elsewhere" beside a version.
+    const el = mount(
+      [summary()],
+      [version({
+        agent: { version: '0.101.0', latest: '0.102.0', updateAvailable: true },
+        cli: cliPart('Claude Code', '2.1.318', '2.1.400'),
+        updateAvailable: true,
+      })],
+    );
+    const action = Array.from(el.querySelectorAll('button')).find(
+      (b) => b.getAttribute('aria-label')?.startsWith('Update claude'),
+    );
+    expect(action?.querySelector('svg')).not.toBeNull();
+    expect(action?.querySelector('.lucide-download')).not.toBeNull();
+    expect(action?.querySelector('.lucide-arrow-up-right')).toBeNull();
+    // BOTH parts move, so the accessible name says both — the number alone would
+    // hide a second install behind one press.
+    expect(action?.getAttribute('aria-label')).toContain('adapter 0.102.0');
+    expect(action?.getAttribute('aria-label')).toContain('Claude Code 2.1.400');
+
+    const row = rows(el)[0];
+    const lines = Array.from(row.children[1].querySelectorAll(':scope > span'));
+    // The CLI is behind on ITS line, the adapter on its own: an arrow joining
+    // `2.1.318` with the adapter's 0.102.0 would compare two products.
+    expect(lines[0].textContent ?? '').toContain('2.1.318→2.1.400');
+    expect(lines[1].textContent ?? '').toContain('adapter 0.101.0 → 0.102.0');
+  });
+
+  test('a current adapter under a stale CLI offers the action for the CLI alone', () => {
+    // The reported gap: the row said "up to date" because the ADAPTER was, while
+    // `claude update` still had somewhere to go.
+    const el = mount(
+      [summary()],
+      [version({
+        agent: { version: '0.101.0', latest: '0.101.0', updateAvailable: false },
+        cli: cliPart('Claude Code', '2.1.318', '2.1.400'),
+        updateAvailable: true,
+      })],
+    );
+    const action = Array.from(el.querySelectorAll('button')).find(
+      (b) => b.getAttribute('aria-label')?.startsWith('Update claude'),
+    );
+    expect(action?.getAttribute('aria-label')).toBe('Update claude to Claude Code 2.1.400');
   });
 
   test('the built-in transport is not a row and not counted', () => {
@@ -251,8 +266,9 @@ describe('About harness table', () => {
     const el = mount(
       [summary({ probe: probed() })],
       [version({
-        kind: 'npm', current: '0.101.0', latest: '0.102.0', updateAvailable: true,
-        agentVersion: '0.101.0', cli: { name: 'Claude Code', version: '2.1.318' },
+        kind: 'npm',
+        agent: { version: '0.101.0', latest: '0.102.0', updateAvailable: true },
+        cli: cliPart('Claude Code', '2.1.318'),
       })],
     );
     const cells = rows(el)[0].children;
@@ -278,7 +294,7 @@ describe('About harness table', () => {
 
     // And a row with no adapter keeps ONE line, so the number still owns the
     // first row instead of being pushed down by an empty box.
-    const plain = mount([summary()], [version({ current: '0.100.0', latest: '0.101.0', updateAvailable: true })]);
+    const plain = mount([summary()], [version({ agent: { version: '0.100.0', latest: '0.101.0', updateAvailable: true } })]);
     const plainLines = rows(plain)[0].children[1].querySelectorAll(':scope > span');
     expect(plainLines).toHaveLength(1);
     expect(plainLines[0].textContent).toContain('0.100.0');
@@ -289,7 +305,7 @@ describe('About harness table', () => {
   test('the header says how many could move', () => {
     const el = mount(
       [summary({ id: 'a', label: 'a' }), summary({ id: 'b', label: 'b' })],
-      [version({ id: 'a', updateAvailable: true, current: '1.0.0', latest: '2.0.0' }), version({ id: 'b' })],
+      [version({ agent: { version: '1.0.0', latest: '2.0.0', updateAvailable: true }, id: 'a' }), version({ id: 'b' })],
     );
     expect(el.textContent).toContain('1 update');
   });

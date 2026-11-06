@@ -35,8 +35,12 @@ export interface HarnessUpdateFacts {
    * answers `0.101.0`. Reporting only the adapter beside a real install reads as
    * "why is my 2.x showing 0.100?", so both are shown and the CLI's own number is
    * the one compared against its own package.
+   *
+   * `pkg` is that package on npm, so the CLI's latest version is a registry read
+   * of its own rather than the adapter's number borrowed for the job. Without it
+   * the CLI line can only report what is installed.
    */
-  cli?: { bin: string; name: string };
+  cli?: { bin: string; name: string; pkg?: string };
   /** The npm package, for `npm`. */
   pkg?: string;
   /**
@@ -71,7 +75,7 @@ export const HARNESS_UPDATE_FACTS: Readonly<Partial<Record<HarnessId, HarnessUpd
     // pins the CLI version it bridges — so the adapter install alone can leave a
     // stale CLI behind. Both lines are named.
     command: 'claude update',
-    cli: { bin: 'claude', name: 'Claude Code' },
+    cli: { bin: 'claude', name: 'Claude Code', pkg: '@anthropic-ai/claude-code' },
     note: 'The row reports the ADAPTER; `claude --version` is the CLI underneath.',
   },
   codex: {

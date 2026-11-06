@@ -18,6 +18,19 @@
  *    reason, because replacing it would be Kabmo guessing at an install it did not
  *    make.
  *
+ * **An adapter is TWO installs.** `claude` is `@agentclientprotocol/claude-agent-acp`
+ * (the number the probe reports) on top of the `claude` CLI, and they move
+ * independently — measured here: adapter 0.100.0 under CLI 2.1.318. So one press
+ * moves EVERY part that is behind and none that is current:
+ *
+ *  - both behind → `npm i -g <adapter>@<latest>` then `claude update`;
+ *  - only the CLI → `claude update`, with no adapter install at all;
+ *  - only the adapter → the npm install alone.
+ *
+ * Running both unconditionally was the first shape, and it reinstalled an adapter
+ * that was already current while reporting "updated to 0.101.0" about a version
+ * that never moved.
+ *
  * Every run is a POST that answers plain JSON, not an SSE stream: an npm install
  * of one package, or one `upgrade` subcommand, is seconds rather than the minutes
  * `omp update` and the Kabmo self-update take. If one of these grows long enough
@@ -30,10 +43,10 @@ import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { HARNESS_IDS, harnessDescriptor, type HarnessId } from '@/shared/lib/harness/catalog';
 import { harnessUpdateFacts, latestSourceFor } from '@/shared/lib/harness/updates';
-import { loadProbes } from '@/server/lib/harness/probe-cache.server';
-import { fetchNpmLatest } from '@/server/lib/updates/npm';
+import { forgetProbe, loadProbes } from '@/server/lib/harness/probe-cache.server';
+import { forgetCliVersion, harnessVersionState } from '@/server/lib/harness/update-state.server';
+import { planHarnessUpdate } from '@/shared/lib/harness/update-plan';
 import { harnessVersionRows } from '@/server/routes/harness/versions';
-import { forgetProbe } from '@/server/lib/harness/probe-cache.server';
 
 /** Longest one update may run before it is killed and reported as a timeout. */
 const UPDATE_TIMEOUT_MS = 5 * 60_000;
@@ -43,9 +56,9 @@ interface HarnessUpdateOutcome {
   success: boolean;
   id: string;
   message: string;
-  /** The command that ran, so the reader can repeat it themselves. */
+  /** The commands that ran, so the reader can repeat them themselves. */
   command?: string;
-  /** The tail of its output — what actually failed, when it failed. */
+  /** The tail of their output — what actually failed, when it failed. */
   output?: string;
 }
 
@@ -77,12 +90,13 @@ function tail(output: string, lines = 12): string {
 export async function action({ request, params }: ActionFunctionArgs) {
   if (request.method !== 'POST') return methodNotAllowed({ request, params });
 
-  let id: unknown;
+  let body: unknown;
   try {
-    id = ((await request.json()) as { harness?: unknown }).harness;
+    body = await request.json();
   } catch {
     return json({ error: 'Request body is not valid JSON' }, { status: 400 });
   }
+  const id = body && typeof body === 'object' && 'harness' in body ? body.harness : undefined;
   if (typeof id !== 'string' || !HARNESS_IDS.includes(id as HarnessId)) {
     return json({ error: 'Unknown harness' }, { status: 400 });
   }
@@ -125,58 +139,75 @@ export async function action({ request, params }: ActionFunctionArgs) {
   // number on screen and the install cannot disagree.
   const pkg = latestSourceFor(harness);
   if (!pkg) return json({ error: `${label} has no package to install` }, { status: 400 });
-  const latest = await fetchNpmLatest(pkg);
-  if (!latest) {
-    return json({ error: `Could not read ${pkg} from the registry`, code: 'registry_unreadable' }, { status: 502 });
-  }
 
   const probe = (await loadProbes()).get(harness);
-  if (probe?.capabilities.agentVersion && probe.capabilities.agentVersion === latest) {
+  const agentVersion = probe?.capabilities.agentVersion ?? null;
+  // A forced read: this press must install the newest published version, not one
+  // remembered from ten minutes ago.
+  const state = await harnessVersionState(harness, agentVersion, true);
+  if (!state.installed) {
+    // A partial install (the CLI present, the adapter absent) reaches here, and an
+    // update that cannot see the binary must say so rather than run an install
+    // whose result the row could never report.
+    return json({ error: `${label} is not installed on this machine` }, { status: 400 });
+  }
+
+  // `harnessVersionState` was read with `force`, so both latest numbers are what
+  // the registry serves NOW rather than what the dialog remembered.
+
+  const steps = planHarnessUpdate(label, facts, state, agentVersion);
+
+  if (steps.length === 0) {
     // Nothing to install. Reported as a success the UI can state plainly, rather
     // than running an install that would change nothing.
+    const current = [state.agent.version && `adapter ${state.agent.version}`, state.cli?.version && `${facts.cli?.name} ${state.cli.version}`]
+      .filter(Boolean)
+      .join(', ');
     return json({
       success: true,
       id: harness,
-      message: `${label} is already ${latest}`,
+      // Without a probe there was no number to compare, so the honest answer is
+      // that nothing was compared — not "up to date".
+      message: agentVersion
+        ? `${label} is already up to date${current ? ` (${current})` : ''}`
+        : `${label} has never been probed — nothing could be compared`,
     } satisfies HarnessUpdateOutcome);
   }
 
-  const install = await run(['npm', 'install', '-g', `${pkg}@${latest}`]);
-  const installOk = install.code === 0;
-  const lines = [
-    `npm install -g ${pkg}@${latest}`,
-  ];
-  let output = install.output;
-
-  // The PACKAGE is not always the whole agent. An ACP adapter pins the CLI it
-  // bridges (`claude-agent-acp` ↔ `claude`), so moving only the adapter can leave
-  // a stale binary underneath. When the harness also names its own updater, that
-  // runs too — and its failure is reported, not swallowed.
-  const command = facts.command?.split(' ') ?? [];
-  let commandOk = true;
-  if (installOk && command.length > 0 && Bun.which(command[0] as string)) {
-    lines.push(facts.command as string);
-    const selfUpdate = await run(command);
-    commandOk = selfUpdate.code === 0;
-    output = [output, selfUpdate.output].filter(Boolean).join('\n');
+  /** Did every step that ran succeed, and what did each print? */
+  const outputs: string[] = [];
+  let ok = true;
+  for (const step of steps) {
+    const result = await run(step.argv);
+    if (result.output) outputs.push(result.output);
+    if (result.code !== 0) {
+      ok = false;
+      // The first failure ends the run: installing the CLI on top of a failed
+      // adapter install would report two outcomes for one broken state.
+      break;
+    }
   }
 
-  const ok = installOk && commandOk;
   if (ok) {
     // The cached probe describes the binary that WAS installed. Keeping it would
     // report the old version until the TTL (30 min) or a manual re-probe — and
     // measured after a real `npm install`: the row still read 0.100.0 while npm
     // had 0.101.0 on disk, because the running adapter was the previous process.
     await forgetProbe(harness);
+    // The CLI's `--version` read has the same problem: it is cached for ten
+    // minutes, so the row would keep claiming the old number after it moved.
+    if (facts.cli) forgetCliVersion(facts.cli.bin);
   }
+
+  const moved = steps.map((step) => step.part);
   return json({
     success: ok,
     id: harness,
     message: ok
-      ? `${label} updated to ${latest} — check its status to read the new version`
-      : `${label} update failed${installOk ? '' : ` (npm exit ${install.code ?? 'killed'})`}`,
-    command: lines.join(' && '),
-    ...(output ? { output: tail(output) } : {}),
+      ? `${label} updated (${moved.join(' + ')}) — check its status to read the new version`
+      : `${label} update failed`,
+    command: steps.map((step) => step.command).join(' && '),
+    ...(outputs.length > 0 ? { output: tail(outputs.join('\n')) } : {}),
   } satisfies HarnessUpdateOutcome);
 }
 

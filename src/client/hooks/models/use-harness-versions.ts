@@ -16,28 +16,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'preact/hooks';
-
-/** One row, as `/api/harness/versions` answers it. */
-export interface HarnessVersionRow {
-  id: string;
-  label: string;
-  /** `npm` — a registry number exists and the install is that package.
-   *  `self` — the CLI updates itself, so Kabmo reports and does not install.
-   *  `own` — a vendor installer owns it. */
-  kind: 'npm' | 'self' | 'own' | null;
-  /** False when the agent is not on this machine: no version, no action. */
-  installed: boolean;
-  /** The version the PROBE reported — for an adapter, the adapter's own. */
-  agentVersion: string | null;
-  /** The CLI underneath an adapter, from its `--version`. The number a user
-   *  recognises as "their version". */
-  cli: { name: string; version: string | null } | null;
-  current: string | null;
-  latest: string | null;
-  updateAvailable: boolean;
-  note: string | null;
-  command: string | null;
-}
+import type { HarnessVersionRow } from '@/shared/types/harness-version';
 
 interface VersionStore {
   rows: HarnessVersionRow[];

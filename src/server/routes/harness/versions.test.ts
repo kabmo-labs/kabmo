@@ -22,6 +22,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:tes
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { probes } from '@/server/lib/harness/probe-cache.server';
 import { harnessVersionRows } from '@/server/routes/harness/versions';
+import { isNewer } from '@/shared/lib/updates/semver';
 
 beforeEach(async () => {
   await isolateDb();
@@ -48,9 +49,8 @@ async function row(id: string) {
 describe('harness version rows', () => {
   test('an unprobed harness reports NO version and says so', async () => {
     const claude = await row('claude');
-    expect(claude.current).toBeNull();
     // `false` here would claim "up to date" about an unknown version.
-    expect(claude.updateAvailable).toBe(false);
+    expect(claude.agent.updateAvailable).toBe(false);
     expect(claude.note).toContain('Not probed');
   });
 
@@ -60,7 +60,7 @@ describe('harness version rows', () => {
     const cursor = await row('cursor');
     if (!cursor.installed) {
       expect(cursor.kind).toBeNull();
-      expect(cursor.latest).toBeNull();
+      expect(cursor.agent.latest).toBeNull();
       expect(cursor.updateAvailable).toBe(false);
       expect(cursor.command).toBeNull();
       expect(cursor.note).toContain('Not installed');
@@ -70,7 +70,7 @@ describe('harness version rows', () => {
   test('a self-updating harness has no registry number, only its command', async () => {
     const opencode = await row('opencode');
     expect(opencode.kind).toBe('self');
-    expect(opencode.latest).toBeNull();
+    expect(opencode.agent.latest).toBeNull();
     expect(opencode.command).toBe('opencode upgrade');
   });
 
@@ -96,18 +96,39 @@ describe('harness version rows', () => {
     const rows = await harnessVersionRows();
     const target = rows.find((entry) => entry.installed && entry.kind === 'npm');
     if (!target) return;
-    if (target.latest === null) {
+    if (target.agent.latest === null) {
       expect(target.note).toContain('Could not read');
       return;
     }
-    expect(target.latest).toMatch(/^\d+\.\d+\.\d+/);
+    expect(target.agent.latest).toMatch(/^\d+\.\d+\.\d+/);
+  });
+
+  test('an adapter row reports BOTH parts, each with its own latest', async () => {
+    // `claude` is an npm adapter over a `claude update` CLI. The row must carry
+    // both numbers so the table can say which half is behind — a single flattened
+    // pair is what made "the adapter is current" read as "everything is current".
+    const claude = await row('claude');
+    if (!claude.installed) return;
+    expect(claude.cli?.name).toBe('Claude Code');
+    // The registry answers are cached for ten minutes; a miss is stated as a null
+    // rather than invented, so this asserts the shape and the comparison rule.
+    for (const part of [claude.agent, claude.cli]) {
+      if (!part) continue;
+      expect(part.updateAvailable).toBe(
+        Boolean(part.version && part.latest) && isNewer(part.latest as string, part.version as string),
+      );
+    }
+    // `updateAvailable` is the union of the parts: one press moves every part that
+    // is behind, so the button appears when either half can move.
+    expect(claude.updateAvailable).toBe(claude.agent.updateAvailable || Boolean(claude.cli?.updateAvailable));
   });
 
   test('the built-in transport has no kind and no version', async () => {
     const builtin = await row('omp-rpc');
     expect(builtin.kind).toBeNull();
-    expect(builtin.current).toBeNull();
-    expect(builtin.latest).toBeNull();
+    expect(builtin.agent.version).toBeNull();
+    expect(builtin.agent.latest).toBeNull();
+    expect(builtin.cli).toBeNull();
     expect(builtin.updateAvailable).toBe(false);
   });
 

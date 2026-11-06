@@ -29,12 +29,12 @@
  */
 
 import { useState } from 'preact/hooks';
-import { ArrowUpRight, Loader2 } from 'lucide-preact';
+import { Download, Loader2 } from 'lucide-preact';
 import { HarnessGlyph, HARNESS_GLYPH_SIZE } from '@/client/components/common/harness-glyph';
 import { harnessStatus, type HarnessState } from '@/shared/lib/harness/status';
 import { harnessCategoryId } from '@/shared/lib/harness/menu';
 import type { HarnessSummary } from '@/shared/types/harness';
-import type { HarnessVersionRow } from '@/client/hooks/models/use-harness-versions';
+import type { HarnessVersionRow } from '@/shared/types/harness-version';
 
 interface HarnessTableProps {
   harnesses: HarnessSummary[];
@@ -144,6 +144,27 @@ export function HarnessTable({
             const status = harnessStatus(entry);
             const version = byId.get(entry.id);
             const isUpdating = updating === entry.id;
+            // The number a reader calls "the version": the CLI when the harness is
+            // an adapter, otherwise the agent itself. Each part carries its own
+            // `latest` and its own ability to move, so the two are never compared
+            // across each other.
+            const lead = version?.cli ?? version?.agent ?? null;
+            const showAdapterLine = Boolean(
+              version?.cli?.version && version.agent.version && version.agent.version !== version.cli.version,
+            );
+            // What the press would install, named: an adapter and a CLI are two
+            // different products, so the accessible name says which is moving.
+            const targets = version
+              ? [
+                  version.agent.updateAvailable && version.agent.latest
+                    ? version.cli ? `adapter ${version.agent.latest}` : version.agent.latest
+                    : null,
+                  version.cli?.updateAvailable && version.cli.latest
+                    ? `${version.cli.name} ${version.cli.latest}`
+                    : null,
+                ].filter((target): target is string => Boolean(target))
+              : [];
+            const updateLabel = `Update ${entry.label}${targets.length > 0 ? ` to ${targets.join(' + ')}` : ''}`;
             return (
               <div key={entry.id} className={`${COLUMNS} border-b border-ink/5 py-1.5`}>
                 {/* The name is the link: one target per row, and the row's other
@@ -189,47 +210,41 @@ export function HarnessTable({
                   </span>
                 </button>
 
-                {/* The INSTALLED version is the fact; the arrow is the claim that
-                    there is somewhere to move. `0.100.0 → 0.101.0` reads as ONE
-                    statement on the number's own line, and a row with no newer
-                    version stays a single number — no arrow, nothing to act on.
-                    The pair sits on one line for a reason: as separate flex
-                    children the arrow and the newer number each took a row. */}
+                {/* TWO number lines, each with its OWN arrow.
+                    A harness can be an adapter over a CLI, and the two move
+                    independently: the row leads with the CLI's `2.1.318` and states
+                    `adapter 0.101.0` underneath, so `→` may only ever join the two
+                    numbers on ITS line. Joining `2.1.318` with the adapter's latest
+                    would compare two different products — the fiction this cell
+                    exists to prevent. */}
                 <span
                   className="flex min-w-0 flex-col items-end text-right font-mono text-[11px] leading-4 text-ink/70"
-                  title={version?.updateAvailable
-                    ? `${version.current ?? 'unknown'} → ${version.latest ?? 'unknown'}`
-                    : version?.note ?? undefined}
+                  title={version?.note ?? undefined}
                 >
                   <span className="block max-w-full truncate">
                     {/* The CLI's version leads when the harness is an ADAPTER: it
                         is the number a user recognises (`claude --version` →
-                        2.1.318), and the adapter's own 0.100.x is the smaller line
-                        under it. */}
-                    {version?.cli?.version ?? version?.current ?? <span className="text-ink/30">—</span>}
-                    {/* The arrow may only point between the SAME number line. When
-                        the row leads with the CLI's version, the package in `latest`
-                        belongs to the ADAPTER — `2.1.318 → 0.101.0` would be a
-                        fabricated comparison. The adapter's own move is stated on
-                        its own line instead. */}
-                    {version?.updateAvailable && version.latest && !version.cli?.version && (
+                        2.1.318). */}
+                    {lead?.version ?? <span className="text-ink/30">—</span>}
+                    {lead?.updateAvailable && lead.latest && (
                       <>
                         <span aria-hidden="true" className="ml-1 text-ink/35">→</span>
-                        <span className="ml-1 text-ink">{version.latest}</span>
+                        <span className="ml-1 text-ink">{lead.latest}</span>
                       </>
                     )}
                   </span>
-                  {/* The adapter's own number, when it differs from the CLI's:
-                      two real versions for two real things. It lives INSIDE the
-                      version cell — as a fourth grid child it shifted every row
-                      one track and moved the action button onto its own line. */}
-                  {version?.cli?.version && version.agentVersion && version.agentVersion !== version.cli.version && (
+                  {/* The adapter's own number and its own move. It lives INSIDE
+                      the version cell — as a fourth grid child it shifted every
+                      row one track and moved the action button onto its own line. */}
+                  {showAdapterLine && version && (
                     <span
                       className="block max-w-full truncate text-[10px] leading-[15px] text-ink/35"
-                      title={`${version.cli.name} ${version.cli.version} · adapter ${version.agentVersion}`}
+                      title={`${version.cli?.name ?? 'CLI'} ${version.cli?.version ?? 'unknown'} · adapter ${version.agent.version}`}
                     >
-                      adapter {version.agentVersion}
-                      {version.updateAvailable && version.latest ? ` → ${version.latest}` : ''}
+                      adapter {version.agent.version}
+                      {version.agent.updateAvailable && version.agent.latest
+                        ? ` → ${version.agent.latest}`
+                        : ''}
                     </span>
                   )}
                 </span>
@@ -237,22 +252,23 @@ export function HarnessTable({
                 <div className="flex min-w-0 justify-end">
                   {/* ICON ONLY, and only when there is something to move to.
                       A row with no newer version shows nothing: a permanent action
-                      button claims work that does not exist, and a copy chip for
-                      every vendor command turned the column into prose. The label
-                      lives in `title` + `aria-label`, so the meaning is not lost —
-                      it is just not spent on every row. */}
+                      button claims work that does not exist. The label lives in
+                      `title` + `aria-label`, so the meaning is not lost — it is just
+                      not spent on every row. The icon is a DOWNLOAD arrow because
+                      that is what the press does; it used to be `ArrowUpRight`, which
+                      reads as "open this elsewhere". */}
                   {version?.updateAvailable ? (
                     <button
                       type="button"
                       onClick={() => void runUpdate(entry.id)}
                       disabled={isUpdating}
-                      aria-label={`Update ${entry.label}${version.latest ? ` to ${version.latest}` : ''}`}
-                      title={`Update ${entry.label}${version.latest ? ` → ${version.latest}` : ''}`}
+                      aria-label={updateLabel}
+                      title={updateLabel}
                       className="inline-flex cursor-pointer items-center justify-center rounded border border-ink/25 p-1 text-ink transition-colors hover:border-ink/50 hover:bg-ink/5 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {isUpdating
                         ? <Loader2 size={11} className="animate-spin motion-reduce:animate-none" />
-                        : <ArrowUpRight size={11} />}
+                        : <Download size={11} />}
                     </button>
                   ) : (
                     <span className="text-[10px] text-ink/25">—</span>

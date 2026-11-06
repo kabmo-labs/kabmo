@@ -82,11 +82,16 @@ async function flush(): Promise<void> {
   });
 }
 
+/**
+ * One row as the route answers it. The parts are per-install — the adapter and the
+ * CLI move independently — so the store is handed the same shape the wire carries.
+ */
 function row(updateAvailable: boolean) {
   return {
     id: 'claude', label: 'claude', kind: 'npm', installed: true,
-    current: updateAvailable ? '0.100.0' : null,
-    latest: '0.101.0', updateAvailable, note: null, command: null,
+    agent: { version: updateAvailable ? '0.100.0' : '0.101.0', latest: '0.101.0', updateAvailable },
+    cli: null,
+    updateAvailable, note: null, command: null,
   };
 }
 
