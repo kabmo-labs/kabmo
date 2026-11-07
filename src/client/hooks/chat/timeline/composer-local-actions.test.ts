@@ -119,6 +119,24 @@ describe('blockTuiOnlySend', () => {
     expect(store.messages).toHaveLength(0);
   });
 
+  test("another ACP agent's own command is delivered, not refused", () => {
+    // The table is omp's registry. claude publishes `/clear` and `/status`
+    // itself, so refusing them here meant the command never reached the agent
+    // that implements it.
+    const store = makeStore();
+    expect(blockTuiOnlySend('/clear', store.set, 'claude')).toBe(false);
+    expect(blockTuiOnlySend('/status', store.set, 'opencode')).toBe(false);
+    expect(store.messages).toHaveLength(0);
+  });
+
+  test('omp’s own transports keep the guard', () => {
+    for (const harness of ['omp-rpc', 'omp-acp', undefined]) {
+      const store = makeStore();
+      expect(blockTuiOnlySend('/hotkeys', store.set, harness)).toBe(true);
+      expect(store.messages).toHaveLength(1);
+    }
+  });
+
   test('plain prose is not a command and passes through', () => {
     const store = makeStore();
     expect(blockTuiOnlySend('what does /clear do?', store.set)).toBe(false);

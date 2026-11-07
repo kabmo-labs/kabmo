@@ -25,14 +25,18 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import type { AIModelOption, ModelEntry } from '@/shared/types';
+import type { AIModelOption } from '@/shared/types';
 import { fetchModelsData, subscribeModelsUpdated } from '@/shared/lib/models/client';
 import { selectableThinkingLevels } from '@/shared/lib/models/thinking-levels';
 import { resolveThinkingLevel, selectionFor } from '@/client/components/workspace/chat-timeline/chat-input/selection';
 
 
 /** Pick the catalog entry that matches `modelId` + `provider`, or undefined. */
-function matchModel(list: readonly ModelEntry[], provider: string, id: string): ModelEntry | undefined {
+function matchModel<T extends { id: string; provider: string }>(
+  list: readonly T[],
+  provider: string,
+  id: string,
+): T | undefined {
   return list.find((entry) => entry.id === id && entry.provider === provider);
 }
 
@@ -53,6 +57,17 @@ export interface ModelSelectionOptions {
   sessionThinkingLevel: string | null | undefined;
   /** A selection the user made for the NEXT prompt; it outranks every default. */
   deferredComposerPickRef: { current: { provider?: string; modelId?: string; thinkingLevel?: string } | null };
+  /**
+   * The ACTIVE HARNESS's own catalog (ACP), or null for omp's registry.
+   *
+   * Every resolution below reads this instead of `/api/models` when it is
+   * present. The two catalogs share no ids — `claude` publishes `default`,
+   * `opus`, … and omp's registry has never heard of them — so matching a
+   * session's model against omp's list left the composer showing an omp model
+   * while the chat ran a different agent. The list also carries the agent's
+   * `thought_level` ladder, which is what enables the thinking picker.
+   */
+  scopedModels?: AIModelOption[] | null;
   onThinkingLevelChange?: (level: string) => void;
 }
 
@@ -74,6 +89,7 @@ export function useModelSelection({
   sessionModel,
   sessionThinkingLevel,
   deferredComposerPickRef,
+  scopedModels,
   onThinkingLevelChange,
 }: ModelSelectionOptions): ModelSelection {
   // Starts null and is filled from `/api/models`. Seeding a demo catalog entry
@@ -102,6 +118,13 @@ export function useModelSelection({
   useEffect(() => {
     if (!sessionModel?.provider || !sessionModel.modelId) return;
     if (deferredComposerPickRef.current) return;
+    // An ACP harness's catalog is the session's own; asking omp's registry
+    // would never find `claude/opus`.
+    if (scopedModels) {
+      const match = matchModel(scopedModels, sessionModel.provider, sessionModel.modelId);
+      if (match) setSelectedModel((prev) => selectionFor(match, sessionThinkingLevelRef.current, prev));
+      return;
+    }
     let active = true;
     fetchModelsData()
       .then((data) => {
@@ -114,7 +137,7 @@ export function useModelSelection({
     return () => {
       active = false;
     };
-  }, [sessionModel?.provider, sessionModel?.modelId, deferredComposerPickRef]);
+  }, [sessionModel?.provider, sessionModel?.modelId, deferredComposerPickRef, scopedModels]);
 
   // Adopt the session's thinking level; a pending pick wins.
   useEffect(() => {
@@ -131,6 +154,20 @@ export function useModelSelection({
   useEffect(() => {
     let active = true;
     const syncModel = async () => {
+      // An ACP harness owns this selection: its list is the whole catalog, and
+      // omp's persisted/default model is a model the agent cannot run.
+      if (scopedModels) {
+        if (deferredComposerPickRef.current) return;
+        const fromSession = sessionModelRef.current;
+        const match = fromSession
+          ? matchModel(scopedModels, fromSession.provider, fromSession.modelId)
+          : undefined;
+        const fallback = match ?? scopedModels[0];
+        if (fallback) {
+          setSelectedModel((prev) => selectionFor(fallback, sessionThinkingLevelRef.current, prev));
+        }
+        return;
+      }
       try {
         const data = await fetchModelsData();
         if (!active) return;
@@ -173,12 +210,16 @@ export function useModelSelection({
     };
 
     syncModel();
+    // The harness catalog is refreshed through its own store; the models topic
+    // describes omp's registry only, so subscribing here would open a realtime
+    // channel for a catalog this selection never reads.
+    if (scopedModels) return;
     const unsubscribe = subscribeModelsUpdated(syncModel);
     return () => {
       active = false;
       unsubscribe();
     };
-  }, [deferredComposerPickRef]);
+  }, [deferredComposerPickRef, scopedModels]);
 
   const thinkingLevels = useMemo(() => selectableThinkingLevels(selectedModel?.thinkingLevels), [selectedModel]);
 

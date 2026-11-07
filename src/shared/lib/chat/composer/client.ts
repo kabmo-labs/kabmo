@@ -198,16 +198,21 @@ async function loadCommandItems(root: string | null, sessionId?: string | null):
  * Load pick items for a trigger kind. `mention` merges agents (first) and
  * workspace files; `command` merges commands and skills, both scoped to `root`
  * so a workspace's own `.omp/commands` and `.omp/skills` are offered.
+ *
+ * `includeAgents: false` drops the omp subagent rows: they describe agents only
+ * omp has, and translating a pick into "use the task tool" is meaningless on an
+ * ACP harness. Files stay — every agent can read a path.
  */
 export function loadComposerItems(
   kind: ComposerPickKind,
   root?: string | null,
   sessionId?: string | null,
+  options: { includeAgents?: boolean } = {},
 ): Promise<ComposerPickItem[]> {
   if (kind === 'mention') {
-    return Promise.all([loadAgentItems(), loadFileItems(root ?? null)]).then(
-      ([agents, files]) => [...agents, ...files],
-    );
+    const files = loadFileItems(root ?? null);
+    if (options.includeAgents === false) return files;
+    return Promise.all([loadAgentItems(), files]).then(([agents, fileItems]) => [...agents, ...fileItems]);
   }
   return loadCommandItems(root ?? null, sessionId);
 }

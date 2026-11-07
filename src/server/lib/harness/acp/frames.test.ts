@@ -109,6 +109,21 @@ describe('acp frame mapper — tool calls', () => {
       rawOutput: { content: [{ type: 'text', text: 'reading…' }] },
     });
     expect(frames[0].type).toBe('tool_execution_update');
+    // The flattened read rides the frame: the client's generic walker does not
+    // know ACP's nested `{type:"content"}` envelope.
+    expect(frames[0].output).toBe('reading…');
+  });
+
+  test('a nested content envelope still yields output on the frame', () => {
+    const mapper = new AcpFrameMapper();
+    mapper.mapUpdate(openTail);
+    const frames = mapper.mapUpdate({
+      sessionUpdate: 'tool_call_update',
+      toolCallId: 'c1',
+      status: 'completed',
+      rawOutput: { content: [{ type: 'content', content: { type: 'text', text: 'nested' } }] },
+    });
+    expect(frames[0]).toMatchObject({ type: 'tool_execution_end', output: 'nested' });
   });
 
   test('failed maps to isError, and openCalls drains', () => {

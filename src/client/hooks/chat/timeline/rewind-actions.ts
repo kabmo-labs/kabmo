@@ -32,6 +32,9 @@ import { requestRewind } from '@/client/hooks/chat/timeline/rewind';
 export interface RewindActionsDeps {
   isGenerating: boolean;
   isOmpSession: boolean;
+  /** The harness behind the chat. The rewind endpoint edits an omp JSONL; an
+   *  ACP chat has none, and `omp-acp`'s file is not what its live child reads. */
+  harness?: string | null;
   /** Active session id; the omp paths post the rewind against it. */
   sessionId: string | null;
   ompAgent: OmpAgentHandle;
@@ -57,6 +60,7 @@ export function createRewindActions(deps: RewindActionsDeps): RewindActions {
   const {
     isGenerating,
     isOmpSession,
+    harness,
     sessionId,
     ompAgent,
     abortControllerRef,
@@ -83,6 +87,15 @@ export function createRewindActions(deps: RewindActionsDeps): RewindActions {
 
   const handleUndo = async (msgId: string, content?: string): Promise<boolean> => {
     stopActiveRun();
+
+    // ACP has no rewind of its own. The endpoint below edits an omp JSONL: a
+    // non-omp agent has none, and `omp-acp`'s file is not what its live ACP
+    // child reads — truncating it would leave the process running on the old
+    // context. Refuse in words instead of a 404 or a silent divergence.
+    if (isOmpSession && harness && harness !== 'omp-rpc') {
+      reportActionError('Undo is not available on this harness: it has no omp transcript to rewind.');
+      return false;
+    }
 
     // Real omp sessions rewind in place: POST /api/chat/:sessionId/rewind
     // truncates the session JSONL before the turn (session id unchanged) and
@@ -131,6 +144,11 @@ export function createRewindActions(deps: RewindActionsDeps): RewindActions {
 
   const handleRetry = (msgId: string) => {
     stopActiveRun();
+
+    if (isOmpSession && harness && harness !== 'omp-rpc') {
+      reportActionError('Retry is not available on this harness: it has no omp transcript to rewind.');
+      return;
+    }
 
     const before = localMessagesRef.current;
     let userIdx = before.findIndex((m) => m.id === msgId);

@@ -47,11 +47,20 @@ export function appendTuiOnlyNotice(
  * Whether the draft is a TUI-only command and was answered locally. A true
  * result means the caller must stop — nothing was sent, and the draft is left
  * in the composer so the user can edit or retype it.
+ *
+ * `harness` scopes the refusal to the agents it is about. The table is omp's
+ * own builtin registry, and every other ACP agent publishes ITS OWN command
+ * names — measured, claude offers `/clear` and `/status`, both of which are in
+ * this table for omp. Applying omp's rule to those chats refused a command the
+ * agent implements, so the command never reached it. Undefined keeps the old
+ * behaviour (a chat whose harness has not been resolved yet).
  */
 export function blockTuiOnlySend(
   text: string,
   setLocalMessages: Dispatch<SetStateAction<ChatMessageData[]>>,
+  harness?: string | null,
 ): boolean {
+  if (harness && harness !== 'omp-rpc' && harness !== 'omp-acp') return false;
   if (!isTuiOnlySlashCommand(text)) return false;
   appendTuiOnlyNotice(text, setLocalMessages);
   return true;

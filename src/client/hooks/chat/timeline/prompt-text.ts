@@ -25,14 +25,23 @@ type TextFileAttachment = Parameters<typeof composeMessageWithTextAttachments>[1
  * an empty fenced block tells the model the file exists and says nothing, which
  * is worse than not mentioning it. The composer reports the omission.
  */
-export async function buildPromptText(text: string, textFiles: TextFileAttachment[]): Promise<string> {
+export async function buildPromptText(
+  text: string,
+  textFiles: TextFileAttachment[],
+  options: { includeAgents?: boolean } = {},
+): Promise<string> {
   const readable = textFiles.filter((file) => !('missing' in file && file.missing));
   let translated = text;
-  try {
-    const names = await loadAgentNames();
-    if (names.length > 0) translated = translateAgentMentions(text, names).text;
-  } catch {
-    // keep the raw prompt
+  // `@agent` is omp's subagent syntax and the rewrite names omp's `task` tool.
+  // An ACP agent has neither, so the mention is left as the user typed it
+  // rather than turned into an instruction it cannot follow.
+  if (options.includeAgents !== false) {
+    try {
+      const names = await loadAgentNames();
+      if (names.length > 0) translated = translateAgentMentions(text, names).text;
+    } catch {
+      // keep the raw prompt
+    }
   }
   // File mentions are namespaced (`@file:`) by the picker; strip the namespace
   // only after the agent pass so `@file:<name>` is never mistaken for `@agent`.

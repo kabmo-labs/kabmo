@@ -261,6 +261,10 @@ export class AcpFrameMapper {
       toolCallId,
       toolName: existing.name,
       partialResult: existing.rawOutput,
+      // The ACP output shape may nest text (`{type:"content", content:{…}}`),
+      // which `toolResultText` does not walk. The flattened read travels with
+      // the raw result so the card is not blank while the call is running.
+      output: acpToolOutput(existing.rawOutput),
     }];
   }
 

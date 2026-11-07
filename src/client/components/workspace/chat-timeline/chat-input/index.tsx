@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { ClipboardEvent, SetStateAction } from 'preact/compat';
 import type { Attachment } from '@/shared/types';
 import { useModelSelection } from '@/client/hooks/chat/composer/model-selection';
+import { useHarnesses } from '@/client/hooks/models/use-harnesses';
+import { harnessModels } from '@/client/components/workspace/model-dropdown/harness-models';
 import { NO_PENDING_PICK } from '@/client/hooks/chat/timeline/deferred-model';
 import { CHAT_COMPOSER_MAX_LINES, useAutoGrow } from '@/client/hooks/chat/composer/auto-grow';
 import { useVoiceInput } from '@/client/hooks/chat/composer/voice-input';
@@ -74,11 +76,21 @@ export function ChatInput({
   const [composerFocused, setComposerFocused] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
+  const { harnesses } = useHarnesses();
+  // The ACTIVE agent's own catalog. omp's registry is not a stand-in: no ACP
+  // harness shares its ids, and matching a session model against it left the
+  // composer naming a model the agent never ran.
+  const scopedModels = useMemo(
+    () => (harness && harness !== 'omp-rpc' ? harnessModels(harnesses, harness).models : null),
+    [harness, harnesses],
+  );
+
   const { selectedModel, setSelectedModel, thinkingLevels, currentThinking, selectThinking } = useModelSelection({
     composerModelRef,
     sessionModel,
     sessionThinkingLevel,
     deferredComposerPickRef,
+    scopedModels,
     onThinkingLevelChange,
   });
 

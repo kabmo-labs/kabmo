@@ -55,7 +55,11 @@ function splitSelector(value: string): { provider: string; id: string } {
 }
 
 /** Map one ACP selector value into the picker's row shape. */
-export function acpModelOption(option: HarnessModelOption, harness: string): AIModelOption {
+export function acpModelOption(
+  option: HarnessModelOption,
+  harness: string,
+  thinking: readonly HarnessModelOption[] = [],
+): AIModelOption {
   const { provider, id } = splitSelector(option.value);
   return {
     id,
@@ -63,6 +67,11 @@ export function acpModelOption(option: HarnessModelOption, harness: string): AIM
     // The provider column groups rows, so a bare value (dsh publishes one
     // `["deepseek-official","deepseek-v4-flash"]` pair) still gets a heading.
     provider: provider || harness,
+    // The agent's `thought_level` ladder is a SESSION selector, not a per-model
+    // one, so every row carries the same values. Without it the composer's
+    // thinking dropdown was disabled on every ACP chat — the pick never reached
+    // `set_thinking_level`, which the transport does implement.
+    ...(thinking.length > 0 ? { thinkingLevels: thinking.map((entry) => entry.value) } : {}),
     // ACP publishes no context window or pricing — claiming one would be a
     // fabricated measurement. The row draws "—" for both.
     capabilities: ['Tool calling'],
@@ -92,7 +101,8 @@ export function harnessModels(
   const blocked = summary.probe?.capabilities.blocked ?? summary.unavailable;
   if (!summary.probe) return { models: [], unprobed: true, ...(blocked ? { blocked } : {}) };
   return {
-    models: (summary.probe.models ?? []).map((option) => acpModelOption(option, harness)),
+    models: (summary.probe.models ?? []).map((option) =>
+      acpModelOption(option, harness, summary.probe?.thinking ?? [])),
     unprobed: false,
     ...(blocked ? { blocked } : {}),
   };

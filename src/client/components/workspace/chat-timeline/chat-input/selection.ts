@@ -10,7 +10,7 @@
  * ChatInput so the level rule cannot drift between them.
  */
 
-import type { AIModelOption, ModelEntry } from '@/shared/types';
+import type { AIModelOption } from '@/shared/types';
 import { selectableThinkingLevels } from '@/shared/lib/models/thinking-levels';
 
 /**
@@ -40,9 +40,18 @@ export function resolveThinkingLevel(
   return currentLevel ?? UNKNOWN_THINKING_LEVEL;
 }
 
+/** The fields a catalog entry must carry to become a composer selection. */
+export interface SelectionSource {
+  id: string;
+  name: string;
+  provider: string;
+  contextWindow?: string | number;
+  thinkingLevels?: string[];
+}
+
 /** The composer's selection for a catalog model, carrying its thinking level. */
 export function selectionFor(
-  match: ModelEntry,
+  match: SelectionSource,
   sessionLevel: string | null | undefined,
   current: AIModelOption | null,
 ): AIModelOption {

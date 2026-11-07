@@ -12,6 +12,9 @@ import { renameSessionWithAi } from '@/server/lib/omp/session/rename-with-ai.ser
 import { isSinglePathSegment } from '@/server/lib/fs/path-segment';
 import { loadPersistedModes } from '@/server/lib/omp/session/modes';
 import { liveModeSelection } from '@/server/lib/omp/mode/live-selection';
+import { getLiveSession } from '@/server/lib/omp/rpc/session-registry';
+import { asHarnessSession } from '@/server/lib/harness/registry';
+import { applyHarnessMode } from '@/server/routes/agent/harness-command';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
 
 /**
@@ -58,6 +61,21 @@ export async function getSessionModes({ params }: LoaderFunctionArgs) {
     // describe this session, and "not found" would be a lie about a process
     // that is running.
     if (live) return json({ sessionId, modes: live.modes });
+    // An ACP chat never writes an omp transcript, so the file lookup always
+    // fails for it. Its own `mode` selector is the state the composer has to
+    // show after a reload — without this, a plan mode the user turned on came
+    // back OFF on the next page load.
+    const acp = getLiveSession(sessionId);
+    if (acp?.isAlive()) {
+      const applied = await applyHarnessMode(asHarnessSession(acp), { scope: 'plan', action: 'state' });
+      if (applied.ok) {
+        const data = applied.data as { enabled?: unknown } | null;
+        return json({
+          sessionId,
+          modes: { plan: data?.enabled === true, goal: false, goalLive: false, goalRecord: null },
+        });
+      }
+    }
     return resolved.response;
   }
   return json({ sessionId, modes: live?.modes ?? (await loadPersistedModes(resolved.filePath)) });

@@ -41,6 +41,9 @@ export interface ChatTimelineActionsDeps {
    *  still refuses a plain prompt mid-turn, and omp drops it. */
   chatRunning: boolean;
   isOmpSession: boolean;
+  /** The harness that owns this chat; scopes the TUI-only slash guard so an
+   *  ACP agent's own `/clear` is delivered instead of refused. */
+  harness?: string | null;
   /** Active session id (null on pending "new-…"); the omp undo path posts the
    *  rewind against it. */
   sessionId: string | null;
@@ -124,6 +127,7 @@ export function useChatTimelineActions(deps: ChatTimelineActionsDeps): ChatTimel
     isGenerating,
     chatRunning,
     isOmpSession,
+    harness,
     sessionId,
     folders,
     selectedFolderId,
@@ -179,7 +183,7 @@ export function useChatTimelineActions(deps: ChatTimelineActionsDeps): ChatTimel
     // would reach the model as literal text over RPC and burn a whole turn on
     // an improvisation. Answer it here, before it is queued or steered, and
     // keep the draft so the user can edit or retype it.
-    if (blockTuiOnlySend(textToSend, setLocalMessages)) return;
+    if (blockTuiOnlySend(textToSend, setLocalMessages, harness)) return;
 
     // A NEW chat whose prompt is held for another session: nothing is sent now,
     // and the pending row stays on screen saying what it waits for. Checked
@@ -233,7 +237,7 @@ export function useChatTimelineActions(deps: ChatTimelineActionsDeps): ChatTimel
     // branch would rather than losing the message. Every other failure may
     // already have been accepted, and is reported by the send path instead.
     if (result.busy) enqueueFollowUp(textToSend, attachments);
-  }, [deps, inputValue, isGenerating, chatRunning, executeSend, enqueueMessage, enqueueFollowUp, isOmpSession, appSettings, steerOmpAgent, setInputValue, abortControllerRef, setGenerating, stopHoldRef, composerModelRef, accessModeRef, setLocalMessages]);
+  }, [deps, inputValue, isGenerating, chatRunning, executeSend, enqueueMessage, enqueueFollowUp, isOmpSession, harness, appSettings, steerOmpAgent, setInputValue, abortControllerRef, setGenerating, stopHoldRef, composerModelRef, accessModeRef, setLocalMessages]);
 
   const handleEditQueueItem = useCallback((item: QueuedMessage) => {
     queueActions.handleEditQueueItem(item);
@@ -249,6 +253,7 @@ export function useChatTimelineActions(deps: ChatTimelineActionsDeps): ChatTimel
     () => createRewindActions({
       isGenerating,
       isOmpSession,
+      harness,
       sessionId,
       ompAgent,
       abortControllerRef,
@@ -260,7 +265,7 @@ export function useChatTimelineActions(deps: ChatTimelineActionsDeps): ChatTimel
       executeSend,
       reportActionError,
     }),
-    [isGenerating, isOmpSession, sessionId, ompAgent, abortControllerRef, setGenerating, setInputValue, setLocalMessages, localMessagesRef, persistMessages, executeSend, reportActionError],
+    [isGenerating, isOmpSession, harness, sessionId, ompAgent, abortControllerRef, setGenerating, setInputValue, setLocalMessages, localMessagesRef, persistMessages, executeSend, reportActionError],
   );
 
   const submitNewChat = useNewChatSubmit({

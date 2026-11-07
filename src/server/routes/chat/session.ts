@@ -9,7 +9,8 @@ import { loadSessionMessages, loadSessionModel, loadSessionThinkingLevel, loadSe
 import { mergeOmpAttachments, overlayRowsForOmpSession } from '@/server/lib/omp/session/merge-stored';
 import { readRawHeaderLine } from '@/server/lib/omp/session/files';
 import { formatNewSessionTitle } from '@/shared/lib/omp/session/default-title';
-import { getLiveRunSessionIds } from '@/server/lib/omp/rpc/session-registry';
+import { getLiveRunSessionIds, getLiveSession, harnessOfSession } from '@/server/lib/omp/rpc/session-registry';
+import { loadStreamStates } from '@/shared/lib/omp/session/stream-state.server';
 
 /** Newest-message window served by default for omp JSONL sessions; the client
  *  pages further back via `?before=` when the user scrolls to the top. Large
@@ -58,6 +59,29 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   const limit = limitParam === 'all' ? null : (parseCount(limitParam) ?? DEFAULT_MESSAGE_WINDOW);
 
   try {
+    // A non-omp ACP chat has no JSONL for this loader to read, and its stored
+    // row carries no model. Reopening that tab made the composer fall back to
+    // omp's catalog and name a model the agent never ran. The LIVE session's
+    // own selector is the only honest source — and `get_state` on the ACP
+    // driver is an in-process read, not a round trip to the agent.
+    let liveMeta: { model?: { provider: string; modelId: string }; thinkingLevel?: string } | null = null;
+    if (!mock) {
+      const live = getLiveSession(sessionId);
+      if (live?.isAlive() && harnessOfSession(live) !== 'omp-rpc') {
+        const state = (await live.send({ type: 'get_state' }).catch(() => null)) as {
+          model?: { provider?: unknown; id?: unknown };
+          thinkingLevel?: unknown;
+        } | null;
+        const provider = typeof state?.model?.provider === 'string' ? state.model.provider : '';
+        const modelId = typeof state?.model?.id === 'string' ? state.model.id : '';
+        liveMeta = {
+          ...(provider && modelId ? { model: { provider, modelId } } : {}),
+          ...(typeof state?.thinkingLevel === 'string' && state.thinkingLevel
+            ? { thinkingLevel: state.thinkingLevel }
+            : {}),
+        };
+      }
+    }
     // Real mode: an omp session UUID found on disk is authoritative — load its
     // messages straight from the session JSONL file (rich timeline). The
     // chat_sessions overlay is only for Kabmo-created sessions (mock or
@@ -111,6 +135,12 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     }
 
     const db = await getDb();
+    // No live session (a restart, a closed tab): the last run's model is still
+    // in `session_stream_state`, and it is the only truthful identity for an
+    // ACP chat — its agent stores no model in the transcript.
+    const recordedModel = !mock && !liveMeta?.model
+      ? (await loadStreamStates())[sessionId]?.model
+      : undefined;
     let existing = await db.get('SELECT * FROM chat_sessions WHERE session_id = ?', [sessionId]);
 
     if (!existing && mock) {
@@ -142,6 +172,8 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
           id: existing.session_id,
           title: (hasDefaultTitle && firstUserContent ? firstUserContent.slice(0, 120) : existing.title) || `Session ${sessionId}`,
           messages: parsedMessages,
+          ...((liveMeta?.model ?? recordedModel) ? { model: liveMeta?.model ?? recordedModel } : {}),
+          ...(liveMeta?.thinkingLevel ? { thinkingLevel: liveMeta.thinkingLevel } : {}),
         },
         isMock: mock,
       });
@@ -159,7 +191,14 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
       [sessionId, initial.title, JSON.stringify(initial.messages)]
     );
 
-    return json({ session: initial, isMock: mock });
+    return json({
+      session: {
+        ...initial,
+        ...((liveMeta?.model ?? recordedModel) ? { model: liveMeta?.model ?? recordedModel } : {}),
+        ...(liveMeta?.thinkingLevel ? { thinkingLevel: liveMeta.thinkingLevel } : {}),
+      },
+      isMock: mock,
+    });
   } catch (error: any) {
     console.error('Chat session loader error:', error);
     return json({ error: error.message, isMock: mock }, { status: 500 });

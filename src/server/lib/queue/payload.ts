@@ -58,16 +58,22 @@ export function promptCommand(prompt: StoredPrompt): Record<string, unknown> {
   };
 }
 
-/** Apply a stored model snapshot to a live child before its prompt. */
+/** Apply a stored model snapshot to a live child before its prompt.
+ *
+ *  Best-effort PER COMMAND: a harness that publishes no model or thinking
+ *  selector answers the verb with an error, and letting that abort the whole
+ *  delivery left the queued item re-queued forever. The prompt itself is the
+ *  user's message and still has to go out; the snapshot only re-targets it when
+ *  the agent can honour it. */
 export async function applyModelSnapshot(
   send: (command: Record<string, unknown>) => Promise<unknown>,
   model: QueuedMessageModel | null,
 ): Promise<void> {
   if (!model) return;
-  await send({ type: 'set_model', provider: model.provider, modelId: model.modelId });
+  await send({ type: 'set_model', provider: model.provider, modelId: model.modelId }).catch(() => undefined);
   // 'auto' thinking leaves omp's level alone: the snapshot records "no pick",
   // not a level named auto.
   if (model.thinkingLevel !== 'auto') {
-    await send({ type: 'set_thinking_level', level: model.thinkingLevel });
+    await send({ type: 'set_thinking_level', level: model.thinkingLevel }).catch(() => undefined);
   }
 }

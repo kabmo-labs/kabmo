@@ -33,6 +33,7 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
     selectedFolderId,
     sessionId,
     isOmpSession,
+    harness,
     appSettings,
     ompAgent,
     setLocalMessages,
@@ -60,6 +61,10 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
     reportActionError,
     setSearchParams,
   } = deps;
+
+  // `@agent` mentions are omp's subagent syntax. An ACP harness has no such
+  // agents, and the picker already hides them there.
+  const includeAgents = !harness || harness === 'omp-rpc' || harness === 'omp-acp';
 
   /**
    * Start the armed goal in `sessionId`, from the operator's own prompt.
@@ -110,10 +115,10 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
     attachments: Attachment[],
   ): Promise<{ promptText: string; images?: AgentImage[] }> => {
     const textFiles = await readTextAttachments(attachments);
-    const promptText = await buildPromptText(text, textFiles);
+    const promptText = await buildPromptText(text, textFiles, { includeAgents });
     pendingUserDisplaysRef.current = [...pendingUserDisplaysRef.current.slice(-7), { sent: promptText, display: text }];
     return { promptText, images: collectImages(attachments) };
-  }, []);
+  }, [includeAgents]);
 
   // Steer the running omp agent (interrupt-and-reply). Returns the outcome so
   // the caller can report a refusal: the composer is cleared before this runs.
@@ -137,7 +142,7 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
     // queued item's "Send now", and `submitNewChat` — all of which can carry a
     // command that was typed before the guard existed, or that arrived from the
     // queue. Nothing has been rendered yet, so no rollback is needed.
-    if (blockTuiOnlySend(text, setLocalMessages)) return { ok: false, busy: false, error: 'TUI-only command' };
+    if (blockTuiOnlySend(text, setLocalMessages, harness)) return { ok: false, busy: false, error: 'TUI-only command' };
     // A queued delivery replays the snapshot the item was queued with; a plain
     // send keeps the session's live picks. 'auto' thinking leaves omp alone.
     const modelOverride = options?.model ?? null;
@@ -211,7 +216,7 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
       const images = collectImages(attachments);
       // Inline text-file contents into the prompt: the model sees the full file
       // content as fenced blocks, not just the filename.
-      const promptText = await buildPromptText(text, textFiles);
+      const promptText = await buildPromptText(text, textFiles, { includeAgents });
       // The armed goal is created HERE, at the fence of the prompt that will be
       // its first turn — never earlier (nothing to act on) and never after the
       // prompt (the goal would miss its opening turn). An armed INTERVIEW
@@ -245,7 +250,7 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
       const cwd = spawnWorktreeRef.current || currentFolder?.project_path || currentFolder?.name;
       if (cwd) {
         const images = collectImages(attachments);
-        const promptText = await buildPromptText(text, textFiles);
+        const promptText = await buildPromptText(text, textFiles, { includeAgents });
         optimisticUserIdRef.current = userMsgId;
         const composerModel = pendingComposerModelRef.current;
         const composerThinking = pendingThinkingLevelRef.current;
@@ -333,6 +338,6 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
       setGeneratingVerb,
       scrollToBottom,
     });
-  }, [appSettings, folders, isOmpSession, ompAgent, selectedFolderId, sessionId, scrollToBottom, jumpToBottom, persistMessages, seedSession, pendingComposerModelRef, pendingThinkingLevelRef, deferredComposerPickRef, accessModeRef, setLocalMessages]);
+  }, [appSettings, folders, isOmpSession, harness, ompAgent, selectedFolderId, sessionId, scrollToBottom, jumpToBottom, persistMessages, seedSession, pendingComposerModelRef, pendingThinkingLevelRef, deferredComposerPickRef, accessModeRef, setLocalMessages]);
   return { steerOmpAgent, executeSend };
 }

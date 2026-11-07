@@ -283,6 +283,17 @@ describe('loadComposerItems', () => {
     expect(requested).toContain('/api/fs/list?root=%2Frepo');
   });
 
+  test('a non-omp harness is offered files, never omp subagents', async () => {
+    answer = (url) => url.includes('/api/settings/agents')
+      ? { body: { agents: [{ id: 'a', name: 'sonic', description: '', scope: 'user', mode: 'primary', systemPrompt: '' }] } }
+      : { body: { files: [{ name: 'a.ts', path: 'src/a.ts' }] } };
+
+    const items = await loadComposerItems('mention', '/repo', 's1', { includeAgents: false });
+    expect(items.map((item) => item.source)).toEqual(['file']);
+    // The agents request is skipped entirely, not fetched and filtered.
+    expect(requested.some((url) => url.includes('/api/settings/agents'))).toBe(false);
+  });
+
   test('a repeated load is served from the cache without another request', async () => {
     answer = () => ({ body: { agents: [] } });
     await loadComposerItems('mention');

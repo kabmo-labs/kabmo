@@ -17,6 +17,11 @@ export interface UseComposerTriggerOptions {
    *  publish their own; omp's utility catalog is a different vocabulary). */
   sessionId?: string | null;
   /**
+   * The harness behind the open chat. A non-omp ACP agent has no omp
+   * subagents, so the `@` pool drops the agent rows there; files stay.
+   */
+  harness?: string | null;
+  /**
    * Whether the popup may open at all. A composer with no completable surface
    * (the side-question form) turns it off so a stray `@` or `/` cannot open an
    * empty list over its text.
@@ -64,14 +69,15 @@ function shouldOpen(trigger: ComposerTrigger | null, matches: ComposerMatchItem[
 
 /** Orchestrates the composer `@`-mention / `/`-command autocomplete flow. */
 export function useComposerTrigger(options: UseComposerTriggerOptions): ComposerTriggerController {
-  const { value, setValue, textareaRef, disabled = false, rootPath, sessionId, enabled = true } = options;
+  const { value, setValue, textareaRef, disabled = false, rootPath, sessionId, harness, enabled = true } = options;
 
   const [trigger, setTrigger] = useState<ComposerTrigger | null>(null);
   const [activeIndex, setActiveIndexState] = useState(0);
   const composingRef = useRef(false);
   const pendingCaretRef = useRef<number | null>(null);
 
-  const { items, loading, error } = useComposerItems(trigger?.kind ?? null, rootPath ?? null, sessionId ?? null);
+  const includeAgents = !harness || harness === 'omp-rpc' || harness === 'omp-acp';
+  const { items, loading, error } = useComposerItems(trigger?.kind ?? null, rootPath ?? null, sessionId ?? null, includeAgents);
 
   const matches = useMemo(
     () => (trigger ? filterComposerItems(items, trigger) : []),

@@ -24,6 +24,10 @@ export interface ChatTimelineSendDeps {
   selectedFolderId: number | null;
   sessionId: string | null;
   isOmpSession: boolean;
+  /** The harness that owns this chat (omp-rpc, claude, …), for the ONE rule
+   *  that is omp-specific: the TUI-only slash-command guard. Undefined until
+   *  the chat's harness resolves. */
+  harness?: string | null;
   appSettings: Record<string, any>;
   ompAgent: OmpAgentHandle;
   setLocalMessages: Dispatch<SetStateAction<ChatMessageData[]>>;

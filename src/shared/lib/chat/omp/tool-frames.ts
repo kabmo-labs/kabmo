@@ -75,7 +75,13 @@ export function foldToolStart(data: Record<string, unknown>, deps: OmpAgentFoldD
 export function foldToolUpdate(data: Record<string, unknown>, deps: OmpAgentFoldDeps): void {
   const callId = typeof data.toolCallId === 'string' ? data.toolCallId : undefined;
   if (!callId) return;
-  const partial = toolResultText(data.partialResult);
+  // A transport that already flattened its result (`acpToolOutput`) wins: the
+  // ACP content envelope can nest its text one level below what
+  // `toolResultText` walks, and reading only the raw snapshot left a running
+  // card blank on every agent that spells it that way.
+  const partial = typeof data.output === 'string' && data.output.length > 0
+    ? data.output
+    : toolResultText(data.partialResult);
   const stored = deps.toolResultsRef.current?.get(callId);
   const details = resultDetails({ result: data.partialResult }) ?? stored?.details;
   putToolResult(deps, callId, {
@@ -100,7 +106,11 @@ export function foldToolEnd(data: Record<string, unknown>, deps: OmpAgentFoldDep
   const images = extractToolImages(data.result);
   const startedAt = deps.toolResultsRef.current?.get(callId)?.startedAt;
   putToolResult(deps, callId, {
-    output: toolResultText(data.result),
+    // Same precedence as an update: a transport's own flattened read is more
+    // faithful than re-walking a raw envelope this parser does not know.
+    output: typeof data.output === 'string' && data.output.length > 0
+      ? data.output
+      : toolResultText(data.result),
     isError: data.isError === true,
     details: resultDetails(data),
     pending: false,

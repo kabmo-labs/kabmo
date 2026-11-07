@@ -30,6 +30,7 @@ import { clearSessionFileCaches } from '@/server/lib/omp/session/files';
 import { invalidateOmpSidebarData } from '@/server/lib/omp/session/reader';
 import { ModeMirror } from '@/server/lib/omp/rpc/mode-mirror';
 import { recordSpawnProvenance } from '@/server/lib/omp/rpc/spawn-provenance';
+import { claimHarness } from '@/server/lib/harness/registry';
 import { removeDir } from '@/test-support/remove-dir';
 import {
   archiveSession,
@@ -176,6 +177,41 @@ describe('getSessionModes', () => {
       expect(await res.json()).toMatchObject({ sessionId: NO_FILE_LIVE, modes: { plan: true, goal: false } });
     } finally {
       globalThis.__ompSessions.delete(NO_FILE_LIVE);
+    }
+  });
+
+  test('a live ACP chat answers plan state from its own selector', async () => {
+    // No omp transcript exists for a non-omp ACP chat, so the file lookup always
+    // fails. Before this branch, a plan mode the user had turned on came back
+    // OFF after a reload.
+    const acpId = 'acp-live-modes';
+    const wrapper = {
+      sessionId: acpId,
+      harness: 'claude',
+      isAlive: () => true,
+      send: async (command: Record<string, unknown>) => (command.type === 'get_state'
+        ? {
+            configOptions: [
+              {
+                id: 'sel-mode',
+                category: 'mode',
+                type: 'select',
+                currentValue: 'plan',
+                options: [{ value: 'default' }, { value: 'plan' }],
+              },
+            ],
+          }
+        : {}),
+    };
+    globalThis.__ompSessions ??= new Map();
+    globalThis.__ompSessions.set(acpId, wrapper as never);
+    claimHarness(wrapper as never, 'claude');
+    try {
+      const res = (await getSessionModes(loaderArgs(acpId)) as unknown as Response);
+      expect(res.status).toBe(200);
+      expect(await res.json()).toMatchObject({ sessionId: acpId, modes: { plan: true, goal: false } });
+    } finally {
+      globalThis.__ompSessions.delete(acpId);
     }
   });
 

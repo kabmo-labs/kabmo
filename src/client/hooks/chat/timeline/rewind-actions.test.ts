@@ -44,7 +44,13 @@ interface Harness {
 
 function makeHarness(
   messages: ChatMessageData[],
-  options: { rewindOk?: boolean; rewindError?: string; isOmpSession?: boolean; sessionId?: string | null } = {},
+  options: {
+    rewindOk?: boolean;
+    rewindError?: string;
+    isOmpSession?: boolean;
+    sessionId?: string | null;
+    harness?: string | null;
+  } = {},
 ): Harness {
   const rewinds: Array<{ entryId: string; startedAt?: number }> = [];
   const sent: Array<{ text: string; attachments: Attachment[] }> = [];
@@ -74,6 +80,7 @@ function makeHarness(
   const deps: RewindActionsDeps = {
     isGenerating: false,
     isOmpSession: options.isOmpSession ?? true,
+    harness: options.harness,
     sessionId: options.sessionId === undefined ? 'sess-1' : options.sessionId,
     ompAgent: { abort: async () => {} } as unknown as OmpAgentHandle,
     abortControllerRef: { current: null },
@@ -166,6 +173,16 @@ describe('handleRetry', () => {
 
     expect(h.sent[0]?.attachments).toEqual([{ name: 'shot.png', preview: 'data:image/png;base64,QUJD', type: 'image/png', id: 'attachment-1' }]);
   });
+
+  test('an ACP chat refuses Retry instead of rewinding an omp file', async () => {
+    const h = makeHarness([user('u1'), ai('a1')], { harness: 'omp-acp' });
+    h.actions.handleRetry('u1');
+    await h.settled;
+
+    expect(h.rewinds).toEqual([]);
+    expect(h.sent).toEqual([]);
+    expect(h.errors[0]).toContain('not available on this harness');
+  });
 });
 
 describe('handleUndo', () => {
@@ -229,5 +246,15 @@ describe('handleUndo', () => {
     expect(ok).toBe(true);
     expect(h.rewinds).toEqual([]);
     expect(h.messages.map((m) => m.id)).toEqual(['u1', 'a1']);
+  });
+
+  test('an ACP chat refuses Undo rather than truncating a file its agent does not read', async () => {
+    const h = makeHarness([user('u1'), ai('a1')], { harness: 'claude' });
+    const ok = await h.actions.handleUndo('u1', 'first ask');
+
+    expect(ok).toBe(false);
+    expect(h.rewinds).toEqual([]);
+    expect(h.drafts).toEqual([]);
+    expect(h.errors[0]).toContain('not available on this harness');
   });
 });

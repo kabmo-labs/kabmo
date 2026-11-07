@@ -118,7 +118,10 @@ export interface AcpCommandHost {
         const values = acpOptionValues(model);
         const match = values.find((value) => value === wanted) ?? values.find((value) => value === modelId);
         if (!match) throw new Error(`Model not offered by this harness: ${wanted}`);
-        const result = await host.setConfig('model', match);
+        // The agent's own selector ID, never the category name: ACP lets an
+        // agent publish `{id:"model", category:"model"}` or any other pair, and
+        // `session/set_config_option` keys on the ID.
+        const result = await host.setConfig(model.id, match);
         return { id: modelId, provider, data: result };
       }
 
@@ -126,14 +129,14 @@ export interface AcpCommandHost {
         const level = String(command.level ?? '');
         const thinking = configOption(host.configOptions, 'thought_level');
         if (!thinking) throw new Error(`This harness exposes no thinking selector (${host.harness})`);
-        return host.setConfig('thinking', level);
+        return host.setConfig(thinking.id, level);
       }
 
       case 'set_mode': {
         const mode = String(command.mode ?? '');
         const selector = configOption(host.configOptions, 'mode');
         if (!selector) throw new Error(`This harness exposes no mode selector (${host.harness})`);
-        return host.setConfig('mode', mode);
+        return host.setConfig(selector.id, mode);
       }
 
       case 'get_state':

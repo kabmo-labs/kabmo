@@ -215,8 +215,10 @@ describe('queue delivery scheduling', () => {
     queue.set(sessionId, [queueItem('a'), queueItem('b'), queueItem('c')]);
     const { host } = makeHost(sessionId);
     let attempts = 0;
-    host.send = async () => {
-      attempts++;
+    host.send = async (command) => {
+      // The model snapshot is best-effort and writes two selectors first; the
+      // invariant here is one CLAIMED HEAD, so count prompts only.
+      if (command.type === 'prompt') attempts++;
       throw new Error('agent_busy');
     };
 

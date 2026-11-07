@@ -119,14 +119,16 @@ export async function applySelections(host: ConfigSelectionHost, wanted: ConfigS
     const exact = `${wanted.model.provider}/${wanted.model.modelId}`;
     const values = acpOptionValues(model);
     const match = values.find((value) => value === exact) ?? values.find((value) => value === wanted.model?.modelId);
-    if (match) await host.setConfig('model', match).catch(() => {});
+    // `session/set_config_option` keys on the selector's ID, which an agent may
+    // name anything; the category only says what the selector MEANS.
+    if (match) await host.setConfig(model.id, match).catch(() => {});
   }
   const thinking = configOption(host.configOptions, 'thought_level');
   if (thinking && wanted.thinking && acpOptionValues(thinking).includes(wanted.thinking)) {
-    await host.setConfig('thinking', wanted.thinking).catch(() => {});
+    await host.setConfig(thinking.id, wanted.thinking).catch(() => {});
   }
   const mode = configOption(host.configOptions, 'mode');
   if (mode && wanted.mode && acpOptionValues(mode).includes(wanted.mode)) {
-    await host.setConfig('mode', wanted.mode).catch(() => {});
+    await host.setConfig(mode.id, wanted.mode).catch(() => {});
   }
 }

@@ -22,7 +22,7 @@ const ompModels: AIModelOption[] = [
   { id: 'claude-fable-5', name: 'Claude Fable 5', provider: 'kenari' },
 ];
 
-function probed(id: string, models: { value: string; name: string }[], blocked?: string): HarnessSummary {
+function probed(id: string, models: { value: string; name: string }[], blocked?: string, thinking: { value: string; name: string }[] = []): HarnessSummary {
   return {
     id,
     label: id,
@@ -32,12 +32,12 @@ function probed(id: string, models: { value: string; name: string }[], blocked?:
     probe: {
       harness: id,
       capabilities: {
-        configModel: models.length, configThinking: 0, configMode: 0, modeValues: [],
+        configModel: models.length, configThinking: thinking.length, configMode: 0, modeValues: [],
         loadSession: true, listSessions: true, forkSession: false, deleteSession: false,
         resumeSession: true, closeSession: true, hasUsage: false, hasPlan: false, steerMode: null,
         ...(blocked ? { blocked } : {}),
       },
-      models, thinking: [], modes: [], probedAt: Date.now(),
+      models, thinking, modes: [], probedAt: Date.now(),
     },
   };
 }
@@ -103,6 +103,26 @@ describe('harness model lists', () => {
     const option = acpModelOption({ value: 'a/b', name: 'B' }, 'claude');
     expect(option.contextWindow).toBeUndefined();
     expect(option.cost).toBeUndefined();
+  });
+
+  test("the agent's thinking ladder rides every model row", () => {
+    // `thought_level` is a SESSION selector, so the same ladder applies to
+    // every model the harness lists. Dropping it disabled the composer's
+    // thinking dropdown even though `set_thinking_level` is implemented.
+    const list = harnessModels(
+      [probed('claude', [{ value: 'opus', name: 'Opus' }], undefined, [
+        { value: 'low', name: 'Low' },
+        { value: 'high', name: 'High' },
+      ])],
+      'claude',
+      ompModels,
+    );
+    expect(list.models[0]?.thinkingLevels).toEqual(['low', 'high']);
+  });
+
+  test('a harness that publishes no thinking ladder gets no invented levels', () => {
+    const list = harnessModels([probed('claude', [{ value: 'opus', name: 'Opus' }])], 'claude', ompModels);
+    expect(list.models[0]?.thinkingLevels).toBeUndefined();
   });
 });
 

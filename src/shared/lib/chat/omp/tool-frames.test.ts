@@ -157,4 +157,27 @@ describe('foldToolEnd', () => {
     foldToolEnd({ toolCallId: 'c1', result: { content: [{ type: 'text', text: 'done' }] } }, deps);
     expect(deps.toolResultsRef.current?.get('c1')?.durationMs).toBeUndefined();
   });
+
+  test('a transport’s flattened output wins over an envelope this parser cannot walk', () => {
+    // ACP sends `{content:[{type:"content", content:{type:"text"}}]}`, which
+    // `toolResultText` does not descend into. The mapper flattens it onto
+    // `output`; reading only the raw result left the finished card blank.
+    const { deps } = makeDeps();
+    foldToolEnd({
+      toolCallId: 'c1',
+      result: { content: [{ type: 'content', content: { type: 'text', text: 'nested' } }] },
+      output: 'nested',
+    }, deps);
+    expect(deps.toolResultsRef.current?.get('c1')?.output).toBe('nested');
+  });
+
+  test('a progress frame’s flattened output is stored too', () => {
+    const { deps } = makeDeps();
+    foldToolUpdate({
+      toolCallId: 'c1',
+      partialResult: { content: [{ type: 'content', content: { type: 'text', text: 'nested progress' } }] },
+      output: 'nested progress',
+    }, deps);
+    expect(deps.toolResultsRef.current?.get('c1')?.output).toBe('nested progress');
+  });
 });

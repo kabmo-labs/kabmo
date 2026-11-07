@@ -47,16 +47,26 @@ export type { ArmedGoal, GoalAction };
 /**
  * Which mode toggles a harness can actually honour.
  *
- * Pure, so the rule is testable without a render: omp's two transports carry the
- * `/kabmo-mode` extension, so both modes exist. Another ACP agent has no such
- * extension — Goal cannot be expressed at all, and Plan is a real mode only when
- * that agent publishes a `plan` value in its own mode selector (measured: claude
- * does, opencode does not). An unknown harness keeps the old surface: the row may
- * simply not have arrived yet.
+ * Pure, so the rule is testable without a render. omp over RPC carries the
+ * whole `/kabmo-mode` extension AND the goal driver, so both modes exist.
+ * `omp-acp` carries the extension command but not the driver: Plan works
+ * through the agent's own `mode` selector, Goal would be a button the server
+ * refuses. Another ACP agent has no extension at all — Plan is a real mode only
+ * when that agent publishes a `plan` value (measured: claude does, opencode does
+ * not). An unknown harness keeps the old surface: the row may simply not have
+ * arrived yet.
  */
 export function modeAvailability(capabilities: ModeCapabilities): { plan: boolean; goal: boolean } {
-  const ompTransport = !capabilities.harness || capabilities.harness === 'omp-rpc' || capabilities.harness === 'omp-acp';
-  if (ompTransport) return { plan: true, goal: true };
+  // Goal is an omp RPC feature end to end: the `/kabmo-mode` command opens the
+  // turn, but the LOOP (audit → continuation) is driven by Kabmo's RPC
+  // terminal settle, and its state arrives as extension notifications the ACP
+  // adapter does not forward. Offering the toggle on `omp-acp` produced a
+  // button whose every action the server answered with "has no goal mode" —
+  // the refusal rule this function exists to enforce.
+  if (capabilities.harness === 'omp-rpc') return { plan: true, goal: true };
+  const ompTransport = capabilities.harness === 'omp-acp';
+  if (ompTransport) return { plan: true, goal: false };
+  if (!capabilities.harness) return { plan: true, goal: true };
   return { plan: capabilities.modeValues?.includes('plan') === true, goal: false };
 }
 

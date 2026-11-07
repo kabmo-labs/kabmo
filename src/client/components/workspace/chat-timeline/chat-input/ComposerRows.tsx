@@ -138,6 +138,7 @@ export function composerRows({
         appSettings={input.appSettings}
         rootPath={input.rootPath}
         sessionId={input.sessionId ?? null}
+        {...(input.harness ? { harness: input.harness } : {})}
         enablePicker={input.enablePicker}
         placement={pickerPlacement}
         wrapperClassName={wrapperClass}

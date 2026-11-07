@@ -15,7 +15,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { modelFromOption } from '@/server/lib/harness/acp/prompt';
+import { applySelections, modelFromOption } from '@/server/lib/harness/acp/prompt';
 import type { AcpConfigOption } from '@/server/lib/harness/acp/protocol';
 
 function selector(currentValue: string | undefined): AcpConfigOption {
@@ -75,5 +75,56 @@ describe('modelFromOption — agent spellings', () => {
     });
     expect(modelFromOption(selector('[1,2]'), 'dsh')).toEqual({ provider: 'dsh', modelId: '[1,2]' });
     expect(modelFromOption(selector('[broken'), 'dsh')).toEqual({ provider: 'dsh', modelId: '[broken' });
+  });
+});
+
+describe('applySelections', () => {
+  const option = (id: string, category: string, values: string[]): AcpConfigOption => ({
+    id,
+    category,
+    type: 'select',
+    currentValue: values[0],
+    options: values.map((value) => ({ value })),
+  });
+
+  test('writes each selector by its own id, not by its category', async () => {
+    // ACP allows any id; `session/set_config_option` keys on it. Writing
+    // "model"/"thinking"/"mode" happened to work only for agents whose ids
+    // matched those words.
+    const writes: [string, string | boolean][] = [];
+    await applySelections(
+      {
+        configOptions: [
+          option('sel-model', 'model', ['p/m']),
+          option('sel-think', 'thought_level', ['low', 'high']),
+          option('sel-mode', 'mode', ['default', 'plan']),
+        ],
+        runModel: null,
+        setConfig: async (id, value) => {
+          writes.push([id, value]);
+        },
+      },
+      { model: { provider: 'p', modelId: 'm' }, thinking: 'high', mode: 'plan' },
+    );
+    expect(writes).toEqual([
+      ['sel-model', 'p/m'],
+      ['sel-think', 'high'],
+      ['sel-mode', 'plan'],
+    ]);
+  });
+
+  test('a value the agent does not offer is skipped, never invented', async () => {
+    const writes: string[] = [];
+    await applySelections(
+      {
+        configOptions: [option('sel-think', 'thought_level', ['low'])],
+        runModel: null,
+        setConfig: async (id) => {
+          writes.push(id);
+        },
+      },
+      { model: null, thinking: 'max', mode: null },
+    );
+    expect(writes).toEqual([]);
   });
 });

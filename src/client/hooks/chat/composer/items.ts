@@ -57,6 +57,7 @@ export function useComposerItems(
   kind: ComposerPickKind | null,
   root?: string | null,
   sessionId?: string | null,
+  includeAgents = true,
 ): ComposerItemsState {
   const [state, setState] = useState<ComposerItemsState>({ items: [], loading: false, error: null });
   const pluginRows = useListSlotRows<CommandPaletteRegistration>('commandPaletteAction');
@@ -70,7 +71,7 @@ export function useComposerItems(
     let cancelled = false;
     setState({ items: [], loading: true, error: null });
 
-    loadComposerItems(kind, root ?? null, sessionId ?? null)
+    loadComposerItems(kind, root ?? null, sessionId ?? null, { includeAgents })
       .then((items) => {
         if (cancelled) return;
         setState({ items, loading: false, error: null });
@@ -87,7 +88,7 @@ export function useComposerItems(
     return () => {
       cancelled = true;
     };
-  }, [kind, root, sessionId]);
+  }, [kind, root, sessionId, includeAgents]);
 
   // Merged outside the fetch effect so a late registration re-renders the popup
   // without re-issuing the request; memoized on the two inputs so the popup's

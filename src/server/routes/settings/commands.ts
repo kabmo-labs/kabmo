@@ -154,13 +154,16 @@ export async function loader({ request }: LoaderFunctionArgs) {
           | { commands?: CommandItem[] }
           | null;
         const agentCommands = Array.isArray(answer?.commands) ? answer.commands : [];
-        if (agentCommands.length > 0) {
-          const names = new Set(agentCommands.map((command) => command.name.toLowerCase()));
-          return json({
-            commands: [...agentCommands, ...commands.filter((command) => !names.has(command.name.toLowerCase()))],
-            isMock: false,
-          });
-        }
+        // The agent's list is the WHOLE answer, empty included. Falling through
+        // to omp's utility catalog offered `/plan`, `/clear`, … to a chat whose
+        // agent had published nothing — commands that are a different agent's
+        // vocabulary and can only fail there. A late `available_commands_update`
+        // invalidates the client's cache, so the popup fills when it arrives.
+        const names = new Set(agentCommands.map((command) => command.name.toLowerCase()));
+        return json({
+          commands: [...agentCommands, ...commands.filter((command) => !names.has(command.name.toLowerCase()))],
+          isMock: false,
+        });
       }
     }
     const scope = await resolveDiscoveryScope(url.searchParams.get('root'), url.searchParams.get('scope'));

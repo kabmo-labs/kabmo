@@ -78,6 +78,13 @@ describe('buildPromptText mentions', () => {
     expect(await buildPromptText('fix @architect the bug', [])).toBe('fix @architect the bug');
   });
 
+  test('a non-omp harness leaves the agent mention as typed, but still translates files', async () => {
+    // The rewrite names omp's `task` tool. A claude/opencode chat has no such
+    // agent, so the mention must reach it verbatim.
+    expect(await buildPromptText('look at @file:src/a.ts for @architect', [], { includeAgents: false }))
+      .toBe('look at @src/a.ts for @architect');
+  });
+
   test('the agent pass runs before the file namespace is stripped', async () => {
     // `build` is a known agent AND the head of a file path. The file token must
     // survive the agent pass and only then become omp's native `@path`.

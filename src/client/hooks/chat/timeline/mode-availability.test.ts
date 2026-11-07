@@ -17,10 +17,15 @@ import { describe, expect, test } from 'bun:test';
 import { modeAvailability } from '@/client/hooks/chat/timeline/modes';
 
 describe('modeAvailability', () => {
-  test('omp’s transports carry both modes', () => {
-    for (const harness of ['omp-rpc', 'omp-acp']) {
-      expect(modeAvailability({ harness, modeValues: [] })).toEqual({ plan: true, goal: true });
-    }
+  test('omp RPC carries both modes', () => {
+    expect(modeAvailability({ harness: 'omp-rpc', modeValues: [] })).toEqual({ plan: true, goal: true });
+  });
+
+  test('omp over ACP offers Plan but not Goal', () => {
+    // The ACP path has no goal DRIVER (audit → continuation runs off the RPC
+    // terminal settle) and its extension notifications never reach the client,
+    // so the server refuses every goal action on this transport.
+    expect(modeAvailability({ harness: 'omp-acp', modeValues: [] })).toEqual({ plan: true, goal: false });
   });
 
   test('an unknown harness keeps the old surface', () => {

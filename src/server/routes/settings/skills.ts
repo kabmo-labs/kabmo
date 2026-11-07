@@ -23,6 +23,7 @@ import {
 import { runCatalogAction } from '@/server/routes/settings/skills-catalog-actions';
 import { resolveDiscoveryScope, type DiscoveryScope } from '@/server/lib/omp/config/scope';
 import { reloadLiveSessions } from '@/server/lib/omp/session/reload.server';
+import { getLiveSession, harnessOfSession } from '@/server/lib/omp/rpc/session-registry';
 
 /** Human label for an omp discovery source. */
 const SOURCE_LABELS: Record<string, string> = {
@@ -93,6 +94,17 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
     const db = await getDb();
     const url = new URL(request.url);
+    // A live ACP chat's `/` pool is the AGENT's own command list. omp's skills
+    // are filesystem state from a different agent's vocabulary — measured, the
+    // popup offered them to every ACP chat, and typing one sent text the agent
+    // had never registered.
+    const sessionId = url.searchParams.get('sessionId');
+    if (sessionId) {
+      const live = getLiveSession(sessionId);
+      if (live?.isAlive() && harnessOfSession(live) !== 'omp-rpc') {
+        return json({ skills: [], catalogSources: [], catalogSkills: [], root: null, isMock: false });
+      }
+    }
     const scope = await resolveDiscoveryScope(url.searchParams.get('root'), url.searchParams.get('scope'));
     const catalogSources = await readCatalogSources(db);
 

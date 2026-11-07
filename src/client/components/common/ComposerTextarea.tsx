@@ -21,6 +21,11 @@ export interface ComposerTextareaProps {
   /** The open chat: `/` asks its own agent for the command list. */
   sessionId?: string | null;
   /**
+   * The harness behind the open chat. A non-omp ACP agent has no omp
+   * subagents, so the `@` pool drops those rows there; files stay.
+   */
+  harness?: string | null;
+  /**
    * Whether the `@` / `/` / `!` / `#` autocomplete runs. Off for a composer with
    * nothing to complete against — the side-question form has no file tree, no
    * commands and no skills, and an `@` mention left in its text would reach the
@@ -75,6 +80,7 @@ export function ComposerTextarea({
   onPaste,
   rootPath,
   sessionId,
+  harness,
   enablePicker = true,
   placement = 'up',
   wrapperClassName = '',
@@ -92,7 +98,7 @@ export function ComposerTextarea({
     if (externalRef) externalRef.current = node;
     onReady?.(node);
   };
-  const composer = useComposerTrigger({ value, setValue: onChange, textareaRef, disabled, rootPath, sessionId, enabled: enablePicker });
+  const composer = useComposerTrigger({ value, setValue: onChange, textareaRef, disabled, rootPath, sessionId, harness, enabled: enablePicker });
 
   useOnClickOutside(wrapperRef, composer.close);
 
