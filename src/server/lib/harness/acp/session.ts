@@ -7,18 +7,16 @@
  * One live ACP session: the bridge between `AcpProcess` + `AcpFrameMapper` and
  * the `HarnessSession` contract every route already speaks.
  *
- * What it owns, and why each piece exists:
- *
- *  - **the run flags** (`promptRunning`, `streaming`). Everything downstream —
- *    the sidebar spinner, the queue's delivery gate, `isBusy()`, the idle
- *    reaper — reads these instead of asking the agent, and an ACP agent has no
- *    `get_state` to ask anyway.
- *  - **the approval queue.** `session/request_permission` BLOCKS the turn until
- *    it is answered, so a pending request is remembered (a reloaded tab must
- *    replay it) and a cancel answers it — otherwise the agent waits forever.
- *  - **the turn terminal.** ACP's only end-of-turn signal is the
- *    `session/prompt` RESPONSE. The prompt call is therefore awaited for the
- *    whole turn, and its resolution emits the `agent_end` the timeline folds.
+ * It owns the session's own state — the id, the config selectors, the resolved
+ * model, the run flags the sidebar spinner and the queue's delivery gate read,
+ * the agent's command list, and the approval queue a reloaded tab replays. The
+ * RULES for each of those live beside it, one module per concern:
+ * `session-handshake.ts` (initialize/new/load + the picks), `session-turns.ts`
+ * (the ACK contract and turn-end bookkeeping), `session-config.ts` (adopting a
+ * config answer, answering a parked dialog), `session-permissions.ts` (the
+ * tier that answers before a dialog exists), `session-facts.ts` (the metadata an
+ * agent publishes about itself between turns) and `session-web-state.ts`
+ * (`get_state`, in the shape the omp transport reports it).
  *
  * `send()` accepts the SAME command vocabulary the routes already send omp, so
  * `routes/agent/command.ts` needs no second dispatch table.
@@ -27,16 +25,22 @@
 import { AcpProcess } from '@/server/lib/harness/acp/client';
 import { AcpTurns } from '@/server/lib/harness/acp/turn';
 import { AcpFrameMapper } from '@/server/lib/harness/acp/frames';
-import type { AcpConfigOption, AcpId, AcpSessionNewResult } from '@/server/lib/harness/acp/protocol';
+import type { AcpConfigOption, AcpId } from '@/server/lib/harness/acp/protocol';
+import { promptBlocks } from '@/server/lib/harness/acp/prompt';
+import { adoptConfigOptions, settlePermissionDialog } from '@/server/lib/harness/acp/session-config';
+import { beginAcpTurn, settleAcpTurn } from '@/server/lib/harness/acp/session-turns';
+import { handshakeAcpSession } from '@/server/lib/harness/acp/session-handshake';
 import { capabilitiesFrom } from '@/server/lib/harness/launch';
-import { applySelections, configOption, modelFromOption, promptBlocks } from '@/server/lib/harness/acp/prompt';
-import { PendingPermissions, allowOption, autoApproval, type PermissionOption } from '@/server/lib/harness/acp/permissions';
+import { PendingPermissions } from '@/server/lib/harness/acp/permissions';
+import { metadataCapabilities, parseAgentCommands } from '@/server/lib/harness/acp/session-facts';
+import { preApprovedOption } from '@/server/lib/harness/acp/session-permissions';
+import { acpWebState } from '@/server/lib/harness/acp/session-web-state';
+import { noteAgentTitle } from '@/server/lib/harness/session-title.server';
 import { DEFAULT_APPROVAL_MODE, isApprovalMode, type ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 import { dispatchCommand, type AcpCommandHost } from '@/server/lib/harness/acp/commands';
-import { scheduleQueueDelivery } from '@/server/lib/queue/delivery.server';
 import { markStreamStatus } from '@/shared/lib/omp/session/stream-state.server';
 import type { HarnessCapabilities } from '@/server/lib/harness/capabilities';
-import type { HarnessSession, HarnessSpawnRequest } from '@/server/lib/harness/session';
+import type { HarnessSession } from '@/server/lib/harness/session';
 import type { HarnessId } from '@/shared/lib/harness/catalog';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
 
@@ -62,6 +66,13 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
   /** The turn in flight — the only one whose frames are accepted. */
   private readonly turns: AcpTurns;
   runModel: { provider: string; modelId: string } | null = null;
+  /** The agent's own slash-command list, from `available_commands_update`; the
+   *  composer's `/` pool reads it for this session (omp's utility child answers
+   *  that question for the RPC transport). */
+  agentCommands: { name: string; description?: string; inputHint?: string }[] = [];
+  /** Messages this session has moved: prompts sent plus assistant messages the
+   *  mapper closed. omp reports the same quantity from its transcript. */
+  messageCount = 0;
   /** The composer's approval tier. Answered in-process by {@link onClientRequest}. */
   accessMode: ApprovalMode = DEFAULT_APPROVAL_MODE;
   capabilities: HarnessCapabilities = capabilitiesFrom({ protocolVersion: 1 }, [], { usage: false, plan: false });
@@ -103,10 +114,7 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
       // queued follow-up stayed in `queued_messages` forever: nothing on this
       // transport scheduled a delivery, and the client's nudge route only knew
       // omp's wrapper.
-      onTurnEnd: (stopReason) => {
-        this.endStream(stopReason);
-        scheduleQueueDelivery(this);
-      },
+      onTurnEnd: (info) => this.onTurnEnded(info),
     });
     this.requestedModel = options.model ?? null;
     this.requestedThinking = options.thinkingLevel ?? null;
@@ -120,32 +128,12 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
 
   /** `initialize` + `session/new|load|resume`, then the requested selections. */
   async start(sessionIdToLoad?: string): Promise<{ sessionId: string }> {
-    const init = await this.proc.initialize({}, 60_000);
-    let session: AcpSessionNewResult;
-    if (sessionIdToLoad) {
-      await this.proc.loadSession(sessionIdToLoad, this.cwd, 120_000);
-      // `session/load` replays the transcript as `session/update` frames, which
-      // the mapper has already turned into rows. The reply carries the
-      // (possibly unchanged) config list.
-      const reloaded = await this.proc.newSession(this.cwd).catch(() => null);
-      session = reloaded ?? { sessionId: sessionIdToLoad };
-    } else {
-      session = await this.proc.newSession(this.cwd, 120_000);
-    }
-    this.sessionId = session.sessionId || sessionIdToLoad || '';
-    this.configOptions = session.configOptions ?? [];
-    // Seed the run's model from the selector the agent ALREADY reports. Nothing
-    // is written yet at this point, so without the seed `runModel` stayed null
-    // until some later config write — and `webState()` then answered
-    // `provider: 'omp-acp'` (the harness id) with the whole `provider/model`
-    // string as the model id, which is what the generating indicator names.
-    this.runModel = modelFromOption(configOption(this.configOptions, 'model'), this.harness);
-    this.capabilities = capabilitiesFrom(init, this.configOptions, { usage: false, plan: false });
-    await applySelections(this, {
-      model: this.requestedModel,
-      thinking: this.requestedThinking,
-      mode: this.requestedMode,
-    });
+    await handshakeAcpSession(
+      this,
+      this.proc,
+      { model: this.requestedModel, thinking: this.requestedThinking, mode: this.requestedMode },
+      sessionIdToLoad,
+    );
     return { sessionId: this.sessionId };
   }
 
@@ -218,12 +206,10 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
     void markStreamStatus(this.sessionId, status, status === 'stream' ? this.runModel : undefined).catch(() => {});
   };
 
-  /**
-   * Close the durable run marker at turn end: a cancelled turn is an `abort`
-   * badge, every other ending a `finish`.
-   */
-  endStream(stopReason: string | undefined): void {
-    this.markStream(stopReason === 'cancelled' ? 'abort' : 'finish');
+  /** Turn-end bookkeeping the panels read — see `session-turns.ts`. A cancelled
+   *  turn closes the marker as an `abort` badge, every other ending a `finish`. */
+  onTurnEnded(info: { stopReason?: string; closedMessage: boolean }): void {
+    settleAcpTurn(this, info);
   }
 
   /** Dispatcher seam: stop the turn. The rules live in `AcpTurns.cancel`. */
@@ -237,94 +223,73 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
     this.accessMode = mode;
   }
 
-  /** Dispatcher seam: write one config selector and adopt the answer.
-   *
-   *  The agent's reply carries the whole config list, and the model selector's
-   *  `currentValue` is the model it RESOLVED — which is what the run indicator
-   *  must report, since an alias or a fallback can differ from the request.
-   */
+  /** Dispatcher seam: write one config selector and adopt the answer — see
+   *  `session-config.ts` for why the AGENT's resolved value is what is kept. */
   async setConfig(configId: string, value: string | boolean): Promise<unknown> {
     const result = await this.proc.setConfigOption(this.sessionId, configId, value);
-    if (result && typeof result === 'object' && 'configOptions' in result && Array.isArray(result.configOptions)) {
-      this.configOptions = result.configOptions as AcpConfigOption[];
-      const resolved = modelFromOption(configOption(this.configOptions, 'model'), this.harness);
-      if (resolved) this.runModel = resolved;
-    }
+    adoptConfigOptions(this, result);
     return result;
   }
 
-  /** Dispatcher seam: answer a pending approval dialog.
-   *
-   *  Every exit answers the agent: a chosen option becomes
-   *  `{outcome:"selected"}`, and an id nobody knows becomes `cancelled` — the
-   *  agent is parked on this call and a silent return would hang it.
-   */
+  /** Dispatcher seam: answer a pending approval dialog. Every exit answers the
+   *  agent — a silent return would hang it (see `session-config.ts`). */
   resolvePermission(dialogId: string, confirmed: boolean): unknown {
-    const entry = this.permissions.take(dialogId);
-    if (!entry) return null;
-    const chosen = this.permissions.optionFor(entry, confirmed);
-    this.proc.respond(entry.id, {
-      outcome: chosen ? { outcome: 'selected', optionId: chosen.optionId } : { outcome: 'cancelled' },
-    });
+    settlePermissionDialog(this.permissions, this.proc, dialogId, confirmed);
     return null;
   }
 
   webState(): Record<string, unknown> {
-    const thinking = configOption(this.configOptions, 'thought_level');
-    // The run's model is seeded at `start()` and refreshed by every config
-    // write, so this is the value the agent RESOLVED. The fallback exists only
-    // for a session whose selector list never carried a model.
-    const serving = this.runModel ?? modelFromOption(configOption(this.configOptions, 'model'), this.harness);
-    return {
+    return acpWebState({
       sessionId: this.sessionId,
       isStreaming: this.isStreaming,
       isPromptRunning: this.isPromptRunning,
-      isCompacting: false,
-      messageCount: 0,
-      model: serving ? { id: serving.modelId, provider: serving.provider } : undefined,
-      thinkingLevel: typeof thinking?.currentValue === 'string' ? thinking.currentValue : undefined,
+      messageCount: this.messageCount,
+      runModel: this.runModel,
       configOptions: this.configOptions,
-    };
+      harness: this.harness,
+    });
   }
 
   /** Run one turn. The promise IS the turn: ACP resolves `session/prompt` when
-   *  the agent is done, so the reply is awaited for its whole duration.
-   *
-   *  A second prompt while one runs is REFUSED here rather than sent: ACP would
-   *  accept it and CANCEL the first turn (measured), throwing away the answer
-   *  the user is reading. The refusal is the same wording omp uses, so the
-   *  client's queue/steer recovery path is unchanged.
-   *
-   *  The DISPATCH answers an ACK, never the turn. `prompt` over the HTTP route
-   *  means "accepted" to every client — `sendNewPrompt` adopts the session id
-   *  and wires its stream on that answer — so returning the turn here parked a
-   *  brand-new ACP chat on `new-…` for the answer's whole duration: measured on
-   *  opencode, the URL stayed `?sessionId=new-…`, the docked indicator read
-   *  "Loading" and the transcript never appeared, while the turn itself was
-   *  running fine. omp's own `prompt` returns an ack for the same reason; the
-   *  turn's end is reported by the `agent_end` frame below.
+   *  the agent is done, so the reply is awaited for its whole duration. The ACK,
+   *  the refusal of a second prompt and the end bookkeeping are stated in
+   *  `session-turns.ts`.
    */
   startTurn(message: string, images: unknown): unknown {
-    const ack = this.turns.start(message, images);
-    // After the start, not before: `turns.start` throws when a turn is already
-    // open, and a marker written for a refused prompt would spin the sidebar
-    // over a run that never existed.
-    this.markStream('stream');
-    return ack;
+    return beginAcpTurn(this, this.turns, message, images);
   }
 
   private onNotification(method: string, params: Record<string, unknown>): void {
     if (method !== 'session/update') return;
+    const update = params.update;
+    if (!update || typeof update !== 'object') return;
+    const record = update as Record<string, unknown>;
+    const kind = typeof record.sessionUpdate === 'string' ? record.sessionUpdate : '';
+
+    // Session METADATA arrives between turns — omp publishes its command list
+    // and a usage update right after `session/new`, when no turn is open. The
+    // turn gate below exists so abandoned output cannot reopen a finalized
+    // message; applying it to these dropped the composer's `/` pool and the
+    // panels' capability flags entirely.
+    if (kind === 'available_commands_update') this.agentCommands = parseAgentCommands(record);
+    const absorbed = metadataCapabilities(this.capabilities, kind);
+    if (absorbed !== this.capabilities) this.capabilities = absorbed;
+    // The agent's own name for this chat arrives BETWEEN turns (measured on
+    // claude: after the first answer), where the turn gate below would drop it.
+    // Persisted here so the sidebar row can say it — and it outranks the guess
+    // `notePromptTitle` made from the first prompt.
+    if (kind === 'session_info_update' && typeof record.title === 'string' && this.sessionId) {
+      void noteAgentTitle(this.sessionId, record.title);
+    }
+
     // No turn open: the user stopped it (or one is still queued), and anything
     // the agent keeps emitting belongs to work nobody is watching. Forwarding it
     // reopened the assistant message after Stop and streamed abandoned text into
     // a transcript the client had already finalized.
     if (!this.turns.acceptingFrames()) return;
-    const update = params.update;
-    if (!update || typeof update !== 'object') return;
-    for (const event of this.mapper.mapUpdate(update as Record<string, unknown>)) this.emit(event);
-    if ((update as Record<string, unknown>).sessionUpdate === 'usage_update') {
-      this.capabilities = { ...this.capabilities, hasUsage: true };
+    for (const event of this.mapper.mapUpdate(record)) {
+      this.emit(event);
+      if (event.type === 'message_end') this.messageCount += 1;
     }
   }
 
@@ -336,21 +301,12 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
     params: Record<string, unknown>,
   ): Promise<{ answered: true; result: unknown } | { answered: false; message: string } | { answered: false; deferred: true }> {
     if (method === 'session/request_permission') {
-      // A tier that allows this kind is answered HERE, before a dialog exists:
-      // parking it would ask a question the operator's own selection already
-      // answered, and `isBusy()` would report a dialog nobody is meant to see.
-      const toolCall = params.toolCall && typeof params.toolCall === 'object'
-        ? Object.fromEntries(Object.entries(params.toolCall))
-        : undefined;
-      if (autoApproval(this.accessMode, toolCall)) {
-        const options = Array.isArray(params.options) ? (params.options as PermissionOption[]) : [];
-        const optionId = allowOption(options);
-        if (optionId) {
-          return Promise.resolve({
-            answered: true,
-            result: { outcome: { outcome: 'selected', optionId } },
-          });
-        }
+      const optionId = preApprovedOption(this.accessMode, params);
+      if (optionId) {
+        return Promise.resolve({
+          answered: true,
+          result: { outcome: { outcome: 'selected', optionId } },
+        });
       }
       // The dialog id IS the JSON-RPC id: the answer arrives later through
       // `extension_ui_response`, and it has to name the exact parked call.
@@ -390,13 +346,4 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
     await this.proc.dispose().catch(() => {});
     this.destroyHook?.();
   }
-}
-
-export async function openAcpSession(
-  options: AcpSessionOptions,
-  request: HarnessSpawnRequest,
-): Promise<{ session: AcpSession; realSessionId: string }> {
-  const session = new AcpSession(options, request.cwd);
-  const { sessionId } = await session.start(request.sessionFile || undefined);
-  return { session, realSessionId: sessionId };
 }

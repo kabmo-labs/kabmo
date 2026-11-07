@@ -54,6 +54,8 @@ export interface ComposerRowsInput {
   disabled: boolean;
   appSettings?: Record<string, any>;
   rootPath?: string | null;
+  /** The open chat, so `/` asks its own agent for the command list. */
+  sessionId?: string | null;
   enablePicker?: boolean;
   placeholder?: string;
   onPaste: (event: ClipboardEvent<HTMLTextAreaElement>) => void;
@@ -135,6 +137,7 @@ export function composerRows({
         disabled={input.disabled}
         appSettings={input.appSettings}
         rootPath={input.rootPath}
+        sessionId={input.sessionId ?? null}
         enablePicker={input.enablePicker}
         placement={pickerPlacement}
         wrapperClassName={wrapperClass}

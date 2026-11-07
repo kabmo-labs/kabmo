@@ -22,6 +22,7 @@
 
 import { configOption, promptBlocks } from '@/server/lib/harness/acp/prompt';
 import { acpOptionValues } from '@/server/lib/harness/acp/protocol';
+import { notePromptTitle } from '@/server/lib/harness/session-title.server';
 import { isApprovalMode, type ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 import type { AcpConfigOption } from '@/server/lib/harness/acp/protocol';
 import type { HarnessCapabilities } from '@/server/lib/harness/capabilities';
@@ -47,6 +48,8 @@ export interface AcpCommandHost {
   setConfig(configId: string, value: string | boolean): Promise<unknown>;
   resolvePermission(dialogId: string, confirmed: boolean): unknown;
   webState(): Record<string, unknown>;
+  /** The agent's own slash-command list, when it published one. */
+  agentCommands: { name: string; description?: string; inputHint?: string }[];
 }
 
   /** The command vocabulary the routes already use. */
@@ -60,8 +63,15 @@ export interface AcpCommandHost {
     if (isApprovalMode(command.accessMode)) host.setAccessMode(command.accessMode);
 
     switch (type) {
-      case 'prompt':
-        return host.startTurn(String(command.message ?? ''), command.images);
+      case 'prompt': {
+        const message = String(command.message ?? '');
+        // Name the chat here, and only here: this is the ONE place every ACP
+        // prompt goes through (a new chat's first send, a live send, a queue
+        // delivery), and the writer fills an EMPTY title only — so a steering
+        // message or a follow-up cannot rename the chat to its own text.
+        await notePromptTitle(host.sessionId, message);
+        return host.startTurn(message, command.images);
+      }
 
       case 'set_access_mode': {
         const mode = command.mode;
@@ -130,7 +140,10 @@ export interface AcpCommandHost {
         return host.webState();
 
       case 'get_commands':
-        return { commands: [] };
+        // The agent's own list, not an empty one: the composer's `/` pool asks
+        // the live session for it, and a transport that answered `[]` forced
+        // every ACP chat onto omp's utility catalog instead.
+        return { commands: host.agentCommands };
 
       case 'extension_ui_response': {
         // The approval dialog's answer, in the shape the shared gate sends. The

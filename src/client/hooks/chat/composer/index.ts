@@ -13,6 +13,9 @@ export interface UseComposerTriggerOptions {
   disabled?: boolean;
   /** Workspace root to scope `@` file mentions to (null → app root). */
   rootPath?: string | null;
+  /** The open chat, so `/` can ask ITS agent for the command list (ACP agents
+   *  publish their own; omp's utility catalog is a different vocabulary). */
+  sessionId?: string | null;
   /**
    * Whether the popup may open at all. A composer with no completable surface
    * (the side-question form) turns it off so a stray `@` or `/` cannot open an
@@ -61,14 +64,14 @@ function shouldOpen(trigger: ComposerTrigger | null, matches: ComposerMatchItem[
 
 /** Orchestrates the composer `@`-mention / `/`-command autocomplete flow. */
 export function useComposerTrigger(options: UseComposerTriggerOptions): ComposerTriggerController {
-  const { value, setValue, textareaRef, disabled = false, rootPath, enabled = true } = options;
+  const { value, setValue, textareaRef, disabled = false, rootPath, sessionId, enabled = true } = options;
 
   const [trigger, setTrigger] = useState<ComposerTrigger | null>(null);
   const [activeIndex, setActiveIndexState] = useState(0);
   const composingRef = useRef(false);
   const pendingCaretRef = useRef<number | null>(null);
 
-  const { items, loading, error } = useComposerItems(trigger?.kind ?? null, rootPath ?? null);
+  const { items, loading, error } = useComposerItems(trigger?.kind ?? null, rootPath ?? null, sessionId ?? null);
 
   const matches = useMemo(
     () => (trigger ? filterComposerItems(items, trigger) : []),

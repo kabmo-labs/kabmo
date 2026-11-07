@@ -267,6 +267,7 @@ export function ChatInput({
         wrapperClass: layout.wrapperClass,
         pickerPlacement: layout.pickerPlacement,
         attachments,
+        sessionId: sessionId ?? null,
         onFilesSelected: (files) => acceptFiles(files),
         onRemoveAttachment: removeAttachment,
         modes,

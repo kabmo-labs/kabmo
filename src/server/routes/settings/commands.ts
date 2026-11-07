@@ -16,6 +16,7 @@ import {
   writeCommandFile,
 } from '@/server/lib/omp/config/commands';
 import { reloadLiveSessions } from '@/server/lib/omp/session/reload.server';
+import { getLiveSession, harnessOfSession } from '@/server/lib/omp/rpc/session-registry';
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -140,6 +141,28 @@ export async function loader({ request }: LoaderFunctionArgs) {
     // The workspace root decides which project-scope commands/skills exist, so
     // an unscoped read must not silently answer with $HOME's inventory.
     const url = new URL(request.url);
+    // A LIVE non-omp chat answers with its OWN command list: `available_commands_update`
+    // is the agent's catalog, and omp's utility child knows nothing about it.
+    // Without this the popup offered omp's commands to every ACP agent and none
+    // of theirs (measured: claude publishes deep-research/dataviz, pi publishes
+    // its skills, and neither appeared).
+    const sessionId = url.searchParams.get('sessionId');
+    if (sessionId) {
+      const live = getLiveSession(sessionId);
+      if (live && live.isAlive() && harnessOfSession(live) !== 'omp-rpc') {
+        const answer = (await live.send({ type: 'get_commands' }).catch(() => null)) as
+          | { commands?: CommandItem[] }
+          | null;
+        const agentCommands = Array.isArray(answer?.commands) ? answer.commands : [];
+        if (agentCommands.length > 0) {
+          const names = new Set(agentCommands.map((command) => command.name.toLowerCase()));
+          return json({
+            commands: [...agentCommands, ...commands.filter((command) => !names.has(command.name.toLowerCase()))],
+            isMock: false,
+          });
+        }
+      }
+    }
     const scope = await resolveDiscoveryScope(url.searchParams.get('root'), url.searchParams.get('scope'));
     const merged = await mergeCommands(commands, scope);
     return json({ commands: merged, isMock: false });

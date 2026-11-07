@@ -5,7 +5,7 @@ const CACHE_TTL_MS = 300_000;
 
 /** Cache keys: `'agent'`, `'command::<root>'`, and `'file::<root>'` per workspace root. */
 const AGENTS_KEY = 'agent';
-const commandKey = (root: string): string => `command::${root}`;
+const commandKey = (root: string, sessionId?: string | null): string => `command::${root}::${sessionId ?? ''}`;
 const fileKey = (root: string): string => `file::${root}`;
 
 interface CacheEntry {
@@ -161,8 +161,8 @@ async function loadFileItems(root: string | null): Promise<ComposerPickItem[]> {
 }
 
 /** Load command + skill items, deduping concurrent callers and caching 5 minutes. */
-async function loadCommandItems(root: string | null): Promise<ComposerPickItem[]> {
-  const key = commandKey(root ?? '');
+async function loadCommandItems(root: string | null, sessionId?: string | null): Promise<ComposerPickItem[]> {
+  const key = commandKey(root ?? '', sessionId);
   const cached = cache.get(key);
   if (cached && cached.expiresAt > Date.now()) return cached.data;
 
@@ -171,7 +171,13 @@ async function loadCommandItems(root: string | null): Promise<ComposerPickItem[]
 
   const pending = (async () => {
     try {
-      const query = root ? `?root=${encodeURIComponent(root)}` : '';
+      const params = new URLSearchParams();
+      if (root) params.set('root', root);
+      // The live chat's OWN command list (ACP agents publish one); without the
+      // id the route falls back to omp's utility catalog, which is a different
+      // agent's vocabulary.
+      if (sessionId) params.set('sessionId', sessionId);
+      const query = params.size > 0 ? `?${params.toString()}` : '';
       const [commands, skills] = await Promise.all([
         fetchJson<{ commands: CommandItem[] }>(`/api/settings/commands${query}`),
         fetchJson<{ skills: SkillItem[] }>(`/api/settings/skills${query}`),
@@ -196,13 +202,14 @@ async function loadCommandItems(root: string | null): Promise<ComposerPickItem[]
 export function loadComposerItems(
   kind: ComposerPickKind,
   root?: string | null,
+  sessionId?: string | null,
 ): Promise<ComposerPickItem[]> {
   if (kind === 'mention') {
     return Promise.all([loadAgentItems(), loadFileItems(root ?? null)]).then(
       ([agents, files]) => [...agents, ...files],
     );
   }
-  return loadCommandItems(root ?? null);
+  return loadCommandItems(root ?? null, sessionId);
 }
 
 /** Load agent names via the shared agent cache. Never throws. */

@@ -44,7 +44,7 @@ export interface AcpTurnSeams {
    * `queued_messages` until a tab nudged it — and the sidebar kept its spinner
    * off, because no `stream` row was ever written for this transport.
    */
-  onTurnEnd: (stopReason?: string) => void;
+  onTurnEnd: (info: { stopReason?: string; closedMessage: boolean }) => void;
 }
 
 export class AcpTurns {
@@ -167,6 +167,9 @@ export class AcpTurns {
     this.isPromptRunning = false;
     this.isStreaming = false;
     this.seams.emit(turnEndFrame(result));
-    this.seams.onTurnEnd(result?.stopReason);
+    this.seams.onTurnEnd({
+      ...(result?.stopReason ? { stopReason: result.stopReason } : {}),
+      closedMessage: flushed.some((event) => event.type === 'message_end'),
+    });
   }
 }

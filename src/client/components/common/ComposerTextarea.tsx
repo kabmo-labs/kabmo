@@ -18,6 +18,8 @@ export interface ComposerTextareaProps {
   className?: string;
   onPaste?: (e: ClipboardEvent<HTMLTextAreaElement>) => void;
   rootPath?: string | null;
+  /** The open chat: `/` asks its own agent for the command list. */
+  sessionId?: string | null;
   /**
    * Whether the `@` / `/` / `!` / `#` autocomplete runs. Off for a composer with
    * nothing to complete against — the side-question form has no file tree, no
@@ -72,6 +74,7 @@ export function ComposerTextarea({
   className,
   onPaste,
   rootPath,
+  sessionId,
   enablePicker = true,
   placement = 'up',
   wrapperClassName = '',
@@ -89,7 +92,7 @@ export function ComposerTextarea({
     if (externalRef) externalRef.current = node;
     onReady?.(node);
   };
-  const composer = useComposerTrigger({ value, setValue: onChange, textareaRef, disabled, rootPath, enabled: enablePicker });
+  const composer = useComposerTrigger({ value, setValue: onChange, textareaRef, disabled, rootPath, sessionId, enabled: enablePicker });
 
   useOnClickOutside(wrapperRef, composer.close);
 
