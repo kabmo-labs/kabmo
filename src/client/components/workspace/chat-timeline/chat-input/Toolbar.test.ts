@@ -72,6 +72,7 @@ const MODES = {
   disarmGoal: () => {},
   pending: false,
   planAvailable: true,
+  goalAvailable: true,
   error: null,
   clearError: () => {},
   onTogglePlan: () => {},

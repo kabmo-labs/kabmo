@@ -42,6 +42,13 @@ export interface ComposerModes {
    *  outcome is a refusal. */
   planAvailable: boolean;
   /**
+   * Goal is offered only where a `/kabmo-mode` extension exists (omp's two
+   * transports). A non-omp ACP agent has none — its own mode selector is the
+   * only place plan can live, and nothing can express an objective — so the
+   * button could only refuse.
+   */
+  goalAvailable: boolean;
+  /**
    * The last mode-command refusal, from either side of the wire (the route's
    * error, or a `KABMO_MODE_ERROR` from the extension). The composer renders
    * it, because a command that failed silently left the toggle pressed over a

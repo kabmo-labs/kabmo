@@ -110,6 +110,7 @@ export function AttachmentToolbar({ attachments, onFilesSelected, onRemove, mode
               onTogglePlan={modes.onTogglePlan}
               onOpenGoal={onOpenGoal}
               planAvailable={modes.planAvailable}
+              goalAvailable={modes.goalAvailable}
             />
           </div>
         )}

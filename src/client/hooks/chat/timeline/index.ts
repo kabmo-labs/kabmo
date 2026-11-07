@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'preact/hooks';
+import { useCallback, useMemo, useRef, useState } from 'preact/hooks';
 import { useTimelineScope } from '@/client/hooks/chat/timeline/scope';
 import { useSpawnTarget } from '@/client/hooks/chat/timeline/spawn-target';
 import type { ChatMessageData } from '@/shared/types';
@@ -17,7 +17,8 @@ import { cancelStreamingCoalescer } from '@/shared/lib/chat/timeline/stream-coal
 import { useChatTimelineAccessMode } from '@/client/hooks/chat/timeline/access-mode';
 import { useComposerModes } from '@/client/hooks/chat/timeline/composer-modes';
 import { useComposerDraft } from '@/client/hooks/chat/composer/use-draft';
-import { isChatRunning, isSessionStreaming } from '@/client/hooks/chat/omp/session-statuses';
+import { useTimelineRunning } from '@/client/hooks/chat/timeline/timeline-running';
+import { resolveSessionHarness, useHarnessPick } from '@/client/hooks/chat/timeline/session-harness';
 import { useWaitingDependencyChoice } from '@/client/hooks/chat/waiting/choice';
 import { useComposerRefs } from '@/client/hooks/chat/timeline/composer-refs';
 
@@ -96,32 +97,9 @@ export function useChatTimeline({
   // only a UUID routes through the live agent bridge.
   const isOmpSession = Boolean(sessionId) && !String(sessionId).startsWith('new-') && Number.isNaN(Number(sessionId));
 
-  // One "a run is in flight" state for the whole chat, and its base is the
-  // SERVER: the `stream` row written at prompt dispatch, published on the
-  // `sidebar:status` topic the sidebar's spinner is drawn from — so no consumer
-  // of this flag (indicator, streaming row, withheld run footer, queue-vs-send,
-  // Stop) can disagree with the sidebar.
-  //
-  // Two windows the row cannot cover, and BOTH must be reported or a run reads
-  // as already settled while it is still starting: (1) a pending `new-…` chat
-  // has no omp id until the spawn answers, so no row can ever carry it; (2) a
-  // run THIS PAGE dispatched, in the beat between the send arming the optimistic
-  // rows and the row reaching this client over the topic — measured ~120-250 ms,
-  // and the reason the run footer "appeared for an instant" on every prompt:
-  // handed `isGenerating: false` for that window, `resolveRunFooters` settled the
-  // run and painted a model/duration footer over the EMPTY placeholder row, then
-  // withdrew it when the row arrived.
-  //
-  // The second term is `ownRun` — armed by the SEND path alone, released by the
-  // same settle paths as the run — NOT the raw local flag: an ADOPTED run (the
-  // mount probe resuming a live run's UI) leaves it alone, so a run this page did
-  // not start is still reported by the server row and never by client state.
-  const timelineRunning = isChatRunning(streamStatusMap, sessionId, ownRun);
-
-  // SERVER evidence a prompt was dispatched (the `stream` row), mirrored for
-  // the reconnect guard: a run whose FIRST frame was lost has no `agent_start`.
-  const serverRunRef = useRef(isSessionStreaming(streamStatusMap, sessionId));
-  serverRunRef.current = isSessionStreaming(streamStatusMap, sessionId);
+  // One "a run is in flight" state for the whole chat; the derivation and the
+  // two windows it covers live in `timeline-running.ts`.
+  const { running: timelineRunning, serverRunRef } = useTimelineRunning(streamStatusMap, sessionId, ownRun);
 
   const aiPlaceholderIdRef = useRef<string | null>(null);
 
@@ -214,7 +192,19 @@ export function useChatTimeline({
   // Plan/goal toggles plus the plan-review surface. PER SESSION, unlike the
   // access mode: they describe what this conversation is doing, and a mode
   // command can produce a proposal.
-  const { modes, planReview } = useComposerModes(sessionId);
+  //
+  // The chat's HARNESS decides what those toggles may offer: a non-omp ACP agent
+  // has no `/kabmo-mode` extension, and `plan` is a real mode only where that
+  // agent publishes one. Resolved by the SAME rule the picker renders from
+  // (`resolveSessionHarness`) — row, spawn record, then the pick — because a
+  // second resolution here saw only the first two, so a pending `claude` chat
+  // still offered Goal and arming it did nothing.
+  const harnessPick = useHarnessPick(sessionId);
+  const chatHarness = useMemo(
+    () => resolveSessionHarness(folders, sessionId, harnessPick).harness,
+    [folders, sessionId, harnessPick],
+  );
+  const { modes, planReview } = useComposerModes(sessionId, chatHarness);
 
   const { steerOmpAgent, executeSend } = useChatTimelineSend({
     folders,

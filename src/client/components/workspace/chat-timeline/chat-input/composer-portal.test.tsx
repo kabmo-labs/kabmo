@@ -101,6 +101,7 @@ async function mountComposer(style: ComposerStyle): Promise<HTMLElement> {
           disarmGoal: () => {},
           pending: false,
           planAvailable: true,
+          goalAvailable: true,
           error: null,
           clearError: () => {},
           onTogglePlan: () => {},

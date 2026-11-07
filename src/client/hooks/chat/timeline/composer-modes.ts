@@ -18,6 +18,7 @@
  */
 
 import type { ChatTimelineModes } from '@/client/hooks/chat/timeline/modes';
+import { useHarnesses } from '@/client/hooks/models/use-harnesses';
 import type { PlanReviewState } from '@/client/hooks/chat/timeline/plan-review';
 import { useChatTimelineModes } from '@/client/hooks/chat/timeline/modes';
 import { usePlanReview } from '@/client/hooks/chat/timeline/plan-review';
@@ -27,6 +28,14 @@ export interface ComposerModesHandle {
   planReview: PlanReviewState;
 }
 
-export function useComposerModes(sessionId: string | null): ComposerModesHandle {
-  return { modes: useChatTimelineModes(sessionId), planReview: usePlanReview(sessionId) };
+export function useComposerModes(sessionId: string | null, harness?: string | null): ComposerModesHandle {
+  // The harness's PROBE is what says whether it has a `plan` mode at all: the
+  // mode list is the agent's own, and a non-omp agent has no `/kabmo-mode`
+  // extension to fall back on.
+  const { harnesses } = useHarnesses();
+  const modeValues = harnesses.find((entry) => entry.id === harness)?.probe?.capabilities.modeValues;
+  return {
+    modes: useChatTimelineModes(sessionId, { harness, ...(modeValues ? { modeValues } : {}) }),
+    planReview: usePlanReview(sessionId),
+  };
 }

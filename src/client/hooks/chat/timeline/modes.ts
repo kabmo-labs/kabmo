@@ -44,7 +44,34 @@ import type { ChatTimelineModes } from '@/client/hooks/chat/timeline/modes-contr
 export type { ChatTimelineModes };
 export type { ArmedGoal, GoalAction };
 
-export function useChatTimelineModes(sessionId: string | null): ChatTimelineModes {
+/**
+ * Which mode toggles a harness can actually honour.
+ *
+ * Pure, so the rule is testable without a render: omp's two transports carry the
+ * `/kabmo-mode` extension, so both modes exist. Another ACP agent has no such
+ * extension — Goal cannot be expressed at all, and Plan is a real mode only when
+ * that agent publishes a `plan` value in its own mode selector (measured: claude
+ * does, opencode does not). An unknown harness keeps the old surface: the row may
+ * simply not have arrived yet.
+ */
+export function modeAvailability(capabilities: ModeCapabilities): { plan: boolean; goal: boolean } {
+  const ompTransport = !capabilities.harness || capabilities.harness === 'omp-rpc' || capabilities.harness === 'omp-acp';
+  if (ompTransport) return { plan: true, goal: true };
+  return { plan: capabilities.modeValues?.includes('plan') === true, goal: false };
+}
+
+export interface ModeCapabilities {
+  /** The harness that owns this chat, when the tab knows it. */
+  harness?: string | null;
+  /** The harness's own `mode` values, from its probe: `plan` is a real mode on
+   *  the agents that publish one. */
+  modeValues?: string[];
+}
+
+export function useChatTimelineModes(
+  sessionId: string | null,
+  capabilities: ModeCapabilities = {},
+): ChatTimelineModes {
   // A pending `new-…` chat has no omp session to command: `/api/agent/:id`
   // answers 404 and nothing persists. Plan's selection lives in
   // `spawnSelectionRef` instead, and the SEND path hands it to the spawn
@@ -268,6 +295,13 @@ export function useChatTimelineModes(sessionId: string | null): ChatTimelineMode
   // active and vice versa), surfaced as an availability rule rather than as a
   // refusal the user has to read — and enforced in the child for the callers
   // this flag cannot reach (a stale client, a typed `/plan`).
+  //
+  // A chat on a non-omp ACP agent has no `/kabmo-mode` extension: Goal cannot be
+  // expressed at all, and Plan exists only when that agent publishes a `plan`
+  // value in its own mode selector (measured: claude does, opencode does not).
+  // A button whose only outcome is a refusal is the shape this rule refuses.
+  const available = modeAvailability(capabilities);
+
   return {
     plan,
     goal,
@@ -276,7 +310,8 @@ export function useChatTimelineModes(sessionId: string | null): ChatTimelineMode
     goalContinuation,
     goalEvaluating,
     pending,
-    planAvailable: !goal,
+    planAvailable: available.plan && !goal,
+    goalAvailable: available.goal,
     error,
     clearError,
     spawnSelectionRef,

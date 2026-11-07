@@ -21,7 +21,13 @@ import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 
-import { useSessionHarness, type SessionHarness } from '@/client/hooks/chat/timeline/session-harness';
+import {
+  harnessPickFor,
+  resolveSessionHarness,
+  resetHarnessPicks,
+  useSessionHarness,
+  type SessionHarness,
+} from '@/client/hooks/chat/timeline/session-harness';
 import { recordSpawnHarness, resetSpawnHarness } from '@/client/hooks/chat/timeline/spawn-harness';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
 import type { WorkspaceFolderData } from '@/shared/types';
@@ -34,6 +40,7 @@ afterAll(() => restoreDomGlobals());
 
 beforeEach(() => {
   resetSpawnHarness();
+  resetHarnessPicks();
   mounted = { value: null };
   container = document.createElement('div');
   document.body.appendChild(container);
@@ -127,5 +134,30 @@ describe('pending harness pick', () => {
       pendingHarnessRef: { current: null },
     });
     expect(value.harness).toBe('claude');
+  });
+
+  test('the pick is readable OUTSIDE the picker, which is why it is a store', () => {
+    const pendingHarnessRef = { current: null as string | null };
+    const first = probe({ sessionId: 'new-1', pendingHarnessRef });
+    act(() => first.pick('claude'));
+
+    // The timeline hook resolves the harness for the mode toggles with this same
+    // rule. With the pick in component state it saw only the row and the spawn
+    // record, so a pending `claude` chat still offered Goal — a button whose only
+    // outcome there is nothing (the spawn path forwards `plan` only).
+    expect(resolveSessionHarness([], 'new-1', harnessPickFor('new-1'))).toEqual({ harness: 'claude', fromRow: false });
+    // Keyed by chat: another pending chat has no pick of its own.
+    expect(harnessPickFor('new-2')).toBeUndefined();
+  });
+
+  test('the resolver keeps the three sources in ONE order', () => {
+    recordSpawnHarness('uuid-9', 'opencode');
+    // The row, when it exists, is the agent the chat is actually running on.
+    expect(resolveSessionHarness(FOLDERS, 'sess-1', 'pi')).toEqual({ harness: 'claude', fromRow: true });
+    // Then the spawn record, then the pick.
+    expect(resolveSessionHarness([], 'uuid-9', 'pi')).toEqual({ harness: 'opencode', fromRow: false });
+    expect(resolveSessionHarness([], 'unpicked', 'pi')).toEqual({ harness: 'pi', fromRow: false });
+    expect(resolveSessionHarness([], 'nothing-known', undefined)).toEqual({ harness: undefined, fromRow: false });
+    expect(resolveSessionHarness(FOLDERS, null, 'pi')).toEqual({ harness: undefined, fromRow: false });
   });
 });

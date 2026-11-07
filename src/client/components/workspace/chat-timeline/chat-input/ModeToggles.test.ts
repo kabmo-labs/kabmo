@@ -59,6 +59,7 @@ function paint(overrides: Partial<ModeTogglesProps> = {}): HTMLElement {
     onTogglePlan: () => {},
     onOpenGoal: () => {},
     planAvailable: true,
+    goalAvailable: true,
     ...overrides,
   };
   if (container) render(null, container);
@@ -91,6 +92,18 @@ describe('ModeToggles', () => {
     expect(el.querySelector('[aria-label="Enter plan mode"]')).toBeNull();
     expect(el.querySelector('[aria-label="Leave plan mode"]')).toBeNull();
     expect(el.querySelector('[aria-label="Manage the active goal"]')).not.toBeNull();
+  });
+
+  test('Goal is not offered where the harness cannot express one', () => {
+    // A non-omp ACP agent has no `/kabmo-mode` extension and no selector that
+    // can carry an objective, so the button's only outcome is a refusal — the
+    // shape a control the user cannot use must not have.
+    const el = paint({ goalAvailable: false });
+
+    expect(el.querySelector('[aria-label="Set a goal"]')).toBeNull();
+    expect(el.querySelector('[aria-label="Manage the active goal"]')).toBeNull();
+    // Plan stays on offer: an agent that publishes a `plan` mode can honour it.
+    expect(el.querySelector('[aria-label="Enter plan mode"]')).not.toBeNull();
   });
 
   test('the goal button carries the record in its title', () => {

@@ -46,6 +46,9 @@ export interface ModeTogglesProps {
    *  enter one mode while the other is active, so offering both would present a
    *  button whose only outcome is an error. */
   planAvailable: boolean;
+  /** Whether Goal is offered at all: a non-omp ACP agent has no `/kabmo-mode`
+   *  extension, so the button could only produce a refusal. */
+  goalAvailable: boolean;
 }
 
 /** omp's own footer shows goal token usage beside the mode indicator; that
@@ -69,6 +72,7 @@ export function ModeToggles({
   onTogglePlan,
   onOpenGoal,
   planAvailable,
+  goalAvailable,
 }: ModeTogglesProps) {
   return (
     <div className="flex items-center gap-0.5">
@@ -89,7 +93,9 @@ export function ModeToggles({
       )}
 
       {/* An ARMED goal is not a running one: the button names it as waiting,
-          so "on" never claims work that has not started. */}
+          so "on" never claims work that has not started. Hidden entirely when
+          the harness cannot express a goal — see `goalAvailable`. */}
+      {goalAvailable && (
       <button
         type="button"
         onClick={onOpenGoal}
@@ -103,6 +109,7 @@ export function ModeToggles({
         <Target size={12} className={goal ? '' : 'text-ink/60'} />
         <span className="hidden @[420px]:inline">Goal</span>
       </button>
+      )}
     </div>
   );
 }

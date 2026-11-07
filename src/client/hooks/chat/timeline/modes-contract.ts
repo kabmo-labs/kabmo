@@ -53,6 +53,12 @@ export interface ChatTimelineModes {
    *  the child and turn both modes on. */
   planAvailable: boolean;
   /**
+   * Whether Goal is offered at all. An ACP agent that is not omp has no
+   * `/kabmo-mode` extension, so the toggle could only ever produce a refusal —
+   * the same rule `planAvailable` already follows for the plan/goal exclusion.
+   */
+  goalAvailable: boolean;
+  /**
    * The last refusal, from either side of the wire: the route's own error, or a
    * `KABMO_MODE_ERROR` the extension emitted (an unknown action, a missing
    * omp API, the plan/goal exclusion). Surfaced by the composer because a mode

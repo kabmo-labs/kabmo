@@ -27,9 +27,86 @@
  * silently switch the frame source for turns another agent produced.
  */
 
-import { useCallback, useMemo, useState } from 'preact/hooks';
+import { useCallback, useMemo } from 'preact/hooks';
+import { useSyncExternalStore } from 'preact/compat';
 import type { WorkspaceFolderData } from '@/shared/types';
 import { spawnedHarnessFor } from '@/client/hooks/chat/timeline/spawn-harness';
+
+/**
+ * The PICK made on a chat that has not spawned yet, keyed by chat id.
+ *
+ * A map rather than component state for the same reason `spawn-harness.ts` is
+ * one: the pick is written by the composer (the tab strip) and read by surfaces
+ * that are not its ancestor — the mode toggles, through this hook's resolver.
+ * With the pick in `useState` inside `useSessionHarness`, only the picker saw
+ * it: a pending `claude` chat still offered Goal, and arming it did nothing
+ * because the spawn path forwards `plan` only (measured in a browser).
+ *
+ * Keyed by chat id rather than cleared in an effect, so a render can never
+ * observe the previous chat's pick: a different pending chat is a different
+ * choice.
+ */
+const pickedHarness = new Map<string, string>();
+const pickListeners = new Set<() => void>();
+
+/** Record a pick. The picker's own ref write is the caller's business. */
+export function setHarnessPick(sessionId: string | null, harness: string): void {
+  if (!sessionId) return;
+  pickedHarness.set(sessionId, harness);
+  for (const listener of [...pickListeners]) listener();
+}
+
+/** The pick recorded for this chat, or undefined for a chat nobody picked on. */
+export function harnessPickFor(sessionId: string | null | undefined): string | undefined {
+  return sessionId ? pickedHarness.get(sessionId) : undefined;
+}
+
+/** Test seam: a fresh app must not inherit the previous one's picks. */
+export function resetHarnessPicks(): void {
+  pickedHarness.clear();
+}
+
+/** The pick, live: what the tab strip shows and what the spawn will send. */
+export function useHarnessPick(sessionId: string | null): string | undefined {
+  return useSyncExternalStore(
+    (listener: () => void) => {
+      pickListeners.add(listener);
+      return () => {
+        pickListeners.delete(listener);
+      };
+    },
+    () => harnessPickFor(sessionId),
+  );
+}
+
+/**
+ * The harness that owns a chat, from the three sources in one order — and the
+ * order is the whole contract:
+ *
+ *  1. the SIDEBAR ROW — what a spawned chat runs on, read from the row the
+ *     client already has rather than from a new endpoint, because a second
+ *     source would be a second answer to "which agent runs this chat";
+ *  2. the SPAWN RECORD (`spawn-harness.ts`) — the row lags a fresh spawn by one
+ *     folder read, and this covers that window without inventing a value;
+ *  3. the PICK made on a chat that has not spawned yet.
+ *
+ * Exported so every reader resolves it the SAME way. The timeline hook used to
+ * resolve it a second time from the first two sources only, which is how the
+ * pick stopped reaching the mode toggles.
+ */
+export function resolveSessionHarness(
+  folders: WorkspaceFolderData[],
+  sessionId: string | null,
+  picked: string | undefined,
+): { harness: string | undefined; fromRow: boolean } {
+  if (!sessionId) return { harness: undefined, fromRow: false };
+  for (const folder of folders) {
+    for (const entry of folder.sessions ?? []) {
+      if (entry.id === sessionId) return { harness: entry.harness, fromRow: true };
+    }
+  }
+  return { harness: spawnedHarnessFor(sessionId) ?? picked, fromRow: false };
+}
 
 export interface SessionHarness {
   /** The harness that owns the open chat, or undefined before it was picked. */
@@ -58,33 +135,30 @@ export function useSessionHarness(
   messageCount: number,
   pendingHarnessRef: { current: string | null },
 ): SessionHarness {
-  const rowHarness = useMemo(() => {
-    if (!sessionId) return undefined;
-    for (const folder of folders) {
-      for (const entry of folder.sessions ?? []) {
-        if (entry.id === sessionId) return entry.harness;
-      }
-    }
-    return undefined;
-  }, [folders, sessionId]);
-
-  // The pick belongs to ONE chat: a different pending chat must not inherit the
-  // harness chosen for this one. Keyed rather than cleared in an effect, so a
-  // render can never observe the previous chat's pick.
-  const [picked, setPicked] = useState<{ chatId: string | null; harness: string } | null>(null);
-  const pickForThisChat = picked && picked.chatId === sessionId ? picked.harness : undefined;
+  const pickedForThisChat = useHarnessPick(sessionId);
+  const resolved = useMemo(
+    () => resolveSessionHarness(folders, sessionId, pickedForThisChat),
+    [folders, sessionId, pickedForThisChat],
+  );
 
   const pick = useCallback((next: string) => {
+    // The ref is what the SEND path reads; the store is what every renderer
+    // reads. A pick that moved only one of them is the reported defect.
     pendingHarnessRef.current = next;
-    setPicked({ chatId: sessionId, harness: next });
+    setHarnessPick(sessionId, next);
   }, [pendingHarnessRef, sessionId]);
 
-  const harness = rowHarness ?? spawnedHarnessFor(sessionId) ?? pickForThisChat;
-  const editable = messageCount === 0 && !rowHarness;
+  // A pick is only meaningful before the chat has a row: once the sidebar names
+  // its harness, that is the agent the chat is running on.
+  const editable = messageCount === 0 && !resolved.fromRow;
   return {
-    harness,
+    harness: resolved.harness,
     editable,
     pick,
-    picker: { ...(harness ? { harness } : {}), harnessEditable: editable, onSelectHarness: pick },
+    picker: {
+      ...(resolved.harness ? { harness: resolved.harness } : {}),
+      harnessEditable: editable,
+      onSelectHarness: pick,
+    },
   };
 }
