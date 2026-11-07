@@ -32,11 +32,28 @@ const HARNESS_SESSIONS_SQL = `
     -- Kabmo's own (omp generates it and both sides use it).
     agent_session_id TEXT NOT NULL DEFAULT '',
     cwd TEXT NOT NULL DEFAULT '',
+    -- What the chat is CALLED. An ACP agent writes no session file, so omp's
+    -- JSONL discovery — the thing that names every omp row — has nothing to
+    -- read, and every recorded chat drew "Untitled" forever while the user's own
+    -- first line sat unused. Holds the agent's own title when it published one,
+    -- else the first prompt; see harness/session-title.server.ts.
+    title TEXT NOT NULL DEFAULT '',
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_harness_sessions_harness
     ON harness_sessions (harness);
+`;
+
+/**
+ * The additive column for a database created before `title` existed.
+ *
+ * `CREATE TABLE IF NOT EXISTS` leaves an existing table alone, so a row written
+ * by an older build would miss the column and every read of it would fail —
+ * including the sidebar's, which selects the whole table.
+ */
+const HARNESS_SESSIONS_MIGRATIONS = `
+  ALTER TABLE harness_sessions ADD COLUMN title TEXT NOT NULL DEFAULT '';
 `;
 
 /**
@@ -64,4 +81,9 @@ const HARNESS_PROBES_SQL = `
 export async function ensureHarnessSchema(db: DbClient): Promise<void> {
   await db.exec(HARNESS_SESSIONS_SQL);
   await db.exec(HARNESS_PROBES_SQL);
+  try {
+    await db.exec(HARNESS_SESSIONS_MIGRATIONS);
+  } catch {
+    // Already present — a fresh install gets the column from the DDL above.
+  }
 }

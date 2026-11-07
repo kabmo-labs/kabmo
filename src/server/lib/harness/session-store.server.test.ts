@@ -21,9 +21,13 @@ import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { getDb } from '@/server/db.server';
 import {
   knownHarness,
+  loadAcpSessions,
   loadHarnessBySession,
   loadHarnessSession,
+  repointHarnessSession,
   saveHarnessSession,
+  saveHarnessSessionTitle,
+  saveHarnessSessionTitleIfEmpty,
 } from '@/server/lib/harness/session-store.server';
 import { ensureHarnessSchema } from '@/server/lib/harness/schema.server';
 import { HARNESS_IDS } from '@/shared/lib/harness/catalog';
@@ -105,5 +109,67 @@ describe('harness session store', () => {
     // A second open re-runs `initSchema`; the row must survive it.
     await ensureHarnessSchema(db);
     expect((await loadHarnessBySession()).get('s')).toBe('omp-rpc');
+  });
+
+  test('a title survives a re-spawn, which must not blank it', async () => {
+    await saveHarnessSession({ sessionId: 'titled', harness: 'claude', agentSessionId: '', cwd: '/p' });
+    await saveHarnessSessionTitleIfEmpty('titled', 'Plan the release');
+    // A re-spawn UPDATES the row; the name it already carries is not part of
+    // that write, so it must still be there afterwards.
+    await saveHarnessSession({ sessionId: 'titled', harness: 'claude', agentSessionId: 'agent-9', cwd: '/p' });
+
+    const [row] = await loadAcpSessions();
+    expect(row.title).toBe('Plan the release');
+  });
+
+  test('the first prompt names the chat, and a later one cannot rename it', async () => {
+    await saveHarnessSession({ sessionId: 'first', harness: 'opencode', agentSessionId: '', cwd: '/p' });
+
+    expect(await saveHarnessSessionTitleIfEmpty('first', 'First prompt')).toBe(true);
+    // A steering message, a queue delivery and a retry all reach this call with
+    // their own text; none of them may rename the chat.
+    expect(await saveHarnessSessionTitleIfEmpty('first', 'Second prompt')).toBe(false);
+
+    const [row] = await loadAcpSessions();
+    expect(row.title).toBe('First prompt');
+  });
+
+  test('the AGENT’s own title outranks the first prompt', async () => {
+    await saveHarnessSession({ sessionId: 'named', harness: 'claude', agentSessionId: '', cwd: '/p' });
+    await saveHarnessSessionTitleIfEmpty('named', 'raw first prompt');
+
+    expect(await saveHarnessSessionTitle('named', 'Release planning')).toBe(true);
+    // An agent that re-sends the same title must not republish the sidebar.
+    expect(await saveHarnessSessionTitle('named', 'Release planning')).toBe(false);
+
+    const [row] = await loadAcpSessions();
+    expect(row.title).toBe('Release planning');
+  });
+
+  test('a title for a session nobody recorded is a no-op, not a new row', async () => {
+    expect(await saveHarnessSessionTitleIfEmpty('ghost', 'anything')).toBe(false);
+    expect(await saveHarnessSessionTitle('ghost', 'anything')).toBe(false);
+    expect(await loadHarnessSession('ghost')).toBeNull();
+  });
+
+  test('a FORKING resume leaves one row: the chat keeps its id', async () => {
+    await saveHarnessSession({ sessionId: 'chat-1', harness: 'claude', agentSessionId: 'agent-1', cwd: '/p' });
+    // `session/load` answered a new id, and the spawn recorded it as its own row.
+    await saveHarnessSession({ sessionId: 'agent-2', harness: 'claude', agentSessionId: '', cwd: '/p' });
+
+    await repointHarnessSession('chat-1', 'agent-2');
+
+    const rows = await loadAcpSessions();
+    // Measured before this: a resumed claude chat drew TWO sidebar rows, an empty
+    // twin beside the conversation the tab and the transcript are keyed by.
+    expect(rows.map((row) => row.sessionId)).toEqual(['chat-1']);
+    // The agent's id is the one the NEXT load must send.
+    expect(rows[0].agentSessionId).toBe('agent-2');
+  });
+
+  test('a load that keeps the id changes nothing', async () => {
+    await saveHarnessSession({ sessionId: 'chat-2', harness: 'claude', agentSessionId: 'chat-2', cwd: '/p' });
+    await repointHarnessSession('chat-2', 'chat-2');
+    expect((await loadAcpSessions()).map((row) => row.sessionId)).toEqual(['chat-2']);
   });
 });

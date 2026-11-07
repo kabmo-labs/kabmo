@@ -32,6 +32,7 @@ import { loadSidebarStructure } from '@/server/lib/omp/session/sidebar-data.serv
 import { invalidateOmpSidebarData } from '@/server/lib/omp/session/reader';
 import { clearSessionFileCaches } from '@/server/lib/omp/session/files';
 import { saveHarnessSession } from '@/server/lib/harness/session-store.server';
+import { noteAgentTitle, notePromptTitle } from '@/server/lib/harness/session-title.server';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { removeDir } from '@/test-support/remove-dir';
 
@@ -130,6 +131,45 @@ describe('a sidebar row names its harness', () => {
     expect(row?.harness).toBe('opencode');
   });
 
+  test('a recorded chat is named by its first prompt, not left Untitled', async () => {
+    const folderId = await registerFolder(project);
+    await saveHarnessSession({
+      sessionId: 'ses_named', harness: 'claude', agentSessionId: 'ses_named', cwd: project,
+    });
+    // The agent writes no session file, so this stored name is the ONLY thing
+    // that can name the row — before it, every recorded chat read `Untitled`
+    // for its whole life (measured an hour after a claude chat's first prompt).
+    await notePromptTitle('ses_named', 'explain the release process');
+
+    const row = (await folderSessions(folderId)).find((entry) => String(entry.id) === 'ses_named');
+    expect(row?.title).toBe('Explain the release process');
+  });
+
+  test('the agent’s own title outranks the stored prompt', async () => {
+    const folderId = await registerFolder(project);
+    await saveHarnessSession({
+      sessionId: 'ses_agent_named', harness: 'claude', agentSessionId: 'ses_agent_named', cwd: project,
+    });
+    await notePromptTitle('ses_agent_named', 'a raw first prompt');
+    await noteAgentTitle('ses_agent_named', 'release planning');
+
+    const row = (await folderSessions(folderId)).find((entry) => String(entry.id) === 'ses_agent_named');
+    expect(row?.title).toBe('Release planning');
+  });
+
+  test('a recorded chat with no name at all falls back to its creation stamp', async () => {
+    const folderId = await registerFolder(project);
+    await saveHarnessSession({
+      sessionId: 'ses_nameless', harness: 'claude', agentSessionId: 'ses_nameless', cwd: project,
+    });
+
+    const row = (await folderSessions(folderId)).find((entry) => String(entry.id) === 'ses_nameless');
+    // The same default an omp session with no name gets — and it is derived from
+    // the row's `created_at`, never from `new Date()`, so a revalidation does not
+    // re-stamp the title (`pendingSessionTitle`'s documented reason).
+    expect(row?.title.startsWith('New Session - ')).toBe(true);
+  });
+
   test('an omp session keeps the omp default, and does not appear twice', async () => {
     const folderId = await registerFolder(project);
     await writeOmpSession('omp-1', '2026-11-06T00:00:00.000Z');
@@ -159,8 +199,9 @@ describe('a sidebar row names its harness', () => {
     const sessions = await folderSessions(folderId);
     const matches = sessions.filter((entry) => String(entry.id) === 'omp-acp-1');
     expect(matches).toHaveLength(1);
-    // The SCAN's row wins: it carries the title the transcript gave it, where
-    // the record's row can only say "Untitled".
+    // The SCAN's row wins: it carries the title the transcript gave it, and the
+    // record's row only holds what Kabmo stored (the first prompt or the agent's
+    // own title — see `session-title.server.ts`).
     expect(matches[0].title).not.toBe('Untitled');
     expect(matches[0].harness).toBe('omp-acp');
   });

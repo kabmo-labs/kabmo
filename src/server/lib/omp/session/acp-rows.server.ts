@@ -22,6 +22,7 @@ import { resolveProjectRoot } from '@/server/lib/omp/core/worktree';
 import type { HarnessSessionRow } from '@/server/lib/harness/session-store.server';
 import { knownHarness } from '@/server/lib/harness/session-store.server';
 import { HARNESS_IDS } from '@/shared/lib/harness/catalog';
+import { deriveSessionTitle } from '@/shared/lib/omp/session/sidebar';
 import type { SessionItemData } from '@/shared/types';
 
 /**
@@ -58,12 +59,14 @@ export async function acpRowsFor(
     rows.push({
       id: row.sessionId,
       folder_id: folderId,
-      // An ACP agent publishes no title of its own, and inventing one would put
-      // words in its mouth. The first prompt fills it once the transcript
-      // reloads; until then the row is honestly untitled.
-      title: 'Untitled',
+      // The chat's own name, or its first prompt. An ACP agent publishes no
+      // session file for omp's scan to read, so the two facts `sessionTitleFor`
+      // reads for an omp row are stored beside the record instead (see
+      // `harness/session-title.server.ts`) and the SAME precedence is applied —
+      // before it, every recorded chat drew `Untitled` for its whole life.
+      title: deriveSessionTitle({ name: row.title, created: row.createdAt }),
       ...(harness ? { harness } : {}),
-      created_at: new Date(row.updatedAt).toISOString(),
+      created_at: new Date(row.createdAt).toISOString(),
       updated_at: new Date(row.updatedAt).toISOString(),
       is_active: 0,
       is_archived: archivedIds.has(row.sessionId) ? 1 : 0,

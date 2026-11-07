@@ -9,16 +9,13 @@ import { CONVERSATION_MOVING_COMMANDS, LIVE_RUN_COMMANDS, OBSERVER_ONLY_COMMANDS
 import { rpcErrorResponse } from '@/server/lib/omp/rpc/errors';
 import { assertBtwIdle } from '@/server/lib/btw/service.server';
 import { loadPersistedModes } from '@/server/lib/omp/session/modes';
-import { isModeCommandType, modeCommandPrompt, parseModeRequest, parseModeSelection, type ModeRequest } from '@/server/lib/omp/mode/request';
+import { isModeCommandType, modeCommandPrompt, parseModeRequest, parseModeSelection } from '@/server/lib/omp/mode/request';
 import { kabmoModeEnv } from '@/server/lib/omp/extensions/locator';
 import { resetGoalDriverState } from '@/server/lib/omp/session/goal-driver.server';
 import { forwardToPeer, isPeerRelayed, peerOriginForSession } from '@/server/lib/omp/rpc/peer-proxy.server';
+import { applyHarnessMode, resumeRecordedHarnessSession } from '@/server/routes/agent/harness-command';
 import { asHarnessSession } from '@/server/lib/harness/registry';
-import { asOmpSession, getLiveSession, harnessOfSession } from '@/server/lib/omp/rpc/session-registry';
-import { harnessDescriptor } from '@/shared/lib/harness/catalog';
-import { selectValues } from '@/server/lib/harness/launch';
-import type { AcpConfigOption } from '@/server/lib/harness/acp/protocol';
-import type { HarnessSession } from '@/server/lib/harness/session';
+import { asOmpSession, getLiveSession } from '@/server/lib/omp/rpc/session-registry';
 
 /** How long after an accepted Resume Kabmo nudges the loop. The
  *  extension answers the mode command first; this only coalesces the nudge
@@ -140,6 +137,27 @@ export async function sendCommand({ params, request }: ActionFunctionArgs) {
       return json({ error: 'Session is not running', code: 'session_not_running' }, { status: 409 });
     }
 
+    // A recorded chat that runs on ANOTHER harness has no JSONL for the locator
+    // below to resolve, so "Session not found" was the only answer Kabmo could
+    // give it — measured on a `claude` chat after a restart: its row was in the
+    // sidebar, and both a prompt and `get_state` answered 404. Its own agent can
+    // restore the conversation (`session/load`), so the chat is respawned on its
+    // OWN harness with the id the agent reported and the command dispatched
+    // there — the same lazy-spawn contract this route already has for omp.
+    const restored = await resumeRecordedHarnessSession(sessionId, explicitMode);
+    if (restored) {
+      // A mode command is the harness's own selector here, never the
+      // `/kabmo-mode` extension prompt: the live path above applies the same
+      // rule, and a restored chat must not answer differently from one that
+      // never stopped.
+      if (modeRequest) {
+        const applied = await applyHarnessMode(restored, modeRequest);
+        if (!applied.ok) return json({ error: applied.error, code: 'mode_not_supported' }, { status: 400 });
+        return json({ success: true, data: applied.data });
+      }
+      return json({ success: true, data: await restored.send(forwarded) });
+    }
+
     const resolved = await resolveSessionPathOr404(sessionId);
     if ('response' in resolved) return resolved.response;
     const { filePath, recordedCwd } = resolved;
@@ -172,46 +190,6 @@ export async function sendCommand({ params, request }: ActionFunctionArgs) {
   } catch (error) {
     return rpcErrorResponse(error);
   }
-}
-
-/**
- * Answer a mode command on a harness that has no `/kabmo-mode` extension.
- *
- * Forwarding the extension prompt to any other agent made the MODEL read
- * `/kabmo-mode plan on` as prose and opened a turn with it (measured on claude,
- * whose next mode command was then refused as "already processing"). Its own
- * ACP `mode` selector is the honest equivalent: `plan` is a value where the
- * agent implements one, and a scope it cannot express is refused in words.
- */
-async function applyHarnessMode(
-  session: HarnessSession,
-  request: ModeRequest,
-): Promise<{ ok: true; data: unknown } | { ok: false; error: string }> {
-  const harness = harnessOfSession(session);
-  const label = harnessDescriptor(harness)?.label ?? harness;
-  if (request.scope === 'goal') {
-    // No ACP selector names a goal, and an objective cannot ride a mode value.
-    if (request.action === 'state') return { ok: true, data: { enabled: false } };
-    return { ok: false, error: `${label} has no goal mode` };
-  }
-  const state = (await session.send({ type: 'get_state' })) as { configOptions?: unknown } | undefined;
-  const options = Array.isArray(state?.configOptions) ? state.configOptions : [];
-  const selector = options.find(
-    (option): option is AcpConfigOption =>
-      typeof option === 'object' && option !== null && 'category' in option && option.category === 'mode',
-  );
-  const values = selectValues(selector).map((entry) => entry.value);
-  if (request.action !== 'on' && request.action !== 'off') {
-    return { ok: true, data: { enabled: selector?.currentValue === 'plan' } };
-  }
-  if (!values.includes('plan')) return { ok: false, error: `${label} has no plan mode` };
-  // `default` is the value every measured agent uses for "no special mode"; the
-  // first non-plan value is the fallback for an agent that names it differently.
-  const target = request.action === 'on'
-    ? 'plan'
-    : values.find((value) => value === 'default') ?? values.find((value) => value !== 'plan');
-  if (!target) return { ok: false, error: `${label} has no plan mode` };
-  return { ok: true, data: await session.send({ type: 'set_mode', mode: target }) };
 }
 
 /** RPC-free view of a busy session. `state` carries only the two flags the

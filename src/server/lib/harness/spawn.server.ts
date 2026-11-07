@@ -17,7 +17,7 @@
  * agent applies them to the session it just created.
  */
 
-import { openAcpSession } from '@/server/lib/harness/acp/session';
+import { AcpSession } from '@/server/lib/harness/acp/session';
 import { loadHarnessConfig, resolveLaunch } from '@/server/lib/harness/config.server';
 import { sessionLaunchCommand } from '@/server/lib/harness/launch';
 import { resolveDefaultModel, modelProvider } from '@/shared/lib/harness/config';
@@ -79,7 +79,10 @@ export async function startAcpSession(
   const startingModel = request.model
     ?? (configuredDefault ? { provider: modelProvider(configuredDefault), modelId: configuredDefault } : null);
 
-  const { session, realSessionId } = await openAcpSession(
+  // Built here rather than behind a factory in the session module: this is the
+  // only place a session is constructed, and the handshake it runs (load vs
+  // new) is decided by the request this function already holds.
+  const session = new AcpSession(
     {
       harness: request.harness,
       command: sessionLaunchCommand(request.harness, launch.command),
@@ -89,12 +92,19 @@ export async function startAcpSession(
       mode: request.mode ?? configured.mode ?? null,
       accessMode: request.accessMode ?? null,
     },
-    {
-      sessionId: request.sessionId,
-      sessionFile: request.resumeAgentSessionId ?? '',
-      cwd: request.cwd,
-    },
+    request.cwd,
   );
+  let realSessionId: string;
+  try {
+    ({ sessionId: realSessionId } = await session.start(request.resumeAgentSessionId || undefined));
+  } catch (error) {
+    // A refused handshake (an agent that will not `session/load`, a launch line
+    // that cannot run) must not leave the child it just spawned running with
+    // nobody holding it: measured on a resume of a chat the agent no longer
+    // knew, the process stayed alive after the request answered an error.
+    await session.destroyAndWait().catch(() => {});
+    throw error;
+  }
 
   claimHarness(session, request.harness);
   registerAcpSession(session, request.sessionId);

@@ -18,20 +18,47 @@
 import type { OmpProject, OmpSession, OmpSidebarData } from '@/shared/types/omp/session';
 import { formatNewSessionTitle } from '@/shared/lib/omp/session/default-title';
 
-/** Display title of a session: name, else first message, else a timestamped
- *  `New Session - yyyy-mm-ddThh:mm:ss` default (unique per session — an
- *  identical placeholder row made fresh sessions indistinguishable). */
-export function sessionTitleFor(session: OmpSession): string {
-  if (session.name?.trim()) {
-    const n = session.name.trim();
-    return n.charAt(0).toUpperCase() + n.slice(1);
-  }
-  const first = (session.firstMessage || '').trim();
+/**
+ * Display title of a chat, from the two things that can name it.
+ *
+ * ONE rule for both row sources: an omp session (whose JSONL carries `name` and
+ * `firstMessage`) and a recorded ACP chat (whose agent writes no session file, so
+ * Kabmo stores those same facts in `harness_sessions`). Two copies of this
+ * precedence is how one row source starts saying `Untitled` where the other says
+ * the first prompt.
+ */
+export function deriveSessionTitle(parts: {
+  /** The chat's own name: omp's JSONL title slot, or an ACP agent's own
+   *  `session_info_update`. */
+  name?: string | null;
+  /** The first user message, used only when no name exists. */
+  firstMessage?: string | null;
+  /**
+   * The chat's creation stamp, for the title a nameless chat is drawn with.
+   * Either shape the two row sources hold: an omp session carries an ISO
+   * string, a `harness_sessions` row an epoch in milliseconds.
+   */
+  created: number | string;
+}): string {
+  const name = parts.name?.trim();
+  if (name) return name.charAt(0).toUpperCase() + name.slice(1);
+  const first = (parts.firstMessage || '').trim();
   if (first && first !== '(no messages)') {
     const text = first.slice(0, 120);
     return text.charAt(0).toUpperCase() + text.slice(1);
   }
-  return formatNewSessionTitle(new Date(session.created));
+  return formatNewSessionTitle(new Date(parts.created));
+}
+
+/** Display title of a session: name, else first message, else a timestamped
+ *  `New Session - yyyy-mm-ddThh:mm:ss` default (unique per session — an
+ *  identical placeholder row made fresh sessions indistinguishable). */
+export function sessionTitleFor(session: OmpSession): string {
+  return deriveSessionTitle({
+    name: session.name,
+    firstMessage: session.firstMessage,
+    created: session.created,
+  });
 }
 
 /** Project display name: alias, else lowercase basename of the path. */

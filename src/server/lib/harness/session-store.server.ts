@@ -44,11 +44,75 @@ export async function saveHarnessSession(record: HarnessSessionRecord): Promise<
   );
 }
 
+/**
+ * Name a chat from its first prompt, and only if nothing named it yet.
+ *
+ * `IfEmpty` is the whole reason a steering message, a queue delivery or a retry
+ * cannot rename a chat to its own text: every prompt on an ACP session goes
+ * through the same call. Returns whether the row CHANGED, so the caller can
+ * publish the sidebar's structure once instead of on every prompt.
+ */
+export async function saveHarnessSessionTitleIfEmpty(sessionId: string, title: string): Promise<boolean> {
+  if (!sessionId || !title) return false;
+  const db = await getDb();
+  const result = await db.run(
+    `UPDATE harness_sessions SET title = ?, updated_at = ?
+      WHERE session_id = ? AND (title IS NULL OR title = '')`,
+    [title, Date.now(), sessionId],
+  );
+  return (result.changes ?? 0) > 0;
+}
+
+/**
+ * Adopt a title the AGENT published.
+ *
+ * Unconditional, and that is the point: the agent's own name for the chat
+ * outranks Kabmo's guess from the first prompt. The inequality guard keeps a
+ * repeat of the same title (an agent may re-send it) from republishing the
+ * sidebar's whole structure.
+ */
+export async function saveHarnessSessionTitle(sessionId: string, title: string): Promise<boolean> {
+  if (!sessionId || !title) return false;
+  const db = await getDb();
+  const result = await db.run(
+    `UPDATE harness_sessions SET title = ?, updated_at = ?
+      WHERE session_id = ? AND (title IS NULL OR title <> ?)`,
+    [title, Date.now(), sessionId, title],
+  );
+  return (result.changes ?? 0) > 0;
+}
+
+/**
+ * Move a chat's record onto the id the agent RESUMED into.
+ *
+ * `session/load` may FORK: both claude and omp answered a NEW id for a load
+ * (measured: `01a1b49f-…` → `01a1b4cc-…`, and a resumed claude chat answered
+ * `340f24a3-…` for `5c5e776e-…`). `startAcpSession` records whatever id came
+ * back, so the fork left TWO rows for one conversation — the chat's own (which
+ * the sidebar, the open tab and Kabmo's transcript are all keyed by) plus an
+ * empty twin. The chat keeps its id and adopts the agent's, because that is the
+ * id the next `session/load` must send.
+ */
+export async function repointHarnessSession(sessionId: string, agentSessionId: string): Promise<void> {
+  if (!sessionId || !agentSessionId || sessionId === agentSessionId) return;
+  const db = await getDb();
+  await db.run('DELETE FROM harness_sessions WHERE session_id = ?', [agentSessionId]);
+  await db.run('UPDATE harness_sessions SET agent_session_id = ?, updated_at = ? WHERE session_id = ?', [
+    agentSessionId,
+    Date.now(),
+    sessionId,
+  ]);
+}
+
 export interface HarnessSessionRow {
   sessionId: string;
   harness: string;
   agentSessionId: string;
   cwd: string;
+  /** What the chat is called: the agent's own title, else the first prompt.
+   *  Empty when neither exists yet. */
+  title: string;
+  createdAt: number;
   updatedAt: number;
 }
 
@@ -73,16 +137,26 @@ export interface HarnessSessionRow {
 export async function loadAcpSessions(): Promise<HarnessSessionRow[]> {
   const db = await getDb();
   const rows = (await db.all(
-    `SELECT session_id, harness, agent_session_id, cwd, updated_at
+    `SELECT session_id, harness, agent_session_id, cwd, title, created_at, updated_at
        FROM harness_sessions
       WHERE harness <> 'omp-rpc'
       ORDER BY updated_at DESC`,
-  )) as { session_id: string; harness: string; agent_session_id: string; cwd: string; updated_at: number }[];
+  )) as {
+    session_id: string;
+    harness: string;
+    agent_session_id: string;
+    cwd: string;
+    title: string | null;
+    created_at: number;
+    updated_at: number;
+  }[];
   return rows.map((row) => ({
     sessionId: row.session_id,
     harness: row.harness,
     agentSessionId: row.agent_session_id,
     cwd: row.cwd,
+    title: row.title ?? '',
+    createdAt: row.created_at,
     updatedAt: row.updated_at,
   }));
 }
