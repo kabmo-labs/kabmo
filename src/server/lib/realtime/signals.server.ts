@@ -87,12 +87,32 @@ export interface RealtimeSignalEvent {
 
 type SignalListener = (event: RealtimeSignalEvent) => void;
 
-const listeners = new Set<SignalListener>();
+declare global {
+  // eslint-disable-next-line no-var
+  var __kabmoRealtimeSignalListeners: Set<SignalListener> | undefined;
+}
+
+/**
+ * The subscriber set lives on `globalThis`, for the reason the hub and the
+ * publish state do: `bun --hot` re-evaluates this module (and `topics.server.ts`
+ * with it) while `initRealtimeTopics`'s one-shot guard does not re-run, and the
+ * writers are imported by whichever instance is current. A module-level Set is
+ * therefore a NEW, EMPTY set after the first hot reload that the one surviving
+ * subscriber never re-registers into — every signal then reached nobody, and
+ * `session_stream_state` writes stopped publishing: measured on a dev server
+ * that had been reloading for hours, `sidebar:status`'s sequence never advanced
+ * (no sidebar spinner, no terminal badge, no activity stamp, no workspace or
+ * schedule refresh) while topics published by a DIRECT call kept moving.
+ */
+function listeners(): Set<SignalListener> {
+  return (globalThis.__kabmoRealtimeSignalListeners ??= new Set());
+}
 
 /** Subscribe to every signal. Returns an unsubscribe. */
 export function onRealtimeSignal(listener: SignalListener): () => void {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
+  const set = listeners();
+  set.add(listener);
+  return () => set.delete(listener);
 }
 
 /**
@@ -105,7 +125,7 @@ export function emitRealtimeSignal(signal: RealtimeSignal, sessionId?: string, r
     sessionId === undefined && root === undefined
       ? { signal }
       : { signal, ...(sessionId !== undefined ? { sessionId } : {}), ...(root !== undefined ? { root } : {}) };
-  for (const listener of [...listeners]) {
+  for (const listener of [...listeners()]) {
     try {
       listener(event);
     } catch {
@@ -116,5 +136,5 @@ export function emitRealtimeSignal(signal: RealtimeSignal, sessionId?: string, r
 
 /** Test seam. */
 export function clearRealtimeSignalListeners(): void {
-  listeners.clear();
+  listeners().clear();
 }
