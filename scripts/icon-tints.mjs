@@ -88,9 +88,30 @@ async function signalIcons() {
   return new Set([...block[1].matchAll(/^\s{2}([A-Za-z0-9]+):/gm)].map((m) => m[1]));
 }
 
+/**
+ * Entries emitted per line.
+ *
+ * The hue table grows with the icon count (213 entries today) and the tone
+ * tables carry 36 hues per paper bucket, so one entry per line put this
+ * GENERATED file at 525 lines — past the repo's 350-line ceiling, which
+ * `--check` cannot fix by hand because the file is rewritten wholesale. Six per
+ * line keeps the data readable in a diff and leaves room for roughly four times
+ * the icons before the table needs re-packing.
+ */
+const ENTRIES_PER_LINE = 6;
+
+/** Pack `entry` strings into indented lines of {@link ENTRIES_PER_LINE}. */
+function pack(entries, indent) {
+  const out = [];
+  for (let i = 0; i < entries.length; i += ENTRIES_PER_LINE) {
+    out.push(`${indent}${entries.slice(i, i + ENTRIES_PER_LINE).join(' ')}`);
+  }
+  return out.join('\n');
+}
+
 function render(rows, lightByBucket, darkTones, buckets) {
-  const lines = rows.map(([name, hue]) => `  ${name}: ${hue},`);
-  const toneLines = (tones) => Object.entries(tones).map(([hue, hex]) => `  ${hue}: '${hex}',`).join('\n');
+  const lines = pack(rows.map(([name, hue]) => `${name}: ${hue},`), '  ');
+  const toneLines = (tones, indent) => pack(Object.entries(tones).map(([hue, hex]) => `${hue}: '${hex}',`), indent);
   return `/**
  * @license
  * SPDX-License-Identifier: MIT
@@ -124,7 +145,7 @@ function render(rows, lightByBucket, darkTones, buckets) {
 import type { PaperBucket } from '@/shared/lib/icons/icon-tone';
 
 export const ICON_HUES: Readonly<Record<string, number>> = {
-${lines.join('\n')}
+${lines}
 };
 
 /**
@@ -135,12 +156,12 @@ ${lines.join('\n')}
  * mean L 0.582 where the same paper allows 0.640.
  */
 export const ICON_TONES: Readonly<Record<PaperBucket, Readonly<Record<number, string>>>> = {
-${buckets.map((bucket) => `  ${bucket}: {\n${Object.entries(lightByBucket[bucket]).map(([hue, hex]) => `    ${hue}: '${hex}',`).join('\n')}\n  },`).join('\n')}
+${buckets.map((bucket) => `  ${bucket}: {\n${toneLines(lightByBucket[bucket], '    ')}\n  },`).join('\n')}
 };
 
 /** The dark paint for each wheel hue: the same hue, solved for ink surfaces. */
 export const ICON_TONES_DARK: Readonly<Record<number, string>> = {
-${toneLines(darkTones)}
+${toneLines(darkTones, '  ')}
 };
 `;
 }
