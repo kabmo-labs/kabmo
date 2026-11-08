@@ -19,6 +19,7 @@
  */
 
 import { AcpProcess } from '@/server/lib/harness/acp/client';
+import { newSessionAfterActivation } from '@/server/lib/harness/acp/activation';
 import type { AcpConfigOption, AcpInitializeResult } from '@/server/lib/harness/acp/protocol';
 import { acpOptionValues } from '@/server/lib/harness/acp/protocol';
 import { UNPROBED_CAPABILITIES, type HarnessCapabilities, type HarnessProbe } from '@/server/lib/harness/capabilities';
@@ -65,7 +66,7 @@ export const HARNESS_LAUNCH: Readonly<Partial<Record<HarnessId, HarnessLaunch>>>
     id: 'opencode',
     command: ['opencode', 'acp'],
     install: 'curl -fsSL https://opencode.ai/install | bash',
-    note: 'slowest start measured (2.3 s, plugin boot) and writes plugin logs to stdout',
+    note: 'plugin activation can gate session/new for ~80 s; Kabmo waits it out. Writes plugin logs to stdout',
   },
   dsh: {
     id: 'dsh',
@@ -250,7 +251,7 @@ export async function probeHarness(
   let agent: AcpInitializeResult['agentInfo'] | undefined;
 
   try {
-    proc = new AcpProcess({
+    const agentProcess = new AcpProcess({
       command: launch.command,
       cwd,
       ...(launch.env ? { env: launch.env } : {}),
@@ -268,12 +269,17 @@ export async function probeHarness(
         if (update.sessionUpdate === 'plan') observed.plan = true;
       },
     });
-    const init = await proc.initialize();
+    proc = agentProcess;
+    const init = await agentProcess.initialize();
     // Kept for the failure path below: an agent that answers `initialize` and
     // then refuses `session/new` ("Authentication required") still told us who
     // it is, and the card can name it beside the refusal.
     agent = init.agentInfo;
-    const session = await proc.newSession(cwd);
+    // opencode gates `session/new` on its own plugin activation; a probe that
+    // read the five-second refusal as final reported a booting agent as blocked.
+    const session = await newSessionAfterActivation(id, cwd, (dir, timeoutMs) =>
+      agentProcess.newSession(dir, timeoutMs),
+    );
     const options = session.configOptions ?? [];
     return {
       harness: id,

@@ -24,6 +24,7 @@
  *    string as the model id — which is what the generating indicator names.
  */
 
+import { newSessionAfterActivation } from '@/server/lib/harness/acp/activation';
 import { applySelections, configOption, modelFromOption } from '@/server/lib/harness/acp/prompt';
 import { capabilitiesFrom } from '@/server/lib/harness/launch';
 import type {
@@ -66,13 +67,19 @@ export async function handshakeAcpSession(
   sessionIdToLoad?: string,
 ): Promise<void> {
   const init = await proc.initialize({}, 60_000);
+  /** opencode's plugin activation gate: the first `session/new`s refuse with
+   *  `ServiceUnavailableError` until the agent's plugins finish booting. */
+  const newSession = (cwd: string, timeoutMs?: number) =>
+    newSessionAfterActivation(target.harness, cwd, (dir, ms) => proc.newSession(dir, ms), {
+      ...(timeoutMs !== undefined ? { perAttemptMs: timeoutMs } : {}),
+    });
   let session: AcpSessionNewResult;
   if (sessionIdToLoad) {
     await proc.loadSession(sessionIdToLoad, target.cwd, 120_000);
-    const reloaded = await proc.newSession(target.cwd).catch(() => null);
+    const reloaded = await newSession(target.cwd).catch(() => null);
     session = reloaded ?? { sessionId: sessionIdToLoad };
   } else {
-    session = await proc.newSession(target.cwd, 120_000);
+    session = await newSession(target.cwd, 120_000);
   }
   target.sessionId = session.sessionId || sessionIdToLoad || '';
   target.configOptions = session.configOptions ?? [];
