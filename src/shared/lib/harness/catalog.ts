@@ -41,7 +41,12 @@ export type HarnessId =
   | 'pi'
   | 'qwen'
   | 'kimi'
-  | 'cursor';
+  | 'cursor'
+  /** Z.ai's own agent, over the community ACP bridge that drives its headless
+   *  `zcode app-server`. The CLI ships no native ACP server (measured against
+   *  the 3.17.x source: no `acp` subcommand), so the launch line names that
+   *  bridge and the bridge finds the CLI by itself. */
+  | 'zcode';
 
 /** Every harness this build knows how to launch or display. */
 export const HARNESS_IDS: readonly HarnessId[] = [
@@ -58,6 +63,7 @@ export const HARNESS_IDS: readonly HarnessId[] = [
   'qwen',
   'kimi',
   'cursor',
+  'zcode',
 ];
 
 export interface HarnessDescriptor {
@@ -108,7 +114,8 @@ export type HarnessGlyph =
   | 'minimax'
   | 'qwen'
   | 'cursor'
-  | 'antigravity';
+  | 'antigravity'
+  | 'zcode';
 
 /**
  * The catalog. Order is the tab/legend order: omp's two surfaces first because
@@ -130,6 +137,7 @@ export const HARNESS_CATALOG: Readonly<Record<HarnessId, HarnessDescriptor>> = {
   qwen: { id: 'qwen', label: 'qwen', initial: 'Q', transport: 'acp', glyph: 'qwen' },
   kimi: { id: 'kimi', label: 'kimi', initial: 'K', transport: 'acp', glyph: 'kimi' },
   cursor: { id: 'cursor', label: 'cursor', initial: '⌖', transport: 'acp', glyph: 'cursor' },
+  zcode: { id: 'zcode', label: 'zcode', initial: 'Z', transport: 'acp', glyph: 'zcode' },
 };
 
 /**

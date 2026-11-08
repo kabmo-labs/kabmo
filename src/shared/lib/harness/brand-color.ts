@@ -40,6 +40,9 @@ const HARNESS_BASES: Readonly<Record<string, string>> = {
   minimax: '#E73562',
   qwen: '#6950EF',
   cursor: '#000000',
+  // Z.ai publishes a near-monochrome mark (the desktop app's icon is white on
+  // black), so it paints in the theme's ink like the other wordmark-style marks.
+  zcode: '#000000',
   // A multi-stop mark; the blue stop is the one its own dominant uses carry.
   antigravity: '#3186FF',
 };

@@ -86,6 +86,16 @@ describe('the measured registry table', () => {
     expect(managesProviders('minimax')).toBe(false);
   });
 
+  test('zcode credentials belong to the ZCode app, never to Kabmo', () => {
+    // The ACP bridge reads the app's own config.json / acp-accounts.json. An
+    // editor that rewrote either would break the install it is driving.
+    const registry = providerFacts('zcode').registry;
+    expect(registry.kind).toBe('agent-managed');
+    expect(registry.file).toBe('.zcode/v2/config.json');
+    expect(registry.writable).toBe(false);
+    expect(managesProviders('zcode')).toBe(false);
+  });
+
   test('the env-only harnesses keep their vendor variable names', () => {
     expect(providerFacts('claude').env).toEqual({
       baseUrl: 'ANTHROPIC_BASE_URL', apiKey: 'ANTHROPIC_AUTH_TOKEN', model: 'ANTHROPIC_MODEL',

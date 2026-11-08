@@ -113,6 +113,15 @@ export const HARNESS_UPDATE_FACTS: Readonly<Partial<Record<HarnessId, HarnessUpd
   minimax: { kind: 'npm', pkg: '@minimax-ai/code' },
   dsh: { kind: 'npm', pkg: '@deepseek-ai/dsh' },
   cursor: { kind: 'own', command: 'cursor-agent update', note: 'Cursor moves through its own installer.' },
+  // The ADAPTER is the npm package the probe reports; the `zcode` CLI it drives
+  // ships with the desktop app (or the vendor's own installer), so its version
+  // is shown on its own line and never replaced by a registry install.
+  zcode: {
+    kind: 'npm',
+    pkg: 'zcode-acp-server',
+    cli: { bin: 'zcode', name: 'ZCode' },
+    note: 'The row reports the ACP bridge; the ZCode CLI it drives installs with the desktop app.',
+  },
 };
 
 /** The facts for a harness, or "Kabmo knows nothing about updating it". */

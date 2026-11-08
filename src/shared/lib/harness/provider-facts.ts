@@ -34,6 +34,7 @@
  * | minimax | its own BYOK store, written by `mcode` | not a file Kabmo may edit |
  * | claude | env only | `ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN` |
  * | antigravity | env only | `GOOGLE_GEMINI_BASE_URL`, `GEMINI_API_KEY` |
+ * | zcode | `~/.zcode/v2/config.json` | written by the ZCode app, not by an editor |
  * | cursor, dsh | none Kabmo can write | the launch line and its env |
  *
  * A file Kabmo may READ but must not WRITE is marked `readOnly`: minimax keeps its
@@ -275,6 +276,20 @@ export const HARNESS_PROVIDER_FACTS: Readonly<Partial<Record<HarnessId, HarnessP
     createsChoice: false,
     importFrom: [],
     summary: 'Signed in with its own auth flow; no provider registry to edit.',
+  },
+  zcode: {
+    registry: {
+      // MEASURED against the bridge's own reference: it reads credentials and
+      // providers from the ZCode app's `config.json` (or the private
+      // `acp-accounts.json` written by `zcode-acp setup`). Rewriting the app's
+      // file from an editor is how a signed-in install stops signing in, so the
+      // entry is readable in principle and writable by nobody but the app.
+      kind: 'agent-managed', file: '.zcode/v2/config.json', pointer: '—',
+      writable: false, baseUrlField: null, apiKeyField: null, modelsField: null,
+    },
+    createsChoice: true,
+    importFrom: [],
+    summary: 'ZCode keeps providers and credentials in ~/.zcode/v2/config.json, written by the app (or `zcode-acp setup`). Kabmo reads what they publish and never rewrites the file.',
   },
 };
 

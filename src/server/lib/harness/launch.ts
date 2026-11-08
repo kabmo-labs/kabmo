@@ -121,6 +121,20 @@ export const HARNESS_LAUNCH: Readonly<Partial<Record<HarnessId, HarnessLaunch>>>
     install: 'registry binary (cursor-agent)',
     note: 'registry shape; no CLI probe run here',
   },
+  // ZCode's ACP surface is a BRIDGE, not a subcommand: the vendor CLI ships no
+  // `acp` verb, and `zcode-acp-server` spawns `zcode app-server --stdio` and
+  // translates its events. The bridge resolves the CLI itself (`ZCODE_BIN` →
+  // `zcode` on PATH → the desktop app bundle), so the only requirement is a
+  // signed-in ZCode install; credentials stay in `~/.zcode`.
+  // Measured through Kabmo's own ACP client on 0.82.3: agentInfo
+  // `zcode-acp-server` 0.82.3, `session/new` in ~1 s, **1 model · 3 thought
+  // levels · 5 modes**, `list`/`resume`/`fork` advertised, steering supported.
+  zcode: {
+    id: 'zcode',
+    command: ['npx', '-y', 'zcode-acp-server@0.82.3'],
+    install: 'npm i -g zcode-acp-server',
+    note: 'bridges `zcode app-server --stdio`; measured 1 model · 3 thought levels · 5 modes, list/resume/fork + steering; needs ZCode credentials in ~/.zcode, `ZCODE_BIN` for a custom install',
+  },
 };
 
 /**

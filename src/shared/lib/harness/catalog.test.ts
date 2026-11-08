@@ -54,6 +54,19 @@ describe('harness catalog after the Gemini retirement', () => {
     expect(HARNESS_LAUNCH['command-code']?.command).toEqual(['cmd', 'acp']);
   });
 
+  test('zcode is listed and launches the ACP bridge, not a `zcode acp` verb', () => {
+    // The vendor CLI has no ACP subcommand: the ACP surface is the bridge that
+    // spawns `zcode app-server --stdio`. A launch line written as
+    // `['zcode', 'acp']` would look symmetrical and fail at spawn.
+    const descriptor = harnessDescriptor('zcode');
+    expect(descriptor?.transport).toBe('acp');
+    expect(descriptor?.glyph).toBe('zcode');
+    const command = HARNESS_LAUNCH.zcode?.command ?? [];
+    expect(command[0]).toBe('npx');
+    expect(command).toContain('zcode-acp-server@0.82.3');
+    expect(command).not.toEqual(['zcode', 'acp']);
+  });
+
   test('every catalog entry has a launch line or is the built-in transport', () => {
     // The built-in transport has no agent to launch by definition; everything
     // else without a line would probe to "no launch command is configured",
