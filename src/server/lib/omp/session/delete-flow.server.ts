@@ -10,18 +10,24 @@
  * The ORDER is the contract and it is enforced here, not by the callers:
  *  1. refuse a pending `new-…` chat and an id that is not one path segment —
  *     both name something other than the session they appear to;
- *  2. refuse a session whose omp child is mid-turn (a run, a live subagent, or
- *     a dialog the agent is blocked on) — the delete would kill work the user
- *     can still see, and omp would flush the file back on shutdown anyway;
- *  3. destroy the child and AWAIT its exit — omp writes session state on
- *     shutdown and would otherwise recreate the transcript just removed;
+ *  2. refuse a session whose child is mid-turn (a run, a live subagent, or a
+ *     dialog the agent is blocked on) — the delete would kill work the user can
+ *     still see, and omp would flush the file back on shutdown anyway. ANY
+ *     harness: an ACP chat is live in the same registry and is just as much in
+ *     the middle of something;
+ *  3. destroy the child and AWAIT its exit;
  *  4. purge side questions, then the transcript, artifacts and Kabmo rows.
+ *
+ * Step 2/3 read `getLiveSession`, not the omp-only view: an ACP session has no
+ * `AgentSessionWrapper`, so the old `getRpcSession` lookup answered "nothing is
+ * live" for every non-omp chat — the delete then removed its rows while the
+ * agent process kept the conversation aliased in the registry.
  *
  * A batch that re-implemented any of this would drift from the single delete,
  * and the drift would be silent: the route answers per-id verdicts either way.
  */
 
-import { getRpcSession } from '@/server/lib/omp/rpc/session-registry';
+import { getLiveSession } from '@/server/lib/omp/rpc/session-registry';
 import { purgeSessionData } from '@/server/lib/omp/session/delete.server';
 import { purgeBtwForSession } from '@/server/lib/btw/purge.server';
 import { isSinglePathSegment } from '@/server/lib/fs/path-segment';
@@ -61,8 +67,9 @@ export async function removeSession(sessionId: string): Promise<SessionRemoval> 
 
   try {
     // A live child is the only other writer of the transcript. Busy means a
-    // turn, a live subagent, or a dialog omp is parked on.
-    const live = getRpcSession(sessionId);
+    // turn, a live subagent, or a dialog the agent is parked on — omp's child
+    // and an ACP agent's alike.
+    const live = getLiveSession(sessionId);
     if (live?.isAlive()) {
       if (live.isBusy()) {
         return {

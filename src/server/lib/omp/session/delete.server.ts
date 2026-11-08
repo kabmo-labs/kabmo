@@ -18,6 +18,10 @@
  *   - its sibling artifacts directory, which holds the subagent transcripts;
  *   - the `archived_sessions`, `session_ui_state`, `session_stream_state`,
  *     `queued_messages` and `chat_sessions` rows for that id;
+ *   - the `harness_sessions`, `harness_goal_state` and `harness_usage_state`
+ *     rows, which are the WHOLE record of a chat that ran on an ACP agent (its
+ *     transcript is written by nobody Kabmo can read) and its resume id, goal
+ *     and token usage besides;
  *   - in mock mode the demo `sessions` row and its `files` tree.
  *
  * The caller owns the process: a live omp child MUST be destroyed before this
@@ -62,6 +66,14 @@ const SESSION_ROW_DELETES: readonly (readonly [string, string])[] = [
   ['queued_messages', 'session_id'],
   ['chat_sessions', 'session_id'],
   ['files', 'session_id'],
+  // An ACP chat has no transcript for the scan to lose: `harness_sessions` IS
+  // its row, so leaving it behind both refused the delete as "not found" (nothing
+  // else matched) and, for `omp-acp` whose JSONL did exist, re-listed the chat
+  // from the record the moment the file was gone. The goal and usage rows are
+  // keyed to the same id and would otherwise outlive the chat they describe.
+  ['harness_sessions', 'session_id'],
+  ['harness_goal_state', 'session_id'],
+  ['harness_usage_state', 'session_id'],
 ];
 
 async function purgeKabmoRows(db: DbClient, sessionId: string): Promise<number> {
