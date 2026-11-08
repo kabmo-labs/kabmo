@@ -31,6 +31,7 @@ import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { ModelDropdown } from '@/client/components/workspace/model-dropdown/index';
 import type { AIModelOption } from '@/shared/types';
+import { invalidateModelsCache } from '@/shared/lib/models/client';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
 import { restoreRealtime, silenceRealtime } from '@/test-support/silent-socket';
 
@@ -44,6 +45,14 @@ let container: HTMLElement;
 
 beforeEach(() => {
   installDomGlobals(new Window());
+  // `/api/models` is cached at MODULE level for a minute, so a file that ran
+  // earlier in the same `bun test` process leaves its own answer in place and
+  // this suite's fetch stub is never consulted — the trigger then draws
+  // initials from a response with no `providerIconUrl`. Measured on the Ubuntu
+  // gate as `Received: null` in the catalog-fallback case alone, while a
+  // single-file run passed every time. The same call opens the other suites
+  // that read this endpoint.
+  invalidateModelsCache();
   // The picker reads the `models` topic on mount, and this window has no origin
   // (`about:blank`), so a real dial would target `ws:///api/realtime/ws` and
   // fail asynchronously — after this suite has restored the globals, which
