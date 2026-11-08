@@ -29,13 +29,14 @@ import type { AcpConfigOption, AcpId } from '@/server/lib/harness/acp/protocol';
 import { promptBlocks } from '@/server/lib/harness/acp/prompt';
 import { adoptConfigOptions, settlePermissionDialog } from '@/server/lib/harness/acp/session-config';
 import { beginAcpTurn, settleAcpTurn } from '@/server/lib/harness/acp/session-turns';
+import { driveAcpGoalAfterTurn } from '@/server/lib/harness/acp/acp-goal-driver.server';
 import { handshakeAcpSession } from '@/server/lib/harness/acp/session-handshake';
 import { capabilitiesFrom } from '@/server/lib/harness/launch';
 import { PendingPermissions } from '@/server/lib/harness/acp/permissions';
-import { metadataCapabilities, parseAgentCommands } from '@/server/lib/harness/acp/session-facts';
-import { preApprovedOption } from '@/server/lib/harness/acp/session-permissions';
+import { handleSessionNotification } from '@/server/lib/harness/acp/session-notifications';
+import { AcpUsageMeter, type AcpContextUsage } from '@/server/lib/harness/acp/session-usage';
+import { answerPermissionRequest } from '@/server/lib/harness/acp/session-permissions';
 import { acpWebState } from '@/server/lib/harness/acp/session-web-state';
-import { noteAgentTitle } from '@/server/lib/harness/session-title.server';
 import { DEFAULT_APPROVAL_MODE, isApprovalMode, type ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 import { dispatchCommand, type AcpCommandHost } from '@/server/lib/harness/acp/commands';
 import { markStreamStatus } from '@/shared/lib/omp/session/stream-state.server';
@@ -70,9 +71,31 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
    *  composer's `/` pool reads it for this session (omp's utility child answers
    *  that question for the RPC transport). */
   agentCommands: { name: string; description?: string; inputHint?: string }[] = [];
+  /** The agent's plan entries from `session/update plan`, as published. The
+   *  Todos panel renders them through the same payload omp's transcript
+   *  snapshot produces. */
+  planEntries: unknown[] = [];
   /** Messages this session has moved: prompts sent plus assistant messages the
    *  mapper closed. omp reports the same quantity from its transcript. */
   messageCount = 0;
+  /** Prompts this session dispatched — the telemetry panel's user count. */
+  promptCount = 0;
+  /** Assistant messages the mapper closed, for the same panel. */
+  assistantCount = 0;
+  /** The last `usage_update` the agent reported, or null when it never did. */
+  private readonly usage = new AcpUsageMeter();
+
+  get contextUsage(): AcpContextUsage | null {
+    return this.usage.contextUsage;
+  }
+
+  get totalCost(): number {
+    return this.usage.totalCost;
+  }
+
+  get usageTokens(): number {
+    return this.usage.usageTokens;
+  }
   /** The composer's approval tier. Answered in-process by {@link onClientRequest}. */
   accessMode: ApprovalMode = DEFAULT_APPROVAL_MODE;
   capabilities: HarnessCapabilities = capabilitiesFrom({ protocolVersion: 1 }, [], { usage: false, plan: false });
@@ -207,9 +230,13 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
   };
 
   /** Turn-end bookkeeping the panels read — see `session-turns.ts`. A cancelled
-   *  turn closes the marker as an `abort` badge, every other ending a `finish`. */
-  onTurnEnded(info: { stopReason?: string; closedMessage: boolean }): void {
+   *  turn closes the marker as an `abort` badge, every other ending a `finish`.
+   *  The goal driver then audits the closed message and may open the next turn. */
+  onTurnEnded(info: { stopReason?: string; closedMessage: boolean; message?: unknown; cancelled?: boolean }): void {
+    if (info.closedMessage) this.assistantCount += 1;
+    this.usage.endTurn();
     settleAcpTurn(this, info);
+    void driveAcpGoalAfterTurn(this, info.message, { cancelled: info.cancelled === true }).catch(() => {});
   }
 
   /** Dispatcher seam: stop the turn. The rules live in `AcpTurns.cancel`. */
@@ -244,6 +271,10 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
       isStreaming: this.isStreaming,
       isPromptRunning: this.isPromptRunning,
       messageCount: this.messageCount,
+      promptCount: this.promptCount,
+      assistantCount: this.assistantCount,
+      contextUsage: this.contextUsage,
+      totalCost: this.totalCost,
       runModel: this.runModel,
       configOptions: this.configOptions,
       harness: this.harness,
@@ -256,42 +287,20 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
    *  `session-turns.ts`.
    */
   startTurn(message: string, images: unknown): unknown {
+    this.promptCount += 1;
+    this.usage.beginTurn();
     return beginAcpTurn(this, this.turns, message, images);
   }
 
   private onNotification(method: string, params: Record<string, unknown>): void {
-    if (method !== 'session/update') return;
-    const update = params.update;
-    if (!update || typeof update !== 'object') return;
-    const record = update as Record<string, unknown>;
-    const kind = typeof record.sessionUpdate === 'string' ? record.sessionUpdate : '';
-
-    // Session METADATA arrives between turns — omp publishes its command list
-    // and a usage update right after `session/new`, when no turn is open. The
-    // turn gate below exists so abandoned output cannot reopen a finalized
-    // message; applying it to these dropped the composer's `/` pool and the
-    // panels' capability flags entirely.
-    if (kind === 'available_commands_update') this.agentCommands = parseAgentCommands(record);
-    const absorbed = metadataCapabilities(this.capabilities, kind);
-    if (absorbed !== this.capabilities) this.capabilities = absorbed;
-    // The agent's own name for this chat arrives BETWEEN turns (measured on
-    // claude: after the first answer), where the turn gate below would drop it.
-    // Persisted here so the sidebar row can say it — and it outranks the guess
-    // `notePromptTitle` made from the first prompt.
-    if (kind === 'session_info_update' && typeof record.title === 'string' && this.sessionId) {
-      void noteAgentTitle(this.sessionId, record.title);
-    }
-
-    // No turn open: the user stopped it (or one is still queued), and anything
-    // the agent keeps emitting belongs to work nobody is watching. Forwarding it
-    // reopened the assistant message after Stop and streamed abandoned text into
-    // a transcript the client had already finalized.
-    if (!this.turns.acceptingFrames()) return;
-    for (const event of this.mapper.mapUpdate(record)) {
-      this.emit(event);
-      if (event.type === 'message_end') this.messageCount += 1;
-    }
+    handleSessionNotification(this, method, params);
   }
+
+  absorbUsage(update: Record<string, unknown>): void { this.usage.absorb(update); }
+  resetUsageTokens(): void { this.usage.reset(); }
+  acceptingFrames(): boolean { return this.turns.acceptingFrames(); }
+
+  mapUpdate(update: Record<string, unknown>): AgentEvent[] { return this.mapper.mapUpdate(update); }
 
   /** Agent→client requests. Every branch answers or refuses — an unanswered call
    *  parks the turn, which is the failure this method exists to prevent. */
@@ -301,20 +310,12 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
     params: Record<string, unknown>,
   ): Promise<{ answered: true; result: unknown } | { answered: false; message: string } | { answered: false; deferred: true }> {
     if (method === 'session/request_permission') {
-      const optionId = preApprovedOption(this.accessMode, params);
-      if (optionId) {
-        return Promise.resolve({
-          answered: true,
-          result: { outcome: { outcome: 'selected', optionId } },
-        });
-      }
-      // The dialog id IS the JSON-RPC id: the answer arrives later through
-      // `extension_ui_response`, and it has to name the exact parked call.
-      const dialog = this.permissions.add(id, String(params.sessionId ?? this.sessionId), params);
-      this.emit(dialog as unknown as AgentEvent);
-      // Answered LATER; the transport must not send a refusal now or the agent
-      // sees two answers to one request.
-      return Promise.resolve({ answered: false, deferred: true });
+      return answerPermissionRequest({
+        sessionId: this.sessionId,
+        accessMode: this.accessMode,
+        permissions: this.permissions,
+        emit: (event) => this.emit(event),
+      }, id, params);
     }
     return Promise.resolve({ answered: false, message: `Kabmo does not implement ${method}` });
   }

@@ -126,6 +126,70 @@ describe('acp frame mapper — tool calls', () => {
     expect(frames[0]).toMatchObject({ type: 'tool_execution_end', output: 'nested' });
   });
 
+  test('a call announced already-completed is closed once, not left spinning', () => {
+    // Some agents send ONE `tool_call` with status completed and no update.
+    // The old mapper kept it open, so the turn's cleanup closed it as an error.
+    const mapper = new AcpFrameMapper();
+    const frames = mapper.mapUpdate({
+      sessionUpdate: 'tool_call',
+      toolCallId: 'c2',
+      name: 'Shell',
+      kind: 'execute',
+      status: 'completed',
+      rawInput: { command: 'ls' },
+      rawOutput: { content: [{ type: 'text', text: 'done' }], details: { exitCode: 0 } },
+    });
+    expect(frames.map((frame) => frame.type)).toEqual([
+      'message_update',
+      'tool_execution_start',
+      'tool_execution_end',
+    ]);
+    expect(frames[1]).toMatchObject({ toolType: 'bash' });
+    expect(frames[2]).toMatchObject({ isError: false, output: 'done', details: { exitCode: 0 } });
+    expect(mapper.openCalls()).toEqual([]);
+  });
+
+  test('the message block carries the transport type for the renderer', () => {
+    const mapper = new AcpFrameMapper();
+    const frames = mapper.mapUpdate({
+      sessionUpdate: 'tool_call',
+      toolCallId: 'c3',
+      name: 'Shell',
+      kind: 'execute',
+      status: 'pending',
+    });
+    const message = frames[0].message as { content: { toolType?: string }[] };
+    expect(message.content[0]?.toolType).toBe('bash');
+  });
+
+  test('a diff content block becomes details.diff for the Edit panel', () => {
+    const mapper = new AcpFrameMapper();
+    mapper.mapUpdate(openTail);
+    const frames = mapper.mapUpdate({
+      sessionUpdate: 'tool_call_update',
+      toolCallId: 'c1',
+      status: 'completed',
+      content: [{ type: 'diff', path: 'src/a.ts', oldText: 'a\nb', newText: 'a\nc' }],
+    });
+    const details = frames[0].details as { diff?: string; path?: string };
+    expect(details.path).toBe('src/a.ts');
+    expect(details.diff).toContain('-b');
+    expect(details.diff).toContain('+c');
+  });
+
+  test('content-only output reaches the card', () => {
+    const mapper = new AcpFrameMapper();
+    mapper.mapUpdate(openTail);
+    const frames = mapper.mapUpdate({
+      sessionUpdate: 'tool_call_update',
+      toolCallId: 'c1',
+      status: 'completed',
+      content: [{ type: 'text', text: 'from content' }],
+    });
+    expect(frames[0].output).toBe('from content');
+    expect(frames[0].result).toEqual({ content: [{ type: 'text', text: 'from content' }] });
+  });
+
   test('failed maps to isError, and openCalls drains', () => {
     const mapper = new AcpFrameMapper();
     mapper.mapUpdate(openTail);

@@ -25,6 +25,10 @@ import { mockSessionTodos, mockSessionPlans } from '@/server/lib/omp/session/dat
 import { listQueue } from '@/server/lib/queue/store.server';
 import { loadSessionSource } from '@/server/lib/chat/session-store.server';
 import { computeRealSessionTelemetry } from '@/server/lib/omp/session/telemetry';
+import { getLiveSession, harnessOfSession } from '@/server/lib/omp/rpc/session-registry';
+import { loadAcpSessions } from '@/server/lib/harness/session-store.server';
+import { buildAcpTelemetry, loadAcpUsage, type AcpTelemetrySession } from '@/server/lib/harness/acp/acp-telemetry.server';
+import { buildAcpTodos } from '@/server/lib/harness/acp/acp-todos.server';
 import { isMockMode } from '@/server/mock.server';
 import type { SessionTodosPayload } from '@/shared/types/todo';
 import type { SessionPlanPayload } from '@/shared/types/plan';
@@ -40,6 +44,16 @@ function todosDescriptor(sessionId: string): TopicDescriptor {
   return {
     resolve: async (): Promise<SessionTodosPayload> => {
       const isMock = isMockMode();
+      const live = isMock ? undefined : getLiveSession(sessionId);
+      if (live && harnessOfSession(live) !== 'omp-rpc') {
+        const entries = (live as unknown as { planEntries?: unknown[] }).planEntries ?? [];
+        return {
+          sessionId,
+          ...buildAcpTodos(entries),
+          generatedAt: new Date().toISOString(),
+          isMock,
+        };
+      }
       return {
         sessionId,
         ...(isMock ? mockSessionTodos() : await readSessionTodos(sessionId)),
@@ -80,6 +94,21 @@ function telemetryDescriptor(sessionId: string): TopicDescriptor {
   return {
     resolve: async () => {
       if (isMockMode()) return null;
+      // A live ACP session reports usage itself; there is no transcript to
+      // compute from, and returning null left the ring and the Context panel
+      // saying "not started" over a running chat.
+      const live = getLiveSession(sessionId);
+      if (live && harnessOfSession(live) !== 'omp-rpc') {
+        const row = (await loadAcpSessions().catch(() => [])).find((entry) => entry.sessionId === sessionId);
+        return buildAcpTelemetry(live as unknown as AcpTelemetrySession, row?.title);
+      }
+      // The process is gone, but the last usage it reported is on disk. omp
+      // recomputes from its JSONL; this is the ACP equivalent.
+      const stored = await loadAcpUsage(sessionId);
+      if (stored) {
+        const row = (await loadAcpSessions().catch(() => [])).find((entry) => entry.sessionId === sessionId);
+        if (row) return buildAcpTelemetry(stored, row.title);
+      }
       const source = await loadSessionSource(sessionId);
       // The real computation reads the session's JSONL; the in-memory source
       // has no file to point at, so those sessions answer nothing here and the

@@ -35,6 +35,8 @@
  */
 
 import { scheduleQueueDelivery } from '@/server/lib/queue/delivery.server';
+import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
+import { saveAcpUsage } from '@/server/lib/harness/acp/acp-telemetry.server';
 import type { AcpTurns } from '@/server/lib/harness/acp/turn';
 
 /** What a turn reads and moves on the session. */
@@ -42,6 +44,11 @@ export interface AcpTurnTarget {
   sessionId: string;
   /** Messages this session has moved: prompts sent plus closed answers. */
   messageCount: number;
+  promptCount: number;
+  assistantCount: number;
+  contextUsage: { tokens: number; contextWindow: number; percent: number } | null;
+  totalCost: number;
+  runModel: { provider: string; modelId: string } | null;
   /** The durable run marker; a field on the session so a test can stub it. */
   markStream: (status: 'stream' | 'finish' | 'abort') => void;
   isAlive(): boolean;
@@ -68,7 +75,21 @@ export function settleAcpTurn(
   info: { stopReason?: string; closedMessage: boolean },
 ): void {
   if (info.closedMessage) target.messageCount += 1;
+  // ACP has no transcript to re-read, so the last usage snapshot is what lets
+  // the Context ring answer after a reload or a restart.
+  void saveAcpUsage({
+    sessionId: target.sessionId,
+    messageCount: target.messageCount,
+    promptCount: target.promptCount,
+    assistantCount: target.assistantCount,
+    contextUsage: target.contextUsage,
+    totalCost: target.totalCost,
+    runModel: target.runModel,
+  });
   // A cancelled turn is an `abort` badge, every other ending a `finish`.
   target.markStream(info.stopReason === 'cancelled' ? 'abort' : 'finish');
+  // Todo/plan/telemetry panels read their own topics; without this signal an
+  // ACP turn's usage and titles never republished (the RPC settle path does it).
+  emitRealtimeSignal('session-data-dirty', target.sessionId);
   scheduleQueueDelivery(target);
 }

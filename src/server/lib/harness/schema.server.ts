@@ -77,10 +77,50 @@ const HARNESS_PROBES_SQL = `
   );
 `;
 
+/**
+ * Goal mode on a transport that has no `/kabmo-mode` extension.
+ *
+ * An ACP agent other than omp carries no extension, so the goal record cannot
+ * live in a transcript. Kabmo owns it here: the composer's actions write this
+ * row, the goal driver reads it after every turn, and the modes route answers
+ * from it on reload. `plan` is mirrored too, because a dead ACP session has no
+ * selector left to ask.
+ */
+const HARNESS_GOAL_STATE_SQL = `
+  CREATE TABLE IF NOT EXISTS harness_goal_state (
+    session_id TEXT PRIMARY KEY,
+    record TEXT,
+    continuation TEXT,
+    plan INTEGER NOT NULL DEFAULT 0,
+    max_turns INTEGER,
+    turns INTEGER NOT NULL DEFAULT 0,
+    updated_at INTEGER NOT NULL
+  );
+`;
+
+/** The last usage an ACP agent reported, so the Context ring survives a reload
+ *  of a chat whose process is gone (omp has its JSONL to re-read; this doesn't). */
+const HARNESS_USAGE_STATE_SQL = `
+  CREATE TABLE IF NOT EXISTS harness_usage_state (
+    session_id TEXT PRIMARY KEY,
+    used INTEGER NOT NULL DEFAULT 0,
+    size INTEGER NOT NULL DEFAULT 0,
+    cost REAL NOT NULL DEFAULT 0,
+    messages INTEGER NOT NULL DEFAULT 0,
+    prompts INTEGER NOT NULL DEFAULT 0,
+    assistants INTEGER NOT NULL DEFAULT 0,
+    model_provider TEXT NOT NULL DEFAULT '',
+    model_id TEXT NOT NULL DEFAULT '',
+    updated_at INTEGER NOT NULL
+  );
+`;
+
 /** Idempotent: created on every database open, like every other feature table. */
 export async function ensureHarnessSchema(db: DbClient): Promise<void> {
   await db.exec(HARNESS_SESSIONS_SQL);
   await db.exec(HARNESS_PROBES_SQL);
+  await db.exec(HARNESS_GOAL_STATE_SQL);
+  await db.exec(HARNESS_USAGE_STATE_SQL);
   try {
     await db.exec(HARNESS_SESSIONS_MIGRATIONS);
   } catch {

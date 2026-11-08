@@ -47,15 +47,22 @@ const TOOL_TYPE_BY_KIND: Record<AcpToolKind, ToolType> = {
   other: 'read',
 };
 
+const KNOWN_TOOL_NAMES: readonly ToolType[] = ['read', 'edit', 'write', 'bash', 'grep', 'web_search', 'todo'];
+
+/** Whether a name is one of the renderer keys, so an explicit `kind:"other"`
+ *  can defer to the shared name inference instead of forcing a panel. */
+export function isKnownToolName(name: string | undefined): boolean {
+  return Boolean(name) && KNOWN_TOOL_NAMES.includes((name ?? '').toLowerCase() as ToolType);
+}
+
 /** The `type` a card should carry, with `name` able to override a generic kind.
  *  `other` is the case that matters: an agent that sends `kind:"other"` plus a
  *  real `name` (`edit`) still gets the right renderer. */
 export function toolTypeFor(kind: AcpToolKind | undefined, name: string | undefined): ToolType {
   const mapped = TOOL_TYPE_BY_KIND[kind ?? 'other'] ?? 'read';
   if (kind !== undefined && kind !== 'other') return mapped;
-  const known: ToolType[] = ['read', 'edit', 'write', 'bash', 'grep', 'web_search', 'todo'];
   const lowered = (name ?? '').toLowerCase() as ToolType;
-  return known.includes(lowered) ? lowered : mapped;
+  return KNOWN_TOOL_NAMES.includes(lowered) ? lowered : mapped;
 }
 
 /**
@@ -119,6 +126,55 @@ export function acpToolDetails(rawOutput: unknown): Record<string, unknown> | un
   const details = rawOutput.details;
   if (!details || typeof details !== 'object') return undefined;
   return Object.fromEntries(Object.entries(details));
+}
+
+/** A minimal unified diff, for ACP's `{type:"diff", oldText, newText}` block. */
+function diffText(oldText: string, newText: string, path: string): string {
+  const before = oldText ? oldText.split(/\r?\n/) : [];
+  const after = newText ? newText.split(/\r?\n/) : [];
+  let prefix = 0;
+  while (prefix < before.length && prefix < after.length && before[prefix] === after[prefix]) prefix += 1;
+  let suffix = 0;
+  while (
+    suffix < before.length - prefix
+    && suffix < after.length - prefix
+    && before[before.length - 1 - suffix] === after[after.length - 1 - suffix]
+  ) {
+    suffix += 1;
+  }
+  const name = path || 'diff';
+  const lines = [
+    `--- a/${name}`,
+    `+++ b/${name}`,
+    `@@ -1,${before.length || 1} +1,${after.length || 1} @@`,
+    ...before.slice(Math.max(0, prefix - 2), prefix).map((line) => ` ${line}`),
+    ...before.slice(prefix, before.length - suffix).map((line) => `-${line}`),
+    ...after.slice(prefix, after.length - suffix).map((line) => `+${line}`),
+    ...after.slice(after.length - suffix, after.length - suffix + 2).map((line) => ` ${line}`),
+  ];
+  return lines.join('\n');
+}
+
+/**
+ * Details an ACP tool result carries ONLY as content blocks.
+ *
+ * The spec's `diff` block is the one shape the generic text renderer cannot
+ * show: `acpContentText` skips it, so an edit reported that way rendered as an
+ * empty card. It is converted to the `details.diff`/`path` pair the Edit panel
+ * already reads.
+ */
+export function acpContentDetails(content: unknown): Record<string, unknown> | undefined {
+  if (!Array.isArray(content)) return undefined;
+  for (const block of content) {
+    if (!block || typeof block !== 'object') continue;
+    const entry = block as Record<string, unknown>;
+    if (entry.type !== 'diff' || typeof entry.newText !== 'string') continue;
+    const path = typeof entry.path === 'string' ? entry.path : '';
+    // `oldText` is optional in the spec; an absent one is a new file.
+    const oldText = typeof entry.oldText === 'string' ? entry.oldText : '';
+    return { diff: diffText(oldText, entry.newText, path), ...(path ? { path } : {}) };
+  }
+  return undefined;
 }
 
 /** The `tool_execution_end` boolean: ACP reports failure as a STATUS. */

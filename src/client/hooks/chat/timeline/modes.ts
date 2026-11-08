@@ -47,27 +47,21 @@ export type { ArmedGoal, GoalAction };
 /**
  * Which mode toggles a harness can actually honour.
  *
- * Pure, so the rule is testable without a render. omp over RPC carries the
- * whole `/kabmo-mode` extension AND the goal driver, so both modes exist.
- * `omp-acp` carries the extension command but not the driver: Plan works
- * through the agent's own `mode` selector, Goal would be a button the server
- * refuses. Another ACP agent has no extension at all — Plan is a real mode only
- * when that agent publishes a `plan` value (measured: claude does, opencode does
- * not). An unknown harness keeps the old surface: the row may simply not have
- * arrived yet.
+ * Pure, so the rule is testable without a render. Goal is available on every
+ * harness: Kabmo owns the record and the loop for ACP (`acp-goal.server.ts`),
+ * and omp carries the extension. Plan is different — it must be a real mode the
+ * agent publishes (`claude` does, `opencode` does not), except on omp's own two
+ * transports, which always expose the Plan toggle. An unknown harness keeps the
+ * old surface: the row may simply not have arrived yet.
  */
 export function modeAvailability(capabilities: ModeCapabilities): { plan: boolean; goal: boolean } {
-  // Goal is an omp RPC feature end to end: the `/kabmo-mode` command opens the
-  // turn, but the LOOP (audit → continuation) is driven by Kabmo's RPC
-  // terminal settle, and its state arrives as extension notifications the ACP
-  // adapter does not forward. Offering the toggle on `omp-acp` produced a
-  // button whose every action the server answered with "has no goal mode" —
-  // the refusal rule this function exists to enforce.
+  // Goal is Kabmo-owned on every harness now: `acp-goal.server.ts` stores the
+  // record and the driver opens the next turn after the audit, so an agent
+  // without the `/kabmo-mode` extension can still run one.
   if (capabilities.harness === 'omp-rpc') return { plan: true, goal: true };
-  const ompTransport = capabilities.harness === 'omp-acp';
-  if (ompTransport) return { plan: true, goal: false };
   if (!capabilities.harness) return { plan: true, goal: true };
-  return { plan: capabilities.modeValues?.includes('plan') === true, goal: false };
+  if (capabilities.harness === 'omp-acp') return { plan: true, goal: true };
+  return { plan: capabilities.modeValues?.includes('plan') === true, goal: true };
 }
 
 export interface ModeCapabilities {

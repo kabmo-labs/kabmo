@@ -38,13 +38,10 @@ export interface AcpTurnSeams {
   openCalls: () => string[];
   /**
    * The turn is over (finished, failed or cancelled), with the agent's own stop
-   * reason. The session arms the follow-up queue and closes its durable run
-   * marker here, at the same instant the omp wrapper's terminal settle does:
-   * ACP has no other run-end hook, and without one a queued follow-up sat in
-   * `queued_messages` until a tab nudged it — and the sidebar kept its spinner
-   * off, because no `stream` row was ever written for this transport.
+   * reason, the assistant message the mapper closed (the goal driver audits it),
+   * and whether the turn was cancelled (a stop must not be audited).
    */
-  onTurnEnd: (info: { stopReason?: string; closedMessage: boolean }) => void;
+  onTurnEnd: (info: { stopReason?: string; closedMessage: boolean; message?: unknown; cancelled?: boolean }) => void;
 }
 
 export class AcpTurns {
@@ -146,6 +143,7 @@ export class AcpTurns {
   private finish(result: { stopReason?: string } | undefined): void {
     const flushed = this.seams.closeMessage();
     for (const event of flushed) this.seams.emit(event);
+    const closed = flushed.find((event) => event.type === 'message_end')?.message;
     const abandoned = this.seams.openCalls();
     for (const toolCallId of abandoned) {
       this.seams.emit({ type: 'tool_execution_end', toolCallId, isError: true, result: { output: 'Cancelled' } });
@@ -170,6 +168,8 @@ export class AcpTurns {
     this.seams.onTurnEnd({
       ...(result?.stopReason ? { stopReason: result.stopReason } : {}),
       closedMessage: flushed.some((event) => event.type === 'message_end'),
+      ...(closed ? { message: closed } : {}),
+      ...(cancelled ? { cancelled: true } : {}),
     });
   }
 }

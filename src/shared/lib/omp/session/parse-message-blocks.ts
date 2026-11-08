@@ -37,6 +37,9 @@ export interface ParsedToolCall {
   id: string;
   name: string;
   title: string;
+  /** The transport's own renderer key, when it knows one (ACP `kind`). The
+   *  shared inference below is a fallback for providers that only send a name. */
+  toolType?: ToolType;
   intent?: string;
   target?: string;
   command?: string;
@@ -113,6 +116,7 @@ export function parseMessageBlocks(content: unknown): ParsedMessageBlocks {
       toolCallId?: unknown;
       arguments?: unknown;
       input?: unknown;
+      toolType?: unknown;
     };
     if (block.type === 'thinking') {
       const body = typeof block.thinking === 'string'
@@ -150,6 +154,7 @@ export function parseMessageBlocks(content: unknown): ParsedMessageBlocks {
         id,
         name,
         title: detail ? `${name} — ${detail}` : name,
+        ...(typeof block.toolType === 'string' ? { toolType: block.toolType as ToolType } : {}),
         intent,
         target: target || undefined,
         command: command || undefined,
@@ -194,7 +199,7 @@ export function toToolCallData(
       : options.streaming ? 'running' : 'success';
   return {
     id: parsed.id,
-    type: inferToolType(parsed.name),
+    type: parsed.toolType ?? inferToolType(parsed.name),
     name: parsed.name,
     title: parsed.title,
     intent: parsed.intent,

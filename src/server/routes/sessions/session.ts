@@ -12,7 +12,10 @@ import { renameSessionWithAi } from '@/server/lib/omp/session/rename-with-ai.ser
 import { isSinglePathSegment } from '@/server/lib/fs/path-segment';
 import { loadPersistedModes } from '@/server/lib/omp/session/modes';
 import { liveModeSelection } from '@/server/lib/omp/mode/live-selection';
-import { getLiveSession } from '@/server/lib/omp/rpc/session-registry';
+import { getLiveSession, harnessOfSession } from '@/server/lib/omp/rpc/session-registry';
+import { knownHarness, loadHarnessSession } from '@/server/lib/harness/session-store.server';
+import { HARNESS_IDS } from '@/shared/lib/harness/catalog';
+import { loadAcpGoalState } from '@/server/lib/harness/acp/acp-goal-state.server';
 import { asHarnessSession } from '@/server/lib/harness/registry';
 import { applyHarnessMode } from '@/server/routes/agent/harness-command';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
@@ -55,29 +58,43 @@ export async function getSessionModes({ params }: LoaderFunctionArgs) {
   const live = liveModeSelection(sessionId);
   if (live?.spoken) return json({ sessionId, modes: live.modes });
 
+  // An ACP chat's modes are Kabmo-owned: plan is the agent's own selector while
+  // it is live, and the goal record lives in `harness_goal_state`. Neither
+  // exists in an omp transcript, so the file branch below never describes it.
+  const liveSession = getLiveSession(sessionId);
+  const recorded = liveSession ? null : await loadHarnessSession(sessionId);
+  const acpHarness = liveSession
+    ? harnessOfSession(liveSession)
+    : knownHarness(recorded?.harness, HARNESS_IDS);
+  const isAcp = Boolean(acpHarness && acpHarness !== 'omp-rpc');
+  let acpModes: Record<string, unknown> | null = null;
+  if (isAcp) {
+    const state = await loadAcpGoalState(sessionId);
+    let plan = state.plan;
+    if (liveSession?.isAlive()) {
+      const applied = await applyHarnessMode(asHarnessSession(liveSession), { scope: 'plan', action: 'state' });
+      if (applied.ok) plan = (applied.data as { enabled?: unknown } | null)?.enabled === true;
+    }
+    const active = state.record?.status === 'active';
+    acpModes = {
+      plan,
+      goal: active,
+      goalLive: active,
+      goalRecord: state.record,
+      goalContinuation: state.continuation,
+    };
+  }
+
   const resolved = await resolveSessionFileOr404(sessionId);
   if ('response' in resolved) {
     // A live child with no transcript yet: it is the only thing that can
     // describe this session, and "not found" would be a lie about a process
     // that is running.
     if (live) return json({ sessionId, modes: live.modes });
-    // An ACP chat never writes an omp transcript, so the file lookup always
-    // fails for it. Its own `mode` selector is the state the composer has to
-    // show after a reload — without this, a plan mode the user turned on came
-    // back OFF on the next page load.
-    const acp = getLiveSession(sessionId);
-    if (acp?.isAlive()) {
-      const applied = await applyHarnessMode(asHarnessSession(acp), { scope: 'plan', action: 'state' });
-      if (applied.ok) {
-        const data = applied.data as { enabled?: unknown } | null;
-        return json({
-          sessionId,
-          modes: { plan: data?.enabled === true, goal: false, goalLive: false, goalRecord: null },
-        });
-      }
-    }
+    if (acpModes) return json({ sessionId, modes: acpModes });
     return resolved.response;
   }
+  if (acpModes) return json({ sessionId, modes: acpModes });
   return json({ sessionId, modes: live?.modes ?? (await loadPersistedModes(resolved.filePath)) });
 }
 

@@ -21,6 +21,8 @@ import { harnessOfSession } from '@/server/lib/omp/rpc/session-registry';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
 import { HARNESS_IDS, harnessDescriptor } from '@/shared/lib/harness/catalog';
 import type { AcpConfigOption } from '@/server/lib/harness/acp/protocol';
+import { applyAcpGoalAction, type AcpGoalHost } from '@/server/lib/harness/acp/acp-goal.server';
+import { saveAcpPlanState } from '@/server/lib/harness/acp/acp-goal-state.server';
 import type { HarnessSession } from '@/server/lib/harness/session';
 import type { ModeRequest } from '@/server/lib/omp/mode/request';
 import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
@@ -100,9 +102,9 @@ export async function applyHarnessMode(
   const harness = harnessOfSession(session);
   const label = harnessDescriptor(harness)?.label ?? harness;
   if (request.scope === 'goal') {
-    // No ACP selector names a goal, and an objective cannot ride a mode value.
-    if (request.action === 'state') return { ok: true, data: { enabled: false } };
-    return { ok: false, error: `${label} has no goal mode` };
+    // Kabmo owns the record and the loop for every ACP transport (see
+    // `acp-goal.server.ts`); the agent needs no extension for it.
+    return applyAcpGoalAction(session as unknown as AcpGoalHost, request);
   }
   const state = (await session.send({ type: 'get_state' })) as { configOptions?: unknown } | undefined;
   const options = Array.isArray(state?.configOptions) ? state.configOptions : [];
@@ -112,7 +114,11 @@ export async function applyHarnessMode(
   );
   const values = selectValues(selector).map((entry) => entry.value);
   if (request.action !== 'on' && request.action !== 'off') {
-    return { ok: true, data: { enabled: selector?.currentValue === 'plan' } };
+    const enabled = selector?.currentValue === 'plan';
+    // Mirror it: a dead ACP session has no selector left to ask, and the
+    // composer must still show the mode it was in.
+    void saveAcpPlanState(session.sessionId, enabled);
+    return { ok: true, data: { enabled } };
   }
   if (!values.includes('plan')) return { ok: false, error: `${label} has no plan mode` };
   // `default` is the value every measured agent uses for "no special mode"; the
@@ -121,5 +127,7 @@ export async function applyHarnessMode(
     ? 'plan'
     : values.find((value) => value === 'default') ?? values.find((value) => value !== 'plan');
   if (!target) return { ok: false, error: `${label} has no plan mode` };
-  return { ok: true, data: await session.send({ type: 'set_mode', mode: target }) };
+  const data = await session.send({ type: 'set_mode', mode: target });
+  void saveAcpPlanState(session.sessionId, target === 'plan');
+  return { ok: true, data };
 }

@@ -32,10 +32,12 @@
 
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
 import {
+  acpContentDetails,
   acpContentText,
   acpToolDetails,
   acpToolOutput,
   acpToolTarget,
+  isKnownToolName,
   toolTypeFor,
 } from '@/server/lib/harness/acp/mapper';
 import type { AcpToolKind, AcpToolStatus } from '@/server/lib/harness/acp/protocol';
@@ -44,7 +46,7 @@ import type { AcpToolKind, AcpToolStatus } from '@/server/lib/harness/acp/protoc
 type MessageBlock =
   | { type: 'text'; text: string }
   | { type: 'thinking'; thinking: string }
-  | { type: 'toolCall'; id: string; name: string; arguments?: Record<string, unknown>; toolKind?: AcpToolKind };
+  | { type: 'toolCall'; id: string; name: string; arguments?: Record<string, unknown>; toolKind?: AcpToolKind; toolType?: string };
 
 interface OpenTool {
   id: string;
@@ -53,6 +55,8 @@ interface OpenTool {
   title?: string;
   status: AcpToolStatus;
   rawOutput?: unknown;
+  /** `tool_call(Update).content` — where some agents put the diff/output. */
+  content?: unknown;
   locations?: unknown;
   startedAt: number;
 }
@@ -187,38 +191,71 @@ export class AcpFrameMapper {
         ? update.title
         : 'tool';
     const kind = typeof update.kind === 'string' ? (update.kind as AcpToolKind) : undefined;
+    const status = typeof update.status === 'string' ? (update.status as AcpToolStatus) : 'pending';
+    // A specific kind is authoritative. `other`/absent is only an explicit type
+    // when the name is one the renderers know; otherwise the shared parser's
+    // own inference from the name is better informed than a forced `read`.
+    const toolType = kind !== undefined && kind !== 'other'
+      ? toolTypeFor(kind, name)
+      : isKnownToolName(name) ? toolTypeFor(kind, name) : undefined;
     const rawInput = update.rawInput;
     const args = rawInput && typeof rawInput === 'object' && !Array.isArray(rawInput)
       ? Object.fromEntries(Object.entries(rawInput))
       : undefined;
 
-    this.open.set(toolCallId, {
-      id: toolCallId,
-      name,
-      kind,
-      title: typeof update.title === 'string' ? update.title : undefined,
-      status: typeof update.status === 'string' ? (update.status as AcpToolStatus) : 'pending',
-      rawOutput: update.rawOutput,
-      locations: update.locations,
-      startedAt: Date.now(),
-    });
-
     // The card is drawn from the message block, so opening a call means adding
     // the block and re-emitting the message — not emitting a separate card row.
-    this.blocks.push({ type: 'toolCall', id: toolCallId, name, ...(args ? { arguments: args } : {}), ...(kind ? { toolKind: kind } : {}) });
+    // `toolType` travels with the block: the shared parser's name inference
+    // cannot know that ACP `kind:"execute"` means bash when the name is `Shell`.
+    this.blocks.push({
+      type: 'toolCall',
+      id: toolCallId,
+      name,
+      ...(args ? { arguments: args } : {}),
+      ...(kind ? { toolKind: kind } : {}),
+      ...(toolType ? { toolType } : {}),
+    });
 
-    return [
+    const frames: AgentEvent[] = [
       { type: 'message_update', message: this.snapshot(), assistantMessageEvent: { type: 'toolcall_start' } },
       {
         type: 'tool_execution_start',
         toolCallId,
         toolName: name,
-        toolType: toolTypeFor(kind, name),
+        ...(toolType ? { toolType } : {}),
         ...(args ? { args } : {}),
         ...(typeof update.title === 'string' ? { intent: update.title } : {}),
         ...(acpToolTarget(update.locations, rawInput) ? { target: acpToolTarget(update.locations, rawInput) } : {}),
       },
     ];
+
+    // Some agents announce a call ONLY once it is finished (`tool_call` with
+    // `status:"completed"` and no later update). Leaving it in the open map
+    // meant the turn's cleanup closed it as an ERROR, overwriting a success.
+    if (status === 'completed' || status === 'failed') {
+      frames.push({
+        type: 'tool_execution_end',
+        toolCallId,
+        toolName: name,
+        result: update.rawOutput ?? (update.content === undefined ? undefined : { content: update.content }),
+        isError: status === 'failed',
+        details: acpToolDetails(update.rawOutput) ?? acpContentDetails(update.content),
+        output: acpToolOutput(update.rawOutput) || acpContentText(update.content),
+      });
+    } else {
+      this.open.set(toolCallId, {
+        id: toolCallId,
+        name,
+        kind,
+        title: typeof update.title === 'string' ? update.title : undefined,
+        status,
+        rawOutput: update.rawOutput,
+        content: update.content,
+        locations: update.locations,
+        startedAt: Date.now(),
+      });
+    }
+    return frames;
   }
 
   /**
@@ -236,10 +273,17 @@ export class AcpFrameMapper {
     if (!existing) return this.openTool(update);
 
     if (update.rawOutput !== undefined) existing.rawOutput = update.rawOutput;
+    if (update.content !== undefined) existing.content = update.content;
     if (update.locations !== undefined) existing.locations = update.locations;
     if (typeof update.title === 'string') existing.title = update.title;
     const status = typeof update.status === 'string' ? (update.status as AcpToolStatus) : existing.status;
     existing.status = status;
+
+    // Some agents report the result as `content` blocks instead of `rawOutput`;
+    // the diff block only becomes visible through the details bridge.
+    const result = existing.rawOutput ?? (existing.content === undefined ? undefined : { content: existing.content });
+    const output = acpToolOutput(existing.rawOutput) || acpContentText(existing.content);
+    const details = acpToolDetails(existing.rawOutput) ?? acpContentDetails(existing.content);
 
     if (status === 'completed' || status === 'failed') {
       const failed = status === 'failed';
@@ -248,11 +292,11 @@ export class AcpFrameMapper {
         type: 'tool_execution_end',
         toolCallId,
         toolName: existing.name,
-        result: existing.rawOutput,
+        result,
         isError: failed,
-        details: acpToolDetails(existing.rawOutput),
+        details,
         durationMs: Math.max(0, Date.now() - existing.startedAt),
-        output: acpToolOutput(existing.rawOutput),
+        output,
       }];
     }
 
@@ -260,11 +304,11 @@ export class AcpFrameMapper {
       type: 'tool_execution_update',
       toolCallId,
       toolName: existing.name,
-      partialResult: existing.rawOutput,
+      partialResult: result,
       // The ACP output shape may nest text (`{type:"content", content:{…}}`),
       // which `toolResultText` does not walk. The flattened read travels with
       // the raw result so the card is not blank while the call is running.
-      output: acpToolOutput(existing.rawOutput),
+      output,
     }];
   }
 

@@ -25,11 +25,20 @@
  * resolver and 404s for an id with no session file — a spawn was attempted.
  */
 
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
 import { buildAgentSnapshot, sendCommand } from '@/server/routes/agent/command';
 import { registerAcpSession } from '@/server/lib/harness/register.server';
 import { claimHarness } from '@/server/lib/harness/registry';
+import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import type { HarnessSession } from '@/server/lib/harness/session';
+
+beforeEach(async () => {
+  await isolateDb();
+});
+
+afterEach(async () => {
+  await releaseDb();
+});
 
 /** Ids that no Kabmo instance manages and no session file backs. */
 const DEAD = 'spawn-guard-dead-session';
@@ -297,18 +306,21 @@ describe('mode commands on a non-omp harness', () => {
     }
   });
 
-  test('goal is refused rather than sent to the model', async () => {
+  test('goal create is owned by Kabmo and sends no prompt when armed', async () => {
     const { recorder, release } = registerModeHarness('mode-goal', ['default', 'plan'], 'default');
     try {
       const response = await postMode('mode-goal', {
         type: 'kabmo_mode',
         scope: 'goal',
         action: 'create',
-        payload: { objective: 'ship it' },
+        payload: { objective: 'ship it', startTurn: false },
       });
-      expect(response.status).toBe(400);
-      expect(((await response.json()) as { error: string }).error).toContain('has no goal mode');
+      expect(response.status).toBe(200);
+      // The record is Kabmo's; the operator's own prompt is the first turn.
       expect(recorder.commands.some((command) => command.type === 'prompt')).toBe(false);
+      const state = (await response.json()) as { success: boolean; data: { goal?: { status?: string } } };
+      expect(state.success).toBe(true);
+      expect(state.data.goal?.status).toBe('active');
     } finally {
       release();
     }

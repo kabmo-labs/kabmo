@@ -69,7 +69,9 @@ export interface AcpCommandHost {
         // prompt goes through (a new chat's first send, a live send, a queue
         // delivery), and the writer fills an EMPTY title only — so a steering
         // message or a follow-up cannot rename the chat to its own text.
-        await notePromptTitle(host.sessionId, message);
+        // Kabmo's goal kickoff/continuation is synthetic: naming the chat after
+        // that boilerplate is worse than leaving the objective's own title.
+        if (command.synthetic !== true) await notePromptTitle(host.sessionId, message);
         return host.startTurn(message, command.images);
       }
 

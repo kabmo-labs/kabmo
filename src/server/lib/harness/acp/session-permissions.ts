@@ -14,6 +14,9 @@
  * failure this module exists to make impossible.
  */
 
+import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
+import type { AcpId } from '@/server/lib/harness/acp/protocol';
+import type { PendingPermissions } from '@/server/lib/harness/acp/permissions';
 import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 import { allowOption, autoApproval, type PermissionOption } from '@/server/lib/harness/acp/permissions';
 
@@ -35,4 +38,37 @@ export function preApprovedOption(
   if (!autoApproval(accessMode, toolCall)) return null;
   const options = Array.isArray(params.options) ? (params.options as PermissionOption[]) : [];
   return allowOption(options);
+}
+
+/** The slice of a session a permission request needs. */
+export interface PermissionRequestHost {
+  readonly sessionId: string;
+  accessMode: ApprovalMode;
+  readonly permissions: PendingPermissions;
+  emit(event: AgentEvent): void;
+}
+
+export type PermissionRequestAnswer =
+  | { answered: true; result: unknown }
+  | { answered: false; deferred: true };
+
+/**
+ * Answer one `session/request_permission`: a tier that already allows it is
+ * selected immediately, otherwise the call is parked and reported as a dialog
+ * whose id IS the JSON-RPC id (the answer arrives later and must name it).
+ */
+export function answerPermissionRequest(
+  host: PermissionRequestHost,
+  id: AcpId,
+  params: Record<string, unknown>,
+): Promise<PermissionRequestAnswer> {
+  const optionId = preApprovedOption(host.accessMode, params);
+  if (optionId) {
+    return Promise.resolve({ answered: true, result: { outcome: { outcome: 'selected', optionId } } });
+  }
+  const dialog = host.permissions.add(id, String(params.sessionId ?? host.sessionId), params);
+  host.emit(dialog as unknown as AgentEvent);
+  // Answered LATER; the transport must not send a refusal now or the agent
+  // sees two answers to one request.
+  return Promise.resolve({ answered: false, deferred: true });
 }

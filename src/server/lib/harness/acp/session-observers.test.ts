@@ -130,6 +130,19 @@ describe('ACP session facts', () => {
     expect(session.capabilities.hasPlan).toBe(true);
   });
 
+  test('folds usage_update into the numbers the context ring reads', () => {
+    const { session } = mountSession();
+    notify(session, { sessionUpdate: 'usage_update', size: 1000, used: 250, cost: { amount: 0.5 } });
+    expect(session.contextUsage).toEqual({ tokens: 250, contextWindow: 1000, percent: 25 });
+    expect(session.totalCost).toBe(0.5);
+    expect(session.webState()).toMatchObject({
+      contextUsage: { tokens: 250, contextWindow: 1000, percent: 25 },
+      totalCost: 0.5,
+      userCount: 0,
+      assistantCount: 0,
+    });
+  });
+
   test('keeps the agent’s own command list and answers `get_commands` with it', async () => {
     const { session } = mountSession();
     notify(session, {

@@ -19,6 +19,7 @@
  */
 
 import { AcpSession } from '@/server/lib/harness/acp/session';
+import { AcpUsageMeter } from '@/server/lib/harness/acp/session-usage';
 import { AcpFrameMapper } from '@/server/lib/harness/acp/frames';
 import { AcpTurns } from '@/server/lib/harness/acp/turn';
 import { PendingPermissions } from '@/server/lib/harness/acp/permissions';
@@ -105,8 +106,13 @@ export function mountSession(): MountedSession {
     permissions: new PendingPermissions(),
     accessMode: 'always-ask',
     capabilities: {},
+    configOptions: [],
     agentCommands: [],
+    planEntries: [],
     messageCount: 0,
+    promptCount: 0,
+    assistantCount: 0,
+    usage: new AcpUsageMeter(),
     runModel: null,
     listeners: new Set<(event: AgentEvent) => void>([(event) => events.push(event)]),
     proc,

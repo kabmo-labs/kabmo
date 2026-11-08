@@ -28,6 +28,10 @@ export interface AcpStateView {
   isStreaming: boolean;
   isPromptRunning: boolean;
   messageCount: number;
+  promptCount: number;
+  assistantCount: number;
+  contextUsage: { tokens: number; contextWindow: number; percent: number } | null;
+  totalCost: number;
   runModel: { provider: string; modelId: string } | null;
   configOptions: AcpConfigOption[];
   harness: HarnessId;
@@ -46,6 +50,10 @@ export function acpWebState(view: AcpStateView): Record<string, unknown> {
     isPromptRunning: view.isPromptRunning,
     isCompacting: false,
     messageCount: view.messageCount,
+    userCount: view.promptCount,
+    assistantCount: view.assistantCount,
+    ...(view.contextUsage ? { contextUsage: view.contextUsage } : {}),
+    totalCost: view.totalCost,
     model: serving ? { id: serving.modelId, provider: serving.provider } : undefined,
     thinkingLevel: typeof thinking?.currentValue === 'string' ? thinking.currentValue : undefined,
     configOptions: view.configOptions,

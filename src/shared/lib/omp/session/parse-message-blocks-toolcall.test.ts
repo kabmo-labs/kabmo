@@ -55,6 +55,14 @@ describe('toToolCallData', () => {
     expect(toToolCallData(parsed, { streaming: false, isError: true }).status).toBe('error');
   });
 
+  test('a transport-supplied type outranks name inference', () => {
+    // ACP `kind:"execute"` with a vendor name (`VendorWidget`) must still draw
+    // the bash panel; inference from that name alone would fall back to custom.
+    const acp: ParsedToolCall = { ...parsed, name: 'VendorWidget', title: 'VendorWidget — ls', toolType: 'bash' };
+    expect(toToolCallData(acp, { streaming: false }).type).toBe('bash');
+    expect(toToolCallData({ ...parsed, name: 'VendorWidget' }, { streaming: false }).type).toBe('custom');
+  });
+
   test('maps identity, type and the parsed detail fields through', () => {
     const data = toToolCallData(parsed, { streaming: false });
     expect(data.id).toBe('c1');
