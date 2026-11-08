@@ -1538,3 +1538,88 @@ so it is absent from omp's own panel too — the generator drops it by design.
 | R55 | `update.auto` + concurrent-install refusal | none needed | Kabmo still runs `omp update` and surfaces its exit code |
 | R56 | ovnfs checkouts replace worktrees | none needed | agent behaviour, no Kabmo reader |
 | R57 | schema + CI pin a release behind | regenerated (438 → 450, 582 → 602 settings) and `OMP_VERSION` 18.16.0 → 18.17.0 | `omp:schema:check` passes; 0/450 rows rejected; generator byte-identical at 18.16.0 first, 450 deterministic at 18.17.0 |
+
+# omp 18.18.1 adoption (2026-11-08)
+
+The installed pin moved **18.17.0 → 18.18.1**, carrying 18.18.0. This one is a
+**settings-identical** release: the schema does not move by a byte, and the only
+code Kabmo changes is a comment. The pin still moves, because the patch carries
+crash fixes in the embedded shell that took whole sessions down.
+
+## Method
+
+- `npm pack @oh-my-pi/pi-coding-agent@18.17.0` and `@18.18.1` into a temp tree,
+  then `diff -rq` over both packages (**120 differing paths**, 74 under `src/`).
+- `rpc-wire.schema.json` compared whole and as a flattened leaf map: **74
+  commands, 298 definitions, 0 removed, 3 added leaves, 1 changed leaf (a doc
+  string)**; all **33 `RpcAgentEvent` variants byte-identical**.
+- The schema generator run against 18.18.1 produces a file **byte-identical to
+  the committed 18.17.0 one** (`10 tabs / 602 settings`, 450 rows), from a clean
+  temp tree as well as in place. `omp config list --json` still answers **602**
+  keys and **0 of 450 rows is rejected**.
+- Slash registry extracted from both trees: **89 specs, 47 TUI-only names**,
+  identical row for row. `builtin-names.ts` and `MODEL_ROLES` identical.
+- Live child probe: the `ready` frame now advertises
+  `supportsBashExcludeFromContext: true`; a real `bash` tool call carries
+  `details.cwd`, `details.trace` and the rest of the 18.17.0 shape.
+
+## Findings
+
+### R58 — the settings surface did not move (no action)
+
+Nothing to regenerate beyond proving it: `textVerbosity`, `edit.mode` and the
+twelve rows 18.17.0 added are unchanged. `spotlight.experiment.holdout`'s
+default moves `0.15 → 0.05` upstream, but that setting carries no `ui` block, so
+neither omp's own panel nor this schema offers it — the generator's rule, not a
+gap.
+
+### R59 — the shell trace is now gated by `display.shellVisualization` (doc only)
+
+18.17.0 emitted `details.trace` regardless of the setting; 18.18.0 omits it —
+from progress frames, results and saved sessions, ACP included — when the row is
+off. The default is still `true`, so the field arrives unless an operator turns
+it off, and Kabmo keeps dropping it at the fan-out and on reload. The module doc
+in `shared/lib/omp/session/shell-trace.ts` said the setting "only gates omp's own
+drawing"; that sentence is now false and was corrected.
+
+### R60 — `cd <dir>; …` is hoisted, and `details.cwd` names where it ran (adopted by the field)
+
+A leading `cd <dir>;` used to run the remainder in the session cwd. It now
+hoists into `<dir>` when that path exists (and is not an internal-scheme URL),
+and the result carries `details.cwd` plus `details.cdSeparator: ';'` for
+renderers that redraw the command. Kabmo's Bash card already read `details.cwd`,
+so the directory now appears beside the command; the command itself is still
+rendered as the model wrote it, so the `cd` is not lost. A panel test pins that
+the new field reaches the line.
+
+### R61 — `bash.excludeFromContext` and its `ready` capability (no action)
+
+The RPC `bash` command accepts `excludeFromContext: true` to keep a run out of
+the model's context like terminal `!!`, and the `ready` frame advertises
+`supportsBashExcludeFromContext`. Kabmo has no first-party caller of that
+command — the terminal panel and the Command Runner spawn their own children —
+so there is nothing to exclude and no capability gate to add. It is recorded
+here so the next reader does not mistake the missing option for an oversight.
+
+### R62 — upstream fixes and internals (no action)
+
+The release's reason to take it: the embedded shell no longer crashes on a bare
+`[` mid-stream, on bytes that are not valid UTF-8, or on a long multi-byte
+assignment, and `grep -e`/`rg -e` accept dash-leading patterns. Also upstream and
+invisible here: the compound-command approval matcher and `file-approval` (they
+change WHEN omp asks; Kabmo renders whatever dialog arrives), the `LANG`/
+`LC_ALL=C.UTF-8` pin for agent commands (it makes tool messages and sort order
+machine-independent), the title path for a prompt with no titleable text (gated
+by `PI_NO_TITLE`, which `rpc-ui` still forces, and Kabmo titles itself),
+`ShellTraceBytes` (no trace reader), prewalk/subagent/MCP/hindsight/browser/LSP
+fixes, and the Rust SDK's `exclude_from_context` fields.
+
+## 18.18.1 outcomes
+
+| # | Finding | Action | Verification |
+|---|---|---|---|
+| R58 | schema identical | none — regenerated to prove it | 450 rows both, byte-identical file; 0/450 rejected; 602 live keys |
+| R59 | trace gated by a setting | module doc corrected; strip unchanged | generator diff + the gating read in `tools/bash.ts` |
+| R60 | hoisted `cd`, `details.cwd` | panel test pins the new field | 5 Bash panel tests pass; the field and the hoist read in `tools/bash.ts`, whose `stamp()` attaches it to the result and every progress frame |
+| R61 | `excludeFromContext` capability | none needed | no non-mock caller of RPC `bash` in `src/` or the plugins |
+| R62 | fixes and internals | none needed | wire 0 removed / 3 additive leaves; name, role and slash tables identical |

@@ -104,3 +104,13 @@ describe('bash panel — a command that printed nothing', () => {
     expect(el.textContent ?? '').toContain('Command executed successfully with no output');
   });
 });
+
+describe('bash panel — the directory the command ran in', () => {
+  test('shows details.cwd, the hoisted directory omp 18.18.0 names', async () => {
+    // `cd <dir>; …` is hoisted into the working directory now, and the result
+    // names it. The card read `details.cwd` before the field existed; this pins
+    // that the new input lands where a reader looks for it.
+    const el = await mount({ wallTimeMs: 9, cwd: '/tmp/hoisted' });
+    expect(el.textContent ?? '').toContain('/tmp/hoisted');
+  });
+});

@@ -6,12 +6,14 @@
 /**
  * omp's embedded-shell trace is not transcript data, so it never enters one.
  *
- * 18.17.0 attaches `details.trace` — the run's `ShellTrace`, `{units, history}`
+ * 18.17.0 attached `details.trace` — the run's `ShellTrace`, `{units, history}`
  * — to EVERY `bash` progress frame and to the final result, whether or not
- * anyone asked for a visualization: the tool wires `onTrace` whenever it has an
- * `onUpdate` callback, and `display.shellVisualization` only gates omp's own
- * drawing. Its `history` repeats the command's output as `Output` records, so
- * the field is roughly a second copy of the result:
+ * anyone asked for a visualization, because the tool wires `onTrace` whenever it
+ * has an `onUpdate` callback. 18.18.0 gates that on `display.shellVisualization`
+ * (default `true`), so the field still arrives unless the operator turns the row
+ * off — Kabmo draws no visualization and reads no field of it either way. Its
+ * `history` repeats the command's output as `Output` records, so the field is
+ * roughly a second copy of the result:
  *
  *   - 40 output lines over 8 s → 192 KB of frames, against 19 KB on 18.16.0;
  *   - 120 lines over 73 s → 242 update frames, 9.2 MB in total;
@@ -19,9 +21,8 @@
  *   - `seq 1 30000` → a 201 KB trace on the result alone (history 201 KB,
  *     `units` 619 B), carried in the session JSONL as well.
  *
- * Kabmo draws no shell visualization and reads no field of it, while the
- * `session:<id>` topic publishes every frame to each open tab and `details`
- * reaches the client's per-session tool-result map. So the trace is dropped
+ * The `session:<id>` topic publishes every frame to each open tab and `details`
+ * reaches the client's per-session tool-result map, so the trace is dropped
  * where a child's frames reach subscribers ({@link stripShellTrace}) and again
  * when a transcript is read back from disk ({@link withoutShellTrace}), because
  * omp writes it into the JSONL itself.

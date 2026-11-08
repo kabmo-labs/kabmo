@@ -239,7 +239,40 @@ fi
 # own subagents). `update.auto` is omp's own updater running beside Kabmo's
 # explicit `omp update`; both stay because neither can see the other's intent,
 # and omp now refuses to update while another update is installing.
-OMP_VERSION="${OMP_VERSION:-18.17.0}"
+#
+# 18.18.1 (2026-11-08), carrying 18.18.0: a release with NO settings move — the
+# generator writes a file BYTE-IDENTICAL to the committed one (10 tabs / 602
+# settings, 450 rows), and `omp config list --json` answers the same 602 keys.
+# `spotlight.experiment.holdout`'s default moves 0.15 → 0.05 upstream, but it
+# carries no `ui` block, so neither omp's panel nor this schema offers it. The
+# RPC wire keeps its 74 commands and 298 definitions and gains three ADDITIVE
+# leaves: `BashParams.excludeFromContext` and `ReadyEvent.
+# supportsBashExcludeFromContext` (a `bash` run can be kept out of model
+# context, like terminal `!!`). `builtin-names.ts`, `MODEL_ROLES` and the
+# 89-spec slash registry (47 TUI-only names) are byte-identical, and every
+# `RpcAgentEvent` variant is unchanged.
+#
+# Two behaviour changes DO reach a Kabmo surface, both adopted here:
+#   - `display.shellVisualization` now GATES the shell trace: with it off, no
+#     `details.trace` is produced or saved, where 18.17.0 emitted it regardless.
+#     The default is still `true`, so the field arrives unless the operator turns
+#     the row off; Kabmo has no visualization and drops it either way
+#     (`shared/lib/omp/session/shell-trace.ts`).
+#   - a leading `cd <dir>; …` is now hoisted into the working directory when
+#     `<dir>` exists, and `details.cwd` NAMES the directory the command actually
+#     ran in. Kabmo's Bash card already reads `details.cwd`, so the hoisted
+#     directory now shows beside the command instead of nothing.
+#
+# Not adopted, deliberately: `excludeFromContext` (Kabmo has no first-party
+# caller of the RPC `bash` command — the terminal panel and the Command Runner
+# spawn their own children — so there is nothing to keep out of the model's
+# context); the reworked compound-command approval matcher and `file-approval`
+# (they change WHEN omp asks, and Kabmo renders whatever dialog arrives); the
+# locale pin (`LANG`/`LC_ALL=C.UTF-8` for agent commands, which makes tool
+# messages and sort order machine-independent); and the embedded-shell crash
+# fixes (`grep -e`, a bare `[`, bytes that are not UTF-8) — those are the reason
+# to take the release, not code to write.
+OMP_VERSION="${OMP_VERSION:-18.18.1}"
 PACKAGE="@oh-my-pi/pi-coding-agent"
 WANTED="omp/${OMP_VERSION}"
 
