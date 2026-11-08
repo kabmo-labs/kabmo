@@ -19,12 +19,13 @@ import { json } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { HARNESS_IDS, harnessDescriptor, type HarnessId } from '@/shared/lib/harness/catalog';
-import { HARNESS_LAUNCH, blockedProbe, probeHarness } from '@/server/lib/harness/launch';
+import { HARNESS_LAUNCH } from '@/server/lib/harness/launch';
 import type { HarnessProbe } from '@/server/lib/harness/capabilities';
 import { forgetProbe, loadProbes, rememberProbe } from '@/server/lib/harness/probe-cache.server';
 import { loadDisabledHarnesses, saveHarnessEnabled } from '@/server/lib/harness/enabled.server';
 import { harnessEnabled } from '@/shared/lib/harness/enabled';
-import { launchFromConfig, loadHarnessConfig, probeInvalidatedBy, resolveLaunch, saveHarnessConfig } from '@/server/lib/harness/config.server';
+import { commandAvailable, probeWithConfig } from '@/server/lib/harness/auto-probe.server';
+import { loadHarnessConfig, probeInvalidatedBy, saveHarnessConfig } from '@/server/lib/harness/config.server';
 import { importableProvidersFor, readRegistryProviders } from '@/server/lib/harness/provider-sources.server';
 import { addProviderAction, importProviderAction, importSourceOf, isImportBody } from '@/server/routes/harness/import-action';
 import { supportedProtocols } from '@/shared/lib/harness/dialects';
@@ -36,7 +37,6 @@ import {
 import { providerFacts } from '@/shared/lib/harness/provider-facts';
 import type { HarnessProviderSupport } from '@/shared/types/harness';
 import { parseHarnessConfig, type HarnessConfig } from '@/shared/lib/harness/config';
-import { resolveOmpBin } from '@/server/lib/omp/core/cli';
 
 /**
  * The probe cache lives in `probe-cache.server.ts`: the SPAWN reads it too, to
@@ -59,33 +59,6 @@ export interface HarnessSummary {
   probe: HarnessProbe | null;
   /** Why it cannot run, without probing: the launch command is missing. */
   unavailable?: string;
-}
-
-/**
- * Is a launch command first-token resolvable? The omp binary has its own
- * resolver (KABMO_OMP_BIN, then PATH) and is never "missing" through PATH alone.
- *
- * The USER's command override decides this, not the build's table: a harness
- * whose binary lives behind a wrapper, a container (`docker run … agy acp`) or an
- * absolute path read as "not installed" and could not even be switched on, while
- * a spawn of that same configured command worked.
- */
-function commandAvailable(id: HarnessId, config?: HarnessConfig): boolean {
-  if (id === 'omp-acp') return Boolean(resolveOmpBin());
-  let command = HARNESS_LAUNCH[id]?.command;
-  if (config) {
-    try {
-      const configured = launchFromConfig(id, config);
-      if (configured?.command.length) command = configured.command;
-    } catch {
-      // An unusable env line is reported by the probe; availability falls back
-      // to the build's table rather than claiming "not installed".
-    }
-  }
-  const [binary] = command ?? [];
-  if (!binary) return false;
-  if (binary === 'npx') return Boolean(Bun.which('npx') ?? Bun.which('node'));
-  return Boolean(Bun.which(binary));
 }
 
 export async function listHarnesses(): Promise<HarnessSummary[]> {
@@ -124,24 +97,6 @@ export async function listHarnesses(): Promise<HarnessSummary[]> {
       ...(available ? {} : { unavailable: `\`${launch?.command[0] ?? id}\` is not installed` }),
     };
   });
-}
-
-/**
- * Probe a harness the way a SPAWN would launch it: the user's command and env
- * override are part of what is being measured.
- *
- * Without this, a harness that only works with its configured env — `CODEX_HOME`,
- * a provider base URL, a wrapper that logs in — probed as "Authentication
- * required" in Settings while its chats ran fine. A launch line that cannot even
- * be resolved (an invalid env line) answers a `blocked` record instead of a 500.
- */
-async function probeWithConfig(id: HarnessId, cwd: string): Promise<HarnessProbe> {
-  try {
-    const configured = await loadHarnessConfig(id);
-    return await probeHarness(id, cwd, resolveLaunch(id, configured));
-  } catch (cause) {
-    return blockedProbe(id, cause instanceof Error ? cause.message : String(cause));
-  }
 }
 
 export async function loader({ request }: LoaderFunctionArgs) {

@@ -19,6 +19,7 @@
  */
 
 import { getDb } from '@/server/db.server';
+import { startHarnessAutoProbe } from '@/server/lib/harness/auto-probe.server';
 import { compactChatOverlayRows } from '@/server/lib/db/compact-chat-overlay';
 import { packageDir } from '@/server/lib/fs/package-root';
 import { isTrayEnabledByArgv } from '@/server/lib/lifecycle/argv-flags';
@@ -65,6 +66,12 @@ export async function runAfterListenTasks(target: AfterListenTarget): Promise<vo
 
   // A full collection past the ceiling, never a schedule (`lifecycle/memory.ts`).
   installMemoryMaintenance();
+
+  // The harness probes for the agents this install keeps ON. Deliberately LAST
+  // and never awaited: a probe spawns an agent that may take a minute, and the
+  // listener is already serving tabs and chats. The pass is per PROCESS, so a
+  // `bun --hot` reload does not start every agent again — see the module header.
+  startHarnessAutoProbe();
 }
 
 /**
