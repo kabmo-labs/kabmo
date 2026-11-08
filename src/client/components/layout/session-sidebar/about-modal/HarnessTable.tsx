@@ -66,6 +66,11 @@ function StateMark({ state }: { state: HarnessState }) {
  *  - the VERSION column held `7.5rem` (120px), which clipped the widest thing
  *    it ever holds — an adapter's `adapter 0.100.0 → 0.101.0` line, measured at
  *    151px in this face. It is `9.5rem` (152px), the content's own width.
+ *  - on a PHONE it is `7rem`: the About card is 512px at most, and the 152px
+ *    track left the agent's own name ~130px, so `command-code` and
+ *    `deepseek-harness` were the cells that truncated while the name is the one
+ *    thing a reader is scanning for. The version line ellipsizes instead, and
+ *    carries its full text in `title`.
  *
  * It stays a FIXED track rather than `auto`: every row is its own grid, so an
  * `auto` track is measured per row and the version numbers stop lining up in a
@@ -80,7 +85,7 @@ function StateMark({ state }: { state: HarnessState }) {
  * `adapter …` line under it), and centering measured the number 7.5px BELOW the
  * name it belongs to. Top-aligned, line one of every cell shares one baseline.
  */
-const COLUMNS = 'grid grid-cols-[minmax(0,1fr)_9.5rem_1.75rem] items-start gap-x-2';
+const COLUMNS = 'grid grid-cols-[minmax(0,1fr)_7rem_1.75rem] items-start gap-x-2 md:grid-cols-[minmax(0,1fr)_9.5rem_1.75rem]';
 
 export function HarnessTable({
   harnesses, versions, loading = false, onOpenHarness, onUpdate, updating,
@@ -136,10 +141,12 @@ export function HarnessTable({
           ))}
         </div>
       ) : (
-        // On a PHONE the list scrolls inside the card; on a desktop the card grows
-        // to fit it, because a dialog that scrolls fourteen rows is hiding
-        // information it has the room to show.
-        <div className="grid max-h-[46vh] grid-cols-1 gap-x-6 overflow-y-auto scrollbar-overlay-container md:max-h-none md:grid-cols-2 md:overflow-visible">
+        // ONE list, no scroll cap of its own. It used to be `max-h-[46vh]
+        // overflow-y-auto` on a phone, which scroll-trapped fourteen rows inside
+        // a card that had most of the screen empty below them — two nested
+        // scrollers, and the inner one had no reason to exist. The About panel's
+        // own body is the single scroller now, so the list simply grows.
+        <div data-harness-rows="" className="grid grid-cols-1 gap-x-6 md:grid-cols-2">
           {entries.map((entry) => {
             const status = harnessStatus(entry);
             const version = byId.get(entry.id);

@@ -98,8 +98,11 @@ export function mountHarnessTable(
   return container;
 }
 
-/** The rows, which are the direct children of the scrolling grid. */
+/** The rows, which are the direct children of the grid that draws them. */
 export function harnessRows(el: HTMLElement): HTMLElement[] {
-  const scroll = el.querySelector('.scrollbar-overlay-container');
-  return scroll ? Array.from(scroll.children) as HTMLElement[] : [];
+  // `data-harness-rows`, not the grid's scrollbar class: the list stopped being
+  // the scroller (the About card's body is), and a selector tied to a scrolling
+  // affordance silently returned no rows once it did.
+  const grid = el.querySelector('[data-harness-rows]');
+  return grid ? Array.from(grid.children) as HTMLElement[] : [];
 }

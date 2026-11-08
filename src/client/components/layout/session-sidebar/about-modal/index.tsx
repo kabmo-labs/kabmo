@@ -15,6 +15,8 @@ import { useHarnessVersions } from '@/client/hooks/models/use-harness-versions';
 import { useDialogBehaviour } from '@/client/hooks/ui/dialog-behaviour';
 import { UPDATE_POPUP_OPEN_EVENT } from '@/shared/lib/updates/popup-state';
 import type { UpdateTarget } from '@/shared/types/updates';
+import { MAX_WIDTH as CARD_MAX_WIDTH } from '@/client/components/workspace/model-dropdown/popover-metrics';
+import { safeAreaPadding } from '@/shared/lib/ui/safe-area';
 
 export interface AboutModalProps {
   isOpen: boolean;
@@ -89,15 +91,20 @@ export function AboutModal({ isOpen, onClose, updates, onToast }: AboutModalProp
   // closed, and was invisible.
   return createPortal(
     <>
-      {/* PHONE: the whole screen, one column, and it scrolls. DESKTOP: a wide
-          two-column card sized to its CONTENT, so nothing scrolls at all.
+      {/* ONE centered card at both sizes, sized like the composer's model
+          picker: the phone gets its own width cap (the popover's 512px) instead
+          of the whole screen, and the card is as TALL as its content up to the
+          space the safe area leaves — so nothing hides under the status bar or
+          the home indicator, and a short card never asks for a scroll.
 
-          The two are one dialog with two frames, chosen by `md`: a 390px phone has
-          no room for a table beside a sidebar, and a desktop card that needs a
-          scrollbar to show fourteen rows is hiding information it has the space
-          to show. */}
+          Full-bleed on a phone was the bug: `h-full w-full` with no gutters put
+          the header at the viewport's top edge, which a `viewport-fit: cover`
+          surface draws UNDER the phone's status bar. The scrim's padding is
+          `safeAreaPadding` — one rule, shared with the `Modal` shell. The
+          desktop keeps its FIXED 880px two-column card. */}
       <div
-        className="fixed inset-0 modal-scrim z-50 flex items-stretch justify-center p-0 md:items-center md:backdrop-blur-[2px] md:p-6 animate-in fade-in duration-200"
+        className="fixed inset-0 modal-scrim z-50 flex items-center justify-center md:backdrop-blur-[2px] animate-in fade-in duration-200"
+        style={safeAreaPadding()}
         onClick={onClose}
       >
         <div
@@ -110,7 +117,12 @@ export function AboutModal({ isOpen, onClose, updates, onToast }: AboutModalProp
           // when auto, so narrowing any one column shrank the whole dialog
           // (measured when the action column went to an icon). 880px is what the
           // two-column table needs with room for the widest agent name.
-          className="glass-overlay relative flex h-full w-full flex-col overflow-hidden border-ink/15 bg-paper text-ink md:h-auto md:max-h-[92vh] md:w-[880px] md:max-w-[calc(100vw-3rem)] md:rounded-2xl md:border md:shadow-2xl select-none"
+          //
+          // The phone cap is the MODEL PICKER's own width (`MAX_WIDTH`), so the
+          // console's two floating cards are one size class; `min(…, 100%)` keeps
+          // a 320px phone from overflowing the backdrop padding.
+          className="glass-overlay relative flex max-h-full w-full max-w-[var(--about-card-max)] flex-col overflow-hidden rounded-2xl border border-ink/15 bg-paper text-ink shadow-2xl select-none md:w-[880px] md:max-w-[calc(100vw-3rem)] md:max-h-[92vh]"
+          style={{ '--about-card-max': `min(${CARD_MAX_WIDTH}px, 100%)` }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Close Button */}
@@ -122,9 +134,13 @@ export function AboutModal({ isOpen, onClose, updates, onToast }: AboutModalProp
             <X size={18} className="stroke-[2.5]" />
           </button>
 
-          {/* ONE scroller, on the phone only. On a desktop the card sizes itself
-              to the content instead of asking the reader to scroll a dialog. */}
-          <div className="scrollbar-overlay-container flex-1 overflow-y-auto p-5 md:flex-none md:overflow-visible md:p-6">
+          {/* ONE scroller for the WHOLE card, at both sizes: the harness table
+              used to cap itself at `46vh` and scroll on a phone while the card
+              still had most of the screen empty below it. The body is the only
+              place a scroll can happen now, and only when the content genuinely
+              outgrows the card. On a desktop the card sizes itself to the content
+              instead of asking the reader to scroll a dialog. */}
+          <div className="min-h-0 flex-1 scrollbar-overlay-container overflow-y-auto p-5 md:flex-none md:overflow-visible md:p-6">
             <header className="flex items-center gap-3 pr-10">
               <img src="/icon.svg" alt="Kabmo" width={44} height={44} draggable={false} />
               <div className="min-w-0">

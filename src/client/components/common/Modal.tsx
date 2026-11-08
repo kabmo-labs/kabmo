@@ -2,6 +2,7 @@ import { useId, useRef } from 'preact/hooks';
 import type { FormEvent, ReactNode } from 'preact/compat';
 import { X } from 'lucide-preact';
 import { useDialogBehaviour } from '@/client/hooks/ui/dialog-behaviour';
+import { safeAreaPadding } from '@/shared/lib/ui/safe-area';
 
 export interface ModalProps {
   /** Backdrop click / close-button handler. */
@@ -60,12 +61,7 @@ export function Modal({
   return (
     <div
       className={`fixed inset-0 modal-scrim backdrop-blur-[2px] ${zClass} flex items-center justify-center p-4`}
-      style={{
-        paddingTop: 'max(1rem, env(safe-area-inset-top, 0px))',
-        paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))',
-        paddingLeft: 'max(1rem, env(safe-area-inset-left, 0px))',
-        paddingRight: 'max(1rem, env(safe-area-inset-right, 0px))',
-      }}
+      style={safeAreaPadding(1)}
       onClick={onClose}
     >
       {/* `role="dialog"` + `aria-modal`: every modal built on this shell (the
