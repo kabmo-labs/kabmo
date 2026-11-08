@@ -8,15 +8,15 @@
  * per-session UI-state blob, and the follow-up queue's per-item mutations.
  *
  * Every case is a refusal or a boundary whose wrong answer would be silent: a
- * `.` session id must be a 404 before any path join (the delete route's own
- * blast-radius guard, reused here), a blank or over-long rename must be a 400
- * with its code rather than a truncated write, and a queue mutation must return
- * the canonical queue instead of trusting a client's full-list replacement.
+ * `.` session id must be a 404 before any path join, a blank or over-long
+ * rename must be a 400 with its code rather than a truncated write, and a queue
+ * mutation must return the canonical queue instead of trusting a client's
+ * full-list replacement.
  *
  * The routes are called directly, as the other route tests do. The database is
- * a temp SQLite file (never the developer's) and `PI_CODING_AGENT_DIR` a temp
- * tree holding one real session file, so the id resolver is exercised for real
- * while nothing outside `/tmp` is read.
+ * a temp SQLite file and `PI_CODING_AGENT_DIR` a temp tree holding one real
+ * session file, so the id resolver is exercised for real while nothing outside
+ * `/tmp` is read.
  */
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
@@ -43,13 +43,12 @@ import {
 
 // `tmpdir()`, not `/tmp`: there is no `/tmp` on Windows, so the literal
 // resolved against the current drive and the tree was never where the suite
-// (or the delete) looked for it.
+// (or the delete) looked.
 const ROOT = path.join(os.tmpdir(), `omc-sessions-routes-${process.pid}`);
 const AGENT = path.join(ROOT, 'agent');
 const SESSION_ID = '11111111-2222-3333-4444-555555555555';
 const UNKNOWN = '00000000-0000-0000-0000-000000000000';
-/** A live session whose JSONL does not exist yet — the window omp creates on
- *  every new chat, before its first assistant message. */
+/** A live session whose JSONL does not exist yet — the window omp creates on every new chat. */
 const NO_FILE_LIVE = '99999999-8888-7777-6666-555555555555';
 
 let db: DbClient;
@@ -69,9 +68,8 @@ beforeAll(async () => {
     path.join(project, `${SESSION_ID}.jsonl`),
     [
       // A session header needs its `timestamp`: `scanSessionInfo` derives
-      // `created` from it and `toOmpSession` calls `toISOString()`, so a
-      // header without one takes the whole sidebar down with
-      // `RangeError: Invalid Date`.
+      // `created` from it and `toOmpSession` calls `toISOString()`, so a header
+      // without one takes the sidebar down with `RangeError: Invalid Date`.
       JSON.stringify({ type: 'session', id: SESSION_ID, cwd: '/tmp', timestamp: '2026-09-30T10:00:00.000Z' }),
       JSON.stringify({ type: 'custom', customType: 'chamber-plan-state', data: { enabled: true } }),
       '',

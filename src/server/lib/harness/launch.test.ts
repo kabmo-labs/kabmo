@@ -15,6 +15,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
+import { join } from 'node:path';
 import { blockedProbe, capabilitiesFrom, configByCategory, probeHarness, selectValues, sessionLaunchCommand } from '@/server/lib/harness/launch';
 import type { AcpInitializeResult, AcpConfigOption } from '@/server/lib/harness/acp/protocol';
 
@@ -130,7 +131,10 @@ describe('sessionLaunchCommand', () => {
     expect(argv.slice(0, 2)).toEqual(['omp', 'acp']);
     expect(argv).toContain('-e');
     const entry = argv[argv.indexOf('-e') + 1] ?? '';
-    expect(entry.endsWith('/extensions/kabmo-modes/index.ts')).toBe(true);
+    // `join`, not a literal slash: the entry is a real path from this host, so
+    // on Windows it ends `\extensions\kabmo-modes\index.ts` — measured on the
+    // Windows gate, where this case alone failed on a correct argv.
+    expect(entry.endsWith(join('extensions', 'kabmo-modes', 'index.ts'))).toBe(true);
   });
 
   test('a user command override still gets the extension appended', () => {

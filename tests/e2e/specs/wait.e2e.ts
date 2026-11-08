@@ -109,7 +109,7 @@ test.describe('wait card', () => {
     workspace.dispose();
   });
 
-  test('reports the 30-minute cap when it fires, not “no jobs”', async ({ harness, page }) => {
+  test('reports the idle window omp gave up after, not “no jobs”', async ({ harness, page }) => {
     const server = await harness('real');
     const workspace = await seedWorkspace(server, 'e2e-wait-cap');
 
@@ -120,21 +120,25 @@ test.describe('wait card', () => {
     await input.fill('waitcap hold the turn open');
     await input.press('Enter');
 
-    // omp's cap answers `{op:'wait', jobs:[]}` — the same shape a service wake
-    // returns — and only its prose distinguishes them. Reporting it as "no jobs"
-    // would say the call found nothing rather than that it ran out of time.
+    // omp answers `{op:'wait', jobs:[]}` for an idle return — the same shape a
+    // service wake returns — and only its prose distinguishes them. Reporting it
+    // as "no jobs" would say the call found nothing rather than that its window
+    // elapsed. omp 18.17.0 removed the 30-minute cap this case used to assert
+    // (`WAIT_MAX_MS`, and the "Wait limit reached" sentence with it), so the
+    // fixture now sends the ladder's own wording.
     const card = page.getByRole('button', { name: /Wait/ }).first();
     await expect(card).toBeVisible({ timeout: 30_000 });
     await expect(card).toContainText('Done', { timeout: 30_000 });
-    // Expanded: the panel's own badge names the outcome, and the prose omp wrote
-    // is kept — it is the only record of why the call returned with no job.
-    await expect(page.getByText('limit reached').first()).toBeVisible();
-    await expect(page.getByText('Wait limit reached; background work may still be running.')).toBeVisible();
+    // Expanded: the prose omp wrote is kept — it is the only record of why the
+    // call returned with no job.
+    await expect(page.getByText('No reply within 5.0s.').first()).toBeVisible();
+    await expect(page.getByText('idle 15s total').first()).toBeVisible();
     // Collapsed: the meta line carries the same claim as a chip (every card
     // hides that line while expanded, because the body already says it).
     await card.click();
     await expect(card).toHaveAttribute('aria-expanded', 'false');
-    await expect(card).toContainText('30m limit reached');
+    await expect(card).toContainText('idle 15s total');
+    await expect(card).not.toContainText('no jobs');
 
     workspace.dispose();
   });

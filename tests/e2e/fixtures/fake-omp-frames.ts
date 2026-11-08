@@ -271,7 +271,14 @@ export function createFrameWriters({ write, persist }: FrameWriterDeps) {
       toolCallId: callId,
       toolName: 'wait',
       result: {
-        content: [{ type: 'text', text: 'Wait limit reached; background work may still be running. Read proc:// for status.' }],
+        // omp 18.17.0's own wording: `WAIT_MAX_MS` and the "Wait limit reached"
+        // answer are gone, and a blocking wait reports the WINDOW it gave up
+        // after instead. The card parses these two sentences; the pre-18.17
+        // text matched neither and fell through to "no jobs".
+        content: [{
+          type: 'text',
+          text: 'No reply within 5.0s.\n\n<system-notice>Nothing new after 15.0s of back-to-back waits.</system-notice>',
+        }],
         details: { op: 'wait', jobs: [] },
       },
       isError: false,

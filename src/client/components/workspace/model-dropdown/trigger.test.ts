@@ -146,8 +146,19 @@ describe('trigger mark for a provider whose own icon was fetched', () => {
       act(() => {
         render(h(ModelDropdown, { selectedModel: { id: MODEL.id, name: MODEL.name, provider: MODEL.provider } }), container);
       });
-      await new Promise((resolve) => setTimeout(resolve, 50));
-      const image = container.querySelector('button[title] img') as HTMLImageElement | null;
+      // Drive the catalog fetch to completion by FLUSHING, not by waiting. The
+      // trigger starts with initials and swaps in the logo once the fetch's
+      // promise chain settles, and that chain is microtasks only — the stub
+      // answers an already-resolved `Response`. A fixed sleep was a guess about
+      // one round trip plus a re-render, measured on the Ubuntu gate as
+      // `Received: null` while the same file passed locally eight runs running.
+      const findImage = (): HTMLImageElement | null => container.querySelector('button[title] img');
+      for (let i = 0; i < 50 && !findImage(); i += 1) {
+        await act(async () => {
+          for (let tick = 0; tick < 8; tick += 1) await Promise.resolve();
+        });
+      }
+      const image = findImage();
       expect(image).not.toBeNull();
       expect(image?.getAttribute('src')).toContain('/api/provider-icon');
     } finally {

@@ -25,6 +25,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { customProviderIds, isVendorProviderId } from '@/shared/lib/models/provider/vendors';
+import { restoreEnv } from '@/test-support/env';
 import { importableProvidersFor, readRegistryProviders } from '@/server/lib/harness/provider-sources.server';
 import { providerEnv } from '@/shared/lib/harness/providers';
 import { EMPTY_HARNESS_CONFIG, parseEnvLines, withEnvValues } from '@/shared/lib/harness/config';
@@ -58,7 +59,7 @@ beforeAll(async () => {
 });
 
 afterAll(() => {
-  Bun.env.HOME = savedHome;
+  restoreEnv('HOME', savedHome);
   rmSync(root, { recursive: true, force: true });
 });
 

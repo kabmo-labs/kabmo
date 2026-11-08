@@ -69,6 +69,12 @@ describe('harness version rows', () => {
 
   test('a self-updating harness has no registry number, only its command', async () => {
     const opencode = await row('opencode');
+    // `kind` is reported only for a harness this machine can launch (`toRow`
+    // nulls it otherwise), and `opencode` is not installed on a clean runner —
+    // measured on both CI gates, where this case alone failed with
+    // `Expected: "self", Received: null` while the same file passed locally.
+    // The other cases here guard the same way; this one did not.
+    if (!opencode.installed) return;
     expect(opencode.kind).toBe('self');
     expect(opencode.agent.latest).toBeNull();
     expect(opencode.command).toBe('opencode upgrade');

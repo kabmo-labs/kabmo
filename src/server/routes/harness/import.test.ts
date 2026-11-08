@@ -26,6 +26,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
+import { restoreEnv } from '@/test-support/env';
 import { action, loader } from '@/server/routes/harness/root';
 import { loadHarnessConfig } from '@/server/lib/harness/config.server';
 
@@ -101,7 +102,7 @@ afterEach(async () => {
 });
 
 afterAll(() => {
-  Bun.env.HOME = savedHome;
+  restoreEnv('HOME', savedHome);
   delete Bun.env.KABMO_TEST_HOME;
   fs.rmSync(ROOT, { recursive: true, force: true });
 });

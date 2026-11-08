@@ -15,11 +15,12 @@
  * defect, and a timer would have turned a missing frame into a flake.
  */
 
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterEach, expect, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { AcpProcess } from '@/server/lib/harness/acp/client';
+import { describePosix } from '@/test-support/platform';
 
 const launched: AcpProcess[] = [];
 const scratch: string[] = [];
@@ -55,7 +56,11 @@ afterEach(async () => {
   await Promise.all(scratch.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
 });
 
-describe('ACP cancel', () => {
+// POSIX only: the transport below is a real `/bin/sh` echo loop, and Windows
+// has no `/bin/sh` — the suite died at `new AcpProcess` with
+// `ENOENT: uv_spawn '/bin/sh'` on the Windows gate. A Windows-shaped echo child
+// would be a different program asserting the same frames.
+describePosix('ACP cancel', () => {
   test('writes session/cancel for the session it was given', async () => {
     const { proc, seen } = await mountProcess();
     const echoed = seen('session/cancel');

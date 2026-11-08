@@ -33,6 +33,7 @@ import { join } from 'node:path';
 import { providerEntryFor, ProviderWriteError, writeProvider } from '@/server/lib/harness/provider-write.server';
 import { registryFilePath } from '@/server/lib/harness/provider-sources.server';
 import { removeDir } from '@/test-support/remove-dir';
+import { testPosix } from '@/test-support/platform';
 
 const savedHome = Bun.env.HOME;
 let root = '';
@@ -294,7 +295,12 @@ describe('refusals', () => {
     }
   });
 
-  test('the file is written 0600: it holds a credential', async () => {
+  // POSIX only: Windows has no permission bits, and `statSync().mode` there
+  // reports a synthesised 0o666 for every file — measured on the Windows gate as
+  // `Expected: 384, Received: 438` (0o600 vs 0o666) for a write that had set the
+  // mode correctly on the host. `chmod` is a no-op there, so there is nothing to
+  // assert; the POSIX legs keep this case.
+  testPosix('the file is written 0600: it holds a credential', async () => {
     await writeProvider('opencode', DRAFT);
     const mode = (await fs.promises.stat(join(root, '.config/opencode/opencode.json'))).mode & 0o777;
     expect(mode).toBe(0o600);
