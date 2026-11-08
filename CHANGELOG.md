@@ -4,6 +4,50 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.23.0](https://github.com/kabmo-labs/kabmo/compare/v0.22.0...v0.23.0) — 2026-11-08
+
+### Added
+
+* **browser:** move overflowing toolbar controls into a ⋯ menu and keep the address bar ([dd9575a](https://github.com/kabmo-labs/kabmo/commit/dd9575a39cc94c962acf3c87d74e01980513e1ee)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **composer:** paint Stop red and Send blue, both on the solved signal token ([c2b7602](https://github.com/kabmo-labs/kabmo/commit/c2b76022909bce4f6a8623d56e41387529aac7eb)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** add and import custom providers into each agent's own registry ([bccb002](https://github.com/kabmo-labs/kabmo/commit/bccb002b7d402a057e1a7edd072e9d49a7711c7d)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** add zcode over its ACP bridge ([3e80b38](https://github.com/kabmo-labs/kabmo/commit/3e80b384c9b3f848cde841ccb8f756ff9d29a661)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** answer the slash picker with the agent's own commands ([e77ffb7](https://github.com/kabmo-labs/kabmo/commit/e77ffb725bb089fa60556928d5a071d7e060e31b)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** bring ACP composer and tool surfaces to omp RPC parity ([c76247f](https://github.com/kabmo-labs/kabmo/commit/c76247fc14ea3c645f73202bbc8b20792077784d)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** draw only the configuration fields an agent actually reads ([8cdc1ef](https://github.com/kabmo-labs/kabmo/commit/8cdc1ef8dcd2080cf6f028f1a8c0de24dcd70192)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** make the roster switchable and the agent's mark the tab ([575f0d5](https://github.com/kabmo-labs/kabmo/commit/575f0d5c210dc53c043b995c8438c78610a0bdd1)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** name a chat that has no session file, and let it resume ([a506e4f](https://github.com/kabmo-labs/kabmo/commit/a506e4f1f6a1b154d94a69690dfaba54c5064679)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** run ACP goals on their own harness and bridge panel data ([795d7aa](https://github.com/kabmo-labs/kabmo/commit/795d7aaf00f0593924c2fe7ed33ae18695f78b3b)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** run chats on any ACP agent, with per-harness settings ([687c5ad](https://github.com/kabmo-labs/kabmo/commit/687c5adf1f471e8ce5a4b7f17acbdad883376437)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **settings:** filter long model lists with a searchable select ([c2c4c66](https://github.com/kabmo-labs/kabmo/commit/c2c4c6641a0f0c7a0e9b88339e31b9aefba15f24)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Changed
+
+* order the plan pages as numbered milestones with an enforced index ([d98b25e](https://github.com/kabmo-labs/kabmo/commit/d98b25e8aefd5767278c6b87ba3c7d572c44e050)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **agent:** answer Plan/Goal on harnesses without the omp extension ([08bdd8a](https://github.com/kabmo-labs/kabmo/commit/08bdd8aeeb84c5fce419ba73fb6ded1eb14c4276)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **chat:** offer only the mode toggles the chat's harness can honour ([4786404](https://github.com/kabmo-labs/kabmo/commit/4786404b8a9e66be33d5f4c67b156f9bdc9d7131)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **chat:** restore the generating indicator's spun mark ([471cff8](https://github.com/kabmo-labs/kabmo/commit/471cff891e0702c4f42a6e97256134eb59e2c9b5)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** answer a failed probe instead of a 500 ([9657e4d](https://github.com/kabmo-labs/kabmo/commit/9657e4dd076901f48d465bbf36119d307332211f)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** deliver queued follow-ups and honour the composer on ACP ([9587dd4](https://github.com/kabmo-labs/kabmo/commit/9587dd4d95d1556c9d342ad97f6ce7cc912a8dbe)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** let the configured command decide availability ([98d6643](https://github.com/kabmo-labs/kabmo/commit/98d66437a49369c44745a413b878e24dd80614a1)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** move only the stale half of an adapter and name the update with a download icon ([882421e](https://github.com/kabmo-labs/kabmo/commit/882421e7b330c3d8d877637b0c49fdb7e108ea3b)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** probe with the user's launch line and explain exits ([8bca208](https://github.com/kabmo-labs/kabmo/commit/8bca208e488a0f0d48414481528671028aa62119)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** report a silent ACP turn and normalise array-shaped models ([f26952f](https://github.com/kabmo-labs/kabmo/commit/f26952f0bc7fedaa79b315c0d5f1045679c3216b)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** write the durable run marker for ACP turns ([2c94178](https://github.com/kabmo-labs/kabmo/commit/2c941782f270408d4b4462225a7f53bcc6acc6eb)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **icons:** solve the light tone per paper bucket, brightest-first ([587743d](https://github.com/kabmo-labs/kabmo/commit/587743df4b7eb605c85c2c1c424487155f6f40f2)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **navbar:** make the context ring visible on every palette ([53989e9](https://github.com/kabmo-labs/kabmo/commit/53989e93d899d0d3fc12d0710d123c7ea3d1ff85)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **navbar:** step the context ring track back while an arc is drawn ([d005843](https://github.com/kabmo-labs/kabmo/commit/d00584321dc5a5570ed1d69b29babb159a1e0f12)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **omp:** adopt 18.17.0's wait windows, message list and shell trace ([428a776](https://github.com/kabmo-labs/kabmo/commit/428a776bbfd05880ce67c8357e7b35ea488108fa)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **omp:** invalidate the cached binary path when the override changes ([99ece48](https://github.com/kabmo-labs/kabmo/commit/99ece486276bdbc3e3cb4bd75ad42433583a1d4c)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **omp:** pin 18.18.1 for its shell crash fixes and cd-aware cwd ([66d27db](https://github.com/kabmo-labs/kabmo/commit/66d27db01d52bd5ababaa9c41cc9343e7e94f742)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **realtime:** keep signal pushes alive across a hot reload ([b66d924](https://github.com/kabmo-labs/kabmo/commit/b66d92482282742a481e49299dbee7c1d4fe1994)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **stats:** name an omp acp child as its own session ([2ac9857](https://github.com/kabmo-labs/kabmo/commit/2ac9857df283dd14a152e1447957ffa37dd01e18)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **toasts:** one queue, one host, and a duration sized to the message ([a4c7fbc](https://github.com/kabmo-labs/kabmo/commit/a4c7fbc82f8e76863dbfee22083040f6e83f2546)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **ui:** space the navbar's controls like the sidebar toolbar's ([e7008f4](https://github.com/kabmo-labs/kabmo/commit/e7008f4c342cb6fa4b99e9aff589ccd7dce61b29)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.22.0](https://github.com/kabmo-labs/kabmo/compare/v0.21.1...v0.22.0) — 2026-11-05
 
 ### Added
