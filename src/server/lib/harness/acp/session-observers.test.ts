@@ -53,6 +53,15 @@ describe('ACP silent turn', () => {
     expect(error).toMatchObject({ errorMessage: 'The agent ended the turn without sending an answer' });
   });
 
+  test('a whitespace-only chunk is the same silent failure', async () => {
+    // The row renders no text, so a frame that carries only spaces looks exactly
+    // like an empty bubble — reporting it is the only way the operator learns
+    // the turn failed.
+    const events = await finishWith('Say DUMMY_OK', '   \n ');
+    const error = events.find((event) => event.type === 'prompt_error');
+    expect(error).toMatchObject({ errorMessage: 'The agent ended the turn without sending an answer' });
+  });
+
   test('an answered turn reports no error', async () => {
     const events = await finishWith('Say DUMMY_OK', 'DUMMY_OK');
     expect(events.some((event) => event.type === 'prompt_error')).toBe(false);

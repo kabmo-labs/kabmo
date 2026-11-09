@@ -23,6 +23,7 @@ import {
   queueStreamingUpdate,
 } from '@/shared/lib/chat/timeline/stream-coalescer';
 import { appendNoticeRow } from '@/shared/lib/chat/timeline/command-output';
+import { reportPromptError } from '@/shared/lib/chat/timeline/prompt-error';
 import { retryNotice } from '@/shared/lib/chat/timeline/provider-retry';
 import { handleAgentStart, handleResumeStream, handleTurnStart } from '@/shared/lib/chat/timeline/run-signals';
 import { isAnswerableUiRequest } from '@/shared/lib/omp/dialog-methods';
@@ -271,8 +272,13 @@ export function createOmpAgentCallbacks(deps: OmpAgentCallbacksDeps): OmpAgentCa
       if (sid) setTimeout(() => refreshSessionMeta(sid), 150);
     },
     onPromptError: (errorMessage) => {
+      // Drop queued stream updates first: any frame from the failed run that
+      // has not been folded yet would resurrect partial content beside the row
+      // this error is about to mark.
+      disposeStreamingCoalescer();
       setGenerating(false);
       abortControllerRef.current = null;
+      reportPromptError(errorMessage, deps);
       console.error('OMP prompt error:', errorMessage);
     },
     // The prompt ran a built-in slash command (omp answered on the command
@@ -312,8 +318,14 @@ export function createOmpAgentCallbacks(deps: OmpAgentCallbacksDeps): OmpAgentCa
       const sid = adoptedSessionIdRef.current ?? sessionIdRef.current;
       if (sid) refreshSessionMeta(sid);
     },
-    onNotice: (_level, message) => {
+    onNotice: (level, message) => {
       console.info('OMP notice:', message);
+      // A warning/error notice is the only place some transports report why a
+      // turn went nowhere (ACP can push an error `notice` instead of failing
+      // the prompt). A console line is not a surface the operator reads.
+      if ((level === 'error' || level === 'warning') && message.trim()) {
+        appendNoticeRow(message, deps);
+      }
     },
     onExtensionUiRequest: (request: IncomingExtensionUiRequest) => {
       // The blocking-method list is SHARED with the server

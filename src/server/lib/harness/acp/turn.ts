@@ -90,7 +90,10 @@ export class AcpTurns {
               type: 'prompt_error',
               errorMessage: error instanceof Error ? error.message : String(error),
             });
-            this.finish(undefined);
+            // The agent's own error is the reason. `finish` must not append its
+            // generic "no answer" verdict on top of it — the second frame lands
+            // last on the client and replaced the useful message.
+            this.finish(undefined, true);
           }),
       )
       .finally(() => {
@@ -139,8 +142,10 @@ export class AcpTurns {
 
   /** Flush the open message, fail abandoned cards, emit the terminal frame. A
    *  call left open by a cancelled turn would spin forever — the agent is never
-   *  going to report an end for work it abandoned. */
-  private finish(result: { stopReason?: string } | undefined): void {
+   *  going to report an end for work it abandoned. `reported` says the caller
+   *  already emitted the failure reason, so only this module's generic silent
+   *  verdict is suppressed. */
+  private finish(result: { stopReason?: string } | undefined, reported = false): void {
     const flushed = this.seams.closeMessage();
     for (const event of flushed) this.seams.emit(event);
     const closed = flushed.find((event) => event.type === 'message_end')?.message;
@@ -152,11 +157,13 @@ export class AcpTurns {
     // most agents (measured on pi-acp: it answers `session/prompt` with `{}` and
     // sends no frames at all when its provider call fails). Reporting it beats
     // leaving an empty bubble that reads as "the agent had nothing to say".
-    // Slash commands are exempt: an extension command is answered locally and
-    // correctly produces nothing, and a user's Stop is not a failure either.
-    const answered = flushed.length > 0 || abandoned.length > 0;
+    // Whitespace-only chunks are the same failure with a frame attached: the
+    // row renders no text, so the operator still sees nothing. Slash commands
+    // are exempt: an extension command is answered locally and correctly
+    // produces nothing, and a user's Stop is not a failure either.
+    const answered = hasRenderableAnswer(closed) || abandoned.length > 0;
     const cancelled = result?.stopReason === 'cancelled';
-    if (!answered && !cancelled && !this.promptText.trimStart().startsWith('/')) {
+    if (!answered && !cancelled && !reported && !this.promptText.trimStart().startsWith('/')) {
       this.seams.emit({
         type: 'prompt_error',
         errorMessage: 'The agent ended the turn without sending an answer',
@@ -172,4 +179,21 @@ export class AcpTurns {
       ...(cancelled ? { cancelled: true } : {}),
     });
   }
+}
+
+/** Does the closed message carry anything the timeline draws? A whitespace-only
+ *  chunk (or one that carried only an empty text block) opens a message row
+ *  that renders nothing, which is the same operator-visible failure as no frame
+ *  at all. Thinking and tool calls are content: they render as their own
+ *  blocks. */
+function hasRenderableAnswer(message: unknown): boolean {
+  if (!message || typeof message !== 'object' || !('content' in message)) return false;
+  const content = message.content;
+  if (!Array.isArray(content)) return false;
+  return content.some((block) => {
+    if (!block || typeof block !== 'object') return false;
+    if ('text' in block && typeof block.text === 'string') return block.text.trim().length > 0;
+    if ('thinking' in block && typeof block.thinking === 'string') return block.thinking.trim().length > 0;
+    return 'type' in block && block.type === 'toolCall';
+  });
 }

@@ -132,4 +132,18 @@ describe('MessageList mounted window', () => {
     const el = await mountWindowed(messages, window(0, 2, 0, 500));
     expect(footers(el)).toBe(1);
   });
+
+  test('an errored answer renders the failure instead of an empty bubble', async () => {
+    const el = await mount([
+      user('u1'),
+      {
+        id: 'a1',
+        role: 'ai',
+        content: '',
+        error: { message: 'The agent ended the turn without sending an answer' },
+      },
+    ], false);
+    expect(el.textContent).toContain('Request Failed');
+    expect(el.textContent).toContain('without sending an answer');
+  });
 });
