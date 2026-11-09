@@ -28,7 +28,8 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { TargetedMouseEvent } from 'preact';
 import { createPortal } from 'preact/compat';
-import { Archive, ArchiveRestore, Hourglass, Pencil, Trash2, WandSparkles } from 'lucide-preact';
+import { Archive, ArchiveRestore, GitBranch, Hourglass, Pencil, Trash2, WandSparkles } from 'lucide-preact';
+import { NewChildSessionDialog } from '@/client/components/common/session-actions-menu/NewChildSessionDialog';
 
 /** Viewport coordinates the menu hangs off, plus which edge it aligns to. */
 export interface MenuAnchor {
@@ -82,6 +83,8 @@ export function useRowMenu(): RowMenuHandle {
 
 export interface SessionActionsMenuProps {
   anchor: MenuAnchor;
+  /** The row's id; enables "New child session". Absent on a synthetic row. */
+  sessionId?: string | number;
   isArchived?: boolean;
   /** Omitted when the row cannot be renamed (a pending `new-…` chat). */
   onRename?: () => void;
@@ -102,6 +105,7 @@ export interface SessionActionsMenuProps {
 
 export function SessionActionsMenu({
   anchor,
+  sessionId,
   isArchived = false,
   onRename,
   onRenameWithAi,
@@ -112,6 +116,11 @@ export function SessionActionsMenu({
 }: SessionActionsMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const [childOpen, setChildOpen] = useState(false);
+  const canSpawnChild =
+    sessionId !== undefined &&
+    !String(sessionId).startsWith('new-') &&
+    !isArchived;
 
   useLayoutEffect(() => {
     const el = menuRef.current;
@@ -148,6 +157,7 @@ export function SessionActionsMenu({
   };
 
   return createPortal(
+    <>
     <div
       className="fixed inset-0 z-[70]"
       onClick={onClose}
@@ -170,6 +180,20 @@ export function SessionActionsMenu({
         className="glass-popover fixed z-[70] w-44 bg-paper border border-ink/15 rounded-lg shadow-xl py-1 text-xs text-ink font-sans"
         onClick={(e) => e.stopPropagation()}
       >
+        {canSpawnChild && (
+          <button
+            type="button"
+            role="menuitem"
+            onClick={(event) => {
+              event.stopPropagation();
+              setChildOpen(true);
+            }}
+            className="w-full text-left px-3 py-1.5 hover:bg-ink/5 flex items-center gap-2 transition-colors cursor-pointer"
+          >
+            <GitBranch size={12} className="text-ink/60" />
+            <span>New child session</span>
+          </button>
+        )}
         {onRename && (
           <button
             type="button"
@@ -235,7 +259,14 @@ export function SessionActionsMenu({
           </button>
         )}
       </div>
-    </div>,
+    </div>
+    {childOpen && sessionId !== undefined && (
+      <NewChildSessionDialog
+        parentSessionId={String(sessionId)}
+        onClose={() => setChildOpen(false)}
+      />
+    )}
+    </>,
     document.body,
   );
 }

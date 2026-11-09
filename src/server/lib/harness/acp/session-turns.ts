@@ -37,6 +37,9 @@
 import { scheduleQueueDelivery } from '@/server/lib/queue/delivery.server';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
 import { saveAcpUsage } from '@/server/lib/harness/acp/acp-telemetry.server';
+import { lastAssistantText } from '@/server/lib/omp/session/goal-driver.server';
+import { noteChildOutcome } from '@/server/lib/sessions/notify.server';
+import { saveSessionAnswer } from '@/server/lib/sessions/answers.server';
 import type { AcpTurns } from '@/server/lib/harness/acp/turn';
 
 /** What a turn reads and moves on the session. */
@@ -72,7 +75,7 @@ export function beginAcpTurn(
 /** Turn-end bookkeeping: the closed message, the badge, then the queue. */
 export function settleAcpTurn(
   target: AcpTurnTarget,
-  info: { stopReason?: string; closedMessage: boolean },
+  info: { stopReason?: string; closedMessage: boolean; message?: unknown; cancelled?: boolean },
 ): void {
   if (info.closedMessage) target.messageCount += 1;
   // ACP has no transcript to re-read, so the last usage snapshot is what lets
@@ -91,5 +94,14 @@ export function settleAcpTurn(
   // Todo/plan/telemetry panels read their own topics; without this signal an
   // ACP turn's usage and titles never republished (the RPC settle path does it).
   emitRealtimeSignal('session-data-dirty', target.sessionId);
+  const finalText = lastAssistantText([info.message]);
+  if (finalText) void saveSessionAnswer(target.sessionId, finalText).catch(() => {});
+  void noteChildOutcome({
+    sessionId: target.sessionId,
+    status: info.cancelled === true ? 'interrupted' : 'completed',
+    output: finalText,
+  }).catch((error: unknown) => {
+    console.error('[sessions] could not record an ACP child outcome:', error);
+  });
   scheduleQueueDelivery(target);
 }

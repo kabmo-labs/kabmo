@@ -3,9 +3,12 @@ import { FolderItemMenu } from '@/client/components/mobile/mobile-session-sideba
 import { useSearchParams } from '@/client/lib/router/search-params';
 import { MobileSessionRow } from '@/client/components/mobile/mobile-session-sidebar/SessionRow';
 import { SubagentList } from '@/client/components/common/subagent-list';
+import { ChildSessionList } from '@/client/components/layout/session-sidebar/ChildSessionList';
+import { buildSessionTree } from '@/client/lib/session-tree';
 import { useWorktreeDialog } from '@/client/components/mobile/mobile-session-sidebar/WorktreeDialog';
 import { useShowMore } from '@/client/hooks/ui/show-more';
 import { useExpandedSessions } from '@/client/hooks/workspace/expanded-sessions';
+import { useChildExpansion } from '@/client/hooks/workspace/child-expansion';
 import { useWorkspaceFolderActions } from '@/client/hooks/workspace/workspace-folder-actions';
 import { useSessionDelete } from '@/client/hooks/workspace/session-delete';
 import { SessionDeleteModal } from '@/client/components/common/session-delete-modal';
@@ -62,6 +65,7 @@ export function MobileSessionCategory({
   );
   const { refresh } = useSidebarData();
   const { expandedSessionIds, toggleSession } = useExpandedSessions();
+  const { expandedChildIds, toggleChild } = useChildExpansion();
   // The viewed transcript, so its session row dims while a roster entry is
   // open (desktop parity — same params, same rule).
   const [searchParams] = useSearchParams();
@@ -112,6 +116,7 @@ export function MobileSessionCategory({
     activeSessionId,
     sessionStatus,
   });
+  const tree = buildSessionTree(visibleSessions);
   const listOpen = isExpanded || sessionCheckboxes;
 
   return (
@@ -224,7 +229,7 @@ export function MobileSessionCategory({
 
       {listOpen && (
         <div className="mt-0.5 space-y-0.5">
-          {visibleSessions.map((session) => {
+          {tree.roots.map((session) => {
             const sessionKey = String(session.id);
             const isSessionActive = String(activeSessionId) === sessionKey;
             // While one of its subagents is being viewed, the parent session
@@ -233,9 +238,11 @@ export function MobileSessionCategory({
             const isViewingSubagent = isSessionActive && urlSessionId === sessionKey && Boolean(urlSubagentId);
             // Same gate as desktop: the omp-side loader flag is authoritative,
             // so a session whose roster exists on disk can be opened without a
-            // live process.
+            // live process. Children are a separate, tree-level disclosure.
             const hasSubagents = Boolean(session.hasSubagents);
+            const hasChildren = (tree.childrenOf.get(sessionKey)?.length ?? 0) > 0;
             const isRosterOpen = hasSubagents && expandedSessionIds.has(sessionKey);
+            const childrenOpen = hasChildren && expandedChildIds.has(sessionKey);
 
             return (
               <div key={session.id} className="space-y-0.5">
@@ -247,8 +254,11 @@ export function MobileSessionCategory({
                   awaitingInput={Boolean(session.awaitingInput)}
                   timeAgo={relativeTimeAgo(session.updated_at ?? session.created_at)}
                   hasSubagents={hasSubagents}
-                  isExpanded={isRosterOpen}
-                  onToggleExpand={() => toggleSession(sessionKey)}
+                  subagentsExpanded={isRosterOpen}
+                  onToggleSubagents={() => toggleSession(sessionKey)}
+                  expandable={hasChildren}
+                  isExpanded={childrenOpen}
+                  onToggleExpand={() => toggleChild(sessionKey)}
                   onSelect={() => onSelectSession(session.id)}
                   onArchive={() => handleArchive(session)}
                   onDelete={
@@ -272,6 +282,13 @@ export function MobileSessionCategory({
                   selected={Boolean(batch?.selected.includes(sessionKey))}
                   onToggleSelect={batch ? () => batch.toggle(sessionKey) : undefined}
                 />
+                {childrenOpen && (
+                  <ChildSessionList
+                    parentId={sessionKey}
+                    childrenOf={tree.childrenOf}
+                    onSelect={onSelectSession}
+                  />
+                )}
                 {isRosterOpen && (
                   <SubagentList sessionId={session.id} isActiveSession={isSessionActive} />
                 )}

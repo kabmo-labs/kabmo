@@ -28,6 +28,8 @@ export interface MessageListProps {
   onRetry?: (id: string) => void;
   /** Seeds a new chat from a row. A user row also hands over its attachments. */
   onNewChat?: (content: string, attachments?: Attachment[]) => void;
+  /** Branch the session at a user row. */
+  onFork?: (msgId: string) => void;
   isMobile?: boolean;
   /**
    * Whether chat-owning actions render: a USER row's Undo / New-chat, and the
@@ -71,6 +73,7 @@ export const MessageList = memo(function MessageList({
   onUndo,
   onRetry,
   onNewChat,
+  onFork,
   isMobile = false,
   userActions = true,
   rowWindow,
@@ -139,6 +142,7 @@ export const MessageList = memo(function MessageList({
                   isStreaming={isLoading}
                   onUndo={onUndo}
                   onNewChat={onNewChat}
+                  onFork={onFork}
                   isPrevAssistant={isPrevAssistant}
                   userActions={userActions}
                   isMobile={isMobile}

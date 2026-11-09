@@ -41,6 +41,7 @@ import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
 import { failWaitingOn } from '@/server/lib/waiting/store.server';
 import { siblingDirForSession } from '@/server/lib/omp/subagent/history/paths';
 import { isSinglePathSegment } from '@/server/lib/fs/path-segment';
+import { deleteSessionRelations } from '@/server/lib/sessions/relations.server';
 
 export interface SessionPurgeResult {
   /** Something keyed to this id existed — a transcript, a mock session row, or
@@ -83,6 +84,10 @@ async function purgeKabmoRows(db: DbClient, sessionId: string): Promise<number> 
     changes += result.changes ?? 0;
   }
   const mockRow = await db.run('DELETE FROM sessions WHERE id = ?', [sessionId]);
+  // The tree's own rows: this session's relation, incoming edges that would
+  // otherwise point at a dead id, and its pending notice/token rows. Cascading
+  // DELETE of dependents is a separate, deliberate path (M19).
+  await deleteSessionRelations(sessionId).catch(() => {});
   return changes + (mockRow.changes ?? 0);
 }
 

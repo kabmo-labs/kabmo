@@ -36,8 +36,18 @@ export async function resumeSession(invoke: AcpInvoke, sessionId: string, cwd: s
   return invoke('session/resume', { sessionId, cwd, mcpServers: [] }, timeoutMs);
 }
 
-export async function forkSession(invoke: AcpInvoke, sessionId: string, cwd: string, timeoutMs = 120_000): Promise<AcpSessionNewResult> {
-  return invoke<AcpSessionNewResult>('session/fork', { sessionId, cwd, mcpServers: [] }, timeoutMs);
+export async function forkSession(
+  invoke: AcpInvoke,
+  sessionId: string,
+  cwd: string,
+  timeoutMs = 120_000,
+  target?: Record<string, unknown>,
+): Promise<AcpSessionNewResult> {
+  return invoke<AcpSessionNewResult>(
+    'session/fork',
+    { sessionId, cwd, mcpServers: [], ...(target ? { target } : {}) },
+    timeoutMs,
+  );
 }
 
 export async function listSessions(invoke: AcpInvoke, cwd?: string, timeoutMs = 60_000): Promise<AcpSessionInfo[]> {

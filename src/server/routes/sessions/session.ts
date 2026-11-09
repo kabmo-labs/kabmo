@@ -19,6 +19,7 @@ import { loadAcpGoalState } from '@/server/lib/harness/acp/acp-goal-state.server
 import { asHarnessSession } from '@/server/lib/harness/registry';
 import { applyHarnessMode } from '@/server/routes/agent/harness-command';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
+import { archiveDependents } from '@/server/lib/sessions/lifecycle.server';
 
 /**
  * GET /api/sessions/:sessionId/modes — the plan/goal mode selection.
@@ -125,6 +126,9 @@ export async function archiveSession({ request, params }: ActionFunctionArgs) {
       'INSERT OR IGNORE INTO archived_sessions (session_id) VALUES (?)',
       [sessionId],
     );
+    // An owner takes its tree with it: sidebar children and cleanup dependents
+    // are archived and stopped; unarchiving this row does not bring them back.
+    await archiveDependents(sessionId);
   } else {
     await db.run('DELETE FROM archived_sessions WHERE session_id = ?', [sessionId]);
   }

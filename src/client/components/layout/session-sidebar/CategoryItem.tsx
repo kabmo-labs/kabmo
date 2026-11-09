@@ -9,7 +9,10 @@ import { SessionDeleteModal } from '@/client/components/common/session-delete-mo
 import { SessionItem } from '@/client/components/layout/session-sidebar/SessionItem';
 import { CategoryHeader } from '@/client/components/layout/session-sidebar/CategoryHeader';
 import { SubagentList } from '@/client/components/common/subagent-list';
+import { ChildSessionList } from '@/client/components/layout/session-sidebar/ChildSessionList';
+import { buildSessionTree } from '@/client/lib/session-tree';
 import { useExpandedSessions } from '@/client/hooks/workspace/expanded-sessions';
+import { useChildExpansion } from '@/client/hooks/workspace/child-expansion';
 import { relativeTimeAgo } from '@/shared/lib/workspace/relative-time';
 import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
 import type { BatchBinding } from '@/client/components/common/batch-selection/types';
@@ -58,6 +61,7 @@ export function Category({
   // Roster expansion is shared with the mobile drawer: one persisted set, so a
   // row expanded on the phone is expanded here too.
   const { expandedSessionIds, toggleSession } = useExpandedSessions();
+  const { expandedChildIds, toggleChild } = useChildExpansion();
 
   useEffect(() => {
     if (typeof folder.isExpanded === 'boolean') setIsOpen(folder.isExpanded);
@@ -98,10 +102,6 @@ export function Category({
       { isExpanded: String(nextState) },
       { method: 'POST', action: `/api/folders/${folder.id}/toggle` }
     );
-  };
-
-  const handleToggleSessionExpand = (sessionId: string) => {
-    toggleSession(sessionId);
   };
 
   const onPin = () => {
@@ -148,6 +148,7 @@ export function Category({
     activeSessionId,
     sessionStatus,
   });
+  const tree = buildSessionTree(renderedSessions);
   // A session selection opens every folder: a checkbox on a collapsed workspace
   // would let the user select rows they cannot see or unselect. The WORKSPACE
   // mode leaves the expansion alone — it selects folders, not rows.
@@ -192,7 +193,7 @@ export function Category({
       {/* Sessions List */}
       {listOpen && (
         <div className="space-y-0.5">
-          {renderedSessions.map((session) => {
+          {tree.roots.map((session) => {
             const sessionKey = String(session.id);
             const isActive = activeSessionId !== null
               ? String(activeSessionId) === sessionKey
@@ -201,10 +202,13 @@ export function Category({
             // row dims so the highlighted roster entry reads as the active one.
             const isViewingSubagent = isActive && urlSessionId === sessionKey && Boolean(urlSubagentId);
             const canExpandActive = activeSessionId !== null && sessionKey === String(activeSessionId);
-            // Chevron gate comes straight from the omp-side loader flag
-            // (disk scan + transcript recovery); the client never overrides it.
+            // Two independent disclosures: children (the tree) and subagents
+            // (a tool-call roster). The chevron belongs to the first, the badge
+            // to the second.
+            const hasChildren = (tree.childrenOf.get(sessionKey)?.length ?? 0) > 0;
             const hasSubagents = Boolean(session.hasSubagents);
-            const isExpanded = hasSubagents && expandedSessionIds.has(sessionKey);
+            const childrenExpanded = hasChildren && expandedChildIds.has(sessionKey);
+            const rosterExpanded = hasSubagents && expandedSessionIds.has(sessionKey);
 
             return (
               <div key={session.id} className="space-y-0.5">
@@ -231,10 +235,12 @@ export function Category({
                   onRenameWithAi={
                     String(session.id).startsWith('new-') ? undefined : () => void handleRenameWithAi(session)
                   }
-                  expandable={hasSubagents}
+                  expandable={hasChildren}
                   hasSubagents={hasSubagents}
-                  isExpanded={isExpanded}
-                  onToggleExpand={() => handleToggleSessionExpand(sessionKey)}
+                  isExpanded={childrenExpanded}
+                  onToggleExpand={() => toggleChild(sessionKey)}
+                  subagentsExpanded={rosterExpanded}
+                  onToggleSubagents={() => toggleSession(sessionKey)}
                   waitingFor={session.waitingFor ? { title: session.waitingFor.title } : undefined}
                   onCancelWait={
                     session.waitingFor
@@ -245,7 +251,14 @@ export function Category({
                   selected={Boolean(batch?.selected.includes(sessionKey))}
                   onToggleSelect={batch ? () => batch.toggle(sessionKey) : undefined}
                 />
-                {hasSubagents && isExpanded && (
+                {childrenExpanded && (
+                  <ChildSessionList
+                    parentId={sessionKey}
+                    childrenOf={tree.childrenOf}
+                    onSelect={onSelectSession}
+                  />
+                )}
+                {rosterExpanded && (
                   <SubagentList sessionId={session.id} isActiveSession={canExpandActive} />
                 )}
               </div>

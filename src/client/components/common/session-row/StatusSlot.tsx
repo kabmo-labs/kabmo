@@ -15,7 +15,7 @@
  *   2. blocked on a question — says it is YOUR turn, not that work is happening;
  *   3. a held prompt — the row exists only because a prompt is waiting;
  *   4. a run in flight — the spinner;
- *   5. the roster chevron, PINNED while the row has subagents.
+ *   5. the child-session chevron, PINNED while the row has children.
  *
  * A batch checkbox replaces the whole slot: in that mode the row is a choice,
  * and a run spinner beside a checkbox reads as a second, unrelated control.
@@ -31,7 +31,7 @@ export interface StatusSlotProps {
   awaitingInput?: boolean;
   renaming?: boolean;
   waitingFor?: { title: string | null };
-  /** The row has a subagent roster, so the chevron exists. */
+  /** The row has child sessions, so the tree chevron exists. */
   expandable?: boolean;
   isExpanded?: boolean;
   onToggleExpand?: (event: TargetedMouseEvent<HTMLElement>) => void;
@@ -88,9 +88,9 @@ export function StatusSlot({
               event.stopPropagation();
               onToggleExpand(event);
             }}
-            title={isExpanded ? 'Collapse subagents' : 'Expand subagents'}
+            title={isExpanded ? 'Collapse child sessions' : 'Expand child sessions'}
             aria-expanded={isExpanded}
-            aria-label={isExpanded ? 'Collapse subagents' : 'Expand subagents'}
+            aria-label={isExpanded ? 'Collapse child sessions' : 'Expand child sessions'}
             className={`peer absolute inset-0 flex items-center justify-center rounded cursor-pointer transition-opacity ${
               chevronPinned
                 ? 'text-ink/55 hover:text-ink'

@@ -40,6 +40,13 @@ export interface AcpHandshakeProcess {
   initialize(params: Record<string, unknown>, timeoutMs?: number): Promise<AcpInitializeResult>;
   loadSession(sessionId: string, cwd: string, timeoutMs?: number): Promise<unknown>;
   newSession(cwd: string, timeoutMs?: number): Promise<AcpSessionNewResult>;
+  /** `session/fork`; absent on a process double used by older tests. */
+  forkSession?(
+    sessionId: string,
+    cwd: string,
+    timeoutMs?: number,
+    target?: Record<string, unknown>,
+  ): Promise<AcpSessionNewResult>;
 }
 
 /** The session fields a handshake seeds. */
@@ -65,6 +72,7 @@ export async function handshakeAcpSession(
   proc: AcpHandshakeProcess,
   wanted: AcpHandshakeSelections,
   sessionIdToLoad?: string,
+  forkFromSessionId?: string,
 ): Promise<void> {
   const init = await proc.initialize({}, 60_000);
   /** opencode's plugin activation gate: the first `session/new`s refuse with
@@ -74,7 +82,25 @@ export async function handshakeAcpSession(
       ...(timeoutMs !== undefined ? { perAttemptMs: timeoutMs } : {}),
     });
   let session: AcpSessionNewResult;
-  if (sessionIdToLoad) {
+  if (forkFromSessionId) {
+    // A fork is a NEW agent session that inherits the source's context; the
+    // returned id is the child's own. Refusing here is deliberate: silently
+    // falling back to `session/new` would start an empty chat under a fork's
+    // name, which is the substitution this feature exists to prevent.
+    if (!proc.forkSession) {
+      throw new Error(`${target.harness} cannot fork a session`);
+    }
+    session = await proc.forkSession(
+      forkFromSessionId,
+      target.cwd,
+      120_000,
+      // zcode's fork is checkpoint-scoped; its schema defaults `target` but
+      // the ACP call needs it stated or the runtime answers "sessionId is
+      // required" for a request it cannot place. Other harnesses reject an
+      // unknown `target`, so it is sent only where it is understood.
+      target.harness === 'zcode' ? { kind: 'latestCheckpoint' } : undefined,
+    );
+  } else if (sessionIdToLoad) {
     await proc.loadSession(sessionIdToLoad, target.cwd, 120_000);
     const reloaded = await newSession(target.cwd).catch(() => null);
     session = reloaded ?? { sessionId: sessionIdToLoad };

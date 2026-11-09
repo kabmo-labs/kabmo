@@ -29,6 +29,7 @@
 
 import { getLiveSession } from '@/server/lib/omp/rpc/session-registry';
 import { purgeSessionData } from '@/server/lib/omp/session/delete.server';
+import { dependentsDeepestFirst } from '@/server/lib/sessions/lifecycle.server';
 import { purgeBtwForSession } from '@/server/lib/btw/purge.server';
 import { isSinglePathSegment } from '@/server/lib/fs/path-segment';
 import { isMockMode } from '@/server/mock.server';
@@ -105,4 +106,50 @@ export async function removeSession(sessionId: string): Promise<SessionRemoval> 
       error: error instanceof Error ? error.message : String(error),
     };
   }
+}
+
+export interface SessionTreeRemoval {
+  result: SessionRemoval;
+  /** Dependents removed before the root, deepest first. */
+  removedDependents: string[];
+}
+
+function busyRemoval(sessionId: string): SessionRemoval {
+  return {
+    ok: false,
+    status: 409,
+    code: 'session_busy',
+    error: `Session ${sessionId} is working. Stop the run before deleting the tree.`,
+  };
+}
+
+/**
+ * Remove a session AND its dependents.
+ *
+ * Every dependent is prechecked for a busy child before anything is deleted: a
+ * partial cascade is worse than a refusal, because the user cannot tell which
+ * half of the tree disappeared. Deepest first, so a parent never loses the rows
+ * that name it before the children are gone.
+ */
+export async function removeSessionTree(sessionId: string): Promise<SessionTreeRemoval> {
+  const rootLive = getLiveSession(sessionId);
+  if (rootLive?.isAlive() && rootLive.isBusy()) {
+    return { result: busyRemoval(sessionId), removedDependents: [] };
+  }
+
+  const dependents = await dependentsDeepestFirst(sessionId);
+  for (const id of dependents) {
+    const live = getLiveSession(id);
+    if (live?.isAlive() && live.isBusy()) {
+      return { result: busyRemoval(id), removedDependents: [] };
+    }
+  }
+
+  const removedDependents: string[] = [];
+  for (const id of dependents) {
+    const verdict = await removeSession(id);
+    if (!verdict.ok) return { result: verdict, removedDependents };
+    removedDependents.push(id);
+  }
+  return { result: await removeSession(sessionId), removedDependents };
 }

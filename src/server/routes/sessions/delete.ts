@@ -17,7 +17,7 @@
 import { json } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
-import { removeSession } from '@/server/lib/omp/session/delete-flow.server';
+import { removeSessionTree } from '@/server/lib/omp/session/delete-flow.server';
 
 export async function deleteSession({ request, params }: ActionFunctionArgs) {
   if (request.method !== 'DELETE') {
@@ -27,7 +27,8 @@ export async function deleteSession({ request, params }: ActionFunctionArgs) {
   const sessionId = params.sessionId;
   if (!sessionId) return json({ error: 'Missing session id' }, { status: 400 });
 
-  const result = await removeSession(sessionId);
+  const tree = await removeSessionTree(sessionId);
+  const result = tree.result;
   if (!result.ok) {
     return json(
       { error: result.error, code: result.code },
@@ -38,6 +39,7 @@ export async function deleteSession({ request, params }: ActionFunctionArgs) {
   return json({
     success: true,
     sessionId,
+    removedDependents: tree.removedDependents,
     fileRemoved: result.fileRemoved,
     artifactsRemoved: result.artifactsRemoved,
     btwTopicsRemoved: result.btwTopicsRemoved,

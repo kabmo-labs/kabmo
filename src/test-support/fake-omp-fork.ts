@@ -41,12 +41,16 @@ const forkOnResume = process.env.FAKE_OMP_FORK_ON_RESUME === '1';
  *  fake is asked to fork, which is what omp 18.10.0 does for a moved session. */
 const requestedId = resume ? (resume.split('/').pop() ?? '').replace(/\.jsonl$/, '') : '';
 const sessionId = forkOnResume && resume ? crypto.randomUUID() : requestedId || crypto.randomUUID();
+const sessionSubdir = process.env.FAKE_OMP_SESSION_SUBDIR ?? '';
 const sessionFile = forkOnResume && resume
   ? join(agentDir, 'sessions', `--forked--`, `${sessionId}.jsonl`)
-  : resume ?? join(agentDir, 'sessions', `${sessionId}.jsonl`);
+  : resume ?? join(agentDir, 'sessions', sessionSubdir, `${sessionId}.jsonl`);
 
 mkdirSync(dirname(sessionFile), { recursive: true });
-writeFileSync(sessionFile, '');
+writeFileSync(
+  sessionFile,
+  `${JSON.stringify({ type: 'session', id: sessionId, cwd: process.cwd(), timestamp: new Date().toISOString() })}\n`,
+);
 
 const forkLog = process.env.FAKE_OMP_FORK_LOG;
 if (forkLog) {
@@ -134,6 +138,16 @@ for (;;) {
         respond(id, String(frame.type), {});
         break;
       case 'prompt':
+        if (process.env.FAKE_OMP_PROMPT_LOG) {
+          try {
+            appendFileSync(
+              process.env.FAKE_OMP_PROMPT_LOG,
+              `${JSON.stringify({ sessionId, message: String(frame.message ?? '') })}\n`,
+            );
+          } catch {
+            // Recording is a test convenience; never let it break the child.
+          }
+        }
         respond(id, 'prompt', { agentInvoked: true });
         write({ type: 'agent_start' });
         write({ type: 'agent_end', isTerminal: true });

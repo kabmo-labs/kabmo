@@ -20,7 +20,7 @@
 import { json } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed, parseJsonBody } from '@/server/lib/route-adapter';
-import { removeSession } from '@/server/lib/omp/session/delete-flow.server';
+import { removeSessionTree } from '@/server/lib/omp/session/delete-flow.server';
 
 /** One request cannot carry an unbounded selection. */
 const MAX_BATCH = 500;
@@ -44,6 +44,7 @@ export async function batchDeleteSessions({ request }: ActionFunctionArgs) {
   }
 
   const removed: string[] = [];
+  const removedDependents: string[] = [];
   const refused: { id: string; error: string; code?: string }[] = [];
 
   // Sequential, deliberately: every removal may have to destroy an omp child
@@ -51,10 +52,15 @@ export async function batchDeleteSessions({ request }: ActionFunctionArgs) {
   // transcript writer per session at once for no gain — the work is dominated
   // by process teardown, not by the filesystem.
   for (const id of ids) {
-    const result = await removeSession(id);
-    if (result.ok) removed.push(id);
-    else refused.push({ id, error: result.error ?? 'Could not delete the session.', code: result.code });
+    const tree = await removeSessionTree(id);
+    const result = tree.result;
+    if (result.ok) {
+      removed.push(id);
+      removedDependents.push(...tree.removedDependents);
+    } else {
+      refused.push({ id, error: result.error ?? 'Could not delete the session.', code: result.code });
+    }
   }
 
-  return json({ success: refused.length === 0, removed, refused });
+  return json({ success: refused.length === 0, removed, removedDependents, refused });
 }

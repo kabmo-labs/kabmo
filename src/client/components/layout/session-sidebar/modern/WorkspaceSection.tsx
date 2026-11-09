@@ -32,9 +32,12 @@ import { useShowMore } from '@/client/hooks/ui/show-more';
 import { useWorkspaceFolderActions } from '@/client/hooks/workspace/workspace-folder-actions';
 import { useSessionDelete } from '@/client/hooks/workspace/session-delete';
 import { useExpandedSessions } from '@/client/hooks/workspace/expanded-sessions';
+import { useChildExpansion } from '@/client/hooks/workspace/child-expansion';
 import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
 import { SessionRow, type SessionRowDensity } from '@/client/components/common/session-row';
 import { SubagentList } from '@/client/components/common/subagent-list';
+import { ChildSessionList } from '@/client/components/layout/session-sidebar/ChildSessionList';
+import { buildSessionTree } from '@/client/lib/session-tree';
 import { SessionDeleteModal } from '@/client/components/common/session-delete-modal';
 import { WorkspaceOptionsMenu } from '@/client/components/common/workspace-options-menu';
 import { NewWorktreeModal } from '@/client/components/workspace/worktree-modal/index';
@@ -86,6 +89,7 @@ export function WorkspaceSection({
   const urlSubagentId = searchParams.get('subagent');
   const urlSessionId = searchParams.get('sessionId');
   const { expandedSessionIds, toggleSession } = useExpandedSessions();
+  const { expandedChildIds, toggleChild } = useChildExpansion();
   const { refresh } = useSidebarData();
   const toggleFetcher = useFetcher<{ success?: boolean }>();
   const {
@@ -146,6 +150,7 @@ export function WorkspaceSection({
     activeSessionId,
     sessionStatus,
   });
+  const tree = buildSessionTree(rendered);
 
   // A session selection opens every workspace: a checkbox on a collapsed folder
   // would let the user select rows they cannot see or unselect.
@@ -220,7 +225,7 @@ export function WorkspaceSection({
 
       {listOpen && (
         <div className="space-y-0.5">
-          {rendered.map((session) => {
+          {tree.roots.map((session) => {
             const key = String(session.id);
             const isActive = activeSessionId !== null
               ? String(activeSessionId) === key
@@ -228,8 +233,10 @@ export function WorkspaceSection({
             // While one of its subagents is being viewed, the parent row dims so
             // the highlighted roster entry reads as the active one.
             const viewingSubagent = isActive && urlSessionId === key && Boolean(urlSubagentId);
+            const hasChildren = (tree.childrenOf.get(key)?.length ?? 0) > 0;
             const hasSubagents = Boolean(session.hasSubagents);
-            const isExpanded = hasSubagents && expandedSessionIds.has(key);
+            const childrenExpanded = hasChildren && expandedChildIds.has(key);
+            const rosterExpanded = hasSubagents && expandedSessionIds.has(key);
             const pending = key.startsWith('new-');
 
             return (
@@ -246,9 +253,12 @@ export function WorkspaceSection({
                   timeAgo={relativeTimeAgo(session.updated_at ?? session.created_at)}
                   worktree={session.worktree}
                   waitingFor={session.waitingFor ? { title: session.waitingFor.title } : undefined}
+                  expandable={hasChildren}
+                  isExpanded={childrenExpanded}
+                  onToggleExpand={() => toggleChild(key)}
                   hasSubagents={hasSubagents}
-                  isExpanded={isExpanded}
-                  onToggleExpand={() => toggleSession(key)}
+                  subagentsExpanded={rosterExpanded}
+                  onToggleSubagents={() => toggleSession(key)}
                   onClick={() => onSelectSession(session.id)}
                   onArchive={() => handleArchive(session)}
                   // A pending `new-…` chat has no transcript anywhere yet, so
@@ -263,7 +273,10 @@ export function WorkspaceSection({
                   selected={Boolean(batch?.selected.includes(key))}
                   onToggleSelect={batch ? () => batch.toggle(key) : undefined}
                 />
-                {hasSubagents && isExpanded && (
+                {childrenExpanded && (
+                  <ChildSessionList parentId={key} childrenOf={tree.childrenOf} onSelect={onSelectSession} />
+                )}
+                {rosterExpanded && (
                   <SubagentList
                     sessionId={session.id}
                     isActiveSession={activeSessionId !== null && key === String(activeSessionId)}

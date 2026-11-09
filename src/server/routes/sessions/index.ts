@@ -16,9 +16,16 @@ import { cancelSubagent, steerSubagent } from '@/server/routes/sessions/subagent
 import { deleteSession } from '@/server/routes/sessions/delete';
 import { batchDeleteSessions } from '@/server/routes/sessions/batch-delete';
 import { batchArchiveSessions } from '@/server/routes/sessions/batch-archive';
+import { spawnSession } from '@/server/routes/sessions/spawn';
+import { getSessionRelations, updateSessionParent } from '@/server/routes/sessions/relations';
+import { forkSessionRoute } from '@/server/routes/sessions/fork';
+import { getSessionAnswer } from '@/server/routes/sessions/answer';
 
 export const sessionsBindings: HandlerBinding[] = [
   ...bindingsFor(sessionsList, '/api/sessions/list'),
+  // Static before the `:sessionId` routes, for the same reason batch-delete is:
+  // a parameter route winning the match answers 405.
+  { method: 'POST', path: '/api/sessions/spawn', handler: spawnSession },
   // Registered BEFORE the `:sessionId` routes: the segment is static, and the
   // batch route is POST while `:sessionId` answers DELETE, so an id route
   // winning the match would turn every batch into a 405.
@@ -27,6 +34,13 @@ export const sessionsBindings: HandlerBinding[] = [
   // `:sessionId` routes for the same reason as batch-delete.
   { method: 'POST', path: '/api/sessions/batch-archive', handler: batchArchiveSessions },
   ...bindingsFor(sessionsFolder, '/api/sessions/:sessionId'),
+  // The tree around one session. Both are static suffixes under the same
+  // `:sessionId` position, whose name must stay `sessionId` — Elysia requires
+  // one parameter name per position across every `/api/sessions/*` route.
+  { method: 'GET', path: '/api/sessions/:sessionId/relations', handler: getSessionRelations },
+  { method: 'POST', path: '/api/sessions/:sessionId/parent', handler: updateSessionParent },
+  { method: 'POST', path: '/api/sessions/:sessionId/fork', handler: forkSessionRoute },
+  { method: 'GET', path: '/api/sessions/:sessionId/answer', handler: getSessionAnswer },
   // DELETE-only on the same path the folder loader answers GET on: mounting it
   // through `actionBindings` would register a 405 GET fallback that Elysia
   // applies after the loader, replacing the workspace listing with it.

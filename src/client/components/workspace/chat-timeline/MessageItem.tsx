@@ -1,7 +1,7 @@
 import type { TargetedMouseEvent } from 'preact';
 import { useMemo } from 'preact/hooks';
 import { memo } from 'preact/compat';
-import { AlertCircle, Bot, Info, MessageSquarePlus, Undo2, User } from 'lucide-preact';
+import { AlertCircle, Bot, GitFork, Info, MessageSquarePlus, Undo2, User } from 'lucide-preact';
 import type { Attachment, ChatMessageData } from '@/shared/types';
 import { toAttachmentList } from '@/shared/lib/chat/attachments';
 import { ThinkingSection } from '@/client/components/workspace/chat-timeline/ThinkingSection';
@@ -29,6 +29,8 @@ interface ChatMessageItemProps {
    * it from the new chat.
    */
   onNewChat?: (content: string, attachments?: Attachment[]) => void;
+  /** Branch the chat before/at this row. Absent draws no button. */
+  onFork?: (msgId: string) => void;
 
   /** Extra classes on the root wrapper (e.g. spacing between messages). */
   className?: string;
@@ -52,6 +54,7 @@ export const ChatMessageItem = memo(function ChatMessageItem({
   isStreaming = false,
   onUndo,
   onNewChat,
+  onFork,
   className = '',
   isPrevAssistant = false,
   userActions = true,
@@ -154,6 +157,24 @@ export const ChatMessageItem = memo(function ChatMessageItem({
               ariaLabel="Copy prompt"
               emptyTitle="Nothing to copy — attachment-only prompt"
             />
+
+            {/* Fork Button — branches the session at this row, leaving the
+                source untouched. Separate from New Chat: a fork carries the
+                history, a new chat does not. */}
+            {userActions && onFork && (
+              <button
+                type="button"
+                className="flex items-center hover:text-ink transition-colors p-1 rounded hover:bg-ink/5 cursor-pointer"
+                title="Fork from here"
+                aria-label="Fork this session from this message"
+                onClick={(e) => {
+                  e.preventDefault();
+                  onFork(msg.id);
+                }}
+              >
+                <GitFork size={12} />
+              </button>
+            )}
 
             {/* New Chat Button */}
             {userActions && (

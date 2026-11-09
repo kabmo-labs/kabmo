@@ -45,6 +45,7 @@
  */
 
 import type { TargetedMouseEvent } from 'preact';
+import { Boxes } from 'lucide-preact';
 import { useInlineRename } from '@/client/hooks/ui/inline-rename';
 import { useSessionRenaming } from '@/client/hooks/workspace/renaming-sessions';
 import { SessionActionsMenu, useRowMenu } from '@/client/components/common/session-actions-menu';
@@ -71,6 +72,11 @@ export interface SessionRowProps {
   /** The row's prompt is held until another session finishes. */
   waitingFor?: { title: string | null };
   hasSubagents?: boolean;
+  /** Whether the subagent roster is open; a separate control from children. */
+  subagentsExpanded?: boolean;
+  onToggleSubagents?: (event: TargetedMouseEvent<HTMLElement>) => void;
+  /** Whether this row can expand child sessions. */
+  expandable?: boolean;
   isExpanded?: boolean;
   onToggleExpand?: (event: TargetedMouseEvent<HTMLElement>) => void;
   onClick?: () => void;
@@ -98,6 +104,9 @@ export function SessionRow({
   worktree,
   waitingFor,
   hasSubagents = false,
+  subagentsExpanded = false,
+  onToggleSubagents,
+  expandable = false,
   isExpanded = false,
   onToggleExpand,
   onClick,
@@ -176,7 +185,7 @@ export function SessionRow({
           awaitingInput={awaitingInput}
           renaming={renaming}
           waitingFor={waitingFor}
-          expandable={hasSubagents}
+          expandable={expandable}
           isExpanded={isExpanded}
           onToggleExpand={onToggleExpand}
           selectable={selectable}
@@ -207,6 +216,22 @@ export function SessionRow({
           {worktree && <WorktreeBadge worktree={worktree} />}
         </span>
 
+        {hasSubagents && onToggleSubagents && !selectable && (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onToggleSubagents(event);
+            }}
+            title="Subagents (tool calls)"
+            aria-label="Subagents"
+            aria-expanded={subagentsExpanded}
+            className={`shrink-0 rounded p-1 text-ink/40 hover:bg-ink/10 hover:text-ink cursor-pointer ${touch ? 'ml-1' : 'ml-0.5'}`}
+          >
+            <Boxes size={touch ? 15 : 13} />
+          </button>
+        )}
+
         <TrailingSlot
           timeAgo={timeAgo}
           touch={touch}
@@ -218,6 +243,7 @@ export function SessionRow({
       {menu.anchor && (
         <SessionActionsMenu
           anchor={menu.anchor}
+          sessionId={sessionId}
           isArchived={isArchived}
           onRename={onRename ? startRename : undefined}
           onRenameWithAi={onRenameWithAi}

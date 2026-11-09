@@ -28,6 +28,7 @@
 
 import { hashPassword, deriveCredentialKey, readSessionSecret, writeSessionSecret, type ActiveAuthConfig } from '@/server/lib/auth/config';
 import { readSessionCookie, verifySessionToken } from '@/server/lib/auth/token';
+import { agentTokenScopeForPath, bearerToken, verifyAgentToken } from '@/server/lib/sessions/agent-token.server';
 import { rememberClientAddress } from '@/server/lib/auth/client-address';
 import type { CredentialHandover } from '@/shared/lib/auth/handover';
 
@@ -288,6 +289,15 @@ export function authGate(request: Request, clientAddress?: string): Response | u
   const token = readSessionCookie(request);
   if (verifySessionToken(token, { sessionSecret: active.sessionSecret, credentialKey: active.credentialKey })) {
     return undefined;
+  }
+
+  // An agent subprocess carries a bearer token instead of a cookie. It is
+  // scoped by path to the session it names; spawn is the one path a child may
+  // call under its own token (to create its own children).
+  const scope = agentTokenScopeForPath(pathname);
+  if (scope) {
+    const agentSession = verifyAgentToken(bearerToken(request));
+    if (agentSession && (scope === 'any' || scope === agentSession)) return undefined;
   }
 
   const wantsHtml = (request.headers.get('accept') ?? '').includes('text/html');

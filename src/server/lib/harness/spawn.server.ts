@@ -37,6 +37,9 @@ export interface AcpSpawnRequest {
   /** On-disk transcript to resume; '' for a new chat. For ACP that is the
    *  agent's own session id, not a path — Kabmo stores it in `harness_sessions`. */
   resumeAgentSessionId?: string;
+  /** Fork this agent session instead of starting a new one. Mutually exclusive
+   *  with `resumeAgentSessionId`; the returned id is the child's own. */
+  forkAgentSessionId?: string;
   cwd: string;
   model?: SelectedModel | null;
   thinkingLevel?: string | null;
@@ -44,6 +47,8 @@ export interface AcpSpawnRequest {
   /** The composer's access pick, applied to the ACP session's own approval
    *  gate (this transport has no `--approval-mode` spawn flag). */
   accessMode?: ApprovalMode | null;
+  /** Extra environment for this child only (the agent token and server URL). */
+  env?: Record<string, string>;
 }
 
 export class HarnessNotLaunchableError extends Error {
@@ -82,11 +87,12 @@ export async function startAcpSession(
   // Built here rather than behind a factory in the session module: this is the
   // only place a session is constructed, and the handshake it runs (load vs
   // new) is decided by the request this function already holds.
+  const childEnv = { ...(launch.env ?? {}), ...(request.env ?? {}) };
   const session = new AcpSession(
     {
       harness: request.harness,
       command: sessionLaunchCommand(request.harness, launch.command),
-      ...(launch.env ? { env: launch.env } : {}),
+      ...(Object.keys(childEnv).length > 0 ? { env: childEnv } : {}),
       model: startingModel,
       thinkingLevel: request.thinkingLevel ?? configured.thinking ?? null,
       mode: request.mode ?? configured.mode ?? null,
@@ -96,7 +102,10 @@ export async function startAcpSession(
   );
   let realSessionId: string;
   try {
-    ({ sessionId: realSessionId } = await session.start(request.resumeAgentSessionId || undefined));
+    ({ sessionId: realSessionId } = await session.start(
+      request.resumeAgentSessionId || undefined,
+      request.forkAgentSessionId,
+    ));
   } catch (error) {
     // A refused handshake (an agent that will not `session/load`, a launch line
     // that cannot run) must not leave the child it just spawned running with
@@ -104,6 +113,10 @@ export async function startAcpSession(
     // knew, the process stayed alive after the request answered an error.
     await session.destroyAndWait().catch(() => {});
     throw error;
+  }
+  if (!realSessionId) {
+    await session.destroyAndWait().catch(() => {});
+    throw new Error(`${request.harness} started a session without an id`);
   }
 
   claimHarness(session, request.harness);

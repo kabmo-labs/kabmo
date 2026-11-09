@@ -31,6 +31,7 @@ import { DEFAULT_HARNESS_ID, HARNESS_IDS } from '@/shared/lib/harness/catalog';
 import { knownHarness, loadAcpSessions, loadHarnessBySession } from '@/server/lib/harness/session-store.server';
 import { canonicalPath } from '@/server/lib/fs/canonical';
 import { acpRowsFor } from '@/server/lib/omp/session/acp-rows.server';
+import { decorateSidebarSessions } from '@/server/lib/sessions/sidebar-relations.server';
 import type { SessionWorktreeInfo } from '@/shared/lib/workspace/worktree/types';
 import type { OmpSession } from '@/shared/types/omp/session';
 
@@ -329,9 +330,8 @@ async function buildRealFolders(folderRows: FolderRow[], archivedIds: Set<string
     // The scan's own rule is `b.modified.localeCompare(a.modified)`
     // (`groupSessionsByRoot`), so this uses the same key rather than a second
     // definition of "newest".
-    const allSessions = [...folderSessions, ...uniqueAcp].sort((a, b) =>
-      (b.updated_at ?? b.created_at ?? '').localeCompare(a.updated_at ?? a.created_at ?? ''),
-    );
+    const allSessions = [...folderSessions, ...uniqueAcp].sort((a, b) => (b.updated_at ?? b.created_at ?? '').localeCompare(a.updated_at ?? a.created_at ?? ''));
+    const visibleSessions = await decorateSidebarSessions(allSessions);
     return {
       id: folder.id,
       name: folder.name,
@@ -342,9 +342,9 @@ async function buildRealFolders(folderRows: FolderRow[], archivedIds: Set<string
       accentColor: folder.accent_color || '',
       icon: folder.icon || 'default',
       customIconUrl: folder.custom_icon_url || undefined,
-      sessions: allSessions,
-      hasMore: allSessions.length > 7,
-      totalSessions: allSessions.length,
+      sessions: visibleSessions,
+      hasMore: visibleSessions.length > 7,
+      totalSessions: visibleSessions.length,
     };
   }));
 }

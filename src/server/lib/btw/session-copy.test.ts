@@ -13,7 +13,8 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { buildTitleLine, createBtwWorkspace, getBtwRoot, promoteBtwTopic, readTranscriptLeaf } from '@/server/lib/btw/session-copy.server';
+import { buildTitleLine } from '@/server/lib/omp/session/transcript-copy';
+import { createBtwWorkspace, getBtwRoot, promoteBtwTopic, readTranscriptLeaf } from '@/server/lib/btw/session-copy.server';
 
 const timestamp = '2026-09-23T08:41:10.683Z';
 const createdDirs: string[] = [];

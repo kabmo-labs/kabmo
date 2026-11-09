@@ -1,4 +1,4 @@
-import { Check, ChevronDown, ChevronRight, CircleQuestionMark, Hourglass, Loader2, MoreHorizontal } from 'lucide-preact';
+import { Boxes, Check, ChevronDown, ChevronRight, CircleQuestionMark, Hourglass, Loader2, MoreHorizontal } from 'lucide-preact';
 import type { SessionItemData } from '@/shared/types';
 import { useInlineRename } from '@/client/hooks/ui/inline-rename';
 import { useSessionRenaming } from '@/client/hooks/workspace/renaming-sessions';
@@ -18,8 +18,12 @@ export interface MobileSessionRowProps {
   awaitingInput?: boolean;
   /** Relative age of the session, or null when no usable timestamp exists. */
   timeAgo: string | null;
-  /** The session has a subagent roster (on disk or live), so it can be expanded. */
+  /** The session has a subagent roster (on disk or live). */
   hasSubagents?: boolean;
+  subagentsExpanded?: boolean;
+  onToggleSubagents?: () => void;
+  /** The session has child sessions, so it can be expanded as a tree. */
+  expandable?: boolean;
   isExpanded?: boolean;
   onToggleExpand?: () => void;
   onSelect: () => void;
@@ -51,6 +55,9 @@ export function MobileSessionRow({
   awaitingInput = false,
   timeAgo,
   hasSubagents = false,
+  subagentsExpanded = false,
+  onToggleSubagents,
+  expandable = false,
   isExpanded = false,
   onToggleExpand,
   onSelect,
@@ -90,7 +97,7 @@ export function MobileSessionRow({
   // Touch has no hover to reveal a hidden toggle the way desktop does, so it is
   // pinned whenever the row has a roster; a hidden one would leave the roster
   // unreachable on a phone.
-  const showChevron = hasSubagents && Boolean(onToggleExpand);
+  const showChevron = expandable && Boolean(onToggleExpand);
   const title = session.title.charAt(0).toUpperCase() + session.title.slice(1);
 
   if (isEditing) {
@@ -223,15 +230,29 @@ export function MobileSessionRow({
           </button>
         )}
 
+        {/* The roster badge is a separate control from the tree chevron. */}
+        {hasSubagents && onToggleSubagents && !selectable && (
+          <button
+            type="button"
+            onClick={onToggleSubagents}
+            title="Subagents (tool calls)"
+            aria-label="Subagents"
+            aria-expanded={subagentsExpanded}
+            className="flex-shrink-0 py-1.5 pl-1.5 pr-1 flex items-center justify-center text-ink/40 hover:text-ink rounded-lg cursor-pointer"
+          >
+            <Boxes size={15} />
+          </button>
+        )}
+
         {/* Last element, so its glyph shares the trigger's column — the same
             inset pair and the same 4px ink margin. */}
         {showChevron && !selectable && (
           <button
             type="button"
             onClick={onToggleExpand}
-            title={isExpanded ? 'Collapse subagents' : 'Expand subagents'}
+            title={isExpanded ? 'Collapse child sessions' : 'Expand child sessions'}
             aria-expanded={isExpanded}
-            aria-label={isExpanded ? 'Collapse subagents' : 'Expand subagents'}
+            aria-label={isExpanded ? 'Collapse child sessions' : 'Expand child sessions'}
             className="flex-shrink-0 py-1.5 pl-1.5 pr-1 flex items-center justify-center text-ink/50 hover:text-ink rounded-lg cursor-pointer"
           >
             {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
@@ -242,6 +263,7 @@ export function MobileSessionRow({
       {menu.anchor && (
         <SessionActionsMenu
           anchor={menu.anchor}
+          sessionId={session.id}
           isArchived={session.is_archived === 1}
           onRename={onRename ? startRename : undefined}
           onRenameWithAi={onRenameWithAi}

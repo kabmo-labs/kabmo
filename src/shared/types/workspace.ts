@@ -20,6 +20,10 @@ export interface SessionItemData {
   hasArrow?: boolean;
   hasSubagents?: boolean;
   subagentCount?: number;
+  /** The session's parent in the sidebar tree. A fork has no parent. */
+  parentSessionId?: string;
+  /** Direct children; the client uses it to decide whether to draw a chevron. */
+  childSessionCount?: number;
   /** Server-tracked stream state: `stream` while a run is in flight, then a
    *  one-shot `finish`/`abort` badge cleared when the session opens. */
   streamStatus?: 'stream' | 'finish' | 'abort';

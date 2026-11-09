@@ -1,5 +1,5 @@
 import type { TargetedMouseEvent } from 'preact';
-import { Check, ChevronDown, ChevronRight, CircleQuestionMark, Hourglass, Loader2, MoreHorizontal } from 'lucide-preact';
+import { Boxes, Check, ChevronDown, ChevronRight, CircleQuestionMark, Hourglass, Loader2, MoreHorizontal } from 'lucide-preact';
 import { useInlineRename } from '@/client/hooks/ui/inline-rename';
 import { useSessionRenaming } from '@/client/hooks/workspace/renaming-sessions';
 import { SessionActionsMenu, useRowMenu } from '@/client/components/common/session-actions-menu';
@@ -35,6 +35,9 @@ export interface SessionItemProps {
   expandable?: boolean;
   isExpanded?: boolean;
   hasSubagents?: boolean;
+  /** Whether the subagent roster (a separate list) is open. */
+  subagentsExpanded?: boolean;
+  onToggleSubagents?: (e: TargetedMouseEvent<HTMLElement>) => void;
   onToggleExpand?: (e: TargetedMouseEvent<HTMLElement>) => void;
   /**
    * The row's prompt is held until another session finishes. A pending row has
@@ -73,6 +76,8 @@ export function SessionItem({
   expandable = false,
   isExpanded = false,
   hasSubagents = false,
+  subagentsExpanded = false,
+  onToggleSubagents,
   onToggleExpand,
   waitingFor,
   onCancelWait,
@@ -86,7 +91,7 @@ export function SessionItem({
   // outranks the run cue: the server refuses a rename mid-run, so the two can
   // only overlap for the instant the refusal is in flight.
   const renaming = useSessionRenaming(sessionId);
-  const showChevron = Boolean(expandable && hasSubagents && onToggleExpand);
+  const showChevron = Boolean(expandable && onToggleExpand);
   // The slot shows one glyph, never two side by side. A live run signal owns
   // it at rest — the spinner, or the blocked-on-a-question cue, which says it
   // is YOUR turn. With nothing live to report the chevron is PINNED, collapsed
@@ -159,7 +164,7 @@ export function SessionItem({
                 e.stopPropagation();
                 onToggleExpand(e);
               }}
-              title={isExpanded ? 'Collapse subagents' : 'Expand subagents'}
+              title={isExpanded ? 'Collapse child sessions' : 'Expand child sessions'}
               aria-expanded={isExpanded}
               className={`peer absolute inset-0 flex items-center justify-center rounded cursor-pointer transition-opacity ${
                 chevronPinned
@@ -262,6 +267,25 @@ export function SessionItem({
           <span className="shrink-0 ml-2 font-mono text-[10px] text-ink/40">{timeAgo}</span>
         )}
 
+        {/* The roster is a tool-call list, not a tree: its trigger is a badge,
+            never the chevron. Keeping the two controls apart is what stops a
+            child session and a subagent from reading as the same thing. */}
+        {!isEditing && hasSubagents && onToggleSubagents && !selectable && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleSubagents(e);
+            }}
+            title="Subagents (tool calls)"
+            aria-label="Subagents"
+            aria-expanded={subagentsExpanded}
+            className="shrink-0 ml-1 p-1 text-ink/40 hover:text-ink hover:bg-ink/10 rounded cursor-pointer"
+          >
+            <Boxes size={13} />
+          </button>
+        )}
+
         {/* One trigger, whatever the row can do — the menu grows, so a row with
             more actions costs no extra width. It is always drawn, the way the
             phone's row draws it: a hover-only trigger is invisible until the
@@ -290,6 +314,7 @@ export function SessionItem({
       {menu.anchor && (
         <SessionActionsMenu
           anchor={menu.anchor}
+          sessionId={sessionId}
           isArchived={isArchived}
           onRename={onRename ? startRename : undefined}
           onRenameWithAi={onRenameWithAi}

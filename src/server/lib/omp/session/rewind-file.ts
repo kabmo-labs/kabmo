@@ -121,26 +121,15 @@ function resolveCutIndex(
 }
 
 /**
- * Build the truncated body: entries at/after the cut turn are dropped; header
- * records and everything before it survive. Returns null when the cut cannot be
- * resolved at all (an unknown id with no clock, or an id naming a non-turn).
+ * Build the body for a resolved cut index. Shared with the fork path, which
+ * resolves its own index (the start of the anchored turn) and must keep the
+ * same header-carrying rules as a rewind.
  */
-export function truncateSessionBody(body: string, cut: RewindCut): TruncatedSession | null {
-  const records: Array<Record<string, unknown> | null> = body.split('\n').map((line) => {
-    const trimmed = line.trim();
-    if (!trimmed) return null;
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(trimmed);
-    } catch {
-      return null;
-    }
-    return isRecord(parsed) ? parsed : null;
-  });
-
-  const cutIndex = resolveCutIndex(records, cut);
-  if (cutIndex === undefined) return null;
-
+export function buildTruncatedBody(
+  records: Array<Record<string, unknown> | null>,
+  cutIndex: number,
+  options: { requestedEntryId?: string; startedAt?: number } = {},
+): TruncatedSession {
   const kept = records.slice(0, cutIndex);
   const outLines = kept
     .filter((r): r is Record<string, unknown> => Boolean(r))
@@ -167,12 +156,41 @@ export function truncateSessionBody(body: string, cut: RewindCut): TruncatedSess
   // the boundary for stored rows is that same clock — not the next file turn's.
   // Using the file turn's clock kept every command row between the two alive,
   // so undoing one `/usage` left the next one standing after a reload.
-  const resolvedByClock = cutRecord?.id !== cut.entryId;
+  const resolvedByClock =
+    options.requestedEntryId !== undefined && cutRecord?.id !== options.requestedEntryId;
   return {
     body: `${outLines.join('\n')}\n`,
-    overlayCutClock: resolvedByClock ? cut.startedAt : (cutRecord ? recordClock(cutRecord) : undefined),
+    overlayCutClock: resolvedByClock
+      ? options.startedAt
+      : (cutRecord ? recordClock(cutRecord) : undefined),
     droppedEntryIds,
   };
+}
+
+/**
+ * Build the truncated body: entries at/after the cut turn are dropped; header
+ * records and everything before it survive. Returns null when the cut cannot be
+ * resolved at all (an unknown id with no clock, or an id naming a non-turn).
+ */
+export function truncateSessionBody(body: string, cut: RewindCut): TruncatedSession | null {
+  const records: Array<Record<string, unknown> | null> = body.split('\n').map((line) => {
+    const trimmed = line.trim();
+    if (!trimmed) return null;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(trimmed);
+    } catch {
+      return null;
+    }
+    return isRecord(parsed) ? parsed : null;
+  });
+
+  const cutIndex = resolveCutIndex(records, cut);
+  if (cutIndex === undefined) return null;
+  return buildTruncatedBody(records, cutIndex, {
+    requestedEntryId: cut.entryId,
+    ...(cut.startedAt !== undefined ? { startedAt: cut.startedAt } : {}),
+  });
 }
 
 /**

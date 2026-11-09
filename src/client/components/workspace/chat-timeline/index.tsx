@@ -13,6 +13,7 @@ import { useChatTimeline } from '@/client/hooks/chat/timeline';
 import { useSessionTitle } from '@/client/hooks/chat/timeline/session-title';
 import { useSubagentView } from '@/client/hooks/chat/timeline/subagent-view';
 import { useUndoConfirmation } from '@/client/hooks/chat/timeline/undo-confirmation';
+import { useForkSession } from '@/client/hooks/chat/timeline/use-fork-session';
 import { useModelNames } from '@/client/hooks/models/use-model-names';
 import { useRunIdentity } from '@/client/hooks/chat/timeline/run-identity';
 import { useProviderNames } from '@/client/hooks/models/use-provider-names';
@@ -148,7 +149,7 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
   }, [jumpToUserTurn]);
 
   const handleNewChat = newChat.open;
-
+  const handleFork = useForkSession(sessionId, pushToast);
   const modelNames = useModelNames();
   const { sessionProvider, sessionModelName } = useRunIdentity({ folders, sessionId, sessionData, modelNames });
   const providerNames = useProviderNames();
@@ -266,6 +267,7 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
                   onUndo={handleRequestUndo}
                   onRetry={handleRetry}
                   onNewChat={handleNewChat}
+                  onFork={handleFork}
                   showScrollBottom={showScrollBottom}
                   jumpToBottom={jumpToBottom}
                   rowWindow={rowWindow}

@@ -35,6 +35,7 @@ interface TimelineBodyProps {
   onUndo: (id: string, content?: string) => void;
   onRetry: (id: string) => void;
   onNewChat: (content: string, attachments?: Attachment[]) => void;
+  onFork?: (msgId: string) => void;
   showScrollBottom: boolean;
   jumpToBottom: (behavior?: ScrollBehavior) => void;
   /** Which rows of `messages` are mounted (see `useTimelineRowWindow`). */
@@ -70,6 +71,7 @@ export function TimelineBody({
   onUndo,
   onRetry,
   onNewChat,
+  onFork,
   showScrollBottom,
   jumpToBottom,
   rowWindow,
@@ -123,6 +125,7 @@ export function TimelineBody({
             onUndo={onUndo}
             onRetry={onRetry}
             onNewChat={onNewChat}
+            onFork={onFork}
             isMobile={isMobile}
             rowWindow={rowWindow}
           />

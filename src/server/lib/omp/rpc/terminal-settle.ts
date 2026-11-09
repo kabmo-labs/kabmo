@@ -34,7 +34,8 @@ import {
 import { scheduleQueueDelivery, type QueueDeliveryHost } from '@/server/lib/queue/delivery.server';
 import { requestWaitingSweep } from '@/server/lib/waiting/sweep-trigger';
 import { markStreamStatus, loadStreamStatuses } from '@/shared/lib/omp/session/stream-state.server';
-import { driveGoalAfterTurn } from '@/server/lib/omp/session/goal-driver.server';
+import { driveGoalAfterTurn, lastAssistantText } from '@/server/lib/omp/session/goal-driver.server';
+import { noteChildOutcome } from '@/server/lib/sessions/notify.server';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
 import { publishSidebarStructure } from '@/server/lib/realtime/topics.server';
 
@@ -99,6 +100,18 @@ async function markEndStatus(sessionId: string, host: TerminalSettleHost, messag
 export function settleTerminalRun(host: TerminalSettleHost, messages: unknown): void {
   const aborted = endedAborted(host, messages);
   if (host.sessionId) void markEndStatus(host.sessionId, host, messages);
+  // Delegation is reported here, not from the route: this frame is the only
+  // moment that knows a run genuinely ended, and a synthetic `run-settle`
+  // reconcile must report the same outcome as a real `agent_end`.
+  if (host.sessionId) {
+    void noteChildOutcome({
+      sessionId: host.sessionId,
+      status: aborted ? 'interrupted' : 'completed',
+      output: aborted ? null : lastAssistantText(messages),
+    }).catch((error: unknown) => {
+      console.error('[sessions] could not record a child outcome:', error);
+    });
+  }
   if (!aborted) {
     void triggerAutoSessionTitle(host, 'settle');
     void driveGoalAfterTurn({ host, messages });

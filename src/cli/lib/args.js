@@ -25,6 +25,7 @@ const BOOLEAN_LONG = new Set([
   'quiet',
   'help',
   'version',
+  'parent-self',
 ]);
 
 // Flags that set a DIFFERENTLY NAMED option, so a hyphenated flag can land on a
@@ -133,6 +134,25 @@ export function parseArgs(argv) {
       options.host = typeof value === 'string' ? value : null;
       return nextIndex;
     }
+    // `kabmo session` flags. The shared parser rejects anything it does not
+    // know, so a command's own options have to be named here — one table, one
+    // place an unknown flag is caught.
+    if (
+      name === 'prompt' ||
+      name === 'prompt-file' ||
+      name === 'harness' ||
+      name === 'anchor-entry' ||
+      name === 'model' ||
+      name === 'cwd' ||
+      name === 'title' ||
+      name === 'message' ||
+      name === 'message-file' ||
+      name === 'timeout'
+    ) {
+      const { value, nextIndex } = takeValue(tokens, index, inline);
+      options[name] = typeof value === 'string' && value.length > 0 ? value : null;
+      return nextIndex;
+    }
     const negated = NEGATED_LONG[name];
     if (negated) {
       options[negated.key] = negated.value;
@@ -227,6 +247,8 @@ COMMANDS:
   logs           Print or follow server logs (every instance, or --port <port>)
   plugin         Build, type, scaffold or list panel plugins
                  (build|types|new|list; see "${bin} plugin --help")
+  session        Spawn, fork, message or inspect a session through the server
+                 (spawn|fork|tell|relations|output; see "${bin} session --help")
 
 REQUIRED: oh-my-pi (\`omp\`)
   Kabmo drives your existing omp binary; it never installs one for you.

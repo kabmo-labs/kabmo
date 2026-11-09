@@ -32,6 +32,8 @@ is not documentation and does not move.
 | 16 | [Multi-harness research](milestones/M16-harnesses-research.md) | the measured ACP/RPC capability matrix for nine agent harnesses | done |
 | 17 | [Multi-harness design](milestones/M17-harnesses-design.md) | one transport per harness: per-harness tabs, the sidebar mark, per-harness settings | done |
 | 18 | [Centre terminal](milestones/M18-centre-terminal.md) | xterm versus Ghostty, measured, for a terminal beside the timeline | planned |
+| 19 | [Threads, forks and orchestration](milestones/M19-threads-forks-orchestration.md) | a reference implementation measured, then the session tree, spawn, fork, child outcomes and the sidebar separation | done |
+| 20 | [Cross-harness orchestration](milestones/M20-cross-harness-orchestration.md) | five references compared, then the Claude-orchestrator/omp-worker contract: ACP is a transport, the host is the bus | planned |
 
 ### What still owes
 
@@ -42,6 +44,7 @@ is not documentation and does not move.
 | 12 | Phase 4's device run: soft keyboard, IME composition, selection handles, both mobile WebViews | a viewport emulation has none of them |
 | 13 | all of it | research only: no TLS trust in any shell, no QR pairing |
 | 18 | all of it | research only: no centre-stage terminal view exists |
+| 20 | all of it | research only: no cross-harness worker contract or control surface exists |
 
 Declined, and recorded as such rather than left open: plugin-platform **P6** (component registry,
 declined in M04 and re-declined in M05/W6) and the editor's **format-on-save** (M14).

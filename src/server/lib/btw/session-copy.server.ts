@@ -35,7 +35,12 @@ import fs from 'fs';
 import * as path from 'path';
 import { getDatabasePath } from '@/server/db.server';
 import { clearSessionFileCaches } from '@/server/lib/omp/session/files';
-import { serializeTitleSlot } from '@/server/lib/omp/session/title-slot';
+import {
+  buildTitleLine,
+  completeLines,
+  lastEntryId,
+  parseJsonObject,
+} from '@/server/lib/omp/session/transcript-copy';
 import { isRecord } from '@/shared/lib/util/guards';
 
 /** Root holding every topic workspace, beside Kabmo database. */
@@ -45,37 +50,6 @@ export async function getBtwRoot(): Promise<string> {
   return root;
 }
 
-function parseJsonObject(line: string): Record<string, unknown> | null {
-  try {
-    const value: unknown = JSON.parse(line);
-    return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * The file's lines, minus a torn tail. A snapshot taken while the parent is
- * mid-append can end in a partial line; keeping it would make the side child
- * fail to load the transcript.
- */
-function completeLines(text: string): string[] {
-  const lines = text.split('\n');
-  if (lines[lines.length - 1] === '') lines.pop();
-  const last = lines[lines.length - 1];
-  if (last !== undefined && parseJsonObject(last) === null) lines.pop();
-  return lines;
-}
-
-/** The transcript's leaf: the id of its last entry. */
-export function lastEntryId(lines: string[]): string | null {
-  for (let index = lines.length - 1; index >= 0; index -= 1) {
-    const record = parseJsonObject(lines[index]);
-    if (record && typeof record.id === 'string') return record.id;
-  }
-  return null;
-}
-
 /** Read a transcript's leaf id straight from disk. */
 export async function readTranscriptLeaf(sessionFile: string): Promise<string | null> {
   try {
@@ -83,18 +57,6 @@ export async function readTranscriptLeaf(sessionFile: string): Promise<string | 
   } catch {
     return null;
   }
-}
-
-/** The title slot line, padded to the fixed slot omp rewrites in place, with
- *  the trailing newline removed (the writer here joins lines itself).
- *
- *  Delegates to the repo's slot serializer rather than re-deriving the width:
- *  that one truncates the title by code point, so a question written in CJK
- *  (up to 3 UTF-8 bytes each) still fits — clipping by character count alone
- *  would overflow the slot and fail promotion outright. */
-export function buildTitleLine(title: string, source: string, updatedAt: string): string {
-  const line = serializeTitleSlot({ title, source: source === 'auto' ? 'auto' : 'user', updatedAt });
-  return line.endsWith('\n') ? line.slice(0, -1) : line;
 }
 
 export interface BtwWorkspace {
