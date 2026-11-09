@@ -15,10 +15,8 @@
  */
 
 import { Window } from 'happy-dom';
-import { h, render } from 'preact';
+import { render } from 'preact';
 import { act } from 'preact/test-utils';
-import { FileExplorer } from '@/client/components/workspace/file-explorer/index';
-import { SessionStateProvider } from '@/client/components/common/session-state-provider/index';
 import { resetRealtimeClient } from '@/shared/lib/realtime/client';
 import { forgetSession } from '@/shared/lib/workspace/session-state/store';
 import { fsTopic, reposTopic } from '@/shared/lib/realtime/protocol';
@@ -28,6 +26,7 @@ import type { TopicResolver } from '@/server/lib/realtime/hub.server';
 import type { GitStatusPayload } from '@/server/lib/fs/git-status-read';
 import { diskHas, entriesOf, moveOnDisk, writeToDisk, type Disk } from '@/test-support/file-explorer-disk.test-util';
 import { fireDrag, rowElementFor, settleDrag, transferOf } from '@/test-support/file-explorer-drag.test-util';
+import { renderFileExplorer } from '@/test-support/file-explorer-render.test-util';
 
 export type { Disk } from '@/test-support/file-explorer-disk.test-util';
 
@@ -53,6 +52,14 @@ export interface FileExplorerHarness {
   server: RealtimeTestServer | null;
   /** Reset the disk state, mount the panel, and settle its first reads. */
   mount: () => Promise<void>;
+  /**
+   * Re-render the mounted panel with a different `active` flag.
+   *
+   * The desktop layout keeps a view mounted and hides it with CSS when the
+   * right column is collapsed or another view is on screen, so this is how a
+   * spec reaches "the user opened the panel again" without a remount.
+   */
+  setActive: (active: boolean) => Promise<void>;
   /** Tear the panel down and stop the listener. */
   unmount: () => void;
   clickRow: (name: string) => Promise<void>;
@@ -203,21 +210,10 @@ export function createFileExplorerHarness(): FileExplorerHarness {
 
       harness.container = document.createElement('div');
       document.body.appendChild(harness.container);
-      await act(async () => {
-        render(
-          h(SessionStateProvider, {
-            sessionId: SESSION,
-            children: h(FileExplorer, {
-              rootPath: ROOT,
-              enabled: true,
-              onOpenFile: (file: { path: string; name: string }) =>
-                harness.openedFiles.push({ path: file.path, name: file.name }),
-            }),
-          }),
-          harness.container,
-        );
-      });
-      for (let i = 0; i < 10; i += 1) await act(async () => {});
+      await renderPanel(true);
+    },
+    async setActive(active) {
+      await renderPanel(active);
     },
     async clickRow(name) {
       // The deepest element whose own text is exactly `name`: `TreeItem` wraps
@@ -344,5 +340,11 @@ export function createFileExplorerHarness(): FileExplorerHarness {
       return rowElementFor(harness.container, name);
     },
   };
+  /** Draw (or re-draw) the panel with the given visibility, then settle its reads. */
+  async function renderPanel(active: boolean) {
+    await renderFileExplorer(harness.container, SESSION, ROOT, active, (file) =>
+      harness.openedFiles.push({ path: file.path, name: file.name }),
+    );
+  }
   return harness;
 }

@@ -60,6 +60,31 @@ describe('Files panel listing', () => {
     expect(panel.container.textContent).toContain('keep.ts');
   });
 
+  test('reopening the panel re-reads the root and the open folders, so hidden-time edits appear', async () => {
+    panel.disk = { '.': { src: null }, src: { 'keep.ts': 'file', 'gone.ts': 'file' } };
+    panel.dirReads = [];
+    await panel.mount();
+    await panel.clickRow('src');
+    expect(panel.container.textContent).toContain('gone.ts');
+
+    // The right column is collapsed, or another view is on screen: the layout
+    // keeps this panel MOUNTED and hidden, so nothing here reads while the
+    // filesystem moves underneath it.
+    await panel.setActive(false);
+    delete panel.disk['src']!['gone.ts'];
+    panel.disk['.']!['added.ts'] = 'file';
+    panel.dirReads = [];
+
+    await panel.setActive(true);
+
+    // Reopening IS a read — of the root AND of every folder still expanded —
+    // so the deleted row is gone and the new one is drawn.
+    expect(panel.dirReads).toContain('.');
+    expect(panel.dirReads).toContain('src');
+    expect(panel.container.textContent).toContain('added.ts');
+    expect(panel.container.textContent).not.toContain('gone.ts');
+  });
+
   test('an expanded empty folder is read once, and expanding a sibling does not re-read it', async () => {
     panel.disk = { '.': { empty: null, keep: null }, empty: {}, keep: { 'a.ts': 'file' } };
     panel.dirReads = [];

@@ -293,7 +293,13 @@ export function WorkspacePanels(props: WorkspacePanelsProps) {
                 enabled: panel.liveWhileHidden
                   ? hasActiveContext
                   : hasActiveContext && isActiveView,
-                active: isActiveView,
+                // On screen means selected AND the column is open. A collapsed
+                // right panel keeps every view MOUNTED (that is what preserves a
+                // tree's expansion and a terminal's buffer), so `isActiveView`
+                // alone would report a view nobody can see as active — and a
+                // view that re-reads on activation would never notice the
+                // column being reopened.
+                active: isActiveView && showRightPanel,
                 refreshKey,
                 ...(activeProjectPath ? { rootPath: activeProjectPath } : {}),
                 onRefresh: onRefreshWorkspace,

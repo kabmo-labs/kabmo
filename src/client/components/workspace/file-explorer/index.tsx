@@ -21,7 +21,7 @@ import { fsTopic } from '@/shared/lib/realtime/protocol';
 import { unfoldChains } from '@/shared/lib/fs/folder-chain';
 import { useRootDropTarget } from '@/client/hooks/workspace/root-drop-target';
 
-export function FileExplorer({ className = '', enabled = true, rootPath, onOpenFile, refreshKey = 0, onRefresh }: { className?: string, enabled?: boolean, rootPath?: string, onOpenFile?: (file: any) => void, refreshKey?: number, onRefresh?: () => void }) {
+export function FileExplorer({ className = '', enabled = true, active = true, rootPath, onOpenFile, refreshKey = 0, onRefresh }: { className?: string, enabled?: boolean, active?: boolean, rootPath?: string, onOpenFile?: (file: any) => void, refreshKey?: number, onRefresh?: () => void }) {
   const [searchQuery, setSearchQuery] = useSessionState<string>('files.searchQuery', '');
   const [storedExpandedPaths, setStoredExpandedPaths, expandedPathsReady] = useSessionState<string[]>('files.expandedPaths', []);
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(() => new Set(storedExpandedPaths));
@@ -56,12 +56,18 @@ export function FileExplorer({ className = '', enabled = true, rootPath, onOpenF
   });
 
   useEffect(() => {
-    if (!expandedPathsReady) return;
+    if (!expandedPathsReady || !active) return;
     void listing.reload();
     // `listing.reload` reads the current scope and expansion set off refs, so
     // the effect is keyed on what should trigger a read, not on the callback.
+    // `active` is one of them: the layout keeps this view MOUNTED while the
+    // right column is collapsed (or another view is on screen), so without it a
+    // reopened panel would draw the tree it read when it was last looked at —
+    // a file added, deleted or renamed outside this panel in between would not
+    // be there. While inactive the panel starts no reload of its own; being
+    // shown again IS the read.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refreshKey, rootPath, enabled, activeRepo, expandedPathsReady]);
+  }, [refreshKey, rootPath, enabled, activeRepo, expandedPathsReady, active]);
 
   // The ROOT listing rides the `fs:<root>\0<repo>` topic: the server pushes a
   // fresh read when a run's work may have touched the tree. Expanded CHILDREN
