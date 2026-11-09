@@ -34,8 +34,11 @@ const GUTTER = 8;
  * marks, the model name, a context figure, a thinking chip and a favourite star,
  * and `Agnes-2-5-Flash - Free` measured `scrollWidth 139 / clientWidth 0` once
  * the trailing plates took their share.
+ *
+ * Exported because the About card sizes itself to this same cap: the console has
+ * one width class for its floating cards, and a second number there would drift.
  */
-const MAX_WIDTH = 512;
+export const MAX_WIDTH = 512;
 /** Narrowest it is allowed to get before it stops being usable. */
 const MIN_WIDTH = 240;
 /**
