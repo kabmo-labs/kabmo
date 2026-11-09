@@ -5,7 +5,7 @@ the installed binary was **18.8.3** (2026-10-07); the pin now matches (F9). This
 of everything between the two versions that Kabmo either gets wrong or
 does not use, and the phased plan to close it.
 
-Status: **done** — every phase closed; P4b–d and P5 were measured and deliberately not adopted, and the pin has since moved on to 18.17.0 (2026-11-06).
+Status: **done** — every phase closed; P4b–d and P5 were measured and deliberately not adopted, and the pin has since moved on to 18.18.3 (2026-11-09).
 
 **Re-audited at 18.9.2 (2026-10-12)** — the pin moved on again and the schema had
 drifted 9 rows; see [the re-audit section](#omp-1892-re-audit-2026-10-12) at the
@@ -1623,3 +1623,96 @@ fixes, and the Rust SDK's `exclude_from_context` fields.
 | R60 | hoisted `cd`, `details.cwd` | panel test pins the new field | 5 Bash panel tests pass; the field and the hoist read in `tools/bash.ts`, whose `stamp()` attaches it to the result and every progress frame |
 | R61 | `excludeFromContext` capability | none needed | no non-mock caller of RPC `bash` in `src/` or the plugins |
 | R62 | fixes and internals | none needed | wire 0 removed / 3 additive leaves; name, role and slash tables identical |
+
+# omp 18.18.3 adoption (2026-11-09)
+
+The installed pin moved **18.18.1 → 18.18.3**, carrying 18.18.2. The settings
+panel moves by three description strings, but the `ask` tool changes SHAPE, and
+that is the reason this bump is not a comment.
+
+## Method
+
+- `npm pack @oh-my-pi/pi-coding-agent@18.18.1` and `@18.18.3` (plus
+  `@oh-my-pi/pi-tui@18.18.3` for the form helpers) into temp trees, then `diff -r`
+  over `src/`.
+- `rpc-wire.schema.json` compared whole: **74 commands, 299 definitions**
+  (298 before), **0 removed, 1 added definition** (`ParentIrc`) and **1 added
+  leaf** (`parentIrc` on the steer envelope); all 33 `RpcAgentEvent` variants
+  byte-identical.
+- The schema generator run against 18.18.3 produces **10 tabs / 604 settings /
+  450 rows** (602 settings before), from a clean temp tree and in place.
+  `omp config list --json` answers **604 keys**, and **0 of 450 rows** is
+  rejected.
+- Slash registry diffed file by file: **89 specs, 47 TUI-only names**, identical.
+  `builtin-names.ts` and `MODEL_ROLES` identical.
+- The `ask` reshape read in `src/tools/ask.ts`, `src/modes/rpc/rpc-mode.ts`
+  (`RpcExtensionUIContext` has no `formDialog`; `askDialog` is only reached by
+  extensions and the ratchet) and `pi-tui/src/html-form/{parse,data}.ts`.
+
+## Findings
+
+### R63 — two settings rows arrive without a `ui` block (regenerate only)
+
+`gc.strip` and `gc.stripAfterDays` (18.18.2's `omp gc --strip`) carry no `ui`
+block, so neither omp's panel nor this schema offers them and the row count stays
+450. Three descriptions do change — `tui.mouse` (wheel capture), `mnemopi.dbPath`
+(`~` resolves to home), `task.eager` ("subagents keep the model's own policy") —
+which is what the regenerated file carries.
+
+### R64 — the `ask` tool takes an HTML form, and answers a different way (adopted)
+
+18.18.3 replaces `{ questions: [...] }` with `{ html }`. The RPC host has no
+`formDialog`, so `AskTool` walks the form's NAMED controls one dialog at a time
+(`select`/`input`/`editor`, titled with `fieldQuestions`' derivation), and the
+result carries `details.answers[] = { name, question, answer }[]` plus
+`timedOut`; the text is `User answers:\n{json}`. `set_ask_dialog` no longer
+reaches the tool at all.
+
+Kabmo read `questions[]`, so a live 18.18.3 ask produced no questions, no
+grouping and a raw-output card. What ships with this bump:
+
+- `src/shared/lib/chat/ask-form/` — a small parser mirroring
+  `parseHtmlForm`/`fieldQuestions` for labels, captions, legends, lone options,
+  selects, checkbox groups and the appended `Other` row. Cross-checked field by
+  field against omp's own derivation on seven form shapes; the one mismatch it
+  found is load-bearing: a top-level `<fieldset>` starts a NEW section, so the
+  paragraph above it does not caption its fields (the legend does). Deriving
+  `Sessions live in memory…` where omp titles the dialog `Session store` left
+  the live `select` unclaimed, and `splitAskFrames` handed it to the modal —
+  which has no ask body. The parser resets the caption at a top-level
+  fieldset.
+- `parseAskQuestions` prefers `html`, and still reads the pre-18.18.3
+  `questions[]` that persisted sessions carry.
+- `parseAskResult` reads `details.answers`, then the JSON in the result text,
+  then the older `results`/`selectedOptions` shapes.
+- `askQuestionForTitle` matches decorated titles — `(2 selected) `, ` (2/3)`,
+  and the ` (Enter a number)` suffix of a re-asked text field.
+
+The fallback also got STRICTER: a `select` response must be a label omp offered
+(`labels.indexOf`; a typed answer matches nothing and `cancelAsk` abandons the
+tool call). Kabmo hid `Other (type your own)` and sent typed text in its place,
+which 18.18.3 refuses; the card now sends the row, and the follow-up `input`
+titled with the same question carries the text.
+
+### R65 — `ParentIrc` on a steer (no action)
+
+A steer from a parent agent now carries `parentIrc: { from, body }`, so a host
+can render the message the parent wrote instead of the model-facing envelope.
+Kabmo runs top-level sessions and renders the envelope it sends itself, so the
+field is unused. It is additive and typed, so nothing else moves.
+
+### R66 — upstream internals (no action)
+
+`omp gc --strip` and its two settings, overlapping-`bash` calls running in a copy
+of the session shell, `logoutCredential()`/`SessionStorage.scanLines()` host API
+changes, the `sloppy` edit's partial apply, and the shell's Windows/`zsh`
+fixes. None has an RPC surface Kabmo reads.
+
+## 18.18.3 outcomes
+
+| # | Finding | Action | Verification |
+|---|---|---|---|
+| R63 | 604 settings, 450 rows, 3 descriptions | schema regenerated; pin bumped | `omp:schema:check` passes against 18.18.3; 604 live keys; 0/450 rejected |
+| R64 | `ask` form shape + answers + strict labels | `ask-form/`, new result paths, title matcher, Other row sends itself | 8 parser tests, 20 ask tests, 307 ask-adjacent tests; shapes read from `tools/ask.ts` and `rpc-mode.ts` |
+| R65 | `ParentIrc` additive | none needed | wire diff: 0 removed, 1 added definition, 1 added leaf |
+| R66 | host-side internals | none needed | slash, names and role tables identical; no RPC command added |

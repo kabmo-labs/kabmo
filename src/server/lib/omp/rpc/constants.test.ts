@@ -119,7 +119,8 @@ describe('command classification sets', () => {
   test('image-bearing commands and answerable UI methods', () => {
     expect([...IMAGE_BEARING_COMMANDS].sort()).toEqual(['abort_and_prompt', 'follow_up', 'prompt', 'steer']);
     // `ask` is the grouped dialog `configureChild` opts into with
-    // `set_ask_dialog`: omp parks the tool call on it exactly as it does on a
+    // `set_ask_dialog` (extensions and the ratchet; omp's own tool moved to an
+    // HTML form in 18.18.3): the agent parks on it exactly as it does on a
     // `select`, so a list without it leaves the frame unremembered and the
     // question unanswerable after a reload.
     expect(Object.keys(ANSWERABLE_UI_METHODS).sort()).toEqual(['ask', 'confirm', 'editor', 'input', 'select']);

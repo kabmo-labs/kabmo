@@ -21,9 +21,10 @@
  * fire-and-forget and must never be listed here: remembering one would offer a
  * later client a modal nothing is waiting on.
  *
- * `'ask'` belongs here because omp's `ask` tool awaits the rich dialog when the
- * host opts in (`set_ask_dialog`), and the per-question `select` loop it falls
- * back to otherwise — both park the tool call until an answer arrives.
+ * `'ask'` belongs here because a grouped ask dialog parks the agent until an
+ * answer arrives: omp's own `ask` tool took that path before 18.18.3, and
+ * extensions and the ratchet still open it. The tool's current form-driven walk
+ * parks on an ordinary `select`/`input`/`editor`, which is listed too.
  */
 
 import type { ExtensionUiDialogMethod, ExtensionUiDialogRequest } from '@/shared/types/omp/agent';

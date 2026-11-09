@@ -272,7 +272,42 @@ fi
 # messages and sort order machine-independent); and the embedded-shell crash
 # fixes (`grep -e`, a bare `[`, bytes that are not UTF-8) — those are the reason
 # to take the release, not code to write.
-OMP_VERSION="${OMP_VERSION:-18.18.1}"
+#
+# 18.18.3 (2026-11-09), carrying 18.18.2: the schema's `source` line moves to
+# 604 settings while the panel stays at 450 rows — the two additions
+# (`gc.strip`, `gc.stripAfterDays`) carry no `ui` block, so neither omp's panel
+# nor this schema offers them, and only three descriptions change
+# (`tui.mouse`, `mnemopi.dbPath`, `task.eager`). The RPC wire keeps its 74
+# commands and gains ONE ADDITIVE definition (298 → 299), `ParentIrc`, carried by
+# a steer from a parent agent. `builtin-names.ts`, `MODEL_ROLES` and the 89-spec
+# slash registry (47 TUI-only names) are byte-identical.
+#
+# One upstream change DOES reach a Kabmo surface, adopted here: the `ask` tool
+# takes one HTML `<form>` (`{ html }`) instead of `questions[]`, and answers with
+# `details.answers[]` — `{ name, question, answer }` — plus `timedOut`. Measured
+# on 18.18.3: the RPC host has no `formDialog`, so it walks the form's named
+# controls one `select`/`input`/`editor` at a time, and `set_ask_dialog` no
+# longer reaches the tool at all. Kabmo read `questions[]`, so every card would
+# have gone blank and fallen back to raw text; `shared/lib/chat/ask-form/` now
+# derives the questions omp does (own label, caption, legend, lone option, name)
+# and `parseAskResult` reads the new details. The same data is echoed as
+# `User answers:\n{json}` in the tool text, which is the fallback when the live
+# `tool_execution_end` frame drops details.
+#
+# The fallback also became STRICTER: a `select` response must be a label omp
+# OFFERED (`labels.indexOf`; a typed answer matches no index and cancels the
+# whole ask). Kabmo hid the "Other (type your own)" row and sent typed text in
+# its place, which 18.18.3 refuses; the card now sends the row itself and omp's
+# follow-up `input`, titled with the same question, carries the text.
+#
+# Not adopted, deliberately: `ParentIrc` (a parent agent's IRC message on a
+# steer — Kabmo runs top-level sessions and renders the model-facing envelope);
+# `omp gc --strip` (omp's own storage maintenance, a CLI command Kabmo never
+# invokes); overlapping-`bash` isolation (a second overlapping call now runs in
+# a copy of the session shell; Kabmo reads the output, not the shell); the
+# `sloppy` edit partial-apply and `logoutCredential`/`SessionStorage` API churn
+# (host-side changes behind no RPC surface).
+OMP_VERSION="${OMP_VERSION:-18.18.3}"
 PACKAGE="@oh-my-pi/pi-coding-agent"
 WANTED="omp/${OMP_VERSION}"
 

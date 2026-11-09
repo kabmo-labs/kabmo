@@ -1,5 +1,5 @@
 {
-  "source": "@oh-my-pi/pi-coding-agent 10 tabs / 602 settings",
+  "source": "@oh-my-pi/pi-coding-agent 10 tabs / 604 settings",
   "tabs": [
     {
       "id": "appearance",
@@ -767,7 +767,7 @@
         "tab": "appearance",
         "group": "Display",
         "label": "Mouse Click-to-Focus",
-        "description": "Capture mouse clicks in the main session so live subagent cards and HUD rows focus on click, with a hover highlight on the target, and clicks on extension-owned links reach their extension (the link-hint key picks them without the mouse). Native text selection becomes Shift+drag and wheel scroll becomes Shift+wheel while on"
+        "description": "Capture mouse clicks in the main session so live subagent cards and HUD rows focus on click, with a hover highlight on the target, and clicks on extension-owned links reach their extension (the link-hint key picks them without the mouse). Native text selection becomes Shift+drag while on, and mouse capture stops wheel scrolling — the terminal reports wheel ticks to omp instead — so scroll with the terminal's keyboard scrollback keys, or turn this off"
       }
     },
     "tui.tight": {
@@ -5020,7 +5020,7 @@
         "tab": "memory",
         "group": "Mnemopi",
         "label": "Mnemopi DB Path",
-        "description": "Optional SQLite DB path. Defaults to the agent memories directory.",
+        "description": "Optional SQLite DB path; a leading ~ is the home directory. Defaults to the agent memories directory.",
         "condition": "mnemopiActive"
       }
     },
@@ -7469,7 +7469,7 @@
         "tab": "tasks",
         "group": "Subagents",
         "label": "Prefer Task Delegation",
-        "description": "How strongly to push delegating work to subagents",
+        "description": "How strongly to push the main agent to delegate work; subagents keep the model's own policy",
         "options": [
           {
             "value": "default",

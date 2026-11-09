@@ -76,7 +76,7 @@ export function FrameControl({ frame, multi, selected, onAnswer, onToggle, onRes
           <textarea
             autoFocus
             value={text}
-            onChange={(event) => setText(event.currentTarget.value)}
+            onInput={(event) => setText(event.currentTarget.value)}
             rows={4}
             placeholder={frame.placeholder || 'Type your answer…'}
             className="w-full rounded-md border border-ink/15 bg-canvas/40 px-2.5 py-1.5 font-mono text-[11.5px] leading-relaxed text-ink outline-none focus:border-ink"
@@ -87,7 +87,7 @@ export function FrameControl({ frame, multi, selected, onAnswer, onToggle, onRes
             type={frame.secret === true ? 'password' : 'text'}
             value={text}
             placeholder={frame.placeholder || 'Type your answer…'}
-            onChange={(event) => setText(event.currentTarget.value)}
+            onInput={(event) => setText(event.currentTarget.value)}
             onKeyDown={(event) => {
               if (event.key !== 'Enter') return;
               event.preventDefault();
@@ -115,9 +115,6 @@ export function FrameControl({ frame, multi, selected, onAnswer, onToggle, onRes
   return (
     <div className="mt-2 space-y-1" role={multi ? 'group' : 'radiogroup'}>
       {options.map((label, index) => {
-        // A single-choice question resolves "Other" to the typed text, so the
-        // row itself is a prompt to type — never a literal answer.
-        if (!multi && isOtherOption(label)) return null;
         const checked = multi && selected.includes(label);
         const finish = multi && DONE_ROW.test(label);
         return (
@@ -129,24 +126,18 @@ export function FrameControl({ frame, multi, selected, onAnswer, onToggle, onRes
             checked={checked}
             suggested={RECOMMENDED.test(label) && !multi}
             emphasis={finish}
-            onClick={() => (multi ? (finish ? onRespond({ value: label }) : onToggle(label)) : onAnswer(label))}
+            onClick={() => {
+              // 18.18.3 accepts only a label it OFFERED: a typed answer sent in
+              // place of the "Other" row matches no index and cancels the whole
+              // ask. Choosing the row is what opens omp's free-text `input`, and
+              // that dialog answers in the same question's group.
+              if (!multi && isOtherOption(label)) onRespond({ value: label });
+              else if (multi) (finish ? onRespond({ value: label }) : onToggle(label));
+              else onAnswer(label);
+            }}
           />
         );
       })}
-
-      {!multi && (
-        <input
-          value={text}
-          placeholder="Other: type your own answer…"
-          onChange={(event) => setText(event.currentTarget.value)}
-          onKeyDown={(event) => {
-            if (event.key !== 'Enter' || !text.trim()) return;
-            event.preventDefault();
-            onAnswer(text.trim());
-          }}
-          className="w-full rounded-md border border-ink/15 bg-canvas/40 px-2.5 py-1.5 text-[11.5px] text-ink outline-none focus:border-ink"
-        />
-      )}
     </div>
   );
 }

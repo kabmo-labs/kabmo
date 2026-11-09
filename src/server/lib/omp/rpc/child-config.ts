@@ -39,10 +39,11 @@ export async function configureChild(proc: RpcProcess): Promise<void> {
   // Full accumulated `message_update` frames (see the module doc): the streaming
   // tool call's name/id live on the seed block, which delta mode drops.
   await proc.sendCommand({ type: 'set_event_filter', events: null, messageUpdates: 'full' }).catch(() => {});
-  // Grouped `ask` dialogs: every question of one `ask` tool call in a SINGLE
+  // Grouped `ask` dialogs: every question of one ask in a SINGLE
   // `extension_ui_request` (`method:"ask"`, with `multi`/`recommended`), answered
-  // by one `answers` response. Without this omp loops one `select` per question,
-  // which is what the ask card's per-question bookkeeping exists to reassemble.
-  // Verified on 18.8.3: two questions (one `multi`) arrived in one request.
+  // by one `answers` response. omp 18.18.3 no longer routes its OWN `ask` tool
+  // through this (the tool takes an HTML form now and the RPC host walks its
+  // fields one dialog at a time), but extensions and the ratchet still use the
+  // grouped dialog, and an older child still takes this path for the tool.
   await proc.sendCommand({ type: 'set_ask_dialog', enabled: true }).catch(() => {});
 }

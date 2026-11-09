@@ -32,7 +32,7 @@ import { useMemo, useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
 import { CornerDownLeft } from 'lucide-preact';
 import type { ExtensionAskQuestion, ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
-import type { AskAnswer } from '@/shared/lib/chat/ask-questions';
+import type { AskAnswer } from '@/shared/lib/chat/ask-form/types';
 import { AnswerList, QuestionCard } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/QuestionCard';
 import { OptionRow } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/OptionRow';
 import type { ExtensionDialogResponse } from '@/client/components/workspace/chat-timeline/tool-renderers/extension-dialog/Lazy';

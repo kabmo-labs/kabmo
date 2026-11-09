@@ -42,7 +42,9 @@
 import { createContext, useContext } from 'preact/compat';
 import type { ChatMessageData } from '@/shared/types';
 import type { ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
-import { groupAskFrames, isAskSettled, isAskToolCall, normalizeAskText, parseAskQuestions, parseAskResult, type AskQuestion } from '@/shared/lib/chat/ask-questions';
+import { askQuestionForTitle, groupAskFrames, isAskSettled, isAskToolCall, normalizeAskText, parseAskQuestions } from '@/shared/lib/chat/ask-questions';
+import { parseAskResult } from '@/shared/lib/chat/ask-results';
+import type { AskQuestion } from '@/shared/lib/chat/ask-form/types';
 import { isApprovalGateFrame } from '@/shared/lib/chat/omp/approval-gate';
 import type { ExtensionDialogResponse } from '@/client/components/workspace/chat-timeline/tool-renderers/extension-dialog/Lazy';
 
@@ -165,15 +167,14 @@ export function splitAskFrames(
       continue;
     }
 
-    const title = typeof request.title === 'string' ? normalizeAskText(request.title) : '';
     let owner: string | null = null;
-    if (title) {
+    if (typeof request.title === 'string' && request.title) {
       // Newest first: omp asks one question at a time and blocks on it, so when
       // two live calls name the same question the later one is the one in
       // flight.
       for (let index = openAsks.length - 1; index >= 0; index -= 1) {
         const candidate = openAsks[index];
-        if (candidate.questions.some((question) => normalizeAskText(question.question) === title)) {
+        if (askQuestionForTitle(candidate.questions, request.title) !== -1) {
           owner = candidate.toolId;
           break;
         }

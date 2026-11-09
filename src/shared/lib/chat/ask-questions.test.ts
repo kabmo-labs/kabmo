@@ -10,9 +10,9 @@ import type { ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
 import {
   groupAskFrames,
   parseAskQuestions,
-  parseAskResult,
   normalizeAskText,
 } from '@/shared/lib/chat/ask-questions';
+import { parseAskResult } from '@/shared/lib/chat/ask-results';
 
 function askTool(input: unknown, extra: Partial<ToolCallData> = {}): ToolCallData {
   return { id: 'call_ask_1', type: 'ask', title: 'ask', name: 'ask', input: input as Record<string, unknown>, ...extra };
@@ -53,6 +53,70 @@ describe('parseAskQuestions', () => {
   test('drops entries without question text instead of rendering a blank block', () => {
     const questions = parseAskQuestions(askTool({ questions: [{ id: 'a' }, { id: 'b', question: '  Keep me  ' }] }));
     expect(questions).toEqual([expect.objectContaining({ id: 'b', question: 'Keep me' })]);
+  });
+});
+
+describe('the 18.18.3 html form shape', () => {
+  const FORM = `<form>
+    <p>Which store?</p>
+    <label><input type="radio" name="store" value="sqlite" checked> SQLite</label>
+    <label><input type="radio" name="store" value="redis"> Redis</label>
+    <label>Days <input type="number" name="days" value="30"></label>
+    <p>Sources?</p>
+    <label><input type="checkbox" name="sources" value="git"> Git</label>
+    <label><input type="checkbox" name="sources" value="jira"> Jira</label>
+  </form>`;
+  const questions = parseAskQuestions(askTool({ html: FORM }));
+
+  test('reads every named control as a question, in form order', () => {
+    expect(questions.map((question) => question.id)).toEqual(['store', 'days', 'sources']);
+    expect(questions.map((question) => question.question)).toEqual(['Which store?', 'Days', 'Sources?']);
+    expect(questions[0].options.map((option) => option.label)).toEqual([
+      'SQLite',
+      'Redis',
+      'Other (type your own)',
+    ]);
+    expect(questions[2].multi).toBe(true);
+  });
+
+  test('reads details.answers by control name', () => {
+    const answers = parseAskResult(askTool({ html: FORM }, {
+      details: {
+        answers: [
+          { name: 'store', question: 'Which store?', answer: 'Redis' },
+          { name: 'days', question: 'Days', answer: '45' },
+          { name: 'sources', question: 'Sources?', answer: 'Git, Other: bitbucket' },
+        ],
+      },
+    }), questions);
+
+    expect(answers[0]).toEqual({ selectedOptions: ['Redis'], customInput: undefined, timedOut: false });
+    expect(answers[1]).toEqual({ selectedOptions: [], customInput: '45', timedOut: false });
+    expect(answers[2]).toEqual({ selectedOptions: ['Git'], customInput: 'bitbucket', timedOut: false });
+  });
+
+  test('flags the recorded answers when the timeout submitted the defaults', () => {
+    const answers = parseAskResult(askTool({ html: FORM }, {
+      details: { timedOut: true, answers: [{ name: 'store', question: 'Which store?', answer: 'SQLite' }] },
+    }), questions);
+    expect(answers[0]?.timedOut).toBe(true);
+  });
+
+  test('recovers the raw form data from the result text when details were dropped', () => {
+    const output = `User answers:\n{\n  "store": "redis",\n  "days": 45,\n  "sources": ["git", "jira"]\n}`;
+    const answers = parseAskResult(askTool({ html: FORM }, { output }), questions);
+    expect(answers.map((answer) => answer?.selectedOptions)).toEqual([['Redis'], [], ['Git', 'Jira']]);
+    expect(answers[1]?.customInput).toBe('45');
+  });
+
+  test('puts a re-asked field, decorated with its validation error, on the same question', () => {
+    const frames: ExtensionUiDialogRequest[] = [
+      selectFrame('f1', 'Which store?'),
+      { type: 'extension_ui_request', id: 'f2', method: 'input', title: 'Days (Enter a number)' },
+      selectFrame('f3', '(1 selected) Sources?'),
+    ];
+    const groups = groupAskFrames(questions, frames);
+    expect(groups.map((group) => group.map((frame) => frame.id))).toEqual([['f1'], ['f2'], ['f3']]);
   });
 });
 

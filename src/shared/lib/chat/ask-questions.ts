@@ -4,52 +4,29 @@
  */
 
 /**
- * Pure helpers for omp's `ask` tool: read its `questions` payload, pair the
- * per-question dialogs omp raises for them back to the question they belong to,
- * and read the recorded answers out of the tool result.
+ * Pure helpers for omp's `ask` tool: read the questions it asked and pair the
+ * per-question dialogs omp raises for them back to the question they belong to.
+ * The answers live in `ask-results.ts`.
  *
- * The pairing is load-bearing, and there are TWO shapes to pair against.
- * `configureChild` opts the child into the rich dialog with
- * `set_ask_dialog {enabled:true}`, so omp's `AskTool` takes its `askDialog`
- * path and a multi-question ask arrives as ONE frame (`method:"ask"`) carrying
- * every question — matched by the question IDS it shares with the tool call's
- * arguments, which is what `ask-frames.ts` does.
+ * TWO payload shapes reach this file. Since 18.18.3 the tool takes ONE
+ * `{ html }` form (`ask-form/` parses it into questions) and the RPC host
+ * walks its named fields one dialog at a time — a `select`/`input`/`editor`
+ * per field, with the question as its title. Before that, the tool took
+ * `questions[]`, and a host that opted in with `set_ask_dialog` got every
+ * question in ONE `method:"ask"` frame matched by question ids. Persisted
+ * sessions keep the old shape, so both are still read; `set_ask_dialog` now
+ * only reaches extensions and omp's ratchet, not this tool.
  *
- * The per-question loop is still reachable (a host that never opted in, or a
- * build without the command), and there a multi-question ask reaches the
- * Kabmo as ONE blocking `select` frame per question, in order. That frame
- * carries the question as its `title` (plus a ` (2/3)` progress suffix and a
- * `(2 selected) ` prefix for multi-select questions), which is what lets the
- * inline card put each frame back on the question it asked. Both shapes must
- * keep working: the frame-ownership split knows each one.
+ * The title pairing is load-bearing: omp decorates a select's title with a
+ * `(2 selected) ` prefix and a ` (2/3)` progress suffix, and a rejected text
+ * answer re-asks as `question (Enter a number)`. What is left is what lets the
+ * inline card put each frame back on the question it asked.
  */
 
 import type { ToolCallData } from '@/shared/types';
 import type { ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
-
-export interface AskOption {
-  label: string;
-  description?: string;
-  preview?: string;
-}
-
-export interface AskQuestion {
-  id?: string;
-  /** Short chip omp shows above the question ("Authentication"). */
-  header?: string;
-  question: string;
-  options: AskOption[];
-  multi: boolean;
-  /** Index of the option omp marks ` (Recommended)`. */
-  recommended?: number;
-}
-
-export interface AskAnswer {
-  selectedOptions: string[];
-  customInput?: string;
-  /** omp auto-selected the answer after `ask.timeout` elapsed. */
-  timedOut?: boolean;
-}
+import { parseAskForm } from '@/shared/lib/chat/ask-form';
+import type { AskOption, AskQuestion } from '@/shared/lib/chat/ask-form/types';
 
 /** The free-text escape hatch omp appends to every question's option list. */
 const OTHER_OPTION = /^other\b/i;
@@ -73,6 +50,31 @@ export function normalizeAskText(value: string): string {
     .replace(/\s+/g, ' ')
     .trim()
     .toLowerCase();
+}
+
+/**
+ * Index of the question a dialog title names.
+ *
+ * Exact after the decorations are stripped, else the longest question the
+ * title starts with followed by ` (` — the shape omp's field-by-field walk
+ * uses for a rejected text answer (`question (Enter a number)`). Longest wins
+ * so `Pick a colour (light)` is not captured by an `Pick a colour` beside it.
+ */
+export function askQuestionForTitle(questions: AskQuestion[], title: unknown): number {
+  if (typeof title !== 'string') return -1;
+  const needle = normalizeAskText(title);
+  if (!needle) return -1;
+  let best = -1;
+  let longest = 0;
+  for (let index = 0; index < questions.length; index += 1) {
+    const candidate = normalizeAskText(questions[index].question);
+    if (!candidate || candidate.length <= longest) continue;
+    if (needle === candidate || needle.startsWith(`${candidate} (`)) {
+      best = index;
+      longest = candidate.length;
+    }
+  }
+  return best;
 }
 
 function readOption(raw: unknown): AskOption | null {
@@ -112,13 +114,18 @@ export function isAskSettled(tool: ToolCallData): boolean {
 }
 
 /**
- * The `questions` array from an `ask` tool call's arguments. Empty when the tool
- * is not an ask call or its arguments were truncated — callers fall back to the
+ * The questions of an `ask` tool call: parsed from its `html` form (18.18.3+),
+ * else from the `questions` array an older call carried. Empty when the tool is
+ * not an ask call or its arguments were truncated — callers fall back to the
  * raw arguments/output rendering in that case.
  */
 export function parseAskQuestions(tool: ToolCallData): AskQuestion[] {
   const input = tool.input;
   const record = typeof input === 'object' && input !== null ? (input as Record<string, unknown>) : null;
+  if (record && typeof record.html === 'string') {
+    const fromForm = parseAskForm(record.html);
+    if (fromForm.length > 0) return fromForm;
+  }
   const raw = record && Array.isArray(record.questions) ? record.questions : [];
   const questions: AskQuestion[] = [];
 
@@ -136,110 +143,11 @@ export function parseAskQuestions(tool: ToolCallData): AskQuestion[] {
         : [],
       multi: question.multi === true,
       recommended: typeof question.recommended === 'number' ? question.recommended : undefined,
+      kind: 'choice',
     });
   }
 
   return questions;
-}
-
-function readAnswer(row: Record<string, unknown>): AskAnswer {
-  return {
-    selectedOptions: Array.isArray(row.selectedOptions)
-      ? row.selectedOptions.filter((value): value is string => typeof value === 'string')
-      : [],
-    customInput: typeof row.customInput === 'string' && row.customInput ? row.customInput : undefined,
-    timedOut: row.timedOut === true,
-  };
-}
-
-/** One `<id>: <answer>` line of a multi-question result. */
-const ANSWER_LINE = /^([\w.-]+):\s*(.+)$/;
-/** The single-question result's two prose shapes. */
-const SELECTED_LINE = /^User selected:\s*(.+)$/m;
-const CUSTOM_LINE = /^User provided custom input:\s*([\s\S]+)$/m;
-
-/** `value` as omp renders it: a quoted string is typed input, a bare one is a
- *  picked label (comma-joined when the question allows several). */
-function toAnswer(value: string, multi: boolean): AskAnswer {
-  const text = value.trim();
-  if (/^"[\s\S]*"$/.test(text)) return { selectedOptions: [], customInput: text.slice(1, -1) };
-  const labels = multi && text.includes(', ') ? text.split(', ') : [text];
-  return { selectedOptions: labels.map((label) => label.trim()).filter(Boolean) };
-}
-
-/**
- * Answers recovered from the tool's rendered text, used when `details` never
- * reached this client. `details` is the richer source, but it is dropped by the
- * live `tool_execution_end` frame on some omp builds; the text is the one part
- * of a settled result every path carries, and it names each answer by question
- * id (`language: Python`) or as a single sentence for a one-question ask.
- */
-function parseAskOutputAnswers(output: string, questions: AskQuestion[]): (AskAnswer | null)[] {
-  const answers = questions.map((): AskAnswer | null => null);
-  const text = output.trim();
-  if (!text) return answers;
-
-  const byId = new Map<string, AskAnswer>();
-  for (const line of text.split('\n')) {
-    const match = ANSWER_LINE.exec(line.trim());
-    if (match) byId.set(match[1], toAnswer(match[2], questions.some((question) => question.multi)));
-  }
-  if (byId.size > 0) {
-    const ordered = [...byId.values()];
-    for (let index = 0; index < questions.length; index += 1) {
-      // The question id is the key omp prints; position is what is left when a
-      // payload carries no ids at all (omp requires them, so this is defensive).
-      const id = questions[index].id;
-      answers[index] = (id ? byId.get(id) : undefined) ?? ordered[index] ?? null;
-    }
-    return answers;
-  }
-
-  const selected = SELECTED_LINE.exec(text);
-  if (selected) {
-    answers[0] = toAnswer(selected[1], questions[0].multi);
-    return answers;
-  }
-  const custom = CUSTOM_LINE.exec(text);
-  if (custom) {
-    answers[0] = { selectedOptions: [], customInput: custom[1].trim() };
-    return answers;
-  }
-  if (questions.length === 1 && !text.includes('\n')) {
-    answers[0] = { selectedOptions: [text] };
-  }
-  return answers;
-}
-
-/**
- * Answers recorded in an `ask` tool result, positionally aligned with
- * `questions`. omp returns `details.results[]` for a multi-question ask and the
- * bare answer fields for a single-question one; the rendered text backs both up.
- */
-export function parseAskResult(tool: ToolCallData, questions: AskQuestion[]): (AskAnswer | null)[] {
-  const answers = questions.map((): AskAnswer | null => null);
-  if (questions.length === 0) return answers;
-
-  const details = tool.details ?? {};
-  const results = Array.isArray(details.results) ? (details.results as Record<string, unknown>[]) : null;
-  if (results) {
-    for (let index = 0; index < answers.length; index += 1) {
-      const row = results[index];
-      if (row && typeof row === 'object') answers[index] = readAnswer(row);
-    }
-    return answers;
-  }
-
-  if (typeof details.selectedOptions !== 'undefined' || typeof details.customInput === 'string') {
-    answers[0] = readAnswer(details);
-    return answers;
-  }
-
-  // A failed/cancelled ask answers nothing; its text is the reason, which would
-  // otherwise read as an answer for whichever id its first sentence names.
-  if (isAskSettled(tool) || tool.isError) return answers;
-
-  return parseAskOutputAnswers(typeof tool.output === 'string' ? tool.output : '', questions);
 }
 
 /**
@@ -258,12 +166,10 @@ export function groupAskFrames(
 ): ExtensionUiDialogRequest[][] {
   const groups = questions.map((): ExtensionUiDialogRequest[] => []);
   if (questions.length === 0) return groups;
-  const titles = questions.map((question) => normalizeAskText(question.question));
 
   let cursor = 0;
   for (const frame of frames) {
-    const title = typeof frame.title === 'string' ? normalizeAskText(frame.title) : '';
-    const index = titles.indexOf(title);
+    const index = askQuestionForTitle(questions, frame.title);
     if (index > cursor) {
       cursor = index;
     } else if (

@@ -221,6 +221,7 @@ async function runTurn(prompt: string, requestId: string) {
   const cmd = /cmd:(.+)/.exec(prompt);
   const wait = /wait:(\d+)/.exec(prompt);
   const waitLimit = prompt.includes('waitcap');
+  const formAsk = /form-ask:(.+)/.exec(prompt);
   const ask = /ask:(.+)/.exec(prompt);
   // A grouped ask with no tool call behind it — what a subagent or an
   // extension's own `askDialog` produces. The card cannot exist, so the dialog
@@ -250,8 +251,9 @@ async function runTurn(prompt: string, requestId: string) {
   else if (wait) await streamWait(Number(wait[1]));
   if (tool) await streamToolCall(tool[1], cmd?.[1].trim());
   if (editRows) await streamEditCall(Number(editRows[1]));
-  // `orphan-ask:` contains `ask:`, so the cardless form is tested FIRST.
-  if (orphanAsk) await runAsk(orphanAsk[1].trim(), false);
+  // `form-ask:` and `orphan-ask:` both contain `ask:`, so they are tested first.
+  if (formAsk) await runFormAsk(formAsk[1].trim());
+  else if (orphanAsk) await runAsk(orphanAsk[1].trim(), false);
   else if (ask) await runAsk(ask[1].trim());
 
   const messageId = `msg-${crypto.randomUUID().slice(0, 8)}`;
@@ -300,6 +302,82 @@ interface AskAnswer {
 
 /** The grouped asks the child is parked on, keyed by the request id omp uses. */
 const pendingAsks = new Map<string, (answers: AskAnswer[]) => void>();
+
+/** Parked `select`/`input` dialogs the form walk blocks on, keyed by request id. */
+const pendingFieldDialogs = new Map<string, (value: string | undefined) => void>();
+
+/** Send one blocking dialog and wait for its value, as the RPC form walk does. */
+function fieldDialog(frame: Record<string, unknown>): Promise<string | undefined> {
+  const uiRequestId = `ui-${crypto.randomUUID().slice(0, 8)}`;
+  const { promise, resolve } = Promise.withResolvers<string | undefined>();
+  pendingFieldDialogs.set(uiRequestId, resolve);
+  write({ type: 'extension_ui_request', id: uiRequestId, ...frame });
+  return promise;
+}
+
+/**
+ * The 18.18.3 `ask` shape: ONE HTML form, walked field by field.
+ *
+ * The tool call carries `{ html }`, the child blocks on a `select` per radio
+ * group and an `input` per text field — titled with the question omp derived
+ * from the form — and the result carries `details.answers[]` plus the submitted
+ * data as JSON in its text. This is the shape that reached Kabmo's card with no
+ * questions at all before `ask-form.ts` existed.
+ */
+async function runFormAsk(text: string) {
+  const callId = `call-${crypto.randomUUID().slice(0, 8)}`;
+  const messageId = `msg-${crypto.randomUUID().slice(0, 8)}`;
+  // The shape omp's own tool example uses: a context paragraph OUTSIDE the
+  // fieldset, whose legend is what titles the group's dialogs. Deriving the
+  // question from the paragraph instead is what sent the live frame to the
+  // modal instead of the card.
+  const html = `<form>
+    <p>${text}</p>
+    <fieldset>
+      <legend>Flavour</legend>
+      <label><input type="radio" name="flavour" value="yes" checked> Yes</label>
+      <label><input type="radio" name="flavour" value="no"> No</label>
+    </fieldset>
+    <label>Serving <input type="number" name="serving" value="1"></label>
+  </form>`;
+  const args = { html };
+  const block = { type: 'toolCall', id: callId, name: 'ask', arguments: args, partialArgs: JSON.stringify(args), streamIndex: 0 };
+  const message = { ...assistantMessage('', 'toolUse', messageId), content: [block] };
+
+  write({ type: 'message_start', messageId, message });
+  write({ type: 'message_end', messageId, message });
+  write({ type: 'turn_end', message, toolResults: [] });
+  write({ type: 'tool_execution_start', toolCallId: callId, toolName: 'ask', args });
+
+  const flavour = await fieldDialog({
+    method: 'select',
+    title: 'Flavour',
+    options: ['Yes', 'No', 'Other (type your own)'],
+  });
+  const serving = await fieldDialog({ method: 'input', title: 'Serving', placeholder: '1' });
+
+  write({
+    type: 'tool_execution_end',
+    toolCallId: callId,
+    toolName: 'ask',
+    result: {
+      content: [
+        {
+          type: 'text',
+          text: `User answers:\n${JSON.stringify({ flavour: flavour === 'No' ? 'no' : 'yes', serving: Number(serving ?? '1') }, null, 2)}`,
+        },
+      ],
+      details: {
+        answers: [
+          { name: 'flavour', question: 'Flavour', answer: flavour === 'No' ? 'No' : 'Yes' },
+          { name: 'serving', question: 'Serving', answer: serving ?? '1' },
+        ],
+      },
+      isError: false,
+    },
+    isError: false,
+  });
+}
 
 /**
  * The real `ask` tool shape, which is what the inline card exists for.
@@ -468,10 +546,18 @@ function handleCommand(frame: Record<string, unknown>) {
       respond({});
       return;
     case 'extension_ui_response': {
+      const targetId = typeof frame.id === 'string' ? frame.id : '';
+      // A field dialog of the form walk answers with `{ value }` (or
+      // `{ cancelled }`); the child then opens the next field.
+      const resolveField = pendingFieldDialogs.get(targetId);
+      if (resolveField) {
+        pendingFieldDialogs.delete(targetId);
+        resolveField(typeof frame.value === 'string' ? frame.value : undefined);
+        return;
+      }
       // The reply to a parked dialog. A grouped `ask` is answered by ONE
       // `answers` array; the child only then writes the tool result, which is
       // the window the card must keep showing what it sent in.
-      const targetId = typeof frame.id === 'string' ? frame.id : '';
       const resolve = pendingAsks.get(targetId);
       if (!resolve) return;
       pendingAsks.delete(targetId);
