@@ -12,26 +12,26 @@
  * omp's list under the `claude` tab would offer a model that agent cannot run,
  * and picking it would fail at the first prompt.
  *
- * The rule is therefore: **the active tab decides the list.** Two sources exist
- * and only two:
+ * The rule is therefore: **the active tab decides the list.** Three sources
+ * exist, and they are ranked:
  *
  *  - `omp-rpc` — Kabmo's `/api/models` (today's list, with favorites, recents
  *    and the provider plates), because that registry IS omp's;
- *  - every ACP harness — the `models[]` its own `session/new` returned, mapped
- *    into the same `AIModelOption` shape so the rows render identically.
+ *  - an ACP harness with a LIVE chat — the selectors that session itself
+ *    published (`get_state` → `configOptions`), because that is the list the
+ *    agent is offering right now. A probe runs its OWN spawn, so it can refuse
+ *    (codex asks for authentication in the probe while the chat that is
+ *    already running lists its models) and its answer ages;
+ *  - an ACP harness with no live chat — the `models[]` its own probe
+ *    `session/new` returned, mapped into the same `AIModelOption` shape so the
+ *    rows render identically.
  *
- * An unprobed ACP harness yields an EMPTY list plus the reason, never omp's
+ * An ACP harness with neither yields an EMPTY list plus the reason, never omp's
  * models as a stand-in.
  */
 
 import type { AIModelOption } from '@/shared/types';
-import type { HarnessSummary } from '@/shared/types/harness';
-
-/** An `<option>`-style pair, as `configOptions` publishes them. */
-export interface HarnessModelOption {
-  value: string;
-  name: string;
-}
+import type { HarnessSelectorValue, HarnessSummary, LiveHarnessModels } from '@/shared/types/harness';
 
 export interface HarnessModelList {
   /** Exactly the rows to render — never a union of two harnesses' catalogs. */
@@ -56,9 +56,9 @@ function splitSelector(value: string): { provider: string; id: string } {
 
 /** Map one ACP selector value into the picker's row shape. */
 export function acpModelOption(
-  option: HarnessModelOption,
+  option: HarnessSelectorValue,
   harness: string,
-  thinking: readonly HarnessModelOption[] = [],
+  thinking: readonly HarnessSelectorValue[] = [],
 ): AIModelOption {
   const { provider, id } = splitSelector(option.value);
   return {
@@ -86,11 +86,15 @@ export function acpModelOption(
  * recents and the provider plates the user built up. Any other harness REPLACES
  * it — never merges: two agents' models in one list is a row the tab does not
  * describe.
+ *
+ * `live` is what the OPEN chat's own session published, when it is running on
+ * this harness. It wins over `probe` (see the module header).
  */
 export function harnessModels(
   harnesses: readonly HarnessSummary[],
   harness: string | undefined,
   ompModels: readonly AIModelOption[] = [],
+  live?: LiveHarnessModels | null,
 ): HarnessModelList {
   // No harness yet (a brand-new chat) → omp's registry, which is the default
   // agent and therefore the honest preview.
@@ -98,11 +102,22 @@ export function harnessModels(
 
   const summary = harnesses.find((entry) => entry.id === harness);
   if (!summary) return { models: [], unprobed: true };
-  const blocked = summary.probe?.capabilities.blocked ?? summary.unavailable;
-  if (!summary.probe) return { models: [], unprobed: true, ...(blocked ? { blocked } : {}) };
+
+  // What the OPEN CHAT published outranks what one spawn measured: the live
+  // session is the one about to receive the pick.
+  const liveModels = live?.models ?? [];
+  const published = liveModels.length > 0 ? liveModels : (summary.probe?.models ?? []);
+  const thinking = live?.thinking?.length ? live.thinking : (summary.probe?.thinking ?? []);
+  if (published.length === 0) {
+    const blocked = summary.probe?.capabilities.blocked ?? summary.unavailable;
+    return { models: [], unprobed: !summary.probe, ...(blocked ? { blocked } : {}) };
+  }
+  // A block is evidence about a DIFFERENT spawn; saying "Authentication
+  // required" beside rows the running chat is offering would contradict the list
+  // it sits on, so only an uninstalled harness keeps its refusal here.
+  const blocked = liveModels.length > 0 ? undefined : summary.unavailable;
   return {
-    models: (summary.probe.models ?? []).map((option) =>
-      acpModelOption(option, harness, summary.probe?.thinking ?? [])),
+    models: published.map((option) => acpModelOption(option, harness, thinking)),
     unprobed: false,
     ...(blocked ? { blocked } : {}),
   };

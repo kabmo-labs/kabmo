@@ -76,13 +76,14 @@ export function ChatInput({
   const [composerFocused, setComposerFocused] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
-  const { harnesses } = useHarnesses();
+  const { harnesses, liveModels } = useHarnesses();
   // The ACTIVE agent's own catalog. omp's registry is not a stand-in: no ACP
   // harness shares its ids, and matching a session model against it left the
   // composer naming a model the agent never ran.
+  const live = harness ? liveModels[harness] : undefined;
   const scopedModels = useMemo(
-    () => (harness && harness !== 'omp-rpc' ? harnessModels(harnesses, harness).models : null),
-    [harness, harnesses],
+    () => (harness && harness !== 'omp-rpc' ? harnessModels(harnesses, harness, [], live).models : null),
+    [harness, harnesses, live],
   );
 
   const { selectedModel, setSelectedModel, thinkingLevels, currentThinking, selectThinking } = useModelSelection({

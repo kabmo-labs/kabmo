@@ -47,7 +47,7 @@ export function ModelDropdown({
   harnessEditable = true,
   isMobile,
 }: ModelDropdownProps) {
-  const { harnesses } = useHarnesses();
+  const { harnesses, liveModels } = useHarnesses();
   /**
    * The harness whose list is on screen.
    *
@@ -88,8 +88,8 @@ export function ModelDropdown({
    * at the first prompt.
    */
   const harnessList = useMemo(
-    () => harnessModels(harnesses, activeHarness, models),
-    [harnesses, activeHarness, models],
+    () => harnessModels(harnesses, activeHarness, models, liveModels[activeHarness]),
+    [harnesses, activeHarness, models, liveModels],
   );
   /** The tabs this picker may offer, from the same rule the model rows use. */
   const tabsForPicker = pickerHarnesses(harnesses, activeHarness);

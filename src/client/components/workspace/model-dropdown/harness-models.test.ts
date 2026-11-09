@@ -124,6 +124,23 @@ describe('harness model lists', () => {
     const list = harnessModels([probed('claude', [{ value: 'opus', name: 'Opus' }])], 'claude', ompModels);
     expect(list.models[0]?.thinkingLevels).toBeUndefined();
   });
+
+  test('the open chat’s own lists outrank the one-spawn probe', () => {
+    // codex refuses a probe while a chat runs, and the probe's blocked message
+    // then sat beside rows that chat was already offering.
+    const summary: HarnessSummary = {
+      id: 'codex', label: 'codex', transport: 'acp', canLaunch: true, enabled: true,
+      probe: probed('codex', [{ value: 'probe-only', name: 'Probe only' }]).probe,
+      unavailable: 'Probe refused',
+    };
+    const list = harnessModels([summary], 'codex', ompModels, {
+      models: [{ value: 'openai/gpt-5', name: 'GPT-5' }],
+      thinking: [{ value: 'medium', name: 'Medium' }],
+    });
+    expect(list.models.map((model) => model.id)).toEqual(['gpt-5']);
+    expect(list.models[0]?.thinkingLevels).toEqual(['medium']);
+    expect(list.blocked).toBeUndefined();
+  });
 });
 
 describe('which harnesses the picker offers', () => {

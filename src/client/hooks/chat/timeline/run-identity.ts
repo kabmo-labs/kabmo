@@ -15,7 +15,7 @@
 
 import { useMemo } from 'preact/hooks';
 import type { WorkspaceFolderData } from '@/shared/types';
-import type { SessionDataShape } from '@/client/hooks/chat/timeline/session-load';
+import type { SessionDataShape } from '@/client/hooks/chat/timeline/session-shapes';
 
 export interface RunIdentity {
   sessionProvider?: string;

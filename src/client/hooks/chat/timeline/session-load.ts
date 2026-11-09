@@ -21,24 +21,12 @@ import type { Dispatch, RefObject, SetStateAction } from 'preact/compat';
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 
 import type { ChatMessageData } from '@/shared/types';
+import type { SessionDataShape, SessionSeed } from '@/client/hooks/chat/timeline/session-shapes';
+import { publishLiveModels } from '@/client/hooks/models/use-harnesses';
 import { SESSION_META_RETRY_SCHEDULE_MS } from '@/shared/lib/workspace/refresh-cadence';
 import { useSessionPagination } from '@/client/hooks/chat/timeline/session-pagination';
 import { useLostRunRecovery } from '@/client/hooks/chat/timeline/lost-run';
 import { isOwnSpawn, isSpawnArrival } from '@/client/hooks/chat/timeline/session-switch';
-
-export interface SessionDataShape {
-  id?: string;
-  title?: string;
-  model?: string | { provider: string; modelId: string };
-  thinkingLevel?: string;
-  messages?: any[];
-}
-
-/** Session identity a spawn established before omp's JSONL is readable. */
-export interface SessionSeed {
-  model?: { provider: string; modelId: string } | null;
-  thinkingLevel?: string | null;
-}
 
 export interface UseSessionLoadDeps {
   sessionId: string | null;
@@ -106,6 +94,10 @@ export function useSessionLoad(deps: UseSessionLoadDeps) {
 
   const applySessionData = useCallback((incoming: SessionDataShape) => {
     if (incoming.model && typeof incoming.model === 'object') seededModelRef.current = incoming.model;
+    // The live chat's own selector lists are what the picker must list for this
+    // harness from now on: a probe is one throwaway spawn, and a chat already
+    // running can contradict it (codex refuses the probe while offering models).
+    if (incoming.harness && incoming.liveModels) publishLiveModels(incoming.harness, incoming.liveModels);
     const model = incoming.model ?? (isGeneratingRef.current ? seededModelRef.current ?? undefined : undefined);
     const thinkingLevel = incoming.thinkingLevel ?? seededThinkingLevelRef.current ?? undefined;
     setSessionData({ ...incoming, model, thinkingLevel });

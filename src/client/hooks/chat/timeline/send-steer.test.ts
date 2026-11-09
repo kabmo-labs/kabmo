@@ -18,9 +18,7 @@ import {
   type ChatTimelineSendDeps,
   type ChatTimelineSendResult,
 } from '@/client/hooks/chat/timeline/send';
-import {
-  type SessionSeed,
-} from '@/client/hooks/chat/timeline/session-load';
+import type { SessionSeed } from '@/client/hooks/chat/timeline/session-shapes';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'Event', 'CustomEvent'] as const;
 /** The runner's own globals, restored on teardown so later files still have them. */

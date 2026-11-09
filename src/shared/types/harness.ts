@@ -20,6 +20,31 @@ export type { HarnessConfig };
 
 export type { HarnessCapabilities };
 
+/**
+ * One selector value an ACP agent publishes (`configOptions[].options[]`), in
+ * the agent's own order and its own words.
+ *
+ * The SAME shape is what a probe records and what a live session reports, so a
+ * picker can list either without knowing which one it got.
+ */
+export interface HarnessSelectorValue {
+  value: string;
+  name: string;
+}
+
+/**
+ * The model and thinking selectors a harness's LIVE chat published.
+ *
+ * A probe is one throwaway spawn: it can be refused (codex demands
+ * authentication in the probe while the chat already running lists its models)
+ * and its answer ages. When a session of that harness is open, these are the
+ * selectors it published, and they are what the picker must show.
+ */
+export interface LiveHarnessModels {
+  models: HarnessSelectorValue[];
+  thinking?: HarnessSelectorValue[];
+}
+
 /** One row of `GET /api/harness`. */
 export interface HarnessSummary {
   id: string;
@@ -41,9 +66,9 @@ export interface HarnessSummary {
   probe: {
     harness: string;
     capabilities: HarnessCapabilities;
-    models: { value: string; name: string }[];
-    thinking: { value: string; name: string }[];
-    modes: { value: string; name: string }[];
+    models: HarnessSelectorValue[];
+    thinking: HarnessSelectorValue[];
+    modes: HarnessSelectorValue[];
     probedAt: number;
     /** True when the record is older than `PROBE_TTL_MS`. The answer is still
      *  shown — with its age — rather than being reported as "never probed". */

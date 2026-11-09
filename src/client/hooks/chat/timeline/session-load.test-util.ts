@@ -168,11 +168,15 @@ export async function mount(sessionId: string, api: ProbeApi): Promise<void> {
 }
 
 /** Land the registered fetch, as the server's response would. */
-export async function resolveLoad(messages: unknown[], index = 0): Promise<void> {
+export async function resolveLoad(
+  messages: unknown[],
+  index = 0,
+  sessionExtra: Record<string, unknown> = {},
+): Promise<void> {
   const gate = gates[index];
   if (!gate) throw new Error('no session fetch was registered');
   await act(async () => {
-    gate.resolve({ session: { id: 'sess-1', messages }, hasMore: false, oldestIndex: 0 });
+    gate.resolve({ session: { id: 'sess-1', messages, ...sessionExtra }, hasMore: false, oldestIndex: 0 });
   });
   for (let i = 0; i < 3; i += 1) await act(async () => {});
 }
