@@ -6,7 +6,7 @@ import { upsertOmpProviderModels } from '@/server/lib/omp/config/providers';
 import { manualModelSeed } from '@/server/lib/omp/config/provider-seeds';
 import { readNativeProviders } from '@/server/lib/omp/config/models-config';
 import { isProviderAuthMode, isProviderThinkingEffort, modelKindOf } from '@/shared/lib/models/provider/dialect';
-import { invalidateModelsCaches } from '@/shared/lib/models/server-cache';
+import { refreshModelRegistryAfterWrite } from '@/server/lib/models/registry-refresh.server';
 
 /**
  * POST /api/settings/provider-model — register ONE model by hand.
@@ -92,7 +92,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
       overrideOnly: false,
       models: [seed],
     });
-    if (result.written) invalidateModelsCaches();
+    if (result.written) await refreshModelRegistryAfterWrite({ reprobe: true });
 
     return json({
       success: result.written || alreadyKnown,

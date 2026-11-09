@@ -31,7 +31,7 @@ import { getDb } from '@/server/db.server';
 import { refreshModelCatalog } from '@/server/lib/models/catalog.server';
 import { mergeProviders, PROVIDERS_SETTINGS_KEY } from '@/server/lib/models/provider-registry.server';
 import { readSettingsJson } from '@/server/lib/db/settings-store';
-import { invalidateModelsCaches } from '@/shared/lib/models/server-cache';
+import { refreshModelRegistryAfterWrite } from '@/server/lib/models/registry-refresh.server';
 import type { ProviderItem } from '@/shared/types';
 
 async function readOverlay(): Promise<ProviderItem[]> {
@@ -63,9 +63,11 @@ export async function action({ request, params }: ActionFunctionArgs) {
     if (!result.ok) {
       return json({ success: false, ...result }, { status: 502 });
     }
-    // Every listing that moved means the registry did too — drop the caches so
-    // the chat picker and the role dropdowns see the new rows immediately.
-    invalidateModelsCaches();
+    // Every listing that moved means the registry did too — recycle the pooled
+    // omp child (it caches the catalog it spawned with) and drop the probes that
+    // measured the old one, so the chat picker and the role dropdowns see the new
+    // rows immediately.
+    await refreshModelRegistryAfterWrite({ reprobe: true });
     const merged = await mergeProviders(await readOverlay());
     const changed = slug ? result.changed.filter((entry) => entry.slug === slug) : result.changed;
     return json({

@@ -11,6 +11,9 @@ import { readRawHeaderLine } from '@/server/lib/omp/session/files';
 import { formatNewSessionTitle } from '@/shared/lib/omp/session/default-title';
 import { getLiveRunSessionIds, getLiveSession, harnessOfSession } from '@/server/lib/omp/rpc/session-registry';
 import { loadStreamStates } from '@/shared/lib/omp/session/stream-state.server';
+import { configByCategory, selectValues } from '@/server/lib/harness/launch';
+import type { AcpConfigOption } from '@/server/lib/harness/acp/protocol';
+import type { LiveHarnessModels } from '@/shared/types/harness';
 
 /** Newest-message window served by default for omp JSONL sessions; the client
  *  pages further back via `?before=` when the user scrolls to the top. Large
@@ -34,6 +37,33 @@ function windowMessages<T>(
   const end = before !== null && before > 0 && before <= total ? before : total;
   const start = Math.max(0, end - limit);
   return { messages: messages.slice(start, end), total, hasMore: start > 0, oldestIndex: start };
+}
+
+/** What a LIVE non-omp session adds to the session payload: its resolved model,
+ *  its thinking level, and the selector lists it published. */
+interface LiveSessionMeta {
+  model?: { provider: string; modelId: string };
+  thinkingLevel?: string;
+  harness?: string;
+  liveModels?: LiveHarnessModels;
+}
+
+/** Spread into the `session` payload so every branch states these fields once.
+ *  `recorded` is the last run's model from `session_stream_state`, used only
+ *  when no live session can answer. */
+function liveMetaFields(
+  liveMeta: LiveSessionMeta | null,
+  recorded?: { provider: string; modelId: string },
+  recordedThinkingLevel?: string,
+): Record<string, unknown> {
+  const model = liveMeta?.model ?? recorded;
+  const thinkingLevel = liveMeta?.thinkingLevel ?? recordedThinkingLevel;
+  return {
+    ...(model ? { model } : {}),
+    ...(thinkingLevel ? { thinkingLevel } : {}),
+    ...(liveMeta?.harness ? { harness: liveMeta.harness } : {}),
+    ...(liveMeta?.liveModels?.models.length ? { liveModels: liveMeta.liveModels } : {}),
+  };
 }
 
 export async function loader({ params, request }: LoaderFunctionArgs) {
@@ -64,21 +94,36 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     // omp's catalog and name a model the agent never ran. The LIVE session's
     // own selector is the only honest source — and `get_state` on the ACP
     // driver is an in-process read, not a round trip to the agent.
-    let liveMeta: { model?: { provider: string; modelId: string }; thinkingLevel?: string } | null = null;
+    let liveMeta: LiveSessionMeta | null = null;
     if (!mock) {
       const live = getLiveSession(sessionId);
       if (live?.isAlive() && harnessOfSession(live) !== 'omp-rpc') {
+        const harness = harnessOfSession(live);
         const state = (await live.send({ type: 'get_state' }).catch(() => null)) as {
           model?: { provider?: unknown; id?: unknown };
           thinkingLevel?: unknown;
+          configOptions?: unknown;
         } | null;
         const provider = typeof state?.model?.provider === 'string' ? state.model.provider : '';
         const modelId = typeof state?.model?.id === 'string' ? state.model.id : '';
+        const selectors: AcpConfigOption[] = Array.isArray(state?.configOptions)
+          ? (state.configOptions as AcpConfigOption[])
+          : [];
+        // The session's OWN selector lists, so the picker lists exactly what
+        // this agent offers — a probe is one throwaway spawn that a chat already
+        // running can contradict (codex refuses the probe while offering models).
+        const models = selectValues(configByCategory(selectors, 'model'));
+        const thinking = selectValues(configByCategory(selectors, 'thought_level'));
         liveMeta = {
           ...(provider && modelId ? { model: { provider, modelId } } : {}),
           ...(typeof state?.thinkingLevel === 'string' && state.thinkingLevel
             ? { thinkingLevel: state.thinkingLevel }
             : {}),
+          harness,
+          liveModels: {
+            models,
+            ...(thinking.length > 0 ? { thinking } : {}),
+          },
         };
       }
     }
@@ -117,13 +162,23 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
           || (headerTimestamp ? formatNewSessionTitle(new Date(headerTimestamp)) : undefined)
           || `Session ${sessionId}`;
         const win = windowMessages(overlaid, limit, before);
+        // An ACP harness can own an on-disk transcript too — omp's own ACP server
+        // writes the same JSONL — and this branch used to return without the live
+        // session's own fields. The tab then published no selectors at all, so the
+        // picker for that harness could only ever list a probe snapshot instead of
+        // the list the RUNNING agent offers (`get_state` → `configOptions`), and
+        // the composer named the file's model rather than the one in force. The
+        // live halves win; the file answers once the session is gone.
         return json({
           session: {
             id: sessionId,
             title,
             messages: win.messages,
-            model: await loadSessionModel(filePath),
-            thinkingLevel: await loadSessionThinkingLevel(filePath),
+            ...liveMetaFields(
+              liveMeta,
+              await loadSessionModel(filePath),
+              await loadSessionThinkingLevel(filePath),
+            ),
           },
           isMock: false,
           source: 'omp-jsonl',
@@ -172,8 +227,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
           id: existing.session_id,
           title: (hasDefaultTitle && firstUserContent ? firstUserContent.slice(0, 120) : existing.title) || `Session ${sessionId}`,
           messages: parsedMessages,
-          ...((liveMeta?.model ?? recordedModel) ? { model: liveMeta?.model ?? recordedModel } : {}),
-          ...(liveMeta?.thinkingLevel ? { thinkingLevel: liveMeta.thinkingLevel } : {}),
+          ...liveMetaFields(liveMeta, recordedModel),
         },
         isMock: mock,
       });
@@ -194,8 +248,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     return json({
       session: {
         ...initial,
-        ...((liveMeta?.model ?? recordedModel) ? { model: liveMeta?.model ?? recordedModel } : {}),
-        ...(liveMeta?.thinkingLevel ? { thinkingLevel: liveMeta.thinkingLevel } : {}),
+        ...liveMetaFields(liveMeta, recordedModel),
       },
       isMock: mock,
     });

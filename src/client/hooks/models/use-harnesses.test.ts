@@ -27,7 +27,8 @@ import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 
-import { resetHarnessesStore, useHarnesses } from '@/client/hooks/models/use-harnesses';
+import { resetHarnessesStore } from '@/client/hooks/models/harness-catalog';
+import { useHarnesses } from '@/client/hooks/models/use-harnesses';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
 
 const OPENCODE_UNPROBED = {

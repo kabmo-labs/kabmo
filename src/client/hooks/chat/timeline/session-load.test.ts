@@ -29,6 +29,9 @@
 
 import { describe, expect, test } from 'bun:test';
 import { act } from 'preact/test-utils';
+import { h, render } from 'preact';
+import { resetHarnessesStore } from '@/client/hooks/models/harness-catalog';
+import { useHarnesses } from '@/client/hooks/models/use-harnesses';
 import {
   AI_PLACEHOLDER,
   ECHOED_TURN,
@@ -219,4 +222,32 @@ describe('a committed fetch with no local run', () => {
     expect(ids(api)).toEqual([]);
     expect(api.generatingCalls.length).toBe(before);
   });
+
+  test('publishes the live chat\'s selector lists to its harness', async () => {
+    stubChatFetch();
+    resetHarnessesStore();
+    const live = { models: [{ value: 'gpt-5-codex', name: 'GPT-5 Codex' }], thinking: [{ value: 'high', name: 'High' }] };
+    const seen: Record<string, unknown> = {};
+    const api = makeApi();
+    // The loader's session fetch is `gates[0]`; the store read below issues the
+    // harness-catalog read, so it must mount after the probe.
+    await mount('sess-1', api);
+    const box = document.body.appendChild(document.createElement('div'));
+    await act(async () => { render(h(LiveModelsRead, { sink: seen }), box); });
+
+    await resolveLoad([ECHOED_TURN], 0, { harness: 'codex', liveModels: live });
+
+    // The picker for that harness lists what the running chat reported, not what
+    // the throwaway probe guessed.
+    expect(seen.liveModels).toEqual({ codex: live });
+    await act(async () => { render(null, box); });
+    box.remove();
+  });
 });
+
+/** Read the harness store the way a model picker does. */
+function LiveModelsRead({ sink }: { sink: Record<string, unknown> }) {
+  const { liveModels } = useHarnesses();
+  sink.liveModels = liveModels;
+  return null;
+}

@@ -10,6 +10,7 @@ import { disableNativeProvider, enableNativeProvider } from '@/server/lib/omp/co
 import { removeOmpProvider } from '@/server/lib/omp/config/providers';
 import { PROVIDERS_SETTINGS_KEY as SETTINGS_KEY, deduplicateProviderItems, mergeProviders } from '@/server/lib/models/provider-registry.server';
 import { invalidateModelsCaches } from '@/shared/lib/models/server-cache';
+import { refreshModelRegistryAfterWrite } from '@/server/lib/models/registry-refresh.server';
 
 const providersStore = createSettingsListStore<ProviderItem>({
   key: SETTINGS_KEY,
@@ -173,7 +174,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
           });
         }
       }
-      invalidateModelsCaches();
+      if (removedFromOmp) await refreshModelRegistryAfterWrite({ reprobe: true });
+      else invalidateModelsCaches();
       const after = await mergeProviders(list);
       return json({ success: true, providers: after.providers, removedFromOmp, modelsRemoved });
     }

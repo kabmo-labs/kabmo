@@ -56,7 +56,16 @@ export function notifyModelsUpdated(): void {
 /**
  * Observe the `models` topic. The callback fires when the catalog changed, so
  * the caller can re-project its own view from `fetchModelsData`.
+ *
+ * The local cache is dropped BEFORE the handler runs: the event exists because
+ * the server's answer changed, and a 60s answer cached before it would otherwise
+ * be handed straight back to a handler that is trying to re-read the catalog
+ * (measured: adding a provider left the composer's picker on the old list until
+ * the page was reloaded, even though the topic had fired).
  */
 export function subscribeModelsUpdated(handler: () => void): () => void {
-  return realtimeClient.subscribe(TOPIC_MODELS, handler);
+  return realtimeClient.subscribe(TOPIC_MODELS, () => {
+    invalidateModelsCache();
+    handler();
+  });
 }

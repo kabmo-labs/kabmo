@@ -40,7 +40,8 @@ import { parse as parseToml } from 'smol-toml';
 import { providerFacts, type ProviderRegistryKind } from '@/shared/lib/harness/provider-facts';
 import { protocolOfSourceDialect, type CanonicalProtocol } from '@/shared/lib/harness/dialects';
 import { isVendorProviderId } from '@/shared/lib/models/provider/vendors';
-import type { HarnessId } from '@/shared/lib/harness/catalog';
+import { HARNESS_IDS, type HarnessId } from '@/shared/lib/harness/catalog';
+import { canonicalize } from '@/server/lib/omp/core/paths';
 
 /** One provider as a source registry holds it, minus its credential. */
 export interface ImportableProvider {
@@ -82,6 +83,22 @@ export function homeDir(): string {
 export function registryFilePath(id: HarnessId): string | null {
   const file = providerFacts(id).registry.file;
   return file ? join(homeDir(), file) : null;
+}
+
+/**
+ * Every harness that reads the SAME registry file.
+ *
+ * `omp-rpc` and `omp-acp` are two transports over one `models.yml`, so a
+ * provider written through either must invalidate the other's cached model
+ * list. The comparison is the file itself, not a hand-written pair, so a future
+ * harness that shares a registry inherits the rule for free.
+ */
+export function harnessesSharingRegistry(path: string): HarnessId[] {
+  const key = canonicalize(path);
+  return HARNESS_IDS.filter((id) => {
+    const file = registryFilePath(id);
+    return file !== null && canonicalize(file) === key;
+  });
 }
 
 /** A value at a dot-path (`options.baseURL`), or undefined. */

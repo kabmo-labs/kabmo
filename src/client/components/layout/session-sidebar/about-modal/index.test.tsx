@@ -23,6 +23,8 @@ import { render } from 'preact';
 import { act } from 'preact/test-utils';
 import { AboutModal } from '@/client/components/layout/session-sidebar/about-modal';
 import { MAX_WIDTH } from '@/client/components/workspace/model-dropdown/popover-metrics';
+import { resetHarnessVersions } from '@/client/hooks/models/use-harness-versions';
+import { resetHarnessesStore } from '@/client/hooks/models/harness-catalog';
 import { delay } from '@/client/hooks/chat/composer/file-reads';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
 import type { UseUpdatesResult } from '@/client/hooks/ui/updates';
@@ -43,6 +45,13 @@ const nativeFetch = globalThis.fetch;
 
 beforeAll(() => {
   installDomGlobals(new Window({ url: 'http://localhost' }));
+  // Both catalogs are module-level stores: a suite that ran earlier and left a
+  // read in flight (or the "already loaded" flag set) makes this card mount
+  // against that state instead of its own 501, and the harness list then renders
+  // its skeleton forever — the frame assertions still pass, the ROWS assertion
+  // does not. Cold stores make the suite order-independent.
+  resetHarnessesStore();
+  resetHarnessVersions();
   // The card reads two catalogs on mount; a 501 makes both hooks report their
   // error state instead of dialing a server that is not there.
   globalThis.fetch = (async () => ({

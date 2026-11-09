@@ -3,7 +3,7 @@ import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { isMockMode } from '@/server/mock.server';
 import { writeModelOverride, type ReasoningEffort } from '@/server/lib/omp/config/model-overrides';
-import { invalidateModelsCaches } from '@/shared/lib/models/server-cache';
+import { refreshModelRegistryAfterWrite } from '@/server/lib/models/registry-refresh.server';
 
 /**
  * PUT /api/settings/model-override — the per-model knobs omp actually honours.
@@ -61,7 +61,10 @@ export async function action({ request, params }: ActionFunctionArgs) {
     if (isMockMode()) return json({ success: true, written: false, isMock: true });
 
     const result = await writeModelOverride({ provider, modelId, maxTokens, reasoningEffort });
-    if (result.written) invalidateModelsCaches();
+    // A per-model override changes the registry's row metadata, not which models
+    // exist — so the readers are recycled, but a stored probe stays valid and
+    // the ACP picker does not blank out for an answer that did not change.
+    if (result.written) await refreshModelRegistryAfterWrite({ probes: false });
     return json({ success: result.written, ...result });
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : String(error) }, { status: 400 });

@@ -3,7 +3,7 @@ import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { isMockMode } from '@/server/mock.server';
 import { upsertOmpProviderModels } from '@/server/lib/omp/config/providers';
 import { readOmpProviderApiKey } from '@/server/lib/omp/core/auth-credentials';
-import { invalidateModelsCaches } from '@/shared/lib/models/server-cache';
+import { refreshModelRegistryAfterWrite } from '@/server/lib/models/registry-refresh.server';
 import {
   enrichFromCatalog,
   fetchRemoteModels,
@@ -161,7 +161,7 @@ export async function action({ request }: ActionFunctionArgs) {
           ...(body.replaceModels === true ? { replaceModels: true } : {}),
           models: enriched.map(toOmpSeed),
         });
-        if (upsert.written) invalidateModelsCaches();
+        if (upsert.written) await refreshModelRegistryAfterWrite({ reprobe: true });
         omp = {
           written: upsert.written,
           addedCount: upsert.addedModels.length,

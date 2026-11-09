@@ -34,14 +34,21 @@ interface ProviderWritePayload {
   target?: string;
   protocol?: string;
   probe?: { protocols: string[]; error?: string };
+  /** Harness tabs whose cached probe no longer describes the registry. */
+  probeInvalidated?: string[];
   error?: string;
 }
 
 /**
  * What `announce` does with a landed write: save the config the server answered
- * with, when there is one, and re-read the catalog.
+ * with, when there is one, re-read the catalog, and re-probe the harness tabs
+ * whose cached answer the write invalidated.
  */
-export type ProviderWriteAnnouncer = (id: string, config?: HarnessConfig) => void;
+export type ProviderWriteAnnouncer = (
+  id: string,
+  config?: HarnessConfig,
+  probeInvalidated?: readonly string[],
+) => void;
 
 /**
  * Turn one provider-write answer into what the card repeats.
@@ -63,7 +70,7 @@ function outcomeOf(
   }
   // An env-style target answered with a CONFIG; a registry target with what it
   // wrote. Both change what the card shows, so both are folded back in.
-  announce(id, payload.config);
+  announce(id, payload.config, payload.probeInvalidated);
   const imported = payload.imported;
   const parts = [
     payload.protocol ? `${payload.protocol} → ${payload.target ?? imported?.path ?? 'the agent'}` : null,

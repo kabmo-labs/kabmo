@@ -34,7 +34,8 @@ import { loadHarnessConfig, saveHarnessConfig } from '@/server/lib/harness/confi
 import { forgetProbe } from '@/server/lib/harness/probe-cache.server';
 import { probeEndpointProtocols, type EndpointProbe } from '@/server/lib/harness/provider-probe.server';
 import { writeProvider, type ListedProvider, type ProviderDraft } from '@/server/lib/harness/provider-write.server';
-import { readProviderKey } from '@/server/lib/harness/provider-sources.server';
+import { readProviderKey, harnessesSharingRegistry } from '@/server/lib/harness/provider-sources.server';
+import { refreshModelRegistryAfterWrite } from '@/server/lib/models/registry-refresh.server';
 
 /** A provider about to be written, from any source. */
 interface Candidate extends ListedProvider {
@@ -142,13 +143,24 @@ export async function applyProvider(target: HarnessId, candidate: Candidate, sou
     try {
       const written = await writeProvider(target, draft);
       // A variable-name format (codex's `env_key`) stores ONLY the name, so the
-      // value is saved into the harness env — where the spawn reads it — and the
-      // probe is dropped because the env is part of what it measured.
+      // value is saved into the harness env — where the spawn reads it.
       let config = null;
       if (Object.keys(written.env).length > 0) {
         config = withEnvValues(await loadHarnessConfig(target), written.env);
         await saveHarnessConfig(target, config);
-        await forgetProbe(target);
+      }
+      // WHICH harnesses read this file, not just the one the card named:
+      // omp-rpc and omp-acp are two transports over one models.yml, so an add
+      // made on either tab has to invalidate both pickers.
+      const sharing = harnessesSharingRegistry(written.path);
+      const invalidated = sharing.length > 0 ? sharing : [target];
+      if (sharing.includes('omp-rpc') || sharing.includes('omp-acp')) {
+        // The omp registry is read by the pooled RPC child AND by every ACP
+        // probe. Recycle the child and drop the stale probe records here; the
+        // browser re-probes the tabs it reads (the response names them).
+        await refreshModelRegistryAfterWrite({ path: written.path, probes: true, reprobe: false });
+      } else {
+        for (const id of invalidated) await forgetProbe(id);
       }
       return json({
         imported: written,
@@ -156,6 +168,7 @@ export async function applyProvider(target: HarnessId, candidate: Candidate, sou
         target: registryLabel(target),
         protocol: planned,
         probe,
+        probeInvalidated: invalidated,
         ...(config ? { config } : {}),
       });
     } catch (cause) {
@@ -186,6 +199,7 @@ export async function applyProvider(target: HarnessId, candidate: Candidate, sou
     protocol: planned,
     probe,
     provider: candidate.id,
+    probeInvalidated: [target],
   });
 }
 

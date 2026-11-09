@@ -36,7 +36,7 @@ import {
   isProviderAuthMode,
   isProviderDiscoveryType,
 } from '@/shared/lib/models/provider/dialect';
-import { invalidateModelsCaches } from '@/shared/lib/models/server-cache';
+import { refreshModelRegistryAfterWrite } from '@/server/lib/models/registry-refresh.server';
 
 /**
  * The discovery block from the client: a type plus the knobs that type accepts.
@@ -100,7 +100,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
     if (isMockMode()) return json({ success: true, written: false, isMock: true, changed: [] });
 
     const result = await updateOmpProviderEntry(slug, patch);
-    if (result.written) invalidateModelsCaches();
+    if (result.written) await refreshModelRegistryAfterWrite({ reprobe: true });
     return json({ success: result.written, ...result }, { status: result.written ? 200 : 400 });
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : String(error) }, { status: 400 });
