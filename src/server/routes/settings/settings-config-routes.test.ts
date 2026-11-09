@@ -31,6 +31,8 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { parse as parseYaml } from 'yaml';
+import { closeDb } from '@/server/db.server';
+import { removeDir } from '@/test-support/remove-dir';
 import { action as modelOverrideAction } from '@/server/routes/settings/model-override';
 import { action as ompConfigAction, loader as ompConfigLoader } from '@/server/routes/settings/omp-config';
 import { action as providerModelAction } from '@/server/routes/settings/provider-model';
@@ -58,12 +60,18 @@ afterEach(() => {
   fs.rmSync(MODELS_YML, { force: true });
 });
 
-afterAll(() => {
+afterAll(async () => {
+  // CLOSE the handle, then remove through `removeDir`. A bare `rmSync` with
+  // `force: true` reads as infallible and is not: on Windows an open
+  // `bun:sqlite` connection holds the temp tree and the delete fails with
+  // EBUSY, which reports from an `afterAll` as an unhandled error naming a line
+  // nobody can act on. Measured on the Windows gate.
+  await closeDb();
   delete Bun.env.PI_CODING_AGENT_DIR;
   delete Bun.env.KABMO_DB_PATH;
   delete Bun.env.SYNC_WORKSPACE;
   delete Bun.env.MOCK;
-  fs.rmSync(ROOT, { recursive: true, force: true });
+  removeDir(ROOT);
 });
 
 type Handler = (args: never) => unknown;

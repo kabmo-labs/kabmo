@@ -24,6 +24,7 @@ import path from 'node:path';
 
 import { readZcodeProviderKey, readZcodeProviders, writeZcodeProvider } from '@/server/lib/harness/provider-zcode.server';
 import { ProviderWriteError } from '@/server/lib/harness/provider-write-error';
+import { isWindows } from '@/test-support/platform';
 
 function tempFile(content?: string): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kabmo-zcode-'));
@@ -154,7 +155,11 @@ describe('writing a provider into the rule graph', () => {
       dialect: 'openai-chat-completions',
     });
     expect(result.replaced).toBe(false);
-    expect(fs.statSync(file).mode & 0o777).toBe(0o600);
+    // POSIX only: Windows has no permission bits and `statSync().mode` there
+    // reports a synthesised 0o666 for every file — measured on the Windows gate
+    // as `Expected: 384, Received: 438` (0o600 vs 0o666) for a write that set
+    // the mode correctly on the host. `chmod` is a no-op there.
+    if (!isWindows) expect(fs.statSync(file).mode & 0o777).toBe(0o600);
 
     const text = fs.readFileSync(file, 'utf8');
     expect(text.endsWith('}')).toBe(true);
