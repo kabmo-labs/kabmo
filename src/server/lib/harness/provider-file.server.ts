@@ -30,6 +30,9 @@ export function serialise(kind: ProviderRegistryKind, doc: Record<string, unknow
     case 'yaml-providers': return YAML.stringify(doc);
     case 'toml-model-providers':
     case 'toml-providers': return `${stringifyToml(doc)}\n`;
+    // The desktop's own writer emits two-space JSON with NO trailing newline;
+    // a non-canonical file is read fine but rewritten on the app's next save.
+    case 'zcode-provider-rules': return JSON.stringify(doc, null, 2);
     default: return `${JSON.stringify(doc, null, 2)}\n`;
   }
 }

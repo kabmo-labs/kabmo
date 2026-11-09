@@ -41,7 +41,8 @@ import {
 } from '@/server/lib/harness/config.server';
 import type { HarnessConfig } from '@/shared/lib/harness/config';
 import { loadDisabledHarnesses } from '@/server/lib/harness/enabled.server';
-import { HARNESS_LAUNCH, blockedProbe, probeHarness } from '@/server/lib/harness/launch';
+import { blockedProbe, probeHarness } from '@/server/lib/harness/launch';
+import { HARNESS_LAUNCH, harnessRequirementMet, type HarnessLaunch } from '@/server/lib/harness/launch-table';
 import { resolveOmpBin } from '@/server/lib/omp/core/cli';
 import { rememberProbe } from '@/server/lib/harness/probe-cache.server';
 import { HARNESS_IDS, harnessDescriptor, type HarnessId } from '@/shared/lib/harness/catalog';
@@ -63,18 +64,21 @@ declare global {
  */
 export function commandAvailable(id: HarnessId, config?: HarnessConfig): boolean {
   if (id === 'omp-acp') return Boolean(resolveOmpBin());
-  let command = HARNESS_LAUNCH[id]?.command;
+  let launch: HarnessLaunch | undefined = HARNESS_LAUNCH[id];
   if (config) {
     try {
       const configured = launchFromConfig(id, config);
-      if (configured?.command.length) command = configured.command;
+      if (configured) launch = configured;
     } catch {
       // An unusable env line is reported by the probe; availability falls back
       // to the build's table rather than claiming "not installed".
     }
   }
-  const [binary] = command ?? [];
+  const [binary] = launch?.command ?? [];
   if (!binary) return false;
+  // An adapter can need a binary it SPAWNS rather than execs: the zcode bridge
+  // starts `zcode app-server --stdio`, so `npx` being present says nothing.
+  if (!harnessRequirementMet(launch?.requires, launch?.env)) return false;
   if (binary === 'npx') return Boolean(Bun.which('npx') ?? Bun.which('node'));
   return Boolean(Bun.which(binary));
 }

@@ -15,8 +15,11 @@
  */
 
 import { describe, expect, test } from 'bun:test';
+import fs from 'node:fs';
+import os from 'node:os';
 import { join } from 'node:path';
 import { blockedProbe, capabilitiesFrom, configByCategory, probeHarness, selectValues, sessionLaunchCommand } from '@/server/lib/harness/launch';
+import { harnessRequirementMet } from '@/server/lib/harness/launch-table';
 import type { AcpInitializeResult, AcpConfigOption } from '@/server/lib/harness/acp/protocol';
 
 const ompInit: AcpInitializeResult = {
@@ -179,5 +182,39 @@ describe('probeHarness launch override', () => {
     const probe = blockedProbe('pi', 'executable not found (command: pi)');
     expect(probe.capabilities.blocked).toBe('executable not found (command: pi)');
     expect(probe.harness).toBe('pi');
+  });
+});
+
+/**
+ * A launch line can depend on a binary it does NOT exec.
+ *
+ * The zcode bridge starts `zcode app-server --stdio`; the probe still answers
+ * (its models come from files), so `npx` being present painted the tab ready
+ * while every turn exited with "zcode not found". These cases pin the
+ * resolution order the bridge itself uses.
+ */
+describe('harnessRequirementMet', () => {
+  const dir = fs.mkdtempSync(join(os.tmpdir(), 'kabmo-require-'));
+  const present = join(dir, 'zcode.cjs');
+  fs.writeFileSync(present, '');
+
+  test('no requirement means nothing to check', () => {
+    expect(harnessRequirementMet(undefined)).toBe(true);
+  });
+
+  test('an explicit env path is authoritative, including when it is wrong', () => {
+    const requirement = { binary: 'definitely-not-zcode-xyz', env: 'ZCODE_BIN', label: 'runtime' };
+    expect(harnessRequirementMet(requirement, { ZCODE_BIN: present })).toBe(true);
+    // A stale override must NOT fall back to PATH: the bridge uses it verbatim.
+    expect(harnessRequirementMet(requirement, { ZCODE_BIN: join(dir, 'missing.cjs') })).toBe(false);
+  });
+
+  test('a bundled app path counts when PATH has nothing', () => {
+    const requirement = { binary: 'definitely-not-zcode-xyz', bundled: [present], label: 'runtime' };
+    expect(harnessRequirementMet(requirement)).toBe(true);
+  });
+
+  test('a binary that is neither on PATH nor bundled is missing', () => {
+    expect(harnessRequirementMet({ binary: 'definitely-not-zcode-xyz', label: 'runtime' })).toBe(false);
   });
 });

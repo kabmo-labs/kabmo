@@ -42,6 +42,7 @@ import { protocolOfSourceDialect, type CanonicalProtocol } from '@/shared/lib/ha
 import { isVendorProviderId } from '@/shared/lib/models/provider/vendors';
 import { HARNESS_IDS, type HarnessId } from '@/shared/lib/harness/catalog';
 import { canonicalize } from '@/server/lib/omp/core/paths';
+import { readZcodeProviderKey, readZcodeProviders } from '@/server/lib/harness/provider-zcode.server';
 
 /** One provider as a source registry holds it, minus its credential. */
 export interface ImportableProvider {
@@ -132,7 +133,8 @@ function parseByKind(kind: ProviderRegistryKind, text: string): Record<string, u
       case 'toml-providers': return asRecord(parseToml(text));
       case 'json-provider':
       case 'json-providers':
-      case 'json-model-providers': return asRecord(JSON.parse(text));
+      case 'json-model-providers':
+      case 'zcode-provider-rules': return asRecord(JSON.parse(text));
       default: return null;
     }
   } catch {
@@ -193,6 +195,10 @@ export async function readRegistryProviders(id: HarnessId): Promise<ImportablePr
   if (!text) return [];
   const doc = parseByKind(kind, text);
   if (!doc) return [];
+
+  // ZCode's registry is a rule GRAPH, not a providers map: one provider rule
+  // plus one rule per model. Its reader lives beside its writer.
+  if (kind === 'zcode-provider-rules') return readZcodeProviders(text, id);
 
   // `modelProviders` is an ARRAY per protocol (qwen), so its rows are the models
   // themselves and the provider id is the protocol key.
@@ -295,6 +301,7 @@ export async function readProviderKey(source: HarnessId, providerId: string): Pr
   if (!text || !facts.registry.apiKeyField) return null;
   const doc = parseByKind(facts.registry.kind, text);
   if (!doc) return null;
+  if (facts.registry.kind === 'zcode-provider-rules') return readZcodeProviderKey(text, providerId);
   const entry = asRecord(asRecord(atPointer(doc, facts.registry.pointer))[providerId]);
   const value = atPointer(entry, facts.registry.apiKeyField);
   return typeof value === 'string' && value.length > 0 ? value : null;

@@ -21,7 +21,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:tes
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { EMPTY_HARNESS_CONFIG, parseHarnessConfig } from '@/shared/lib/harness/config';
 import { loadHarnessConfig, resolveLaunch, saveHarnessConfig } from '@/server/lib/harness/config.server';
-import { HARNESS_LAUNCH } from '@/server/lib/harness/launch';
+import { HARNESS_LAUNCH } from '@/server/lib/harness/launch-table';
 
 beforeEach(async () => {
   await isolateDb();

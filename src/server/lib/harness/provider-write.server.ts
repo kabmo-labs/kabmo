@@ -39,8 +39,9 @@ import {
 } from '@/shared/lib/harness/dialects';
 import { isVendorProviderId } from '@/shared/lib/models/provider/vendors';
 import { registryFilePath, readProviderKey, readRegistryProviders } from '@/server/lib/harness/provider-sources.server';
-import { asRecord, modelRowsFor, providerEntryFor, type ProviderDraft } from '@/server/lib/harness/provider-entry';
+import { asRecord, modelRowsFor, pickExisting, providerEntryFor, type ProviderDraft } from '@/server/lib/harness/provider-entry';
 import { ProviderWriteError } from '@/server/lib/harness/provider-write-error';
+import { writeZcodeProvider } from '@/server/lib/harness/provider-zcode.server';
 import type { HarnessId } from '@/shared/lib/harness/catalog';
 
 /** What a successful write changed, so the card can report it rather than guess. */
@@ -164,17 +165,34 @@ export async function writeProvider(
   if (!ID_PATTERN.test(id)) {
     throw new ProviderWriteError(`"${id}" is not a provider id ${target} accepts (lowercase, digits, . _ : -)`);
   }
-  if (isVendorProviderId(id, facts.registry.bundledIds)) {
+  const kind = facts.registry.kind;
+  // ZCode keys personal rules by the USER's id; its runtime ids are the
+  // `builtin:`/`account:` prefixes, and ids like `local` are its own documented
+  // example of a custom provider. The shared census is about the other agents,
+  // so it must not refuse a legitimate ZCode gateway.
+  if (kind !== 'zcode-provider-rules' && isVendorProviderId(id, facts.registry.bundledIds)) {
     throw new ProviderWriteError(
       `"${id}" is a provider ${target} ships itself, so writing it would override the vendor's entry instead of `
       + 'adding a gateway. Only providers you registered yourself can be imported.',
     );
   }
 
-  const kind = facts.registry.kind;
   const plan = planFor(target, draft);
   const planned: ProviderDraft = { ...draft, protocol: plan.protocol, baseUrl: plan.baseUrl };
   const dialect = dialectFor(kind, plan.protocol) ?? '';
+
+  // ZCode's personal-provider file is a RULE GRAPH (one provider rule plus one
+  // model rule per id), not a providers map. Its writer owns that read-modify-
+  // write; this module still owns the format/protocol decisions above.
+  if (kind === 'zcode-provider-rules') {
+    if (id.startsWith('builtin:') || id.startsWith('account:')) {
+      throw new ProviderWriteError(
+        `"${id}" is a provider the ZCode runtime owns; a personal rule cannot replace a built-in or account plan.`,
+      );
+    }
+    return writeZcodeProvider({ path, id, draft: planned, dialect });
+  }
+
   const env = credentialEnvFor(kind, planned);
   const notes: string[] = [];
 
@@ -270,35 +288,6 @@ export async function writeProvider(
     await writeFileAtomic(path, serialise(kind, doc), { createMode: 0o600 });
     return { id, replaced, path, dialect, env, notes };
   });
-}
-
-/**
- * The fields of an EXISTING entry that the import must not overwrite.
- *
- * A stored credential is the one that matters: an import brings an endpoint, and
- * replacing a key the user set by hand is not what asking to copy a provider
- * meant. `npm`/`type`/`wire_api` (the dialect) are kept too — they describe how
- * that provider already works, and the source's dialect is a guess about a
- * different agent.
- */
-function pickExisting(existing: Record<string, unknown>, incoming: Record<string, unknown>): Record<string, unknown> {
-  const keep: Record<string, unknown> = {};
-  const scalarKeys = ['npm', 'type', 'wire_api', 'api', 'name'];
-  for (const key of scalarKeys) {
-    if (existing[key] !== undefined && incoming[key] !== undefined) keep[key] = existing[key];
-  }
-  // Credentials, in each format's spelling: a top-level apiKey/api_key, or one
-  // nested inside opencode's `options`.
-  if (typeof existing.apiKey === 'string' && existing.apiKey) keep.apiKey = existing.apiKey;
-  if (typeof existing.api_key === 'string' && existing.api_key) keep.api_key = existing.api_key;
-  const existingOptions = asRecord(existing.options);
-  const incomingOptions = asRecord(incoming.options);
-  if (Object.keys(incomingOptions).length > 0) {
-    // `options` is merged key by key, so an endpoint arrives while a stored key
-    // and any hand-written option stay.
-    keep.options = { ...incomingOptions, ...existingOptions };
-  }
-  return keep;
 }
 
 /** The row the import list handed out, as the writer needs it. */

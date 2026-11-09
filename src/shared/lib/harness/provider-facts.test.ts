@@ -46,6 +46,7 @@ const WRITABLE: Record<string, string> = {
   pi: 'json-providers',
   kimi: 'toml-providers',
   qwen: 'json-model-providers',
+  zcode: 'zcode-provider-rules',
 };
 
 describe('the measured registry table', () => {
@@ -86,14 +87,20 @@ describe('the measured registry table', () => {
     expect(managesProviders('minimax')).toBe(false);
   });
 
-  test('zcode credentials belong to the ZCode app, never to Kabmo', () => {
-    // The ACP bridge reads the app's own config.json / acp-accounts.json. An
-    // editor that rewrote either would break the install it is driving.
+  test('zcode writes personal providers beside the app, never the app config', () => {
+    // 3.12+ stores user-added providers in `provider_config.json`; the legacy
+    // `config.json` map is the desktop app's and keeps its credentials. Writing
+    // THAT file is how a signed-in install stops signing in.
     const registry = providerFacts('zcode').registry;
-    expect(registry.kind).toBe('agent-managed');
-    expect(registry.file).toBe('.zcode/v2/config.json');
-    expect(registry.writable).toBe(false);
-    expect(managesProviders('zcode')).toBe(false);
+    expect(registry.kind).toBe('zcode-provider-rules');
+    expect(registry.file).toBe('.zcode/v2/provider_config.json');
+    expect(registry.file).not.toBe('.zcode/v2/config.json');
+    expect(registry.pointer).toBe('config.providerConfigRules.providerRules');
+    expect(registry.baseUrlField).toBe('config.api.baseUrl');
+    expect(registry.apiKeyField).toBe('config.access.apiKey');
+    expect(registry.dialectField).toBe('config.api.type');
+    expect(registry.writable).toBe(true);
+    expect(managesProviders('zcode')).toBe(true);
   });
 
   test('the env-only harnesses keep their vendor variable names', () => {
@@ -156,6 +163,10 @@ describe('labels a reader can check against the vendor docs', () => {
     expect(dialectChoices('toml-providers').map((d) => d.value)).toContain('openai_legacy');
     // qwen routes by protocol id, so it has no dialect field of its own.
     expect(dialectChoices('json-model-providers')).toEqual([]);
+    // ZCode documents exactly these three wire types; Gemini has no route there.
+    expect(dialectChoices('zcode-provider-rules').map((d) => d.value)).toEqual([
+      'anthropic-messages', 'openai-chat-completions', 'openai-responses',
+    ]);
   });
 });
 

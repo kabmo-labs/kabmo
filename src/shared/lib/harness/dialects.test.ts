@@ -129,4 +129,12 @@ describe('supportedProtocols', () => {
     expect(supportedProtocols('none')).toEqual([]);
     expect(supportedProtocols('agent-managed')).toEqual([]);
   });
+
+  test('zcode carries its three documented wire types, not Gemini', () => {
+    expect(supportedProtocols('zcode-provider-rules')).toEqual([
+      'openai-chat', 'openai-responses', 'anthropic-messages',
+    ]);
+    // The registry has no Google route: an import must refuse, not mislabel.
+    expect(dialectFor('zcode-provider-rules', 'google-genai')).toBeNull();
+  });
 });

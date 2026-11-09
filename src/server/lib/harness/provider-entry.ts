@@ -74,6 +74,38 @@ function requireDialect(kind: ProviderRegistryKind, draft: ProviderDraft, target
   return dialect;
 }
 
+/**
+ * The fields of an EXISTING entry that the import must not overwrite.
+ *
+ * A stored credential is the one that matters: an import brings an endpoint, and
+ * replacing a key the user set by hand is not what asking to copy a provider
+ * meant. `npm`/`type`/`wire_api` (the dialect) are kept too — they describe how
+ * that provider already works, and the source's dialect is a guess about a
+ * different agent.
+ *
+ * Lives here with the entry builders it mirrors, so the writer is read-modify-
+ * write and this module is "what does an entry look like".
+ */
+export function pickExisting(existing: Record<string, unknown>, incoming: Record<string, unknown>): Record<string, unknown> {
+  const keep: Record<string, unknown> = {};
+  const scalarKeys = ['npm', 'type', 'wire_api', 'api', 'name'];
+  for (const key of scalarKeys) {
+    if (existing[key] !== undefined && incoming[key] !== undefined) keep[key] = existing[key];
+  }
+  // Credentials, in each format's spelling: a top-level apiKey/api_key, or one
+  // nested inside opencode's `options`.
+  if (typeof existing.apiKey === 'string' && existing.apiKey) keep.apiKey = existing.apiKey;
+  if (typeof existing.api_key === 'string' && existing.api_key) keep.api_key = existing.api_key;
+  const existingOptions = asRecord(existing.options);
+  const incomingOptions = asRecord(incoming.options);
+  if (Object.keys(incomingOptions).length > 0) {
+    // `options` is merged key by key, so an endpoint arrives while a stored key
+    // and any hand-written option stay.
+    keep.options = { ...incomingOptions, ...existingOptions };
+  }
+  return keep;
+}
+
 /** kimi requires a context window per alias; 128k is the documented fallback. */
 const DEFAULT_CONTEXT_WINDOW = 128_000;
 

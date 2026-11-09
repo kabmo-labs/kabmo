@@ -36,6 +36,7 @@ export function registryLabel(id: string | null | undefined): string {
     case 'json-providers': return 'models.json (pi)';
     case 'toml-providers': return 'config.toml (kimi)';
     case 'json-model-providers': return 'settings.json (qwen)';
+    case 'zcode-provider-rules': return 'provider_config.json (zcode)';
     case 'agent-managed': return "the agent's own provider command";
     case 'env': return 'environment variables';
     default: return 'launch command and env';
@@ -133,6 +134,14 @@ export function dialectChoices(kind: ProviderRegistryKind): readonly { value: st
         { value: 'gemini', label: 'Google Gemini' },
         { value: 'kimi', label: 'Kimi' },
         { value: 'vertexai', label: 'Google Vertex AI' },
+      ];
+    case 'zcode-provider-rules':
+      // The three wire types ZCode's provider reference documents. Google is
+      // absent from its own enum, so it is not offered as a choice here.
+      return [
+        { value: 'anthropic-messages', label: 'Anthropic Messages' },
+        { value: 'openai-chat-completions', label: 'OpenAI Chat Completions' },
+        { value: 'openai-responses', label: 'OpenAI Responses' },
       ];
     default:
       return [];

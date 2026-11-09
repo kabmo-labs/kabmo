@@ -73,6 +73,8 @@ const SOURCE_DIALECTS: Readonly<Record<string, CanonicalProtocol>> = {
   chat: 'openai-chat',
   'chat-completions': 'openai-chat',
   chatcompletions: 'openai-chat',
+  'openai-chat-completions': 'openai-chat',
+  'openaichatcompletions': 'openai-chat',
   'ai-sdk-openai-compatible': 'openai-chat',
   'opencode-ai-providers-openai-compatible': 'openai-chat',
   kimi: 'openai-chat',
@@ -169,6 +171,16 @@ export function dialectFor(kind: ProviderRegistryKind, protocol: CanonicalProtoc
         'anthropic-messages': 'anthropic',
         'google-genai': 'gemini',
         'vertex-ai': 'vertex-ai',
+      }[protocol];
+    case 'zcode-provider-rules':
+      // ZCode's own enum (`config.api.type`). Google has no route in its
+      // registry, so a Gemini endpoint is refused instead of mislabelled.
+      return {
+        'openai-chat': 'openai-chat-completions',
+        'openai-responses': 'openai-responses',
+        'anthropic-messages': 'anthropic-messages',
+        'google-genai': null,
+        'vertex-ai': null,
       }[protocol];
     default:
       return null;

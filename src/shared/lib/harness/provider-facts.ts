@@ -34,7 +34,7 @@
  * | minimax | its own BYOK store, written by `mcode` | not a file Kabmo may edit |
  * | claude | env only | `ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN` |
  * | antigravity | env only | `GOOGLE_GEMINI_BASE_URL`, `GEMINI_API_KEY` |
- * | zcode | `~/.zcode/v2/config.json` | written by the ZCode app, not by an editor |
+ * | zcode | `~/.zcode/v2/provider_config.json` | `config.providerConfigRules.providerRules` (3.12+ personal providers) |
  * | cursor, dsh | none Kabmo can write | the launch line and its env |
  *
  * A file Kabmo may READ but must not WRITE is marked `readOnly`: minimax keeps its
@@ -59,6 +59,9 @@ export type ProviderRegistryKind =
   | 'toml-providers'
   /** A JSON settings document with `modelProviders` (qwen). */
   | 'json-model-providers'
+  /** ZCode's personal-provider rules: arrays under `config.providerConfigRules`
+   *  and `config.modelConfigRules` (3.12+). */
+  | 'zcode-provider-rules'
   /** No provider registry this build writes; an env contract instead. */
   | 'env'
   /** A registry that exists but belongs to the agent's own writer. */
@@ -304,17 +307,24 @@ export const HARNESS_PROVIDER_FACTS: Readonly<Partial<Record<HarnessId, HarnessP
   },
   zcode: {
     registry: {
-      // MEASURED against the bridge's own reference: it reads credentials and
-      // providers from the ZCode app's `config.json` (or the private
-      // `acp-accounts.json` written by `zcode-acp setup`). Rewriting the app's
-      // file from an editor is how a signed-in install stops signing in, so the
-      // entry is readable in principle and writable by nobody but the app.
-      kind: 'agent-managed', file: '.zcode/v2/config.json', pointer: '—',
-      writable: false, baseUrlField: null, apiKeyField: null, modelsField: null,
+      // MEASURED against the bridge's own reference and the installed 0.82.3
+      // bundle: `~/.zcode/v2/config.json` is the LEGACY provider map, and the
+      // personal providers a user adds in the 3.12+ desktop app (or the CLI's
+      // setup wizard) live in `provider_config.json`. The bridge reads both: the
+      // rule arrays are authoritative for custom providers, while `config.json`
+      // keeps builtin credentials. Writing `provider_config.json` is supported by
+      // the runtime (`provider-config.ts` writes it through a file lock and the
+      // backend absorbs external edits on a ~1s poll), so this registry is
+      // writable — unlike `config.json`, which the app owns.
+      kind: 'zcode-provider-rules', file: '.zcode/v2/provider_config.json',
+      pointer: 'config.providerConfigRules.providerRules',
+      writable: true, baseUrlField: 'config.api.baseUrl',
+      apiKeyField: 'config.access.apiKey', dialectField: 'config.api.type',
+      modelsField: 'config.personalModelIds', modelsAreRows: true,
     },
     createsChoice: true,
-    importFrom: [],
-    summary: 'ZCode keeps providers and credentials in ~/.zcode/v2/config.json, written by the app (or `zcode-acp setup`). Kabmo reads what they publish and never rewrites the file.',
+    importFrom: ['omp-rpc', 'opencode', 'codex', 'pi', 'kimi', 'qwen'],
+    summary: 'ZCode keeps user-added providers in ~/.zcode/v2/provider_config.json (3.12+), as provider rules plus one model rule per id. Kabmo merges one provider into that file and leaves the app’s legacy config.json untouched. Chats still need a ZCode runtime: the desktop app, or `zcode-app-cli` on PATH (`ZCODE_BIN` for a custom install).',
   },
 };
 

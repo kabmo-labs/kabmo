@@ -19,7 +19,7 @@ import { json } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { HARNESS_IDS, harnessDescriptor, type HarnessId } from '@/shared/lib/harness/catalog';
-import { HARNESS_LAUNCH } from '@/server/lib/harness/launch';
+import { HARNESS_LAUNCH } from '@/server/lib/harness/launch-table';
 import type { HarnessProbe } from '@/server/lib/harness/capabilities';
 import { forgetProbe, loadProbes, rememberProbe } from '@/server/lib/harness/probe-cache.server';
 import { loadDisabledHarnesses, saveHarnessEnabled } from '@/server/lib/harness/enabled.server';
@@ -94,7 +94,11 @@ export async function listHarnesses(): Promise<HarnessSummary[]> {
       ...(launch?.install ? { install: launch.install } : {}),
       ...(launch?.note ? { note: launch.note } : {}),
       probe: fresh,
-      ...(available ? {} : { unavailable: `\`${launch?.command[0] ?? id}\` is not installed` }),
+      ...(available ? {} : {
+        unavailable: launch?.requires
+          ? `${launch.requires.label} is not installed`
+          : `\`${launch?.command[0] ?? id}\` is not installed`,
+      }),
     };
   });
 }

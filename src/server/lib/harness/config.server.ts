@@ -16,7 +16,7 @@
 
 import { getDb } from '@/server/db.server';
 import { readSettingsJson, writeSettingsJson } from '@/server/lib/db/settings-store';
-import { HARNESS_LAUNCH, type HarnessLaunch } from '@/server/lib/harness/launch';
+import { HARNESS_LAUNCH, type HarnessLaunch } from '@/server/lib/harness/launch-table';
 import {
   harnessConfigKey,
   isHarnessConfigured,
