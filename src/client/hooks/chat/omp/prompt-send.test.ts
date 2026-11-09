@@ -222,7 +222,7 @@ describe('useOmpPromptSender.sendNewPrompt — ordering', () => {
       return false;
     });
 
-    expect(result).toEqual({ sessionId: 'omp-5', model: null });
+    expect(result).toEqual({ ok: true, session: { sessionId: 'omp-5', model: null } });
     expect(order).toEqual([NEW, 'goal:omp-5', '/api/agent/omp-5']);
     expect(requests.length).toBe(2);
   });
@@ -254,7 +254,7 @@ describe('useOmpPromptSender.sendNewPrompt', () => {
       modes: { plan: true, goal: false },
     });
 
-    expect(result).toEqual({ sessionId: 'omp-9', model: { provider: 'anthropic', modelId: 'claude' } });
+    expect(result).toEqual({ ok: true, session: { sessionId: 'omp-9', model: { provider: 'anthropic', modelId: 'claude' } } });
     expect(requests[0].url).toBe(NEW);
     expect(requests[0].body).toEqual({
       type: 'ensure_session',
@@ -278,21 +278,21 @@ describe('useOmpPromptSender.sendNewPrompt', () => {
 
     expect(requests[0].body).toEqual({ type: 'ensure_session', cwd: '/w' });
     expect(requests[1].body).toEqual({ type: 'prompt', message: 'first' });
-    expect(result).toEqual({ sessionId: 'omp-1', model: null });
+    expect(result).toEqual({ ok: true, session: { sessionId: 'omp-1', model: null } });
   });
 
-  test('a create failure returns null without connecting or prompting', async () => {
+  test('a create failure returns the server reason without connecting or prompting', async () => {
     const requests = installFetch({ [NEW]: { status: 500, body: { error: 'no workspace' } } });
     const probe = mountSender(null);
     const result = await probe.sender().sendNewPrompt('first', '/w');
 
-    expect(result).toBeNull();
+    expect(result).toEqual({ ok: false, error: 'no workspace' });
     expect(requests.length).toBe(1);
     expect(probe.connected).toEqual([]);
     expect(probe.state().error).toBe('no workspace');
   });
 
-  test('a prompt failure returns null even though the session was created', async () => {
+  test('a prompt failure returns the reason even though the session was created', async () => {
     const requests = installFetch({ [NEW]: { body: { success: true, sessionId: 'omp-3' } } });
     let call = 0;
     (globalThis as unknown as Record<string, unknown>).fetch = async (input: unknown, init?: { method?: string; body?: string }) => {
@@ -305,7 +305,7 @@ describe('useOmpPromptSender.sendNewPrompt', () => {
     const probe = mountSender(null);
     const result = await probe.sender().sendNewPrompt('first', '/w');
 
-    expect(result).toBeNull();
+    expect(result).toEqual({ ok: false, error: 'boom' });
     expect(probe.connected).toEqual(['omp-3']);
     expect(probe.state().isGenerating).toBe(false);
   });

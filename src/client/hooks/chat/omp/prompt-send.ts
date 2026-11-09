@@ -20,7 +20,7 @@ import { useCallback } from 'preact/hooks';
 import type { Dispatch, SetStateAction } from 'preact/compat';
 import { setSessionTitleHint } from '@/client/hooks/chat/omp/sidebar-overlay';
 import { redirectToOwningInstance, type SessionOwnerConflict } from '@/client/hooks/chat/omp/owner-redirect';
-import type { AgentImage, OmpAgentState, PromptDispatchResult, SpawnOptions, SpawnedSession } from '@/shared/types';
+import type { AgentImage, OmpAgentState, PromptDispatchResult, SpawnOptions, SpawnPromptResult } from '@/shared/types';
 import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 
 export interface OmpPromptSenderDeps {
@@ -49,7 +49,7 @@ export interface OmpPromptSender {
      * the raw message after it would be a second turn asking the same thing.
      */
     beforePrompt?: (sessionId: string) => Promise<boolean>,
-  ) => Promise<SpawnedSession | null>;
+  ) => Promise<SpawnPromptResult>;
 }
 
 export function useOmpPromptSender(deps: OmpPromptSenderDeps): OmpPromptSender {
@@ -114,16 +114,15 @@ export function useOmpPromptSender(deps: OmpPromptSenderDeps): OmpPromptSender {
    *  the prompt through the existing session route so no agent events are
    *  missed. Model/thinking picks ride the ensure_session body so omp applies
    *  them BEFORE the first prompt (and their JSONL change entries are written
-   *  up front, not after the run starts). Returns the new session id on
-   *  success, or null on failure — the caller adopts the id as the active
-   *  session. */
+   *  up front, not after the run starts). Returns the adopted session, or the
+   *  server's refusal reason — the caller must report it, never simulate one. */
   const sendNewPrompt = useCallback(async (
     message: string,
     cwd: string,
     images?: AgentImage[],
     composerOptions?: SpawnOptions,
     beforePrompt?: (sessionId: string) => Promise<boolean>,
-  ): Promise<SpawnedSession | null> => {
+  ): Promise<SpawnPromptResult> => {
     setState((prev) => ({ ...prev, isGenerating: true, error: null }));
     // The real id does not exist until `ensure_session` answers, so the mark
     // can only be armed past that point — the spawn itself is covered by the
@@ -153,8 +152,9 @@ export function useOmpPromptSender(deps: OmpPromptSenderDeps): OmpPromptSender {
         error?: string;
       };
       if (!created.ok || !createdBody.sessionId) {
-        setState((prev) => ({ ...prev, isGenerating: false, error: createdBody.error ?? `HTTP ${created.status}` }));
-        return null;
+        const error = createdBody.error ?? `HTTP ${created.status}`;
+        setState((prev) => ({ ...prev, isGenerating: false, error }));
+        return { ok: false, error };
       }
       sid = createdBody.sessionId;
       connect(sid);
@@ -168,7 +168,10 @@ export function useOmpPromptSender(deps: OmpPromptSenderDeps): OmpPromptSender {
       // is what makes the order a fact rather than a race. An armed interview
       // answers true: it already opened the turn, so this prompt is not sent.
       if (beforePrompt && await beforePrompt(sid)) {
-        return { sessionId: sid, model: createdBody.model ?? null, ...(createdBody.harness ? { harness: createdBody.harness } : {}) };
+        return {
+          ok: true,
+          session: { sessionId: sid, model: createdBody.model ?? null, ...(createdBody.harness ? { harness: createdBody.harness } : {}) },
+        };
       }
       const res = await fetch(`/api/agent/${encodeURIComponent(sid)}`, {
         method: 'POST',
@@ -181,13 +184,18 @@ export function useOmpPromptSender(deps: OmpPromptSenderDeps): OmpPromptSender {
       });
       const body = (await res.json().catch(() => ({}))) as { success?: boolean; error?: string };
       if (!res.ok || body.error) {
-        setState((prev) => ({ ...prev, isGenerating: false, error: body.error ?? `HTTP ${res.status}` }));
-        return null;
+        const error = body.error ?? `HTTP ${res.status}`;
+        setState((prev) => ({ ...prev, isGenerating: false, error }));
+        return { ok: false, error };
       }
-      return { sessionId: sid, model: createdBody.model ?? null, ...(createdBody.harness ? { harness: createdBody.harness } : {}) };
+      return {
+        ok: true,
+        session: { sessionId: sid, model: createdBody.model ?? null, ...(createdBody.harness ? { harness: createdBody.harness } : {}) },
+      };
     } catch (e) {
-      setState((prev) => ({ ...prev, isGenerating: false, error: e instanceof Error ? e.message : String(e) }));
-      return null;
+      const error = e instanceof Error ? e.message : String(e);
+      setState((prev) => ({ ...prev, isGenerating: false, error }));
+      return { ok: false, error };
     }
   }, [connect, setState]);
 

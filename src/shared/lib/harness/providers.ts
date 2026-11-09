@@ -58,6 +58,31 @@ export function supportsProviderEditor(id: string | null | undefined): boolean {
 }
 
 /**
+ * The id an endpoint serves for one picker alias, or null when it serves no
+ * model of that family.
+ *
+ * Claude Code's picker offers FAMILY aliases (`opus`, `sonnet`, `haiku`,
+ * `fable`). An alias that is not pinned with `ANTHROPIC_DEFAULT_*_MODEL` keeps
+ * resolving to Anthropic's own model id, which a gateway answers with
+ * `400 model not found: sonnet` (measured against kenari.id). The model list
+ * the endpoint published is what says which id belongs to the family.
+ *
+ * The id is returned BARE: `kenari/claude-sonnet-5` becomes
+ * `claude-sonnet-5`, because the variable names the model the endpoint expects,
+ * not the provider-qualified spelling an agent's own list may use.
+ */
+export function aliasModelFor(family: string, models: readonly string[]): string | null {
+  const pattern = new RegExp(`\\b${family.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+  for (const raw of models) {
+    const id = raw.trim();
+    if (!id) continue;
+    const bare = id.slice(id.lastIndexOf('/') + 1);
+    if (pattern.test(bare)) return bare;
+  }
+  return null;
+}
+
+/**
  * The env a provider becomes for an `environment` harness.
  *
  * This is the entire "add a provider" action for Claude Code and Antigravity: a
@@ -65,10 +90,15 @@ export function supportsProviderEditor(id: string | null | undefined): boolean {
  * form labels each field with the variable it becomes. A blank field writes NO
  * variable — an empty env var is a real thing to set, so the form must not do it
  * by accident.
+ *
+ * `models` is the endpoint's own listing. When given, every picker alias that
+ * family serves is PINNED to that id. Without the pin the alias still resolves
+ * to the vendor's model, so a picker row the user can see answers a gateway
+ * with `400 model not found` (measured on `sonnet` against kenari.id).
  */
 export function providerEnv(
   id: string | null | undefined,
-  provider: { baseUrl: string; apiKey: string; model?: string },
+  provider: { baseUrl: string; apiKey: string; model?: string; models?: readonly string[] },
 ): Record<string, string> {
   const contract = providerFacts(id).env;
   if (!contract) return {};
@@ -76,6 +106,10 @@ export function providerEnv(
   if (provider.baseUrl.trim()) env[contract.baseUrl] = provider.baseUrl.trim();
   if (provider.apiKey.trim()) env[contract.apiKey] = provider.apiKey.trim();
   if (contract.model && provider.model?.trim()) env[contract.model] = provider.model.trim();
+  for (const alias of contract.modelAliases ?? []) {
+    const model = aliasModelFor(alias.family, provider.models ?? []);
+    if (model) env[alias.env] = model;
+  }
   return env;
 }
 

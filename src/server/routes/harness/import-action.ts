@@ -185,6 +185,10 @@ export async function applyProvider(target: HarnessId, candidate: Candidate, sou
     baseUrl: adaptBaseUrl(draft.baseUrl ?? '', 'root'),
     apiKey: draft.apiKey ?? '',
     ...(pinnedModel(planned, draft.models) ? { model: pinnedModel(planned, draft.models)! } : {}),
+    // The endpoint's own listing decides what each picker alias resolves to.
+    // Without it Claude Code sends the literal alias as the model id and the
+    // gateway answers 400.
+    models: draft.models,
   });
   if (Object.keys(env).length === 0) {
     return json({ error: `Nothing to write: "${candidate.id}" has no endpoint or key.` }, { status: 400 });

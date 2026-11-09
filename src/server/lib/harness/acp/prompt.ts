@@ -103,6 +103,8 @@ export interface ConfigSelectionHost {
   configOptions: AcpConfigOption[];
   runModel: { provider: string; modelId: string } | null;
   setConfig(configId: string, value: string | boolean): Promise<unknown>;
+  /** The harness id, so a refused write names the agent instead of "it". */
+  readonly harness?: string;
 }
 
 /**
@@ -110,8 +112,13 @@ export interface ConfigSelectionHost {
  *
  * A selector the agent does not publish is SKIPPED, never guessed: an agent with
  * no thinking ladder must not have a level invented for it, and a model the
- * agent does not list is not written. Every write is best-effort — a spawn that
- * fails because an optional knob was rejected would be worse than the default.
+ * agent does not list is not written. That skip is about an OPTIONAL knob.
+ *
+ * The MODEL write is not optional: a chat whose model could not be applied runs
+ * on the agent's default provider. On dsh that was a silent switch to
+ * `deepseek-official` with no key, so the first prompt failed with a message
+ * that named neither the model nor the refused write. A matched model write
+ * that the agent rejects now fails the spawn with its own words.
  */
 export async function applySelections(host: ConfigSelectionHost, wanted: ConfigSelections): Promise<void> {
   const model = configOption(host.configOptions, 'model');
@@ -121,7 +128,16 @@ export async function applySelections(host: ConfigSelectionHost, wanted: ConfigS
     const match = values.find((value) => value === exact) ?? values.find((value) => value === wanted.model?.modelId);
     // `session/set_config_option` keys on the selector's ID, which an agent may
     // name anything; the category only says what the selector MEANS.
-    if (match) await host.setConfig(model.id, match).catch(() => {});
+    if (match) {
+      try {
+        await host.setConfig(model.id, match);
+      } catch (error) {
+        throw new Error(
+          `${host.harness ?? 'The agent'} refused model "${match}": `
+          + `${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
   }
   const thinking = configOption(host.configOptions, 'thought_level');
   if (thinking && wanted.thinking && acpOptionValues(thinking).includes(wanted.thinking)) {

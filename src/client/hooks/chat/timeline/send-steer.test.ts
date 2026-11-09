@@ -99,7 +99,9 @@ function makeAgent(overrides: Partial<AgentCalls> = {}): AgentRecorder {
     },
     sendNewPrompt: async (text: string, cwd: string, _images: unknown, options: unknown) => {
       calls.newPrompts.push({ text, cwd, options });
-      return calls.spawnResult;
+      return calls.spawnResult
+        ? { ok: true as const, session: calls.spawnResult }
+        : { ok: false as const, error: 'spawn failed' };
     },
     steerOmpRun: async (text: string, images: unknown) => {
       calls.steers.push({ text, images });

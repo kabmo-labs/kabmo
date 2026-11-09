@@ -132,7 +132,7 @@ describe('importing a custom provider into claude', () => {
     // even though the source declares openai-completions.
     expect(payload.protocol).toBe('anthropic-messages');
     expect(payload.envWritten).toEqual(
-      ['ANTHROPIC_BASE_URL', 'ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_MODEL'],
+      ['ANTHROPIC_BASE_URL', 'ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_MODEL', 'ANTHROPIC_DEFAULT_SONNET_MODEL'],
     );
     // The stub's `/v1` is stripped: the SDK appends `/v1/messages` itself.
     expect(payload.config?.env).toContain(`ANTHROPIC_BASE_URL=${baseUrl.replace(/\/v1$/, '')}`);

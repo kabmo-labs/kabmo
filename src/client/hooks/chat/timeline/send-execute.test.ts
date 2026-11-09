@@ -142,6 +142,27 @@ describe('executeSend', () => {
     expect(h1.params).toEqual(['sessionId=uuid-9']);
   });
 
+  test('a failed spawn reports the server reason and never simulates a reply', async () => {
+    const h1 = makeSendHarness({
+      isOmpSession: false,
+      sessionId: 'new-1',
+      folders: [{ id: 4, name: 'demo', project_path: '/tmp/demo' }],
+      selectedFolderId: 4,
+      agent: { spawnResult: null, spawnError: 'Cannot start dsh: deepseek-harness refused model "m"' },
+    });
+    await act(async () => {
+      const result = await h1.sends.executeSend('first prompt', []);
+      expect(result.ok).toBe(false);
+      expect(result.error).toContain('deepseek-harness refused model');
+    });
+    // Nothing may be left on screen for a turn the agent never took, and the
+    // failure may not fall through to the simulated stream — that is what made
+    // a refused ACP spawn look like a slow chat that then "answered".
+    expect(h1.state.messages).toEqual([]);
+    expect(h1.reported).toEqual(['Prompt not sent: Cannot start dsh: deepseek-harness refused model "m"']);
+    expect(h1.generating).toEqual([true, false]);
+  });
+
   test('a harness picked on the pending view rides the spawn body', async () => {
     const h1 = makeSendHarness({
       isOmpSession: false,

@@ -127,4 +127,24 @@ describe('applySelections', () => {
     );
     expect(writes).toEqual([]);
   });
+
+  test('a matched model the agent refuses fails the spawn with its reason', async () => {
+    // dsh answered `unknown model option` when its configured provider was no
+    // longer in the live list. Swallowing it ran the turn on the agent's own
+    // default provider, and the first prompt's error named neither the model nor
+    // the refused write.
+    await expect(applySelections(
+      {
+        harness: 'dsh',
+        configOptions: [option('sel-model', 'model', ['["kenari","qwen3-8-27b:free"]'])],
+        runModel: null,
+        setConfig: async () => {
+          throw new Error('Invalid params: unknown model option');
+        },
+      },
+      // dsh stores its selector as a stringified pair, so the configured
+      // default is a provider-less id. That is the spelling this write uses.
+      { model: { provider: '', modelId: '["kenari","qwen3-8-27b:free"]' }, thinking: null, mode: null },
+    )).rejects.toThrow('dsh refused model "["kenari","qwen3-8-27b:free"]"');
+  });
 });

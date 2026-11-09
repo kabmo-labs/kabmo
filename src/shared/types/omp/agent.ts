@@ -153,6 +153,17 @@ export interface SpawnedSession {
   harness?: string | null;
 }
 
+/**
+ * Outcome of a brand-new session spawn.
+ *
+ * A refusal travels with the server's own reason. The caller must report it —
+ * falling through to the simulated stream told the operator an agent had
+ * answered when nothing had started at all.
+ */
+export type SpawnPromptResult =
+  | { ok: true; session: SpawnedSession }
+  | { ok: false; error: string };
+
 /** Command surface returned by useOmpAgent — the live omp session handle the
  *  chat timeline drives. */
 export interface OmpAgentHandle extends OmpAgentState {
@@ -162,7 +173,7 @@ export interface OmpAgentHandle extends OmpAgentState {
    *  time and the server reconciles an idle session by respawning it. */
   sendPrompt: (message: string, images?: AgentImage[], options?: { accessMode?: ApprovalMode }) => Promise<PromptDispatchResult>;
   /** Spawn a brand-new omp session and send its first prompt; resolves with the
-   *  adopted session id (or null on failure). */
+   *  adopted session or the server's refusal reason. */
   sendNewPrompt: (
     message: string,
     cwd: string,
@@ -172,7 +183,7 @@ export interface OmpAgentHandle extends OmpAgentState {
      *  armed goal is started, so the prompt IS its first turn. Resolves true
      *  when it consumed the prompt (an interview renders its own). */
     beforePrompt?: (sessionId: string) => Promise<boolean>,
-  ) => Promise<SpawnedSession | null>;
+  ) => Promise<SpawnPromptResult>;
   /** Steer the running agent: deliver the message INTO the turn in flight
    *  (omp's `steer` RPC). The run continues; the model sees the message inside
    *  the same turn and answers it there.

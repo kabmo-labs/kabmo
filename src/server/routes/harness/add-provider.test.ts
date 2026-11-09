@@ -198,11 +198,19 @@ describe('adding a provider to an environment harness', () => {
     }));
     const payload = await response.json() as { config?: { env: string }; envWritten?: string[]; error?: string };
     expect(payload.error).toBeUndefined();
-    expect(payload.envWritten).toEqual(['ANTHROPIC_BASE_URL', 'ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_MODEL']);
+    expect(payload.envWritten).toEqual([
+      'ANTHROPIC_BASE_URL',
+      'ANTHROPIC_AUTH_TOKEN',
+      'ANTHROPIC_MODEL',
+      'ANTHROPIC_DEFAULT_SONNET_MODEL',
+    ]);
     // `/v1` stripped: the SDK appends `/v1/messages` itself.
     expect(payload.config?.env).toContain(`ANTHROPIC_BASE_URL=${baseUrl.replace(/\/v1$/, '')}`);
     expect(payload.config?.env).toContain('ANTHROPIC_AUTH_TOKEN=sk-claude');
     expect(payload.config?.env).toContain('ANTHROPIC_MODEL=claude-sonnet-5');
+    // The picker's `sonnet` alias now resolves to the id this endpoint serves;
+    // unpinned it would send the literal alias and answer 400.
+    expect(payload.config?.env).toContain('ANTHROPIC_DEFAULT_SONNET_MODEL=claude-sonnet-5');
   });
 
   test('no name is refused before anything is written', async () => {

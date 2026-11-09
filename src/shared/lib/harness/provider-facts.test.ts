@@ -26,6 +26,7 @@
 
 import { describe, expect, test } from 'bun:test';
 import {
+  aliasModelFor,
   credentialFieldLabel,
   credentialIsEnvName,
   dialectChoices,
@@ -185,6 +186,32 @@ describe('providerEnv', () => {
       { family: 'haiku', env: 'ANTHROPIC_DEFAULT_HAIKU_MODEL' },
       { family: 'fable', env: 'ANTHROPIC_DEFAULT_FABLE_MODEL' },
     ]);
+  });
+
+  test('a versioned provider id is reduced to the id the endpoint expects', () => {
+    // The gateway's own list may spell the model provider-qualified; the env
+    // variable names the model, not the route.
+    expect(aliasModelFor('sonnet', ['kenari/claude-sonnet-5'])).toBe('claude-sonnet-5');
+  });
+
+  test('an endpoint with no model of the family pins nothing', () => {
+    expect(aliasModelFor('opus', ['qwen3-8-27b:free', 'glm-5-3-flash'])).toBeNull();
+    expect(providerEnv('claude', { baseUrl: 'https://gw', apiKey: 'sk-1', models: ['qwen3-8-27b:free'] }))
+      .not.toHaveProperty('ANTHROPIC_DEFAULT_OPUS_MODEL');
+  });
+
+  test('every alias the endpoint serves is pinned, and none it does not', () => {
+    // Measured on kenari: `sonnet` and `opus` are answered 400 as literal ids
+    // while their family ids complete. The list is the authority.
+    const env = providerEnv('claude', {
+      baseUrl: 'https://gw',
+      apiKey: 'sk-1',
+      models: ['claude-sonnet-5', 'claude-opus-5', 'deepseek-v4-pro'],
+    });
+    expect(env.ANTHROPIC_DEFAULT_SONNET_MODEL).toBe('claude-sonnet-5');
+    expect(env.ANTHROPIC_DEFAULT_OPUS_MODEL).toBe('claude-opus-5');
+    expect(env).not.toHaveProperty('ANTHROPIC_DEFAULT_HAIKU_MODEL');
+    expect(env).not.toHaveProperty('ANTHROPIC_DEFAULT_FABLE_MODEL');
   });
 
   test('a blank field writes no variable at all', () => {

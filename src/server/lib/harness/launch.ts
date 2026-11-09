@@ -22,6 +22,7 @@
  */
 
 import { AcpProcess } from '@/server/lib/harness/acp/client';
+import { withGatewayCompatibility } from '@/server/lib/harness/acp/gateway-env';
 import { newSessionAfterActivation } from '@/server/lib/harness/acp/activation';
 import type { AcpConfigOption, AcpInitializeResult } from '@/server/lib/harness/acp/protocol';
 import { acpOptionValues } from '@/server/lib/harness/acp/protocol';
@@ -141,12 +142,13 @@ export async function probeHarness(
   let proc: AcpProcess | null = null;
   /** `agentInfo` from a handshake that succeeded before a later step failed. */
   let agent: AcpInitializeResult['agentInfo'] | undefined;
+  const env = withGatewayCompatibility(id, launch.env);
 
   try {
     const agentProcess = new AcpProcess({
       command: launch.command,
       cwd,
-      ...(launch.env ? { env: launch.env } : {}),
+      ...(env ? { env } : {}),
       onStderr: (line) => {
         stderrTail = `${stderrTail}${line}\n`.slice(-2_000);
       },
