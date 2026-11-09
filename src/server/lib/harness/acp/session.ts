@@ -27,7 +27,7 @@ import { AcpTurns } from '@/server/lib/harness/acp/turn';
 import { AcpFrameMapper } from '@/server/lib/harness/acp/frames';
 import type { AcpConfigOption, AcpId } from '@/server/lib/harness/acp/protocol';
 import { promptBlocks } from '@/server/lib/harness/acp/prompt';
-import { adoptConfigOptions, settlePermissionDialog } from '@/server/lib/harness/acp/session-config';
+import { adoptConfigAnswer, publishConfigChange, settlePermissionDialog, stampMessageModel } from '@/server/lib/harness/acp/session-config';
 import { beginAcpTurn, settleAcpTurn } from '@/server/lib/harness/acp/session-turns';
 import { driveAcpGoalAfterTurn } from '@/server/lib/harness/acp/acp-goal-driver.server';
 import { handshakeAcpSession } from '@/server/lib/harness/acp/session-handshake';
@@ -121,7 +121,7 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
       cancelAgent: () => this.proc.cancel(this.sessionId),
       abandonPrompt: () => this.proc.abandonPrompt(this.sessionId),
       resetMapper: () => this.mapper.reset(),
-      closeMessage: () => this.mapper.closeMessage(),
+      closeMessage: () => this.mapper.closeMessage().map((event) => stampMessageModel(event, this.runModel)),
       openCalls: () => this.mapper.openCalls(),
       // The follow-up queue is armed from the turn's END, exactly as the omp
       // wrapper arms it from its own terminal settle. Without this an ACP chat's
@@ -249,7 +249,8 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
    *  `session-config.ts` for why the AGENT's resolved value is what is kept. */
   async setConfig(configId: string, value: string | boolean): Promise<unknown> {
     const result = await this.proc.setConfigOption(this.sessionId, configId, value);
-    adoptConfigOptions(this, result);
+    adoptConfigAnswer(this, result, { configId, value });
+    publishConfigChange(this, configId);
     return result;
   }
 

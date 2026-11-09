@@ -22,24 +22,36 @@ export interface RunIdentity {
   sessionModelName?: string;
 }
 
-export function useRunIdentity(input: {
+export interface RunIdentityInput {
   folders: WorkspaceFolderData[];
   sessionId: string | null;
   sessionData: SessionDataShape | null | undefined;
   modelNames: Record<string, string>;
-}): RunIdentity {
+}
+
+export function runIdentityFor(input: RunIdentityInput): RunIdentity {
   const { folders, sessionId, sessionData, modelNames } = input;
-  const runModel = useMemo(
-    () => folders.flatMap((f) => f.sessions ?? []).find((s) => String(s.id) === String(sessionId))?.runModel ?? null,
-    [folders, sessionId],
-  );
+  const sidebar = folders.flatMap((f) => f.sessions ?? []).find((s) => String(s.id) === String(sessionId)) ?? null;
+  const runModel = sidebar?.runModel ?? null;
+  // The sidebar's model describes the RUN row beside it. While a run is live it
+  // is the freshest identity (it is renamed from `get_state` mid-run), but for
+  // an idle chat it is the model of the LAST run — a `set_model` after that run
+  // never reached it, so the footer and the composer kept naming the first
+  // model the chat ever picked. An idle chat reads the session's own metadata,
+  // which `/api/chat/:id` re-reads from the live agent on a `model_changed`.
+  const liveRun = sidebar?.streamStatus === 'stream';
   const fallback = sessionData?.model;
   const fallbackModel = typeof fallback === 'object' ? fallback : null;
-  const sessionModelId = runModel?.modelId ?? fallbackModel?.modelId;
+  const chosen = liveRun ? runModel : (fallbackModel ?? runModel);
   return {
-    sessionProvider: runModel?.provider ?? fallbackModel?.provider,
-    sessionModelName: sessionModelId
-      ? (modelNames[sessionModelId] ?? sessionModelId)
+    sessionProvider: chosen?.provider,
+    sessionModelName: chosen?.modelId
+      ? (modelNames[chosen.modelId] ?? chosen.modelId)
       : (typeof fallback === 'string' ? fallback : undefined),
   };
+}
+
+export function useRunIdentity(input: RunIdentityInput): RunIdentity {
+  const { folders, sessionId, sessionData, modelNames } = input;
+  return useMemo(() => runIdentityFor(input), [folders, sessionId, sessionData, modelNames]);
 }

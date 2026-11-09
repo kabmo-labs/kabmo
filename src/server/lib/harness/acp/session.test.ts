@@ -13,7 +13,8 @@
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
-import { mountSession } from '@/server/lib/harness/acp/session.test-util';
+import { mountSession, notify } from '@/server/lib/harness/acp/session.test-util';
+import type { AcpConfigOption } from '@/server/lib/harness/acp/protocol';
 
 // A prompt reaches the title writer (`harness/session-title.server.ts`), which
 // opens the database. Isolate it: the handle is process-wide, and a suite that
@@ -52,13 +53,16 @@ describe('ACP prompt dispatch', () => {
     expect(session.isPromptRunning).toBe(false);
   });
 
-  test('a failed turn reports its error and still closes the turn', async () => {
+  test('a failed turn reports its error once, and still closes the turn', async () => {
     const { session, events, turn } = mountSession();
     await session.send({ type: 'prompt', message: 'hello' });
     await turn.started;
     turn.fail(new Error('agent exploded'));
     for (let i = 0; i < 4; i += 1) await Promise.resolve();
-    expect(events.some((event) => event.type === 'prompt_error')).toBe(true);
+    const errors = events.filter((event) => event.type === 'prompt_error');
+    // The generic "no answer" verdict must not land on top of the agent's own
+    // reason: it was emitted SECOND, so the client kept the useless one.
+    expect(errors).toEqual([{ type: 'prompt_error', errorMessage: 'agent exploded' }]);
     expect(session.isPromptRunning).toBe(false);
   });
 
@@ -167,5 +171,63 @@ describe('ACP turn serialization', () => {
     for (let i = 0; i < 8; i += 1) await Promise.resolve();
     expect(events.filter((event) => event.type === 'agent_end')).toHaveLength(2);
     expect(session.isRunning()).toBe(false);
+  });
+});
+
+const modelOption = (currentValue: string, values: string[]): AcpConfigOption => ({
+  id: 'sel-model',
+  category: 'model',
+  type: 'select',
+  currentValue,
+  options: values.map((value) => ({ value })),
+});
+
+/**
+ * The footer and the sidebar name a chat by the model the live session is
+ * serving. An ACP model pick is a config write, not a respawn, so the identity
+ * has to travel three ways: the session's own `runModel`, a frame the client
+ * re-reads, and the model fields on the message itself.
+ */
+describe('ACP model identity', () => {
+  test('set_model without a reply list still renames the session and announces it', async () => {
+    const { session, events } = mountSession();
+    session.configOptions = [modelOption('p/old', ['p/old', 'p/new'])];
+    session.runModel = { provider: 'p', modelId: 'old' };
+
+    await session.send({ type: 'set_model', provider: 'p', modelId: 'new' });
+
+    expect(session.runModel).toEqual({ provider: 'p', modelId: 'new' });
+    expect(events.some((event) => event.type === 'model_changed')).toBe(true);
+  });
+
+  test('config_option_update adopts the agent’s list and announces it', () => {
+    const { session, events } = mountSession();
+    session.configOptions = [modelOption('p/old', ['p/old'])];
+    session.runModel = { provider: 'p', modelId: 'old' };
+
+    notify(session, { sessionUpdate: 'config_option_update', configOptions: [modelOption('p/next', ['p/old', 'p/next'])] });
+
+    expect(session.runModel).toEqual({ provider: 'p', modelId: 'next' });
+    expect(events.some((event) => event.type === 'model_changed')).toBe(true);
+  });
+
+  test('assistant frames carry the model that served them', async () => {
+    const { session, events, turn } = mountSession();
+    session.runModel = { provider: 'kenari', modelId: 'qwen3-8-27b:free' };
+    await session.send({ type: 'prompt', message: 'hi' });
+    await turn.started;
+
+    notify(session, { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'hi' } });
+    expect(events.find((event) => event.type === 'message_update')?.message).toMatchObject({
+      model: 'qwen3-8-27b:free',
+      provider: 'kenari',
+    });
+
+    turn.finish({ stopReason: 'end_turn' });
+    for (let i = 0; i < 8; i += 1) await Promise.resolve();
+    expect(events.find((event) => event.type === 'message_end')?.message).toMatchObject({
+      model: 'qwen3-8-27b:free',
+      provider: 'kenari',
+    });
   });
 });

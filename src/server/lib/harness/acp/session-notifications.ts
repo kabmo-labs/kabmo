@@ -20,9 +20,17 @@ import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
 import type { HarnessCapabilities } from '@/server/lib/harness/capabilities';
 import { noteAgentTitle } from '@/server/lib/harness/session-title.server';
 import { metadataCapabilities, parseAgentCommands, type AgentCommand } from '@/server/lib/harness/acp/session-facts';
+import {
+  adoptConfigList,
+  publishConfigChange,
+  stampMessageModel,
+  type AcpConfigNotice,
+} from '@/server/lib/harness/acp/session-config';
+import type { AcpConfigOption } from '@/server/lib/harness/acp/protocol';
+import type { HarnessId } from '@/shared/lib/harness/catalog';
 
-export interface AcpNotificationHost {
-  readonly sessionId: string;
+export interface AcpNotificationHost extends AcpConfigNotice {
+  readonly harness: HarnessId;
   agentCommands: AgentCommand[];
   planEntries: unknown[];
   capabilities: HarnessCapabilities;
@@ -63,6 +71,14 @@ export function handleSessionNotification(
   if (kind === 'session_info_update' && typeof record.title === 'string' && host.sessionId) {
     void noteAgentTitle(host.sessionId, record.title);
   }
+  // The agent can move a selector itself (a fallback, a dependent option after a
+  // model switch). Its list is authoritative and arrives between turns, so it
+  // is adopted BEFORE the turn gate below — the session, telemetry and the goal
+  // audit must read the same model the client's `config_option_update` names.
+  if (kind === 'config_option_update' && Array.isArray(record.configOptions)) {
+    adoptConfigList(host, record.configOptions as AcpConfigOption[]);
+    publishConfigChange(host);
+  }
 
   // No turn open: the user stopped it (or one is still queued), and anything
   // the agent keeps emitting belongs to work nobody is watching. Forwarding it
@@ -70,7 +86,7 @@ export function handleSessionNotification(
   // a transcript the client had already finalized.
   if (!host.acceptingFrames()) return;
   for (const event of host.mapUpdate(record)) {
-    host.emit(event);
+    host.emit(stampMessageModel(event, host.runModel));
     if (event.type === 'message_end') {
       host.messageCount += 1;
       host.assistantCount += 1;

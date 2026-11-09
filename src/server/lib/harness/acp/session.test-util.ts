@@ -23,6 +23,7 @@ import { AcpUsageMeter } from '@/server/lib/harness/acp/session-usage';
 import { AcpFrameMapper } from '@/server/lib/harness/acp/frames';
 import { AcpTurns } from '@/server/lib/harness/acp/turn';
 import { PendingPermissions } from '@/server/lib/harness/acp/permissions';
+import { stampMessageModel } from '@/server/lib/harness/acp/session-config';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
 
 export interface Turn {
@@ -92,6 +93,9 @@ export function mountSession(): MountedSession {
     },
     cancel: () => {},
     abandonPrompt: () => calls.at(-1)?.resolve({ stopReason: 'cancelled' }),
+    // A config write; the default reply omits the list, which is the shape a
+    // harness that ignores the protocol's "complete list" rule returns.
+    setConfigOption: async (_sessionId: string, _configId: string, _value: string | boolean) => ({}),
     dispose: async () => {},
     isAlive: true,
   };
@@ -101,7 +105,7 @@ export function mountSession(): MountedSession {
     cancelAgent: () => proc.cancel(),
     abandonPrompt: () => proc.abandonPrompt(),
     resetMapper: () => mapper.reset(),
-    closeMessage: () => mapper.closeMessage(),
+    closeMessage: () => mapper.closeMessage().map((event) => stampMessageModel(event, session.runModel)),
     openCalls: () => mapper.openCalls(),
     onTurnEnd: (info) => {
       (session as unknown as { onTurnEnded: (info: { stopReason?: string; closedMessage: boolean }) => void })
