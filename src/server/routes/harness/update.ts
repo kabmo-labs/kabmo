@@ -4,7 +4,7 @@
  */
 
 /**
- * Updating ONE harness — and refusing where Kabmo must not act.
+ * Updating ONE harness — as a BACKGROUND job, and refusing where Kabmo must not act.
  *
  * Three mechanisms, and the refusal is as much of the feature as the button:
  *
@@ -21,103 +21,64 @@
  * **An adapter is TWO installs.** `claude` is `@agentclientprotocol/claude-agent-acp`
  * (the number the probe reports) on top of the `claude` CLI, and they move
  * independently — measured here: adapter 0.100.0 under CLI 2.1.318. So one press
- * moves EVERY part that is behind and none that is current:
+ * moves EVERY part that is behind and none that is current. The decision itself
+ * is pure (`planHarnessUpdate`); this route only resolves the facts it needs and
+ * hands the argv to the worker.
  *
- *  - both behind → `npm i -g <adapter>@<latest>` then `claude update`;
- *  - only the CLI → `claude update`, with no adapter install at all;
- *  - only the adapter → the npm install alone.
- *
- * Running both unconditionally was the first shape, and it reinstalled an adapter
- * that was already current while reporting "updated to 0.101.0" about a version
- * that never moved.
- *
- * Every run is a POST that answers plain JSON, not an SSE stream: an npm install
- * of one package, or one `upgrade` subcommand, is seconds rather than the minutes
- * `omp update` and the Kabmo self-update take. If one of these grows long enough
- * to need streaming, it should reuse `updates/apply.ts` rather than grow a second
- * progress protocol here.
+ * **The route does not run the installs.** They used to run here, inside the POST:
+ * the request stayed open for minutes, a reload forgot the run, and a five-minute
+ * child timeout could kill `npm install -g` halfway through writing a package
+ * tree — the corruption this design removes. The run is a detached worker
+ * (`update-worker.ts`) that writes progress to `harness-update.json`; this route
+ * answers `202` in milliseconds and `GET /api/harness/update/status` reports the
+ * outcome. A second press while one runs is a `409`, read from that same record,
+ * so a reloaded page cannot start a competing install.
  */
 
-import { json } from '@/server/lib/remix-compat';
+import { json, NO_STORE_HEADERS } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { HARNESS_IDS, harnessDescriptor, type HarnessId } from '@/shared/lib/harness/catalog';
-import { harnessUpdateFacts, latestSourceFor, type HarnessUpdateFacts } from '@/shared/lib/harness/updates';
-import { forgetProbe, loadProbes } from '@/server/lib/harness/probe-cache.server';
-import { forgetCliVersion, harnessVersionState } from '@/server/lib/harness/update-state.server';
-import { planHarnessUpdate, repointAdapterLaunch, type HarnessUpdateStep } from '@/shared/lib/harness/update-plan';
-import { loadHarnessConfig, saveHarnessConfig } from '@/server/lib/harness/config.server';
+import { harnessUpdateFacts, latestSourceFor } from '@/shared/lib/harness/updates';
+import { loadProbes } from '@/server/lib/harness/probe-cache.server';
+import { harnessVersionState, type HarnessVersionState } from '@/server/lib/harness/update-state.server';
+import { planHarnessUpdate, type HarnessUpdateStep } from '@/shared/lib/harness/update-plan';
 import { resolveOmpBin } from '@/server/lib/omp/core/cli';
-import { harnessVersionRows } from '@/server/routes/harness/versions';
+import {
+  runningUpdateJob,
+  startHarnessUpdateJob,
+} from '@/server/lib/harness/update-job.server';
 
-/** Longest one update may run before it is killed and reported as a timeout. */
-const UPDATE_TIMEOUT_MS = 5 * 60_000;
-
-/** The result the UI reports, in the agent's own terms. */
+/** The answer to a press that has nothing to move, still plain JSON. */
 interface HarnessUpdateOutcome {
   success: boolean;
   id: string;
   message: string;
-  /** The commands that ran, so the reader can repeat them themselves. */
-  command?: string;
-  /** The tail of their output — what actually failed, when it failed. */
-  output?: string;
 }
 
-/** Run a command, capturing its combined output for the report. */
-async function run(command: string[], cwd?: string): Promise<{ code: number | null; output: string }> {
-  const proc = Bun.spawn({
-    cmd: command,
-    stdin: 'ignore',
-    stdout: 'pipe',
-    stderr: 'pipe',
-    timeout: UPDATE_TIMEOUT_MS,
-    env: { ...Bun.env, PAGER: 'cat', FORCE_COLOR: '0' },
-    ...(cwd ? { cwd } : {}),
-  });
-  const [stdout, stderr] = await Promise.all([
-    new Response(proc.stdout).text(),
-    new Response(proc.stderr).text(),
-  ]);
-  const code = await proc.exited;
-  return { code, output: [stdout, stderr].filter(Boolean).join('\n').trim() };
-}
-
-/** The last few lines of a run, which is where a failure explains itself. */
-function tail(output: string, lines = 12): string {
-  const all = output.split('\n');
-  return all.slice(Math.max(0, all.length - lines)).join('\n').trim();
+/** A readable description of the numbers currently on disk, for "already current". */
+function currentParts(state: HarnessVersionState, cliName: string | undefined): string {
+  return [
+    state.agent.version && `adapter ${state.agent.version}`,
+    state.cli?.version && `${cliName ?? 'CLI'} ${state.cli.version}`,
+  ].filter(Boolean).join(', ');
 }
 
 /**
- * Make an adapter install the one the next spawn runs.
+ * The argv for a `self` harness: the vendor's own updater, resolved by name.
  *
- * The launch table starts an npm adapter through a PINNED `npx -y pkg@x.y.z`
- * (measured versions), while the update installs the package GLOBALLY. Those are
- * two different resolvers: `npm i -g` writes a binary onto PATH that `npx` never
- * consults, so the press reported success while every new session still started
- * the old pinned build — measured on `claude` (global 0.101.0, launch requested
- * 0.100.0) and reproduced for codex/pi/zcode by construction.
- *
- * Once the install succeeded AND the binary is on PATH, the harness's launch
- * line is pointed at it. A user's own configured command is never replaced: it
- * is an explicit choice about how this machine launches the harness.
+ * `omp` has its own resolver (`KABMO_OMP_BIN`, then PATH): a custom install is
+ * launchable and already reported as installed, so checking PATH alone refused
+ * the one updater the harness actually has.
  */
-async function pointAtInstalledAdapter(
-  harness: HarnessId,
-  facts: HarnessUpdateFacts,
-  steps: HarnessUpdateStep[],
-): Promise<string | null> {
-  const config = await loadHarnessConfig(harness);
-  const bin = repointAdapterLaunch(
-    facts,
-    steps,
-    config.command,
-    facts.agentBin ? Boolean(Bun.which(facts.agentBin)) : false,
-  );
-  if (!bin) return null;
-  await saveHarnessConfig(harness, { ...config, command: bin });
-  return bin;
+function selfSteps(harness: HarnessId, label: string, command: string): { steps: HarnessUpdateStep[]; error?: string } {
+  const argv = command.split(' ');
+  const binary = argv[0];
+  const resolved = harness === 'omp-acp' ? resolveOmpBin() : binary ? Bun.which(binary) : null;
+  if (!binary || !resolved) {
+    return { steps: [], error: `${label}: \`${binary || 'the updater'}\` is not on PATH` };
+  }
+  return { steps: [{ part: label, command, argv: [resolved, ...argv.slice(1)] }] };
 }
 
 export async function action({ request, params }: ActionFunctionArgs) {
@@ -150,26 +111,23 @@ export async function action({ request, params }: ActionFunctionArgs) {
     }, { status: 400 });
   }
 
+  // Read BEFORE planning: the answer to a press while an install runs must not
+  // depend on what this press would have planned, and planning reads the npm
+  // registry.
+  const running = await runningUpdateJob();
+  if (running) {
+    return json({
+      error: `${running.label} update is already running — it continues in the background`,
+      job: running,
+    }, { status: 409, headers: NO_STORE_HEADERS });
+  }
+
   if (facts.kind === 'self') {
-    const command = facts.command?.split(' ') ?? [];
-    const binary = command[0];
-    // `omp` has its own resolver (`KABMO_OMP_BIN`, then PATH): a custom install
-    // is launchable and already reported as installed by `commandAvailable`, so
-    // checking PATH alone refused the one updater the harness actually has.
-    const resolved = harness === 'omp-acp' ? resolveOmpBin() : binary ? Bun.which(binary) : null;
-    if (!binary || !resolved) {
-      return json({ error: `${label}: \`${binary ?? 'the updater'}\` is not on PATH` }, { status: 400 });
-    }
-    const result = await run([resolved, ...command.slice(1)]);
-    const ok = result.code === 0;
-    const outcome: HarnessUpdateOutcome = {
-      success: ok,
-      id: harness,
-      message: ok ? `${label} updated` : `${label} update failed (exit ${result.code ?? 'killed'})`,
-      command: facts.command,
-      ...(result.output ? { output: tail(result.output) } : {}),
-    };
-    return json(outcome);
+    if (!facts.command) return json({ error: `${label} names no updater command` }, { status: 400 });
+    const { steps, error } = selfSteps(harness, label, facts.command);
+    if (error) return json({ error }, { status: 400 });
+    const job = await startHarnessUpdateJob(harness, label, steps);
+    return json({ started: true, job }, { status: 202, headers: NO_STORE_HEADERS });
   }
 
   // `npm`: install the package at the version the registry reports NOW, so the
@@ -191,17 +149,12 @@ export async function action({ request, params }: ActionFunctionArgs) {
     return json({ error: `${label} is not installed on this machine` }, { status: 400 });
   }
 
-  // `harnessVersionState` was read with `force`, so both latest numbers are what
-  // the registry serves NOW rather than what the dialog remembered.
-
   const steps = planHarnessUpdate(label, facts, state, agentVersion);
 
   if (steps.length === 0) {
     // Nothing to install. Reported as a success the UI can state plainly, rather
     // than running an install that would change nothing.
-    const current = [state.agent.version && `adapter ${state.agent.version}`, state.cli?.version && `${facts.cli?.name} ${state.cli.version}`]
-      .filter(Boolean)
-      .join(', ');
+    const current = currentParts(state, facts.cli?.name);
     return json({
       success: true,
       id: harness,
@@ -213,47 +166,6 @@ export async function action({ request, params }: ActionFunctionArgs) {
     } satisfies HarnessUpdateOutcome);
   }
 
-  /** Did every step that ran succeed, and what did each print? */
-  const outputs: string[] = [];
-  let ok = true;
-  for (const step of steps) {
-    const result = await run(step.argv);
-    if (result.output) outputs.push(result.output);
-    if (result.code !== 0) {
-      ok = false;
-      // The first failure ends the run: installing the CLI on top of a failed
-      // adapter install would report two outcomes for one broken state.
-      break;
-    }
-  }
-
-  if (ok) {
-    // The cached probe describes the binary that WAS installed. Keeping it would
-    // report the old version until the TTL (30 min) or a manual re-probe — and
-    // measured after a real `npm install`: the row still read 0.100.0 while npm
-    // had 0.101.0 on disk, because the running adapter was the previous process.
-    await forgetProbe(harness);
-    // The CLI's `--version` read has the same problem: it is cached for ten
-    // minutes, so the row would keep claiming the old number after it moved.
-    if (facts.cli) forgetCliVersion(facts.cli.bin);
-  }
-  // Only after the install succeeded: the launch line is repointed at the binary
-  // that install wrote, or the next session would start the pinned one forever.
-  const repointed = ok ? await pointAtInstalledAdapter(harness, facts, steps) : null;
-
-  const moved = steps.map((step) => step.part);
-  return json({
-    success: ok,
-    id: harness,
-    message: ok
-      ? `${label} updated (${moved.join(' + ')})${repointed ? ` — launches now run \`${repointed}\`` : ''} — check its status to read the new version`
-      : `${label} update failed`,
-    command: steps.map((step) => step.command).join(' && '),
-    ...(outputs.length > 0 ? { output: tail(outputs.join('\n')) } : {}),
-  } satisfies HarnessUpdateOutcome);
-}
-
-/** GET answers the same rows the versions route does, so a mistake reads plainly. */
-export async function loader() {
-  return json({ harnesses: await harnessVersionRows() });
+  const job = await startHarnessUpdateJob(harness, label, steps);
+  return json({ started: true, job }, { status: 202, headers: NO_STORE_HEADERS });
 }

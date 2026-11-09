@@ -12,6 +12,8 @@ import { useKabmoEvent } from '@/client/hooks/ui/window-event';
 import { useHarnesses } from '@/client/hooks/models/use-harnesses';
 import { HarnessTable, harnessCategoryFor } from '@/client/components/layout/session-sidebar/about-modal/HarnessTable';
 import { useHarnessVersions } from '@/client/hooks/models/use-harness-versions';
+import { useHarnessUpdate } from '@/client/hooks/models/use-harness-update';
+import { UpdateLogDialog } from '@/client/components/layout/session-sidebar/about-modal/UpdateLogDialog';
 import { useDialogBehaviour } from '@/client/hooks/ui/dialog-behaviour';
 import { UPDATE_POPUP_OPEN_EVENT } from '@/shared/lib/updates/popup-state';
 import type { UpdateTarget } from '@/shared/types/updates';
@@ -29,6 +31,9 @@ export function AboutModal({ isOpen, onClose, updates, onToast }: AboutModalProp
   // Which product's "what am I running" notes are open. The dialog draws above
   // this panel instead of replacing it, so closing it returns here.
   const [notesTarget, setNotesTarget] = useState<UpdateTarget | null>(null);
+  // The update log panel. It is a boolean and not a harness id: one update runs
+  // at a time, and the record the hook holds IS the one that was opened.
+  const [logOpen, setLogOpen] = useState(false);
   // The About sheet is a dialog to assistive tech and to the keyboard. It had
   // neither: measured in the running console it carried no `role`, no
   // `aria-modal`, and Escape did nothing while focus sat inside it.
@@ -38,39 +43,20 @@ export function AboutModal({ isOpen, onClose, updates, onToast }: AboutModalProp
   // made in either appears here without a reload.
   const { harnesses, isLoading: harnessesLoading } = useHarnesses();
   const versions = useHarnessVersions();
-  // Which harness is mid-update. ONE row says so, so a second row cannot be
-  // started by accident and the reader can still read the rest of the card.
-  const [updating, setUpdating] = useState<string | null>(null);
-
-  /** Run one harness's update and report the refusal, if there is one. */
-  const updateHarness = async (id: string): Promise<string | null> => {
-    setUpdating(id);
-    try {
-      const response = await fetch('/api/harness/update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ harness: id }),
-      });
-      const payload = (await response.json()) as { message?: string; error?: string; output?: string };
-      if (!response.ok) {
-        return payload.error ?? `Update failed (HTTP ${response.status})`;
-      }
-      // The version the agent reports only changes after a restart, so the row is
-      // refreshed rather than optimistic: it will read the OLD number until the
-      // agent is probed again, and saying otherwise would be a claim Kabmo cannot
-      // stand behind.
-      // `refresh`, not `reload(false)`: the rows must be re-read, but forcing a
-      // registry request per npm harness after every update is a cost with no
-      // answer — the number this update just installed IS the latest one.
-      versions.refresh();
-      onToast?.(payload.message ?? 'Update finished', 'success');
-      return null;
-    } catch (cause) {
-      return cause instanceof Error ? cause.message : 'Update failed';
-    } finally {
-      setUpdating(null);
-    }
-  };
+  // Which harness is mid-update, and the step it is on. The run is a BACKGROUND
+  // worker, so this hook also ADOPTS a run that is still going when the card
+  // opens — a reload no longer loses the update's state.
+  const update = useHarnessUpdate(
+    (message, ok) => {
+      // The hook re-reads the version rows itself once a run settles (the update
+      // forgot the cached probe), so what is left here is telling the user what
+      // happened. The row will still read the OLD number until the agent is
+      // probed again, and saying otherwise would be a claim Kabmo cannot stand
+      // behind.
+      onToast?.(message, ok ? 'success' : 'error');
+    },
+    { enabled: isOpen },
+  );
 
   // "What's new" opens the popup, which draws at a higher layer: leaving this
   // dialog mounted would stack two modals over the same subject, and its
@@ -175,8 +161,11 @@ export function AboutModal({ isOpen, onClose, updates, onToast }: AboutModalProp
                 harnesses={harnesses}
                 versions={versions.rows}
                 loading={harnessesLoading}
-                onUpdate={updateHarness}
-                updating={updating}
+                onUpdate={update.start}
+                updating={update.updating}
+                progress={update.progress}
+                log={update.job ? { harness: update.job.harness, message: update.job.message } : null}
+                onOpenLog={() => setLogOpen(true)}
                 onOpenHarness={(id) => {
                   onClose();
                   // The settings modal is the frame that owns harness pages; the
@@ -212,6 +201,10 @@ export function AboutModal({ isOpen, onClose, updates, onToast }: AboutModalProp
       {/* Sibling of the About backdrop, not a child: an event inside the portal
           would otherwise bubble to that backdrop's `onClick` and close About. */}
       {notesTarget && <NotesDialog target={notesTarget} onClose={() => setNotesTarget(null)} />}
+      {/* The log draws ABOVE About and does not replace it — the card it was
+          opened from keeps its glanceable state. It is not gated on a run being
+          in flight: a finished (or failed) record is what a reader came for. */}
+      {logOpen && update.job && <UpdateLogDialog job={update.job} onClose={() => setLogOpen(false)} />}
     </>,
     document.body,
   );

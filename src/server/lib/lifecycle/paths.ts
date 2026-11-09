@@ -110,3 +110,26 @@ export function getAuthPath(): string {
 export function getLockPath(port: number | string): string {
   return path.join(getRunDir(), `${port}.lock`);
 }
+
+/**
+ * `<data>/run/harness-update.json` — the state of the harness update in flight
+ * (or the last one that ran).
+ *
+ * On disk, not in memory, because the run outlives the request that started it:
+ * a reloaded page, a restarted server and a second tab all have to read the same
+ * answer, and a run killed by a reboot has to be distinguishable from one still
+ * installing.
+ */
+export function getHarnessUpdateStatusPath(): string {
+  return path.join(getRunDir(), 'harness-update.json');
+}
+
+/** `<data>/run/harness-update.spec.json` — what the detached worker was asked to run. */
+export function getHarnessUpdateSpecPath(): string {
+  return path.join(getRunDir(), 'harness-update.spec.json');
+}
+
+/** `<data>/run/harness-update.lock` — one harness install at a time, across processes. */
+export function getHarnessUpdateLockPath(): string {
+  return path.join(getRunDir(), 'harness-update.lock');
+}

@@ -19,6 +19,14 @@
  * read (a `self` CLI, a CLI with no package in the facts) is never planned: Kabmo
  * cannot claim it is behind.
  *
+ * **The install allows the vendor's own lifecycle scripts, for that package only.**
+ * npm 11 blocks postinstall by default, and the packages here need it: measured on
+ * this machine, `@anthropic-ai/claude-code` was present with its native binary
+ * missing — `bin/claude.exe` was a stub printing "claude native binary not
+ * installed", and `claude update` then failed with
+ * `update_apply_native_binary_missing`. A per-package `--allow-scripts=<pkg>` is
+ * the narrow form; blanket script execution is not.
+ *
  * Pure, so the decision is testable without spawning anything — the route only
  * runs the argv this returns.
  */
@@ -77,8 +85,8 @@ export function planHarnessUpdate(
         // An adapter over a CLI is named `adapter`, so a report cannot be read as
         // "the CLI moved" when only its bridge did.
         part: state.cli ? 'adapter' : label,
-        command: `npm install -g ${facts.pkg}@${latest}`,
-        argv: ['npm', 'install', '-g', `${facts.pkg}@${latest}`],
+        command: `npm install -g ${facts.pkg}@${latest} --allow-scripts=${facts.pkg}`,
+        argv: ['npm', 'install', '-g', `${facts.pkg}@${latest}`, `--allow-scripts=${facts.pkg}`],
       });
     }
   }
@@ -100,8 +108,8 @@ export function planHarnessUpdate(
     } else if (facts.cli?.pkg) {
       steps.push({
         part: cli.name,
-        command: `npm install -g ${facts.cli.pkg}@${cli.latest}`,
-        argv: ['npm', 'install', '-g', `${facts.cli.pkg}@${cli.latest}`],
+        command: `npm install -g ${facts.cli.pkg}@${cli.latest} --allow-scripts=${facts.cli.pkg}`,
+        argv: ['npm', 'install', '-g', `${facts.cli.pkg}@${cli.latest}`, `--allow-scripts=${facts.cli.pkg}`],
       });
     }
   }

@@ -31,6 +31,7 @@
 import { useState } from 'preact/hooks';
 import { Download, Loader2 } from 'lucide-preact';
 import { HarnessGlyph, HARNESS_GLYPH_SIZE } from '@/client/components/common/harness-glyph';
+import { UpdateLogLine } from '@/client/components/layout/session-sidebar/about-modal/UpdateLogLine';
 import { harnessStatus, type HarnessState } from '@/shared/lib/harness/status';
 import { harnessCategoryId } from '@/shared/lib/harness/menu';
 import type { HarnessSummary } from '@/shared/types/harness';
@@ -41,10 +42,23 @@ interface HarnessTableProps {
   versions: HarnessVersionRow[];
   loading?: boolean;
   onOpenHarness: (id: string) => void;
-  /** Runs one npm harness's update; resolves to a refusal, or null. */
+  /** Starts one harness's update as a background job and follows it; resolves
+   *  to a refusal (a busy server, an unknown harness), or null when it began. */
   onUpdate: (id: string) => Promise<string | null>;
-  /** Which harness is mid-update. */
+  /** Which harness is mid-update, and the step it is on (an adapter install,
+   *  `claude update`, …). The step comes from the background job's record. */
   updating: string | null;
+  progress?: string | null;
+  /**
+   * The last update record this card read, running OR finished.
+   *
+   * The run is a background worker, and its output lives in that record — so the
+   * row that owns it offers `View log` next to the spinner, and keeps offering it
+   * once the run has settled, because a failure is exactly when the output is
+   * worth reading.
+   */
+  log?: { harness: string; message: string | null } | null;
+  onOpenLog?: () => void;
 }
 
 /** The state mark. Shape carries the state, so tone is reinforcement only. */
@@ -88,7 +102,8 @@ function StateMark({ state }: { state: HarnessState }) {
 const COLUMNS = 'grid grid-cols-[minmax(0,1fr)_7rem_1.75rem] items-start gap-x-2 md:grid-cols-[minmax(0,1fr)_9.5rem_1.75rem]';
 
 export function HarnessTable({
-  harnesses, versions, loading = false, onOpenHarness, onUpdate, updating,
+  harnesses, versions, loading = false, onOpenHarness, onUpdate, updating, progress = null,
+  log = null, onOpenLog,
 }: HarnessTableProps) {
   const [problem, setProblem] = useState<{ id: string; message: string } | null>(null);
 
@@ -151,6 +166,9 @@ export function HarnessTable({
             const status = harnessStatus(entry);
             const version = byId.get(entry.id);
             const isUpdating = updating === entry.id;
+            // The row that owns the record gets the log line: while its worker
+            // runs, and after it settles so the output is not lost with it.
+            const showLogLine = isUpdating || log?.harness === entry.id;
             // The number a reader calls "the version": the CLI when the harness is
             // an adapter, otherwise the agent itself. Each part carries its own
             // `latest` and its own ability to move, so the two are never compared
@@ -181,6 +199,10 @@ export function HarnessTable({
                 ].filter((target): target is string => Boolean(target))
               : [];
             const updateLabel = `Update ${entry.label}${targets.length > 0 ? ` to ${targets.join(' + ')}` : ''}`;
+            // While the background worker runs, the button names the STEP it is
+            // on: one press can be an adapter install and then `claude update`,
+            // and "Updating…" alone would hide which half is moving.
+            const actionLabel = isUpdating && progress ? `Updating ${entry.label}: ${progress}` : updateLabel;
             return (
               <div key={entry.id} className={`${COLUMNS} border-b border-ink/5 py-1.5`}>
                 {/* The name is the link: one target per row, and the row's other
@@ -278,8 +300,8 @@ export function HarnessTable({
                       type="button"
                       onClick={() => void runUpdate(entry.id)}
                       disabled={isUpdating}
-                      aria-label={updateLabel}
-                      title={updateLabel}
+                      aria-label={actionLabel}
+                      title={actionLabel}
                       className="inline-flex cursor-pointer items-center justify-center rounded border border-ink/25 p-1 text-ink transition-colors hover:border-ink/50 hover:bg-ink/5 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {isUpdating
@@ -293,6 +315,15 @@ export function HarnessTable({
 
                 {problem?.id === entry.id && (
                   <span className="col-span-3 pb-1 text-[10px] text-ink/70">{problem.message}</span>
+                )}
+
+                {showLogLine && (
+                  <UpdateLogLine
+                    running={isUpdating}
+                    progress={progress}
+                    message={log?.message ?? null}
+                    onOpenLog={onOpenLog}
+                  />
                 )}
               </div>
             );

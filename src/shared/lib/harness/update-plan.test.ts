@@ -41,8 +41,11 @@ function state(overrides: Partial<UpdatePlanState> = {}): UpdatePlanState {
 describe('repointing a launch line after an adapter install', () => {
   const install: HarnessUpdateStep = {
     part: 'adapter',
-    command: 'npm install -g @agentclientprotocol/claude-agent-acp@0.101.0',
-    argv: ['npm', 'install', '-g', '@agentclientprotocol/claude-agent-acp@0.101.0'],
+    command: 'npm install -g @agentclientprotocol/claude-agent-acp@0.101.0 --allow-scripts=@agentclientprotocol/claude-agent-acp',
+    argv: [
+      'npm', 'install', '-g', '@agentclientprotocol/claude-agent-acp@0.101.0',
+      '--allow-scripts=@agentclientprotocol/claude-agent-acp',
+    ],
   };
 
   test('a pinned npx adapter is pointed at the binary the install wrote', () => {
@@ -68,7 +71,13 @@ describe('planning a harness update', () => {
   test('both parts behind runs the install AND the CLI updater, in that order', () => {
     const steps = planHarnessUpdate('claude', CLAUDE, state(), '0.100.0');
     expect(steps.map((step) => step.argv[0])).toEqual(['npm', 'claude']);
-    expect(steps[0].argv).toEqual(['npm', 'install', '-g', '@agentclientprotocol/claude-agent-acp@0.101.0']);
+    // The per-package `--allow-scripts` is part of the plan: npm 11 skips
+    // postinstall by default, and a native CLI installed without it is broken on
+    // disk (measured: `bin/claude.exe` left as a "native binary not installed" stub).
+    expect(steps[0].argv).toEqual([
+      'npm', 'install', '-g', '@agentclientprotocol/claude-agent-acp@0.101.0',
+      '--allow-scripts=@agentclientprotocol/claude-agent-acp',
+    ]);
     expect(steps[0].part).toBe('adapter');
     expect(steps[1].argv).toEqual(['claude', 'update']);
     expect(steps[1].part).toBe('Claude Code');
@@ -95,7 +104,13 @@ describe('planning a harness update', () => {
       '0.100.0',
     );
     expect(steps).toHaveLength(1);
-    expect(steps[0].argv).toEqual(['npm', 'install', '-g', '@agentclientprotocol/claude-agent-acp@0.101.0']);
+    // The per-package `--allow-scripts` is part of the plan: npm 11 skips
+    // postinstall by default, and a native CLI installed without it is broken on
+    // disk (measured: `bin/claude.exe` left as a "native binary not installed" stub).
+    expect(steps[0].argv).toEqual([
+      'npm', 'install', '-g', '@agentclientprotocol/claude-agent-acp@0.101.0',
+      '--allow-scripts=@agentclientprotocol/claude-agent-acp',
+    ]);
   });
 
   test('nothing behind plans nothing, so the route can say "already up to date"', () => {
@@ -146,7 +161,7 @@ describe('planning a harness update', () => {
     );
     expect(steps).toHaveLength(1);
     expect(steps[0].part).toBe('deepseek-harness');
-    expect(steps[0].argv).toEqual(['npm', 'install', '-g', '@deepseek-ai/dsh@0.3.0']);
+    expect(steps[0].argv).toEqual(['npm', 'install', '-g', '@deepseek-ai/dsh@0.3.0', '--allow-scripts=@deepseek-ai/dsh']);
   });
 
   test('a plain npm harness names itself, not "adapter"', () => {
@@ -158,6 +173,6 @@ describe('planning a harness update', () => {
     );
     expect(steps).toHaveLength(1);
     expect(steps[0].part).toBe('qwen');
-    expect(steps[0].argv).toEqual(['npm', 'install', '-g', '@qwen-code/qwen-code@0.10.0']);
+    expect(steps[0].argv).toEqual(['npm', 'install', '-g', '@qwen-code/qwen-code@0.10.0', '--allow-scripts=@qwen-code/qwen-code']);
   });
 });

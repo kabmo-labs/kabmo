@@ -82,6 +82,17 @@ export function mountHarnessTable(
   versions: HarnessVersionRow[],
   onOpen?: (id: string) => void,
   onUpdate?: (id: string) => Promise<string | null>,
+  /**
+   * The in-flight update state and its record. Kept apart from the positional
+   * arguments because only the log cases need it, and the earlier callers are
+   * about the row's layout.
+   */
+  state?: {
+    updating?: string | null;
+    progress?: string | null;
+    log?: { harness: string; message: string | null } | null;
+    onOpenLog?: () => void;
+  },
 ): HTMLElement {
   act(() =>
     render(
@@ -90,7 +101,10 @@ export function mountHarnessTable(
         versions,
         onOpenHarness: onOpen ?? (() => {}),
         onUpdate: onUpdate ?? (async () => null),
-        updating: null,
+        updating: state?.updating ?? null,
+        progress: state?.progress ?? null,
+        log: state?.log ?? null,
+        onOpenLog: state?.onOpenLog,
       }),
       container,
     ),
