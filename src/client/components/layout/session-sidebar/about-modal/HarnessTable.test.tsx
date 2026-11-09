@@ -150,6 +150,26 @@ describe('About harness table', () => {
     expect(text).not.toContain('2.1.318→');
   });
 
+  test('a CLI whose version could not be read does not hide the adapter number', () => {
+    // Measured on `zcode` (adapter probed at 0.82.3, no `zcode` runtime on PATH)
+    // and `claude` (`claude --version` fails while its adapter answers): the row
+    // led with the EMPTY CLI part, so a known number rendered as `—`.
+    const el = mount(
+      [summary({ id: 'zcode', label: 'zcode' })],
+      [version({
+        id: 'zcode',
+        label: 'zcode',
+        agent: { version: '0.82.3', latest: null, updateAvailable: false },
+        cli: { name: 'ZCode', version: null, latest: null, updateAvailable: false },
+      })],
+    );
+    const versionCell = rows(el)[0].children[1];
+    expect(versionCell.textContent).toContain('0.82.3');
+    expect(versionCell.textContent).not.toContain('—');
+    // The CLI has no number, so there is nothing to put on a second line.
+    expect(versionCell.querySelectorAll(':scope > span')).toHaveLength(1);
+  });
+
   test('the INSTALLED version is shown, with an arrow only when there is a newer one', () => {
     // The reported shape: the row must state what is installed, and the arrow is
     // the claim that there is somewhere to move.

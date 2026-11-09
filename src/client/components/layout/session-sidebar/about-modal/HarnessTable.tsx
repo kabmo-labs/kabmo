@@ -155,9 +155,18 @@ export function HarnessTable({
             // an adapter, otherwise the agent itself. Each part carries its own
             // `latest` and its own ability to move, so the two are never compared
             // across each other.
-            const lead = version?.cli ?? version?.agent ?? null;
+            //
+            // A CLI part EXISTS for every adapter even when its `--version` could
+            // not be read (the binary is absent, or its launcher is broken). Taking
+            // that empty part as the lead painted `—` over a known adapter number:
+            // measured on `zcode` (adapter 0.82.3 probed, no `zcode` runtime) and
+            // `claude` (`claude --version` fails while the adapter answers). The
+            // part that HAS a number leads.
+            const cli = version?.cli ?? null;
+            const agent = version?.agent ?? null;
+            const lead = cli?.version ? cli : agent;
             const showAdapterLine = Boolean(
-              version?.cli?.version && version.agent.version && version.agent.version !== version.cli.version,
+              cli?.version && agent?.version && agent.version !== cli.version,
             );
             // What the press would install, named: an adapter and a CLI are two
             // different products, so the accessible name says which is moving.
