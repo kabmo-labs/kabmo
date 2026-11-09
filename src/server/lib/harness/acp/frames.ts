@@ -16,9 +16,11 @@
  *
  * Three ACP facts drive the state kept here:
  *
- *  - **`messageId` delimits messages.** There is no `message_end`: one answer is
- *    many chunks sharing an id (measured 6 chunks for a five-word answer, 168
- *    for a long one). A changed id closes the row and opens the next.
+ *  - **`messageId` delimits messages, but is OPTIONAL.** One answer is many
+ *    chunks sharing an id (measured 6 chunks for a five-word answer, 168 for a
+ *    long one); a changed id closes the row and opens the next. An agent that
+ *    sends no id at all (measured on antigravity 1.5.3) gets one synthesized
+ *    identity per turn, so its chunks still update ONE row.
  *  - **`tool_call_update` is a PATCH.** A `status:completed` update carries no
  *    `content`, so the card's body lives in the accumulated block; replacing it
  *    blanks the card at the exact moment it finishes.
@@ -144,11 +146,21 @@ export class AcpFrameMapper {
     return [{ type: 'message_end', message }];
   }
 
-  /** The accumulated message in omp's wire shape. */
+  /**
+   * The accumulated message in omp's wire shape.
+   *
+   * `messageId` is OPTIONAL in ACP v1, and an agent that omits it (measured on
+   * antigravity 1.5.3: every chunk carried only `sessionUpdate` + `content`)
+   * still needs one identity for the whole turn. Without it, `toChatMessage`
+   * minted `msg-<Date.now()>-ai` per frame, so every chunk after the first
+   * APPENDED a new row instead of updating the streaming one — the turn showed
+   * as duplicate bubbles and the final answer again at `message_end`.
+   */
   private snapshot(): Record<string, unknown> {
+    const id = this.messageId ??= `acp-${crypto.randomUUID()}`;
     return {
       role: 'assistant',
-      ...(this.messageId ? { id: this.messageId } : {}),
+      id,
       content: this.blocks.map((block) => ({ ...block })),
     };
   }

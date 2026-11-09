@@ -11,7 +11,8 @@
  *  - `tool_call_update` arrives as a PATCH, so a `completed` update carrying
  *    only `status` must not blank the card it completes;
  *  - `messageId` is the ONLY message delimiter (ACP has no `message_end`), so a
- *    changed id must close the previous row instead of appending into it;
+ *    changed id must close the previous row instead of appending into it; an
+ *    ABSENT id (antigravity 1.5.3) must still yield one stable row per turn;
  *  - `kind` must reach `ToolCallData.type`, because omp's `ToolType` is what the
  *    renderers switch on;
  *  - `usage_update` exists on some agents only, so its absence must emit
@@ -33,6 +34,19 @@ const textChunk = (text: string, messageId = 'm1') => ({
   messageId,
 });
 
+/** ACP v1 allows `messageId` to be absent; antigravity 1.5.3 sends none. */
+const anonymousChunk = (text: string) => ({
+  sessionUpdate: 'agent_message_chunk',
+  content: { type: 'text', text },
+});
+
+const messageIdOf = (frame: unknown): string | undefined => {
+  if (!frame || typeof frame !== 'object' || !('message' in frame)) return undefined;
+  const message = frame.message;
+  if (!message || typeof message !== 'object' || !('id' in message)) return undefined;
+  return typeof message.id === 'string' ? message.id : undefined;
+};
+
 describe('acp frame mapper — assistant text', () => {
   test('accumulates chunks into ONE message rather than one row per delta', () => {
     const mapper = new AcpFrameMapper();
@@ -41,6 +55,41 @@ describe('acp frame mapper — assistant text', () => {
     expect(frames).toHaveLength(1);
     const message = frames[0].message as { content: { type: string; text: string }[] };
     expect(message.content[0]).toEqual({ type: 'text', text: 'hello world' });
+  });
+
+  test('chunks without a messageId still update ONE row', () => {
+    const mapper = new AcpFrameMapper();
+    const first = mapper.mapUpdate(anonymousChunk('hello '));
+    const second = mapper.mapUpdate(anonymousChunk('world'));
+    const firstId = messageIdOf(first[0]);
+    expect(typeof firstId).toBe('string');
+    expect(messageIdOf(second[0])).toBe(firstId);
+    // The final frame must carry that SAME id, or the client appends the
+    // completed answer beside the streamed one.
+    const ended = mapper.closeMessage();
+    expect(messageIdOf(ended[0])).toBe(firstId);
+  });
+
+  test('a tool call before the first chunk keeps that identity too', () => {
+    const mapper = new AcpFrameMapper();
+    const opened = mapper.mapUpdate({
+      sessionUpdate: 'tool_call',
+      toolCallId: 't1',
+      title: 'Read',
+      status: 'in_progress',
+    });
+    const chunk = mapper.mapUpdate(anonymousChunk('done'));
+    const openedId = messageIdOf(opened[0]);
+    expect(typeof openedId).toBe('string');
+    expect(messageIdOf(chunk[0])).toBe(openedId);
+  });
+
+  test('a new turn gets a fresh identity when the agent sends no id', () => {
+    const mapper = new AcpFrameMapper();
+    const first = mapper.mapUpdate(anonymousChunk('one'));
+    mapper.reset();
+    const second = mapper.mapUpdate(anonymousChunk('two'));
+    expect(messageIdOf(second[0])).not.toBe(messageIdOf(first[0]));
   });
 
   test('a changed messageId closes the previous row first', () => {

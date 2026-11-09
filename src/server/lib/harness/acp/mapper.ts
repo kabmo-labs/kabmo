@@ -21,10 +21,12 @@
  *  2. **`tool_call_update` is a PATCH.** A `status:completed` update carries no
  *     `content`, so replacing the card blanks it at the exact moment it
  *     finishes. The mapper merges into the accumulated call.
- *  3. **`messageId` delimits messages.** ACP has no `message_end`: one answer is
- *     many `agent_message_chunk` frames sharing an id (measured 6 chunks for a
- *     five-word answer, 168 for a long one). Without the id, one answer becomes
- *     168 rows.
+ *  3. **`messageId` delimits messages, when present.** ACP has no
+ *     `message_end`: one answer is many `agent_message_chunk` frames sharing an
+ *     id (measured 6 chunks for a five-word answer, 168 for a long one). Without
+ *     the id, one answer becomes 168 rows. The id is optional in ACP v1, so an
+ *     agent that omits it (antigravity 1.5.3) gets one synthesized identity for
+ *     the turn rather than a fresh one per frame.
  *  4. **`usage_update` is optional.** Only omp emits it; the mapper forwards it
  *     when present and emits nothing when absent, so the panels can say
  *     "not reported" instead of showing a fabricated number.
