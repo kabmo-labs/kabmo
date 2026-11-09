@@ -34,8 +34,10 @@ export interface ChatOverlaysProps {
 
   newChatInitialContent: string | null;
   newChatInitialAttachments: Attachment[];
+  /** The source chat's harness, carried onto the new chat's spawn. */
+  newChatHarness?: string;
   onCloseNewChat: () => void;
-  onSendNewChat: (content: string, attachments: Attachment[]) => void;
+  onSendNewChat: (content: string, attachments: Attachment[], harness?: string) => void;
   appSettings: Record<string, unknown>;
   accessMode: ApprovalMode;
   onAccessModeChange: (mode: ApprovalMode) => void;
@@ -56,6 +58,7 @@ export function ChatOverlays({
   isOmpSession,
   newChatInitialContent,
   newChatInitialAttachments,
+  newChatHarness,
   onCloseNewChat,
   onSendNewChat,
   appSettings,
@@ -84,7 +87,7 @@ export function ChatOverlays({
           initialContent={newChatInitialContent}
           initialAttachments={newChatInitialAttachments}
           onClose={onCloseNewChat}
-          onSend={onSendNewChat}
+          onSend={(content, attachments) => onSendNewChat(content, attachments, newChatHarness)}
           appSettings={appSettings}
           accessMode={accessMode}
           onAccessModeChange={onAccessModeChange}

@@ -174,8 +174,20 @@ describe('handleRetry', () => {
     expect(h.sent[0]?.attachments).toEqual([{ name: 'shot.png', preview: 'data:image/png;base64,QUJD', type: 'image/png', id: 'attachment-1' }]);
   });
 
-  test('an ACP chat refuses Retry instead of rewinding an omp file', async () => {
+  test('an omp-acp chat rewinds the shared JSONL, then re-sends the turn', async () => {
+    // `omp-acp` writes the SAME session file as `omp-rpc`; the endpoint tears the
+    // ACP child down first, so the retry is a real rewind rather than a refusal.
     const h = makeHarness([user('u1'), ai('a1')], { harness: 'omp-acp' });
+    h.actions.handleRetry('u1');
+    await h.settled;
+
+    expect(h.rewinds.map((r) => r.entryId)).toEqual(['u1']);
+    expect(h.sent.map((s) => s.text)).toEqual(['do the thing']);
+    expect(h.errors).toEqual([]);
+  });
+
+  test('another ACP agent refuses Retry instead of truncating a file it does not read', async () => {
+    const h = makeHarness([user('u1'), ai('a1')], { harness: 'claude' });
     h.actions.handleRetry('u1');
     await h.settled;
 
@@ -246,6 +258,17 @@ describe('handleUndo', () => {
     expect(ok).toBe(true);
     expect(h.rewinds).toEqual([]);
     expect(h.messages.map((m) => m.id)).toEqual(['u1', 'a1']);
+  });
+
+  test('an omp-acp chat rewinds the shared JSONL and applies the truncated transcript', async () => {
+    const h = makeHarness([user('u1'), ai('a1'), user('u2'), ai('a2')], { harness: 'omp-acp' });
+    const ok = await h.actions.handleUndo('u2', 'second ask');
+
+    expect(ok).toBe(true);
+    expect(h.rewinds.map((r) => r.entryId)).toEqual(['u2']);
+    expect(h.drafts).toEqual(['second ask']);
+    expect(h.messages).toEqual([]);
+    expect(h.errors).toEqual([]);
   });
 
   test('an ACP chat refuses Undo rather than truncating a file its agent does not read', async () => {

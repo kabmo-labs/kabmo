@@ -94,10 +94,12 @@ export interface ChatTimelineSendResult {
   steerOmpAgent: (text: string, attachments: Attachment[]) => Promise<PromptDispatchResult>;
   /** `model` re-applies a queued item's snapshot before the prompt runs
    *  (set_model / set_thinking_level RPC + prompt access mode). `busy: true`
-   *  means omp REFUSED the prompt mid-turn — the caller queues it instead. */
+   *  means omp REFUSED the prompt mid-turn — the caller queues it instead.
+   *  `harness` is the New Chat dialog's inherited agent, used only by the
+   *  brand-new-session branch (`/api/agent/new`). */
   executeSend: (
     text: string,
     attachments: Attachment[],
-    options?: { model?: QueuedMessageModel | null },
+    options?: { model?: QueuedMessageModel | null; harness?: string | null },
   ) => Promise<PromptDispatchResult>;
 }

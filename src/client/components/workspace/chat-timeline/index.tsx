@@ -113,7 +113,7 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
     [framesByTool, orphanAsks, respondToFrame],
   );
 
-  const newChat = useNewChatOpen({ folders, sessionId, selectedFolderId });
+  const newChat = useNewChatOpen({ folders, sessionId, selectedFolderId, ...(activeHarness.harness ? { harness: activeHarness.harness } : {}) });
   const { pendingUndo, undoing, error: undoError, requestUndo: handleRequestUndo, closeUndoConfirm, confirmUndo } = useUndoConfirmation(handleUndo);
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -330,6 +330,7 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
           isOmpSession={Boolean(sessionId) && !sessionId.startsWith('new-') && Number.isNaN(Number(sessionId))}
           newChatInitialContent={newChat.content}
           newChatInitialAttachments={newChat.attachments}
+          newChatHarness={newChat.harness}
           onCloseNewChat={newChat.close}
           onSendNewChat={submitNewChat}
           appSettings={appSettings}

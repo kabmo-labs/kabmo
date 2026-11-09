@@ -28,7 +28,7 @@ import type { Attachment, ChatMessageData, WorkspaceFolderData } from '@/shared/
 
 let container: HTMLElement | undefined;
 /** The hook result of the most recent render. */
-let submit: ((text: string, attachments: Attachment[]) => void) | null = null;
+let submit: ((text: string, attachments: Attachment[], harness?: string) => void) | null = null;
 
 function Probe({ deps }: { deps: NewChatSubmitDeps }) {
   submit = useNewChatSubmit(deps);
@@ -38,7 +38,7 @@ function Probe({ deps }: { deps: NewChatSubmitDeps }) {
 interface Recorded {
   /** Each send with the SCOPE the deps record carried when the callback was
    *  built — the regression this hook exists for. */
-  sends: Array<{ text: string; attachments: Attachment[]; scope: string | null }>;
+  sends: Array<{ text: string; attachments: Attachment[]; scope: string | null; harness?: string }>;
   messages: ChatMessageData[];
   /** The URL the hook's `setSearchParams` writes into. */
   searchParams: URLSearchParams;
@@ -64,8 +64,8 @@ function makeDeps(overrides: Partial<NewChatSubmitDeps> = {}): Recorded {
     setLocalMessages: (next) => {
       messages.splice(0, messages.length, ...(typeof next === 'function' ? next(messages) : next));
     },
-    executeSend: async (text, attachments) => {
-      sends.push({ text, attachments, scope });
+    executeSend: async (text, attachments, options) => {
+      sends.push({ text, attachments, scope, ...(options?.harness ? { harness: options.harness } : {}) });
       return { ok: true, busy: false };
     },
     ...overrides,
@@ -134,6 +134,34 @@ describe('useNewChatSubmit', () => {
     // The URL write re-renders the tree with the new scope; now it goes out.
     const adopted = makeDeps({ sessionId: pendingId, folders: folderOwning(pendingId) });
     await ui.rerender(adopted.deps);
+    expect(adopted.sends).toEqual([{ text: 'halo', attachments: [], scope: pendingId }]);
+  });
+
+  test('the parked harness rides the first send, so an ACP chat stays on its agent', async () => {
+    const opened = makeDeps({ sessionId: 'sess-aaa' });
+    const ui = await mount(opened.deps);
+
+    await act(async () => { submit?.('halo', [], 'opencode'); });
+    const pendingId = opened.searchParams.get('sessionId') ?? '';
+
+    const adopted = makeDeps({ sessionId: pendingId, folders: folderOwning(pendingId) });
+    await ui.rerender(adopted.deps);
+
+    // The dialog has no harness picker: without this the server defaulted the
+    // spawn to omp-rpc and the new chat lost the agent that wrote the answer.
+    expect(adopted.sends).toEqual([{ text: 'halo', attachments: [], scope: pendingId, harness: 'opencode' }]);
+  });
+
+  test('a send with no inherited harness leaves the spawn on the server default', async () => {
+    const opened = makeDeps({ sessionId: 'sess-aaa' });
+    const ui = await mount(opened.deps);
+
+    await act(async () => { submit?.('halo', []); });
+    const pendingId = opened.searchParams.get('sessionId') ?? '';
+
+    const adopted = makeDeps({ sessionId: pendingId, folders: folderOwning(pendingId) });
+    await ui.rerender(adopted.deps);
+
     expect(adopted.sends).toEqual([{ text: 'halo', attachments: [], scope: pendingId }]);
   });
 

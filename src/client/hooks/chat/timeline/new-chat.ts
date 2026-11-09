@@ -37,12 +37,20 @@ export interface NewChatSubmitDeps {
   selectedFolderId: number | null;
   setSearchParams: SetSearchParams;
   setLocalMessages: Dispatch<SetStateAction<ChatMessageData[]>>;
-  executeSend: (text: string, attachments: Attachment[]) => Promise<PromptDispatchResult>;
+  executeSend: (text: string, attachments: Attachment[], options?: { harness?: string | null }) => Promise<PromptDispatchResult>;
 }
 
-export function useNewChatSubmit(deps: NewChatSubmitDeps): (text: string, attachments: Attachment[]) => void {
+/**
+ * The dialog's send handler. `harness` is the source chat's agent, captured by
+ * `useNewChatOpen` when the card opened: the dialog has no harness picker, and
+ * a spawn that omitted the field started the new chat on omp's RPC transport
+ * even when the answer came from another agent.
+ */
+export function useNewChatSubmit(
+  deps: NewChatSubmitDeps,
+): (text: string, attachments: Attachment[], harness?: string) => void {
   const { sessionId, folders, selectedFolderId, setSearchParams, setLocalMessages, executeSend } = deps;
-  const parkedRef = useRef<{ pendingId: string; text: string; attachments: Attachment[] } | null>(null);
+  const parkedRef = useRef<{ pendingId: string; text: string; attachments: Attachment[]; harness?: string } | null>(null);
 
   useEffect(() => {
     const parked = parkedRef.current;
@@ -51,15 +59,19 @@ export function useNewChatSubmit(deps: NewChatSubmitDeps): (text: string, attach
     // instead — it stays parked and is overwritten by the next New Chat.
     if (!parked || sessionId !== parked.pendingId) return;
     parkedRef.current = null;
-    void executeSend(parked.text, parked.attachments);
+    void executeSend(
+      parked.text,
+      parked.attachments,
+      parked.harness ? { harness: parked.harness } : undefined,
+    );
   }, [sessionId, executeSend]);
 
-  return useCallback((text, attachments) => {
+  return useCallback((text, attachments, harness) => {
     // The store mints the pending id and owns the row it stands for: the
     // sidebar/navbar show a default title immediately, and the row survives the
     // `new-…` → omp-UUID switch when the first send spawns.
     const pendingId = startPendingSession(activeProjectForSession(folders, sessionId).folder?.id ?? selectedFolderId);
-    parkedRef.current = { pendingId, text, attachments };
+    parkedRef.current = { pendingId, text, attachments, ...(harness ? { harness } : {}) };
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       next.set('sessionId', pendingId);

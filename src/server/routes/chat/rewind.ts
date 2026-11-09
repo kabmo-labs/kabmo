@@ -2,10 +2,11 @@ import { json } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { getDb } from '@/server/db.server';
 import { resolveSessionFileOr404 } from '@/server/lib/omp/session/locator';
-import { getRpcSession } from '@/server/lib/omp/rpc/session-registry';
+import { getLiveSession, harnessOfSession } from '@/server/lib/omp/rpc/session-registry';
 import { clearSessionFileCaches } from '@/server/lib/omp/session/files';
 import { pruneStoredAfterCut, survivingUserTexts, truncateSessionBody } from '@/server/lib/omp/session/rewind-file';
 import { userTurnsRelate } from '@/shared/lib/chat/timeline/turns';
+import { harnessSupportsRewind } from '@/shared/lib/harness/rewind';
 
 /**
  * In-place rewind (undo) for an omp session: truncate the session JSONL back
@@ -16,9 +17,18 @@ import { userTurnsRelate } from '@/shared/lib/chat/timeline/turns';
  * file in place for equivalent operations (`rewriteEntries`), and its JSONL
  * readers walk entries in order, so a prefix-preserving truncation is faithful.
  *
+ * Both omp transports reach this endpoint. `omp-acp` writes the SAME JSONL as
+ * `omp-rpc`, so a chat that ran over ACP is rewound the same way — the ACP
+ * child is torn down first, because it holds the old context in memory and is
+ * the only other writer of the file; the next prompt resumes the truncated
+ * transcript over RPC (`resumeRecordedHarnessSession` deliberately excludes
+ * `omp-acp`, whose `session/load` forks). Every other ACP agent stores its own
+ * history and offers no truncation, so it is refused in words instead of
+ * truncating a file it does not read.
+ *
  * Safety contract:
- *  - the live omp process for this session is destroyed first (it flushes all
- *    pending state on shutdown and is the only other writer of this file);
+ *  - the live child for this session is destroyed first (it flushes pending
+ *    state on shutdown and is the only other writer of this file);
  *  - the original file is kept as `<name>.bak-<timestamp>` (omp's session
  *    listing ignores names containing `.bak`, so it never becomes a phantom
  *    session).
@@ -54,10 +64,22 @@ export async function action({ params, request }: ActionFunctionArgs) {
   if ('response' in resolved) return resolved.response;
   const { filePath } = resolved;
 
-  // Tear down the live process first: it flushes pending writes on shutdown
-  // and must not race the rewrite. Best-effort — the session may already be
-  // gone or mid-restart.
-  const live = getRpcSession(sessionId);
+  // Tear down the live child FIRST, whichever transport runs it: it flushes
+  // pending writes on shutdown, it is the only other writer of the file, and
+  // the file's CONTENT is read below. Best-effort: the session may already be
+  // gone or mid-restart. A harness whose agent keeps its own transcript is
+  // refused BEFORE its child is touched — truncating a file it does not read
+  // would kill a working chat to no effect.
+  const live = getLiveSession(sessionId);
+  if (live && !harnessSupportsRewind(harnessOfSession(live))) {
+    return json(
+      {
+        error: `${harnessOfSession(live)} cannot rewind this chat: its agent keeps its own transcript and offers no truncation.`,
+        code: 'harness_not_rewindable',
+      },
+      { status: 400 },
+    );
+  }
   if (live?.isAlive()) {
     await live.destroyAndWait();
   }

@@ -13,7 +13,9 @@
  *
  *  - a real omp session rewinds its JSONL first — dropping only the client's
  *    rows left the abandoned turn on disk, so a reload resurrected the answer
- *    that was supposed to be replaced;
+ *    that was supposed to be replaced. Both omp transports share that file:
+ *    the endpoint tears the live child down first, so an `omp-acp` chat is
+ *    rewound exactly like an `omp-rpc` one;
  *  - the id Retry receives is the run's OPENING USER row, not the AI row the
  *    footer describes (a run spans thinking / tool / answer rows, so requiring
  *    the owner's immediate predecessor to be a user turn made the button a
@@ -27,13 +29,15 @@
 import type { Dispatch, SetStateAction } from 'preact/compat';
 import type { Attachment, ChatMessageData, OmpAgentHandle, PromptDispatchResult } from '@/shared/types';
 import { toAttachmentList } from '@/shared/lib/chat/attachments';
+import { harnessSupportsRewind } from '@/shared/lib/harness/rewind';
 import { requestRewind } from '@/client/hooks/chat/timeline/rewind';
 
 export interface RewindActionsDeps {
   isGenerating: boolean;
   isOmpSession: boolean;
-  /** The harness behind the chat. The rewind endpoint edits an omp JSONL; an
-   *  ACP chat has none, and `omp-acp`'s file is not what its live child reads. */
+  /** The harness behind the chat. Only the harnesses that write omp's JSONL
+   *  (`omp-rpc`, `omp-acp`) can be rewound; every other ACP agent keeps its own
+   *  transcript. See `harnessSupportsRewind`. */
   harness?: string | null;
   /** Active session id; the omp paths post the rewind against it. */
   sessionId: string | null;
@@ -88,12 +92,12 @@ export function createRewindActions(deps: RewindActionsDeps): RewindActions {
   const handleUndo = async (msgId: string, content?: string): Promise<boolean> => {
     stopActiveRun();
 
-    // ACP has no rewind of its own. The endpoint below edits an omp JSONL: a
-    // non-omp agent has none, and `omp-acp`'s file is not what its live ACP
-    // child reads — truncating it would leave the process running on the old
-    // context. Refuse in words instead of a 404 or a silent divergence.
-    if (isOmpSession && harness && harness !== 'omp-rpc') {
-      reportActionError('Undo is not available on this harness: it has no omp transcript to rewind.');
+    // Both omp transports share the JSONL and can be rewound; every other ACP
+    // agent keeps its own transcript and has no truncation, so truncating
+    // Kabmo's copy would leave the child answering from turns the timeline no
+    // longer shows. Refuse in words instead of a 404 or a silent divergence.
+    if (isOmpSession && !harnessSupportsRewind(harness)) {
+      reportActionError('Undo is not available on this harness: its agent keeps its own transcript and Kabmo cannot truncate it.');
       return false;
     }
 
@@ -145,8 +149,8 @@ export function createRewindActions(deps: RewindActionsDeps): RewindActions {
   const handleRetry = (msgId: string) => {
     stopActiveRun();
 
-    if (isOmpSession && harness && harness !== 'omp-rpc') {
-      reportActionError('Retry is not available on this harness: it has no omp transcript to rewind.');
+    if (isOmpSession && !harnessSupportsRewind(harness)) {
+      reportActionError('Retry is not available on this harness: its agent keeps its own transcript and Kabmo cannot truncate it.');
       return;
     }
 

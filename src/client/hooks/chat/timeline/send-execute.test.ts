@@ -161,6 +161,23 @@ describe('executeSend', () => {
     expect(h1.deps.pendingHarnessRef.current).toBeNull();
   });
 
+  test('a New Chat harness inherited from the source chat outranks a stale pick', async () => {
+    // The dialog has no picker, so its `options.harness` is the only honest
+    // answer; a ref left by an earlier pick on the pending view must not win.
+    const h1 = makeSendHarness({
+      isOmpSession: false,
+      sessionId: 'new-1',
+      folders: [{ id: 4, name: 'demo', project_path: '/tmp/demo' }],
+      selectedFolderId: 4,
+      agent: { spawnResult: { sessionId: 'uuid-12' } },
+    });
+    h1.deps.pendingHarnessRef.current = 'opencode';
+    await act(async () => {
+      await h1.sends.executeSend('first prompt', [], { harness: 'omp-acp' });
+    });
+    expect(h1.agent.calls.newPrompts[0]?.options).toMatchObject({ harness: 'omp-acp' });
+  });
+
   test("the spawn's answered harness is what the run is reported as", async () => {
     const h1 = makeSendHarness({
       isOmpSession: false,

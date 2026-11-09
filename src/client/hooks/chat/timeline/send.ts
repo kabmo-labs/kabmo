@@ -135,7 +135,7 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
   const executeSend = useCallback(async (
     text: string,
     attachments: Attachment[],
-    options?: { model?: QueuedMessageModel | null },
+    options?: { model?: QueuedMessageModel | null; harness?: string | null },
   ) => {
     // Last gate before a prompt leaves the client. `handleSend` already refuses
     // these, but `executeSend` is also reached by a retry of a stored turn, a
@@ -273,8 +273,13 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
             accessMode: accessModeRef.current,
             modes: spawnModes,
             // A harness picked on the pending view rides the spawn; cleared on
-            // success below so it cannot leak onto the next new chat.
-            ...(pendingHarnessRef.current ? { harness: pendingHarnessRef.current } : {}),
+            // success below so it cannot leak onto the next new chat. A New
+            // Chat opened from an ACP answer passes the SOURCE chat's harness
+            // explicitly (that dialog has no picker), and it must outrank the
+            // ref a previous pick left behind.
+            ...((options?.harness ?? pendingHarnessRef.current)
+              ? { harness: options?.harness ?? pendingHarnessRef.current }
+              : {}),
           },
           armed ? (id) => startArmedGoal(id, armed, promptText) : undefined,
         );

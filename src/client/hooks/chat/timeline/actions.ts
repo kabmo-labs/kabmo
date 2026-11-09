@@ -58,7 +58,7 @@ export interface ChatTimelineActionsDeps {
   /** Server-backed per-item queue ops (append/remove/reorder). */
   enqueueMessage: (item: Omit<QueuedMessage, 'id'>) => void;
   removeMessage: (id: string) => void;
-  executeSend: (text: string, attachments: Attachment[], options?: { model?: QueuedMessageModel | null }) => Promise<PromptDispatchResult>;
+  executeSend: (text: string, attachments: Attachment[], options?: { model?: QueuedMessageModel | null; harness?: string | null }) => Promise<PromptDispatchResult>;
   steerOmpAgent: (text: string, attachments: Attachment[]) => Promise<PromptDispatchResult>;
   ompAgent: OmpAgentHandle;
   abortControllerRef: { current: AbortController | null };
@@ -113,7 +113,7 @@ export interface ChatTimelineActionsResult {
   handleSendNowQueueItem: (item: QueuedMessage) => Promise<void>;
   handleUndo: (msgId: string, content?: string) => Promise<boolean>;
   handleRetry: (msgId: string) => void;
-  submitNewChat: (text: string, attachments: Attachment[]) => void;
+  submitNewChat: (text: string, attachments: Attachment[], harness?: string) => void;
   /** Stop the active run; returns the number of queue items held back. */
   stopGenerating: () => number;
   handleThinkingLevelChange: (level: string) => void;
