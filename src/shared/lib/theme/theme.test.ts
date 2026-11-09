@@ -28,7 +28,7 @@ import { describe, expect, test } from 'bun:test';
 
 import { mixHex, parseHexColor, relativeLuminance, rgbaToHex } from '@/shared/lib/theme/color';
 import { THEME_STYLE_ELEMENT_ID, themeStyleSheet } from '@/shared/lib/theme/css';
-import { MUTED_STEPS, inkScale, onInkTextColor, signalTextColor } from '@/shared/lib/theme/ink-scale';
+import { CODE_FILL_PERCENT, MUTED_STEPS, inkScale, onInkTextColor, signalTextColor } from '@/shared/lib/theme/ink-scale';
 import { KABMO_PALETTES } from '@/shared/lib/theme/palettes/kabmo';
 import { DARK_PALETTES } from '@/shared/lib/theme/palettes/dark';
 import { DARK_EXTENDED_PALETTES } from '@/shared/lib/theme/palettes/dark-extended';
@@ -141,6 +141,9 @@ describe('generated stylesheet', () => {
       // the ink cannot clear AA on every one (`ink-scale.ts`). One token per
       // step: bucketing them onto four collapsed the ladder.
       ...MUTED_STEPS.map((step, index) => `  --theme-ink-${step}: ${inkScale(paper).ladder[index]};`),
+      // The inline-code chip's own opaque fill (never an alpha: see the
+      // `--theme-code-fill` rule in `tailwind.css`).
+      `  --theme-code-fill: ${inkScale(paper).codeFill};`,
       // Muted text for an inverted surface (`bg-ink`).
       `  --theme-on-ink-muted: ${onInkTextColor(paper)};`,
       `  --theme-muted: ${inkScale(paper).muted};`,
@@ -166,19 +169,32 @@ describe('generated stylesheet', () => {
 
   test('names every slot --theme-* and nothing else', () => {
     const names = [...css.matchAll(/--theme-[a-z0-9-]+:/g)].map((match) => match[0]);
-    // Eight palette slots, fifteen muted steps, the inverted-surface level, the
-    // palette's own AA level (`--theme-muted`), the five solved signal levels,
-    // and the two hover mixes.
-    expect(new Set(names).size).toBe(32);
+    // Eight palette slots, fifteen muted steps, the inline-code chip's fill,
+    // the inverted-surface level, the palette's own AA level (`--theme-muted`),
+    // the five solved signal levels, and the two hover mixes.
+    expect(new Set(names).size).toBe(33);
     expect(names[0]).toBe('--theme-paper:');
     // Slot order is the swatch order the appearance cards render.
     expect(names[2]).toBe('--theme-ink:');
     expect(names[3]).toBe('--theme-ink-20:');
     expect(names[17]).toBe('--theme-ink-90:');
-    expect(names[18]).toBe('--theme-on-ink-muted:');
-    expect(names[19]).toBe('--theme-muted:');
-    expect(names[24]).toBe('--theme-meta:');
-    expect(names[25]).toBe('--theme-error-text:');
+    expect(names[18]).toBe('--theme-code-fill:');
+    expect(names[19]).toBe('--theme-on-ink-muted:');
+    expect(names[20]).toBe('--theme-muted:');
+    expect(names[25]).toBe('--theme-meta:');
+    expect(names[26]).toBe('--theme-error-text:');
+  });
+
+  test('states the inline-code chip fill as an opaque colour, per palette', () => {
+    // The chip must NOT be an alpha: a translucent fill composites with whatever
+    // is painted behind it, so a hovered block changed the code's colour.
+    expect(css).not.toContain('--theme-code-fill: color-mix');
+    for (const palette of [KABMO_PALETTES[0], DARK_PALETTES[0]]) {
+      const fill = inkScale(palette).codeFill;
+      expect(fill).toBe(mixHex(palette.paper, palette.ink, CODE_FILL_PERCENT / 100));
+      expect(fill).toMatch(/^#[0-9a-f]{6}$/);
+      expect(css).toContain(`--theme-code-fill: ${fill};`);
+    }
   });
 
   test('is cached for the life of the process', () => {

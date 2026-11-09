@@ -58,6 +58,8 @@ function paletteBlock(theme: ThemePalette): string {
     `  --theme-ink: ${theme.ink};`,
     // Fifteen distinct values: the ink at N% over this palette's paper.
     ...scale.ladder.map((value, index) => `  --theme-ink-${MUTED_STEPS[index]}: ${value};`),
+    // The inline-code chip's OWN fill, opaque (see `CODE_FILL_PERCENT`).
+    `  --theme-code-fill: ${scale.codeFill};`,
     // Muted text on an inverted surface: an alpha reads 2.91:1 on `solarized-light`.
     `  --theme-on-ink-muted: ${onInkTextColor(theme)};`,
     // The one level that clears AA on THIS palette. No single rung can be legal

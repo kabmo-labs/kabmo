@@ -11,6 +11,18 @@ export const MUTED_STEPS = [20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 
  *  `/60` is 4.46:1, so the boundary sits where it is needed, not safely above it. */
 export const TEXT_CONTRAST_FLOOR = 65;
 
+/**
+ * Strength of the inline-code chip's fill, as a percentage of ink over paper.
+ *
+ * The chip is SOLVED, not an alpha: `color-mix(… 8%, transparent)` composites
+ * with whatever is painted behind the chip, so a hovered block's tint showed
+ * through it and the code changed colour mid-hover (measured on a real session
+ * in the browser: the same `/Applications/Obsidian.app` chip read `#e4e9ed` at
+ * rest and `#dce2e5` with the hover tint behind it). An opaque value also pins
+ * the contrast between the code and its chip, which an alpha cannot.
+ */
+export const CODE_FILL_PERCENT = 8;
+
 /** AA for small text. Named so the floor above can be read as a contrast. */
 export const MUTED_CONTRAST_FLOOR = 4.5;
 
@@ -39,6 +51,8 @@ export interface InkScale {
   ladder: readonly string[];
   /** The lightest step that clears AA on both surfaces; the OS shells read it. */
   muted: string;
+  /** The inline-code chip's fill: opaque ink over this palette's paper. */
+  codeFill: string;
 }
 
 /** Cached per palette object, so a render pass costs no arithmetic. */
@@ -58,7 +72,13 @@ export function inkScale(palette: ThemePalette): InkScale {
     ladder.find((color) => worstTextContrast(color, palette) >= MUTED_CONTRAST_FLOOR) ??
     palette.ink;
 
-  const scale: InkScale = { ink: palette.ink, ladder, muted };
+  const scale: InkScale = {
+    ink: palette.ink,
+    ladder,
+    muted,
+    // Opaque: the paper base is what makes the chip independent of its backdrop.
+    codeFill: mixHex(palette.paper, palette.ink, CODE_FILL_PERCENT / 100),
+  };
   cache.set(palette, scale);
   return scale;
 }

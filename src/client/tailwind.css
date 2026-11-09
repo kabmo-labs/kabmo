@@ -809,10 +809,18 @@
 .prose-content td, .prose-content th { line-height: inherit; overflow-wrap: break-word; }
 .prose-content th { background: color-mix(in srgb, var(--theme-ink) 5%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--theme-ink) 15%, transparent); padding: 0.375rem 0.75rem; font-weight: 600; }
 .prose-content td { border-bottom: 1px solid color-mix(in srgb, var(--theme-ink) 10%, transparent); padding: 0.375rem 0.75rem; }
+/* The chip's fill is its OWN, opaque colour (`--theme-code-fill`, ink at 8% over
+ * the palette's paper). It used to be `color-mix(… 8%, transparent)`, an ALPHA:
+ * whatever was painted behind the chip showed through, so a hovered block's tint
+ * changed the code's colour mid-hover and with it the code/chip contrast —
+ * measured on a real session in the browser: `#e4e9ed` at rest against
+ * `#dce2e5` with the hover tint behind it. One solved colour per palette also
+ * removes lightningcss's `color-mix` fallback, which was
+ * `background: var(--theme-ink)` — a solid ink slab with ink text on it. */
 .prose-content code.inline-code {
   font-family: 'Fira Code', monospace; font-size: 0.75rem;
   padding: 0.0125rem 0.275rem; border-radius: 0.375rem;
-  background: color-mix(in srgb, var(--theme-ink) 8%, transparent);
+  background: var(--theme-code-fill);
   color: var(--theme-ink);
   overflow-wrap: break-word;
 }
