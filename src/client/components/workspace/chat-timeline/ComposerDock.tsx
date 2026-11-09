@@ -2,6 +2,7 @@ import type { Dispatch, SetStateAction } from 'preact/compat';
 import { ChatInput } from '@/client/components/workspace/chat-timeline/chat-input/index';
 import { BtwForm } from '@/client/components/workspace/btw-panel/index';
 import { useBtwMode } from '@/client/hooks/chat/btw/mode';
+import { ComposerDockFrame } from '@/client/components/workspace/chat-timeline/ComposerDockFrame';
 import { GeneratingIndicator } from '@/client/components/workspace/chat-timeline/GeneratingIndicator';
 import { QueueList } from '@/client/components/workspace/chat-timeline/QueueList';
 import type { Attachment, QueuedMessage } from '@/shared/types';
@@ -121,76 +122,69 @@ export function ComposerDock({
   const btw = useBtwMode(sessionId);
 
   return (
-    <div
-      className={`bg-transparent border-t-0 flex-shrink-0 space-y-2 ${isMobile ? 'px-3 pt-1' : 'p-4 pt-1'}`}
-      style={isMobile ? { paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))' } : undefined}
-    >
-      {/* `relative` keeps the queue/indicator stack anchored above the input
-          while the side-question form takes the composer's place. */}
-      <div className="chat-column relative">
-        {/* Plugin banner strip: above the input, in the chat's own composer.
-            An empty slot renders nothing, so a Kabmo with no plugins keeps
-            this dock byte-identical. */}
-        <PluginComposerBanners />
-        {showGeneratingIndicator && (
-          <GeneratingIndicator
-            modelName={modelName}
-            generatingVerb={generatingVerb}
-            provider={provider}
-            providerNames={providerNames}
-            {...(harness ? { harness } : {})}
-          />
-        )}
-        <QueueList
-          queue={messageQueue}
-          onRemove={onRemoveQueueItem}
-          onReorder={onReorderQueue}
-          onEdit={onEditQueueItem}
-          onSendNow={onSendNowQueueItem}
+    <ComposerDockFrame isMobile={isMobile}>
+      {/* Plugin banner strip: above the input, in the chat's own composer.
+          An empty slot renders nothing, so a Kabmo with no plugins keeps
+          this dock byte-identical. */}
+      <PluginComposerBanners />
+      {showGeneratingIndicator && (
+        <GeneratingIndicator
+          modelName={modelName}
+          generatingVerb={generatingVerb}
+          provider={provider}
+          providerNames={providerNames}
+          {...(harness ? { harness } : {})}
         />
-        {btw.open ? (
-          <BtwForm
-            mode={btw}
-            appSettings={appSettings}
-            composerModelRef={composerModelRef}
-            rootPath={rootPath}
-            variant={variant}
-            modelName={modelName}
-            provider={provider}
-            providerNames={providerNames}
-          />
-        ) : (
-          <ChatInput
-            value={inputValue}
-            onChange={setInputValue}
-            sessionId={sessionId}
-            rootPath={rootPath}
-            attachments={attachments}
-            onAttachmentsChange={setAttachments}
-            onSend={onSend}
-            isGenerating={isGenerating}
-            chatRunning={showGeneratingIndicator}
-            onStop={onStop}
-            appSettings={appSettings}
-            onThinkingLevelChange={onThinkingLevelChange}
-            onModelChange={onModelChange}
-            accessMode={accessMode}
-            onAccessModeChange={onAccessModeChange}
-            modes={modes}
-            composerModelRef={composerModelRef}
-            deferredComposerPickRef={deferredComposerPickRef}
-            sessionModel={sessionModel}
-            sessionThinkingLevel={sessionThinkingLevel}
-            harness={harness}
-            harnessEditable={harnessEditable}
-            onSelectHarness={onSelectHarness}
-            variant={variant}
-            expandable
-            hero={hero}
-            shrinkWhileReading={shrinkWhileReading}
-          />
-        )}
-      </div>
-    </div>
+      )}
+      <QueueList
+        queue={messageQueue}
+        onRemove={onRemoveQueueItem}
+        onReorder={onReorderQueue}
+        onEdit={onEditQueueItem}
+        onSendNow={onSendNowQueueItem}
+      />
+      {btw.open ? (
+        <BtwForm
+          mode={btw}
+          appSettings={appSettings}
+          composerModelRef={composerModelRef}
+          rootPath={rootPath}
+          variant={variant}
+          modelName={modelName}
+          provider={provider}
+          providerNames={providerNames}
+        />
+      ) : (
+        <ChatInput
+          value={inputValue}
+          onChange={setInputValue}
+          sessionId={sessionId}
+          rootPath={rootPath}
+          attachments={attachments}
+          onAttachmentsChange={setAttachments}
+          onSend={onSend}
+          isGenerating={isGenerating}
+          chatRunning={showGeneratingIndicator}
+          onStop={onStop}
+          appSettings={appSettings}
+          onThinkingLevelChange={onThinkingLevelChange}
+          onModelChange={onModelChange}
+          accessMode={accessMode}
+          onAccessModeChange={onAccessModeChange}
+          modes={modes}
+          composerModelRef={composerModelRef}
+          deferredComposerPickRef={deferredComposerPickRef}
+          sessionModel={sessionModel}
+          sessionThinkingLevel={sessionThinkingLevel}
+          harness={harness}
+          harnessEditable={harnessEditable}
+          onSelectHarness={onSelectHarness}
+          variant={variant}
+          expandable
+          hero={hero}
+          shrinkWhileReading={shrinkWhileReading}
+        />
+      )}
+    </ComposerDockFrame>
   );
 }

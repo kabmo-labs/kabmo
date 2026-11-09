@@ -5,6 +5,7 @@ import type { Attachment, ChatMessageData, WorkspaceFolderData } from '@/shared/
 import { ChatInput } from '@/client/components/workspace/chat-timeline/chat-input/index';
 import { ChatMessageItem } from '@/client/components/workspace/chat-timeline/MessageItem';
 import { RunFooter } from '@/client/components/workspace/chat-timeline/RunFooter';
+import { ComposerDockFrame } from '@/client/components/workspace/chat-timeline/ComposerDockFrame';
 import { GeneratingIndicator } from '@/client/components/workspace/chat-timeline/GeneratingIndicator';
 import { resolveRunFooters, streamingRowIndex } from '@/shared/lib/chat/timeline/run-footer';
 import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
@@ -159,65 +160,81 @@ export function EmptyWorkspacePrompt({
     }
   }, [messages.length]);
 
-  return (
-    <div className={`flex flex-col h-full bg-canvas ${variant === 'mobile' ? 'px-3 py-4' : 'p-8'} ${className}`}
-      style={variant === 'mobile' ? { paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))' } : undefined}
-    >
-      <div
-        className={`chat-column flex flex-col min-h-0 space-y-3 ${
-          messages.length > 0 ? 'flex-1' : 'my-auto justify-center'
-        }`}
-      >
-        {/* Workspace Selection Seamless Dropdown (No border, transparent
-            background). Hidden once a chat has been sent — the session now has
-            a target workspace, so the composer is the only focus. */}
-        {messages.length === 0 && (
-          <div className="flex items-center gap-1 flex-wrap">
-          {/* Two controls, because they answer two questions: the workspace
-              (which project) and the worktree (which checkout of it). The
-              worktree control draws itself only for a git repository, and it
-              reads its list on mount because its own trigger names the branch
-              the project root holds. */}
-          <WorkspacePicker
-            folders={folders as WorkspaceFolderData[]}
-            selectedFolderId={selectedFolderId}
-            setSelectedFolderId={setSelectedFolderId}
-            onClearWorktree={() => onSpawnTargetChange?.(null)}
-          />
-          {onSpawnTargetChange && (
-            <WorktreePicker
-              folders={folders as WorkspaceFolderData[]}
-              selectedFolderId={selectedFolderId}
-              target={spawnTarget}
-              setTarget={onSpawnTargetChange}
-              onReport={onWorktreeReport}
-            />
-          )}
-          {/* The wait picker sits BESIDE the workspace picker, because both
-              answer the same question about the chat that has not started:
-              where it runs, and what it waits for. It only appears while there
-              is something to wait for (or a pick already made). */}
-          {onWaitingForChange && (waitingFor || candidates.length > 0) && (
-            <WaitingDependencyPicker
-              folders={folders}
-              streamStatusMap={streamStatusMap}
-              sessionId={null}
-              titleFor={titleForSession}
-              value={waitingFor}
-              onChange={onWaitingForChange}
-            />
-          )}
-        </div>
-        )}
+  const isMobile = variant === 'mobile';
+  // A chat with rows to show (or a prompt in flight) draws the SAME dock the
+  // real timeline does. It used to keep this page's centred `p-8` column and a
+  // `space-y-3` stack, so the generating indicator — and the composer under it
+  // — sat 28px higher while the spawn was in flight (`Loading…`, 141px from the
+  // pane's bottom) than once the run streamed in the real timeline
+  // (`Thinking…`, 113px). The row jumped at the moment the chat was adopted,
+  // which read as two different indicators.
+  const docked = messages.length > 0 || isGenerating;
 
-        {/* Pending session timeline: optimistic bubbles render here immediately
-            on send, then the real session (UUID) takes over the ChatTimeline.
-            Only shown when there are messages so the empty composer stays
-            centered next to the workspace picker. */}
-        {messages.length > 0 && (
+  const heldPrompt = heldWait ? (
+    <div className="flex items-center gap-2 rounded-lg border border-ink/15 bg-ink/[0.03] px-3 py-2 text-xs text-ink/70">
+      <Hourglass size={12} className="shrink-0 animate-pulse text-ink/60" />
+      <span className="min-w-0 flex-1 truncate">
+        Waiting for {heldWait.title ?? 'another session'} to finish before this prompt is sent.
+      </span>
+      {onCancelWait && (
+        <button
+          type="button"
+          data-testid="cancel-held-prompt"
+          onClick={onCancelWait}
+          className="shrink-0 rounded border border-ink/20 px-2 py-0.5 text-[11px] text-ink/70 hover:bg-ink/5 hover:text-ink cursor-pointer"
+        >
+          Cancel
+        </button>
+      )}
+    </div>
+  ) : null;
+
+  const composer = (
+    <ChatInput
+      value={inputValue}
+      onChange={setInputValue}
+      rootPath={rootPath}
+      attachments={inputAttachments}
+      onAttachmentsChange={setInputAttachments}
+      onSend={onSend}
+      isGenerating={isGenerating}
+      disabled={!selectedFolderId || Boolean(heldWait)}
+      className="w-full shrink-0"
+      appSettings={appSettings}
+      onThinkingLevelChange={onThinkingLevelChange}
+      onModelChange={onModelChange}
+      sessionModel={sessionModel}
+      sessionThinkingLevel={sessionThinkingLevel}
+      accessMode={accessMode}
+      onAccessModeChange={onAccessModeChange}
+      modes={modes}
+      composerModelRef={composerModelRef}
+      deferredComposerPickRef={deferredComposerPickRef}
+      {...(harness ? { harness } : {})}
+      harnessEditable={harnessEditable}
+      {...(onSelectHarness ? { onSelectHarness } : {})}
+      variant={variant}
+      expandable
+      // A brand-new chat has no turns: the `stage` composer style draws its
+      // wider, taller card here and nowhere else.
+      hero={messages.length === 0}
+    />
+  );
+
+  return (
+    <div
+      className={`flex flex-col h-full bg-canvas ${docked ? '' : isMobile ? 'px-3 py-4' : 'p-8'} ${className}`}
+      style={!docked && isMobile ? { paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))' } : undefined}
+    >
+      {docked ? (
+        <>
+          {/* The pending transcript reserves the box the real timeline's own
+              scroller does (`TimelineBody`), so adoption moves no text either. */}
           <div
             ref={timelineRef}
-            className="flex-1 min-h-0 overflow-y-auto scroll-smooth overscroll-contain"
+            className={`flex-1 min-h-0 overflow-y-auto scroll-smooth overscroll-contain ${
+              isMobile ? 'pl-4 pr-3 py-3 pb-8' : 'p-4 pb-10'
+            }`}
           >
             <div className="chat-column">
               {messages.map((msg, idx) => {
@@ -232,7 +249,7 @@ export function EmptyWorkspacePrompt({
                       isStreaming={isLoading}
                       onUndo={onUndo}
                       onNewChat={onNewChat}
-                      isMobile={variant === 'mobile'}
+                      isMobile={isMobile}
                       className={isAiFragment ? 'mt-1' : 'mt-8'}
                     />
                     {footer && (
@@ -256,71 +273,71 @@ export function EmptyWorkspacePrompt({
               })}
             </div>
           </div>
-        )}
 
-        {/* Docked above the input, mirroring chat-timeline/index.tsx so the
-            indicator does not jump when a pending new chat adopts its omp
-            session and the main timeline branch takes over rendering. */}
-        {isGenerating && (
-          <GeneratingIndicator
-            modelName={modelName}
-            generatingVerb={generatingVerb}
-            provider={provider}
-            providerNames={providerNames}
-            {...(harness ? { harness } : {})}
-          />
-        )}
-        {/* A held prompt owns this chat until it is released: there is no
-            session to send a second prompt to, and a composer that looked live
-            would accept one that could not be delivered. */}
-        {heldWait && (
-          <div className="flex items-center gap-2 rounded-lg border border-ink/15 bg-ink/[0.03] px-3 py-2 text-xs text-ink/70">
-            <Hourglass size={12} className="shrink-0 animate-pulse text-ink/60" />
-            <span className="min-w-0 flex-1 truncate">
-              Waiting for {heldWait.title ?? 'another session'} to finish before this prompt is sent.
-            </span>
-            {onCancelWait && (
-              <button
-                type="button"
-                data-testid="cancel-held-prompt"
-                onClick={onCancelWait}
-                className="shrink-0 rounded border border-ink/20 px-2 py-0.5 text-[11px] text-ink/70 hover:bg-ink/5 hover:text-ink cursor-pointer"
-              >
-                Cancel
-              </button>
+          {/* One frame with the real dock (`ComposerDock`), so the indicator and
+              the composer cannot sit at two different heights. */}
+          <ComposerDockFrame isMobile={isMobile}>
+            {isGenerating && (
+              <GeneratingIndicator
+                modelName={modelName}
+                generatingVerb={generatingVerb}
+                provider={provider}
+                providerNames={providerNames}
+                {...(harness ? { harness } : {})}
+              />
+            )}
+            {heldPrompt}
+            {composer}
+          </ComposerDockFrame>
+        </>
+      ) : (
+        <div className="chat-column flex flex-col min-h-0 my-auto justify-center space-y-3">
+          {/* Workspace Selection Seamless Dropdown (No border, transparent
+              background). A chat with rows keeps its target and drops the
+              picker; this branch is only the chat that has not started. */}
+          <div className="flex items-center gap-1 flex-wrap">
+            {/* Two controls, because they answer two questions: the workspace
+                (which project) and the worktree (which checkout of it). The
+                worktree control draws itself only for a git repository, and it
+                reads its list on mount because its own trigger names the branch
+                the project root holds. */}
+            <WorkspacePicker
+              folders={folders as WorkspaceFolderData[]}
+              selectedFolderId={selectedFolderId}
+              setSelectedFolderId={setSelectedFolderId}
+              onClearWorktree={() => onSpawnTargetChange?.(null)}
+            />
+            {onSpawnTargetChange && (
+              <WorktreePicker
+                folders={folders as WorkspaceFolderData[]}
+                selectedFolderId={selectedFolderId}
+                target={spawnTarget}
+                setTarget={onSpawnTargetChange}
+                onReport={onWorktreeReport}
+              />
+            )}
+            {/* The wait picker sits BESIDE the workspace picker, because both
+                answer the same question about the chat that has not started:
+                where it runs, and what it waits for. It only appears while
+                there is something to wait for (or a pick already made). */}
+            {onWaitingForChange && (waitingFor || candidates.length > 0) && (
+              <WaitingDependencyPicker
+                folders={folders}
+                streamStatusMap={streamStatusMap}
+                sessionId={null}
+                titleFor={titleForSession}
+                value={waitingFor}
+                onChange={onWaitingForChange}
+              />
             )}
           </div>
-        )}
-        <ChatInput
-          value={inputValue}
-          onChange={setInputValue}
-          rootPath={rootPath}
-          attachments={inputAttachments}
-          onAttachmentsChange={setInputAttachments}
-          onSend={onSend}
-          isGenerating={isGenerating}
-          disabled={!selectedFolderId || Boolean(heldWait)}
-          className="w-full shrink-0"
-          appSettings={appSettings}
-          onThinkingLevelChange={onThinkingLevelChange}
-          onModelChange={onModelChange}
-          sessionModel={sessionModel}
-          sessionThinkingLevel={sessionThinkingLevel}
-          accessMode={accessMode}
-          onAccessModeChange={onAccessModeChange}
-          modes={modes}
-          composerModelRef={composerModelRef}
-          deferredComposerPickRef={deferredComposerPickRef}
-          {...(harness ? { harness } : {})}
-          harnessEditable={harnessEditable}
-          {...(onSelectHarness ? { onSelectHarness } : {})}
-          variant={variant}
-          expandable
-          // A brand-new chat has no turns: the `stage` composer style draws its
-          // wider, taller card here and nowhere else.
-          hero={messages.length === 0}
-        />
-      </div>
+          {/* A held prompt owns this chat until it is released: there is no
+              session to send a second prompt to, and a composer that looked live
+              would accept one that could not be delivered. */}
+          {heldPrompt}
+          {composer}
+        </div>
+      )}
     </div>
   );
 }
