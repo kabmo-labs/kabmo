@@ -4,6 +4,33 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.24.0](https://github.com/kabmo-labs/kabmo/compare/v0.23.0...v0.24.0) — 2026-11-09
+
+### Added
+
+* **chat:** list a running harness's own models ahead of its probe ([f2a669b](https://github.com/kabmo-labs/kabmo/commit/f2a669beef2dc88b80b4a4f4caf61c9512a76bbd)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** let zcode carry a custom provider and require its runtime ([887a9e3](https://github.com/kabmo-labs/kabmo/commit/887a9e38369f113497a4b3d1bd0f54e113207584)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** pin Claude picker aliases to the gateway's model ids ([ea42553](https://github.com/kabmo-labs/kabmo/commit/ea4255353032c5226f1f957684ba370f1f5aefe7)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** probe enabled harnesses on server boot ([e6ed343](https://github.com/kabmo-labs/kabmo/commit/e6ed3439698472cbda9f7abae9f3e912aa48238f)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **models:** refresh the agent registry and every reader after a provider write ([c887e3a](https://github.com/kabmo-labs/kabmo/commit/c887e3a33ab78ee7fa9463fff3dc29f92e0c271a)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **omp:** bump the pin to 18.18.3 and adopt the ask form shape ([1d30e79](https://github.com/kabmo-labs/kabmo/commit/1d30e7918533e2493021aea9043b990201279434)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **about:** export the shared card width the About dialog imports ([dcaf475](https://github.com/kabmo-labs/kabmo/commit/dcaf4751b7060e117db66e6312bda585b1f5197c)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **about:** keep the About dialog clear of the phone's chrome and give it one scroller ([883f97c](https://github.com/kabmo-labs/kabmo/commit/883f97cbf9974d3b0662084c4e7de86f38ee3dc5)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **chat:** rewind omp-acp sessions and keep the source harness on New Chat ([6184f9b](https://github.com/kabmo-labs/kabmo/commit/6184f9b18143b56e7d4d02486226655502258e1c)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness/acp:** keep id-less chunks in one message row ([13544f6](https://github.com/kabmo-labs/kabmo/commit/13544f6d282233ee1bcf26d3c64e11ea3ba73432)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness/acp:** keep the footer on the model the agent actually serves ([c62845c](https://github.com/kabmo-labs/kabmo/commit/c62845c98db2a6593e7ceb0831f6bc7cc4bd7220)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness/acp:** render a silent turn as an error, never as an empty bubble ([4607529](https://github.com/kabmo-labs/kabmo/commit/4607529e87d90fc8693605bb39fd0f77ef584dd9)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** make adapter and CLI updates land where the harness launches ([24f7cda](https://github.com/kabmo-labs/kabmo/commit/24f7cda51ca415b5e3db313598fc2177ac688a24)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** reclaim an idle ACP child on the omp window ([2f00517](https://github.com/kabmo-labs/kabmo/commit/2f005172b8cf1481f9a27fd1284445d8589abc4b)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** show the adapter version when the CLI version is unreadable ([b37ac1e](https://github.com/kabmo-labs/kabmo/commit/b37ac1e017af630ff2e40d4fd0a639e1ffadf011)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** wait out opencode's plugin activation before reading it as blocked ([7a4f281](https://github.com/kabmo-labs/kabmo/commit/7a4f281e21d85508f87465d731738dbcb2809367)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **markdown:** give the inline-code chip its own opaque fill ([711c089](https://github.com/kabmo-labs/kabmo/commit/711c089a45770158cbc6780403a81cf528c5764d)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **sidebar:** delete an ACP harness session instead of refusing or re-listing it ([c15bd08](https://github.com/kabmo-labs/kabmo/commit/c15bd086cc0bd94d84182b87412275fe2975bf69)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **workspace:** reload the Files panel whenever it is shown again ([e73e877](https://github.com/kabmo-labs/kabmo/commit/e73e877db5d365c2233c8d2f1adf994ae188a8a7)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.23.0](https://github.com/kabmo-labs/kabmo/compare/v0.22.0...v0.23.0) — 2026-11-08
 
 ### Added
