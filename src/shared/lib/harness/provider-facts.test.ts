@@ -97,7 +97,9 @@ describe('the measured registry table', () => {
   });
 
   test('the env-only harnesses keep their vendor variable names', () => {
-    expect(providerFacts('claude').env).toEqual({
+    // The alias table is asserted in `providerEnv` below; this is the endpoint
+    // and key each vendor documents.
+    expect(providerFacts('claude').env).toMatchObject({
       baseUrl: 'ANTHROPIC_BASE_URL', apiKey: 'ANTHROPIC_AUTH_TOKEN', model: 'ANTHROPIC_MODEL',
     });
     expect(providerFacts('antigravity').env).toEqual({
@@ -161,6 +163,17 @@ describe('providerEnv', () => {
   test('a provider becomes the vendor’s own variables', () => {
     expect(providerEnv('claude', { baseUrl: 'https://gw', apiKey: 'sk-1', model: 'claude-sonnet-5' }))
       .toEqual({ ANTHROPIC_BASE_URL: 'https://gw', ANTHROPIC_AUTH_TOKEN: 'sk-1', ANTHROPIC_MODEL: 'claude-sonnet-5' });
+  });
+
+  test('claude pins every picker alias, so a gateway id can replace the vendor’s', () => {
+    // Measured: `--model sonnet` against a gateway listing `claude-sonnet-5-5`
+    // answered `400 model not found: sonnet` until the alias variable existed.
+    expect(providerFacts('claude').env?.modelAliases).toEqual([
+      { family: 'opus', env: 'ANTHROPIC_DEFAULT_OPUS_MODEL' },
+      { family: 'sonnet', env: 'ANTHROPIC_DEFAULT_SONNET_MODEL' },
+      { family: 'haiku', env: 'ANTHROPIC_DEFAULT_HAIKU_MODEL' },
+      { family: 'fable', env: 'ANTHROPIC_DEFAULT_FABLE_MODEL' },
+    ]);
   });
 
   test('a blank field writes no variable at all', () => {

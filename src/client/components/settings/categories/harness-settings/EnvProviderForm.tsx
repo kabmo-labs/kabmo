@@ -29,11 +29,15 @@ export function EnvProviderForm({ support, onSave }: { support: HarnessProviderS
   const [baseUrl, setBaseUrl] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [model, setModel] = useState('');
+  /** One value per `ANTHROPIC_DEFAULT_*_MODEL`-style variable, keyed by name. */
+  const [aliases, setAliases] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const env = support.env;
 
   if (!env) return null;
+
+  const modelAliases = env.modelAliases ?? [];
 
   const save = async () => {
     setSaving(true);
@@ -42,6 +46,10 @@ export function EnvProviderForm({ support, onSave }: { support: HarnessProviderS
         baseUrl.trim() ? `${env.baseUrl}=${baseUrl.trim()}` : '',
         apiKey.trim() ? `${env.apiKey}=${apiKey.trim()}` : '',
         env.model && model.trim() ? `${env.model}=${model.trim()}` : '',
+        ...modelAliases.map((alias) => {
+          const value = aliases[alias.env]?.trim();
+          return value ? `${alias.env}=${value}` : '';
+        }),
       ].filter(Boolean).join('\n');
       // The ANSWER is what decides success. Reading the `problem` state here held
       // the PREVIOUS save's value, so a successful save reported failure.
@@ -51,6 +59,7 @@ export function EnvProviderForm({ support, onSave }: { support: HarnessProviderS
         setBaseUrl('');
         setApiKey('');
         setModel('');
+        setAliases({});
       }
     } finally {
       setSaving(false);
@@ -99,6 +108,28 @@ export function EnvProviderForm({ support, onSave }: { support: HarnessProviderS
             className={INPUT_CLASS}
           />
         </label>
+      )}
+      {modelAliases.length > 0 && (
+        <div className="space-y-1.5 rounded-md border border-ink/15 bg-ink/[0.03] p-2">
+          <div className="text-[10px] leading-relaxed text-ink/60">
+            Each picker alias resolves to a model id the vendor ships unless it is pinned here.
+            Leave an alias blank when the endpoint serves that family's vendor id; fill it when
+            the endpoint has its own ids — otherwise that pick sends
+            {' '}<span className="font-mono">400 model not found</span>.
+          </div>
+          {modelAliases.map((alias) => (
+            <label key={alias.env} className="flex flex-col gap-1">
+              <span className="font-mono text-[10px] text-ink/50">{alias.env}</span>
+              <input
+                type="text"
+                value={aliases[alias.env] ?? ''}
+                placeholder={`the endpoint's ${alias.family} model id`}
+                onInput={(e) => setAliases((prev) => ({ ...prev, [alias.env]: e.currentTarget.value }))}
+                className={INPUT_CLASS}
+              />
+            </label>
+          ))}
+        </div>
       )}
 
       <button

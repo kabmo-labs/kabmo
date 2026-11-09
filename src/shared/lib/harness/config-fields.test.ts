@@ -104,6 +104,10 @@ describe('the env box speaks the agent’s own vocabulary', () => {
     expect(plan.envHint).toContain('ANTHROPIC_AUTH_TOKEN');
     expect(plan.envPlaceholder).toContain('ANTHROPIC_BASE_URL');
     expect(plan.envPlaceholder).not.toContain('GEMINI');
+    // The picker's aliases need their own variables, or a gateway answers the
+    // vendor's ids with 400.
+    expect(plan.envHint).toContain('ANTHROPIC_DEFAULT_SONNET_MODEL');
+    expect(plan.envPlaceholder).toContain('ANTHROPIC_DEFAULT_OPUS_MODEL');
     // And it says what a provider here even IS.
     expect(plan.notes.join(' ')).toContain('no provider registry');
   });

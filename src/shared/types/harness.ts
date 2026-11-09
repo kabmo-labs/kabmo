@@ -15,6 +15,7 @@
 import type { HarnessCapabilities } from '@/server/lib/harness/capabilities';
 import type { HarnessConfig } from '@/shared/lib/harness/config';
 import type { CanonicalProtocol } from '@/shared/lib/harness/dialects';
+import type { EnvProviderContract } from '@/shared/lib/harness/provider-facts';
 
 export type { HarnessConfig };
 
@@ -111,7 +112,7 @@ export interface HarnessProviderSupport {
    *  agent's own (Claude Code, Antigravity). */
   createsChoice: boolean;
   /** The env names this harness reads, for the `environment` form's labels. */
-  env?: { baseUrl: string; apiKey: string; model?: string };
+  env?: EnvProviderContract;
   /** The dot-path the providers live under in that file (`providers`,
    *  `model_providers`, `modelProviders`), so the card can name what it edits. */
   pointer?: string;

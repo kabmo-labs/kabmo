@@ -85,11 +85,26 @@ function providersOf(models: readonly { value: string }[]): string[] {
 function environmentFacts(id: HarnessId): { hint: string; placeholder: string; notes: string[] } {
   const facts = providerFacts(id);
   if (facts.env) {
-    const names = [facts.env.baseUrl, facts.env.apiKey, facts.env.model].filter(Boolean).join(', ');
+    const { env } = facts;
+    const names = [env.baseUrl, env.apiKey, env.model].filter(Boolean).join(', ');
+    const aliases = env.modelAliases ?? [];
+    const aliasNames = aliases.map((alias) => alias.env).join(', ');
     return {
-      hint: `The variables that point this agent at one endpoint: ${names}. Setting them REPLACES its own provider.`,
-      placeholder: `${facts.env.baseUrl}=https://…\n${facts.env.apiKey}=…`,
-      notes: ['This agent has no provider registry — a provider here is an endpoint and a key, nothing else.'],
+      hint: aliases.length > 0
+        ? `The variables that point this agent at one endpoint: ${names}. A picker alias still resolves to the vendor's model id unless ${aliasNames} pins it to an id this endpoint serves; unpinned aliases answer 400. Setting them REPLACES its own provider.`
+        : `The variables that point this agent at one endpoint: ${names}. Setting them REPLACES its own provider.`,
+      placeholder: [
+        `${env.baseUrl}=https://…`,
+        `${env.apiKey}=…`,
+        ...(env.model ? [`${env.model}=…`] : []),
+        ...(aliases[0] ? [`${aliases[0].env}=…`] : []),
+      ].join('\n'),
+      notes: [
+        'This agent has no provider registry — a provider here is an endpoint and a key, nothing else.',
+        ...(aliases.length > 0
+          ? ['A picker alias with no default-model variable keeps the vendor’s model id; a custom endpoint answers that id with 400.']
+          : []),
+      ],
     };
   }
   if (facts.registry.kind === 'none') {

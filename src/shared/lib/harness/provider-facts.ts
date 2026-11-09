@@ -97,11 +97,23 @@ export interface ProviderRegistry {
   modelsAreRows?: boolean;
 }
 
+/**
+ * One picker alias a vendor SDK resolves from the environment. Claude Code's
+ * `opus`/`sonnet`/`haiku`/`fable` aliases resolve to ids the VENDOR ships
+ * unless `ANTHROPIC_DEFAULT_<FAMILY>_MODEL` pins them; a gateway that lists
+ * only its own ids answers the vendor ids with `400 model not found`.
+ */
+export interface EnvModelAlias {
+  family: string;
+  env: string;
+}
+
 /** The env names an `environment` harness reads, in the order its docs list. */
 export interface EnvProviderContract {
   baseUrl: string;
   apiKey: string;
   model?: string;
+  modelAliases?: readonly EnvModelAlias[];
 }
 
 export interface HarnessProviderFacts {
@@ -239,7 +251,20 @@ export const HARNESS_PROVIDER_FACTS: Readonly<Partial<Record<HarnessId, HarnessP
       kind: 'env', file: null, pointer: 'environment',
       writable: true, baseUrlField: null, apiKeyField: null, modelsField: null,
     },
-    env: { baseUrl: 'ANTHROPIC_BASE_URL', apiKey: 'ANTHROPIC_AUTH_TOKEN', model: 'ANTHROPIC_MODEL' },
+    env: {
+      baseUrl: 'ANTHROPIC_BASE_URL',
+      apiKey: 'ANTHROPIC_AUTH_TOKEN',
+      model: 'ANTHROPIC_MODEL',
+      // The picker's aliases resolve through these variables. Set only the ones
+      // the gateway serves: an unmapped alias keeps resolving to the vendor's
+      // id, which a custom endpoint answers with `400 model not found`.
+      modelAliases: [
+        { family: 'opus', env: 'ANTHROPIC_DEFAULT_OPUS_MODEL' },
+        { family: 'sonnet', env: 'ANTHROPIC_DEFAULT_SONNET_MODEL' },
+        { family: 'haiku', env: 'ANTHROPIC_DEFAULT_HAIKU_MODEL' },
+        { family: 'fable', env: 'ANTHROPIC_DEFAULT_FABLE_MODEL' },
+      ],
+    },
     // Claude Code speaks Anthropic Messages only, and appends `/v1/messages`
     // itself — measured: BASE_URL with `/v1` still on it requested
     // `/v1/v1/messages` and answered with an empty turn.

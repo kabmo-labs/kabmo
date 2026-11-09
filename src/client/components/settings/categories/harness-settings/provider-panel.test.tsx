@@ -197,6 +197,55 @@ describe('the env form', () => {
     // was a JSX-precompile hazard, not a style choice.
     expect(container.querySelector('input')?.getAttribute('class')).toContain('font-mono');
   });
+
+  test('each alias field writes its own variable; a blank one writes nothing', async () => {
+    let saved = '';
+    render(
+      h(HarnessProviderPanel, {
+        support: support({
+          level: 'environment',
+          env: {
+            baseUrl: 'ANTHROPIC_BASE_URL',
+            apiKey: 'ANTHROPIC_AUTH_TOKEN',
+            model: 'ANTHROPIC_MODEL',
+            modelAliases: [
+              { family: 'sonnet', env: 'ANTHROPIC_DEFAULT_SONNET_MODEL' },
+              { family: 'haiku', env: 'ANTHROPIC_DEFAULT_HAIKU_MODEL' },
+            ],
+          },
+          protocols: ['anthropic-messages'],
+          importable: [],
+        }),
+        onSaveEnv: async (env) => {
+          saved = env;
+          return null;
+        },
+      }),
+      container,
+    );
+    const inputs = [...container.querySelectorAll('input')] as HTMLInputElement[];
+    expect(inputs).toHaveLength(5);
+    await act(async () => {
+      const values = ['https://kenari.id', 'kn-key', 'qwen3-8-27b:free', 'claude-sonnet-5-5', ''];
+      inputs.forEach((input, index) => {
+        input.value = values[index]!;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+    });
+    const save = buttons().find((button) => button.textContent?.includes('Save to environment'))!;
+    await act(async () => {
+      save.click();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(saved).toBe([
+      'ANTHROPIC_BASE_URL=https://kenari.id',
+      'ANTHROPIC_AUTH_TOKEN=kn-key',
+      'ANTHROPIC_MODEL=qwen3-8-27b:free',
+      'ANTHROPIC_DEFAULT_SONNET_MODEL=claude-sonnet-5-5',
+    ].join('\n'));
+    expect([...container.querySelectorAll('input')].every((input) => input.value === '')).toBe(true);
+  });
 });
 
 describe('the add-provider form', () => {
