@@ -117,6 +117,39 @@ export function resolveDeepSeekApiKey(): Promise<string | null> {
   );
 }
 
+/** A provider's key AND the endpoint it was registered with. */
+export interface ProviderEndpoint {
+  apiKey: string;
+  baseUrl: string;
+}
+
+/**
+ * The provider's key plus its own base URL. `resolveApiKey` alone cannot locate
+ * a gateway's billing API: a self-hosted relay (New API, one-api) lives at the
+ * URL the user configured, so the endpoint has to come from the provider entry
+ * rather than from a vendor constant. agent.db credentials carry no URL, so a
+ * provider whose only store is agent.db resolves to null.
+ */
+export async function resolveProviderEndpoint(slug: string): Promise<ProviderEndpoint | null> {
+  const target = slug.trim().toLowerCase();
+  for (const entry of await loadProviderEntries()) {
+    const own = (entry.slug || entry.name).trim().toLowerCase();
+    if (own !== target) continue;
+    const apiKey = entry.apiKey.trim();
+    const baseUrl = entry.baseUrl.trim();
+    if (apiKey.length === 0 || MASKED_KEY_PATTERN.test(apiKey) || baseUrl.length === 0) continue;
+    return { apiKey, baseUrl };
+  }
+  for (const info of await readNativeProviders()) {
+    if (info.slug.trim().toLowerCase() !== target) continue;
+    const baseUrl = info.baseUrl?.trim();
+    if (!baseUrl) continue;
+    const apiKey = await readOmpProviderApiKey(target);
+    if (apiKey) return { apiKey, baseUrl };
+  }
+  return null;
+}
+
 /** A provider slug with at least one usable credential, and where it came from. */
 export interface CredentialedProvider {
   slug: string;

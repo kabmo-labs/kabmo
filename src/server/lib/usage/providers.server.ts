@@ -23,6 +23,7 @@ import { fetchOmpRegistrySnapshot } from '@/server/lib/models/provider-registry.
 import { readProviderIconUrls } from '@/server/lib/models/provider-icon.server';
 import { buildDeepSeekReport } from '@/server/lib/usage/deepseek';
 import { buildKenariReport } from '@/server/lib/usage/kenari';
+import { buildNewApiReports } from '@/server/lib/usage/new-api';
 import { fetchOmpUsageSnapshot, type OmpUsageSnapshot } from '@/server/lib/usage/omp-usage.server';
 import { fetchVendorBalance, type VendorBalance } from '@/server/lib/usage/vendor-balance.server';
 import { kenariProviderSlugs, listCredentialedProviders, type CredentialedProvider } from '@/server/lib/usage/provider-key';
@@ -123,10 +124,13 @@ export async function buildUsageProviders(options: { force?: boolean } = {}): Pr
   // one (`kenari2`) with no quota card while its key was never read. DeepSeek
   // still resolves by its canonical slug.
   const kenariSlugs = await kenariProviderSlugs(credentials.keys());
-  const [kenariReports, deepseek, balances] = await Promise.all([
+  const [kenariReports, deepseek, balances, gateways] = await Promise.all([
     Promise.all([...kenariSlugs].map(async (slug) => [slug, await buildKenariReport(slug)] as const)),
     credentials.has('deepseek') ? buildDeepSeekReport() : Promise.resolve(null),
     loadVendorBalances([...credentials.keys()]),
+    // Self-hosted relays answer on the provider's OWN base URL, so they cannot
+    // live in `vendor-balance`'s fixed-URL table.
+    buildNewApiReports(credentials.keys()),
   ]);
   const kenariBySlug = new Map<string, KenariUsageReport>();
   for (const [slug, report] of kenariReports) {
@@ -137,6 +141,7 @@ export async function buildUsageProviders(options: { force?: boolean } = {}): Pr
   for (const [slug, sources] of credentials) {
     const report = snapshot.reports.get(slug);
     const balance = balances.get(slug);
+    const gateway = gateways.get(slug);
     const { tracked, limitsUnavailable } = resolveUsageTracking(slug, snapshot);
     const summary: UsageProviderSummary = {
       id: slug,
@@ -144,8 +149,8 @@ export async function buildUsageProviders(options: { force?: boolean } = {}): Pr
       ...(iconUrls.get(slug) ? { iconUrl: iconUrls.get(slug) } : {}),
       credentialSources: sources,
       // A vendor balance is real quota data even when omp has no adapter for it.
-      tracked: tracked || Boolean(balance && balance.limits.length > 0),
-      limits: [...(report?.limits ?? []), ...(balance?.limits ?? [])],
+      tracked: tracked || Boolean(balance?.limits.length) || Boolean(gateway?.limits.length),
+      limits: [...(report?.limits ?? []), ...(balance?.limits ?? []), ...(gateway?.limits ?? [])],
       ...(limitsUnavailable ? { limitsUnavailable: true } : {}),
       ...(report?.notes ? { notes: report.notes } : {}),
     };
@@ -157,6 +162,8 @@ export async function buildUsageProviders(options: { force?: boolean } = {}): Pr
     } else if (slug === 'deepseek' && deepseek) {
       summary.deepseek = deepseek;
       if (deepseek.error) summary.error = deepseek.error;
+    } else if (gateway?.error) {
+      summary.error = gateway.error;
     } else if (balance?.error && !summary.error) {
       // Only surface a balance failure when nothing richer already reported one.
       summary.error = balance.error;
