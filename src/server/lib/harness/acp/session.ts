@@ -37,27 +37,16 @@ import { handleSessionNotification } from '@/server/lib/harness/acp/session-noti
 import { AcpUsageMeter, type AcpContextUsage } from '@/server/lib/harness/acp/session-usage';
 import { answerPermissionRequest } from '@/server/lib/harness/acp/session-permissions';
 import { acpWebState } from '@/server/lib/harness/acp/session-web-state';
+import { acpIdleReaper } from '@/server/lib/harness/acp/session-idle';
 import { DEFAULT_APPROVAL_MODE, isApprovalMode, type ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 import { dispatchCommand, type AcpCommandHost } from '@/server/lib/harness/acp/commands';
 import { markStreamStatus } from '@/shared/lib/omp/session/stream-state.server';
+import type { AcpSessionOptions } from '@/server/lib/harness/acp/session-options';
 import type { HarnessCapabilities } from '@/server/lib/harness/capabilities';
 import type { HarnessSession } from '@/server/lib/harness/session';
 import type { HarnessId } from '@/shared/lib/harness/catalog';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
-
-export interface AcpSessionOptions {
-  harness: HarnessId;
-  command: string[];
-  env?: Record<string, string>;
-  /** Provider/model this session starts on, applied with
-   *  `session/set_config_option` right after `session/new`. */
-  model?: { provider: string; modelId: string } | null;
-  thinkingLevel?: string | null;
-  mode?: string | null;
-  /** The composer's access pick. ACP has no spawn flag for it, so the session
-   *  answers `session/request_permission` itself according to this tier. */
-  accessMode?: ApprovalMode | null;
-}
+import type { IdleReaper } from '@/server/lib/omp/rpc/idle-reaper';
 
 export class AcpSession implements HarnessSession, AcpCommandHost {
   readonly harness: HarnessId;
@@ -100,8 +89,9 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
   accessMode: ApprovalMode = DEFAULT_APPROVAL_MODE;
   capabilities: HarnessCapabilities = capabilitiesFrom({ protocolVersion: 1 }, [], { usage: false, plan: false });
   configOptions: AcpConfigOption[] = [];
-
   private readonly proc: AcpProcess;
+  /** The quiet-window reclaim; the rules live in `session-idle.ts`. */
+  readonly idle: IdleReaper;
   private readonly mapper = new AcpFrameMapper();
   private readonly listeners = new Set<(event: AgentEvent) => void>();
   private readonly permissions = new PendingPermissions();
@@ -123,6 +113,7 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
       onClientRequest: (id, method, params) => this.onClientRequest(id, method, params),
       onExit: (info) => this.onExit(info),
     });
+    this.idle = acpIdleReaper(this, options.idleDestroyMs);
     this.turns = new AcpTurns({
       emit: (event) => this.emit(event),
       prompt: (message, images) =>
@@ -157,6 +148,8 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
       { model: this.requestedModel, thinking: this.requestedThinking, mode: this.requestedMode },
       sessionIdToLoad,
     );
+    // A slow handshake is not idleness: the window starts once it is usable.
+    this.idle.reset(true);
     return { sessionId: this.sessionId };
   }
 
@@ -211,6 +204,8 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
   }
 
   async send(command: Record<string, unknown>): Promise<unknown> {
+    // A command is the clearest sign the session is still wanted.
+    this.idle.reset();
     return dispatchCommand(this, command);
   }
 
@@ -293,6 +288,8 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
   }
 
   private onNotification(method: string, params: Record<string, unknown>): void {
+    // A long turn emits no commands but plenty of `session/update` frames.
+    this.idle.reset();
     handleSessionNotification(this, method, params);
   }
 
@@ -302,13 +299,13 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
 
   mapUpdate(update: Record<string, unknown>): AgentEvent[] { return this.mapper.mapUpdate(update); }
 
-  /** Agent→client requests. Every branch answers or refuses — an unanswered call
-   *  parks the turn, which is the failure this method exists to prevent. */
+  /** Agent→client requests: every branch answers or refuses — an unanswered call parks the turn. */
   private onClientRequest(
     id: AcpId,
     method: string,
     params: Record<string, unknown>,
   ): Promise<{ answered: true; result: unknown } | { answered: false; message: string } | { answered: false; deferred: true }> {
+    this.idle.reset();
     if (method === 'session/request_permission') {
       return answerPermissionRequest({
         sessionId: this.sessionId,
@@ -322,6 +319,7 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
 
   private onExit(info: { code: number | null; stderrTail: string }): void {
     this.destroyed = true;
+    this.idle.stop();
     if (this.closing) {
       this.destroyHook?.();
       return;
@@ -343,6 +341,7 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
     if (this.destroyed) return;
     this.destroyed = true;
     this.closing = true;
+    this.idle.stop();
     this.permissions.clear();
     await this.proc.dispose().catch(() => {});
     this.destroyHook?.();

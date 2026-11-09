@@ -45,6 +45,10 @@ export interface MountedSession {
   turnEnds: () => number;
   /** The durable run markers written for this session, in order. */
   streamMarks: () => string[];
+  /** How many times a command or frame deferred the idle reclaim. */
+  idleResets: () => number;
+  /** Whether a destroy stopped the reclaim clock. */
+  idleStopped: () => boolean;
 }
 
 /** One in-flight `session/prompt` the stub can settle. */
@@ -68,6 +72,17 @@ export function mountSession(): MountedSession {
   const session = Object.create(AcpSession.prototype) as AcpSession;
   const mapper = new AcpFrameMapper();
   let turnEndCount = 0;
+  let idleResets = 0;
+  let idleStopped = false;
+  const idle = {
+    timeoutMs: 0,
+    reset: () => {
+      idleResets += 1;
+    },
+    stop: () => {
+      idleStopped = true;
+    },
+  };
   const proc = {
     prompt: async (_message: string, _images: unknown) => {
       const pending = Promise.withResolvers<unknown>();
@@ -77,6 +92,7 @@ export function mountSession(): MountedSession {
     },
     cancel: () => {},
     abandonPrompt: () => calls.at(-1)?.resolve({ stopReason: 'cancelled' }),
+    dispose: async () => {},
     isAlive: true,
   };
   const turns = new AcpTurns({
@@ -116,9 +132,18 @@ export function mountSession(): MountedSession {
     runModel: null,
     listeners: new Set<(event: AgentEvent) => void>([(event) => events.push(event)]),
     proc,
+    idle,
     destroyed: false,
   });
-  return { session, events, turn, turnEnds: () => turnEndCount, streamMarks: () => marks };
+  return {
+    session,
+    events,
+    turn,
+    turnEnds: () => turnEndCount,
+    streamMarks: () => marks,
+    idleResets: () => idleResets,
+    idleStopped: () => idleStopped,
+  };
 }
 
 /** Push one `session/update` at the session, as the process would. */
