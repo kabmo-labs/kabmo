@@ -32,6 +32,7 @@ import { describePosix } from '@/test-support/platform';
 import { invalidateOmpCliCache } from '@/server/lib/omp/core/cli';
 import { stopDiscoveryRootsWatch } from '@/server/lib/omp/config/roots-watch.server';
 import { getRpcSession, startRpcSession } from '@/server/lib/omp/rpc/session-registry';
+import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 
 /** One line per spawned child, written by the scripted omp. */
 interface ForkRecord {
@@ -53,12 +54,19 @@ const ENV_KEYS = [
   'FAKE_OMP_FORK_LOG',
 ] as const;
 
-beforeEach(() => {
+beforeEach(async () => {
   root = mkdtempSync(join(tmpdir(), 'omp-fork-test-'));
   saved = Object.fromEntries(ENV_KEYS.map((key) => [key, Bun.env[key]]));
+  // The registry's spawn path persists `harness_sessions` rows. Assigning
+  // `KABMO_DB_PATH` here is NOT isolation: the handle is a process-wide
+  // singleton, so a sibling suite that already opened the developer's real
+  // `~/.kabmo/db.sqlite` makes the assignment inert and every spawn below
+  // writes a row there (measured: 141 `omp-fork-test-*` rows in a live
+  // install). `isolateDb` closes that handle before it points the path at a
+  // fresh temp file.
+  await isolateDb();
   Bun.env.KABMO_OMP_BIN = join(import.meta.dir, '../../../../test-support/fake-omp-fork.ts');
   Bun.env.PI_CODING_AGENT_DIR = join(root, 'agent');
-  Bun.env.KABMO_DB_PATH = join(root, 'db.sqlite');
   Bun.env.SYNC_WORKSPACE = 'false';
   Bun.env.FAKE_OMP_FORK_ON_RESUME = '1';
   Bun.env.FAKE_OMP_FORK_LOG = join(root, 'forks.jsonl');
@@ -66,10 +74,13 @@ beforeEach(() => {
   delete globalThis.__ompStartLocks;
 });
 
-afterEach(() => {
+afterEach(async () => {
   stopDiscoveryRootsWatch();
   delete globalThis.__ompSessions;
   delete globalThis.__ompStartLocks;
+  // Close and drop the temp handle BEFORE restoring `KABMO_DB_PATH`: leaving it
+  // in the process-wide slot sends the next suite's writes to this deleted file.
+  await releaseDb();
   for (const key of ENV_KEYS) {
     const value = saved[key];
     if (value === undefined) delete Bun.env[key];

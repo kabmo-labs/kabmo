@@ -20,6 +20,9 @@
  */
 
 import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { probes } from '@/server/lib/harness/probe-cache.server';
 import { loadDisabledHarnesses } from '@/server/lib/harness/enabled.server';
@@ -39,7 +42,21 @@ function toggle(id: string, enabled: boolean): Request {
   });
 }
 
+/**
+ * The probe below is REAL: when `omp` is installed, enabling `omp-acp` spawns
+ * `omp acp`, and that child writes a session file into the agent directory it
+ * resolves — `~/.omp/agent/sessions/-projects-kabmo/` when this suite runs from
+ * the repo. The file has no title, so Kabmo's sidebar draws it as
+ * `New Session - <timestamp>`: every `bun test` left one more row behind in the
+ * developer's own install (observed at 11:47 and 11:50, matching this suite's
+ * `acp` spawns in the process table). Point the child's agent dir at a throwaway
+ * tree so the probe still measures the real binary without touching real state.
+ */
+const AGENT_DIR = mkdtempSync(join(tmpdir(), 'kabmo-toggle-agent-'));
+const savedAgentDir = Bun.env.PI_CODING_AGENT_DIR;
+
 beforeEach(async () => {
+  Bun.env.PI_CODING_AGENT_DIR = AGENT_DIR;
   await isolateDb();
   probes().clear();
 });
@@ -51,6 +68,9 @@ afterEach(async () => {
 
 afterAll(async () => {
   await releaseDb();
+  if (savedAgentDir === undefined) delete Bun.env.PI_CODING_AGENT_DIR;
+  else Bun.env.PI_CODING_AGENT_DIR = savedAgentDir;
+  rmSync(AGENT_DIR, { recursive: true, force: true });
 });
 
 describe('switching a harness on', () => {
