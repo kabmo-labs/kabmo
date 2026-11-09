@@ -258,7 +258,7 @@ export interface QueuedMessage {
 /** Trigger group that opened the composer autocomplete: `@` → mention, `/` → command. */
 export type ComposerPickKind = 'mention' | 'command';
 /** Origin of a pickable item: an `@` mention is an agent or a workspace file. */
-export type ComposerPickSource = 'agent' | 'file' | 'command' | 'skill';
+export type ComposerPickSource = 'agent' | 'harness' | 'file' | 'command' | 'skill';
 
 /**
  * Which part of a slash invocation the popup is completing. oh-my-pi splits

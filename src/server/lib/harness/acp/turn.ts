@@ -21,6 +21,16 @@
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
 import { turnEndFrame } from '@/server/lib/harness/acp/frames';
 
+/** What a closed turn reports to its session and the parent notice. */
+export interface AcpTurnEndInfo {
+  stopReason?: string;
+  closedMessage: boolean;
+  message?: unknown;
+  cancelled?: boolean;
+  failed?: boolean;
+  failure?: string | null;
+}
+
 export interface AcpTurnSeams {
   /** Push one frame at the session's listeners. */
   emit: (event: AgentEvent) => void;
@@ -41,7 +51,7 @@ export interface AcpTurnSeams {
    * reason, the assistant message the mapper closed (the goal driver audits it),
    * and whether the turn was cancelled (a stop must not be audited).
    */
-  onTurnEnd: (info: { stopReason?: string; closedMessage: boolean; message?: unknown; cancelled?: boolean }) => void;
+  onTurnEnd: (info: AcpTurnEndInfo) => void;
 }
 
 export class AcpTurns {
@@ -86,14 +96,12 @@ export class AcpTurns {
         (result) => this.settle(turnId, () => this.finish(result)),
         (error: unknown) =>
           this.settle(turnId, () => {
-            this.seams.emit({
-              type: 'prompt_error',
-              errorMessage: error instanceof Error ? error.message : String(error),
-            });
+            const message = error instanceof Error ? error.message : String(error);
+            this.seams.emit({ type: 'prompt_error', errorMessage: message });
             // The agent's own error is the reason. `finish` must not append its
             // generic "no answer" verdict on top of it — the second frame lands
             // last on the client and replaced the useful message.
-            this.finish(undefined, true);
+            this.finish(undefined, true, message);
           }),
       )
       .finally(() => {
@@ -145,7 +153,7 @@ export class AcpTurns {
    *  going to report an end for work it abandoned. `reported` says the caller
    *  already emitted the failure reason, so only this module's generic silent
    *  verdict is suppressed. */
-  private finish(result: { stopReason?: string } | undefined, reported = false): void {
+  private finish(result: { stopReason?: string } | undefined, reported = false, failure?: string): void {
     const flushed = this.seams.closeMessage();
     for (const event of flushed) this.seams.emit(event);
     const closed = flushed.find((event) => event.type === 'message_end')?.message;
@@ -163,10 +171,18 @@ export class AcpTurns {
     // produces nothing, and a user's Stop is not a failure either.
     const answered = hasRenderableAnswer(closed) || abandoned.length > 0;
     const cancelled = result?.stopReason === 'cancelled';
-    if (!answered && !cancelled && !reported && !this.promptText.trimStart().startsWith('/')) {
+    const slash = this.promptText.trimStart().startsWith('/');
+    // `reported` means the caller already emitted the agent's own error. It is
+    // still a failed turn, and the parent notice must say so rather than let a
+    // refused worker read as completed.
+    const failed = !cancelled && !slash && (reported || !answered);
+    const reason = failed
+      ? failure ?? 'The agent ended the turn without sending an answer'
+      : null;
+    if (!answered && !cancelled && !reported && !slash) {
       this.seams.emit({
         type: 'prompt_error',
-        errorMessage: 'The agent ended the turn without sending an answer',
+        errorMessage: reason ?? 'The agent ended the turn without sending an answer',
       });
     }
     this.isPromptRunning = false;
@@ -177,6 +193,7 @@ export class AcpTurns {
       closedMessage: flushed.some((event) => event.type === 'message_end'),
       ...(closed ? { message: closed } : {}),
       ...(cancelled ? { cancelled: true } : {}),
+      ...(failed ? { failed: true, failure: reason } : {}),
     });
   }
 }

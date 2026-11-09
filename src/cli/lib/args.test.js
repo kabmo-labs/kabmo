@@ -100,3 +100,19 @@ describe('--ui-password-file', () => {
     expect(parseArgs(['serve', '--ui-password-file']).options.uiPasswordFile).toBeNull();
   });
 });
+
+describe('session stdin flags', () => {
+  // `-` is the documented stdin spelling for --prompt-file/--message-file. It
+  // must be consumed as the VALUE, not pushed into positionals, or the spawn
+  // answers "prompt is required" while the heredoc sits unread on stdin.
+  test('a lone dash is the prompt-file value', () => {
+    const { options, positionals } = parseArgs(['session', 'spawn', '--prompt-file', '-']);
+    expect(options['prompt-file']).toBe('-');
+    expect(positionals).not.toContain('-');
+  });
+
+  test('a lone dash is the message-file value', () => {
+    const { options } = parseArgs(['session', 'tell', 'abc', '--message-file', '-']);
+    expect(options['message-file']).toBe('-');
+  });
+});

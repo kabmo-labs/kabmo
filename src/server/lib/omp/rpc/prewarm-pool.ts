@@ -19,6 +19,7 @@ import { RpcProcess } from '@/server/lib/omp/rpc/process';
 import { buildSessionSpawnArgs } from '@/server/lib/omp/rpc/constants';
 import { AgentSessionWrapper } from '@/server/lib/omp/rpc/manager';
 import { recordSpawnProvenance } from '@/server/lib/omp/rpc/spawn-provenance';
+import { mintAgentEnvironment, rememberAgentToken } from '@/server/lib/sessions/agent-token.server';
 import { DEFAULT_APPROVAL_MODE, type ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 
 interface PrewarmedEntry {
@@ -50,6 +51,11 @@ export function prewarmRpcSession(cwd: string, approvalMode?: ApprovalMode, mode
   const existing = pool.get(cwd);
   if (existing) return;
   const mode = approvalMode ?? DEFAULT_APPROVAL_MODE;
+  // The prewarmed child is a session host with a real id, so it gets its own
+  // callback credential now; the claim path must not replace it, because the
+  // child's environment already carries this value.
+  const { token, env: agentEnv } = mintAgentEnvironment();
+  const env = { ...(modeEnv ?? {}), ...agentEnv };
   // A pending chat has no mode selection yet, so its prewarmed process is
   // spawned with none — the first send races it and any real selection kills
   // the entry (see `startNewRpcSession`).
@@ -57,18 +63,21 @@ export function prewarmRpcSession(cwd: string, approvalMode?: ApprovalMode, mode
   const proc = new RpcProcess({
     cwd,
     extraArgs: buildSessionSpawnArgs('', mode),
-    env: modeEnv,
+    env,
     onExit: ({ stderrTail }) => holder.wrapper?.handleProcessExit(stderrTail),
   });
   const wrapper = new AgentSessionWrapper(proc, cwd);
-  recordSpawnProvenance(wrapper, mode, modeEnv);
+  recordSpawnProvenance(wrapper, mode, env);
   holder.wrapper = wrapper;
   wrapper.start();
   const ready = wrapper
     .waitUntilReady()
-    .then(() => {
+    .then(async () => {
       // A dead wrapper (idle-kill, crash, exit) must not be handed out.
       if (!wrapper.isAlive()) throw new Error('prewarmed process exited');
+      await rememberAgentToken(wrapper.sessionId, token).catch((cause: unknown) => {
+        console.error(`[sessions] could not record the agent token for ${wrapper.sessionId}:`, cause);
+      });
       return wrapper;
     })
     .catch((error) => {

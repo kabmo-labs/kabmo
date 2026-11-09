@@ -23,10 +23,11 @@
  */
 
 import { AcpProcess } from '@/server/lib/harness/acp/client';
-import { AcpTurns } from '@/server/lib/harness/acp/turn';
+import { AcpTurns, type AcpTurnEndInfo } from '@/server/lib/harness/acp/turn';
 import { AcpFrameMapper } from '@/server/lib/harness/acp/frames';
 import type { AcpConfigOption, AcpId } from '@/server/lib/harness/acp/protocol';
 import { promptBlocks } from '@/server/lib/harness/acp/prompt';
+import { withGatewayCompatibility } from '@/server/lib/harness/acp/gateway-env';
 import { adoptConfigAnswer, publishConfigChange, settlePermissionDialog, stampMessageModel } from '@/server/lib/harness/acp/session-config';
 import { beginAcpTurn, settleAcpTurn } from '@/server/lib/harness/acp/session-turns';
 import { driveAcpGoalAfterTurn } from '@/server/lib/harness/acp/acp-goal-driver.server';
@@ -105,10 +106,11 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
   constructor(options: AcpSessionOptions, cwd: string) {
     this.harness = options.harness;
     this.cwd = cwd;
+    const env = withGatewayCompatibility(options.harness, options.env);
     this.proc = new AcpProcess({
       command: options.command,
       cwd,
-      ...(options.env ? { env: options.env } : {}),
+      ...(env ? { env } : {}),
       onNotification: (method, params) => this.onNotification(method, params),
       onClientRequest: (id, method, params) => this.onClientRequest(id, method, params),
       onExit: (info) => this.onExit(info),
@@ -227,7 +229,7 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
   /** Turn-end bookkeeping the panels read — see `session-turns.ts`. A cancelled
    *  turn closes the marker as an `abort` badge, every other ending a `finish`.
    *  The goal driver then audits the closed message and may open the next turn. */
-  onTurnEnded(info: { stopReason?: string; closedMessage: boolean; message?: unknown; cancelled?: boolean }): void {
+  onTurnEnded(info: AcpTurnEndInfo): void {
     if (info.closedMessage) this.assistantCount += 1;
     this.usage.endTurn();
     settleAcpTurn(this, info);

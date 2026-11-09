@@ -75,6 +75,25 @@ function endedAborted(host: TerminalSettleHost, messages: unknown): boolean {
   );
 }
 
+const FAILED_STOP_REASONS: Readonly<Record<string, true>> = { error: true, failed: true, failure: true };
+
+/** The failure a terminal frame reports, or null for a normal stop.
+ *
+ *  Conservative on purpose: only an assistant message's own `error` text or an
+ *  explicit failure stop reason counts. A tool error is not a failed run. */
+function endedFailure(messages: unknown): string | null {
+  if (!Array.isArray(messages)) return null;
+  for (const entry of messages) {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) continue;
+    const record = entry as Record<string, unknown>;
+    const error = typeof record.error === 'string' ? record.error.trim() : '';
+    if (record.role === 'assistant' && error) return error;
+    const stop = typeof record.stopReason === 'string' ? record.stopReason : '';
+    if (FAILED_STOP_REASONS[stop] === true) return `The run ended with ${stop}`;
+  }
+  return null;
+}
+
 /**
  * Write the terminal stream badge from the ending turn's own stopReason.
  *
@@ -91,14 +110,29 @@ async function markEndStatus(sessionId: string, host: TerminalSettleHost, messag
 }
 
 /**
- * Run the side effects a terminal run end owns.
+ * Report a refused `prompt` response as a failed child outcome.
  *
- * Callers clear the run's own flags (streaming, promptRunning, the
- * awaiting-start and continuation-grace clocks) — that is the fold's state
- * machine, and this function only performs the work the settle triggers.
+ * A refused prompt opens no turn, so no `agent_end` will ever settle it. The
+ * check lives here because this module already owns the outcome vocabulary.
  */
+export function noteRefusedPrompt(
+  event: { type?: string; success?: unknown; command?: unknown; error?: unknown },
+  sessionId: string,
+): void {
+  if (event.type !== 'response' || event.success !== false || event.command !== 'prompt' || !sessionId) return;
+  void noteChildOutcome({
+    sessionId,
+    status: 'failed',
+    failure: typeof event.error === 'string' ? event.error : 'Prompt failed',
+  }).catch((error: unknown) => {
+    console.error('[sessions] could not record a refused prompt:', error);
+  });
+}
+
+/** Run the side effects a terminal run end owns. */
 export function settleTerminalRun(host: TerminalSettleHost, messages: unknown): void {
   const aborted = endedAborted(host, messages);
+  const failure = aborted ? null : endedFailure(messages);
   if (host.sessionId) void markEndStatus(host.sessionId, host, messages);
   // Delegation is reported here, not from the route: this frame is the only
   // moment that knows a run genuinely ended, and a synthetic `run-settle`
@@ -106,8 +140,9 @@ export function settleTerminalRun(host: TerminalSettleHost, messages: unknown): 
   if (host.sessionId) {
     void noteChildOutcome({
       sessionId: host.sessionId,
-      status: aborted ? 'interrupted' : 'completed',
+      status: aborted ? 'interrupted' : failure ? 'failed' : 'completed',
       output: aborted ? null : lastAssistantText(messages),
+      ...(failure ? { failure } : {}),
     }).catch((error: unknown) => {
       console.error('[sessions] could not record a child outcome:', error);
     });

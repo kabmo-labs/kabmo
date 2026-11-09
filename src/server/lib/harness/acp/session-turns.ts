@@ -40,7 +40,7 @@ import { saveAcpUsage } from '@/server/lib/harness/acp/acp-telemetry.server';
 import { lastAssistantText } from '@/server/lib/omp/session/goal-driver.server';
 import { noteChildOutcome } from '@/server/lib/sessions/notify.server';
 import { saveSessionAnswer } from '@/server/lib/sessions/answers.server';
-import type { AcpTurns } from '@/server/lib/harness/acp/turn';
+import type { AcpTurns, AcpTurnEndInfo } from '@/server/lib/harness/acp/turn';
 
 /** What a turn reads and moves on the session. */
 export interface AcpTurnTarget {
@@ -73,10 +73,7 @@ export function beginAcpTurn(
 }
 
 /** Turn-end bookkeeping: the closed message, the badge, then the queue. */
-export function settleAcpTurn(
-  target: AcpTurnTarget,
-  info: { stopReason?: string; closedMessage: boolean; message?: unknown; cancelled?: boolean },
-): void {
+export function settleAcpTurn(target: AcpTurnTarget, info: AcpTurnEndInfo): void {
   if (info.closedMessage) target.messageCount += 1;
   // ACP has no transcript to re-read, so the last usage snapshot is what lets
   // the Context ring answer after a reload or a restart.
@@ -96,10 +93,16 @@ export function settleAcpTurn(
   emitRealtimeSignal('session-data-dirty', target.sessionId);
   const finalText = lastAssistantText([info.message]);
   if (finalText) void saveSessionAnswer(target.sessionId, finalText).catch(() => {});
+  const status = info.cancelled === true
+    ? 'interrupted'
+    : info.failed === true
+      ? 'failed'
+      : 'completed';
   void noteChildOutcome({
     sessionId: target.sessionId,
-    status: info.cancelled === true ? 'interrupted' : 'completed',
+    status,
     output: finalText,
+    ...(status === 'failed' ? { failure: info.failure ?? 'The agent ended the turn without an answer' } : {}),
   }).catch((error: unknown) => {
     console.error('[sessions] could not record an ACP child outcome:', error);
   });

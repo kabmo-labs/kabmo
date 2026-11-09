@@ -15,6 +15,7 @@
 
 import { freshProbe } from '@/server/lib/harness/probe-cache.server';
 import { startAcpSession } from '@/server/lib/harness/spawn.server';
+import { mintAgentEnvironment, rememberAgentToken } from '@/server/lib/sessions/agent-token.server';
 import { knownHarness, loadHarnessSession, repointHarnessSession } from '@/server/lib/harness/session-store.server';
 import { selectValues } from '@/server/lib/harness/launch';
 import { harnessOfSession } from '@/server/lib/omp/rpc/session-registry';
@@ -65,6 +66,7 @@ export async function resumeRecordedHarnessSession(
   if (probe?.capabilities.loadSession === false) {
     throw new Error(`${label} cannot restore this chat: it does not support session/load.`);
   }
+  const { token, env } = mintAgentEnvironment();
   const { session, realSessionId } = await startAcpSession({
     harness,
     sessionId,
@@ -77,6 +79,10 @@ export async function resumeRecordedHarnessSession(
     resumeAgentSessionId: record.agentSessionId || sessionId,
     cwd: record.cwd,
     accessMode,
+    env,
+  });
+  await rememberAgentToken(sessionId, token).catch((cause: unknown) => {
+    console.error(`[sessions] could not record the agent token for ${sessionId}:`, cause);
   });
   // A forking load answers a NEW agent id, and the spawn recorded that id as its
   // own row — a second sidebar row for one conversation. The chat keeps ITS id

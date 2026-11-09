@@ -67,7 +67,8 @@ function takeValue(tokens, index, inline) {
     return { value: inline, nextIndex: index };
   }
   const candidate = tokens[index + 1];
-  if (typeof candidate === 'string' && !candidate.startsWith('-')) {
+  // `-` is a VALUE for `--prompt-file`/`--message-file` (stdin), not a flag.
+  if (typeof candidate === 'string' && (candidate === '-' || !candidate.startsWith('-'))) {
     return { value: candidate, nextIndex: index + 1 };
   }
   return { value: undefined, nextIndex: index };

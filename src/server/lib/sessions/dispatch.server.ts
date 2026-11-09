@@ -26,6 +26,7 @@ import { loadStreamStates } from '@/shared/lib/omp/session/stream-state.server';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
 import type { QueueDeliveryHost } from '@/server/lib/queue/delivery.server';
 import { resolveSessionRef } from '@/server/lib/sessions/resolve.server';
+import { mintAgentEnvironment, rememberAgentToken } from '@/server/lib/sessions/agent-token.server';
 import type { HarnessId } from '@/shared/lib/harness/catalog';
 
 export interface DispatchDeps {
@@ -43,15 +44,19 @@ async function startOmp(sessionId: string, file: string, cwd: string): Promise<Q
   const accessMode = await loadPersistedAccessMode();
   const states = await loadStreamStates();
   const model = states[sessionId]?.model ?? null;
+  const { token, env } = mintAgentEnvironment();
   const { session } = await startRpcSession(
     sessionId,
     file,
     cwd,
     cwd,
     accessMode,
-    undefined,
+    env,
     model ?? undefined,
   );
+  await rememberAgentToken(sessionId, token).catch((cause: unknown) => {
+    console.error(`[sessions] could not record the agent token for ${sessionId}:`, cause);
+  });
   return session;
 }
 
@@ -62,12 +67,17 @@ async function startAcp(
   agentSessionId: string,
 ): Promise<QueueDeliveryHost> {
   const accessMode = await loadPersistedAccessMode();
+  const { token, env } = mintAgentEnvironment();
   const { session, realSessionId } = await startAcpSession({
     harness,
     sessionId,
     resumeAgentSessionId: agentSessionId || sessionId,
     cwd,
     accessMode,
+    env,
+  });
+  await rememberAgentToken(sessionId, token).catch((cause: unknown) => {
+    console.error(`[sessions] could not record the agent token for ${sessionId}:`, cause);
   });
   // A load that forks answers a new agent id. The session keeps ITS id (the
   // URL and the relation name it), and the record adopts the agent's — the same

@@ -120,6 +120,9 @@ export function ComposerPicker({
                 <span className="truncate">
                   <OptionName item={item} />
                 </span>
+                {item.source === 'harness' && (
+                  <span className="text-ink/40 text-[10px] uppercase shrink-0">harness</span>
+                )}
                 {item.source === 'file' && (
                   <span className="text-ink/40 text-[10px] uppercase shrink-0">file</span>
                 )}

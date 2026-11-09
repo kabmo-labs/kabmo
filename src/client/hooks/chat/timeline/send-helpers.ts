@@ -12,8 +12,9 @@
 import type { Dispatch, SetStateAction } from 'preact/compat';
 import type { AgentImage, Attachment, ChatMessageData, PromptDispatchResult } from '@/shared/types';
 import { streamChatResponse } from '@/client/hooks/chat/stream';
+import { buildPromptText } from '@/client/hooks/chat/timeline/prompt-text';
 import { createMockStreamCallbacks } from '@/shared/lib/chat/timeline/stream-callbacks';
-import { attachmentImage, attachmentName, attachmentSize, attachmentType } from '@/shared/lib/chat/attachments';
+import { readTextAttachments, attachmentImage, attachmentName, attachmentSize, attachmentType, type ReadTextAttachment } from '@/shared/lib/chat/attachments';
 
 /** The image payload of a delivery: the attachments that carry real bytes. A
  *  replayed attachment has no live `File`, so it is dropped unless the data
@@ -60,6 +61,34 @@ export function buildOptimisticRows(args: {
     },
     initialAiMsg: { id: aiPlaceholderId, role: 'ai', date: `Today, ${time}`, startedAt: now, content: '' },
   };
+}
+
+/** What the send path needs from a prompt, before it decides which transport runs it. */
+export type PromptAssembly =
+  | { ok: true; textFiles: ReadTextAttachment[]; promptText: string }
+  | { ok: false; error: string };
+
+/**
+ * Read attachments and assemble the outgoing prompt once.
+ *
+ * A delegation refusal (two harnesses in one paragraph, an unknown harness, an
+ * empty task) is a send-time failure, not a prompt to send anyway: the caller
+ * reports it before any optimistic bubble exists.
+ */
+export async function assemblePrompt(
+  text: string,
+  attachments: Attachment[],
+  includeAgents: boolean,
+): Promise<PromptAssembly> {
+  const textFiles = await readTextAttachments(attachments);
+  try {
+    return { ok: true, textFiles, promptText: await buildPromptText(text, textFiles, { includeAgents }) };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : 'Prompt could not be assembled',
+    };
+  }
 }
 
 /** The simulated SSE path, taken by a Kabmo-created session and as the

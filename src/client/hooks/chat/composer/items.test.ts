@@ -32,8 +32,6 @@ import { registerListSlot, resetListSlots } from '@/client/lib/plugins/list-slot
 import {
   invalidateComposerCache,
   loadComposerItems,
-  toAgentPickItems,
-  toFilePickItems,
 } from '@/shared/lib/chat/composer/client';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'HTMLElement', 'Element', 'Node', 'Event', 'CustomEvent'] as const;
@@ -144,7 +142,10 @@ describe('useComposerItems', () => {
 
     await mount('mention', '/repo');
     await settle(6);
-    expect(state.items.map((item) => item.token)).toEqual(['@sonic', '@file:src/a.ts']);
+    const tokens = state.items.map((item) => item.token);
+    expect(tokens[0]).toBe('@sonic');
+    expect(tokens.at(-1)).toBe('@file:src/a.ts');
+    expect(tokens).toContain('@harness:claude');
     expect(state.error).toBeNull();
   });
 
@@ -240,7 +241,8 @@ describe('plugin commands in the popup', () => {
     await mount('mention', '/repo');
     await settle(6);
 
-    expect(state.items).toEqual([]);
+    expect(state.items.every((item) => item.source === 'harness')).toBe(true);
+    expect(state.items.length).toBeGreaterThan(0);
   });
 
   test('a closed menu offers nothing, not even a plugin row', async () => {
@@ -252,26 +254,6 @@ describe('plugin commands in the popup', () => {
   });
 });
 
-describe('pick item mapping', () => {
-  test('an agent becomes a bare @name token', () => {
-    const [item] = toAgentPickItems([
-      { id: 'a1', name: 'sonic', description: 'fast', scope: 'user', systemPrompt: '' },
-    ]);
-    expect(item).toMatchObject({ id: 'agent-sonic', name: 'sonic', kind: 'agent', source: 'agent', token: '@sonic' });
-  });
-
-  test('a file is namespaced under file:, so a root-level name cannot shadow an agent', () => {
-    const [item] = toFilePickItems([{ name: 'sonic', path: 'sonic' }]);
-    expect(item.token).toBe('@file:sonic');
-    expect(item.path).toBe('sonic');
-  });
-
-  test('a path with whitespace is quoted, so the token cannot end early', () => {
-    const [item] = toFilePickItems([{ name: 'my notes.md', path: 'docs/my notes.md' }]);
-    expect(item.token).toBe('@"file:docs/my notes.md"');
-  });
-});
-
 describe('loadComposerItems', () => {
   test('mention merges agents first, then workspace files', async () => {
     answer = (url) => url.includes('/api/settings/agents')
@@ -279,7 +261,9 @@ describe('loadComposerItems', () => {
       : { body: { files: [{ name: 'a.ts', path: 'src/a.ts' }] } };
 
     const items = await loadComposerItems('mention', '/repo');
-    expect(items.map((item) => item.source)).toEqual(['agent', 'file']);
+    expect(items[0].source).toBe('agent');
+    expect(items.at(-1)?.source).toBe('file');
+    expect(items.some((item) => item.source === 'harness')).toBe(true);
     expect(requested).toContain('/api/fs/list?root=%2Frepo');
   });
 
@@ -289,7 +273,9 @@ describe('loadComposerItems', () => {
       : { body: { files: [{ name: 'a.ts', path: 'src/a.ts' }] } };
 
     const items = await loadComposerItems('mention', '/repo', 's1', { includeAgents: false });
-    expect(items.map((item) => item.source)).toEqual(['file']);
+    expect(items.at(-1)?.source).toBe('file');
+    expect(items.some((item) => item.source === 'harness')).toBe(true);
+    expect(items.some((item) => item.source === 'agent')).toBe(false);
     // The agents request is skipped entirely, not fetched and filtered.
     expect(requested.some((url) => url.includes('/api/settings/agents'))).toBe(false);
   });

@@ -15,10 +15,8 @@ import type { ChatTimelineSendDeps, ChatTimelineSendResult } from '@/client/hook
 
 export type { ChatTimelineSendDeps, ChatTimelineSendResult };
 import type { AgentImage, Attachment, PromptDispatchResult, QueuedMessageModel } from '@/shared/types';
-import { buildPromptText } from '@/client/hooks/chat/timeline/prompt-text';
 import { flushDeferredPick } from '@/client/hooks/chat/timeline/deferred-model';
-import { readTextAttachments } from '@/shared/lib/chat/attachments';
-import { buildOptimisticRows, collectImages, streamMockFallback } from '@/client/hooks/chat/timeline/send-helpers';
+import { buildOptimisticRows, collectImages, assemblePrompt, streamMockFallback } from '@/client/hooks/chat/timeline/send-helpers';
 import { adoptPendingSession, markPendingSessionSent } from '@/client/hooks/chat/omp/pending-sessions';
 import { recordSpawnHarness } from '@/client/hooks/chat/timeline/spawn-harness';
 import { postModeCommand } from '@/client/hooks/chat/timeline/mode-post';
@@ -67,24 +65,10 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
   const includeAgents = !harness || harness === 'omp-rpc' || harness === 'omp-acp';
 
   /**
-   * Start the armed goal in `sessionId`, from the operator's own prompt.
-   *
-   * Awaited BEFORE the prompt leaves, so the order is a fact. Resolves TRUE when
-   * the goal consumed the prompt — the caller must then not send it again.
-   *
-   *  - `create` — the record is written with `startTurn: false`, and the prompt
-   *    that follows is the goal's first turn. The prompt is still sent.
-   *  - `guided` — there is no objective yet (the model writes it at the end of
-   *    the interview), so the operator's message IS the interview's opening
-   *    turn: the extension renders its kickoff prompt with their words folded
-   *    in (`<rough-goal>`) and runs that as turn one. The raw message is
-   *    therefore NOT sent separately — it is already inside that turn.
-   *
-   * A refusal is reported rather than swallowed, and the prompt still goes out
-   * for `create`: the goal the operator set is missing, but their words are not
-   * the goal's business. A refused `guided` cannot fall back the same way — the
-   * interview kickoff is the extension's text — so it resolves false and the
-   * caller sends the message as an ordinary prompt.
+   * Start the armed goal before the prompt leaves. `guided` folds the operator's
+   * words into the interview's opening turn (the caller must not send it again);
+   * `create` writes the record and lets the prompt be its first turn. A refusal
+   * is reported, and the prompt still goes out for `create`.
    */
   const startArmedGoal = useCallback(async (targetId: string, armed: ArmedGoal, promptText: string): Promise<boolean> => {
     const posted = armed.kind === 'guided'
@@ -114,11 +98,11 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
     text: string,
     attachments: Attachment[],
   ): Promise<{ promptText: string; images?: AgentImage[] }> => {
-    const textFiles = await readTextAttachments(attachments);
-    const promptText = await buildPromptText(text, textFiles, { includeAgents });
-    pendingUserDisplaysRef.current = [...pendingUserDisplaysRef.current.slice(-7), { sent: promptText, display: text }];
-    return { promptText, images: collectImages(attachments) };
-  }, [includeAgents]);
+    const assembled = await assemblePrompt(text, attachments, includeAgents);
+    if (!assembled.ok) throw new Error(assembled.error);
+    pendingUserDisplaysRef.current = [...pendingUserDisplaysRef.current.slice(-7), { sent: assembled.promptText, display: text }];
+    return { promptText: assembled.promptText, images: collectImages(attachments) };
+  }, [includeAgents, pendingUserDisplaysRef]);
 
   // Steer the running omp agent (interrupt-and-reply). Returns the outcome so
   // the caller can report a refusal: the composer is cleared before this runs.
@@ -126,11 +110,19 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
     // A steer IS a new prompt: a pick made during the interrupted turn belongs
     // to it, so it is pushed before the interrupt-and-reply starts the turn.
     await flushDeferredPick(ompAgent, deferredComposerPickRef);
-    const { promptText, images } = await prepareDeliverable(text, attachments);
-    const result = await ompAgent.steerOmpRun(promptText, images);
+    let deliverable: { promptText: string; images?: AgentImage[] };
+    try {
+      deliverable = await prepareDeliverable(text, attachments);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      reportActionError(message);
+      setInputValue(text);
+      return { ok: false, busy: false, error: message };
+    }
+    const result = await ompAgent.steerOmpRun(deliverable.promptText, deliverable.images);
     if (!result.ok) setInputValue(text);
     return result;
-  }, [ompAgent, prepareDeliverable, setInputValue, deferredComposerPickRef]);
+  }, [ompAgent, prepareDeliverable, setInputValue, deferredComposerPickRef, reportActionError]);
 
   const executeSend = useCallback(async (
     text: string,
@@ -151,12 +143,15 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
     const userMsgId = `msg-${Date.now()}-user`;
     const aiPlaceholderId = `msg-${Date.now() + 1}-ai`;
 
-    // Read text-file contents once: used for the editor (attachment.content)
-    // and for inlining into the prompt. Reads a persisted `content` when the
-    // attachment is a replay (queue delivery, retry) and has no live File.
-    const textFiles = await readTextAttachments(attachments);
+    // A delegation refusal (two harnesses in one paragraph, an unknown
+    // harness, an empty task) must land before any optimistic bubble exists.
+    const assembled = await assemblePrompt(text, attachments, includeAgents);
+    if (!assembled.ok) {
+      reportActionError(assembled.error);
+      return { ok: false, busy: false, error: assembled.error };
+    }
+    const { textFiles, promptText } = assembled;
     const textContentById = new Map(textFiles.map((file) => [file.id, file.content]));
-
     const now = Date.now();
     const { newUserMsg, initialAiMsg } = buildOptimisticRows({
       text,
@@ -214,13 +209,7 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
         }
       }
       const images = collectImages(attachments);
-      // Inline text-file contents into the prompt: the model sees the full file
-      // content as fenced blocks, not just the filename.
-      const promptText = await buildPromptText(text, textFiles, { includeAgents });
-      // The armed goal is created HERE, at the fence of the prompt that will be
-      // its first turn — never earlier (nothing to act on) and never after the
-      // prompt (the goal would miss its opening turn). An armed INTERVIEW
-      // consumes this prompt as its kickoff, so nothing is sent after it.
+      // `promptText` was assembled once above, so no refusal can reach here.
       const armed = goalArmRef.current;
       const consumed = armed && sessionId ? await startArmedGoal(sessionId, armed, promptText) : false;
       if (consumed) return { ok: true, busy: false };
@@ -250,7 +239,6 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
       const cwd = spawnWorktreeRef.current || currentFolder?.project_path || currentFolder?.name;
       if (cwd) {
         const images = collectImages(attachments);
-        const promptText = await buildPromptText(text, textFiles, { includeAgents });
         optimisticUserIdRef.current = userMsgId;
         const composerModel = pendingComposerModelRef.current;
         const composerThinking = pendingThinkingLevelRef.current;
@@ -283,20 +271,21 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
           },
           armed ? (id) => startArmedGoal(id, armed, promptText) : undefined,
         );
-        if (spawned) {
+        if (spawned.ok) {
+          const { session } = spawned;
           // The harness the SERVER answered with: `new.ts` reports it for an ACP
           // spawn and omits it for the RPC branch, which means omp. Read rather
           // than replayed from the request, so a pick the server did not honour
           // cannot be reported as the agent running the chat.
-          recordSpawnHarness(spawned.sessionId, spawned.harness ?? 'omp-rpc');
+          recordSpawnHarness(session.sessionId, session.harness ?? 'omp-rpc');
           spawnSelectionRef.current = null;
-          adoptedSessionIdRef.current = spawned.sessionId;
+          adoptedSessionIdRef.current = session.sessionId;
           // The sidebar's row moves with the id: `new-…` was the client's own
           // placeholder, and the spawn answers with omp's real one, which omp
           // has still not written a transcript for. Without this the row
           // vanished at exactly the moment the URL stopped naming the pending
           // id, which is the gap this store exists to close.
-          adoptPendingSession(sessionId, spawned.sessionId, currentFolder?.id ?? null);
+          adoptPendingSession(sessionId, session.sessionId, currentFolder?.id ?? null);
           // The placeholder ref is already armed (with its row) before the
           // spawn — see the note at the assignment; re-arming here would be
           // harmless but is redundant.
@@ -304,18 +293,18 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
           // composer taking over from the pending view reports the run's real
           // setting instead of a catalog default (the JSONL that carries it is
           // not locatable yet).
-          seedSession({ model: spawned.model, thinkingLevel: composerThinking });
+          seedSession({ model: session.model, thinkingLevel: composerThinking });
           pendingComposerModelRef.current = null;
           pendingThinkingLevelRef.current = null;
           pendingHarnessRef.current = null;
-          fetch(`/api/chat/${encodeURIComponent(spawned.sessionId)}`, {
+          fetch(`/api/chat/${encodeURIComponent(session.sessionId)}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ messages: [newUserMsg] }),
           }).catch(err => console.error('Error persisting spawned user turn:', err));
           setSearchParams(prev => {
             const next = new URLSearchParams(prev);
-            next.set('sessionId', spawned.sessionId);
+            next.set('sessionId', session.sessionId);
             return next;
           }, { replace: true });
           // The sidebar already re-read at prompt dispatch (sendNewPrompt
@@ -323,6 +312,16 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
           // waiting for the JSONL to carry the user turn.
           return { ok: true, busy: false };
         }
+        // The agent did not start. Falling through to the simulated stream here
+        // was the reason a failed ACP spawn looked like a slow chat and then
+        // "answered": nothing had started, and the server's reason was dropped.
+        // The picks stay armed so the operator can retry with the same choices.
+        setLocalMessages(prev => prev.filter(m => m.id !== userMsgId && m.id !== aiPlaceholderId));
+        aiPlaceholderIdRef.current = null;
+        optimisticUserIdRef.current = null;
+        setGenerating(false);
+        reportActionError(`Prompt not sent: ${spawned.error}`);
+        return { ok: false, busy: false, error: spawned.error };
       }
     }
 
@@ -343,6 +342,6 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
       setGeneratingVerb,
       scrollToBottom,
     });
-  }, [appSettings, folders, isOmpSession, harness, ompAgent, selectedFolderId, sessionId, scrollToBottom, jumpToBottom, persistMessages, seedSession, pendingComposerModelRef, pendingThinkingLevelRef, deferredComposerPickRef, accessModeRef, setLocalMessages]);
+  }, [appSettings, folders, isOmpSession, harness, ompAgent, selectedFolderId, sessionId, scrollToBottom, jumpToBottom, persistMessages, seedSession, pendingComposerModelRef, pendingThinkingLevelRef, deferredComposerPickRef, accessModeRef, setLocalMessages, reportActionError]);
   return { steerOmpAgent, executeSend };
 }

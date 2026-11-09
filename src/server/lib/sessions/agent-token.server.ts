@@ -77,6 +77,13 @@ export function verifyAgentToken(token: string | null): string | null {
   return cache().get(hashAgentToken(token))?.sessionId ?? null;
 }
 
+/** A fresh token and the environment that carries it, for a session that has no
+ *  id yet. Every spawn path uses this so even a top-level chat can delegate. */
+export function mintAgentEnvironment(): { token: string; env: Record<string, string> } {
+  const token = createAgentToken();
+  return { token, env: agentEnvironment(token) };
+}
+
 /** The value from an `Authorization: Bearer …` header, or null. */
 export function bearerToken(request: Request): string | null {
   const header = request.headers.get('authorization') ?? '';

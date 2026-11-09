@@ -26,7 +26,8 @@ import {
 import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 import { projectModelForCwd } from '@/server/lib/workspace/project-model.server';
 import { startAcpSession } from '@/server/lib/harness/spawn.server';
-import { startNewRpcSession } from '@/server/lib/omp/rpc/session-registry';
+import { getLiveSession, harnessOfSession, startNewRpcSession } from '@/server/lib/omp/rpc/session-registry';
+import { harnessProbeModels } from '@/server/lib/harness/probe-cache.server';
 import { getDb } from '@/server/db.server';
 import { HARNESS_IDS, harnessDescriptor, type HarnessId } from '@/shared/lib/harness/catalog';
 import type { SelectedModel } from '@/shared/types/models';
@@ -48,6 +49,7 @@ export type SessionSpawnErrorCode =
   | 'parent_not_found'
   | 'parent_archived'
   | 'parent_folder_mismatch'
+  | 'model_unknown'
   | 'spawn_failed';
 
 export class SessionSpawnError extends Error {
@@ -154,6 +156,67 @@ async function resolveParent(
   return { cwd, harness: parent.harness };
 }
 
+/**
+ * The model a worker runs on, by the one order that cannot invent a value.
+ *
+ * Explicit wins. Next is the SAME harness's live parent — a Claude reviewer
+ * inherits Claude's model, never omp's model id. Then the harness's own
+ * configured default is resolved by `startAcpSession`, so ACP gets null here.
+ * `omp-rpc` keeps its project default because that is a real omp model id.
+ */
+async function resolveSpawnModel(
+  requested: SelectedModel | null,
+  harness: HarnessId,
+  parentSessionId: string | null,
+  cwd: string,
+): Promise<SelectedModel | null> {
+  if (requested) {
+    if (harness !== 'omp-rpc') {
+      const models = await harnessProbeModels(harness);
+      const exact = `${requested.provider}/${requested.modelId}`;
+      const listed = models.length === 0
+        || models.some((model) => model.value === exact || model.value === requested.modelId);
+      if (!listed) {
+        throw new SessionSpawnError(
+          'model_unknown',
+          `${harnessDescriptor(harness)?.label ?? harness} does not list model ${exact}`,
+        );
+      }
+    }
+    return requested;
+  }
+  const parent = parentSessionId ? getLiveSession(parentSessionId) : undefined;
+  if (parent && harnessOfSession(parent) === harness && parent.runModel) {
+    return { provider: parent.runModel.provider, modelId: parent.runModel.modelId };
+  }
+  if (harness === 'omp-rpc') {
+    return projectModelForCwd(await getDb(), cwd).catch(() => null);
+  }
+  return null;
+}
+
+/** What a child receives before its task: identity, the one control verb, and
+ *  the completion rule. Kabmo, not the orchestrator, writes this. */
+function dispatchedWorkerPrompt(parentSessionId: string, sessionId: string, task: string): string {
+  return [
+    '[kabmo dispatched worker]',
+    `You are session ${sessionId}; your coordinator is session ${parentSessionId}.`,
+    'The coordinator cannot see this chat.',
+    '',
+    '  # Read another session:',
+    '  kabmo session output <id>',
+    '  # Ask the coordinator or report a blocker, then end your turn:',
+    `  kabmo session tell ${parentSessionId} --message-file - --mode auto`,
+    '',
+    'Do only this task. When you finish, your final message is your report: what you did,',
+    'what you found, what is left. Do not send a separate acknowledgement.',
+    '[/kabmo dispatched worker]',
+    '',
+    'TASK',
+    task,
+  ].join('\n');
+}
+
 /** Spawn a session, record its relation, then dispatch the first prompt. */
 export async function spawnChildSession(
   input: SpawnChildSessionInput,
@@ -190,9 +253,7 @@ export async function spawnChildSession(
   const accessMode = await loadPersistedAccessMode();
   const token = createAgentToken();
   const env = agentEnvironment(token);
-  const model =
-    input.model ??
-    (await projectModelForCwd(await getDb(), cwd).catch(() => null));
+  const model = await resolveSpawnModel(input.model ?? null, harness, parentSessionId, cwd);
   const started =
     harness === 'omp-rpc'
       ? await deps.startRpc(cwd, accessMode, env)
@@ -226,7 +287,10 @@ export async function spawnChildSession(
   }
 
   try {
-    await started.session.send({ type: 'prompt', message: prompt });
+    const message = parentSessionId
+      ? dispatchedWorkerPrompt(parentSessionId, started.realSessionId, prompt)
+      : prompt;
+    await started.session.send({ type: 'prompt', message });
   } catch (error) {
     await started.session.destroyAndWait().catch(() => {});
     throw new SessionSpawnError(

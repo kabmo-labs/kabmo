@@ -5,7 +5,7 @@
 // database access: an agent must be able to do exactly what a tab can.
 //
 // Usage:
-//   kabmo session spawn --prompt-file - [--parent-self] [--harness <id>] [--json]
+//   kabmo session spawn --prompt-file - [--parent-self] [--harness <id>] [--model <provider/model>] [--thinking <level>] [--json]
 //   kabmo session fork <source-id> [--anchor-entry <id>] [--prompt-file -] [--json]
 //   kabmo session tell <id> --message-file - [--json]
 //   kabmo session relations <id> [--json]
@@ -36,6 +36,8 @@ OPTIONS:
   --message-file <path>       Read it from a file; '-' reads stdin
   --parent-self               Parent the new session to this agent's session
   --harness <id>              Harness for the child (omp-rpc, claude, codex, ...)
+  --model <provider/model>    Pin the child's model; omit for the harness default
+  --thinking <level>          Pin the child's thinking/effort level
   --cwd <path>                Working directory (defaults to the parent's)
   --anchor-entry <id>         Fork at this entry instead of the tip
   --timeout <seconds>         wait's deadline (default 600)
@@ -63,18 +65,28 @@ function readText(options, inlineKey, fileKey) {
 
 async function call(path, init = {}) {
   const token = AGENT_TOKEN();
+  const base = SERVER_URL();
+  const request = (origin) => fetch(`${origin}${path}`, {
+    ...init,
+    headers: {
+      'content-type': 'application/json',
+      ...(token ? { authorization: `Bearer ${token}` } : {}),
+      ...(init.headers ?? {}),
+    },
+  });
   let response;
   try {
-    response = await fetch(`${SERVER_URL()}${path}`, {
-      ...init,
-      headers: {
-        'content-type': 'application/json',
-        ...(token ? { authorization: `Bearer ${token}` } : {}),
-        ...(init.headers ?? {}),
-      },
-    });
+    response = await request(base);
   } catch (cause) {
-    fail(`Could not reach Kabmo at ${SERVER_URL()}: ${cause.message}`);
+    // localhost may resolve to ::1 while the operator wrote 127.0.0.1 (or the
+    // reverse). Try the other loopback spelling before reporting a dead server.
+    const alternate = alternateLoopback(base);
+    if (!alternate) fail(`Could not reach Kabmo at ${base}: ${cause.message}`);
+    try {
+      response = await request(alternate);
+    } catch {
+      fail(`Could not reach Kabmo at ${base}: ${cause.message}`);
+    }
   }
   const body = await response.json().catch(() => null);
   if (!response.ok) {
@@ -83,20 +95,48 @@ async function call(path, init = {}) {
   return body;
 }
 
+/** The other loopback spelling, or null for a non-loopback host. */
+function alternateLoopback(base) {
+  try {
+    const url = new URL(base);
+    const host = url.hostname;
+    if (host === '127.0.0.1') url.hostname = 'localhost';
+    else if (host === 'localhost' || host === '::1' || host === '[::1]') url.hostname = '127.0.0.1';
+    else return null;
+    return url.origin;
+  } catch {
+    return null;
+  }
+}
+
 async function spawn(options) {
   const prompt = await readText(options, 'prompt', 'prompt-file');
+  const model = typeof options.model === 'string' && options.model.trim()
+    ? modelSelection(options.model.trim())
+    : null;
   const body = await call('/api/sessions/spawn', {
     method: 'POST',
     body: JSON.stringify({
       prompt: prompt.trim(),
       ...(options['parent-self'] ? { parentSelf: true } : {}),
       ...(options.harness ? { harness: options.harness } : {}),
+      ...(model ? { model } : {}),
+      ...(options.thinking ? { thinkingLevel: options.thinking } : {}),
       ...(options.cwd ? { cwd: options.cwd } : {}),
     }),
   });
   if (isJson()) return printJson(body);
   ok(`Spawned ${body.sessionId} (${body.harness}, depth ${body.depth})`);
   log(body.sessionId);
+}
+
+/** `provider/model` as the spawn route stores it. A bare value keeps an empty
+ *  provider: an ACP agent matches its own `modelId`, and omp resolves its own. */
+function modelSelection(value) {
+  const slash = value.indexOf('/');
+  return slash > 0
+    ? { provider: value.slice(0, slash), modelId: value.slice(slash + 1) }
+    : { provider: '', modelId: value };
 }
 
 async function fork(options, sourceId) {

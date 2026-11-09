@@ -20,7 +20,7 @@
  */
 
 import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { buildPromptText } from '@/client/hooks/chat/timeline/prompt-text';
+import { buildPromptText, DelegationPromptError } from '@/client/hooks/chat/timeline/prompt-text';
 import { invalidateComposerCache } from '@/shared/lib/chat/composer/client';
 
 type TextFile = Parameters<typeof buildPromptText>[1][number] & { missing?: boolean };
@@ -59,6 +59,39 @@ afterAll(() => {
 function file(name: string, content: string): TextFile {
   return { name, mimeType: 'text/plain', content, size: content.length };
 }
+
+describe('buildPromptText harness delegation', () => {
+  test('a bare harness mention compiles to a default-model spawn command', async () => {
+    const prompt = await buildPromptText('@claude review src/auth', []);
+    expect(prompt).toContain('[kabmo orchestration contract]');
+    expect(prompt).toContain('--harness claude --prompt-file -');
+    expect(prompt).not.toContain('--model');
+    expect(prompt).toContain('review src/auth');
+  });
+
+  test('an explicit model rides the command', async () => {
+    const prompt = await buildPromptText('@harness:claude:opus review this', []);
+    expect(prompt).toContain('--harness claude --model opus');
+  });
+
+  test('an omp agent mention still becomes a task directive', async () => {
+    const prompt = await buildPromptText('fix @architect the bug', []);
+    expect(prompt.startsWith('Use the task tool')).toBe(true);
+    expect(prompt).not.toContain('[kabmo orchestration contract]');
+  });
+
+  test('two harnesses in one paragraph are refused before sending', async () => {
+    await expect(buildPromptText('@claude and @codex review', [])).rejects.toBeInstanceOf(
+      DelegationPromptError,
+    );
+  });
+
+  test('an unknown namespaced harness is refused', async () => {
+    await expect(buildPromptText('@harness:nope do it', [])).rejects.toBeInstanceOf(
+      DelegationPromptError,
+    );
+  });
+});
 
 describe('buildPromptText mentions', () => {
   test('an agent mention becomes a task-tool delegation directive', async () => {

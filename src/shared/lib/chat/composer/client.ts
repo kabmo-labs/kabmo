@@ -1,3 +1,4 @@
+import { HARNESS_CATALOG } from '@/shared/lib/harness/catalog';
 import type { AgentItem, CommandItem, ComposerPickItem, ComposerPickKind, FsFileEntry, SkillItem } from '@/shared/types';
 import { KABMO_COMMANDS } from '@/shared/lib/chat/composer/trigger';
 
@@ -35,6 +36,25 @@ export function toAgentPickItems(agents: AgentItem[]): ComposerPickItem[] {
     kind: 'agent',
     source: 'agent',
     token: `@${agent.name}`,
+  }));
+}
+
+/**
+ * Map the harness catalog into `@harness:<id>` mention tokens.
+ *
+ * These rows are what turns a mention into a delegation rather than a prose
+ * hint: the picker inserts the namespaced token, and the send path compiles it
+ * into the exact `kabmo session spawn` command. The token carries no model, so
+ * the spawn uses that harness's configured default (or the agent's own).
+ */
+export function toHarnessPickItems(): ComposerPickItem[] {
+  return Object.values(HARNESS_CATALOG).map((harness) => ({
+    id: `harness-${harness.id}`,
+    name: `harness:${harness.id}`,
+    description: `${harness.label} · default model · type :<model> to pin one`,
+    kind: 'harness',
+    source: 'harness',
+    token: `@harness:${harness.id}`,
   }));
 }
 
@@ -211,8 +231,17 @@ export function loadComposerItems(
 ): Promise<ComposerPickItem[]> {
   if (kind === 'mention') {
     const files = loadFileItems(root ?? null);
-    if (options.includeAgents === false) return files;
-    return Promise.all([loadAgentItems(), files]).then(([agents, fileItems]) => [...agents, ...fileItems]);
+    const harnesses = toHarnessPickItems();
+    // Harness rows survive `includeAgents: false`: that flag exists because an
+    // ACP chat has no omp `@agent` vocabulary, not because it cannot delegate.
+    if (options.includeAgents === false) {
+      return files.then((fileItems) => [...harnesses, ...fileItems]);
+    }
+    return Promise.all([loadAgentItems(), files]).then(([agents, fileItems]) => [
+      ...agents,
+      ...harnesses,
+      ...fileItems,
+    ]);
   }
   return loadCommandItems(root ?? null, sessionId);
 }

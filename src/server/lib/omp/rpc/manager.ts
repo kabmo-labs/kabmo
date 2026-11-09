@@ -28,6 +28,7 @@ import { RunSettle, handleChildExit } from '@/server/lib/omp/rpc/run-settle.serv
 import { EventFanout } from '@/server/lib/omp/rpc/event-fanout';
 import { syncRunModel as syncRunModelFor } from '@/server/lib/omp/rpc/run-model';
 import { reloadChildPlugins } from '@/server/lib/omp/rpc/reload-plugins';
+import { noteRefusedPrompt } from '@/server/lib/omp/rpc/terminal-settle';
 import { clearStreamStatus, type SessionRunModel } from '@/shared/lib/omp/session/stream-state.server';
 import { GET_STATE_TIMEOUT_MS, IDLE_REAP_MS, READY_TIMEOUT_MS, SUBAGENT_STALE_MS, type AgentEvent, type EventListener, type RpcSessionState } from '@/server/lib/omp/rpc/constants';
 
@@ -240,16 +241,15 @@ export class AgentSessionWrapper {
   private handleFrame(frame: RpcFrame): void {
     this.idle.reset();
     const event = frame as AgentEvent;
-    // The state machine and its settle-time side effects live in frame-fold.ts;
-    // this method owns only the wrapper's own bookkeeping around it.
+    // The fold owns the state machine; this method only bookkeeps around it.
     const { suppressForward } = foldSessionFrame(this, event);
+    // A refused prompt opens no turn; no agent_end will settle it.
+    noteRefusedPrompt(event, this.sessionId);
     // The run-settle clock reads every frame: it is what tells a quiet run from
     // one whose event stream stopped, and it is fed the retry waits omp
     // announces. See `run-settle.server.ts`.
     this.runSettle.noteFrame(event);
-    // A frame settled the dispatch (agent_start cleared `awaitingAgentStart` and
-    // set `streaming`; prompt_result cleared it too), so the watchdog has
-    // nothing left to do.
+    // A frame settled the dispatch, so the watchdog has nothing left to do.
     this.agentStartWatchdog.settleIfDone();
     // `suppressForward` withholds only the FRAME — a failed prompt response
     // already emitted its own `prompt_error`, and Kabmo's own background

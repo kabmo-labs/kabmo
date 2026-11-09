@@ -11,6 +11,7 @@ import { assertBtwIdle } from '@/server/lib/btw/service.server';
 import { loadPersistedModes } from '@/server/lib/omp/session/modes';
 import { isModeCommandType, modeCommandPrompt, parseModeRequest, parseModeSelection } from '@/server/lib/omp/mode/request';
 import { kabmoModeEnv } from '@/server/lib/omp/extensions/locator';
+import { mintAgentEnvironment, rememberAgentToken } from '@/server/lib/sessions/agent-token.server';
 import { resetGoalDriverState } from '@/server/lib/omp/session/goal-driver.server';
 import { forwardToPeer, isPeerRelayed, peerOriginForSession } from '@/server/lib/omp/rpc/peer-proxy.server';
 import { applyHarnessMode, resumeRecordedHarnessSession } from '@/server/routes/agent/harness-command';
@@ -176,7 +177,19 @@ export async function sendCommand({ params, request }: ActionFunctionArgs) {
     const asked = body.type === 'set_model' && typeof body.provider === 'string' && typeof body.modelId === 'string'
       ? { provider: body.provider, modelId: body.modelId }
       : undefined;
-    const { session } = await startRpcSession(sessionId, filePath, cwd, recordedCwd, spawnMode, modeEnv, asked);
+    const { token, env: agentEnv } = mintAgentEnvironment();
+    const { session } = await startRpcSession(
+      sessionId,
+      filePath,
+      cwd,
+      recordedCwd,
+      spawnMode,
+      { ...(modeEnv ?? {}), ...agentEnv },
+      asked,
+    );
+    await rememberAgentToken(sessionId, token).catch((cause: unknown) => {
+      console.error(`[sessions] could not record the agent token for ${sessionId}:`, cause);
+    });
     const result = await session.send(forwarded);
     // Same Resume nudge as the live path: a resumed goal must not sit idle
     // waiting for the operator's next message.

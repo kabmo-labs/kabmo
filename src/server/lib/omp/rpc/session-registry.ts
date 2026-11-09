@@ -21,6 +21,7 @@ import { recordSpawnProvenance } from '@/server/lib/omp/rpc/spawn-provenance';
 import { registerSpawnedSession } from '@/server/lib/omp/rpc/session-registration';
 import { resolveSessionOwnership, SessionOwnedElsewhereError } from '@/server/lib/omp/session/ownership.server';
 import { claimPrewarmedSession } from '@/server/lib/omp/rpc/prewarm-pool';
+import { mintAgentEnvironment, rememberAgentToken } from '@/server/lib/sessions/agent-token.server';
 import { isUnrestorableModelFailure, resolveResumableModel } from '@/server/lib/omp/session/resumable-model.server';
 import { DEFAULT_APPROVAL_MODE, type ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 import type { SelectedModel } from '@/shared/types/models';
@@ -308,11 +309,22 @@ export async function startNewRpcSession(
   modeEnv?: Record<string, string>,
 ): Promise<{ session: AgentSessionWrapper; realSessionId: string }> {
   const mode = approvalMode ?? DEFAULT_APPROVAL_MODE;
-  const wrapper = await claimPrewarmedSession(cwd, mode, modeEnv);
+  // Mint here, not at the route: the prewarmed entry and the cold spawn both
+  // get a callback credential, and no caller can forget it.
+  const { token, env: agentEnv } = mintAgentEnvironment();
+  const env = { ...(modeEnv ?? {}), ...agentEnv };
+  const wrapper = await claimPrewarmedSession(cwd, mode, env);
 
   if (!wrapper) {
-    return startRpcSession(`__new__${Bun.randomUUIDv7()}`, '', cwd, undefined, mode, modeEnv);
+    const started = await startRpcSession(`__new__${Bun.randomUUIDv7()}`, '', cwd, undefined, mode, env);
+    await rememberAgentToken(started.realSessionId, token).catch((cause: unknown) => {
+      console.error(`[sessions] could not record the agent token for ${started.realSessionId}:`, cause);
+    });
+    return started;
   }
+
+  // A claimed prewarmed process recorded its own token before entering the
+  // pool; recording this call's token would invalidate the child's environment.
 
   const registry = getRegistry();
   const realSessionId = wrapper.sessionId;

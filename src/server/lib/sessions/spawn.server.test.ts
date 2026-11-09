@@ -95,7 +95,11 @@ describe('spawnChildSession', () => {
       parentSessionId: 'parent',
       depth: 1,
     });
-    expect(child.sent).toEqual([{ type: 'prompt', message: 'review this' }]);
+    expect(child.sent).toHaveLength(1);
+    expect(child.sent[0]).toMatchObject({ type: 'prompt' });
+    expect(String(child.sent[0].message)).toStartWith('[kabmo dispatched worker]');
+    expect(String(child.sent[0].message)).toContain('your coordinator is session parent');
+    expect(String(child.sent[0].message)).toEndWith('TASK\nreview this');
     expect(await getSessionRelation('child')).toMatchObject({
       parentSessionId: 'parent',
       lifecycleOwnerSessionId: 'parent',
@@ -149,6 +153,29 @@ describe('spawnChildSession', () => {
         depsFor(fakeSession('child')),
       ),
     ).rejects.toMatchObject({ code: 'parent_folder_mismatch' });
+  });
+
+  test('an ACP worker with no explicit model leaves the harness default alone', async () => {
+    await saveHarnessSession({
+      sessionId: 'parent',
+      harness: 'claude',
+      agentSessionId: 'agent-parent',
+      cwd: root,
+    });
+    let captured: { provider: string; modelId: string } | null | undefined;
+    const child = fakeSession('child');
+    const deps: SpawnSessionDeps = {
+      async startRpc() {
+        throw new Error('not used');
+      },
+      async startAcp(request) {
+        captured = request.model;
+        return { session: child, realSessionId: child.sessionId };
+      },
+    };
+
+    await spawnChildSession({ parentSessionId: 'parent', prompt: 'review this' }, deps);
+    expect(captured).toBeNull();
   });
 
   test('a refused first prompt destroys the child and records nothing', async () => {

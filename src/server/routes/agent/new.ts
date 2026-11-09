@@ -10,6 +10,7 @@ import { parseModeSelection } from '@/server/lib/omp/mode/request';
 import { projectModelForCwd } from '@/server/lib/workspace/project-model.server';
 import { HARNESS_IDS, type HarnessId } from '@/shared/lib/harness/catalog';
 import { startAcpSession } from '@/server/lib/harness/spawn.server';
+import { mintAgentEnvironment, rememberAgentToken } from '@/server/lib/sessions/agent-token.server';
 
 /** The model-dropdown persists its selection here (actionType 'selectModel');
  *  a spawn that arrives without an explicit provider/modelId falls back to it. */
@@ -151,6 +152,7 @@ async function startAcpChat({ harness, cwd, body, model, accessMode }: {
   const projectModel = await projectModelForCwd(await getDb(), cwd);
   const thinkingLevel = typeof body.thinkingLevel === 'string' ? body.thinkingLevel : null;
   const mode = harnessModeSelection(body);
+  const { token, env: agentEnv } = mintAgentEnvironment();
   const { session, realSessionId } = await startAcpSession({
     harness,
     sessionId: `__new__${Bun.randomUUIDv7()}`,
@@ -159,6 +161,10 @@ async function startAcpChat({ harness, cwd, body, model, accessMode }: {
     thinkingLevel,
     mode,
     accessMode,
+    env: agentEnv,
+  });
+  await rememberAgentToken(realSessionId, token).catch((cause: unknown) => {
+    console.error(`[sessions] could not record the agent token for ${realSessionId}:`, cause);
   });
 
   if (type === 'ensure_session') {
