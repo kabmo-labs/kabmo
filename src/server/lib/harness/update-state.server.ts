@@ -22,9 +22,9 @@
  * `forgetCliVersion` and `forgetProbe` so the next read states what is on disk.
  */
 
-import { resolveOmpBin } from '@/server/lib/omp/core/cli';
+import { commandAvailable } from '@/server/lib/harness/auto-probe.server';
+import { loadHarnessConfig } from '@/server/lib/harness/config.server';
 import { fetchNpmLatest } from '@/server/lib/updates/npm';
-import { HARNESS_LAUNCH } from '@/server/lib/harness/launch';
 import type { HarnessId } from '@/shared/lib/harness/catalog';
 import { harnessUpdateFacts, latestSourceFor } from '@/shared/lib/harness/updates';
 
@@ -59,19 +59,15 @@ export async function latestVersion(pkg: string, force = false): Promise<string 
 /**
  * Is this harness's launch command resolvable?
  *
- * The same rule the catalog uses (`commandAvailable` in `harness/root.ts`), kept
- * here as well because THIS module answers "what can be updated" and a harness
- * that is not installed answers "nothing". Offering an Update for an absent
- * agent was measured: an install that never happened cannot be updated, and the
- * button only produced a `not found` from npm.
+ * The same rule the catalog uses (`commandAvailable` in `auto-probe.server`), not
+ * a second copy of it: the USER's configured command and a bridge's required
+ * runtime both decide whether this harness can run. Reading the build's table
+ * directly said "installed" for a zcode with no runtime, and "not installed" for
+ * a harness whose binary is only reachable through its configured launch line —
+ * so the update route refused an install the spawn would have used.
  */
-export function harnessLaunchable(id: HarnessId): boolean {
-  if (id === 'omp-acp') return Boolean(resolveOmpBin());
-  const launch = HARNESS_LAUNCH[id];
-  const [binary] = launch?.command ?? [];
-  if (!binary) return false;
-  if (binary === 'npx') return Boolean(Bun.which('npx') ?? Bun.which('node'));
-  return Boolean(Bun.which(binary));
+export async function harnessLaunchable(id: HarnessId): Promise<boolean> {
+  return commandAvailable(id, await loadHarnessConfig(id));
 }
 
 /** How long a CLI version read is reused. A binary does not change under us. */
@@ -163,7 +159,7 @@ export async function harnessVersionState(
   force = false,
 ): Promise<HarnessVersionState> {
   const facts = harnessUpdateFacts(id);
-  const installed = id === 'omp-rpc' ? true : harnessLaunchable(id);
+  const installed = id === 'omp-rpc' ? true : await harnessLaunchable(id);
 
   // An ABSENT harness gets no registry read: there is no install to update, and
   // the npm number would describe a package this machine does not have.
@@ -173,11 +169,10 @@ export async function harnessVersionState(
   let cli: HarnessCliVersions | null = null;
   if (facts?.cli) {
     const version = installed ? await cliVersion(facts.cli.bin) : null;
-    // The CLI's own package is only asked about when the harness names BOTH its
-    // package and its updater: a newer registry number Kabmo cannot install is a
-    // promise the row could not keep, and `claude`'s updater is what keeps a
-    // package-manager install consistent with itself.
-    const movable = Boolean(facts.command && facts.cli.pkg);
+    // The CLI's own package is read whenever the facts name one: an npm CLI
+    // (dsh) moves through that package too, and reporting no latest for it would
+    // leave a stale CLI with no way to say so.
+    const movable = Boolean(facts.cli.pkg);
     const cliLatest = version && movable ? await latestVersion(facts.cli.pkg as string, force) : null;
     cli = { name: facts.cli.name, bin: facts.cli.bin, version, latest: cliLatest };
   }

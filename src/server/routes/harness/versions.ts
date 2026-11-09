@@ -66,7 +66,11 @@ function toRow(
   else if (!facts) note = 'Kabmo knows nothing about updating this harness.';
   else if (!state.agent.version) note = 'Not probed yet — check its status to learn the version it runs.';
   else if (facts.kind !== 'npm') note = facts.command ? `Updated by \`${facts.command}\`.` : note;
-  else if (!state.agent.latest) note = `Could not read ${facts.pkg} from the registry.`;
+  // An npm harness can have no AGENT package (`dsh`: the probe reports the ACP
+  // surface, the package is the CLI). The note names whichever package was
+  // actually read, instead of "Could not read undefined".
+  else if (facts.pkg && !state.agent.latest) note = `Could not read ${facts.pkg} from the registry.`;
+  else if (facts.cli?.pkg && state.cli?.version && !state.cli.latest) note = `Could not read ${facts.cli.pkg} from the registry.`;
 
   return {
     id,

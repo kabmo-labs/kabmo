@@ -19,7 +19,12 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { planHarnessUpdate, type UpdatePlanState } from '@/shared/lib/harness/update-plan';
+import {
+  planHarnessUpdate,
+  repointAdapterLaunch,
+  type HarnessUpdateStep,
+  type UpdatePlanState,
+} from '@/shared/lib/harness/update-plan';
 import { harnessUpdateFacts } from '@/shared/lib/harness/updates';
 
 const CLAUDE = harnessUpdateFacts('claude');
@@ -32,6 +37,32 @@ function state(overrides: Partial<UpdatePlanState> = {}): UpdatePlanState {
     ...overrides,
   };
 }
+
+describe('repointing a launch line after an adapter install', () => {
+  const install: HarnessUpdateStep = {
+    part: 'adapter',
+    command: 'npm install -g @agentclientprotocol/claude-agent-acp@0.101.0',
+    argv: ['npm', 'install', '-g', '@agentclientprotocol/claude-agent-acp@0.101.0'],
+  };
+
+  test('a pinned npx adapter is pointed at the binary the install wrote', () => {
+    // The launch requests 0.100.0; the install wrote 0.101.0. Without this, the
+    // press reports success and every new session still starts the pinned build.
+    expect(repointAdapterLaunch(CLAUDE, [install], '', true)).toBe('claude-agent-acp');
+  });
+
+  test('a user command is never replaced', () => {
+    expect(repointAdapterLaunch(CLAUDE, [install], '/opt/bin/my-claude-wrapper', true)).toBeNull();
+  });
+
+  test('no install step, no repoint', () => {
+    expect(repointAdapterLaunch(CLAUDE, [], '', true)).toBeNull();
+  });
+
+  test('a binary that did not land on PATH is not claimed', () => {
+    expect(repointAdapterLaunch(CLAUDE, [install], '', false)).toBeNull();
+  });
+});
 
 describe('planning a harness update', () => {
   test('both parts behind runs the install AND the CLI updater, in that order', () => {
@@ -97,6 +128,25 @@ describe('planning a harness update', () => {
     // would be a fabricated fact, so the install runs and the route says so.
     const steps = planHarnessUpdate('claude', CLAUDE, state(), null);
     expect(steps[0].argv[0]).toBe('npm');
+  });
+
+  test('an npm CLI with no vendor updater moves through its own package', () => {
+    // `dsh` reports the ACP surface (0.0.1) while `dsh --version` is 0.2.2-rc.1;
+    // the CLI carries the package and has no `dsh update`. Leaving this half out
+    // made every press compare the adapter's version to the CLI's package.
+    const steps = planHarnessUpdate(
+      'deepseek-harness',
+      harnessUpdateFacts('dsh'),
+      {
+        installed: true,
+        agent: { version: '0.0.1', latest: null },
+        cli: { name: 'deepseek-harness', version: '0.2.2-rc.1', latest: '0.3.0' },
+      },
+      '0.0.1',
+    );
+    expect(steps).toHaveLength(1);
+    expect(steps[0].part).toBe('deepseek-harness');
+    expect(steps[0].argv).toEqual(['npm', 'install', '-g', '@deepseek-ai/dsh@0.3.0']);
   });
 
   test('a plain npm harness names itself, not "adapter"', () => {

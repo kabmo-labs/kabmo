@@ -86,15 +86,55 @@ export function planHarnessUpdate(
   // The CLI moves through ITS OWN updater (`claude update`), invoked by name: the
   // adapter pins the CLI version it bridges, so this is the half that used to be
   // left stale — and it is also the ONLY half that moves when the adapter is
-  // already current.
+  // already current. An npm CLI with no vendor updater (`dsh`) moves through the
+  // package the facts name instead; without that half its installed number could
+  // never be compared, let alone moved.
   const { cli } = state;
-  if (cli && facts.command && cli.latest && cli.version && isNewer(cli.latest, cli.version)) {
-    steps.push({
-      part: cli.name,
-      command: facts.command,
-      argv: facts.command.split(' '),
-    });
+  if (cli && cli.latest && cli.version && isNewer(cli.latest, cli.version)) {
+    if (facts.command) {
+      steps.push({
+        part: cli.name,
+        command: facts.command,
+        argv: facts.command.split(' '),
+      });
+    } else if (facts.cli?.pkg) {
+      steps.push({
+        part: cli.name,
+        command: `npm install -g ${facts.cli.pkg}@${cli.latest}`,
+        argv: ['npm', 'install', '-g', `${facts.cli.pkg}@${cli.latest}`],
+      });
+    }
   }
 
   return steps;
+}
+
+/**
+ * The launch command a successful adapter install should leave behind, or null.
+ *
+ * The launch table starts an npm adapter through a PINNED `npx -y pkg@x.y.z`,
+ * while the update installs the package GLOBALLY. Those are two different
+ * resolvers: `npm i -g` writes a binary onto PATH that `npx` never consults, so
+ * the press reported success while every new session still started the old
+ * pinned build — measured on `claude` (global 0.101.0, launch requested 0.100.0)
+ * and true by construction for codex/pi/zcode.
+ *
+ * The answer is the installed binary's name ONLY when this run installed the
+ * adapter, the binary is on PATH, and the harness has no user command of its
+ * own. A configured command is an explicit choice about how this machine starts
+ * the harness, so it is never replaced.
+ */
+export function repointAdapterLaunch(
+  facts: HarnessUpdateFacts | null,
+  steps: readonly HarnessUpdateStep[],
+  currentCommand: string,
+  agentBinOnPath: boolean,
+): string | null {
+  const bin = facts?.agentBin;
+  const pkg = facts?.pkg;
+  if (!bin || !pkg || !agentBinOnPath || currentCommand.trim()) return null;
+  const installed = steps.some(
+    (step) => step.argv[0] === 'npm' && step.argv[3]?.startsWith(`${pkg}@`),
+  );
+  return installed ? bin : null;
 }

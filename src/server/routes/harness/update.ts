@@ -42,10 +42,12 @@ import { json } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { HARNESS_IDS, harnessDescriptor, type HarnessId } from '@/shared/lib/harness/catalog';
-import { harnessUpdateFacts, latestSourceFor } from '@/shared/lib/harness/updates';
+import { harnessUpdateFacts, latestSourceFor, type HarnessUpdateFacts } from '@/shared/lib/harness/updates';
 import { forgetProbe, loadProbes } from '@/server/lib/harness/probe-cache.server';
 import { forgetCliVersion, harnessVersionState } from '@/server/lib/harness/update-state.server';
-import { planHarnessUpdate } from '@/shared/lib/harness/update-plan';
+import { planHarnessUpdate, repointAdapterLaunch, type HarnessUpdateStep } from '@/shared/lib/harness/update-plan';
+import { loadHarnessConfig, saveHarnessConfig } from '@/server/lib/harness/config.server';
+import { resolveOmpBin } from '@/server/lib/omp/core/cli';
 import { harnessVersionRows } from '@/server/routes/harness/versions';
 
 /** Longest one update may run before it is killed and reported as a timeout. */
@@ -87,6 +89,37 @@ function tail(output: string, lines = 12): string {
   return all.slice(Math.max(0, all.length - lines)).join('\n').trim();
 }
 
+/**
+ * Make an adapter install the one the next spawn runs.
+ *
+ * The launch table starts an npm adapter through a PINNED `npx -y pkg@x.y.z`
+ * (measured versions), while the update installs the package GLOBALLY. Those are
+ * two different resolvers: `npm i -g` writes a binary onto PATH that `npx` never
+ * consults, so the press reported success while every new session still started
+ * the old pinned build — measured on `claude` (global 0.101.0, launch requested
+ * 0.100.0) and reproduced for codex/pi/zcode by construction.
+ *
+ * Once the install succeeded AND the binary is on PATH, the harness's launch
+ * line is pointed at it. A user's own configured command is never replaced: it
+ * is an explicit choice about how this machine launches the harness.
+ */
+async function pointAtInstalledAdapter(
+  harness: HarnessId,
+  facts: HarnessUpdateFacts,
+  steps: HarnessUpdateStep[],
+): Promise<string | null> {
+  const config = await loadHarnessConfig(harness);
+  const bin = repointAdapterLaunch(
+    facts,
+    steps,
+    config.command,
+    facts.agentBin ? Boolean(Bun.which(facts.agentBin)) : false,
+  );
+  if (!bin) return null;
+  await saveHarnessConfig(harness, { ...config, command: bin });
+  return bin;
+}
+
 export async function action({ request, params }: ActionFunctionArgs) {
   if (request.method !== 'POST') return methodNotAllowed({ request, params });
 
@@ -120,10 +153,14 @@ export async function action({ request, params }: ActionFunctionArgs) {
   if (facts.kind === 'self') {
     const command = facts.command?.split(' ') ?? [];
     const binary = command[0];
-    if (!binary || !Bun.which(binary)) {
+    // `omp` has its own resolver (`KABMO_OMP_BIN`, then PATH): a custom install
+    // is launchable and already reported as installed by `commandAvailable`, so
+    // checking PATH alone refused the one updater the harness actually has.
+    const resolved = harness === 'omp-acp' ? resolveOmpBin() : binary ? Bun.which(binary) : null;
+    if (!binary || !resolved) {
       return json({ error: `${label}: \`${binary ?? 'the updater'}\` is not on PATH` }, { status: 400 });
     }
-    const result = await run(command);
+    const result = await run([resolved, ...command.slice(1)]);
     const ok = result.code === 0;
     const outcome: HarnessUpdateOutcome = {
       success: ok,
@@ -136,9 +173,11 @@ export async function action({ request, params }: ActionFunctionArgs) {
   }
 
   // `npm`: install the package at the version the registry reports NOW, so the
-  // number on screen and the install cannot disagree.
+  // number on screen and the install cannot disagree. A harness can have no
+  // AGENT package while its CLI has one (`dsh`): the CLI step is then the whole
+  // update, so the missing agent package is not a refusal.
   const pkg = latestSourceFor(harness);
-  if (!pkg) return json({ error: `${label} has no package to install` }, { status: 400 });
+  if (!pkg && !facts.cli?.pkg) return json({ error: `${label} has no package to install` }, { status: 400 });
 
   const probe = (await loadProbes()).get(harness);
   const agentVersion = probe?.capabilities.agentVersion ?? null;
@@ -198,13 +237,16 @@ export async function action({ request, params }: ActionFunctionArgs) {
     // minutes, so the row would keep claiming the old number after it moved.
     if (facts.cli) forgetCliVersion(facts.cli.bin);
   }
+  // Only after the install succeeded: the launch line is repointed at the binary
+  // that install wrote, or the next session would start the pinned one forever.
+  const repointed = ok ? await pointAtInstalledAdapter(harness, facts, steps) : null;
 
   const moved = steps.map((step) => step.part);
   return json({
     success: ok,
     id: harness,
     message: ok
-      ? `${label} updated (${moved.join(' + ')}) — check its status to read the new version`
+      ? `${label} updated (${moved.join(' + ')})${repointed ? ` — launches now run \`${repointed}\`` : ''} — check its status to read the new version`
       : `${label} update failed`,
     command: steps.map((step) => step.command).join(' && '),
     ...(outputs.length > 0 ? { output: tail(outputs.join('\n')) } : {}),

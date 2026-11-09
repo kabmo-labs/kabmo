@@ -51,6 +51,13 @@ export interface HarnessUpdateFacts {
    * refused, because a vendor installer is not Kabmo's to run.
    */
   command?: string;
+  /**
+   * The binary the ADAPTER's own package installs, when the launch line prefers
+   * a pinned `npx` run of that package. A global install writes this name onto
+   * PATH; the update route points the harness at it so the install is the one
+   * that actually runs (see `routes/harness/update.ts`).
+   */
+  agentBin?: string;
   /** Where the command must run, when it is not the agent's own cwd. */
   note?: string;
 }
@@ -71,6 +78,9 @@ export const HARNESS_UPDATE_FACTS: Readonly<Partial<Record<HarnessId, HarnessUpd
     // fabricated comparison, measured on a real probe.
     kind: 'npm',
     pkg: '@agentclientprotocol/claude-agent-acp',
+    // The launch line runs `npx -y …@0.100.0`; the install writes this binary,
+    // and the route repoints the harness at it after a successful update.
+    agentBin: 'claude-agent-acp',
     // The CLI underneath has its own updater (`claude update`), and the adapter
     // pins the CLI version it bridges — so the adapter install alone can leave a
     // stale CLI behind. Both lines are named.
@@ -83,6 +93,7 @@ export const HARNESS_UPDATE_FACTS: Readonly<Partial<Record<HarnessId, HarnessUpd
     // is compared against.
     kind: 'npm',
     pkg: '@agentclientprotocol/codex-acp',
+    agentBin: 'codex-acp',
     cli: { bin: 'codex', name: 'codex' },
     note: 'The row reports the ADAPTER; `codex --version` is the CLI underneath.',
   },
@@ -104,6 +115,7 @@ export const HARNESS_UPDATE_FACTS: Readonly<Partial<Record<HarnessId, HarnessUpd
   pi: {
     kind: 'npm',
     pkg: 'pi-acp',
+    agentBin: 'pi-acp',
     cli: { bin: 'pi', name: 'pi' },
     // The ADAPTER is on npm; the agent it drives is not, so the note names both.
     note: 'The row reports the ADAPTER; the `pi` binary it drives versions separately.',
@@ -111,7 +123,17 @@ export const HARNESS_UPDATE_FACTS: Readonly<Partial<Record<HarnessId, HarnessUpd
   qwen: { kind: 'npm', pkg: '@qwen-code/qwen-code' },
   kimi: { kind: 'npm', pkg: '@moonshot-ai/kimi-code' },
   minimax: { kind: 'npm', pkg: '@minimax-ai/code' },
-  dsh: { kind: 'npm', pkg: '@deepseek-ai/dsh' },
+  dsh: {
+    kind: 'npm',
+    // The PROBE reports the ACP surface inside `dsh` (measured: agent
+    // `deepseek-harness-acp` 0.0.1), which is NOT the installed CLI's version
+    // (`dsh --version` is 0.2.2-rc.1). Comparing 0.0.1 against the package's
+    // 0.2.2 planned an install of the version already on disk on every press.
+    // The CLI is therefore the part that carries the package and the comparison;
+    // the agent line stays report-only.
+    cli: { bin: 'dsh', name: 'deepseek-harness', pkg: '@deepseek-ai/dsh' },
+    note: 'The row reports the `dsh` CLI; the ACP server it hosts reports its own version underneath.',
+  },
   cursor: { kind: 'own', command: 'cursor-agent update', note: 'Cursor moves through its own installer.' },
   // The ADAPTER is the npm package the probe reports; the `zcode` CLI it drives
   // ships with the desktop app (or the vendor's own installer), so its version
@@ -119,6 +141,7 @@ export const HARNESS_UPDATE_FACTS: Readonly<Partial<Record<HarnessId, HarnessUpd
   zcode: {
     kind: 'npm',
     pkg: 'zcode-acp-server',
+    agentBin: 'zcode-acp-server',
     cli: { bin: 'zcode', name: 'ZCode' },
     note: 'The row reports the ACP bridge; the ZCode CLI it drives installs with the desktop app.',
   },

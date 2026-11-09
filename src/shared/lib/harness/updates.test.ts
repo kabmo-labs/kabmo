@@ -76,6 +76,28 @@ describe('update facts per harness', () => {
     expect(harnessUpdateFacts('omp-acp')?.command).toBe('omp update');
   });
 
+  test('dsh compares its CLI package, not the ACP surface version', () => {
+    // Measured: the probe reports `deepseek-harness-acp` 0.0.1 while the
+    // installed CLI is 0.2.2-rc.1. The agent part has no registry package of its
+    // own; the CLI does, and that is the number an update can move.
+    expect(latestSourceFor('dsh')).toBeNull();
+    expect(harnessUpdateFacts('dsh')?.cli).toEqual({
+      bin: 'dsh',
+      name: 'deepseek-harness',
+      pkg: '@deepseek-ai/dsh',
+    });
+  });
+
+  test('an npx-launched adapter names the binary a global install writes', () => {
+    // The launch line pins `npx -y pkg@version`; `npm i -g` writes this binary,
+    // and the update route repoints the harness at it. Without the name the
+    // install cannot take effect on the next spawn.
+    expect(harnessUpdateFacts('claude')?.agentBin).toBe('claude-agent-acp');
+    expect(harnessUpdateFacts('codex')?.agentBin).toBe('codex-acp');
+    expect(harnessUpdateFacts('pi')?.agentBin).toBe('pi-acp');
+    expect(harnessUpdateFacts('zcode')?.agentBin).toBe('zcode-acp-server');
+  });
+
   test('an unknown harness has no facts at all', () => {
     expect(harnessUpdateFacts('some-future-agent')).toBeNull();
     expect(latestSourceFor('some-future-agent')).toBeNull();
