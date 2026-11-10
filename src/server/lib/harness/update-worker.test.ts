@@ -57,18 +57,25 @@ async function runWorker(input: HarnessUpdateJobSpec): Promise<HarnessUpdateJob 
     cmd: [process.execPath, WORKER, specPath],
     cwd: packageDir(),
     stdin: 'ignore',
-    stdout: 'ignore',
     // PIPED, not ignored: a worker that dies before its first write leaves no
     // `status.json`, and swallowing the only account of why turned that into a
     // bare `ENOENT` naming a path in a temp directory. Measured on the Windows
     // gate, where this suite has never run green.
+    stdout: 'pipe',
     stderr: 'pipe',
   });
   await proc.exited;
-  const stderr = await new Response(proc.stderr).text();
+  // BOTH streams and the CODE: a child that never starts reports on neither, and
+  // the exit status is then the only fact left.
+  const [stdout, stderr] = await Promise.all([
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+  ]);
   if (!(await Bun.file(input.statusPath).exists())) {
     throw new Error(
-      `the update worker wrote no status.json (exit ${proc.exitCode}):\n${stderr.trim() || '(no stderr)'}`,
+      `the update worker wrote no status.json (exit ${proc.exitCode}\n`
+      + `  cwd: ${packageDir()}\n  worker: ${WORKER}\n  argv: ${JSON.stringify([process.execPath, WORKER, specPath])}\n`
+      + `  stdout: ${stdout.trim() || '(none)'}\n  stderr: ${stderr.trim() || '(none)'})`,
     );
   }
   const raw = (await Bun.file(input.statusPath).json()) as unknown;
