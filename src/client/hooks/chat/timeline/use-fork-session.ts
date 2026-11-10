@@ -4,46 +4,55 @@
  */
 
 /**
- * Fork the current chat at a clicked row.
+ * Open a FORK as the same pending-chat composer New Session uses.
  *
- * The API call and the navigation live together because the refusal has to be
- * shown where the action was taken. The server answers a typed code and a
- * message; the hook surfaces the message and never navigates on a failure —
- * a silent tip fork would be worse than the error.
+ * Fork used to create the branch before the operator could say what to do in
+ * it. Now it navigates to a `new-…` chat that carries the source and anchor in
+ * the pending store, so the normal empty-workspace composer (model, thinking,
+ * access, attachments) writes the branch's first turn. The POST happens on
+ * SEND, in `pending-dispatch.ts`.
  */
 
 import { useCallback } from 'preact/hooks';
-
-type ToastKind = 'success' | 'error';
+import { useSearchParams } from '@/client/lib/router/search-params';
+import { startPendingSession } from '@/client/hooks/chat/omp/pending-sessions';
+import { setHarnessPick } from '@/client/hooks/chat/timeline/session-harness';
+import { formatNewSessionTitle } from '@/shared/lib/omp/session/default-title';
+import type { WorkspaceFolderData } from '@/shared/types';
 
 export function useForkSession(
   sessionId: string | null | undefined,
-  pushToast: (message: string, type?: ToastKind) => void,
-): (messageId: string) => Promise<void> {
+  folders: WorkspaceFolderData[],
+  selectedFolderId: number | null,
+): (messageId: string) => void {
+  const [, setSearchParams] = useSearchParams();
+
   return useCallback(
-    async (messageId: string) => {
+    (messageId: string) => {
       if (!sessionId) return;
-      try {
-        const response = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}/fork`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ anchorEntryId: messageId }),
-        });
-        const body = (await response.json().catch(() => null)) as
-          | { sessionId?: string; error?: string }
-          | null;
-        if (!response.ok || !body?.sessionId) {
-          pushToast(body?.error ?? 'Could not fork this session.', 'error');
-          return;
-        }
-        // A full navigation is deliberate: the fork is a different session with
-        // its own transcript, and the workspace's session param is the source of
-        // truth the sidebar and the composer read on mount.
-        window.location.assign(`/?sessionId=${encodeURIComponent(body.sessionId)}`);
-      } catch {
-        pushToast('Could not fork this session.', 'error');
-      }
+      const source = folders
+        .flatMap((folder) => folder.sessions ?? [])
+        .find((session) => String(session.id) === sessionId);
+      const folderId = source?.folder_id ?? selectedFolderId ?? null;
+      const pendingId = startPendingSession(folderId, {
+        title: formatNewSessionTitle(new Date(), 'Fork'),
+        ...(source?.harness ? { harness: source.harness } : {}),
+        forkSourceSessionId: String(sessionId),
+        forkAnchorEntryId: messageId,
+      });
+      // The picker's first tab is the source's agent; the fork cannot change
+      // provider because that agent owns the history being branched.
+      if (source?.harness) setHarnessPick(pendingId, source.harness);
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('sessionId', pendingId);
+        next.set('forkFrom', String(sessionId));
+        next.set('forkAt', messageId);
+        next.delete('parentSessionId');
+        if (folderId !== null && folderId !== undefined) next.set('folderId', String(folderId));
+        return next;
+      }, { replace: true });
     },
-    [sessionId, pushToast],
+    [sessionId, folders, selectedFolderId, setSearchParams],
   );
 }

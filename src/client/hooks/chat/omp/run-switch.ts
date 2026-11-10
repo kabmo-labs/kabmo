@@ -33,7 +33,7 @@
  * in `wait.e2e.ts` — the settle spec read `Wait Running` for 30s).
  */
 
-import { isSpawnAdoption } from '@/client/hooks/chat/omp/pending-sessions';
+import { isSpawnAdoption } from '@/client/hooks/chat/omp/pending-adoption';
 
 export interface RunSwitchInput {
   /** The session id this hook last prepared its refs for, or null on mount. */

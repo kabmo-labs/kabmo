@@ -13,7 +13,7 @@
  * written through the same map, the same emit and the same no-op check.
  */
 
-import type { PendingSessionEntry } from '@/client/hooks/chat/omp/pending-sessions';
+import type { PendingSessionEntry } from '@/client/hooks/chat/omp/pending-entry';
 import { listPendingSessions, patchPendingEntry } from '@/client/hooks/chat/omp/pending-sessions';
 
 export type PendingWait = NonNullable<PendingSessionEntry['waiting']>;

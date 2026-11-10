@@ -13,7 +13,9 @@ import { useChatTimeline } from '@/client/hooks/chat/timeline';
 import { useSessionTitle } from '@/client/hooks/chat/timeline/session-title';
 import { useSubagentView } from '@/client/hooks/chat/timeline/subagent-view';
 import { useUndoConfirmation } from '@/client/hooks/chat/timeline/undo-confirmation';
+import { usePendingBranch } from '@/client/hooks/chat/timeline/pending-branch';
 import { useForkSession } from '@/client/hooks/chat/timeline/use-fork-session';
+import { useStopWithQueuedPrompts } from '@/client/hooks/chat/timeline/stop-with-queue';
 import { useModelNames } from '@/client/hooks/models/use-model-names';
 import { useRunIdentity } from '@/client/hooks/chat/timeline/run-identity';
 import { useProviderNames } from '@/client/hooks/models/use-provider-names';
@@ -119,23 +121,8 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Stop-all semantics: the run stops AND the queued follow-ups stay in the
-  // panel (the auto-process holds off). Surface what just happened and how to
-  // proceed — the toast action delivers the head item immediately.
-  const handleStop = useCallback(() => {
-    const heldCount = stopGenerating();
-    if (heldCount === 0) return;
-    pushToast(
-      `Stopped. ${heldCount} message${heldCount > 1 ? 's' : ''} still queued — nothing was sent.`,
-      'success',
-      {
-        action: { label: 'Send now', onClick: () => {
-          const first = messageQueue[0];
-          if (first) void handleSendNowQueueItem(first);
-        } },
-        duration: 8000,
-      },
-    );
-  }, [stopGenerating, pushToast, messageQueue, handleSendNowQueueItem]);
+  // panel (the auto-process holds off); the toast offers the head item.
+  const handleStop = useStopWithQueuedPrompts(stopGenerating, messageQueue, handleSendNowQueueItem, pushToast);
   const { activeSubagent, back: handleSubagentBack } = useSubagentView(
     sessionId,
     searchParams.get('subagent'),
@@ -149,7 +136,6 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
   }, [jumpToUserTurn]);
 
   const handleNewChat = newChat.open;
-  const handleFork = useForkSession(sessionId, pushToast);
   const modelNames = useModelNames();
   const { sessionProvider, sessionModelName } = useRunIdentity({ folders, sessionId, sessionData, modelNames });
   const providerNames = useProviderNames();
@@ -164,6 +150,8 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
   // uses, so the pending composer's pill does not promise Kabmo's global pick.
   const pendingProjectModel = usePendingProjectModel(folders, selectedFolderId);
   const sessionDataModel = typeof sessionData?.model === 'object' ? sessionData.model : null;
+  const branch = usePendingBranch({ sessionId, folders, selectedFolderId, setSelectedFolderId, urlParentId: searchParams.get('parentSessionId'), urlForkFrom: searchParams.get('forkFrom'), urlForkAt: searchParams.get('forkAt'), setSearchParams, harnessPicker: activeHarness.picker, pendingHarnessRef });
+  const fork = useForkSession(sessionId, folders, selectedFolderId);
 
   // The chat-level "a run is in flight" flag is computed in `useChatTimeline`
   // (it owns the queue-vs-send decision that depends on it) and consumed here
@@ -203,7 +191,7 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
         modes={modes}
         composerModelRef={composerModelRef}
         deferredComposerPickRef={deferredComposerPickRef}
-        sessionModel={sessionDataModel ?? pendingProjectModel}
+        sessionModel={branch.parentModel ?? sessionDataModel ?? pendingProjectModel}
         sessionThinkingLevel={sessionData?.thinkingLevel}
         generatingVerb={generatingVerb}
         variant={variant}
@@ -218,8 +206,9 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
         onCancelWait={cancelHeldWait}
         spawnTarget={spawnTarget}
         onSpawnTargetChange={setSpawnTarget}
+        {...branch.viewProps}
         onWorktreeReport={(message) => pushToast(message, 'success', { duration: 6000 })}
-        {...activeHarness.picker}
+        {...branch.composerProps}
       />
     );
   }
@@ -267,7 +256,7 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
                   onUndo={handleRequestUndo}
                   onRetry={handleRetry}
                   onNewChat={handleNewChat}
-                  onFork={handleFork}
+                  onFork={fork}
                   showScrollBottom={showScrollBottom}
                   jumpToBottom={jumpToBottom}
                   rowWindow={rowWindow}

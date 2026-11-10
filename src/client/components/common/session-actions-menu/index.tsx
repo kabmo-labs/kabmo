@@ -29,7 +29,11 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'preac
 import type { TargetedMouseEvent } from 'preact';
 import { createPortal } from 'preact/compat';
 import { Archive, ArchiveRestore, GitBranch, Hourglass, Pencil, Trash2, WandSparkles } from 'lucide-preact';
-import { NewChildSessionDialog } from '@/client/components/common/session-actions-menu/NewChildSessionDialog';
+import { useSearchParams } from '@/client/lib/router/search-params';
+import { startPendingSession } from '@/client/hooks/chat/omp/pending-sessions';
+import { expandSessionBranch } from '@/client/hooks/workspace/expanded-sessions';
+import { setHarnessPick } from '@/client/hooks/chat/timeline/session-harness';
+import { formatNewSessionTitle } from '@/shared/lib/omp/session/default-title';
 
 /** Viewport coordinates the menu hangs off, plus which edge it aligns to. */
 export interface MenuAnchor {
@@ -85,6 +89,10 @@ export interface SessionActionsMenuProps {
   anchor: MenuAnchor;
   /** The row's id; enables "New child session". Absent on a synthetic row. */
   sessionId?: string | number;
+  /** The row's harness, so the child dialog starts on the agent that ran it. */
+  harness?: string;
+  /** The row's folder, so a pending child lands in the right workspace. */
+  folderId?: number | string;
   isArchived?: boolean;
   /** Omitted when the row cannot be renamed (a pending `new-…` chat). */
   onRename?: () => void;
@@ -106,6 +114,8 @@ export interface SessionActionsMenuProps {
 export function SessionActionsMenu({
   anchor,
   sessionId,
+  harness,
+  folderId,
   isArchived = false,
   onRename,
   onRenameWithAi,
@@ -116,11 +126,36 @@ export function SessionActionsMenu({
 }: SessionActionsMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
-  const [childOpen, setChildOpen] = useState(false);
+  const [, setSearchParams] = useSearchParams();
   const canSpawnChild =
     sessionId !== undefined &&
     !String(sessionId).startsWith('new-') &&
     !isArchived;
+
+  /**
+   * "New child session" opens the SAME pending-chat composer as New Session,
+   * with the parent recorded on the row. A modal would have hid the workspace,
+   * worktree and parent pickers the composer already owns.
+   */
+  const startChildSession = () => {
+    if (sessionId === undefined) return;
+    const parentId = String(sessionId);
+    const pendingId = startPendingSession(folderId ?? null, {
+      parentSessionId: parentId,
+      ...(harness ? { harness } : {}),
+      title: formatNewSessionTitle(new Date(), 'New Child'),
+    });
+    // The picker's first tab is the parent's agent, not omp's default.
+    if (harness) setHarnessPick(pendingId, harness);
+    expandSessionBranch(parentId);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('sessionId', pendingId);
+      next.set('parentSessionId', parentId);
+      if (folderId !== undefined) next.set('folderId', String(folderId));
+      return next;
+    }, { replace: true });
+  };
 
   useLayoutEffect(() => {
     const el = menuRef.current;
@@ -184,10 +219,7 @@ export function SessionActionsMenu({
           <button
             type="button"
             role="menuitem"
-            onClick={(event) => {
-              event.stopPropagation();
-              setChildOpen(true);
-            }}
+            onClick={run(startChildSession)}
             className="w-full text-left px-3 py-1.5 hover:bg-ink/5 flex items-center gap-2 transition-colors cursor-pointer"
           >
             <GitBranch size={12} className="text-ink/60" />
@@ -260,12 +292,6 @@ export function SessionActionsMenu({
         )}
       </div>
     </div>
-    {childOpen && sessionId !== undefined && (
-      <NewChildSessionDialog
-        parentSessionId={String(sessionId)}
-        onClose={() => setChildOpen(false)}
-      />
-    )}
     </>,
     document.body,
   );

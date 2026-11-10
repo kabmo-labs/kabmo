@@ -94,6 +94,7 @@ describe('spawnChildSession', () => {
       harness: 'omp-rpc',
       parentSessionId: 'parent',
       depth: 1,
+      model: null,
     });
     expect(child.sent).toHaveLength(1);
     expect(child.sent[0]).toMatchObject({ type: 'prompt' });
@@ -153,6 +154,46 @@ describe('spawnChildSession', () => {
         depsFor(fakeSession('child')),
       ),
     ).rejects.toMatchObject({ code: 'parent_folder_mismatch' });
+  });
+
+  test('applies the composer model, thinking level and access mode to an RPC child', async () => {
+    await saveHarnessSession({
+      sessionId: 'parent',
+      harness: 'omp-rpc',
+      agentSessionId: '',
+      cwd: root,
+    });
+    const child = fakeSession('child');
+    let mode: string | undefined;
+    const deps: SpawnSessionDeps = {
+      async startRpc(_cwd, accessMode) {
+        mode = accessMode;
+        return { session: child, realSessionId: child.sessionId };
+      },
+      async startAcp() {
+        throw new Error('not used');
+      },
+    };
+
+    await spawnChildSession(
+      {
+        parentSessionId: 'parent',
+        prompt: 'review this',
+        model: { provider: 'acme', modelId: 'big' },
+        thinkingLevel: 'high',
+        accessMode: 'yolo',
+        images: [{ type: 'image', data: 'aGk=', mimeType: 'image/png' }],
+      },
+      deps,
+    );
+
+    expect(mode).toBe('yolo');
+    expect(child.sent[0]).toEqual({ type: 'set_model', provider: 'acme', modelId: 'big' });
+    expect(child.sent[1]).toEqual({ type: 'set_thinking_level', level: 'high' });
+    expect(child.sent[2]).toMatchObject({
+      type: 'prompt',
+      images: [{ type: 'image', data: 'aGk=', mimeType: 'image/png' }],
+    });
   });
 
   test('an ACP worker with no explicit model leaves the harness default alone', async () => {

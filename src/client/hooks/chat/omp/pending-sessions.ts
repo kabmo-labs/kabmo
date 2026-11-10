@@ -42,35 +42,11 @@
  */
 
 import { useEffect, useState } from 'preact/hooks';
+import { recordAdoption } from '@/client/hooks/chat/omp/pending-adoption';
+import type { PendingSessionEntry } from '@/client/hooks/chat/omp/pending-entry';
 import { pendingSessionCreatedAt, sessionIdEpochMs } from '@/shared/lib/omp/session/default-title';
 import { getSessionState } from '@/shared/lib/workspace/session-state/store';
 import { hasComposerDraft } from '@/shared/lib/chat/composer/draft';
-
-export interface PendingSessionEntry {
-  /** Client-side `new-<epoch>` id, or the omp UUID a spawn adopted. */
-  id: string;
-  /** The folder the row belongs to; null resolves from the active session. */
-  folderId: number | string | null;
-  /** Epoch ms the chat was started — stable across adoption and reloads, so
-   *  neither the title nor the ordering can churn on a revalidate. */
-  createdAt: number;
-  /** Epoch ms a prompt was dispatched for this chat, or null while it is a
-   *  draft the user has not sent in. */
-  sentAt: number | null;
-  /**
-   * Set while this chat's prompt is HELD for another session to finish.
-   *
-   * The row is drawn exactly as it was before the send — same id, same folder —
-   * because the session does not exist yet: what the user asked for is that the
-   * row stays put and says what it is waiting on. `waitId` is the server row
-   * that owns the wait, so cancelling from the row reaches it.
-   */
-  waiting?: {
-    waitId: string;
-    dependsOn: string;
-    dependsOnTitle: string | null;
-  };
-}
 
 /** How long a SENT entry may outlive its switch with no real row behind it.
  *  Measured against omp's own write (buffered until the first assistant message
@@ -81,11 +57,6 @@ export const PENDING_SETTLE_MS = 30_000;
 export const MAX_UNSENT_DRAFTS = 3;
 
 const entries = new Map<string, PendingSessionEntry>();
-/** `toId → fromId` for a spawn adoption, consumed by the session-state
- *  provider so a plain switch away from a pending chat cannot be mistaken for
- *  one. Bounded by the pending store itself: an entry is written where an
- *  adoption happens and dropped the moment it is claimed. */
-const adoptions = new Map<string, string>();
 const listeners = new Set<() => void>();
 
 function emit(): void {
@@ -111,6 +82,11 @@ function upsert(entry: PendingSessionEntry): void {
     && current.folderId === entry.folderId
     && current.createdAt === entry.createdAt
     && current.sentAt === entry.sentAt
+    && current.parentSessionId === entry.parentSessionId
+    && current.harness === entry.harness
+    && current.title === entry.title
+    && current.forkSourceSessionId === entry.forkSourceSessionId
+    && current.forkAnchorEntryId === entry.forkAnchorEntryId
     && sameWait
   ) {
     return;
@@ -125,8 +101,22 @@ function upsert(entry: PendingSessionEntry): void {
  * The id is what the URL carries (`?sessionId=new-…`) until a spawn adopts a
  * real one, so the caller writes the returned value rather than minting its own
  * — an id the store does not know is a row nothing can draw.
+ *
+ * `options` is what makes the row a CHILD: the parent it nests under, the
+ * harness its mark should draw, and the title that says "New Child". A child is
+ * still a pending chat — same store, same lifetime rules — only its branch slot
+ * differs.
  */
-export function startPendingSession(folderId: number | string | null): string {
+export function startPendingSession(
+  folderId: number | string | null,
+  options: {
+    parentSessionId?: string;
+    harness?: string;
+    title?: string;
+    forkSourceSessionId?: string;
+    forkAnchorEntryId?: string;
+  } = {},
+): string {
   // `new-<epochMs>` stays parseable by `pendingSessionCreatedAt`, which is what
   // keeps the row's title and stamp still across revalidates — so two clicks in
   // the same millisecond step the clock instead of gaining a suffix, which
@@ -134,7 +124,17 @@ export function startPendingSession(folderId: number | string | null): string {
   let epoch = Date.now();
   while (entries.has(`new-${epoch}`)) epoch += 1;
   const id = `new-${epoch}`;
-  upsert({ id, folderId, createdAt: epoch, sentAt: null });
+  upsert({
+    id,
+    folderId,
+    createdAt: epoch,
+    sentAt: null,
+    ...(options.parentSessionId ? { parentSessionId: options.parentSessionId } : {}),
+    ...(options.harness ? { harness: options.harness } : {}),
+    ...(options.title ? { title: options.title } : {}),
+    ...(options.forkSourceSessionId ? { forkSourceSessionId: options.forkSourceSessionId } : {}),
+    ...(options.forkAnchorEntryId ? { forkAnchorEntryId: options.forkAnchorEntryId } : {}),
+  });
   // Repeated New Session clicks are the one way this map grows without a
   // bound: each click is a row the user may never send in. Oldest drafts go,
   // and a SENT entry is never a candidate — its transcript is on the way.
@@ -171,50 +171,21 @@ export function adoptPendingSession(
   // Recorded for the session-state provider, which must NOT carry the pending
   // slot's UI state onto just any id the URL moves to — only onto the one a
   // spawn answered with. See `consumeAdoption`.
-  if (fromId) adoptions.set(toId, fromId);
+  if (fromId) recordAdoption(fromId, toId);
   upsert({
     id: toId,
     folderId: from?.folderId ?? folderId ?? null,
     createdAt: from?.createdAt ?? createdAtFor(toId),
     sentAt: from?.sentAt ?? Date.now(),
+    // The child stays a child (and keeps its harness and "New Child" title)
+    // across the id switch, so the row does not jump out of its branch or
+    // change its mark while the real session's own title is still on the way.
+    ...(from?.parentSessionId ? { parentSessionId: from.parentSessionId } : {}),
+    ...(from?.harness ? { harness: from.harness } : {}),
+    ...(from?.title ? { title: from.title } : {}),
     // The wait ended when the spawn answered: the new row is a real session
     // from this moment, and a cue left on it would say it is still held.
   });
-}
-
-/**
- * Whether `toId` is the id a spawn answered with for `fromId` — consuming the
- * record so one adoption is claimed once.
- *
- * The session-state provider used to treat EVERY move away from a `new-…` id as
- * an adoption and migrate the transient slot's whole UI state onto whatever the
- * URL now named. Clicking another session from a pending chat is the same
- * transition, so the pending chat's DRAFT was copied into that session and
- * persisted there (measured: a POST for the other session carrying
- * `chat.draft`). Only a real spawn may carry the state across.
- */
-export function consumeAdoption(fromId: string | null | undefined, toId: string): boolean {
-  if (!fromId || adoptions.get(toId) !== fromId) return false;
-  adoptions.delete(toId);
-  return true;
-}
-
-/**
- * Whether `toId` is the id a spawn answered with for `fromId`, WITHOUT claiming
- * the record.
- *
- * The agent hook asks a different question from the session-state provider's:
- * not "may I carry this UI state across", but "is this the SAME conversation
- * under a new id". A spawn adoption is exactly that, and treating it as a
- * session switch threw away the run's own bookkeeping — `toolResultsRef` and
- * `lastToolMessageRef` — in the middle of the first turn: measured in a browser
- * spec, the tool-call map was cleared between two progress frames, so every
- * later `tool_execution_update`/`_end` had no target to pair onto and the card
- * froze at `running` for the rest of the session. The provider still owns the
- * single claim (`consumeAdoption`), so peeking here cannot steal it.
- */
-export function isSpawnAdoption(fromId: string | null | undefined, toId: string): boolean {
-  return Boolean(fromId) && adoptions.get(toId) === fromId;
 }
 
 /**
@@ -265,6 +236,11 @@ export function releasePendingSession(id: string): void {
 /** The entries, in creation order. */
 export function listPendingSessions(): PendingSessionEntry[] {
   return [...entries.values()];
+}
+
+/** One entry by id — the send path's read of the chat's own parent. */
+export function pendingEntryFor(id: string | null | undefined): PendingSessionEntry | undefined {
+  return id ? entries.get(id) : undefined;
 }
 
 /** Drop the entries the authoritative list has superseded, plus stale sends. */

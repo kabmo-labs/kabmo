@@ -100,6 +100,12 @@ export function resolveSessionHarness(
   picked: string | undefined,
 ): { harness: string | undefined; fromRow: boolean } {
   if (!sessionId) return { harness: undefined, fromRow: false };
+  // A pending row carries the harness as a MARK for its future self, not as a
+  // spawned fact: treating it as the row `fromRow` locked the picker on the
+  // composer that is supposed to choose it.
+  if (sessionId.startsWith('new-')) {
+    return { harness: spawnedHarnessFor(sessionId) ?? picked, fromRow: false };
+  }
   for (const folder of folders) {
     for (const entry of folder.sessions ?? []) {
       if (entry.id === sessionId) return { harness: entry.harness, fromRow: true };

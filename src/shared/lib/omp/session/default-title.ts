@@ -24,10 +24,11 @@ function pad2(value: number): string {
 }
 
 /** `New Session - yyyy-mm-ddThh:mm:ss` (local time); plain "New Session" when
- *  the date is invalid. */
-export function formatNewSessionTitle(date: Date = new Date()): string {
-  if (Number.isNaN(date.getTime())) return 'New Session';
-  return `New Session - ${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}T${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())}`;
+ *  the date is invalid. A child passes its own label (`New Child`), so a
+ *  pending row says what it is before it has a transcript. */
+export function formatNewSessionTitle(date: Date = new Date(), label = 'New Session'): string {
+  if (Number.isNaN(date.getTime())) return label;
+  return `${label} - ${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}T${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())}`;
 }
 
 /** True for client-side pending session ids (`new-<epochMs>`, pre-spawn). */

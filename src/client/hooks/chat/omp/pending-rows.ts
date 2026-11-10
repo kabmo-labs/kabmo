@@ -15,7 +15,7 @@
 
 import type { SessionItemData, WorkspaceFolderData } from '@/shared/types';
 import { pendingSessionTitle } from '@/shared/lib/omp/session/default-title';
-import type { PendingSessionEntry } from '@/client/hooks/chat/omp/pending-sessions';
+import type { PendingSessionEntry } from '@/client/hooks/chat/omp/pending-entry';
 
 export interface PendingRowOptions {
   /** The session the URL has open; its folder is the fallback host. */
@@ -58,12 +58,16 @@ export function withPendingRows(
     const row: SessionItemData = {
       id: entry.id,
       folder_id: target.id,
-      title: options.titleFor?.(String(entry.id)) ?? pendingSessionTitle(entry.id),
+      title: entry.title ?? options.titleFor?.(String(entry.id)) ?? pendingSessionTitle(entry.id),
       // The id's own clock, never `Date.now()`: the row is ranked by
       // `updated_at`, and a re-stamp on every revalidate kept it perpetually
       // newest and reshuffled LATEST_SESSION ordering mid-run.
       created_at: stamp,
       updated_at: stamp,
+      // A pending CHILD nests under its parent from the first frame; the tree
+      // builder does the rest, so no second placement rule exists.
+      ...(entry.parentSessionId ? { parentSessionId: entry.parentSessionId } : {}),
+      ...(entry.harness ? { harness: entry.harness } : {}),
       // The row's own reason for existing past the click: its prompt is held.
       ...(entry.waiting
         ? { waitingFor: { waitId: entry.waiting.waitId, sessionId: entry.waiting.dependsOn, title: entry.waiting.dependsOnTitle } }

@@ -17,8 +17,8 @@ export type { ChatTimelineSendDeps, ChatTimelineSendResult };
 import type { AgentImage, Attachment, PromptDispatchResult, QueuedMessageModel } from '@/shared/types';
 import { flushDeferredPick } from '@/client/hooks/chat/timeline/deferred-model';
 import { buildOptimisticRows, collectImages, assemblePrompt, streamMockFallback } from '@/client/hooks/chat/timeline/send-helpers';
-import { adoptPendingSession, markPendingSessionSent } from '@/client/hooks/chat/omp/pending-sessions';
-import { recordSpawnHarness } from '@/client/hooks/chat/timeline/spawn-harness';
+import { markPendingSessionSent } from '@/client/hooks/chat/omp/pending-sessions';
+import { dispatchPendingChat } from '@/client/hooks/chat/timeline/pending-dispatch';
 import { postModeCommand } from '@/client/hooks/chat/timeline/mode-post';
 import type { ArmedGoal } from '@/shared/lib/omp/mode/actions';
 import { blockTuiOnlySend } from '@/client/hooks/chat/timeline/tui-only-guard';
@@ -41,23 +41,18 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
     scrollToBottom,
     jumpToBottom,
     aiPlaceholderIdRef,
-    adoptedSessionIdRef,
     optimisticUserIdRef,
     pendingUserDisplaysRef,
     seedSession,
     pendingComposerModelRef,
     pendingThinkingLevelRef,
-    pendingHarnessRef,
     deferredComposerPickRef,
     accessModeRef,
-    spawnSelectionRef,
     goalArmRef,
     disarmGoal,
-    spawnWorktreeRef,
     abortControllerRef,
     setInputValue,
     reportActionError,
-    setSearchParams,
   } = deps;
 
   // `@agent` mentions are omp's subagent syntax. An ACP harness has no such
@@ -229,103 +224,22 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
       return result;
     }
 
-    // No active session (fresh "New Session"): in real mode spawn a brand-new
-    // omp session and adopt its id; fall back to the mock/simulated path only
-    // when the spawn fails (e.g. MOCK=true or no workspace context).
-    if (!isOmpSession) {
-      const currentFolder = folders.find(f => String(f.id) === String(selectedFolderId));
-      // A worktree pick wins: the chat is BORN there, so no relocation is ever
-      // needed and the child's cwd is right for its whole life.
-      const cwd = spawnWorktreeRef.current || currentFolder?.project_path || currentFolder?.name;
-      if (cwd) {
-        const images = collectImages(attachments);
-        optimisticUserIdRef.current = userMsgId;
-        const composerModel = pendingComposerModelRef.current;
-        const composerThinking = pendingThinkingLevelRef.current;
-        // The mode picks made on the pending view ride the spawn. Read once,
-        // here, and cleared below on success: a selection that outlived its
-        // spawn would re-apply to the NEXT new session the user opens.
-        const spawnModes = spawnSelectionRef.current;
-        // An armed goal is recorded between the spawn and the prompt: the id
-        // exists by then, and the prompt below is the goal's first turn. Not
-        // after the prompt — a fast turn could finish before the record landed,
-        // leaving a goal with no turn to act on.
-        const armed = goalArmRef.current;
-        const spawned = await ompAgent.sendNewPrompt(
+    // No active session (fresh "New Session"): a top-level chat or a pending
+    // child spawns its real session and adopts its id. `null` means the
+    // simulated path below owns it (no cwd, MOCK mode).
+    const pending = !isOmpSession
+      ? await dispatchPendingChat(deps, {
+          text,
+          attachments,
           promptText,
-          cwd,
-          images,
-          {
-            model: composerModel,
-            thinkingLevel: composerThinking,
-            accessMode: accessModeRef.current,
-            modes: spawnModes,
-            // A harness picked on the pending view rides the spawn; cleared on
-            // success below so it cannot leak onto the next new chat. A New
-            // Chat opened from an ACP answer passes the SOURCE chat's harness
-            // explicitly (that dialog has no picker), and it must outrank the
-            // ref a previous pick left behind.
-            ...((options?.harness ?? pendingHarnessRef.current)
-              ? { harness: options?.harness ?? pendingHarnessRef.current }
-              : {}),
-          },
-          armed ? (id) => startArmedGoal(id, armed, promptText) : undefined,
-        );
-        if (spawned.ok) {
-          const { session } = spawned;
-          // The harness the SERVER answered with: `new.ts` reports it for an ACP
-          // spawn and omits it for the RPC branch, which means omp. Read rather
-          // than replayed from the request, so a pick the server did not honour
-          // cannot be reported as the agent running the chat.
-          recordSpawnHarness(session.sessionId, session.harness ?? 'omp-rpc');
-          spawnSelectionRef.current = null;
-          adoptedSessionIdRef.current = session.sessionId;
-          // The sidebar's row moves with the id: `new-…` was the client's own
-          // placeholder, and the spawn answers with omp's real one, which omp
-          // has still not written a transcript for. Without this the row
-          // vanished at exactly the moment the URL stopped naming the pending
-          // id, which is the gap this store exists to close.
-          adoptPendingSession(sessionId, session.sessionId, currentFolder?.id ?? null);
-          // The placeholder ref is already armed (with its row) before the
-          // spawn — see the note at the assignment; re-arming here would be
-          // harmless but is redundant.
-          // The spawn already applied this level to the session; seed it so the
-          // composer taking over from the pending view reports the run's real
-          // setting instead of a catalog default (the JSONL that carries it is
-          // not locatable yet).
-          seedSession({ model: session.model, thinkingLevel: composerThinking });
-          pendingComposerModelRef.current = null;
-          pendingThinkingLevelRef.current = null;
-          pendingHarnessRef.current = null;
-          fetch(`/api/chat/${encodeURIComponent(session.sessionId)}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ messages: [newUserMsg] }),
-          }).catch(err => console.error('Error persisting spawned user turn:', err));
-          setSearchParams(prev => {
-            const next = new URLSearchParams(prev);
-            next.set('sessionId', session.sessionId);
-            return next;
-          }, { replace: true });
-          // The sidebar already re-read at prompt dispatch (sendNewPrompt
-          // signals it), so the new session shows its live badge without
-          // waiting for the JSONL to carry the user turn.
-          return { ok: true, busy: false };
-        }
-        // `mock_mode` is not a failure — mock has no agent process BY DESIGN, so
-        // the demo shell answers from the simulated stream below.
-        if (spawned.code !== 'mock_mode') {
-          // A real spawn failure REPORTS: falling through here once made a failed
-          // ACP spawn look like a slow chat that then "answered".
-          setLocalMessages(prev => prev.filter(m => m.id !== userMsgId && m.id !== aiPlaceholderId));
-          aiPlaceholderIdRef.current = null;
-          optimisticUserIdRef.current = null;
-          setGenerating(false);
-          reportActionError(`Prompt not sent: ${spawned.error}`);
-          return { ok: false, busy: false, error: spawned.error };
-        }
-      }
-    }
+          userMsgId,
+          aiPlaceholderId,
+          newUserMsg,
+          ...(options ? { options } : {}),
+          startArmedGoal,
+        })
+      : null;
+    if (pending) return pending;
 
     // Mock / Kabmo-created session: existing simulated SSE path.
     const currentFolder = folders.find(f => String(f.id) === String(selectedFolderId));

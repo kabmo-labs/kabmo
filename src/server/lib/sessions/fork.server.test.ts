@@ -155,6 +155,47 @@ describe('forkSession (omp)', () => {
     expect(lines.some((line) => line.includes('"id":"a1"'))).toBe(true);
     expect(lines.some((line) => line.includes('"id":"u2"'))).toBe(false);
   });
+
+  test('an RPC fork applies the composer picks before its first prompt', async () => {
+    await writeSource();
+    const forked = fakeForked('child');
+    let capturedMode: string | undefined;
+    const deps: ForkSessionDeps = {
+      async startRpc(id, _file, _cwd, accessMode) {
+        capturedMode = accessMode;
+        return { session: forked, realSessionId: id };
+      },
+      async startAcp() {
+        throw new Error('not used');
+      },
+      async probeForkSupported() {
+        return false;
+      },
+    };
+
+    await forkSession(
+      {
+        sourceSessionId: 'src',
+        prompt: 'try another angle',
+        model: { provider: 'acme', modelId: 'big' },
+        thinkingLevel: 'high',
+        accessMode: 'yolo',
+        images: [{ type: 'image', data: 'aGk=', mimeType: 'image/png' }],
+      },
+      deps,
+    );
+
+    expect(capturedMode).toBe('yolo');
+    expect(forked.sent).toEqual([
+      { type: 'set_model', provider: 'acme', modelId: 'big' },
+      { type: 'set_thinking_level', level: 'high' },
+      {
+        type: 'prompt',
+        message: 'try another angle',
+        images: [{ type: 'image', data: 'aGk=', mimeType: 'image/png' }],
+      },
+    ]);
+  });
 });
 
 describe('forkSession (ACP)', () => {
@@ -175,6 +216,33 @@ describe('forkSession (ACP)', () => {
       sourceSessionId: 'acp-source',
       originKind: 'fork',
     });
+  });
+
+  test('an ACP fork receives the composer model, thinking level and access mode', async () => {
+    await saveHarnessSession({
+      sessionId: 'acp-source',
+      harness: 'claude',
+      agentSessionId: 'agent-1',
+      cwd: '/tmp/project',
+    });
+    const deps = fakeDeps('acp-fork', { forkSupported: true });
+    await forkSession(
+      {
+        sourceSessionId: 'acp-source',
+        model: { provider: 'claude', modelId: 'opus' },
+        thinkingLevel: 'high',
+        accessMode: 'write',
+      },
+      deps,
+    );
+    expect(deps.acpCalls).toEqual([
+      expect.objectContaining({
+        harness: 'claude',
+        model: { provider: 'claude', modelId: 'opus' },
+        thinkingLevel: 'high',
+        accessMode: 'write',
+      }),
+    ]);
   });
 
   test('a harness without fork support is refused before spawning', async () => {

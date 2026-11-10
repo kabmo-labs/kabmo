@@ -31,6 +31,7 @@ import { harnessProbeModels } from '@/server/lib/harness/probe-cache.server';
 import { getDb } from '@/server/db.server';
 import { HARNESS_IDS, harnessDescriptor, type HarnessId } from '@/shared/lib/harness/catalog';
 import type { SelectedModel } from '@/shared/types/models';
+import type { AgentImage } from '@/shared/types/omp/agent';
 import { MAX_SESSION_DEPTH } from '@/server/lib/sessions/relation-types';
 import {
   createSessionRelation,
@@ -97,8 +98,13 @@ export interface SpawnChildSessionInput {
   harness?: string | null;
   cwd?: string | null;
   prompt: string;
+  /** Images the composer attached to the first prompt. */
+  images?: AgentImage[] | null;
   model?: SelectedModel | null;
   thinkingLevel?: string | null;
+  /** The composer's approval pick. Omitted by the CLI, which keeps the
+   *  persisted setting. */
+  accessMode?: ApprovalMode | null;
   lifecycleOwnerSessionId?: string | null;
   visibility?: 'visible' | 'hidden';
   parentNotifications?: 'auto' | 'stuck' | 'off';
@@ -109,6 +115,9 @@ export interface SpawnChildSessionResult {
   harness: HarnessId;
   parentSessionId: string | null;
   depth: number;
+  /** The model the child resolved to, so the client can seed its composer
+   *  before the transcript carries a model_change entry. */
+  model: SelectedModel | null;
 }
 
 function harnessOf(value: string | null | undefined): HarnessId | null {
@@ -250,7 +259,7 @@ export async function spawnChildSession(
     );
   }
 
-  const accessMode = await loadPersistedAccessMode();
+  const accessMode = input.accessMode ?? await loadPersistedAccessMode();
   const token = createAgentToken();
   const env = agentEnvironment(token);
   const model = await resolveSpawnModel(input.model ?? null, harness, parentSessionId, cwd);
@@ -266,6 +275,17 @@ export async function spawnChildSession(
           accessMode,
           env,
         });
+
+  // `startRpc` takes a cwd only, so an RPC child would ignore the composer's
+  // model pick and run the project default. The pick is applied to the child
+  // BEFORE its first prompt, the same order `POST /api/agent/new` uses. ACP
+  // already received both at spawn time above.
+  if (harness === 'omp-rpc') {
+    if (model) await started.session.send({ type: 'set_model', ...model }).catch(() => {});
+    if (input.thinkingLevel) {
+      await started.session.send({ type: 'set_thinking_level', level: input.thinkingLevel }).catch(() => {});
+    }
+  }
 
   try {
     await rememberAgentToken(started.realSessionId, token);
@@ -290,7 +310,11 @@ export async function spawnChildSession(
     const message = parentSessionId
       ? dispatchedWorkerPrompt(parentSessionId, started.realSessionId, prompt)
       : prompt;
-    await started.session.send({ type: 'prompt', message });
+    await started.session.send({
+      type: 'prompt',
+      message,
+      ...(input.images?.length ? { images: input.images } : {}),
+    });
   } catch (error) {
     await started.session.destroyAndWait().catch(() => {});
     throw new SessionSpawnError(
@@ -306,5 +330,6 @@ export async function spawnChildSession(
     harness,
     parentSessionId,
     depth,
+    model,
   };
 }

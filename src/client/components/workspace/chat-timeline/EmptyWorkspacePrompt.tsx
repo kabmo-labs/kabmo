@@ -10,13 +10,11 @@ import { GeneratingIndicator } from '@/client/components/workspace/chat-timeline
 import { resolveRunFooters, streamingRowIndex } from '@/shared/lib/chat/timeline/run-footer';
 import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 import {
-  WaitingDependencyPicker,
   waitingCandidates,
   type WaitingCandidate,
 } from '@/client/components/workspace/chat-timeline/chat-input/WaitingDependencyPicker';
 import { Hourglass } from 'lucide-preact';
-import { WorkspacePicker } from '@/client/components/workspace/chat-timeline/target-picker/WorkspacePicker';
-import { WorktreePicker } from '@/client/components/workspace/chat-timeline/target-picker/WorktreePicker';
+import { DraftTargetRow } from '@/client/components/workspace/chat-timeline/target-picker/DraftTargetRow';
 import type { SpawnTarget } from '@/client/hooks/chat/timeline/spawn-target';
 
 interface EmptyWorkspacePromptProps {
@@ -74,6 +72,12 @@ interface EmptyWorkspacePromptProps {
    */
   spawnTarget?: SpawnTarget | null;
   onSpawnTargetChange?: (next: SpawnTarget | null) => void;
+  /** The session this chat runs UNDER, or null for a top-level chat. */
+  parentSessionId?: string | null;
+  onParentSessionChange?: (sessionId: string | null) => void;
+  /** "Parent session" for a child, "Fork from" for a fork. */
+  branchLabel?: string;
+  branchAllowNone?: boolean;
   /** Reports a worktree the composer created or failed to create. */
   onWorktreeReport?: (message: string) => void;
   /** The "wait for session" pick, persisted per chat. */
@@ -126,6 +130,10 @@ export function EmptyWorkspacePrompt({
   titleForSession,
   spawnTarget = null,
   onSpawnTargetChange,
+  parentSessionId = null,
+  onParentSessionChange,
+  branchLabel,
+  branchAllowNone,
   onWorktreeReport,
   waitingFor = null,
   onWaitingForChange,
@@ -295,42 +303,23 @@ export function EmptyWorkspacePrompt({
           {/* Workspace Selection Seamless Dropdown (No border, transparent
               background). A chat with rows keeps its target and drops the
               picker; this branch is only the chat that has not started. */}
-          <div className="flex items-center gap-1 flex-wrap">
-            {/* Two controls, because they answer two questions: the workspace
-                (which project) and the worktree (which checkout of it). The
-                worktree control draws itself only for a git repository, and it
-                reads its list on mount because its own trigger names the branch
-                the project root holds. */}
-            <WorkspacePicker
-              folders={folders as WorkspaceFolderData[]}
-              selectedFolderId={selectedFolderId}
-              setSelectedFolderId={setSelectedFolderId}
-              onClearWorktree={() => onSpawnTargetChange?.(null)}
-            />
-            {onSpawnTargetChange && (
-              <WorktreePicker
-                folders={folders as WorkspaceFolderData[]}
-                selectedFolderId={selectedFolderId}
-                target={spawnTarget}
-                setTarget={onSpawnTargetChange}
-                onReport={onWorktreeReport}
-              />
-            )}
-            {/* The wait picker sits BESIDE the workspace picker, because both
-                answer the same question about the chat that has not started:
-                where it runs, and what it waits for. It only appears while
-                there is something to wait for (or a pick already made). */}
-            {onWaitingForChange && (waitingFor || candidates.length > 0) && (
-              <WaitingDependencyPicker
-                folders={folders}
-                streamStatusMap={streamStatusMap}
-                sessionId={null}
-                titleFor={titleForSession}
-                value={waitingFor}
-                onChange={onWaitingForChange}
-              />
-            )}
-          </div>
+          <DraftTargetRow
+            folders={folders as WorkspaceFolderData[]}
+            selectedFolderId={selectedFolderId}
+            setSelectedFolderId={setSelectedFolderId}
+            spawnTarget={spawnTarget}
+            onSpawnTargetChange={onSpawnTargetChange}
+            onWorktreeReport={onWorktreeReport}
+            parentSessionId={parentSessionId}
+            onParentSessionChange={onParentSessionChange}
+            branchLabel={branchLabel}
+            branchAllowNone={branchAllowNone}
+            waitingFor={waitingFor}
+            onWaitingForChange={onWaitingForChange}
+            streamStatusMap={streamStatusMap}
+            titleForSession={titleForSession}
+            candidates={candidates}
+          />
           {/* A held prompt owns this chat until it is released: there is no
               session to send a second prompt to, and a composer that looked live
               would accept one that could not be delivered. */}

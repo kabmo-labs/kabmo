@@ -20,8 +20,6 @@ import { beforeEach, describe, expect, test } from 'bun:test';
 
 import {
   adoptPendingSession,
-  consumeAdoption,
-  isSpawnAdoption,
   hydratePendingSession,
   listPendingSessions,
   markPendingSessionSent,
@@ -31,6 +29,7 @@ import {
   releasePendingSession,
   startPendingSession,
 } from '@/client/hooks/chat/omp/pending-sessions';
+import { consumeAdoption, isSpawnAdoption } from '@/client/hooks/chat/omp/pending-adoption';
 import { pendingHostFolderIds, withPendingRows } from '@/client/hooks/chat/omp/pending-rows';
 import { formatNewSessionTitle } from '@/shared/lib/omp/session/default-title';
 import { forgetSession, getSessionValue, setSessionKey } from '@/shared/lib/workspace/session-state/store';

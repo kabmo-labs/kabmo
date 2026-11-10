@@ -19,10 +19,12 @@ import { json } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed, parseJsonBody } from '@/server/lib/route-adapter';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
+import { readImages, readModel, readString } from '@/server/routes/sessions/body-readers';
+import { isApprovalMode } from '@/shared/lib/omp/config/access-mode';
+import { isMockMode } from '@/server/mock.server';
 import {
   SessionSpawnError,
   spawnChildSession,
-  type SpawnChildSessionInput,
 } from '@/server/lib/sessions/spawn.server';
 import { bearerToken, verifyAgentToken } from '@/server/lib/sessions/agent-token.server';
 
@@ -36,23 +38,13 @@ interface SpawnBody {
   harness?: unknown;
   cwd?: unknown;
   prompt?: unknown;
+  images?: unknown;
   model?: unknown;
   thinkingLevel?: unknown;
+  accessMode?: unknown;
   lifecycleOwnerSessionId?: unknown;
   visibility?: unknown;
   parentNotifications?: unknown;
-}
-
-function readModel(value: unknown): SpawnChildSessionInput['model'] {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  const record = value as Record<string, unknown>;
-  return typeof record.provider === 'string' && typeof record.modelId === 'string'
-    ? { provider: record.provider, modelId: record.modelId }
-    : null;
-}
-
-function readString(value: unknown): string | null {
-  return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
 function statusFor(code: SessionSpawnError['code']): number {
@@ -73,6 +65,12 @@ export async function spawnSession({ request }: ActionFunctionArgs) {
   }
   const parsed = await parseJsonBody<SpawnBody>(request);
   if (!parsed.ok) return json({ error: 'Invalid JSON body' }, { status: 400 });
+
+  // MOCK mode has no agent process to start. The client takes its simulated
+  // path on this CODE, exactly as it does for `POST /api/agent/new`.
+  if (isMockMode()) {
+    return json({ error: 'Mock mode runs no agent process', code: 'mock_mode' }, { status: 400 });
+  }
 
   const prompt = readString(parsed.body.prompt);
   if (!prompt) return json({ error: 'prompt is required' }, { status: 400 });
@@ -107,6 +105,9 @@ export async function spawnSession({ request }: ActionFunctionArgs) {
   ) {
     return json({ error: 'parentNotifications must be auto, stuck or off' }, { status: 400 });
   }
+  if (parsed.body.accessMode !== undefined && !isApprovalMode(parsed.body.accessMode)) {
+    return json({ error: 'accessMode is not a valid approval mode' }, { status: 400 });
+  }
 
   try {
     const result = await spawnChildSession({
@@ -114,8 +115,10 @@ export async function spawnSession({ request }: ActionFunctionArgs) {
       harness: readString(parsed.body.harness),
       cwd: readString(parsed.body.cwd),
       prompt,
+      images: readImages(parsed.body.images),
       model: readModel(parsed.body.model),
       thinkingLevel: readString(parsed.body.thinkingLevel),
+      accessMode: isApprovalMode(parsed.body.accessMode) ? parsed.body.accessMode : null,
       lifecycleOwnerSessionId: readString(parsed.body.lifecycleOwnerSessionId),
       ...(visibility ? { visibility: visibility as Visibility } : {}),
       ...(notifications ? { parentNotifications: notifications as ParentNotifications } : {}),

@@ -63,6 +63,12 @@ export interface PendingChatViewProps {
   /** Where the chat will run: the folder, or one of its worktrees. */
   spawnTarget?: SpawnTarget | null;
   onSpawnTargetChange?: (next: SpawnTarget | null) => void;
+  /** The session this chat runs under, or null for a top-level chat. */
+  parentSessionId?: string | null;
+  onParentSessionChange?: (sessionId: string | null) => void;
+  /** "Parent session" for a child, "Fork from" for a fork. */
+  branchLabel?: string;
+  branchAllowNone?: boolean;
   onWorktreeReport?: (message: string) => void;
   /**
    * The harness this chat will spawn on, and the pick that writes it.
@@ -119,6 +125,10 @@ export function PendingChatView(props: PendingChatViewProps) {
       onCancelWait={props.onCancelWait}
       spawnTarget={props.spawnTarget}
       onSpawnTargetChange={props.onSpawnTargetChange}
+      parentSessionId={props.parentSessionId}
+      onParentSessionChange={props.onParentSessionChange}
+      branchLabel={props.branchLabel}
+      branchAllowNone={props.branchAllowNone}
       onWorktreeReport={props.onWorktreeReport}
       {...(props.harness ? { harness: props.harness } : {})}
       harnessEditable={props.harnessEditable}

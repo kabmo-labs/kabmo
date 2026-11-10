@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { ReactNode } from 'preact/compat';
 import { flushSession, loadSession, migrateSessionState, recordSessionOpen } from '@/shared/lib/workspace/session-state/store';
-import { consumeAdoption } from '@/client/hooks/chat/omp/pending-sessions';
+import { consumeAdoption } from '@/client/hooks/chat/omp/pending-adoption';
 import { SessionStateContext } from '@/client/hooks/workspace/session-state/context';
 
 /**

@@ -37,6 +37,7 @@ import {
 } from '@/server/lib/omp/session/transcript-copy';
 import type { HarnessId } from '@/shared/lib/harness/catalog';
 import type { SelectedModel } from '@/shared/types/models';
+import type { AgentImage } from '@/shared/types/omp/agent';
 import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 import {
   createSessionRelation,
@@ -113,6 +114,13 @@ export interface ForkSessionInput {
   /** A message/entry id; the fork cuts at the start of its turn. Omit for tip. */
   anchorEntryId?: string | null;
   prompt?: string | null;
+  /** Images the composer attached to the first prompt of the branch. */
+  images?: AgentImage[] | null;
+  /** The composer's model pick; applied before the branch's first prompt. */
+  model?: SelectedModel | null;
+  thinkingLevel?: string | null;
+  /** The composer's approval pick; omitted keeps the persisted setting. */
+  accessMode?: ApprovalMode | null;
   title?: string | null;
   cwd?: string | null;
   visibility?: 'visible' | 'hidden';
@@ -200,9 +208,11 @@ export async function forkSession(
   const cwd = input.cwd || source.cwd;
   if (!cwd) throw new SessionForkError('cwd_required', 'The source has no working directory');
 
-  const accessMode = await loadPersistedAccessMode();
+  const accessMode = input.accessMode ?? await loadPersistedAccessMode();
   const token = createAgentToken();
   const env = agentEnvironment(token);
+  const model = input.model ?? null;
+  const thinkingLevel = input.thinkingLevel ?? null;
   const forkCount = (await listForkRelations(input.sourceSessionId)).length + 1;
   const sourceFile = await findSessionFileById(input.sourceSessionId);
   let started: { session: ForkedSession; realSessionId: string };
@@ -232,7 +242,7 @@ export async function forkSession(
       input.title?.trim() || newBranchTitle(transcriptTitle(lines), input.sourceSessionId, forkCount);
     createdFile = await writeBranchFile({ sourceFile, lines: kept, newId, timestamp, title });
     try {
-      started = await deps.startRpc(newId, createdFile, cwd, accessMode, null, env);
+      started = await deps.startRpc(newId, createdFile, cwd, accessMode, model, env);
     } catch (error) {
       await Bun.file(createdFile).delete().catch(() => {});
       throw new SessionForkError(
@@ -255,8 +265,8 @@ export async function forkSession(
         forkAgentSessionId: source.agentSessionId || input.sourceSessionId,
         cwd,
         accessMode,
-        model: null,
-        thinkingLevel: null,
+        model,
+        thinkingLevel,
         env,
       });
     } catch (error) {
@@ -274,6 +284,16 @@ export async function forkSession(
     }
   }
 
+  // The RPC fork RESUMES the source transcript, which carries its own model
+  // and thinking level. A pick made in the fork composer is applied on top,
+  // before the branch's first prompt — ACP already received both at spawn.
+  if (sourceFile) {
+    if (model) await started.session.send({ type: 'set_model', ...model }).catch(() => {});
+    if (thinkingLevel) {
+      await started.session.send({ type: 'set_thinking_level', level: thinkingLevel }).catch(() => {});
+    }
+  }
+
   try {
     await rememberAgentToken(started.realSessionId, token);
     await createSessionRelation({
@@ -283,8 +303,13 @@ export async function forkSession(
       lifecycleOwnerSessionId: input.lifecycleOwnerSessionId ?? null,
       visibility: input.visibility ?? 'visible',
     });
-    if (input.prompt?.trim()) {
-      await started.session.send({ type: 'prompt', message: input.prompt.trim() });
+    const prompt = input.prompt?.trim() ?? '';
+    if (prompt || input.images?.length) {
+      await started.session.send({
+        type: 'prompt',
+        message: prompt,
+        ...(input.images?.length ? { images: input.images } : {}),
+      });
     }
   } catch (error) {
     await started.session.destroyAndWait().catch(() => {});

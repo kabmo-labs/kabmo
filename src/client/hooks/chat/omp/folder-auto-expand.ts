@@ -25,7 +25,7 @@
  */
 
 import { useEffect, useMemo, useRef } from 'preact/hooks';
-import type { PendingSessionEntry } from '@/client/hooks/chat/omp/pending-sessions';
+import type { PendingSessionEntry } from '@/client/hooks/chat/omp/pending-entry';
 import { pendingHostFolderIds } from '@/client/hooks/chat/omp/pending-rows';
 import { setFolderExpanded } from '@/client/hooks/workspace/folder-expansion';
 import type { WorkspaceFolderData } from '@/shared/types';
