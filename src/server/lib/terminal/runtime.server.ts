@@ -180,6 +180,16 @@ export function resizeTerminal(id: string, cols: number, rows: number): void {
   if (size.cols === session.cols && size.rows === session.rows) return;
   session.cols = size.cols;
   session.rows = size.rows;
+  // The replay grid follows the PTY, it does not stay at the spawn size.
+  //
+  // The retained history is the shell's screen stream, and after a resize the
+  // shell's screen IS this grid: replaying at the size the session was created
+  // with re-wraps every line written since into the old width. Measured after a
+  // panel resize: each reload laid the history out at the old 40×31 and then
+  // fitted to 41×47, so the transcript shifted and the shell redrew its prompt
+  // on the resize that followed — one more block of history per reload.
+  session.replayCols = size.cols;
+  session.replayRows = size.rows;
   session.lastActivity = Date.now();
   try {
     session.term.resize(size.cols, size.rows);

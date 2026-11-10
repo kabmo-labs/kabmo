@@ -274,9 +274,9 @@ test.describe('terminal', () => {
     if (!block) throw new Error('the painted block was not found');
 
     // A descender must not end on the block's last pixel, and the cap must not
-    // start on its first: at 12 px Fira Code the cell is 16 px — 11 px of ink
-    // plus 4 px above and 1 px below (the vendor's own measurement gives 13).
-    expect(block.height).toBeGreaterThanOrEqual(16);
+    // start on its first: at 12 px Fira Code the cell is 15 px — 11 px of ink
+    // plus 2.5 px above and 1 px below (the vendor's own measurement gives 13).
+    expect(block.height).toBeGreaterThanOrEqual(15);
     expect(block.inkTop).toBeGreaterThan(block.y0);
     expect(block.inkBottom).toBeLessThan(block.y1);
 
@@ -294,6 +294,7 @@ test.describe('terminal', () => {
     const workspace = await seedWorkspace(server, 'e2e-terminal-grid');
     const resizes: { cols: number; rows: number }[] = [];
     const replays: number[] = [];
+    const grids: { replayCols: number; replayRows: number; cols: number; rows: number }[] = [];
     page.on('websocket', (socket) => {
       if (!socket.url().includes('/api/terminal/')) return;
       socket.on('framesent', ({ payload }) => {
@@ -303,6 +304,7 @@ test.describe('terminal', () => {
       socket.on('framereceived', ({ payload }) => {
         if (typeof payload !== 'string' || !payload.includes('"t":"ready"')) return;
         replays.push((JSON.parse(payload) as { replayBytes?: number }).replayBytes ?? 0);
+        grids.push(JSON.parse(payload) as typeof grids[number]);
       });
     });
 
@@ -338,6 +340,26 @@ test.describe('terminal', () => {
     // replay is byte-identical. A redraw would show up here as growth.
     expect(afterSecondReload).toBe(afterFirstReload);
     expect(afterFirstReload).toBeGreaterThan(0);
+    // The scrollback is laid out at the PTY's CURRENT grid. It used to be frozen
+    // at the spawn size, so after any panel resize each reload re-wrapped the
+    // history into the old width, then fitted — and the shell redrew its prompt
+    // on the resize that followed, one more block per reload.
+    for (const grid of grids) {
+      expect({ cols: grid.replayCols, rows: grid.replayRows }).toEqual({
+        cols: grid.cols,
+        rows: grid.rows,
+      });
+    }
+
+    // The same, after a real panel resize: no growth on the reloads that follow.
+    await page.setViewportSize({ width: 1100, height: 700 });
+    await page.waitForTimeout(1_000);
+    await page.reload();
+    await open();
+    const afterResizeReload = replays.at(-1) ?? 0;
+    await page.reload();
+    await open();
+    expect(replays.at(-1) ?? 0).toBe(afterResizeReload);
 
     workspace.dispose();
   });

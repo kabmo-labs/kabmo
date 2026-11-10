@@ -103,13 +103,11 @@ pixel-level: sampled ANSI yellow renders `rgb(215,153,33)`, the renderer's own m
 
 Deviations found, with their verdicts:
 
-- **Line pitch is 20px** — the font's 16px line box plus 2px on each side — but only because the
+- **Line pitch is 15px** — the measured ink plus 2.5px above and 1px below — but only because the
   cell box is measured here rather than inherited (§5.5): the vendor's `M`-ink measurement gave
   13px and left descenders sitting on the cell's last pixel, which cropped every SGR background
-  block. Two smaller corrections (14px, then 16px, both padded from the ink) still read as a
-  cropped rectangle on the real panel; the chosen box pads the em box and centres the ink.
-  Measured on the real panel: cell 20px, glyph ink 11px, 5px above and 4px below, 37 rows in the
-  same panel (57 at the vendor's 13px).
+  block. Measured on the real panel: cell 15px, glyph ink 11px (3px above the cap, 1px below the
+  descender), 50 rows in the same panel (57 at the vendor's 13px).
 - **`dim` renders brighter than expected** — sampled `rgb(215,153,33)` for SGR-2 yellow vs. the
   expected `rgb(214,93,14)`. Measured in the renderer: a FAINT cell sets `globalAlpha=0.5` around
   `fillText`, but the text color comes from the WASM cell (`fg_*`), which was already resolved at
@@ -299,12 +297,12 @@ panel resize can create; treat it as an open risk.
   of block under the descenders**, so every coloured block read as cropped.
 
   Kabmo therefore measures its own cell box (`measureTerminalCell` in
-  `terminal-panel/fonts.ts`, installed by `installCellMetrics`): `height = round(lineBox) +
-  2 × CELL_PADDING_PX` (2), and `baseline` centres the measured `Mg` ink inside it. At 12 px Fira
-  Code that is **8×20** — line box 16 + 2 + 2 — with the ink 11 px tall, 5 px above and 4 px below.
-  Re-verified by pixels on the real panel: cell 20 px, ink 11 px, 37 rows. Padding from the *ink*
-  rather than the line box was tried first (14 px, 16 px) and still read as cropped, because
-  ascenders and accent marks live inside the em box but above the cap ink. `measureFont` and the
+  `terminal-panel/fonts.ts`, installed by `installCellMetrics`): `height = ceil(ink +
+  CELL_PADDING_TOP_PX + CELL_PADDING_BOTTOM_PX)` and `baseline = round(ascent + top)`. At 12 px Fira
+  Code (ink 10.8) the paddings that were chosen on the real panel are **2.5 above / 1 below**, so the
+  cell is **8×15** and the ink renders 3 px under the top edge and 1 px above the bottom. Padding from
+  the em box was tried instead (20 px, centred) and read as too loose; the vendor's own 13 px read as
+  cropped. Re-verified by pixels: cell 15 px, ink 11 px, 50 rows. `measureFont` and the
   field it writes are private, so the correction replaces the instance method and calls
   `remeasureFont()`; the override reads `term.options`, so the font-size round-trip done by
   `watchTerminalFonts` re-measures with the same rule.
@@ -339,9 +337,14 @@ panel resize can create; treat it as an open risk.
   a fit that actually measured the container (`safeFit` reports it, so the default grid is never
   announced). `finishReplay` re-states the grid afterwards so a missed resize self-heals, and
   `attachTerminal` applies the attach's size to the existing session, because a page that fits to
-  the grid the session already had sends no resize frame at all. Verified by frames: the attach is
-  the settled `40x36`, every resize frame equals it, and `replayBytes` is identical across two
-  reloads (the shell wrote nothing between them).
+  the grid the session already had sends no resize frame at all. A third piece joined them:
+  `replayCols/replayRows` were frozen at the session's spawn size, so after any panel resize each
+  reload laid the whole history out at the old grid and then fitted to the new one — the shell
+  answered the resize that followed by redrawing its prompt, and that block went into the
+  scrollback. Measured: `replayBytes` grew 2125 → 2582 → 3496 on three reloads; the replay grid now
+  follows the PTY (`resizeTerminal` moves it with `cols/rows`) and stays at 2125. Verified by
+  frames: the attach is the settled `40x36`, every resize frame equals it, and `replayBytes` is
+  identical across two reloads (the shell wrote nothing between them).
 
 ### 5.6 Hidden panels still run a render loop
 

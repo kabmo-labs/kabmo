@@ -82,7 +82,7 @@ export interface TerminalSession {
   viewers: Set<TerminalViewer>;
   cols: number;
   rows: number;
-  /** Grid the retained scrollback was drawn for — replay must match it. */
+  /** Grid the retained scrollback is replayed at: the PTY's current size. */
   replayCols: number;
   replayRows: number;
   status: 'running' | 'exited';
