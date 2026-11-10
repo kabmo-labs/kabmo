@@ -14,11 +14,11 @@
  * the idle reaper. Used only for lifecycle decisions (idle reclaim, spawn-mode
  * reconcile), never for the UI's running set.
  *
- * Identity mirrors the UI fold (`SubagentList`): frames carry an id, a
- * lifecycle may also carry `index`, and progress frames may be id-less and are
- * then matched by index — hence the index→key alias, so one subagent is never
- * tracked under two keys (a leftover key would pin the session alive until it
- * goes stale).
+ * Identity mirrors the sidebar's roster fold (`hooks/chat/subagents/roster.ts`):
+ * frames carry an id, a lifecycle may also carry `index`, and progress frames
+ * may be id-less and are then matched by index — hence the index→key alias, so
+ * one subagent is never tracked under two keys (a leftover key would pin the
+ * session alive until it goes stale).
  */
 
 import { parseSubagentLifecycle, readSubagentProgressFrame } from '@/shared/lib/omp/subagent/parse';

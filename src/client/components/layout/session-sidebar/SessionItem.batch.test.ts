@@ -153,10 +153,10 @@ describe('mobile row batch mode', () => {
     expect(calls.select).toBe(0);
   });
 
-  test('hides the row actions and the roster toggle in select mode', async () => {
-    const { el } = await mountMobile({ selectable: true, hasSubagents: true, onToggleExpand: () => {} });
+  test('hides the row actions and the branch chevron in select mode', async () => {
+    const { el } = await mountMobile({ selectable: true, expandable: true, onToggleExpand: () => {} });
     expect(el.querySelector('button[aria-label="Session actions"]')).toBeNull();
-    expect(el.querySelector('button[aria-label*="subagents"]')).toBeNull();
+    expect(el.querySelector('button[aria-label*="sessions and subagents"]')).toBeNull();
     expect(checkbox(el)?.getAttribute('aria-label')).toBe('Select hello world');
   });
 });

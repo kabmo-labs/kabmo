@@ -89,6 +89,11 @@ describe('mobile session row status slot', () => {
     const slot = el.querySelector('span.w-4');
     expect(slot?.querySelector('svg')).toBeNull();
   });
+
+  test('a leaf child fills the empty slot with the child mark', async () => {
+    const el = await mount({ isChild: true });
+    expect(el.querySelector('[data-testid="child-indicator"] svg')).not.toBeNull();
+  });
 });
 
 /**

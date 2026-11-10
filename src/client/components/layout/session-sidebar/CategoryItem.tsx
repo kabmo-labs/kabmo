@@ -6,18 +6,18 @@ import { useShowMore } from '@/client/hooks/ui/show-more';
 import { useWorkspaceFolderActions } from '@/client/hooks/workspace/workspace-folder-actions';
 import { useSessionDelete } from '@/client/hooks/workspace/session-delete';
 import { SessionDeleteModal } from '@/client/components/common/session-delete-modal';
-import { SessionItem } from '@/client/components/layout/session-sidebar/SessionItem';
+import { SessionItem, SESSION_ITEM_BRANCH_STYLE } from '@/client/components/layout/session-sidebar/SessionItem';
 import { CategoryHeader } from '@/client/components/layout/session-sidebar/CategoryHeader';
-import { SubagentList } from '@/client/components/common/subagent-list';
-import { ChildSessionList } from '@/client/components/layout/session-sidebar/ChildSessionList';
+import { SessionBranch, branchControlFor } from '@/client/components/common/session-branch';
+import type { BranchControl } from '@/client/components/common/session-branch';
 import { buildSessionTree } from '@/client/lib/session-tree';
 import { useExpandedSessions } from '@/client/hooks/workspace/expanded-sessions';
-import { useChildExpansion } from '@/client/hooks/workspace/child-expansion';
 import { relativeTimeAgo } from '@/shared/lib/workspace/relative-time';
+import { isPendingSessionId } from '@/shared/lib/omp/session/default-title';
 import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
 import type { BatchBinding } from '@/client/components/common/batch-selection/types';
 import { folderBatchState } from '@/client/components/common/batch-selection/folder-state';
-import type { WorkspaceFolderData } from '@/shared/types';
+import type { SessionItemData, WorkspaceFolderData } from '@/shared/types';
 
 export { SessionItem };
 
@@ -58,10 +58,9 @@ export function Category({
   const urlSubagentId = searchParams.get('subagent');
   const urlSessionId = searchParams.get('sessionId');
 
-  // Roster expansion is shared with the mobile drawer: one persisted set, so a
-  // row expanded on the phone is expanded here too.
+  // ONE expansion set for the whole branch: child sessions and the subagent
+  // roster are the same disclosure now, so they cannot disagree.
   const { expandedSessionIds, toggleSession } = useExpandedSessions();
-  const { expandedChildIds, toggleChild } = useChildExpansion();
 
   useEffect(() => {
     if (typeof folder.isExpanded === 'boolean') setIsOpen(folder.isExpanded);
@@ -155,6 +154,53 @@ export function Category({
   const listOpen = isActuallyOpen || sessionCheckboxes;
   const hasMore = hiddenCount > 0;
 
+  // One row renderer for roots and for every descendant: a child session is
+  // the same row as a root, so a rule fixed on one is fixed on both.
+  const renderSessionRow = (session: SessionItemData, control: BranchControl) => {
+    const sessionKey = String(session.id);
+    const isActive = activeSessionId !== null
+      ? String(activeSessionId) === sessionKey
+      : session.is_active === 1;
+    // While one of its subagents is being viewed, the row dims so the
+    // highlighted leaf reads as the active one.
+    const isViewingSubagent = isActive && urlSessionId === sessionKey && Boolean(urlSubagentId);
+    const pending = isPendingSessionId(sessionKey);
+    return (
+      <SessionItem
+        sessionId={session.id}
+        title={session.title}
+        harness={session.harness}
+        folderId={session.folder_id}
+        isActive={isActive && !isViewingSubagent}
+        isArchived={session.is_archived === 1}
+        status={sessionStatus[sessionKey]}
+        awaitingInput={Boolean(session.awaitingInput)}
+        worktree={session.worktree}
+        timeAgo={relativeTimeAgo(session.updated_at ?? session.created_at)}
+        onClick={() => onSelectSession(session.id)}
+        onArchive={() => handleArchive(session)}
+        // A pending `new-…` chat has no transcript anywhere yet — there is
+        // nothing to delete, and the server refuses it.
+        onDelete={pending ? undefined : () => sessionDelete.requestDelete(session)}
+        onRename={pending ? undefined : (name) => void handleRename(session, name)}
+        onRenameWithAi={pending ? undefined : () => void handleRenameWithAi(session)}
+        expandable={control.expandable} isChild={control.isChild}
+        isExpanded={control.isExpanded}
+        onToggleExpand={control.onToggleExpand}
+        waitingFor={session.waitingFor ? { title: session.waitingFor.title } : undefined}
+        onCancelWait={
+          session.waitingFor ? () => onCancelWait?.(session.waitingFor!.waitId) : undefined
+        }
+        selectable={sessionCheckboxes}
+        selected={Boolean(batch?.selected.includes(sessionKey))}
+        onToggleSelect={batch ? () => batch.toggle(sessionKey) : undefined}
+      />
+    );
+  };
+
+  const controlFor = (session: SessionItemData): BranchControl =>
+    branchControlFor(session, tree.childrenOf, expandedSessionIds, toggleSession);
+
   return (
     <div className="space-y-1">
       <CategoryHeader
@@ -195,71 +241,21 @@ export function Category({
         <div className="space-y-0.5">
           {tree.roots.map((session) => {
             const sessionKey = String(session.id);
-            const isActive = activeSessionId !== null
-              ? String(activeSessionId) === sessionKey
-              : session.is_active === 1;
-            // While one of its subagents is being viewed, the parent session
-            // row dims so the highlighted roster entry reads as the active one.
-            const isViewingSubagent = isActive && urlSessionId === sessionKey && Boolean(urlSubagentId);
-            const canExpandActive = activeSessionId !== null && sessionKey === String(activeSessionId);
-            // Two independent disclosures: children (the tree) and subagents
-            // (a tool-call roster). The chevron belongs to the first, the badge
-            // to the second.
-            const hasChildren = (tree.childrenOf.get(sessionKey)?.length ?? 0) > 0;
-            const hasSubagents = Boolean(session.hasSubagents);
-            const childrenExpanded = hasChildren && expandedChildIds.has(sessionKey);
-            const rosterExpanded = hasSubagents && expandedSessionIds.has(sessionKey);
-
+            const control = controlFor(session);
             return (
               <div key={session.id} className="space-y-0.5">
-                <SessionItem
-                  sessionId={session.id}
-                  title={session.title}
-                  harness={session.harness}
-                  isActive={isActive && !isViewingSubagent}
-                  isArchived={session.is_archived === 1}
-                  status={sessionStatus[sessionKey]}
-                  awaitingInput={Boolean(session.awaitingInput)}
-                  worktree={session.worktree}
-                  timeAgo={relativeTimeAgo(session.updated_at ?? session.created_at)}
-                  onClick={() => onSelectSession(session.id)}
-                  onArchive={() => handleArchive(session)}
-                  onDelete={
-                    // A pending `new-…` chat has no transcript anywhere yet —
-                    // there is nothing to delete, and the server refuses it.
-                    String(session.id).startsWith('new-')
-                      ? undefined
-                      : () => sessionDelete.requestDelete(session)
-                  }
-                  onRename={String(session.id).startsWith('new-') ? undefined : (name) => void handleRename(session, name)}
-                  onRenameWithAi={
-                    String(session.id).startsWith('new-') ? undefined : () => void handleRenameWithAi(session)
-                  }
-                  expandable={hasChildren}
-                  hasSubagents={hasSubagents}
-                  isExpanded={childrenExpanded}
-                  onToggleExpand={() => toggleChild(sessionKey)}
-                  subagentsExpanded={rosterExpanded}
-                  onToggleSubagents={() => toggleSession(sessionKey)}
-                  waitingFor={session.waitingFor ? { title: session.waitingFor.title } : undefined}
-                  onCancelWait={
-                    session.waitingFor
-                      ? () => onCancelWait?.(session.waitingFor!.waitId)
-                      : undefined
-                  }
-                  selectable={sessionCheckboxes}
-                  selected={Boolean(batch?.selected.includes(sessionKey))}
-                  onToggleSelect={batch ? () => batch.toggle(sessionKey) : undefined}
-                />
-                {childrenExpanded && (
-                  <ChildSessionList
+                {renderSessionRow(session, control)}
+                {control.isExpanded && (
+                  <SessionBranch
                     parentId={sessionKey}
+                    hasSubagents={Boolean(session.hasSubagents)}
                     childrenOf={tree.childrenOf}
-                    onSelect={onSelectSession}
+                    expandedIds={expandedSessionIds}
+                    onToggle={toggleSession}
+                    activeSessionId={activeSessionId === null ? null : String(activeSessionId)}
+                    renderSession={renderSessionRow}
+                    style={SESSION_ITEM_BRANCH_STYLE}
                   />
-                )}
-                {rosterExpanded && (
-                  <SubagentList sessionId={session.id} isActiveSession={canExpandActive} />
                 )}
               </div>
             );

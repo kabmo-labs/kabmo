@@ -68,6 +68,30 @@ function renameCue(el: HTMLElement): Element | null {
   return el.querySelector('[role="status"]');
 }
 
+describe('child session mark', () => {
+  test('a leaf child fills the empty slot with the child mark', async () => {
+    const el = await mount({ isChild: true });
+    expect(el.querySelector('[data-testid="child-indicator"] svg')).not.toBeNull();
+  });
+
+  test('a child with a branch keeps its chevron instead', async () => {
+    const el = await mount({ isChild: true, expandable: true, onToggleExpand: () => {} });
+    expect(el.querySelector('[data-testid="child-indicator"]')).toBeNull();
+    expect(el.querySelector('button[aria-expanded]')).not.toBeNull();
+  });
+
+  test('a running child shows the run cue, not the mark', async () => {
+    const el = await mount({ isChild: true, status: 'stream' });
+    expect(el.querySelector('[data-testid="child-indicator"]')).toBeNull();
+    expect(el.querySelector('[role="status"]')?.getAttribute('aria-label')).toBe('Running');
+  });
+
+  test('a root row draws no child mark', async () => {
+    const el = await mount();
+    expect(el.querySelector('[data-testid="child-indicator"]')).toBeNull();
+  });
+});
+
 describe('desktop session row rename cue', () => {
   test('draws a labelled spinner while the rename is in flight', async () => {
     setSessionRenaming('s1', true);
@@ -82,10 +106,9 @@ describe('desktop session row rename cue', () => {
     expect(renameCue(el)).toBeNull();
   });
 
-  test('takes the slot from a roster chevron, which is hidden until hover', async () => {
+  test('takes the slot from the branch chevron, which is hidden until hover', async () => {
     setSessionRenaming('s1', true);
     const el = await mount({
-      hasSubagents: true,
       expandable: true,
       onToggleExpand: () => {},
     });

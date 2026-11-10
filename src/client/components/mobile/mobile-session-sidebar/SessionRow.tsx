@@ -1,11 +1,22 @@
-import { Boxes, Check, ChevronDown, ChevronRight, CircleQuestionMark, Hourglass, Loader2, MoreHorizontal } from 'lucide-preact';
+import { Check, ChevronDown, ChevronRight, CircleQuestionMark, GitBranch, Hourglass, Loader2, MoreHorizontal } from 'lucide-preact';
 import type { SessionItemData } from '@/shared/types';
 import { useInlineRename } from '@/client/hooks/ui/inline-rename';
 import { useSessionRenaming } from '@/client/hooks/workspace/renaming-sessions';
 import { SessionActionsMenu, useRowMenu } from '@/client/components/common/session-actions-menu';
 import { SelectionCheckbox } from '@/client/components/common/batch-selection/SelectionCheckbox';
 import { HarnessGlyph, HARNESS_GLYPH_SIZE } from '@/client/components/common/harness-glyph';
+import type { BranchRowStyle } from '@/client/components/common/session-branch/style';
 import { WorktreeBadge } from '@/client/components/layout/session-sidebar/WorktreeBadge';
+
+/** What a subagent row under this chrome's rows borrows from it. */
+export const MOBILE_BRANCH_STYLE: BranchRowStyle = {
+  inset: '',
+  insetPx: 0,
+  slotWidth: 16,
+  markGap: 8,
+  padding: 'py-2',
+  glyph: HARNESS_GLYPH_SIZE.touch,
+};
 
 export interface MobileSessionRowProps {
   session: SessionItemData;
@@ -18,14 +29,15 @@ export interface MobileSessionRowProps {
   awaitingInput?: boolean;
   /** Relative age of the session, or null when no usable timestamp exists. */
   timeAgo: string | null;
-  /** The session has a subagent roster (on disk or live). */
-  hasSubagents?: boolean;
-  subagentsExpanded?: boolean;
-  onToggleSubagents?: () => void;
-  /** The session has child sessions, so it can be expanded as a tree. */
+  /** The session has a branch (child sessions and/or a subagent roster). */
   expandable?: boolean;
   isExpanded?: boolean;
   onToggleExpand?: () => void;
+  /** Drawn inside a parent's branch; a leaf child gets a child mark in its slot. */
+  isChild?: boolean;
+  /** The folder the row belongs to, so a child spawned from its menu lands in
+   *  the right list before the server answers. */
+  folderId?: number | string;
   onSelect: () => void;
   onArchive: () => void;
   /** Omitted for a session that cannot be deleted yet (a pending `new-…` chat,
@@ -54,12 +66,11 @@ export function MobileSessionRow({
   status,
   awaitingInput = false,
   timeAgo,
-  hasSubagents = false,
-  subagentsExpanded = false,
-  onToggleSubagents,
   expandable = false,
   isExpanded = false,
   onToggleExpand,
+  isChild = false,
+  folderId,
   onSelect,
   onArchive,
   onDelete,
@@ -88,15 +99,15 @@ export function MobileSessionRow({
   const hasActions = Boolean(onRename || onArchive || onDelete || onCancelWait);
   const waiting = Boolean(waitingFor);
 
-  // The roster toggle is the row's LAST element, so its glyph lands in the same
-  // column as the folder header's expand chevron — one vertical line of
-  // disclosure controls down the drawer. The toggle is a SIBLING of the select
+  // The branch chevron is the row's LAST element, so its glyph lands in the
+  // same column as the folder header's expand chevron — one vertical line of
+  // disclosure controls down the drawer. The chevron is a SIBLING of the select
   // button, never a child: a button inside a button is invalid and the browser
   // reparents it.
   //
   // Touch has no hover to reveal a hidden toggle the way desktop does, so it is
-  // pinned whenever the row has a roster; a hidden one would leave the roster
-  // unreachable on a phone.
+  // pinned whenever the row has a branch; a hidden one would leave child
+  // sessions and subagents unreachable on a phone.
   const showChevron = expandable && Boolean(onToggleExpand);
   const title = session.title.charAt(0).toUpperCase() + session.title.slice(1);
 
@@ -178,6 +189,10 @@ export function MobileSessionRow({
                 </span>
               ) : status ? (
                 <Check size={13} className="text-ink/50" />
+              ) : isChild ? (
+                <span data-testid="child-indicator" className="text-ink/35" aria-hidden="true">
+                  <GitBranch size={13} />
+                </span>
               ) : null}
             </span>
             )}
@@ -230,29 +245,15 @@ export function MobileSessionRow({
           </button>
         )}
 
-        {/* The roster badge is a separate control from the tree chevron. */}
-        {hasSubagents && onToggleSubagents && !selectable && (
-          <button
-            type="button"
-            onClick={onToggleSubagents}
-            title="Subagents (tool calls)"
-            aria-label="Subagents"
-            aria-expanded={subagentsExpanded}
-            className="flex-shrink-0 py-1.5 pl-1.5 pr-1 flex items-center justify-center text-ink/40 hover:text-ink rounded-lg cursor-pointer"
-          >
-            <Boxes size={15} />
-          </button>
-        )}
-
         {/* Last element, so its glyph shares the trigger's column — the same
             inset pair and the same 4px ink margin. */}
         {showChevron && !selectable && (
           <button
             type="button"
             onClick={onToggleExpand}
-            title={isExpanded ? 'Collapse child sessions' : 'Expand child sessions'}
+            title={isExpanded ? 'Collapse sessions and subagents' : 'Expand sessions and subagents'}
             aria-expanded={isExpanded}
-            aria-label={isExpanded ? 'Collapse child sessions' : 'Expand child sessions'}
+            aria-label={isExpanded ? 'Collapse sessions and subagents' : 'Expand sessions and subagents'}
             className="flex-shrink-0 py-1.5 pl-1.5 pr-1 flex items-center justify-center text-ink/50 hover:text-ink rounded-lg cursor-pointer"
           >
             {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
@@ -264,6 +265,8 @@ export function MobileSessionRow({
         <SessionActionsMenu
           anchor={menu.anchor}
           sessionId={session.id}
+          {...(harness ? { harness } : {})}
+          {...(folderId !== undefined ? { folderId } : {})}
           isArchived={session.is_archived === 1}
           onRename={onRename ? startRename : undefined}
           onRenameWithAi={onRenameWithAi}

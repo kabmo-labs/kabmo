@@ -107,6 +107,17 @@ describe('modern session row', () => {
     expect(el.querySelector('[role="status"]')?.getAttribute('aria-label')).toBe('Generating a name…');
   });
 
+  test('a leaf child fills its empty slot with the child mark', async () => {
+    const el = await mount({ isChild: true });
+    expect(el.querySelector('[data-testid="child-indicator"] svg')).not.toBeNull();
+  });
+
+  test('a child with a branch keeps the chevron, not the mark', async () => {
+    const el = await mount({ isChild: true, expandable: true, onToggleExpand: () => {} });
+    expect(el.querySelector('[data-testid="child-indicator"]')).toBeNull();
+    expect(el.querySelector('button[aria-expanded]')).not.toBeNull();
+  });
+
   test('the actions trigger is drawn and named, and is not hidden from the keyboard', async () => {
     const el = await mount({ onRename: () => {} });
     const trigger = el.querySelector('[aria-label="Session actions"]');

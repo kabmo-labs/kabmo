@@ -45,17 +45,29 @@
  */
 
 import type { TargetedMouseEvent } from 'preact';
-import { Boxes } from 'lucide-preact';
 import { useInlineRename } from '@/client/hooks/ui/inline-rename';
 import { useSessionRenaming } from '@/client/hooks/workspace/renaming-sessions';
 import { SessionActionsMenu, useRowMenu } from '@/client/components/common/session-actions-menu';
 import { StatusSlot } from '@/client/components/common/session-row/StatusSlot';
 import { HarnessGlyph, HARNESS_GLYPH_SIZE } from '@/client/components/common/harness-glyph';
+import type { BranchRowStyle } from '@/client/components/common/session-branch/style';
 import { TrailingSlot } from '@/client/components/common/session-row/TrailingSlot';
 import { WorktreeBadge } from '@/client/components/layout/session-sidebar/WorktreeBadge';
 import type { SessionWorktreeInfo } from '@/shared/lib/workspace/worktree/types';
 
 export type SessionRowDensity = 'compact' | 'touch';
+
+/** What a subagent row under this chrome's rows borrows from it. */
+export function sessionRowBranchStyle(touch: boolean): BranchRowStyle {
+  return {
+    inset: 'pl-1 pr-1',
+    insetPx: 4,
+    slotWidth: touch ? 18 : 16,
+    markGap: 8,
+    padding: touch ? 'py-0.5' : 'py-[7px]',
+    glyph: touch ? HARNESS_GLYPH_SIZE.touch : HARNESS_GLYPH_SIZE.compact,
+  };
+}
 
 export interface SessionRowProps {
   sessionId: string | number;
@@ -71,14 +83,15 @@ export interface SessionRowProps {
   worktree?: SessionWorktreeInfo;
   /** The row's prompt is held until another session finishes. */
   waitingFor?: { title: string | null };
-  hasSubagents?: boolean;
-  /** Whether the subagent roster is open; a separate control from children. */
-  subagentsExpanded?: boolean;
-  onToggleSubagents?: (event: TargetedMouseEvent<HTMLElement>) => void;
-  /** Whether this row can expand child sessions. */
+  /** Whether this row can expand its branch (child sessions and subagents). */
   expandable?: boolean;
   isExpanded?: boolean;
   onToggleExpand?: (event: TargetedMouseEvent<HTMLElement>) => void;
+  /** Drawn inside a parent's branch; a leaf child gets a child mark in its slot. */
+  isChild?: boolean;
+  /** The folder the row belongs to, so a child spawned from its menu lands in
+   *  the right list before the server answers. */
+  folderId?: number | string;
   onClick?: () => void;
   onRename?: (name: string) => void;
   onRenameWithAi?: () => void;
@@ -103,12 +116,11 @@ export function SessionRow({
   timeAgo,
   worktree,
   waitingFor,
-  hasSubagents = false,
-  subagentsExpanded = false,
-  onToggleSubagents,
   expandable = false,
   isExpanded = false,
   onToggleExpand,
+  isChild = false,
+  folderId,
   onClick,
   onRename,
   onRenameWithAi,
@@ -188,6 +200,7 @@ export function SessionRow({
           expandable={expandable}
           isExpanded={isExpanded}
           onToggleExpand={onToggleExpand}
+          child={isChild}
           selectable={selectable}
           selected={selected}
           onToggleSelect={onToggleSelect}
@@ -216,22 +229,6 @@ export function SessionRow({
           {worktree && <WorktreeBadge worktree={worktree} />}
         </span>
 
-        {hasSubagents && onToggleSubagents && !selectable && (
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onToggleSubagents(event);
-            }}
-            title="Subagents (tool calls)"
-            aria-label="Subagents"
-            aria-expanded={subagentsExpanded}
-            className={`shrink-0 rounded p-1 text-ink/40 hover:bg-ink/10 hover:text-ink cursor-pointer ${touch ? 'ml-1' : 'ml-0.5'}`}
-          >
-            <Boxes size={touch ? 15 : 13} />
-          </button>
-        )}
-
         <TrailingSlot
           timeAgo={timeAgo}
           touch={touch}
@@ -244,6 +241,8 @@ export function SessionRow({
         <SessionActionsMenu
           anchor={menu.anchor}
           sessionId={sessionId}
+          {...(harness ? { harness } : {})}
+          {...(folderId !== undefined ? { folderId } : {})}
           isArchived={isArchived}
           onRename={onRename ? startRename : undefined}
           onRenameWithAi={onRenameWithAi}

@@ -22,7 +22,7 @@
  */
 
 import type { TargetedMouseEvent } from 'preact';
-import { Check, ChevronDown, ChevronRight, CircleQuestionMark, Hourglass, Loader2 } from 'lucide-preact';
+import { Check, ChevronDown, ChevronRight, CircleQuestionMark, GitBranch, Hourglass, Loader2 } from 'lucide-preact';
 import { SelectionCheckbox } from '@/client/components/common/batch-selection/SelectionCheckbox';
 
 export interface StatusSlotProps {
@@ -35,6 +35,8 @@ export interface StatusSlotProps {
   expandable?: boolean;
   isExpanded?: boolean;
   onToggleExpand?: (event: TargetedMouseEvent<HTMLElement>) => void;
+  /** Drawn inside a parent's branch; a leaf child gets a child mark in its slot. */
+  child?: boolean;
   selectable?: boolean;
   selected?: boolean;
   onToggleSelect?: () => void;
@@ -51,6 +53,7 @@ export function StatusSlot({
   expandable = false,
   isExpanded = false,
   onToggleExpand,
+  child = false,
   selectable = false,
   selected = false,
   onToggleSelect,
@@ -88,9 +91,9 @@ export function StatusSlot({
               event.stopPropagation();
               onToggleExpand(event);
             }}
-            title={isExpanded ? 'Collapse child sessions' : 'Expand child sessions'}
+            title={isExpanded ? 'Collapse sessions and subagents' : 'Expand sessions and subagents'}
             aria-expanded={isExpanded}
-            aria-label={isExpanded ? 'Collapse child sessions' : 'Expand child sessions'}
+            aria-label={isExpanded ? 'Collapse sessions and subagents' : 'Expand sessions and subagents'}
             className={`peer absolute inset-0 flex items-center justify-center rounded cursor-pointer transition-opacity ${
               chevronPinned
                 ? 'text-ink/55 hover:text-ink'
@@ -124,6 +127,15 @@ export function StatusSlot({
             ) : (
               <Check size={size - 1} />
             )}
+          </span>
+        )}
+        {child && !(expandable && onToggleExpand) && !showStatus && (
+          <span
+            data-testid="child-indicator"
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 flex items-center justify-center text-ink/35"
+          >
+            <GitBranch size={size - 1} aria-hidden="true" />
           </span>
         )}
       </span>

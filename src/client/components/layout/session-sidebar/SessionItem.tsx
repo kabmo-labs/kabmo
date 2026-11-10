@@ -1,12 +1,23 @@
 import type { TargetedMouseEvent } from 'preact';
-import { Boxes, Check, ChevronDown, ChevronRight, CircleQuestionMark, Hourglass, Loader2, MoreHorizontal } from 'lucide-preact';
+import { Check, ChevronDown, ChevronRight, CircleQuestionMark, GitBranch, Hourglass, Loader2, MoreHorizontal } from 'lucide-preact';
 import { useInlineRename } from '@/client/hooks/ui/inline-rename';
 import { useSessionRenaming } from '@/client/hooks/workspace/renaming-sessions';
 import { SessionActionsMenu, useRowMenu } from '@/client/components/common/session-actions-menu';
 import { SelectionCheckbox } from '@/client/components/common/batch-selection/SelectionCheckbox';
 import { HarnessGlyph, HARNESS_GLYPH_SIZE } from '@/client/components/common/harness-glyph';
+import type { BranchRowStyle } from '@/client/components/common/session-branch/style';
 import { WorktreeBadge } from '@/client/components/layout/session-sidebar/WorktreeBadge';
 import type { SessionWorktreeInfo } from '@/shared/lib/workspace/worktree/types';
+
+/** What a subagent row under this chrome's rows borrows from it. */
+export const SESSION_ITEM_BRANCH_STYLE: BranchRowStyle = {
+  inset: 'px-2',
+  insetPx: 8,
+  slotWidth: 16,
+  markGap: 8,
+  padding: 'py-1.5',
+  glyph: HARNESS_GLYPH_SIZE.compact,
+};
 
 export interface SessionItemProps {
   /** The session this row draws; the key its in-flight rename is tracked under. */
@@ -34,11 +45,12 @@ export interface SessionItemProps {
   onRenameWithAi?: () => void;
   expandable?: boolean;
   isExpanded?: boolean;
-  hasSubagents?: boolean;
-  /** Whether the subagent roster (a separate list) is open. */
-  subagentsExpanded?: boolean;
-  onToggleSubagents?: (e: TargetedMouseEvent<HTMLElement>) => void;
   onToggleExpand?: (e: TargetedMouseEvent<HTMLElement>) => void;
+  /** Drawn inside a parent's branch; a leaf child gets a child mark in its slot. */
+  isChild?: boolean;
+  /** The folder the row belongs to, so a child spawned from its menu lands in
+   *  the right list before the server answers. */
+  folderId?: number | string;
   /**
    * The row's prompt is held until another session finishes. A pending row has
    * no transcript and no omp id, so this cue is the only thing on screen saying
@@ -75,10 +87,9 @@ export function SessionItem({
   onRenameWithAi,
   expandable = false,
   isExpanded = false,
-  hasSubagents = false,
-  subagentsExpanded = false,
-  onToggleSubagents,
   onToggleExpand,
+  isChild = false,
+  folderId,
   waitingFor,
   onCancelWait,
   worktree,
@@ -96,7 +107,7 @@ export function SessionItem({
   // it at rest — the spinner, or the blocked-on-a-question cue, which says it
   // is YOUR turn. With nothing live to report the chevron is PINNED, collapsed
   // or expanded: it is the only affordance left worth showing, and making it
-  // hover-only would leave the roster reachable only by hovering exactly the
+  // hover-only would leave the branch reachable only by hovering exactly the
   // right 16px.
   const waiting = Boolean(waitingFor);
   const liveRun = awaitingInput || status === 'stream' || waiting;
@@ -149,7 +160,7 @@ export function SessionItem({
         {/* One 16px slot owns both icons — never two side by side. A live run
             signal (blocked question, run spinner) holds the slot; otherwise the
             chevron is pinned, collapsed or expanded. While the signal holds it,
-            hovering hands the slot to the chevron so the roster stays reachable
+            hovering hands the slot to the chevron so the branch stays reachable
             mid-run.
             Both layers are pointer-inert for the opposite state: the toggle
             while hidden, the status glyph ALWAYS (it is painted after the
@@ -164,7 +175,7 @@ export function SessionItem({
                 e.stopPropagation();
                 onToggleExpand(e);
               }}
-              title={isExpanded ? 'Collapse child sessions' : 'Expand child sessions'}
+              title={isExpanded ? 'Collapse sessions and subagents' : 'Expand sessions and subagents'}
               aria-expanded={isExpanded}
               className={`peer absolute inset-0 flex items-center justify-center rounded cursor-pointer transition-opacity ${
                 chevronPinned
@@ -209,6 +220,15 @@ export function SessionItem({
               ) : (
                 <Check size={12} />
               )}
+            </span>
+          )}
+          {isChild && !showChevron && !showStatus && (
+            <span
+              data-testid="child-indicator"
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 flex items-center justify-center text-ink/35"
+            >
+              <GitBranch size={12} aria-hidden="true" />
             </span>
           )}
         </span>
@@ -267,25 +287,6 @@ export function SessionItem({
           <span className="shrink-0 ml-2 font-mono text-[10px] text-ink/40">{timeAgo}</span>
         )}
 
-        {/* The roster is a tool-call list, not a tree: its trigger is a badge,
-            never the chevron. Keeping the two controls apart is what stops a
-            child session and a subagent from reading as the same thing. */}
-        {!isEditing && hasSubagents && onToggleSubagents && !selectable && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleSubagents(e);
-            }}
-            title="Subagents (tool calls)"
-            aria-label="Subagents"
-            aria-expanded={subagentsExpanded}
-            className="shrink-0 ml-1 p-1 text-ink/40 hover:text-ink hover:bg-ink/10 rounded cursor-pointer"
-          >
-            <Boxes size={13} />
-          </button>
-        )}
-
         {/* One trigger, whatever the row can do — the menu grows, so a row with
             more actions costs no extra width. It is always drawn, the way the
             phone's row draws it: a hover-only trigger is invisible until the
@@ -315,6 +316,8 @@ export function SessionItem({
         <SessionActionsMenu
           anchor={menu.anchor}
           sessionId={sessionId}
+          {...(harness ? { harness } : {})}
+          {...(folderId !== undefined ? { folderId } : {})}
           isArchived={isArchived}
           onRename={onRename ? startRename : undefined}
           onRenameWithAi={onRenameWithAi}
