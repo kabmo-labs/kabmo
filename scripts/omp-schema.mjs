@@ -27,34 +27,107 @@
  * `--check` regenerates in memory and exits non-zero when the file on disk
  * differs, so CI can fail a stale schema instead of shipping one.
  *
+ * The package is resolved from, in order: `OMP_SCHEMA_PACKAGE_DIR`, the repo's
+ * `node_modules`, Bun's global install, then a cache keyed by the pin in
+ * `.github/scripts/install-omp.sh`. A machine whose only `omp` is the
+ * standalone binary has no global package; the first three misses provision
+ * the pinned package into `$XDG_CACHE_HOME/kabmo/omp-schema/<version>`, which
+ * is OUTSIDE PATH, so `bun add -g` is never needed and its bin link can never
+ * collide with that binary (`EEXIST`). The version found in any candidate must
+ * equal the pin, so a stale global install cannot silently generate a schema
+ * for the wrong release.
+ *
  * Generation is pinned to ONE platform (see {@link pinGenerationPlatform}):
  * omp's panel metadata is platform-conditional, so an unpinned generator
  * produced a file that differed between a macOS author's machine and the Linux
  * runner the gate runs on.
  */
 
+import { mkdir } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(HERE, '..');
 const DEFAULT_OUT = join(REPO, 'src/client/data/settings/omp-schema.json');
+const PIN_SCRIPT = join(REPO, '.github/scripts/install-omp.sh');
+const CACHE_ROOT = join(
+  process.env.XDG_CACHE_HOME || join(process.env.HOME ?? '', '.cache'),
+  'kabmo',
+  'omp-schema',
+);
 
-/** The package omp installs settings from. Resolved from the repo so a global
- *  install and a workspace install both work; `bun pm ls -g` is not consulted
- *  because Kabmo may run against either. */
+/** The package omp installs settings from. */
 const PACKAGE = '@oh-my-pi/pi-coding-agent';
 
-function findPackageDir() {
+/** The version the CI pin installs — the schema must be generated from it. */
+async function pinnedVersion() {
+  const text = await Bun.file(PIN_SCRIPT).text();
+  const match = /OMP_VERSION="\$\{OMP_VERSION:-([^}"]+)\}"/.exec(text);
+  if (!match?.[1]) throw new Error(`could not read OMP_VERSION from ${PIN_SCRIPT}`);
+  return match[1];
+}
+
+function hasPackage(dir) {
+  return Bun.file(join(dir, 'src/config/all-settings.ts')).size > 0;
+}
+
+async function packageVersion(dir) {
+  try {
+    return JSON.parse(await Bun.file(join(dir, 'package.json')).text()).version;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Install the pinned package into the cache, where its `bin` links live on
+ *  no PATH and cannot collide with a standalone `omp` binary. */
+async function provisionPackage(version) {
+  const root = join(CACHE_ROOT, version);
+  await mkdir(root, { recursive: true });
+  const manifest = join(root, 'package.json');
+  if (!(await Bun.file(manifest).exists())) {
+    await Bun.write(manifest, `${JSON.stringify({ name: 'kabmo-omp-schema', private: true }, null, 2)}\n`);
+  }
+  console.error(`omp-schema: provisioning ${PACKAGE}@${version} into ${root}`);
+  const bun = Bun.which('bun') ?? process.execPath;
+  const child = Bun.spawn([bun, 'add', `${PACKAGE}@${version}`], {
+    cwd: root,
+    stdout: 'inherit',
+    stderr: 'inherit',
+  });
+  const code = await child.exited;
+  const dir = join(root, 'node_modules', PACKAGE);
+  if (code !== 0 || !hasPackage(dir)) {
+    throw new Error(`could not install ${PACKAGE}@${version} (bun add exited with ${code})`);
+  }
+  return dir;
+}
+
+async function findPackageDir() {
+  const version = await pinnedVersion();
+  const override = process.env.OMP_SCHEMA_PACKAGE_DIR;
+  if (override) {
+    if (!hasPackage(override)) {
+      throw new Error(`OMP_SCHEMA_PACKAGE_DIR does not contain ${PACKAGE}: ${override}`);
+    }
+    const found = await packageVersion(override);
+    if (found !== version) {
+      throw new Error(`OMP_SCHEMA_PACKAGE_DIR points at ${PACKAGE}@${found ?? 'unknown'}, expected ${version}`);
+    }
+    return override;
+  }
   const candidates = [
     join(REPO, 'node_modules', PACKAGE),
     join(dirname(process.execPath), '..', 'install', 'global', 'node_modules', PACKAGE),
     join(process.env.HOME ?? '', '.bun', 'install', 'global', 'node_modules', PACKAGE),
   ];
   for (const dir of candidates) {
-    if (Bun.file(join(dir, 'src/config/all-settings.ts')).size > 0) return dir;
+    if (hasPackage(dir) && (await packageVersion(dir)) === version) return dir;
   }
-  throw new Error(`could not locate ${PACKAGE}; install oh-my-pi or run from a checkout that has it`);
+  const cached = join(CACHE_ROOT, version, 'node_modules', PACKAGE);
+  if (hasPackage(cached)) return cached;
+  return provisionPackage(version);
 }
 
 /** omp's tab order and labels, read from the TUI package rather than restated
@@ -100,7 +173,7 @@ function toEntry(definition) {
 }
 
 async function build() {
-  const pkgDir = findPackageDir();
+  const pkgDir = await findPackageDir();
   const tuiDir = pkgDir.replace(/pi-coding-agent$/, 'pi-tui');
   await pinGenerationPlatform(pkgDir);
   const [{ orderedSettings }, { order, meta }] = await Promise.all([
