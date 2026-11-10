@@ -149,9 +149,9 @@ export const TERMINAL_FONT_FAMILY =
  * 12px is a measured choice: the right panel is ~350 px wide at its default
  * width, and 12px keeps a normal prompt unwrapped. The renderer has no
  * `lineHeight` option, so the cell box is measured instead — `measureTerminalCell`
- * in `terminal-panel/fonts.ts` takes the font's line box (16 px here) plus 2 px
- * on each side and centres the glyph ink in it: 20 px per cell, which is what a
- * painted background block needs to read as a rectangle rather than a band.
+ * in `terminal-panel/fonts.ts` pads the glyph ink (`Mg`) by 2.5 px above and 1 px
+ * below: 15 px per cell, which is what a painted background block needs to read
+ * as a rectangle rather than a band.
  */
 export const TERMINAL_FONT_SIZE = 12;
 

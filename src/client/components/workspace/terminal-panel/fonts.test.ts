@@ -120,20 +120,21 @@ describe('measureTerminalCell', () => {
     lineDescent: 4,
   };
 
-  test('pads the ink 4 px above and 1 px below', () => {
+  test('pads the ink 2.5 px above and 1 px below', () => {
     installFakeCanvas(FIRA_CODE_12);
 
     const cell = measureTerminalCell(12, "'Fira Code'");
 
     // The cell is the paintable advance rounded up, not the font size.
     expect(cell.width).toBe(8);
-    // 11 px of ink + 4 + 1. A cell built from `M` alone was the reported bug:
-    // the descender ended on the cell's last pixel and the next row clipped it.
-    expect(cell.height).toBe(16);
+    // 11 px of ink + 2.5 + 1, rounded up: a cell built from `M` alone was the
+    // reported bug — the descender ended on the cell's last pixel and the next
+    // row clipped it.
+    expect(cell.height).toBe(15);
     const above = cell.baseline - FIRA_CODE_12.ascent;
     const below = cell.height - cell.baseline - FIRA_CODE_12.descent;
-    expect(Math.round(above)).toBe(4);
-    expect(Math.round(below)).toBe(1);
+    expect(Math.abs(above - 2.5)).toBeLessThanOrEqual(0.5);
+    expect(Math.abs(below - 1)).toBeLessThanOrEqual(0.5);
   });
 
   test('never lets ink exceed the cell when it reaches past the line box', () => {

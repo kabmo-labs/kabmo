@@ -79,11 +79,16 @@ export interface TerminalCellMetrics {
  *
  * Measured against the glyph ink, not the em box: the rectangle a person sees
  * around a coloured run is compared to the letters, so these are the numbers
- * chosen on the real panel — 4 over 1, which puts the letters high in the
+ * chosen on the real panel — 2.5 over 1, which puts the letters high in the
  * rectangle; the 1 px below is still enough for a `g`/`y`/`p` descender (2.54)
- * because the row's own padding is measured from the *ink*, not the baseline.
+ * because the padding is measured from the *ink*, not the baseline.
+ *
+ * Fractional on purpose: the cell height is `ceil` of the ink plus both paddings
+ * (15 px at 12 px Fira Code), and the baseline is `round(ascent + top)`, which
+ * is what makes a 2.5 request land as 3 px of block above a cap that sits 2.74
+ * px below it.
  */
-const CELL_PADDING_TOP_PX = 4;
+const CELL_PADDING_TOP_PX = 2.5;
 const CELL_PADDING_BOTTOM_PX = 1;
 
 /**
@@ -98,9 +103,9 @@ const CELL_PADDING_BOTTOM_PX = 1;
  * under the descenders, and every coloured block read as cropped.
  *
  * Measuring `Mg` supplies a real descent, and the box is the ink plus the two
- * paddings above: at 12 px Fira Code (ink 8.26 / 2.54) that is `height = 16`
- * and `baseline = 12`, i.e. 4 px of block above the cap and 1 px below the
- * descender. The box is deliberately not the font's line box (line box plus
+ * paddings above: at 12 px Fira Code (ink 8.26 / 2.54) that is `height = 15`
+ * and `baseline = 11`, i.e. 2.74 px of block above the cap and 1.46 px below
+ * the descender. The box is deliberately not the font's line box (line box plus
  * padding came out 20 px, which read as too loose on the real panel).
  */
 export function measureTerminalCell(fontSize: number, fontFamily: string): TerminalCellMetrics {
@@ -122,7 +127,7 @@ export function measureTerminalCell(fontSize: number, fontFamily: string): Termi
   }
   return {
     width,
-    height: Math.round(ascent + descent) + CELL_PADDING_TOP_PX + CELL_PADDING_BOTTOM_PX,
+    height: Math.ceil(ascent + descent + CELL_PADDING_TOP_PX + CELL_PADDING_BOTTOM_PX),
     baseline: Math.round(ascent + CELL_PADDING_TOP_PX),
   };
 }
