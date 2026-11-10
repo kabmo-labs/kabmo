@@ -525,9 +525,15 @@ Check(
     "the tap script calls the page's opener with a plain id",
     OpenSessionScript.For("abc-123")
         == "window.__kabmoOpenSession && window.__kabmoOpenSession(\"abc-123\")");
+// The ESCAPING is what matters, not its spelling: `System.Text.Json` writes a
+// quote as `\u0022` by default and a relaxed encoder writes `\"`, and both keep
+// the id from closing the literal. Pinning `\"` failed the Windows build on a
+// script that was safe — measured as the only failing check of 169.
+var quoted = OpenSessionScript.For("a\"b\nc");
 Check(
     "a quote in the id is escaped, not interpolated",
-    OpenSessionScript.For("a\"b\nc").Contains("a\\\"b\\nc"));
+    !quoted.Contains("a\"b") && !quoted.Contains("b\nc")
+        && (quoted.Contains("\\u0022") || quoted.Contains("\\\"")));
 
 Console.WriteLine($"\n{checks - failures}/{checks} checks passed");
 return failures == 0 ? 0 : 1;
