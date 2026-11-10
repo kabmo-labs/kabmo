@@ -22,6 +22,7 @@ import { AcpSession } from '@/server/lib/harness/acp/session';
 import { AcpUsageMeter } from '@/server/lib/harness/acp/session-usage';
 import { AcpFrameMapper } from '@/server/lib/harness/acp/frames';
 import { AcpTurns } from '@/server/lib/harness/acp/turn';
+import { SessionListeners } from '@/server/lib/harness/acp/session-listeners';
 import { PendingPermissions } from '@/server/lib/harness/acp/permissions';
 import { stampMessageModel } from '@/server/lib/harness/acp/session-config';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
@@ -50,6 +51,15 @@ export interface MountedSession {
   idleResets: () => number;
   /** Whether a destroy stopped the reclaim clock. */
   idleStopped: () => boolean;
+  /** Swap the background probe the session drives with one a case controls. */
+  setBackground: (probe: BackgroundProbeStub) => void;
+}
+
+/** The slice of `AcpBackgroundProbe` a session calls. */
+export interface BackgroundProbeStub {
+  start: (baseline: string) => void;
+  stop: () => void;
+  consume: (method: string, params: Record<string, unknown>) => boolean;
 }
 
 /** One in-flight `session/prompt` the stub can settle. */
@@ -114,6 +124,13 @@ export function mountSession(): MountedSession {
     },
   });
   const marks: string[] = [];
+  const eventSink = new SessionListeners();
+  eventSink.add((event) => events.push(event));
+  let background: BackgroundProbeStub = {
+    start: () => {},
+    stop: () => {},
+    consume: () => false,
+  };
   Object.assign(session as unknown as Record<string, unknown>, {
     markStream: (status: string) => {
       marks.push(status);
@@ -134,10 +151,11 @@ export function mountSession(): MountedSession {
     assistantCount: 0,
     usage: new AcpUsageMeter(),
     runModel: null,
-    listeners: new Set<(event: AgentEvent) => void>([(event) => events.push(event)]),
+    events: eventSink,
     proc,
     idle,
     destroyed: false,
+    background,
   });
   return {
     session,
@@ -147,6 +165,10 @@ export function mountSession(): MountedSession {
     streamMarks: () => marks,
     idleResets: () => idleResets,
     idleStopped: () => idleStopped,
+    setBackground: (probe) => {
+      background = probe;
+      Object.assign(session as unknown as Record<string, unknown>, { background: probe });
+    },
   };
 }
 

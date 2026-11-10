@@ -34,7 +34,16 @@ import { capabilitiesFrom } from '@/server/lib/harness/launch';
 import { PendingPermissions } from '@/server/lib/harness/acp/permissions';
 import { handleSessionNotification } from '@/server/lib/harness/acp/session-notifications';
 import { AcpUsageMeter, type AcpContextUsage } from '@/server/lib/harness/acp/session-usage';
-import { answerPermissionRequest } from '@/server/lib/harness/acp/session-permissions';
+import { handleAcpClientRequest, type AcpClientRequestAnswer } from '@/server/lib/harness/acp/session-requests';
+import { acpExitFailureFrames } from '@/server/lib/harness/acp/session-exit';
+import { SessionListeners } from '@/server/lib/harness/acp/session-listeners';
+import {
+  AcpBackgroundProbe,
+  BACKGROUND_LOAD_TIMEOUT_MS,
+  assistantTextOf,
+  deliverBackgroundNotice,
+  spawnsBackgroundWork,
+} from '@/server/lib/harness/acp/background-work';
 import { acpWebState } from '@/server/lib/harness/acp/session-web-state';
 import { acpIdleReaper } from '@/server/lib/harness/acp/session-idle';
 import { DEFAULT_APPROVAL_MODE, isApprovalMode, type ApprovalMode } from '@/shared/lib/omp/config/access-mode';
@@ -91,9 +100,11 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
   private readonly proc: AcpProcess;
   /** The quiet-window reclaim; the rules live in `session-idle.ts`. */
   readonly idle: IdleReaper;
+  /** Watches for work that finishes after `end_turn`; see `background-work.ts`. */
+  private readonly background: AcpBackgroundProbe;
   private readonly mapper = new AcpFrameMapper();
-  private readonly listeners = new Set<(event: AgentEvent) => void>();
-  private readonly permissions = new PendingPermissions();
+  private readonly events = new SessionListeners();
+  readonly permissions = new PendingPermissions();
   private destroyHook: (() => void) | null = null;
   private destroyed = false;
   /** Set when Kabmo is the one ending the process, so the exit is not reported
@@ -114,6 +125,15 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
       onExit: (info) => this.onExit(info),
     });
     this.idle = acpIdleReaper(this, options.idleDestroyMs);
+    // ACP holds updates produced while idle until the next request, so a turn
+    // that spawned a subagent is followed by a `session/load` probe. The replay
+    // is swallowed by the probe; only the text past the answer already shown is
+    // emitted, as the agent's continuation.
+    this.background = new AcpBackgroundProbe({
+      load: () => this.proc.loadSession(this.sessionId, this.cwd, BACKGROUND_LOAD_TIMEOUT_MS),
+      resetIdle: () => this.idle.reset(),
+      emit: (text) => deliverBackgroundNotice(this, text),
+    });
     this.turns = new AcpTurns({
       emit: (event) => this.emit(event),
       prompt: (message, images) =>
@@ -174,18 +194,11 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
   }
 
   onEvent(listener: (event: AgentEvent) => void): () => void {
-    this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
+    return this.events.add(listener);
   }
 
   emit(event: AgentEvent): void {
-    for (const listener of this.listeners) {
-      try {
-        listener(event);
-      } catch {
-        // One throwing subscriber must not starve the others.
-      }
-    }
+    this.events.emit(event);
   }
 
   getPendingUiDialogs(): Record<string, unknown>[] {
@@ -231,11 +244,18 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
     if (info.closedMessage) this.assistantCount += 1;
     this.usage.endTurn();
     settleAcpTurn(this, info);
+    // A subagent outlives the turn that spawned it: antigravity answers
+    // `end_turn` right after `invoke_subagent`, and its completion is held
+    // until the next request (upstream #1461). Probe the transcript instead.
+    if (!info.cancelled && info.failed !== true && spawnsBackgroundWork(info.message)) {
+      this.background.start(assistantTextOf(info.message));
+    }
     void driveAcpGoalAfterTurn(this, info.message, { cancelled: info.cancelled === true }).catch(() => {});
   }
 
   /** Dispatcher seam: stop the turn. The rules live in `AcpTurns.cancel`. */
   cancelTurn(): void {
+    this.background.stop();
     this.turns.cancel();
   }
 
@@ -262,19 +282,7 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
   }
 
   webState(): Record<string, unknown> {
-    return acpWebState({
-      sessionId: this.sessionId,
-      isStreaming: this.isStreaming,
-      isPromptRunning: this.isPromptRunning,
-      messageCount: this.messageCount,
-      promptCount: this.promptCount,
-      assistantCount: this.assistantCount,
-      contextUsage: this.contextUsage,
-      totalCost: this.totalCost,
-      runModel: this.runModel,
-      configOptions: this.configOptions,
-      harness: this.harness,
-    });
+    return acpWebState(this);
   }
 
   /** Run one turn. The promise IS the turn: ACP resolves `session/prompt` when
@@ -283,6 +291,9 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
    *  `session-turns.ts`.
    */
   startTurn(message: string, images: unknown): unknown {
+    // A new prompt is the next request, so the agent flushes any held update
+    // itself; a probe would duplicate it.
+    this.background.stop();
     this.promptCount += 1;
     this.usage.beginTurn();
     return beginAcpTurn(this, this.turns, message, images);
@@ -291,6 +302,8 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
   private onNotification(method: string, params: Record<string, unknown>): void {
     // A long turn emits no commands but plenty of `session/update` frames.
     this.idle.reset();
+    // A `session/load` replay repeats the whole chat; leave it to the probe.
+    if (this.background.consume(method, params)) return;
     handleSessionNotification(this, method, params);
   }
 
@@ -305,32 +318,18 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
     id: AcpId,
     method: string,
     params: Record<string, unknown>,
-  ): Promise<{ answered: true; result: unknown } | { answered: false; message: string } | { answered: false; deferred: true }> {
+  ): Promise<AcpClientRequestAnswer> {
     this.idle.reset();
-    if (method === 'session/request_permission') {
-      return answerPermissionRequest({
-        sessionId: this.sessionId,
-        accessMode: this.accessMode,
-        permissions: this.permissions,
-        emit: (event) => this.emit(event),
-      }, id, params);
-    }
-    return Promise.resolve({ answered: false, message: `Kabmo does not implement ${method}` });
+    return handleAcpClientRequest(this, id, method, params);
   }
 
   private onExit(info: { code: number | null; stderrTail: string }): void {
     this.destroyed = true;
+    this.background.stop();
     this.idle.stop();
-    if (this.closing) {
-      this.destroyHook?.();
-      return;
+    if (!this.closing) {
+      for (const event of acpExitFailureFrames(this.harness, info)) this.emit(event);
     }
-    const detail = info.stderrTail.trim().split('\n').slice(-3).join(' · ');
-    this.emit({
-      type: 'prompt_error',
-      errorMessage: detail || `The ${this.harness} agent exited (code ${info.code ?? 'signal'})`,
-    });
-    this.emit({ type: 'agent_end', isTerminal: true });
     this.destroyHook?.();
   }
 
@@ -342,6 +341,7 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
     if (this.destroyed) return;
     this.destroyed = true;
     this.closing = true;
+    this.background.stop();
     this.idle.stop();
     this.permissions.clear();
     await this.proc.dispose().catch(() => {});
