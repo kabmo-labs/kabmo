@@ -8,7 +8,7 @@
  * and every way it can break is silent at runtime:
  *
  * - The bundled face's family name is written twice — in the stack
- *   (`XTERM_FONT_FAMILY`) and in the `@font-face` (`nerd-symbols.css`). If they
+ *   (`TERMINAL_FONT_FAMILY`) and in the `@font-face` (`nerd-symbols.css`). If they
  *   drift, the face loads and nothing uses it: prompts render as tofu boxes
  *   with no error anywhere.
  * - The face must stay LAST in the stack. Moved ahead of the installed families
@@ -30,8 +30,8 @@ import { join } from 'node:path';
 
 import {
   NERD_SYMBOLS_FAMILY,
-  XTERM_FONT_FAMILY,
-  XTERM_GLYPH_FALLBACKS,
+  TERMINAL_FONT_FAMILY,
+  TERMINAL_GLYPH_FALLBACKS,
 } from '@/client/data/theme/terminal';
 
 const FONT_DIR = import.meta.dir;
@@ -67,19 +67,19 @@ describe('bundled Nerd Font symbols face', () => {
     // machine that has none — which is also what keeps the desktop from
     // downloading it (its unicode-range is PUA-only, so it is never fetched
     // when another family supplies the glyph).
-    expect(XTERM_FONT_FAMILY.indexOf(NERD_SYMBOLS_FAMILY)).toBeGreaterThan(
-      XTERM_FONT_FAMILY.indexOf('PowerlineSymbols'),
+    expect(TERMINAL_FONT_FAMILY.indexOf(NERD_SYMBOLS_FAMILY)).toBeGreaterThan(
+      TERMINAL_FONT_FAMILY.indexOf('PowerlineSymbols'),
     );
     // Only the generic fallbacks may follow it.
-    const after = XTERM_FONT_FAMILY.slice(XTERM_FONT_FAMILY.indexOf(NERD_SYMBOLS_FAMILY));
+    const after = TERMINAL_FONT_FAMILY.slice(TERMINAL_FONT_FAMILY.indexOf(NERD_SYMBOLS_FAMILY));
     expect(after).not.toMatch(/Nerd Font Mono'/);
   });
 
   test('every installed family is still offered before the bundled one', () => {
     for (const family of ['FiraCode Nerd Font Mono', 'JetBrainsMono Nerd Font', 'Symbols Nerd Font Mono']) {
-      expect(XTERM_GLYPH_FALLBACKS).toContain(family);
-      expect(XTERM_FONT_FAMILY.indexOf(family)).toBeLessThan(
-        XTERM_FONT_FAMILY.indexOf(NERD_SYMBOLS_FAMILY),
+      expect(TERMINAL_GLYPH_FALLBACKS).toContain(family);
+      expect(TERMINAL_FONT_FAMILY.indexOf(family)).toBeLessThan(
+        TERMINAL_FONT_FAMILY.indexOf(NERD_SYMBOLS_FAMILY),
       );
     }
   });

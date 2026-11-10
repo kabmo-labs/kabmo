@@ -16,7 +16,7 @@
  *
  * The `terminal/session.server.ts` helpers are pinned alongside because they
  * need no PTY: the viewer fan-out drop rule (a viewer that cannot keep up is
- * dropped, never skipped, or xterm's parser is left mid-sequence), the snapshot
+ * dropped, never skipped, or the renderer's parser is left mid-sequence), the snapshot
  * shape, and the process-group signalling fallback for a session with no child.
  * Anything requiring a real PTY spawn is deliberately not tested here.
  */

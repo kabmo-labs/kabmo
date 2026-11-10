@@ -207,14 +207,15 @@ test.describe('terminal panel', () => {
     try {
       await openApp(page, `${server.baseURL}/?folderId=${workspace.id}`);
       await page.getByRole('button', { name: 'Terminal (Bun)' }).click();
-      await expect(page.locator('.xterm')).toBeVisible({ timeout: 20_000 });
+      await expect(page.locator('[data-terminal-root]')).toBeVisible({ timeout: 20_000 });
 
       // The inventory endpoint reads the SAME registry the cap budgets, so a
       // shell the panel opened must appear there. This is what proves the two
       // surfaces agree — a cap counting a different set than the panel creates
       // would pass its own unit test and still be wrong.
       //
-      // `.xterm` is visible the moment xterm mounts, which is BEFORE the socket
+      // The root is visible the moment the renderer mounts, which is BEFORE
+      // the socket
       // attaches and the shell exists, so a single read here is a race. The
       // condition is the registry's own answer, polled until it lands.
       await expect

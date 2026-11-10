@@ -6,8 +6,8 @@
 /**
  * Hex color arithmetic for the terminal palette.
  *
- * xterm cannot parse `color-mix()`, so blends are computed here and handed over
- * as literal hex — a wrong blend is a wrong-looking terminal, and a wrong
+ * The terminal renderer cannot resolve `color-mix()`, so blends are computed
+ * here and handed over as literal hex — a wrong blend is a wrong-looking terminal, and a wrong
  * fallback (returning a broken string instead of the base color) would blank a
  * palette entry. The parser must handle all three spellings the ported palettes
  * use (`#rgb`, `#rrggbb`, and 8-digit `#rrggbbaa`, including OpenChamber's

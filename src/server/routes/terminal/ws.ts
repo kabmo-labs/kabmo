@@ -31,7 +31,7 @@ import {
   writeTerminalInput,
 } from '@/server/lib/terminal/runtime.server';
 import { TerminalRuntimeError, type TerminalViewer } from '@/server/lib/terminal/session.server';
-import { frameAccepted } from '@/server/lib/terminal/send-result';
+import { asBinaryFrame, frameAccepted } from '@/server/lib/terminal/send-result';
 import {
   decodeClientFrame,
   encodeServerFrame,
@@ -71,8 +71,8 @@ export const terminalWsRoutes = new Elysia({ prefix: '/api/terminal' }).ws('/:te
             // Only `0` is a drop; `-1` means "queued, draining". See
             // `send-result.ts` for the measured contract — reading `-1` as
             // failure closed healthy viewers at the first burst, and reading
-            // `0` as success left xterm attached to a stream with a hole.
-            return frameAccepted(ws.send(frame));
+            // `0` as success left the panel attached to a stream with a hole.
+            return frameAccepted(ws.send(asBinaryFrame(frame)));
           } catch {
             // Socket closed mid-send; the close handler detaches.
             return false;

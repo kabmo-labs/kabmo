@@ -6,10 +6,10 @@
 /**
  * Hex color arithmetic for the places that cannot use CSS.
  *
- * `color-mix()` covers every blend inside the document, but xterm parses theme
- * colors itself (it accepts `#rgb`, `#rrggbb`, `rgb()`, `hsl()` and named
- * colors — not `color-mix()`, in either the DOM or the WebGL renderer), so the
- * terminal palette has to be computed here and handed over as literal hex.
+ * `color-mix()` covers every blend inside the document, but the terminal
+ * renderer takes only literal colors (it hands them to `ctx.fillStyle`, which
+ * does not resolve `color-mix()`), so the terminal palette has to be computed
+ * here and handed over as hex.
  *
  * The palette values are ported verbatim from OpenChamber and are therefore not
  * uniform: `#FFF` (jetbrains-light) and 8-digit alpha (`#dbd7caee`,

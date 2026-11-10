@@ -23,7 +23,7 @@ import {
 } from '@/shared/lib/theme/catalog';
 import { themeStyleSheet } from '@/shared/lib/theme/css';
 import { mixHex, parseHexColor } from '@/shared/lib/theme/color';
-import { getXtermTheme } from '@/client/data/theme/terminal';
+import { getTerminalTheme } from '@/client/data/theme/terminal';
 
 const COLOR_KEYS = ['canvas', 'paper', 'ink', 'error', 'success', 'info', 'warning', 'meta'] as const;
 const COLOR_VALUE = /^(#[0-9a-f]{3}|#[0-9a-f]{6}|#[0-9a-f]{8})$/i;
@@ -143,24 +143,28 @@ describe('color math', () => {
 
 describe('terminal palette', () => {
   test('follows the active theme rather than a fixed light/dark pair', () => {
-    const nord = getXtermTheme('nord-dark');
-    const paper = getXtermTheme('paper');
-    expect(nord.background).toBe('#1F2430');
+    const nord = getTerminalTheme('nord-dark');
+    const paper = getTerminalTheme('paper');
+    // No surface of its own: the terminal paints nothing behind the cells, so
+    // the panel's chrome (and the glass plane under it) shows through.
+    expect(nord.background).toBe('transparent');
+    expect(paper.background).toBe('transparent');
     expect(nord.foreground).toBe('#E5E9F0');
-    expect(paper.background).toBe('#f4f1ea');
     expect(paper.foreground).toBe('#141310');
   });
 
-  test('emits literal colors — xterm cannot parse color-mix()', () => {
+  test('emits literal colors — the canvas cannot parse color-mix()', () => {
     for (const theme of THEMES) {
-      for (const value of Object.values(getXtermTheme(theme.id))) {
-        expect(value).toMatch(COLOR_VALUE);
+      for (const value of Object.values(getTerminalTheme(theme.id))) {
+        // `transparent` is a CSS keyword `fillStyle` does accept, and it is the
+        // only non-hex value the palette is allowed to carry.
+        expect(value).toMatch(value === 'transparent' ? /^transparent$/ : COLOR_VALUE);
       }
     }
   });
 
   test('takes its signal colors from the palette', () => {
-    const dracula = getXtermTheme('dracula-dark');
+    const dracula = getTerminalTheme('dracula-dark');
     expect(dracula.red).toBe('#FF5555');
     expect(dracula.green).toBe('#50FA7B');
     expect(dracula.yellow).toBe('#FFB86C');

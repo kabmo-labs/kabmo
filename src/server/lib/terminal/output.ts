@@ -21,7 +21,7 @@
  *   concatenated after exit are byte-identical), and `history.append` already
  *   retains those views for its 512 KiB scrollback, so a defensive copy per
  *   read would cost exactly what the coalescing is there to save.
- * - **Split sequences.** xterm parses a byte stream across `write` calls, so a
+ * - **Split sequences.** the parser reads a byte stream across `write` calls, so a
  *   frame boundary mid-escape is harmless — dropping bytes is not, which is why
  *   a flush never discards anything it accepted.
  * - **Buffer without a bound.** The flush is size- or time-triggered, so a

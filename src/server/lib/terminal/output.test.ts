@@ -9,8 +9,8 @@
  * receives must equal the concatenation of the reads, in the same order, and the
  * framing must be bounded.
  *
- * Two failures it must not have, both of which xterm renders as garbage rather
- * than as an error: dropping a trailing partial frame (a prompt that never
+ * Two failures it must not have, both of which the renderer draws as garbage
+ * rather than as an error: dropping a trailing partial frame (a prompt that never
  * appears until the next keypress) and reordering (an escape sequence split
  * across two reads, reassembled after a later one).
  *

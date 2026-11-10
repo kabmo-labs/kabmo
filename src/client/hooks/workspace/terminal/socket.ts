@@ -13,9 +13,10 @@
  *   bytes and is handed straight to `term.write(Uint8Array)`; the client never
  *   decodes UTF-8 itself, which is what keeps a character split across two PTY
  *   reads intact.
- * - **`onBinary` carries the same bytes as `onData`.** xterm reports non-UTF-8
- *   payloads (some mouse reports, paste of raw bytes) on `onBinary`; forwarding
- *   only `onData` would silently drop them.
+ * - **Non-UTF-8 payloads take the byte channel.** ghostty-web has no `onBinary`:
+ *   it reports every keystroke and mouse report as one `onData` string, so
+ *   `terminalInputFrame` splits the legacy X10 report back into bytes before the
+ *   socket sees it. Encoding that payload as text would corrupt it.
  * - **Reconnect, not re-create.** A dropped socket re-dials the same terminal
  *   id, so the shell and its scrollback survive a network blip or a page reload
  *   instead of a second shell appearing.
@@ -99,7 +100,11 @@ export function connectTerminal(terminalId: string, handlers: TerminalSocketHand
         handleOutput(new Uint8Array(event.data));
         return;
       }
-      const frame = decodeServerFrame(typeof event.data === 'string' ? event.data : '');
+      // Anything that is not a binary frame is a control frame. The server
+      // sends PTY bytes as Buffer views, so `event.data` is an ArrayBuffer and
+      // this branch only ever sees JSON.
+      if (typeof event.data !== 'string') return;
+      const frame = decodeServerFrame(event.data);
       if (frame) applyFrame(frame);
     };
 

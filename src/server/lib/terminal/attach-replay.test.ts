@@ -8,8 +8,8 @@
  * exactly once: the replay's last line followed immediately by live output.
  *
  * The two ways this breaks are both silent, and both are duplicate/garbled text
- * in xterm rather than an error. Output is appended to `history` and queued for
- * delivery, so a replay captured BEFORE the queue is flushed carries the pending
+ * in the terminal rather than an error. Output is appended to `history` and
+ * queued for delivery, so a replay captured BEFORE the queue is flushed carries the pending
  * bytes and the queued frame carries them again (each line printed twice); a
  * frame delivered before the replay arrives ahead of it in the wrong order.
  * `attachTerminal` flushes first for exactly this reason, and this is the test

@@ -18,9 +18,9 @@ export interface SeparatorDrag {
  *
  * A ghost guide line follows the pointer, and the real width is re-applied at
  * most every `RESIZE_FOLLOW_INTERVAL_MS`. Applying it on every pointermove
- * re-renders both panels per frame and reflows whatever they contain — an xterm
- * buffer, a CodeMirror document, a browser iframe — for a width the user is
- * still choosing. The panel's own width transition smooths the steps that land.
+ * re-renders both panels per frame and reflows whatever they contain — a
+ * terminal buffer, a CodeMirror document, a browser iframe — for a width the
+ * user is still choosing. The panel's own width transition smooths the steps that land.
  *
  * Kept out of `index.tsx` so the components stay inside the repo's file-size
  * ceiling.

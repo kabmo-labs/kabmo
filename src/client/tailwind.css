@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import "@xterm/xterm/css/xterm.css";
 
 @theme {
   /* The UI font stack, with the Nerd Font families LAST.
@@ -7,7 +6,7 @@
    * omp heads a session title with a card icon — a private-use glyph
    * (`title.icons: nf+emoji`, the default) that no Latin face contains. The
    * terminal already names a Nerd Font for exactly this reason
-   * (`XTERM_GLYPH_FALLBACKS` + `NERD_SYMBOLS_FAMILY` in
+   * (`TERMINAL_GLYPH_FALLBACKS` + `NERD_SYMBOLS_FAMILY` in
    * `data/theme/terminal.ts`), but the UI stack did not, so a title card
    * rendered only where the DEVICE happened to have a Nerd Font installed: on
    * the developer's desktop Chromium fell back to one, and on a phone — which
@@ -24,7 +23,7 @@
    * fallback and downloads it on every machine.
    *
    * The family names are literals here because Tailwind's `@theme` cannot
-   * import a TS constant; they must stay equal to `XTERM_GLYPH_FALLBACKS` and
+   * import a TS constant; they must stay equal to `TERMINAL_GLYPH_FALLBACKS` and
    * `NERD_SYMBOLS_FAMILY`, which `nerd-symbols.test.ts` asserts. */
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", "FiraCode Nerd Font Mono", "FiraCode Nerd Font", "JetBrainsMono Nerd Font", "JetBrainsMono NF", "JetBrains Mono Nerd Font", "Hack Nerd Font", "MesloLGS NF", "MesloLGM Nerd Font", "CaskaydiaCove Nerd Font", "SauceCodePro Nerd Font", "Symbols Nerd Font Mono", "Symbols Nerd Font", "PowerlineSymbols", "Kabmo Nerd Symbols";
   --color-ink: var(--theme-ink);
@@ -553,16 +552,23 @@
   display: none;
 }
 
-/* The terminal keeps xterm's own `overflow-y: scroll` (its gutter is part of
- * the grid's geometry), but it is deliberately NOT given its own scrollbar
- * colours any more — it had 8px/22%/42% and a painted track while every other
- * container had 6px/20%/40% and a transparent one, which is exactly the drift
- * the block above exists to remove. It inherits the global rule, so the
- * terminal's bar is the same bar as everywhere else, and follows the theme
- * with it. The `touch-action`/momentum pair below is a separate concern. */
-.xterm .xterm-viewport {
+/* The terminal host: ghostty-web draws its scrollbar inside the canvas, so
+ * there is no native viewport to style. The drag-to-scroll handlers in
+ * `terminal-panel/mount.ts` own the gesture; `pan-y` keeps the browser from
+ * claiming it first, and momentum stays the platform's.
+ *
+ * `caret-color: transparent` is not cosmetic. ghostty-web marks the host it is
+ * opened on `contenteditable="true"` and `tabindex="0"` (the IME/`beforeinput`
+ * path), and its visible input is a hidden textarea — so a click on the 6px
+ * padding focuses the DIV itself and the browser paints a NATIVE caret there:
+ * a black blinking bar at the left edge, whose height follows the host's
+ * inherited 16px/24px line box (measured in Chromium: 24px, and it changes
+ * with the content beside the click point). The terminal's cursor is the
+ * canvas block, so the DOM caret is never wanted. */
+.kabmo-terminal {
   touch-action: pan-y;
   -webkit-overflow-scrolling: touch;
+  caret-color: transparent;
 }
 
 /* The chat column's width, in ONE variable and ONE class.

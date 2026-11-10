@@ -9,7 +9,7 @@
  * Timeline cards render with Shiki (`Bash`, `FallbackOutput`), which treats
  * raw `\x1b[…m` sequences as literal text — so escapes are dropped here
  * first and the clean text goes to the highlighter. True terminal colors
- * stay available in the realtime xterm panel, which parses ANSI natively.
+ * stay available in the realtime terminal panel, which parses ANSI natively.
  */
 
 /** Any ANSI escape: OSC hyperlink, charset select, or CSI sequence. */

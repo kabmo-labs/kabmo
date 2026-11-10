@@ -9,8 +9,8 @@
  * A phone's soft keyboard has no Ctrl, no Alt, no arrows, no Esc and no `|`, so
  * a shell on a phone is unusable without a strip of buttons that emit the raw
  * bytes those keys would. Every sequence here is what xterm's own
- * `evaluateKeyboardEvent` sends for the same physical key
- * (`@xterm/xterm/src/common/input/Keyboard.ts`) — the shell on the far end
+ * `evaluateKeyboardEvent` sends for the same physical key (xterm.js's
+ * `Keyboard.ts`) — the shell on the far end
  * cannot tell the two apart, so a bar key that invented its own encoding would
  * work in bash and break in vim.
  *
@@ -23,11 +23,11 @@
  *  - Ctrl has no literal spelling: it folds a typed character into a control
  *    character (Ctrl+C is `0x03`), so a literal button keeps its own byte.
  *
- * There is deliberately no Cmd key. macOS reports it as `metaKey` and xterm
- * discards it — `if (ev.metaKey) break;` in the cursor-key branches — because
- * Cmd is the browser's modifier, not the terminal's: in a terminal Cmd+C and
- * Cmd+V mean copy and paste, which is why those are actions in `KeyBar.tsx`
- * rather than bytes here.
+ * There is deliberately no Cmd key. macOS reports it as `metaKey`, and the
+ * renderer treats it as the host's modifier rather than the terminal's: a
+ * printable Cmd chord sends nothing, and Cmd+C / Cmd+V are its own copy and
+ * paste — which is why those are actions in `KeyBar.tsx` rather than bytes
+ * here.
  */
 
 export type TerminalModifier = 'ctrl' | 'alt';

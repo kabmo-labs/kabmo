@@ -2,11 +2,10 @@ import { useEffect, useRef, useState, useImperativeHandle, useCallback } from 'p
 import { forwardRef } from 'preact/compat';
 import { ArrowDown } from 'lucide-preact';
 import { useTheme } from '@/client/hooks/ui/theme';
-import { getXtermTheme } from '@/client/data/theme/terminal';
-import { mountXterm, type XtermMount } from '@/client/components/workspace/terminal-panel/mount';
+import { mountTerminal, type TerminalMount } from '@/client/components/workspace/terminal-panel/mount';
 
-export interface RealtimeXtermHandle {
-  /** Raw PTY output. Bytes, not text: xterm's decoder reassembles them. */
+export interface RealtimeTerminalHandle {
+  /** Raw PTY output. Bytes, not text: the WASM parser reassembles them. */
   write: (bytes: Uint8Array) => void;
   /**
    * Write the retained scrollback at the size it was drawn for, then fit back
@@ -26,40 +25,43 @@ export interface RealtimeXtermHandle {
   /** The current selection, empty when nothing is selected. */
   getSelection: () => string;
   /**
-   * Feed text in as a paste. Goes through xterm's own `paste`, which is what
-   * wraps it in the bracketed-paste markers when the shell asked for them —
-   * writing the bytes directly would make a multi-line paste execute line by
-   * line in an editor that expects one block.
+   * Feed text in as a paste. Goes through the terminal's own `paste`, which is
+   * what wraps it in the bracketed-paste markers when the shell asked for
+   * them — writing the bytes directly would make a multi-line paste execute
+   * line by line in an editor that expects one block.
    */
   paste: (text: string) => void;
 }
 
-interface RealtimeXtermViewProps {
+interface RealtimeTerminalViewProps {
   /** Keystrokes and paste, raw. */
   onInput: (data: string) => void;
-  /** Non-UTF-8 payloads xterm reports separately (some mouse reports). */
-  onBinaryInput: (data: string) => void;
+  /** Non-UTF-8 payloads (legacy X10 mouse reports), as latin-1 bytes. */
+  onBinaryInput: (bytes: Uint8Array) => void;
   /** The grid changed; the PTY must be resized to match. */
   onGridChange: (cols: number, rows: number) => void;
   /** The terminal is measurable and knows its size; attach with these. */
   onReady: (cols: number, rows: number) => void;
-  /** False while another panel is on screen: the WebGL context is released. */
-  visible?: boolean;
+  /**
+   * The theme changed and the terminal was rebuilt with the new palette; the
+   * server's retained scrollback has to be requested again.
+   */
+  onReattach?: () => void;
 }
 
 /**
- * xterm view bound to a real PTY.
+ * ghostty-web view bound to a real PTY.
  *
  * Every keystroke goes to the shell as bytes — line editing, history, tab
  * completion and Ctrl+C are the shell's job, not this component's. Output is
  * written as bytes so a character split across two PTY reads is reassembled by
- * xterm's own streaming decoder rather than by a decode step here.
+ * the WASM parser rather than by a decode step here.
  */
-export const RealtimeXtermView = forwardRef<RealtimeXtermHandle, RealtimeXtermViewProps>(
-  ({ onInput, onBinaryInput, onGridChange, onReady, visible = true }, ref) => {
+export const RealtimeTerminalView = forwardRef<RealtimeTerminalHandle, RealtimeTerminalViewProps>(
+  ({ onInput, onBinaryInput, onGridChange, onReady, onReattach }, ref) => {
     const { theme } = useTheme();
     const containerRef = useRef<HTMLDivElement>(null);
-    const mountRef = useRef<XtermMount | null>(null);
+    const mountRef = useRef<TerminalMount | null>(null);
     const [isScrolledUp, setIsScrolledUp] = useState(false);
 
     const inputRef = useRef(onInput);
@@ -70,63 +72,50 @@ export const RealtimeXtermView = forwardRef<RealtimeXtermHandle, RealtimeXtermVi
     gridChangeRef.current = onGridChange;
     const readyRef = useRef(onReady);
     readyRef.current = onReady;
+    const reattachRef = useRef(onReattach);
+    reattachRef.current = onReattach;
     const themeRef = useRef(theme);
     themeRef.current = theme;
-    // Read when the async mount RESOLVES, not when this effect ran: `mountXterm`
-    // imports xterm and the WebGL addon, so `mountRef.current` is still null on
-    // the first pass and an effect that only ran then would leave the context
-    // held by a panel that was never on screen.
-    const visibleRef = useRef(visible);
-    visibleRef.current = visible;
-
-    useEffect(() => {
-      const term = mountRef.current?.term;
-      if (!term) return;
-      term.options.theme = getXtermTheme(theme);
-      term.refresh(0, term.rows - 1);
-    }, [theme]);
 
     /**
-     * Hold the WebGL context only while this view is on screen.
-     *
-     * The right-panel stack keeps every built-in view MOUNTED and hides the
-     * inactive ones with CSS; the terminal is the one view that stays live while
-     * hidden, because it owns a PTY. That made its GPU context permanent: eight
-     * terminals held eight contexts, and `vmmap` on the desktop shell showed
-     * `owned unmapped (graphics)` at 541.8 MB of an 817.7 MB footprint while the
-     * JS heap was 12.6 MB. Releasing on hide drops the context — xterm's DOM
-     * renderer keeps the buffer readable — and showing the panel re-creates it.
+     * The WASM palette is fixed when the terminal is created, so a theme switch
+     * is a terminal rebuild plus a scrollback replay, not a repaint. The effect
+     * runs before the async mount resolves on first render (`mountRef` is null
+     * then); that initial theme is the one `mountTerminal` was called with.
      */
     useEffect(() => {
-      mountRef.current?.setWebgl(visible);
-    }, [visible]);
+      const mount = mountRef.current;
+      if (!mount) return;
+      mount.setTheme(theme);
+      reattachRef.current?.();
+    }, [theme]);
 
     useImperativeHandle(ref, () => ({
       write(bytes: Uint8Array) {
-        mountRef.current?.term.write(bytes);
+        mountRef.current?.write(bytes);
       },
       writeReplay(bytes: Uint8Array, cols: number, rows: number) {
         mountRef.current?.writeReplay(bytes, cols, rows);
       },
       reset() {
-        mountRef.current?.term.reset();
+        mountRef.current?.reset();
       },
       focus() {
-        mountRef.current?.term.focus();
+        mountRef.current?.focus();
       },
       applicationCursorKeys() {
-        return mountRef.current?.term.modes.applicationCursorKeysMode ?? false;
+        return mountRef.current?.applicationCursorKeys() ?? false;
       },
       getSelection() {
-        return mountRef.current?.term.getSelection() ?? '';
+        return mountRef.current?.getSelection() ?? '';
       },
       paste(text: string) {
-        mountRef.current?.term.paste(text);
+        mountRef.current?.paste(text);
       },
     }), []);
 
     const scrollToBottom = useCallback(() => {
-      mountRef.current?.term.scrollToBottom();
+      mountRef.current?.scrollToBottom();
       setIsScrolledUp(false);
     }, []);
 
@@ -137,12 +126,12 @@ export const RealtimeXtermView = forwardRef<RealtimeXtermHandle, RealtimeXtermVi
       if (!container) return;
       let cancelled = false;
 
-      void mountXterm(
+      void mountTerminal(
         container,
         themeRef.current,
         {
           onInput: (data) => inputRef.current(data),
-          onBinaryInput: (data) => binaryInputRef.current(data),
+          onBinaryInput: (bytes) => binaryInputRef.current(bytes),
           onGridChange: (cols, rows) => gridChangeRef.current(cols, rows),
           onReady: (cols, rows) => readyRef.current(cols, rows),
           onScrolledUpChange: setIsScrolledUp,
@@ -155,10 +144,9 @@ export const RealtimeXtermView = forwardRef<RealtimeXtermHandle, RealtimeXtermVi
           return;
         }
         mountRef.current = mount;
-        // The panel can mount while another view is on screen — the stack keeps
-        // every built-in mounted — so the context is released on arrival rather
-        // than on the next visibility change.
-        mount.setWebgl(visibleRef.current);
+        // E2E types into the terminal's hidden input. The renderer creates it
+        // inside `open`, so the hook cannot be written on the JSX element.
+        container.querySelector('textarea')?.setAttribute('data-terminal-input', '');
       });
 
       return () => {
@@ -168,11 +156,16 @@ export const RealtimeXtermView = forwardRef<RealtimeXtermHandle, RealtimeXtermVi
       };
     }, []);
 
+    // No background and no padding: the terminal is not a surface of its own,
+    // and the panel's paper shows through the strip the fit addon leaves for
+    // its in-canvas scrollbar. `p-1.5` also made the grid narrower than the
+    // panel, which read as a terminal that was not full width.
     return (
-      <div className="relative flex-1 w-full h-full bg-canvas overflow-hidden">
+      <div className="relative flex-1 w-full h-full overflow-hidden">
         <div
           ref={containerRef}
-          className="w-full h-full cursor-text p-1.5"
+          data-terminal-root=""
+          className="kabmo-terminal w-full h-full cursor-text"
           style={{ height: '100%', width: '100%' }}
         />
 
@@ -192,4 +185,4 @@ export const RealtimeXtermView = forwardRef<RealtimeXtermHandle, RealtimeXtermVi
   }
 );
 
-RealtimeXtermView.displayName = 'RealtimeXtermView';
+RealtimeTerminalView.displayName = 'RealtimeTerminalView';

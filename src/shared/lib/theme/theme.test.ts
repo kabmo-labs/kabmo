@@ -10,7 +10,7 @@
  *
  * Why each case is risky:
  *
- * - `rgbaToHex` feeds xterm, which rejects anything but literal hex. An
+ * - `rgbaToHex` feeds the terminal palette, which takes only literal hex. An
  *   out-of-range or unrounded channel emits `#ff0-10`, a color no consumer can
  *   parse, so clamping/rounding is pinned here.
  * - `mixHex` composites the blend's own alpha. A palette that carries 8-digit

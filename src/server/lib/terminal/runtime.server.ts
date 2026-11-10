@@ -55,10 +55,20 @@ const resizeTimers = registry.resizeTimers;
 export async function attachTerminal(viewer: TerminalViewer, request: AttachRequest): Promise<TerminalAttachment> {
   const session = await openTerminal(request);
 
+  // The attach states the viewer's grid, and that has to be the PTY's size: a
+  // shell only learns a size from `resize`, and a page that just fitted to the
+  // grid the session already had sends no resize frame at all. Without this, a
+  // shell left at a squeezed size by an earlier mount (the panel opens with a
+  // width transition; measured `resize 5x37` while it was still animating) kept
+  // drawing every later prompt hard-wrapped, and that garbage is replayed on
+  // every reconnect. Equal sizes early-return in `resizeTerminal`, so the
+  // common attach sends no signal.
+  resizeTerminal(session.id, request.cols, request.rows);
+
   // Pending bytes are already in history, so they have to leave the coalescer
   // BEFORE the replay is captured: delivered after, the viewer would receive
   // them twice; captured first, they would be missing from the replay and then
-  // arrive out of order. Either way xterm shows duplicated or shuffled lines.
+  // arrive out of order. Either way the terminal shows duplicated or shuffled lines.
   session.output.flush();
   const replay = session.history.replay();
   const snapshot = snapshotOf(session);
@@ -184,11 +194,11 @@ export function resizeTerminal(id: string, cols: number, rows: number): void {
 /**
  * Debounce for `resizeTerminal`.
  *
- * A panel drag produces a burst of sizes — the pointer moves in steps and
- * xterm's FitAddon refits on every animation frame — and each accepted size
- * sends SIGWINCH. The shell answers every one of them by redrawing its prompt,
- * so a single drag used to print the prompt a dozen times (measured: 10
- * SIGWINCH in one second for one drag).
+ * A panel drag produces a burst of sizes — the pointer moves in steps and the
+ * host's ResizeObserver reports most of them — and each accepted size sends
+ * SIGWINCH. The shell answers every one of them by redrawing its prompt, so a
+ * single drag used to print the prompt a dozen times (measured: 10 SIGWINCH in
+ * one second for one drag).
  *
  * Only the trailing size matters: the PTY ends at the final grid either way,
  * and a repaint of an intermediate size is invisible work. A single timeout is

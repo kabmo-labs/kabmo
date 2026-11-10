@@ -5,7 +5,7 @@
 
 /**
  * Live terminal session for the right panel: the socket, its status, and the
- * attach/resize/input verbs the xterm view drives.
+ * attach/resize/input verbs the terminal view drives.
  *
  * The terminal id is per Kabmo session and persisted, which is what makes the
  * shell survive a page reload: the panel reattaches to the id it already owns
@@ -48,6 +48,12 @@ export interface UseTerminalResult {
   input: (data: Uint8Array) => void;
   /** Replace the shell with a fresh one. */
   restart: () => void;
+  /**
+   * Re-open the socket for the same terminal id. The server replays its
+   * retained scrollback, which is what lets a rebuilt renderer (a theme switch)
+   * regain its history without a new shell.
+   */
+  reattach: () => void;
 }
 
 export function useTerminal(options: UseTerminalOptions = {}): UseTerminalResult {
@@ -57,6 +63,8 @@ export function useTerminal(options: UseTerminalOptions = {}): UseTerminalResult
   const [shell, setShell] = useState('');
   const [exitCode, setExitCode] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** Incremented by `reattach`; the socket effect owns the reconnect. */
+  const [generation, setGeneration] = useState(0);
 
   const socketRef = useRef<TerminalSocket | null>(null);
   // The grid the view reported, replayed on attach so a reconnect lands on the
@@ -133,7 +141,7 @@ export function useTerminal(options: UseTerminalOptions = {}): UseTerminalResult
       socket.release();
       socketRef.current = null;
     };
-  }, [ready, terminalId]);
+  }, [ready, terminalId, generation]);
 
   const restart = useCallback(() => {
     // Kill the old shell before minting a new id: leaving it to the idle
@@ -182,5 +190,11 @@ export function useTerminal(options: UseTerminalOptions = {}): UseTerminalResult
     socketRef.current?.input(data);
   }, []);
 
-  return { status, shell, exitCode, error, attach, resize, input, restart };
+  const reattach = useCallback(() => {
+    // The effect's cleanup releases the old socket and a new one attaches with
+    // the remembered size, so the server replays the same terminal id.
+    setGeneration((value) => value + 1);
+  }, []);
+
+  return { status, shell, exitCode, error, attach, resize, input, restart, reattach };
 }

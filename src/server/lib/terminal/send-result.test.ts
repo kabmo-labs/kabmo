@@ -11,7 +11,24 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { frameAccepted } from '@/server/lib/terminal/send-result';
+import { asBinaryFrame, frameAccepted } from '@/server/lib/terminal/send-result';
+
+describe('asBinaryFrame', () => {
+  test('a Uint8Array becomes a Buffer VIEW over the same bytes', () => {
+    const source = new Uint8Array([0x1b, 0x5b, 0x4d, 0x20, 0x20, 0x20]);
+    const frame = asBinaryFrame(source);
+    expect(Buffer.isBuffer(frame)).toBe(true);
+    expect([...(frame as Buffer)]).toEqual([...source]);
+    // Elysia only keeps bytes binary for Buffer; a copy would be correct but
+    // would double the cost of every PTY frame, so this pins the view.
+    (frame as Buffer)[0] = 0x41;
+    expect(source[0]).toBe(0x41);
+  });
+
+  test('a string stays text', () => {
+    expect(asBinaryFrame('{"t":"ready"}')).toBe('{"t":"ready"}');
+  });
+});
 
 describe('frameAccepted', () => {
   test('bytes queued is a delivery', () => {

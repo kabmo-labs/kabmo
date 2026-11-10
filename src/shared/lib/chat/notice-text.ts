@@ -17,7 +17,7 @@
  *   runs and half-block progress bars. The notice card renders markdown through
  *   Shiki, which treats `\x1b[38;2;…m` as literal text, so `/context` drew 48
  *   escape bytes as `38;2;107;114;128m████…`. True colour stays available in the
- *   realtime xterm panel, which parses ANSI natively.
+ *   realtime terminal panel, which parses ANSI natively.
  * - **`<system-notice>` wrappers.** omp tags its own notices; the tag is
  *   scaffolding, not content. (The runtime-notice wrappers —
  *   `<system-reminder>`, `<system-interrupt>`, `<task-result>` — are NOT

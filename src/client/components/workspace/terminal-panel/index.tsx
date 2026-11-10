@@ -8,7 +8,7 @@ import { copyToClipboard, readClipboardText } from '@/client/hooks/ui/clipboard'
 import { TerminalHeader } from '@/client/components/workspace/terminal-panel/Header';
 import { TerminalQuickActions } from '@/client/components/workspace/terminal-panel/QuickActions';
 import { TerminalKeyBar } from '@/client/components/workspace/terminal-panel/KeyBar';
-import { RealtimeXtermView, type RealtimeXtermHandle } from '@/client/components/workspace/terminal-panel/RealtimeXtermView';
+import { RealtimeTerminalView, type RealtimeTerminalHandle } from '@/client/components/workspace/terminal-panel/RealtimeTerminalView';
 import {
   NO_MODIFIERS,
   applyModifiers,
@@ -30,7 +30,7 @@ interface TerminalPanelProps {
 const encoder = new TextEncoder();
 
 export function TerminalPanel({ className = '', enabled = true, rootPath, showHeader = true, active = true }: TerminalPanelProps) {
-  const xtermRef = useRef<RealtimeXtermHandle>(null);
+  const terminalRef = useRef<RealtimeTerminalHandle>(null);
   const { isDark } = useTheme();
   // Only a device without a physical keyboard gets the key bar: on a desktop
   // every one of those keys is already under the user's fingers, and a strip of
@@ -44,21 +44,21 @@ export function TerminalPanel({ className = '', enabled = true, rootPath, showHe
   const { activeRepo, setActiveRepo } = useRepoScope(rootPath);
   const { repos, scanning: reposScanning, rescan: rescanRepos } = useRepoList(rootPath, enabled);
   const gridRef = useRef<{ cols: number; rows: number } | null>(null);
-  // The latch is read inside `handleInput`, which xterm calls outside React's
+  // The latch is read inside `handleInput`, which the terminal calls outside React's
   // render — a ref is what makes it the value at the keystroke, not at mount.
   const modifiersRef = useRef(modifiers);
   modifiersRef.current = modifiers;
 
   const handleOutput = useCallback((bytes: Uint8Array) => {
-    xtermRef.current?.write(bytes);
+    terminalRef.current?.write(bytes);
   }, []);
 
   const handleReplay = useCallback((bytes: Uint8Array, frame: { replayCols: number; replayRows: number }) => {
-    xtermRef.current?.writeReplay(bytes, frame.replayCols, frame.replayRows);
+    terminalRef.current?.writeReplay(bytes, frame.replayCols, frame.replayRows);
   }, []);
 
   const handleRestart = useCallback(() => {
-    xtermRef.current?.reset();
+    terminalRef.current?.reset();
   }, []);
 
   const {
@@ -70,6 +70,7 @@ export function TerminalPanel({ className = '', enabled = true, rootPath, showHe
     resize,
     input,
     restart,
+    reattach,
   } = useTerminal({
     root: enabled ? rootPath : undefined,
     repo: activeRepo,
@@ -112,19 +113,19 @@ export function TerminalPanel({ className = '', enabled = true, rootPath, showHe
 
   const handleToggleModifier = useCallback((modifier: TerminalModifier) => {
     setModifiers((previous) => ({ ...previous, [modifier]: !previous[modifier] }));
-    xtermRef.current?.focus();
+    terminalRef.current?.focus();
   }, []);
 
   const handleKey = useCallback((id: TerminalKeyId) => {
     const sequence = resolveKeySequence(id, {
-      applicationCursorKeys: xtermRef.current?.applicationCursorKeys() ?? false,
+      applicationCursorKeys: terminalRef.current?.applicationCursorKeys() ?? false,
       modifiers: modifiersRef.current,
     });
     if (!sequence) return;
     input(encoder.encode(sequence));
     setModifiers(NO_MODIFIERS);
     // Keep the OS keyboard where it was; a key bar tap must not dismiss it.
-    xtermRef.current?.focus();
+    terminalRef.current?.focus();
   }, [input]);
 
   /**
@@ -134,7 +135,7 @@ export function TerminalPanel({ className = '', enabled = true, rootPath, showHe
    * instead of flashing success over an untouched clipboard.
    */
   const handleCopy = useCallback(async () => {
-    const selection = xtermRef.current?.getSelection() ?? '';
+    const selection = terminalRef.current?.getSelection() ?? '';
     if (!selection) return false;
     return copyToClipboard(selection);
   }, []);
@@ -142,26 +143,28 @@ export function TerminalPanel({ className = '', enabled = true, rootPath, showHe
   const handlePaste = useCallback(async () => {
     const text = await readClipboardText();
     if (text === null || text.length === 0) return false;
-    // Through xterm's own paste, so a bracketed-paste shell gets its markers.
-    xtermRef.current?.paste(text);
-    xtermRef.current?.focus();
+    // Through the terminal's own paste, so a bracketed-paste shell gets its markers.
+    terminalRef.current?.paste(text);
+    terminalRef.current?.focus();
     return true;
   }, []);
 
-  const handleBinaryInput = useCallback((data: string) => {
-    const bytes = new Uint8Array(data.length);
-    for (let i = 0; i < data.length; i += 1) bytes[i] = data.charCodeAt(i) & 0xff;
+  const handleBinaryInput = useCallback((bytes: Uint8Array) => {
     input(bytes);
   }, [input]);
 
   const handleQuickAction = useCallback((command: string) => {
     input(encoder.encode(`${command}\r`));
-    xtermRef.current?.focus();
+    terminalRef.current?.focus();
   }, [input]);
 
   const handleRestartClick = useCallback(() => {
     restart();
   }, [restart]);
+
+  const handleReattach = useCallback(() => {
+    reattach();
+  }, [reattach]);
 
   if (!enabled) {
     return (
@@ -175,6 +178,7 @@ export function TerminalPanel({ className = '', enabled = true, rootPath, showHe
     <div
       ref={rootRef}
       className={`flex flex-col h-full w-full bg-paper text-ink overflow-hidden ${className}`}
+      aria-hidden={!active}
       // The soft keyboard covers the bottom of the visual viewport without
       // shrinking the layout one, so the key bar would sit behind the keys the
       // user is typing on. Lifting by the panel's actual overlap with the
@@ -207,15 +211,15 @@ export function TerminalPanel({ className = '', enabled = true, rootPath, showHe
         </div>
       )}
 
-      {/* Real-time Xterm Terminal Canvas, driven by the PTY socket */}
+      {/* Real-time terminal canvas, driven by the PTY socket */}
       <div className="flex-1 w-full min-h-0 bg-canvas overflow-hidden">
-        <RealtimeXtermView
-          ref={xtermRef}
+        <RealtimeTerminalView
+          ref={terminalRef}
           onInput={handleInput}
           onBinaryInput={handleBinaryInput}
           onReady={handleReady}
           onGridChange={handleGridChange}
-          visible={active}
+          onReattach={handleReattach}
         />
       </div>
 

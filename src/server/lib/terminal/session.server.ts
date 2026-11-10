@@ -28,7 +28,7 @@
  *    SIGWINCH itself.
  *
  * A fourth: a PTY read may split a multi-byte character, so bytes are forwarded
- * verbatim and xterm's own streaming decoder reassembles them.
+ * verbatim and the renderer's own streaming decoder reassembles them.
  *
  * A fifth, and the reason `output.ts` exists: **reads are coalesced into frames,
  * never forwarded one-per-read**. One read is one line for a line-oriented
@@ -96,8 +96,8 @@ export interface TerminalSession {
  *
  * A viewer reports false only for a real drop (`send-result.ts` owns that
  * contract: Bun's `-1` means "queued, draining" and `0` means "dropped"). A
- * dropped viewer is closed rather than skipped — skipping would leave xterm's
- * parser mid-sequence, so the honest outcome is a reconnect that replays the
+ * dropped viewer is closed rather than skipped — skipping would leave the
+ * renderer's parser mid-sequence, so the honest outcome is a reconnect that replays the
  * scrollback. The PTY cannot be paused, so this is the only backpressure a
  * terminal has; coalescing in `output.ts` is what keeps it from firing on a
  * producer that simply emits many small reads.
@@ -201,8 +201,8 @@ export async function createSession(request: AttachRequest): Promise<TerminalSes
     session.exitCode = code ?? null;
     session.signal = signalName(proc.signalCode);
     session.lastActivity = Date.now();
-    // Queued output is older than this frame. Flushing first keeps xterm's
-    // order honest: otherwise the shell's last bytes would print after the
+    // Queued output is older than this frame. Flushing first keeps the
+    // renderer's order honest: otherwise the shell's last bytes would print after the
     // notice that the shell is gone.
     session.output.flush();
     const frame = JSON.stringify({ t: 'exit', exitCode: session.exitCode, signal: session.signal });

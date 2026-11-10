@@ -47,15 +47,17 @@ const ARMED_CLASS = 'bg-ink text-canvas border-ink';
  * **Copy and Paste stand in for Cmd+C / Cmd+V**, which is what those chords mean
  * in a terminal and the one thing a phone genuinely cannot do: it has no
  * selection to right-click and no paste without a long-press the terminal canvas
- * does not offer. There is no raw Cmd button because xterm discards `metaKey`
- * on every key but Cmd+A (`if (ev.metaKey) break;`, which routes Cmd+A to
- * select-all) — a Cmd button would send nothing, while the Cmd chords the user
- * does have keep working untouched. Copy reports when there was no selection
- * rather than flashing a check for a clipboard it did not fill.
+ * does not offer. There is no raw Cmd button because the renderer treats Cmd as
+ * the host's modifier, not the terminal's: a printable character with `metaKey`
+ * set sends nothing (`isPrintableCharacter` returns false), and Cmd+C / Cmd+V
+ * are its own copy and paste. A Cmd button would therefore send nothing, while
+ * the Cmd chords the user does have keep working untouched. Copy reports when
+ * there was no selection rather than flashing a check for a clipboard it did not
+ * fill.
  *
- * `pointerdown` is swallowed so tapping a key never moves focus out of xterm's
- * hidden textarea: blurring it closes the OS keyboard, and a key bar that makes
- * the keyboard disappear is worse than no key bar.
+ * `pointerdown` is swallowed so tapping a key never moves focus out of the
+ * renderer's hidden input: blurring it closes the OS keyboard, and a key bar
+ * that makes the keyboard disappear is worse than no key bar.
  *
  * Wrapping, not horizontal scrolling. The diff toolbar taught that a
  * `no-scrollbar` overflow hides actions with nothing on screen to say so

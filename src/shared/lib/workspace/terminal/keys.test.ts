@@ -7,7 +7,7 @@
  * The bytes the terminal key bar sends.
  *
  * Every expectation here is copied from xterm's own `evaluateKeyboardEvent`
- * (`@xterm/xterm/src/common/input/Keyboard.ts`), because the shell cannot tell a
+ * (`Keyboard.ts`), because the shell cannot tell a
  * bar button from a physical key: a sequence that merely looks plausible works
  * in bash and breaks in vim. Three of those rules are the ones this file exists
  * to pin — a modifier is a CSI PARAMETER and not an ESC prefix, application
