@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import type { ReactNode } from 'preact/compat';
-import { Brain, Clock3, Coins, Hourglass, MessageSquarePlus, MoreHorizontal, RotateCcw, X } from 'lucide-preact';
+import { Brain, Clock3, Coins, GitFork, Hourglass, MessageSquarePlus, MoreHorizontal, RotateCcw, X } from 'lucide-preact';
 import { CopyButton } from '@/client/components/common/CopyButton';
 import { RunMark } from '@/client/components/workspace/chat-timeline/RunMark';
 import { PluginMessageActions } from '@/client/components/workspace/chat-timeline/PluginMessageActions';
@@ -33,12 +33,20 @@ interface AiMessageFooterProps {
   msgId: string;
   onRetry?: (msgId: string) => void;
   onNewChat?: (content: string) => void;
+  /**
+   * Anchor row for Fork. Separate from `msgId`, which Retry resolves to the
+   * run's OPENING user row: forking there branches before the answer this
+   * footer sits under. The anchor is the run's owner row instead, so the fork
+   * keeps the answer.
+   */
+  forkTargetId?: string;
+  onFork?: (msgId: string) => void;
   isMobile?: boolean;
   /**
-   * Whether the row offers Retry / New-chat. Both act on the CHAT (re-run a chat
-   * turn, branch a chat session from an answer), so a footer that describes a
-   * row the chat does not own — the BTW panel's side answer — turns them off
-   * instead of rendering buttons that do nothing.
+   * Whether the row offers Retry / Fork / New-chat. All of them act on the
+   * CHAT (re-run a chat turn, branch a session from it), so a footer that
+   * describes a row the chat does not own — the BTW panel's side answer —
+   * turns them off instead of rendering buttons that do nothing.
    */
   showActions?: boolean;
 }
@@ -56,6 +64,8 @@ export function AiMessageFooter({
   harness,
   onRetry,
   onNewChat,
+  forkTargetId,
+  onFork,
   isMobile = false,
   showActions = true,
 }: AiMessageFooterProps) {
@@ -69,6 +79,11 @@ export function AiMessageFooter({
   const handleNewChat = () => {
     setIsMenuOpen(false);
     onNewChat?.(content);
+  };
+
+  const handleFork = () => {
+    setIsMenuOpen(false);
+    if (forkTargetId) onFork?.(forkTargetId);
   };
 
   useEffect(() => {
@@ -221,6 +236,12 @@ export function AiMessageFooter({
                       <RotateCcw size={20} className="shrink-0 text-ink/55" />
                       <span>Retry response</span>
                     </button>
+                    {onFork && forkTargetId && (
+                      <button type="button" aria-label="Fork session from this answer" onClick={handleFork} className="flex min-h-12 w-full items-center gap-3 rounded-lg px-3 text-left text-sm text-ink transition-colors hover:bg-ink/5 cursor-pointer">
+                        <GitFork size={20} className="shrink-0 text-ink/55" />
+                        <span>Fork from this answer</span>
+                      </button>
+                    )}
                     <button type="button" aria-label="Start new chat from this answer" onClick={handleNewChat} className="flex min-h-12 w-full items-center gap-3 rounded-lg px-3 text-left text-sm text-ink transition-colors hover:bg-ink/5 cursor-pointer">
                       <MessageSquarePlus size={20} className="shrink-0 text-ink/55" />
                       <span>Start new chat from this answer</span>
@@ -267,6 +288,11 @@ export function AiMessageFooter({
           ariaLabel="Copy response"
           emptyTitle="Nothing to copy — this run produced no text"
         />
+        {showActions && onFork && forkTargetId && (
+          <button type="button" className="flex items-center hover:text-ink transition-colors p-1 rounded hover:bg-ink/5 cursor-pointer" title="Fork from here" aria-label="Fork session from this answer" onClick={handleFork}>
+            <GitFork size={12} />
+          </button>
+        )}
         {showActions && (
           <button type="button" className="flex items-center hover:text-ink transition-colors p-1 rounded hover:bg-ink/5 cursor-pointer" title="New Chat from here" aria-label="Start new chat from this answer" onClick={handleNewChat}>
             <MessageSquarePlus size={12} />

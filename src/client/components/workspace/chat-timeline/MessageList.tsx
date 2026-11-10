@@ -32,11 +32,11 @@ export interface MessageListProps {
   onFork?: (msgId: string) => void;
   isMobile?: boolean;
   /**
-   * Whether chat-owning actions render: a USER row's Undo / New-chat, and the
-   * run footer's Retry / New-chat. All of them act on the CHAT (rewind a chat
-   * turn, re-run it, branch a session from it), so a renderer that draws rows
-   * the chat does not own — the BTW panel's side question and its answer — turns
-   * them off instead of showing buttons that do nothing.
+   * Whether chat-owning actions render: a USER row's Undo / Fork / New-chat,
+   * and the run footer's Retry / Fork / New-chat. All of them act on the CHAT
+   * (rewind a chat turn, re-run it, branch a session from it), so a renderer
+   * that draws rows the chat does not own — the BTW panel's side question and
+   * its answer — turns them off instead of showing buttons that do nothing.
    */
   userActions?: boolean;
   /**
@@ -162,6 +162,7 @@ export const MessageList = memo(function MessageList({
                     retryTargetId={inlineFooter.runUserId}
                     onRetry={onRetry}
                     onNewChat={onNewChat}
+                    onFork={onFork}
                     isMobile={isMobile}
                     showActions={userActions}
                   />
@@ -184,6 +185,7 @@ export const MessageList = memo(function MessageList({
             retryTargetId={trailingFooter.runUserId}
             onRetry={onRetry}
             onNewChat={onNewChat}
+            onFork={onFork}
             isMobile={isMobile}
             showActions={userActions}
           />

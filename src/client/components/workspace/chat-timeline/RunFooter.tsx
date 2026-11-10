@@ -31,12 +31,18 @@ interface RunFooterProps {
   retryTargetId?: string;
   onRetry?: (msgId: string) => void;
   onNewChat?: (content: string, attachments?: Attachment[]) => void;
+  /**
+   * Branch the session from this answer. The anchor is the run's owner row
+   * (`msg.id`), never `retryTargetId`: the opening user row would fork BEFORE
+   * the answer, while the footer sits under it.
+   */
+  onFork?: (msgId: string) => void;
   /** Mobile uses a compact provider/model footer with a bottom-sheet menu. */
   isMobile?: boolean;
   /**
-   * Whether the footer offers Retry / New-chat. Both act on the CHAT, so a
-   * footer describing a row the chat does not own (the BTW panel's side answer)
-   * turns them off rather than rendering dead buttons.
+   * Whether the footer offers Retry / Fork / New-chat. All of them act on the
+   * CHAT, so a footer describing a row the chat does not own (the BTW panel's
+   * side answer) turns them off rather than rendering dead buttons.
    */
   showActions?: boolean;
 }
@@ -60,6 +66,7 @@ export function RunFooter({
   retryTargetId,
   onRetry,
   onNewChat,
+  onFork,
   isMobile = false,
   showActions = true,
 }: RunFooterProps) {
@@ -78,6 +85,8 @@ export function RunFooter({
         msgId={retryTargetId || msg.id}
         onRetry={onRetry}
         onNewChat={onNewChat}
+        forkTargetId={msg.id}
+        onFork={onFork}
         isMobile={isMobile}
         showActions={showActions}
       />
