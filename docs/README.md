@@ -34,6 +34,7 @@ is not documentation and does not move.
 | 18 | [Centre terminal](milestones/M18-centre-terminal.md) | xterm versus Ghostty, measured, for a terminal beside the timeline | planned |
 | 19 | [Threads, forks and orchestration](milestones/M19-threads-forks-orchestration.md) | a reference implementation measured, then the session tree, spawn, fork, child outcomes and the sidebar separation | done |
 | 20 | [Cross-harness orchestration](milestones/M20-cross-harness-orchestration.md) | five references compared, then the shipped `@harness` mention grammar: default-model delegation, prompt contract, worker preamble | partial |
+| 21 | [Terminal emulator migration](milestones/M21-terminal-ghostty-web-migration.md) | the right-panel terminal moved from xterm.js to ghostty-web, with the theme/scrollback workarounds and the transport fix it uncovered | partial |
 
 ### What still owes
 
@@ -45,6 +46,7 @@ is not documentation and does not move.
 | 13 | all of it | research only: no TLS trust in any shell, no QR pairing |
 | 18 | all of it | research only: no centre-stage terminal view exists |
 | 20 | composer-side direct spawn, model autocomplete, roles, MCP injection, Run/fleet UI | the mention grammar and defaults shipped; the rest needs the MCP and Run work in the milestone |
+| 21 | the phone/WebView run, the hidden-terminal memory number, and upstream theme/scrollback/reset fixes | the renderer swap, its workarounds and the paint benchmark shipped; the device run and the upstream fixes that would delete the workarounds remain |
 
 Declined, and recorded as such rather than left open: plugin-platform **P6** (component registry,
 declined in M04 and re-declined in M05/W6) and the editor's **format-on-save** (M14).

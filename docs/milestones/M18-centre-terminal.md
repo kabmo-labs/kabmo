@@ -97,8 +97,8 @@ tuned against xterm's renderer internals.
    in vim/less are encoded wrong.
 4. **Kabmo patches xterm internals on purpose.** `_core._renderService.dimensions` gates
    both fit and attach; `safePatchFitAddon` / `safePatchRenderService` exist because a
-   hidden panel measures 0 px; `refreshAtlasWhenNerdFaceLoads` calls `clearTextureAtlas()`
-   when the bundled Nerd Font face lands late; `webgl.ts` owns context release (measured
+   hidden panel measures 0 px; `ensureTerminalFonts` awaits the text and symbols faces before `open()` and
+   `refreshWhenFacesLoad` re-measures when one lands late; `webgl.ts` owns context release (measured
    541.8 MB graphics in an 817.7 MB footprint). None of that exists in a Canvas 2D engine,
    and each item was a measured bug once.
 
