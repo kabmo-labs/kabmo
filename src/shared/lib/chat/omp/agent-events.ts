@@ -46,6 +46,9 @@ export function foldAgentEvent(data: OmpAgentEvent, deps: OmpAgentFoldDeps): voi
   switch (data.type) {
     case 'agent_start':
       deps.setState((prev) => ({ ...prev, isGenerating: true, error: null }));
+      // A cold chat has no live agent when the composer first reads `/modes`;
+      // this is the first frame after its spawn, so re-read the mode ladder.
+      emitSessionModesChanged(deps.sessionId);
       deps.toolResultsRef.current?.clear();
       deps.lastToolMessageRef.current = null;
       // A fresh run restarts level tracking; the first turn relies on the
