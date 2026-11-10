@@ -4,6 +4,32 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.25.0](https://github.com/kabmo-labs/kabmo/compare/v0.24.0...v0.25.0) — 2026-11-10
+
+### Added
+
+* **chat:** orchestrate workers from [@harness](https://github.com/harness) mentions ([2305bbc](https://github.com/kabmo-labs/kabmo/commit/2305bbc23feb66edfcaf31923ba4ceb190be5c0a)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** run harness updates as a background job with a readable log ([505bcdf](https://github.com/kabmo-labs/kabmo/commit/505bcdfcdecc52a751f406116d82f25947cb3b80)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **omp:** bump the pin to 18.18.6 and read its wait sentence ([acd3822](https://github.com/kabmo-labs/kabmo/commit/acd3822c8c2fd978e34541fa203bfcd1650e0aa6)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **sessions:** add child sessions, forks and agent orchestration ([8dc7e44](https://github.com/kabmo-labs/kabmo/commit/8dc7e4409e1d7cb2cf46fa6ab8bb5eaa96411b12)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **terminal:** render the panel with ghostty-web instead of xterm ([9b678a5](https://github.com/kabmo-labs/kabmo/commit/9b678a5a7ad7905ec5a46cfaa43f0351e3023a2d)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **usage:** read New API gateway spend from the provider's own base URL ([5d416ff](https://github.com/kabmo-labs/kabmo/commit/5d416fff55e5b75d4eca5553c30a9354c302cd88)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Changed
+
+* **chat:** keep the mock-mode branch inside the send file's ceiling ([d4dc790](https://github.com/kabmo-labs/kabmo/commit/d4dc790ce22545078e4d2fb03e72d70eccae3040)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **milestones:** add M21, the ghostty-web migration record ([d8f5158](https://github.com/kabmo-labs/kabmo/commit/d8f51580631fb364aa6099215d9f21ab9f591a84)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **chat:** answer the demo shell from the simulated stream, not a failed spawn ([814fa38](https://github.com/kabmo-labs/kabmo/commit/814fa38ebd964fdf513abd9cc4ceb57a5a498729)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **chat:** stop the generating indicator jumping when a pending chat is adopted ([4517837](https://github.com/kabmo-labs/kabmo/commit/45178370d815b0ff42944c1477338695617b18d3)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **diff:** open markdown diffs without multi-second stalls ([7c0b315](https://github.com/kabmo-labs/kabmo/commit/7c0b315a23b65b95c9e13c4d1413256ee25d4774)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness/acp:** deliver subagent notices that arrive after end_turn ([fb092a1](https://github.com/kabmo-labs/kabmo/commit/fb092a18f32ba94ff47d20579b99570b46ff8a77)) (thanks [@rajebdev](https://github.com/rajebdev)), closes [google-antigravity/antigravity-cli#1461](https://github.com/google-antigravity/antigravity-cli/issues/1461)
+* **harness:** stop Claude gateway 400s and surface ACP failures ([d27b9f8](https://github.com/kabmo-labs/kabmo/commit/d27b9f8509ead4ce6398d0c9ce067fda7c9893de)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **terminal:** pad the cell 2.5px above and 1px below the glyph ink ([2a3ce2b](https://github.com/kabmo-labs/kabmo/commit/2a3ce2bf43c51839e5a230d5f7dd1eff954fad6c)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **terminal:** replay the scrollback at the PTY's current grid ([a855e03](https://github.com/kabmo-labs/kabmo/commit/a855e0310fe45d905e8ede0bfb1a0ecbfe2d486a)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.24.0](https://github.com/kabmo-labs/kabmo/compare/v0.23.0...v0.24.0) — 2026-11-09
 
 ### Added
