@@ -125,7 +125,16 @@ func navigationWindowCases(
   // performance claim: measured on the macOS x64 leg, a 10 s window expired
   // before the commit, so `getElementById('panel')` was still null, the subframe
   // never navigated, and the two cases below failed on a working web view.
-  _ = waitUntil(30) { ((evaluate(webView, "document.getElementById('panel') !== null") as? Bool) ?? false) }
+  let committed = waitUntil(30) { ((evaluate(webView, "document.getElementById('panel') !== null") as? Bool) ?? false) }
+  // Say WHAT the view was doing when it never committed: this runner has failed
+  // the section below five times with nothing to read, and the difference
+  // between "still loading", "stuck" and "loaded a different document" decides
+  // which fix is right.
+  if !committed {
+    print("  [nav] the page never committed: url=\(webView.url?.absoluteString ?? "nil") "
+      + "progress=\(webView.estimatedProgress) loading=\(webView.isLoading) "
+      + "title=\(webView.title ?? "nil")")
+  }
 
   // 1. The panel's own frame navigates to another origin — the reported case.
   _ = evaluate(webView, "document.getElementById('panel').src = 'http://127.0.0.1:59979/app'")
