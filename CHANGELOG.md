@@ -4,6 +4,26 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.26.0](https://github.com/kabmo-labs/kabmo/compare/v0.25.0...v0.26.0) — 2026-11-10
+
+### Added
+
+* **chat:** add fork action to assistant run footer ([0f5717f](https://github.com/kabmo-labs/kabmo/commit/0f5717f04e8ea53e2c43f01015caeda727f5c111)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **composer:** offer the ACP agent's own session modes ([f4d93a8](https://github.com/kabmo-labs/kabmo/commit/f4d93a8f99ad386f385a24ecee596b70910826a1)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** queue a second update and probe the new version after it ([ae4c900](https://github.com/kabmo-labs/kabmo/commit/ae4c900e818a55f22269fbba1918fab5856c3375)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** support ACP v1 and v2 side by side ([e81ec32](https://github.com/kabmo-labs/kabmo/commit/e81ec32c1f7562669746b4a1c098d57bc6aeec87)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **notifications:** notify finished, waiting-for-input and failed runs ([ecdc241](https://github.com/kabmo-labs/kabmo/commit/ecdc2419128356b3dd9e0c5249c9ae805545daa1)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **sessions:** start child and fork chats from the pending composer ([169a037](https://github.com/kabmo-labs/kabmo/commit/169a03784127671f3645aa4a88064425b5332d0d)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **sidebar:** draw child sessions and subagents as one tree branch ([95ed6dc](https://github.com/kabmo-labs/kabmo/commit/95ed6dc9581a6d9c9bf62c172fa220d6c5b39980)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **composer:** show the ACP mode selector after a cold chat spawns ([3bc1dc8](https://github.com/kabmo-labs/kabmo/commit/3bc1dc8b1cf667ec6434f4e875f701892b81c31a)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness/acp:** stamp message timing for the assistant footer ([065e164](https://github.com/kabmo-labs/kabmo/commit/065e1645456110af6be0467b72b8b4faa4f09fc2)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **windows:** let WinForms own the DPI declaration ([b172b85](https://github.com/kabmo-labs/kabmo/commit/b172b85952f6efaa5890df8e74eaec58f3961800)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **windows:** name the WPF types the WinForms globals shadow ([3d288ed](https://github.com/kabmo-labs/kabmo/commit/3d288ed9a7a0dd38b001659d5636d19a3bc71220)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **windows:** stop WinForms' implicit usings colliding with WPF's ([a25fc9d](https://github.com/kabmo-labs/kabmo/commit/a25fc9d4938a9499449058850db0d4523a0d3759)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.25.0](https://github.com/kabmo-labs/kabmo/compare/v0.24.0...v0.25.0) — 2026-11-10
 
 ### Added
