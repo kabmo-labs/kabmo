@@ -67,12 +67,18 @@ interface OpenTool {
 export class AcpFrameMapper {
   private blocks: MessageBlock[] = [];
   private messageId: string | null = null;
+  /** When the turn was dispatched, the base for its duration. */
+  private turnStartedAt: number | null = null;
+  /** When the open message's first frame arrived, its timeline stamp. */
+  private openedAt: number | null = null;
   private readonly open = new Map<string, OpenTool>();
 
-  /** Forget per-turn state (an aborted run, a fresh load). */
-  reset(): void {
+  /** Forget per-turn state (an aborted run, a fresh load) and start its clock. */
+  reset(startedAt: number = Date.now()): void {
     this.blocks = [];
     this.messageId = null;
+    this.openedAt = null;
+    this.turnStartedAt = startedAt;
     this.open.clear();
   }
 
@@ -140,9 +146,16 @@ export class AcpFrameMapper {
   /** Close the open assistant row (turn end, abort, disconnect). */
   closeMessage(): AgentEvent[] {
     if (!this.messageId && this.blocks.length === 0) return [];
+    const completedAt = Date.now();
     const message = this.snapshot();
+    const startedAt = this.turnStartedAt ?? this.openedAt;
+    if (startedAt !== null) {
+      message.completedAt = completedAt;
+      message.duration = Math.max(0, completedAt - startedAt);
+    }
     this.blocks = [];
     this.messageId = null;
+    this.openedAt = null;
     return [{ type: 'message_end', message }];
   }
 
@@ -158,9 +171,11 @@ export class AcpFrameMapper {
    */
   private snapshot(): Record<string, unknown> {
     const id = this.messageId ??= `acp-${crypto.randomUUID()}`;
+    const timestamp = this.openedAt ??= Date.now();
     return {
       role: 'assistant',
       id,
+      timestamp,
       content: this.blocks.map((block) => ({ ...block })),
     };
   }
