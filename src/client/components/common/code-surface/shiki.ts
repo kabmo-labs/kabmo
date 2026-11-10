@@ -18,9 +18,10 @@
  *   window that opens inside a block comment or a template literal still
  *   tokenizes as one. Measured: 2.1 ms per keystroke at 20 000 lines, flat,
  *   because the window is ~100 lines whatever the document is.
- * - **A line at or past `MAX_LINE_CHARS` is left plain.** A minified bundle is
- *   one line of hundreds of KB, and tokenizing it on every scroll is what makes
- *   an editor feel dead.
+ * - **A line at or past the language's guard is left plain.** A minified bundle
+ *   is one line of hundreds of KB, and tokenizing it on every scroll is what
+ *   makes an editor feel dead. Markdown gets a tighter guard because its
+ *   grammar's own cost grows with the spans on a line — see `LINE_CHAR_LIMITS`.
  *
  * The colours are NOT inline. Every token carries Shiki's two custom properties
  * (`--shiki-light` / `--shiki-dark`) and `theme.ts` picks one through
@@ -38,8 +39,27 @@ import { SHIKI_THEMES } from '@/shared/lib/code/shiki-themes';
 /** Lines tokenized above the viewport, to seed the grammar's own state. */
 const CONTEXT_LINES = 40;
 
-/** Lines at or above this length render as plain text (see the module note). */
-const MAX_LINE_CHARS = 12_000;
+/**
+ * Lines at or above this length render as plain text (see the module note).
+ *
+ * The default is the minified-bundle guard: one line of hundreds of KB is not
+ * worth tokenizing on every scroll.
+ */
+const DEFAULT_LINE_CHARS = 12_000;
+
+/**
+ * Per-language tighter guards, for grammars whose own rules make a long line far
+ * more expensive than its length suggests.
+ *
+ * Markdown is the measured case. Its `bold`/`italic` rules are nested
+ * lookarounds, and with Shiki's JS regex engine the cost grows with the number
+ * of spans on the line: measured on `.wiki/App-Shell-and-Layout.md`, tokenizing
+ * one 140-line viewport took **6.3 s** at the default cap (4 100 ms at 4 000,
+ * 500 ms at 2 000) and **12–38 ms** once lines of 1 000+ characters are left
+ * plain. Those are exactly the prose bullets the wiki is written in, which is
+ * why opening a markdown diff felt broken while a code diff did not.
+ */
+const LINE_CHAR_LIMITS: Record<string, number> = { markdown: 1_000 };
 
 /** Marks are shared by their style string: a file has a few dozen distinct ones. */
 const markCache = new Map<string, Decoration>();
@@ -94,6 +114,7 @@ function buildDecorations(
   if (!highlighter || language === 'text' || !requestLanguage(language)) return Decoration.none;
 
   const doc = view.state.doc;
+  const lineLimit = LINE_CHAR_LIMITS[language] ?? DEFAULT_LINE_CHARS;
   const firstLine = doc.lineAt(view.viewport.from).number;
   const lastLine = doc.lineAt(view.viewport.to).number;
   const contextStart = Math.max(1, firstLine - CONTEXT_LINES);
@@ -110,7 +131,7 @@ function buildDecorations(
       // the pair is a plain string map, which is what it accepts at runtime.
       themes: themes as unknown as Record<string, string>,
       defaultColor: false,
-      tokenizeMaxLineLength: MAX_LINE_CHARS,
+      tokenizeMaxLineLength: lineLimit,
     }).tokens as typeof tokenized;
   } catch {
     // A grammar the engine refuses (or a Shiki internal): plain text is the
@@ -121,7 +142,7 @@ function buildDecorations(
   const builder = new RangeSetBuilder<Decoration>();
   for (let index = 0; index < tokenized.length && index < lines.length; index++) {
     const line = doc.line(contextStart + index);
-    if (line.length >= MAX_LINE_CHARS) continue;
+    if (line.length >= lineLimit) continue;
     let offset = 0;
     for (const token of tokenized[index]) {
       const length = token.content.length;
