@@ -120,8 +120,12 @@ func navigationWindowCases(
   webView.navigationDelegate = delegate
   webView.uiDelegate = panels
   webView.loadHTMLString(navigationPage, baseURL: URL(string: "http://console.test/")!)
-  // The page must be COMMITTED before its elements are addressable.
-  _ = waitUntil { ((evaluate(webView, "document.getElementById('panel') !== null") as? Bool) ?? false) }
+  // The page must be COMMITTED before its elements are addressable, and the
+  // budget is 30 s because this is a page LOAD on a shared runner, not a
+  // performance claim: measured on the macOS x64 leg, a 10 s window expired
+  // before the commit, so `getElementById('panel')` was still null, the subframe
+  // never navigated, and the two cases below failed on a working web view.
+  _ = waitUntil(30) { ((evaluate(webView, "document.getElementById('panel') !== null") as? Bool) ?? false) }
 
   // 1. The panel's own frame navigates to another origin — the reported case.
   _ = evaluate(webView, "document.getElementById('panel').src = 'http://127.0.0.1:59979/app'")
@@ -131,10 +135,13 @@ func navigationWindowCases(
   check("a cross-origin load inside the panel's iframe stays in the frame", decided)
   check("...and it did NOT leave for the system browser", !probe.opened.contains("http://127.0.0.1:59979/app"))
 
-  let frameURL = ((evaluate(webView, "document.getElementById('panel').src") as? String) ?? "")
-  _ = waitUntil { frameURL == "http://127.0.0.1:59979/app" }
-  let realFrameURL = ((evaluate(webView, "document.getElementById('panel').src") as? String) ?? "")
-  check("...so the frame really loaded it", realFrameURL == "http://127.0.0.1:59979/app")
+  // Re-read on every poll: capturing the value once made this wait compare the
+  // same string to itself for its whole budget, so it could never observe the
+  // load it was waiting for.
+  let loadedInFrame = waitUntil(30) {
+    ((evaluate(webView, "document.getElementById('panel').src") as? String) ?? "") == "http://127.0.0.1:59979/app"
+  }
+  check("...so the frame really loaded it", loadedInFrame)
 
   // 2. A `target="_blank"` link — every external link the console draws. It must
   //    reach the system browser EXACTLY once.
