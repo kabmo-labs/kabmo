@@ -100,6 +100,18 @@ describe('ACP stream marker', () => {
     expect(streamMarks()).toEqual(['stream', 'abort']);
   });
 
+  test('a failed turn carries the agent reason onto the finish mark', async () => {
+    const { session, turn, streamMarks, streamMarkFailures } = mountSession();
+    await session.send({ type: 'prompt', message: 'Say DUMMY_OK' });
+    await turn.started;
+    // No answer at all is the ACP silent-turn verdict, and the only reason the
+    // notification has to show.
+    turn.finish({ stopReason: 'end_turn' });
+    for (let i = 0; i < 4; i += 1) await Promise.resolve();
+    expect(streamMarks()).toEqual(['stream', 'finish']);
+    expect(streamMarkFailures()).toEqual([null, 'The agent ended the turn without sending an answer']);
+  });
+
   test('a refused prompt writes nothing', async () => {
     const { session, turn, streamMarks } = mountSession();
     await session.send({ type: 'prompt', message: 'first' });

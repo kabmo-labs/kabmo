@@ -1,5 +1,6 @@
 #if canImport(UIKit)
 import UIKit
+import UserNotifications
 
 /// The app delegate, on the LEGACY app lifecycle.
 ///
@@ -38,6 +39,9 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
   /// options at all.
   private var pendingDocument: URL?
 
+  /// The session a notification tap named, held until the shell exists.
+  private var pendingNotification: String?
+
   func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
@@ -56,6 +60,15 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
     window.backgroundColor = Palette.paper
     window.makeKeyAndVisible()
     self.window = window
+
+    // Set before `didFinishLaunching` returns: a launch BY notification delivers
+    // its response after this method, and a delegate set later would never see
+    // the tap that started the app.
+    UNUserNotificationCenter.current().delegate = self
+    if let pendingNotification {
+      shell.openNotificationSession(pendingNotification)
+      self.pendingNotification = nil
+    }
 
     if pendingShortcut {
       pendingShortcut = false
@@ -102,6 +115,34 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
     }
     (window?.rootViewController as? ShellViewController)?.handleShortcut()
     completionHandler(true)
+  }
+}
+
+extension AppDelegate: UNUserNotificationCenterDelegate {
+
+  /**
+   The user CLICKED a notification.
+
+   The tap is what makes a banner useful: it has to land on the session the
+   banner was about, not on whichever chat happened to be on screen. The session
+   id rides `userInfo`, and the controller queues it until the console exists —
+   a launch by notification has no page yet.
+   */
+  func userNotificationCenter(
+    _ center: UNUserNotificationCenter,
+    didReceive response: UNNotificationResponse,
+    withCompletionHandler completionHandler: @escaping () -> Void
+  ) {
+    let session = response.notification.request.content.userInfo["sessionId"] as? String
+    DispatchQueue.main.async { [weak self] in
+      guard let self, let session, !session.isEmpty else { return }
+      if let shell = self.window?.rootViewController as? ShellViewController {
+        shell.openNotificationSession(session)
+      } else {
+        self.pendingNotification = session
+      }
+    }
+    completionHandler()
   }
 }
 #endif

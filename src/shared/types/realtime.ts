@@ -28,6 +28,8 @@ export interface SidebarStatusEntry {
   streamStatus?: 'stream' | 'finish' | 'abort';
   awaitingInput?: boolean;
   runModel?: SessionRunModel;
+  /** Present only on a failed terminal run; the notification's own reason. */
+  runFailure?: string;
 }
 
 /** `sidebar:status` — keyed by session id. Absent id means "no volatile fields". */

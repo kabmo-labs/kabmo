@@ -302,7 +302,16 @@ export function handleChildExit(host: ChildExitHost, stderrTail: string): void {
   });
   if (host.streaming || host.promptRunning) {
     host.emit({ type: 'agent_end', isTerminal: true, messages: [] });
-    if (host.sessionId) void markStreamStatus(host.sessionId, 'finish');
+    // The run's own process died mid-flight: that is a failure, not a normal
+    // finish, and the reason the notification shows is the one above.
+    if (host.sessionId) {
+      void markStreamStatus(
+        host.sessionId,
+        'finish',
+        undefined,
+        `The omp process for this session exited unexpectedly${detail ? `: ${detail}` : '.'}`,
+      );
+    }
   }
   host.destroy();
 }

@@ -106,7 +106,11 @@ async function markEndStatus(sessionId: string, host: TerminalSettleHost, messag
   if (!sessionId) return;
   const current = await loadStreamStatuses();
   if (current[sessionId] !== 'stream') return;
-  await markStreamStatus(sessionId, endedAborted(host, messages) ? 'abort' : 'finish');
+  if (endedAborted(host, messages)) {
+    await markStreamStatus(sessionId, 'abort');
+    return;
+  }
+  await markStreamStatus(sessionId, 'finish', undefined, endedFailure(messages));
 }
 
 /**

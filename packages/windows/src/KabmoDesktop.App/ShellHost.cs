@@ -42,6 +42,8 @@ public sealed class ShellHost
     /// shell passes `"%1"`, so a double-click is a launch that carries a path.
     /// </summary>
     private readonly OpenPathQueue _opened = new();
+    /// <summary>The notification-area icon and the banners it posts.</summary>
+    private readonly NotificationHost _notifications;
     /// <summary>True once a page has completed a navigation, so a flush is worth it.</summary>
     private bool _pageReady;
     /// <summary>
@@ -75,6 +77,7 @@ public sealed class ShellHost
     {
         _window = new ShellWindow();
         _splash = new SplashView();
+        _notifications = new NotificationHost(_window);
         _window.Root.Children.Add(_splash);
         _splash.OnRetry = () => _ = BootAsync();
         // The webview is an HWND, so WPF content layered over it does not
@@ -88,6 +91,9 @@ public sealed class ShellHost
         _opened.Add(LaunchPaths.From(Environment.GetCommandLineArgs()));
 
         _window.Loaded += (_, _) => _ = StartAsync();
+        // A NotifyIcon outlives its owner in the tray until the process exits,
+        // so it is released with the window rather than left behind.
+        _window.Closed += (_, _) => _notifications.Dispose();
         // Stop the children on the way out, without parking the UI thread.
         //
         // The previous shape was `_supervisor.StopAllAsync().Wait(6s)` inside
@@ -593,6 +599,23 @@ public sealed class ShellHost
                 case "servers_stop":
                     await store.StopAsync(Text(parameters, "id"));
                     return await store.SnapshotAsync();
+
+                // There is no runtime permission for a notification-area banner;
+                // the OS's own "notifications from apps" setting still applies,
+                // and the shell cannot query it. `granted` therefore means "this
+                // shell is able to ask", which is the only truthful answer.
+                case "notification_request":
+                    return new { granted = true };
+
+                // The banner must be posted from the UI thread: NotifyIcon is a
+                // WinForms object, and this handler runs on the bridge's own.
+                case "notification_show":
+                    await _host._window.Dispatcher.InvokeAsync(() =>
+                        _host._notifications.Show(
+                            Text(parameters, "title"),
+                            Text(parameters, "body"),
+                            Text(parameters, "sessionId")));
+                    return new { shown = true };
 
                 default:
                     throw new ServerException($"Unknown shell command: {method}");

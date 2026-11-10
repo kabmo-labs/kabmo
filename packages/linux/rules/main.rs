@@ -23,6 +23,7 @@
 mod bridge;
 mod memory;
 mod navigation;
+mod notification;
 mod open_paths;
 mod palette;
 mod splash;
@@ -49,6 +50,7 @@ fn main() {
     navigation::cases(&mut r);
     update::cases(&mut r);
     open_paths::cases(&mut r);
+    notification::cases(&mut r);
     memory::cases(&mut r);
 
     println!("\n{}/{} checks passed", r.checks - r.failures, r.checks);

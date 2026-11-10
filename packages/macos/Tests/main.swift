@@ -613,6 +613,8 @@ openPathsCases()
 // The panel behind every `<input type="file">`, which WebKit otherwise cancels.
 filePanelCases()
 WebProcessRecoveryTests.run()
+// The identifiers that keep one session's banner from replacing another's.
+notificationWireCases()
 
 print("\n\(checks - failures)/\(checks) checks passed")
 exit(failures == 0 ? 0 : 1)

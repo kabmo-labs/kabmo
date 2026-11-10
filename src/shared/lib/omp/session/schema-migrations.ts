@@ -32,4 +32,8 @@ export async function migrateSessionStreamStateColumns(db: DbClient): Promise<vo
   // stream status — instead of re-deriving it from the session JSONL.
   await addColumn(db, 'ALTER TABLE session_stream_state ADD COLUMN model_provider TEXT;');
   await addColumn(db, 'ALTER TABLE session_stream_state ADD COLUMN model_id TEXT;');
+  // Why a terminal `finish` row ended: the notification's own reason, and the
+  // only durable place a background tab can learn that a run failed. NULL is a
+  // normal stop, so every existing row keeps its meaning.
+  await addColumn(db, 'ALTER TABLE session_stream_state ADD COLUMN failure TEXT;');
 }

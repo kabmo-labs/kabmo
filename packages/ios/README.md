@@ -191,7 +191,10 @@ chip is where a second server is added and where the window moves between them.
 **The chip exists only in the IPA.** The page finds
 `window.webkit.messageHandlers.kabmo` (`ShellServerHost.swift`) and adapts it into
 the same `__kabmoCall` the desktop shells install. Commands: `servers_state`,
-`servers_add`, `servers_remove`, `servers_activate`; no start/stop, because a phone
+`servers_add`, `servers_remove`, `servers_activate`, `notification_request`
+(`UNUserNotificationCenter` authorization, asked only when a notification
+preference is switched on) and `notification_show` (a tap opens that session);
+no start/stop, because a phone
 has no child process, and the state answers `startable: false` so the panel never
 draws the control. The list is `server_list` in `UserDefaults`, migrated once from
 the single `server_url` an older build wrote — `ServerListTests` and

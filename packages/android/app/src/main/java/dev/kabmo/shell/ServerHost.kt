@@ -45,6 +45,8 @@ class ServerHost(
     private val reply: (script: String) -> Unit,
     /** Load a server after it was activated. The Activity owns the cookie jar. */
     private val onActivate: (url: String) -> Unit,
+    /** The platform half of the console's two notification commands. */
+    private val notifier: ShellNotifier,
 ) {
 
     @JavascriptInterface
@@ -56,6 +58,15 @@ class ServerHost(
         if (numericId == null) return
         val fields = decode(params)
         work.execute {
+            // Notifications are answered here rather than in the switch below:
+            // they are a pure function of the notifier (see NotificationCommands),
+            // and keeping them out of the server switch is what lets the wire be
+            // tested without an Android Context.
+            val notification = NotificationCommands.answer(method, fields, notifier)
+            if (notification != null) {
+                answer(numericId, ok = true, notification)
+                return@execute
+            }
             when (method) {
                 "servers_state" -> answerState(numericId)
                 "servers_add" -> add(numericId, fields)

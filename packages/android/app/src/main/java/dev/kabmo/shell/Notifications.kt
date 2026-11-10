@@ -1,0 +1,161 @@
+package dev.kabmo.shell
+
+import android.Manifest
+import android.app.Activity
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+
+/**
+ * System notifications for the console: a run finished, an agent is blocked on
+ * an answer, or a run failed.
+ *
+ * The console owns WHEN one is sent (three preferences, all off by default); this
+ * shell owns HOW the platform draws it. Two commands, the same two the desktop
+ * shells answer: `notification_request` and `notification_show`.
+ *
+ * ## Why the permission is requested from here
+ *
+ * On API 33+ `POST_NOTIFICATIONS` is a runtime permission, and a WebView cannot
+ * ask for it. The page asks the shell, and the shell asks the user — the first
+ * time a notification preference is switched on, never at launch. That is what
+ * keeps the shipped-false defaults meaningful: a fresh install is not prompted
+ * for banners it has not chosen.
+ */
+interface ShellNotifier {
+    fun isGranted(): Boolean
+    fun requestPermission()
+    fun show(title: String, body: String, tag: String, sessionId: String): Boolean
+}
+
+/**
+ * The two notification commands, as a PURE function of the notifier.
+ *
+ * Split from `ServerHost` so the wire — the exact JSON the page settles its
+ * promise with — can be tested on a plain JVM, where `android.app.Notification`
+ * cannot exist. `null` means "not a notification command"; the host falls
+ * through to its own switch.
+ */
+object NotificationCommands {
+
+    fun answer(method: String, fields: Map<String, String>, notifier: ShellNotifier): String? {
+        return when (method) {
+            "notification_show" -> {
+                val shown = notifier.show(
+                    title = fields["title"].orEmpty(),
+                    body = fields["body"].orEmpty(),
+                    tag = fields["tag"].orEmpty(),
+                    sessionId = fields["sessionId"].orEmpty(),
+                )
+                if (shown) "{\"shown\":true}" else "{\"shown\":false}"
+            }
+
+            "notification_request" -> {
+                notifier.requestPermission()
+                if (notifier.isGranted()) "{\"granted\":true}" else "{\"granted\":false}"
+            }
+
+            else -> null
+        }
+    }
+}
+
+/** The real notifier: a channel created once, and the app's own notification. */
+class AndroidNotifier(private val activity: Activity) : ShellNotifier {
+
+    override fun isGranted(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return true
+        return activity.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED
+    }
+
+    override fun requestPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        if (isGranted()) return
+        // The permission dialog is an Activity/UI-thread API, and this arrives on
+        // the WebView's JS thread.
+        activity.runOnUiThread {
+            activity.requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), REQUEST_CODE)
+        }
+    }
+
+    override fun show(title: String, body: String, tag: String, sessionId: String): Boolean {
+        // Nothing to say, or nothing the user allowed: no notification either way.
+        if (title.isBlank() && body.isBlank()) return false
+        if (!isGranted()) return false
+        val manager = activity.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+            ?: return false
+        ensureChannel(manager)
+        // A tag lets a second notification for the same session REPLACE the first
+        // (`finish` and `error` cannot both fire for one run, but a refreshed
+        // reason should not stack). An empty tag falls back to one stable tag.
+        manager.notify(
+            tag.ifEmpty { TAG },
+            NOTIFICATION_ID,
+            build(title, body, sessionId, requestCode = tag.ifEmpty { TAG }.hashCode()),
+        )
+        return true
+    }
+
+    private fun ensureChannel(manager: NotificationManager) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            activity.getString(R.string.notification_channel),
+            NotificationManager.IMPORTANCE_DEFAULT,
+        ).apply {
+            description = activity.getString(R.string.notification_channel_description)
+        }
+        manager.createNotificationChannel(channel)
+    }
+
+    private fun build(title: String, body: String, sessionId: String, requestCode: Int): Notification {
+        // Tapping the notification opens the console ON THAT SESSION. The intent
+        // carries the id and `MainActivity` forwards it to
+        // `window.__kabmoOpenSession`; without it, a tap opened whichever chat
+        // happened to be on screen.
+        //
+        // The request code is the notification's tag: two notifications are two
+        // PendingIntents, so tapping an older one cannot deliver the newer
+        // session. `FLAG_UPDATE_CURRENT` still replaces a repeat for the same tag.
+        val open = PendingIntent.getActivity(
+            activity,
+            requestCode,
+            Intent(activity, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                if (sessionId.isNotBlank()) putExtra(EXTRA_SESSION, sessionId)
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Notification.Builder(activity, CHANNEL_ID)
+        } else {
+            @Suppress("DEPRECATION")
+            Notification.Builder(activity).setPriority(Notification.PRIORITY_DEFAULT)
+        }
+        return builder
+            // A system glyph, not the launcher icon: a small icon is drawn as a
+            // mask and an adaptive launcher icon does not survive that.
+            .setSmallIcon(android.R.drawable.stat_notify_chat)
+            .setContentTitle(title.ifBlank { activity.getString(R.string.app_name) })
+            .setContentText(body)
+            .setStyle(Notification.BigTextStyle().bigText(body))
+            .setAutoCancel(true)
+            .setContentIntent(open)
+            .build()
+    }
+
+    companion object {
+        const val CHANNEL_ID = "kabmo-agent"
+        /** The session a notification tap opens, read by `MainActivity`. */
+        const val EXTRA_SESSION = "dev.kabmo.shell.OPEN_SESSION"
+        const val TAG = "kabmo"
+        const val NOTIFICATION_ID = 0x4b41
+        const val REQUEST_CODE = 0x4b42
+    }
+}

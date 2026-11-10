@@ -21,7 +21,9 @@
 
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
+use std::sync::mpsc::TryRecvError;
 use std::sync::Arc;
+use std::time::Duration;
 
 use gtk::gdk;
 use gtk::prelude::*;
@@ -43,6 +45,7 @@ use kabmo_desktop::splash_view::Splash;
 use kabmo_desktop::store::ServerStore;
 use kabmo_desktop::system::{Supervisor, SystemDeps};
 use kabmo_desktop::navigation::{decide_for, NavigationTarget};
+use kabmo_desktop::notification;
 use kabmo_desktop::update;
 use kabmo_desktop::update_run;
 use kabmo_desktop::window::{make_window, remember_press, wire_edge_resize};
@@ -301,6 +304,7 @@ impl Shell {
         let progress = self.progress.clone();
         let splash = self.splash.clone();
         let last_press = self.last_press.clone();
+        let page_ready = self.page_ready.clone();
         // One update at a time, for as long as a download is in flight. The
         // window stays usable while it runs — that is the point of threading it —
         // so a second press is reachable, and two downloads would race the same
@@ -334,6 +338,18 @@ impl Shell {
             let answer = handle_command(&call.method, &call.params, &window, &store);
             let script = match answer {
                 Ok(payload) => {
+                    // A notification waits for its own click, so it cannot be
+                    // handled by the pure dispatcher: the click needs the
+                    // webview and the page-readiness flag.
+                    if let Some(notify) = payload.get("__notify") {
+                        start_notification(
+                            notify.get("title").and_then(Value::as_str).unwrap_or_default(),
+                            notify.get("body").and_then(Value::as_str).unwrap_or_default(),
+                            notify.get("sessionId").and_then(Value::as_str).unwrap_or_default(),
+                            &view,
+                            &page_ready,
+                        );
+                    }
                     // A command that STARTED a server is not answered — and the
                     // window does not move — until that server answers
                     // `/api/health`: the wait is up to `START_TIMEOUT` and this
@@ -654,8 +670,62 @@ fn without_markers(mut value: Value) -> Value {
     if let Value::Object(map) = &mut value {
         map.remove("__navigate");
         map.remove("__await");
+        map.remove("__notify");
     }
     value
+}
+
+/**
+ Post one notification and wait for its "Open" click on the GTK main loop.
+
+ `notify-send --wait` stays alive until the banner is dismissed or clicked, so
+ the wait is a worker thread; it cannot touch the webview, and the receiver is
+ therefore polled from the loop that owns it. The timer stops when the banner
+ closed without a click (sender dropped) or once the session was delivered, and
+ a click that arrives before the page is ready waits for the next finished load.
+ */
+fn start_notification(
+    title: &str,
+    body: &str,
+    session_id: &str,
+    view: &WebView,
+    page_ready: &Rc<Cell<bool>>,
+) {
+    let clicks = match notification::start(title, body, session_id) {
+        Ok(clicks) => clicks,
+        Err(error) => {
+            eprintln!("[kabmo] notification: {error}");
+            return;
+        }
+    };
+    let view = view.clone();
+    let page_ready = page_ready.clone();
+    let mut pending: Option<String> = None;
+    let mut closed = false;
+    gtk::glib::timeout_add_local(Duration::from_millis(200), move || {
+        while !closed {
+            match clicks.try_recv() {
+                Ok(id) => pending = Some(id),
+                Err(TryRecvError::Empty) => break,
+                Err(TryRecvError::Disconnected) => {
+                    closed = true;
+                    break;
+                }
+            }
+        }
+        if let Some(id) = pending.clone() {
+            if page_ready.get() {
+                let script = notification::open_session_script(&id);
+                view.run_javascript(&script, None::<&gtk::gio::Cancellable>, |_| {});
+                return gtk::glib::ControlFlow::Break;
+            }
+        }
+        if closed && pending.is_none() {
+            gtk::glib::ControlFlow::Break
+        } else {
+            gtk::glib::ControlFlow::Continue
+        }
+    });
 }
 
 /**

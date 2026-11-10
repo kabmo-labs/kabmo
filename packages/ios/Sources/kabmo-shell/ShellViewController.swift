@@ -171,6 +171,31 @@ final class ShellViewController: UIViewController {
     for url in documents { deliver(url) }
   }
 
+  // MARK: - Sessions a notification tap opened
+
+  /**
+   Open the session a notification was about.
+
+   A tap that launched the app has no page yet, so the id is QUEUED and drained
+   on the first finished load — the same rule the document queue above and the
+   desktop shells apply.
+   */
+  func openNotificationSession(_ sessionId: String) {
+    let id = sessionId.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !id.isEmpty else { return }
+    pendingNotificationSession = id
+    flushNotificationSession()
+  }
+
+  private func flushNotificationSession() {
+    guard pageReady, let sessionId = pendingNotificationSession else { return }
+    pendingNotificationSession = nil
+    webView.evaluateJavaScript(NotificationWire.openSessionScript(sessionId), completionHandler: nil)
+  }
+
+  /// A session a notification tap named, held until the console can take it.
+  private var pendingNotificationSession: String?
+
   /**
    Read one document and push it into the page in chunks.
 
@@ -283,6 +308,7 @@ final class ShellViewController: UIViewController {
       // moment a page can take it.
       self.pageReady = true
       self.flushDocuments()
+      self.flushNotificationSession()
       // The console has painted, so `window.__kabmoPalette()` answers the
       // ACTIVE theme. Stored for the next cold start — the only launch where
       // the overlay has no page to ask — and applied to the live overlay too,

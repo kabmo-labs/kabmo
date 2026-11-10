@@ -82,6 +82,16 @@ export interface SettingsState {
   soundAlerts: boolean;
   chatCompletionSound: boolean;
   /**
+   * System notification when a run finishes. Off by default: a fresh install
+   * never asks for notification permission until one of these is turned on.
+   * Shown only while Kabmo is not the focused window.
+   */
+  notifyOnFinish: boolean;
+  /** System notification when an agent blocks on an ask/approval dialog. */
+  notifyOnAsk: boolean;
+  /** System notification when a run ends in failure. */
+  notifyOnError: boolean;
+  /**
    * Whether Kabmo's goal loop runs at all: an independent auditor decides
    * after every finished turn whether the goal continues. Off means a goal
    * still exists (the strip, pause/resume and the objective all work) but

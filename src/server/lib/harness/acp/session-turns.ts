@@ -53,7 +53,7 @@ export interface AcpTurnTarget {
   totalCost: number;
   runModel: { provider: string; modelId: string } | null;
   /** The durable run marker; a field on the session so a test can stub it. */
-  markStream: (status: 'stream' | 'finish' | 'abort') => void;
+  markStream: (status: 'stream' | 'finish' | 'abort', failure?: string | null) => void;
   isAlive(): boolean;
   isBusy(): boolean;
   send(command: Record<string, unknown>): Promise<unknown>;
@@ -86,8 +86,13 @@ export function settleAcpTurn(target: AcpTurnTarget, info: AcpTurnEndInfo): void
     totalCost: target.totalCost,
     runModel: target.runModel,
   });
-  // A cancelled turn is an `abort` badge, every other ending a `finish`.
-  target.markStream(info.stopReason === 'cancelled' ? 'abort' : 'finish');
+  // A cancelled turn is an `abort` badge; every other ending a `finish` — and a
+  // failed turn carries the agent's own reason, which is the only copy a tab
+  // that never opened the session can read.
+  const failure = info.failed === true
+    ? (info.failure?.trim() || 'The agent ended the turn without an answer')
+    : null;
+  target.markStream(info.stopReason === 'cancelled' ? 'abort' : 'finish', failure);
   // Todo/plan/telemetry panels read their own topics; without this signal an
   // ACP turn's usage and titles never republished (the RPC settle path does it).
   emitRealtimeSignal('session-data-dirty', target.sessionId);

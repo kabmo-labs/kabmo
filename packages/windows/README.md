@@ -166,7 +166,9 @@ window.__kabmoReply(id, ok, payload)           // what the shell evaluates back
 ```
 
 Commands: `desktop_info`, `servers_state`, `servers_add`, `servers_remove`,
-`servers_activate`, `servers_start`, `servers_stop`, plus the window verbs
+`servers_activate`, `servers_start`, `servers_stop`, `notification_request`,
+`notification_show` (a notification-area banner; clicking it opens that
+session), plus the window verbs
 `window_minimize`, `window_maximize`, `window_close`. There is no capability file
 and no per-origin allowance: the shell owns the webview, so the page cannot be
 anything but one this window chose to load.

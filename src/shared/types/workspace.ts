@@ -31,6 +31,10 @@ export interface SessionItemData {
    *  waiting for a user answer. Derived from the running process registry, never
    *  persisted — the process it describes is the same thing that owns the flag. */
   awaitingInput?: boolean;
+  /** Set on a terminal `finish` row whose run ended in failure, with the
+   *  agent's own reason when it reported one. Rides the status topic beside
+   *  `streamStatus` so a background tab can announce the failure. */
+  runFailure?: string;
   /** Model serving the session's current run — persisted beside `streamStatus`
    *  (session_stream_state) so the generating indicator names the real
    *  provider/model in every tab and Kabmo instances. Absent for a session

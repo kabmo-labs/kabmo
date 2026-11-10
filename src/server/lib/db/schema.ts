@@ -109,6 +109,7 @@ export async function initSchema(db: DbClient): Promise<void> {
       owner_pid INTEGER,
       model_provider TEXT,
       model_id TEXT,
+      failure TEXT,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `);

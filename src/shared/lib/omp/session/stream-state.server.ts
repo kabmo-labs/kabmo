@@ -29,6 +29,11 @@
  * second instance opening its sidebar judged the first instance's live run by
  * its own empty registry and cleared a spinner that was still working.
  *
+ * A terminal `finish` may also carry `failure` — the agent's own reason when
+ * the run failed. It rides this row for the same reason the model does: a tab
+ * that never opened the session has no other durable source, and the failure
+ * notification is only useful with the reason. A new `stream` write clears it.
+ *
  * Every write raises the realtime `stream-status` signal, which is what the
  * socket's `sidebar:status` topic publishes from. All writes are
  * fire-and-forget: a status write must never fail a prompt.
@@ -49,6 +54,13 @@ export interface SessionRunModel {
 export interface SessionStreamState {
   status: SessionStreamStatus;
   model?: SessionRunModel;
+  /**
+   * Why a terminal `finish` run failed, when the agent said. NULL/absent is a
+   * normal stop. It rides this row because a tab that never opened the session
+   * has no other durable source for the reason, and the notification that says
+   * "this run failed" is only useful with it.
+   */
+  failure?: string;
 }
 
 /**
@@ -64,6 +76,7 @@ export async function markStreamStatus(
   sessionId: string,
   status: SessionStreamStatus,
   model?: SessionRunModel | null,
+  failure?: string | null,
 ): Promise<void> {
   try {
     const db = await getDb();
@@ -71,16 +84,20 @@ export async function markStreamStatus(
     // belongs to no process, and leaving a pid on it would invite a later read
     // to judge the badge by the liveness of a process it never concerned.
     const ownerPid = status === 'stream' ? process.pid : null;
+    // A live or aborted row never carries a reason, and a new `stream` write
+    // clears the previous run's: the next terminal settle must not inherit it.
+    const reason = status === 'finish' && typeof failure === 'string' ? failure.trim() : '';
     await db.run(
-      `INSERT INTO session_stream_state (session_id, status, owner_pid, model_provider, model_id, updated_at)
-       VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      `INSERT INTO session_stream_state (session_id, status, owner_pid, model_provider, model_id, failure, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
        ON CONFLICT(session_id) DO UPDATE SET
          status = excluded.status,
          owner_pid = excluded.owner_pid,
          model_provider = COALESCE(excluded.model_provider, session_stream_state.model_provider),
          model_id = COALESCE(excluded.model_id, session_stream_state.model_id),
+         failure = excluded.failure,
          updated_at = excluded.updated_at`,
-      [sessionId, status, ownerPid, model?.provider ?? null, model?.modelId ?? null],
+      [sessionId, status, ownerPid, model?.provider ?? null, model?.modelId ?? null, reason || null],
     );
     // The signal bus has no imports of its own, so this edge cannot close a
     // cycle: the realtime layer subscribes to it, and this module only raises.
@@ -168,20 +185,23 @@ export async function markStreamSeen(sessionId: string): Promise<boolean> {
 export async function loadStreamStates(): Promise<Record<string, SessionStreamState>> {
   try {
     const db = await getDb();
-    const rows = (await db.all('SELECT session_id, status, model_provider, model_id FROM session_stream_state')) as {
+    const rows = (await db.all('SELECT session_id, status, model_provider, model_id, failure FROM session_stream_state')) as {
       session_id: string;
       status: string;
       model_provider: string | null;
       model_id: string | null;
+      failure: string | null;
     }[];
     const map: Record<string, SessionStreamState> = {};
     for (const row of rows) {
       if (row.status !== 'stream' && row.status !== 'finish' && row.status !== 'abort') continue;
+      const failure = typeof row.failure === 'string' ? row.failure.trim() : '';
       map[row.session_id] = {
         status: row.status,
         ...(row.model_provider && row.model_id
           ? { model: { provider: row.model_provider, modelId: row.model_id } }
           : {}),
+        ...(failure ? { failure } : {}),
       };
     }
     return map;

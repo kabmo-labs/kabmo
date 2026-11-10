@@ -513,6 +513,22 @@ OpenPathCases.Run(Check, Group);
 // What the webview may keep while the window is off screen.
 MemoryPolicyCases.Run(Check, Group);
 
+// The heading a notification is posted with.
+Group("NotificationText");
+Check("a title is kept", NotificationText.Title("Build") == "Build");
+Check("a padded title is trimmed", NotificationText.Title("  Build \n") == "Build");
+Check("an empty title names the app", NotificationText.Title("   ") == "Kabmo");
+Check("a missing title names the app", NotificationText.Title(null) == "Kabmo");
+
+Group("OpenSessionScript");
+Check(
+    "the tap script calls the page's opener with a plain id",
+    OpenSessionScript.For("abc-123")
+        == "window.__kabmoOpenSession && window.__kabmoOpenSession(\"abc-123\")");
+Check(
+    "a quote in the id is escaped, not interpolated",
+    OpenSessionScript.For("a\"b\nc").Contains("a\\\"b\\nc"));
+
 Console.WriteLine($"\n{checks - failures}/{checks} checks passed");
 return failures == 0 ? 0 : 1;
 

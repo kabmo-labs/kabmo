@@ -95,6 +95,11 @@ class MainActivity : Activity() {
         // one-shot grant on the intent: the URI permission belongs to THIS
         // intent, and re-reading it later can fail.
         deliverDocument(intent)
+
+        // A notification tap that launched the app. `sendToPage` holds the
+        // script until the console exists, which is the cold-start case: the tap
+        // is what started this process, so there is no page yet.
+        openNotificationSession(intent)
     }
 
     /**
@@ -113,6 +118,26 @@ class MainActivity : Activity() {
         // delivers it here rather than creating a second Activity, so without
         // this the tap would do nothing at all.
         deliverDocument(intent)
+        openNotificationSession(intent)
+    }
+
+    /**
+     * Open the session a notification tap named.
+     *
+     * The extra is REMOVED once read: a rotation or a process recreating the
+     * activity reuses the same intent, and replaying it would pull the user out
+     * of whatever they had navigated to since.
+     */
+    private fun openNotificationSession(intent: Intent?) {
+        val sessionId = intent?.getStringExtra(AndroidNotifier.EXTRA_SESSION)
+            ?.takeIf { it.isNotBlank() }
+            ?: return
+        intent.removeExtra(AndroidNotifier.EXTRA_SESSION)
+        sendToPage(
+            listOf(
+                "window.__kabmoOpenSession && window.__kabmoOpenSession(${ServerWire.quote(sessionId)})",
+            ),
+        )
     }
 
     override fun onResume() {
@@ -404,6 +429,7 @@ class MainActivity : Activity() {
                 work = serverWork,
                 reply = { script -> replyToPage(script) },
                 onActivate = { url -> switchServer(url) },
+                notifier = AndroidNotifier(this),
             ),
             "kabmoHost",
         )

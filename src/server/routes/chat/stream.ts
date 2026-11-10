@@ -46,6 +46,8 @@ async function handleStreamingRequest(request: Request) {
     headers: { 'Cache-Control': 'no-cache, no-transform', 'X-Accel-Buffering': 'no' },
     async onStart(handlers) {
       let isAborted = false;
+      /** The reason the simulated stream threw, when it did. */
+      let failure: string | null = null;
       const abortListener = () => {
         isAborted = true;
       };
@@ -94,13 +96,16 @@ async function handleStreamingRequest(request: Request) {
       } catch (err: unknown) {
         if (!isAborted) {
           const message = err instanceof Error ? err.message : 'Streaming execution error';
+          failure = message;
           sendEvent('error', { error: message });
         }
       } finally {
         request.signal.removeEventListener('abort', abortListener);
         // Terminal badge, not a deletion: opening the session acknowledges it,
-        // exactly as it does for a real run. An aborted stream is `abort`.
-        void markStreamStatus(sessionId, isAborted ? 'abort' : 'finish');
+        // exactly as it does for a real run. An aborted stream is `abort`, and a
+        // stream that threw carries its reason so the same failure notification
+        // fires here as on a real run.
+        void markStreamStatus(sessionId, isAborted ? 'abort' : 'finish', undefined, failure);
         localRuns().delete(sessionId);
         handlers.close();
       }

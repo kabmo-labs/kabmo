@@ -77,6 +77,25 @@ describe('run model on the stream row', () => {
     expect((await loadStreamStates()).s1?.model).toEqual({ provider: 'openai', modelId: 'gpt-5' });
   });
 
+  test('a failed finish keeps its reason, and the next run clears it', async () => {
+    await markStreamStatus('s1', 'stream');
+    await markStreamStatus('s1', 'finish', undefined, '  401 invalid api key ');
+    expect((await loadStreamStates()).s1).toEqual({
+      status: 'finish',
+      failure: '401 invalid api key',
+    });
+
+    // A new run must not inherit the previous run's failure: otherwise its
+    // normal end would be announced as an error.
+    await markStreamStatus('s1', 'stream');
+    expect((await loadStreamStates()).s1).toEqual({ status: 'stream' });
+  });
+
+  test('a reason is stored only on a finish row', async () => {
+    await markStreamStatus('s1', 'abort', undefined, 'not a finish');
+    expect((await loadStreamStates()).s1).toEqual({ status: 'abort' });
+  });
+
   test('a row written without a model reports none, and the status view is status-only', async () => {
     await markStreamStatus('s2', 'abort');
     expect((await loadStreamStates()).s2).toEqual({ status: 'abort' });

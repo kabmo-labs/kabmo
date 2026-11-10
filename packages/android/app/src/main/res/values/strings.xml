@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Kabmo</string>
+    <string name="notification_channel">Agent notifications</string>
+    <string name="notification_channel_description">A run finished, the agent is waiting for an answer, or a run failed.</string>
     <string name="settings_title">Server settings</string>
     <string name="settings_short">Settings</string>
 

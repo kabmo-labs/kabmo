@@ -205,9 +205,9 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
    * spinner and a reattaching tab's "still running" answer read. A field so a
    * unit test can stub it: the default writes the same row omp's dispatch writes.
    */
-  markStream: (status: 'stream' | 'finish' | 'abort') => void = (status) => {
+  markStream: (status: 'stream' | 'finish' | 'abort', failure?: string | null) => void = (status, failure) => {
     if (!this.sessionId) return;
-    void markStreamStatus(this.sessionId, status, status === 'stream' ? this.runModel : undefined).catch(() => {});
+    void markStreamStatus(this.sessionId, status, status === 'stream' ? this.runModel : undefined, failure).catch(() => {});
   };
 
   /** Turn-end bookkeeping the panels read — see `session-turns.ts`. A cancelled

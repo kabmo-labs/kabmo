@@ -47,6 +47,8 @@ export interface MountedSession {
   turnEnds: () => number;
   /** The durable run markers written for this session, in order. */
   streamMarks: () => string[];
+  /** The `failure` argument written with each marker, in the same order. */
+  streamMarkFailures: () => Array<string | null>;
   /** Results the session answered an agent→client request with. */
   permissionAnswers: () => { id: unknown; result: unknown }[];
   /** Session ids the session asked the agent to delete. */
@@ -133,6 +135,7 @@ export function mountSession(): MountedSession {
     },
   });
   const marks: string[] = [];
+  const markFailures: Array<string | null> = [];
   const answers: { id: unknown; result: unknown }[] = [];
   const deletes: string[] = [];
   const eventSink = new SessionListeners();
@@ -143,8 +146,9 @@ export function mountSession(): MountedSession {
     consume: () => false,
   };
   Object.assign(session as unknown as Record<string, unknown>, {
-    markStream: (status: string) => {
+    markStream: (status: string, failure?: string | null) => {
       marks.push(status);
+      markFailures.push(failure ?? null);
     },
     harness: 'opencode',
     cwd: '/tmp',
@@ -174,6 +178,7 @@ export function mountSession(): MountedSession {
     turn,
     turnEnds: () => turnEndCount,
     streamMarks: () => marks,
+    streamMarkFailures: () => markFailures,
     permissionAnswers: () => answers,
     deletedSessions: () => deletes,
     idleResets: () => idleResets,

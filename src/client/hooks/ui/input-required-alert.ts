@@ -15,8 +15,9 @@
  */
 
 import { useEffect, useRef } from 'preact/hooks';
-import type { WorkspaceFolderData } from '@/shared/types';
+import type { SessionItemData, WorkspaceFolderData } from '@/shared/types';
 import { triggerInputRequiredSound } from '@/client/hooks/ui/notification-sound';
+import { sendNotification } from '@/client/hooks/ui/notifications';
 
 export function useInputRequiredAlert(folders: WorkspaceFolderData[]): void {
   // Null until the first snapshot: a page load must not replay a cue for
@@ -24,19 +25,25 @@ export function useInputRequiredAlert(folders: WorkspaceFolderData[]): void {
   const knownRef = useRef<Set<string> | null>(null);
 
   useEffect(() => {
-    const waiting = new Set<string>();
+    const waiting = new Map<string, SessionItemData>();
     for (const folder of folders) {
       for (const session of folder.sessions ?? []) {
-        if (session.awaitingInput) waiting.add(String(session.id));
+        if (session.awaitingInput) waiting.set(String(session.id), session);
       }
     }
 
     const known = knownRef.current;
-    knownRef.current = waiting;
+    knownRef.current = new Set(waiting.keys());
     if (!known) return;
-    for (const id of waiting) {
+    for (const [id, session] of waiting) {
       if (known.has(id)) continue;
       triggerInputRequiredSound();
+      sendNotification('ask', {
+        title: session.title?.trim() || 'Kabmo',
+        body: 'Waiting for your answer.',
+        tag: `ask:${id}`,
+        sessionId: id,
+      });
       return;
     }
   }, [folders]);

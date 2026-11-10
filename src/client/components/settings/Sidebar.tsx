@@ -23,7 +23,7 @@ export const SETTINGS_CATEGORIES: CategoryDef[] = [
   // KABMO
   { id: 'appearance', label: 'Appearance', icon: Palette, section: 'KABMO', description: 'Custom themes, typography scale, and layout density.' },
   { id: 'chats', label: 'Chats', icon: MessageSquare, section: 'KABMO', description: 'Chat width, composer style, tool call rendering, session titles, goal mode, and keybindings.' },
-  { id: 'notifications', label: 'Notifications', icon: Bell, section: 'KABMO', description: 'Build failure alerts, sounds, and system popups.' },
+  { id: 'notifications', label: 'Notifications', icon: Bell, section: 'KABMO', description: 'Completion sound, plus system notifications for finished, waiting-for-you and failed runs.' },
   { id: 'usage', label: 'Usage', icon: BarChart3, section: 'KABMO', description: 'Build minutes quota, storage, and general usage.' },
   { id: 'token-usage', label: 'Token Usage', icon: Coins, section: 'KABMO', description: 'Token telemetry, cache, and cost breakdown.' },
   { id: 'panel-plugins', label: 'Panel Plugins', icon: Puzzle, section: 'KABMO', description: 'Panels a plugin adds to Kabmo: right-panel views, navbar readouts and editor tabs.' },

@@ -381,7 +381,10 @@ them.
 **The chip exists only in the APK.** The page finds `window.kabmoHost`
 (`ServerHost.kt`) and adapts it into the same `__kabmoCall` the desktop shells
 install (`src/client/lib/shell/transport.ts`). Commands: `servers_state`,
-`servers_add`, `servers_remove`, `servers_activate`. There is deliberately no
+`servers_add`, `servers_remove`, `servers_activate`, `notification_request`
+(`POST_NOTIFICATIONS` on API 33+, asked only when a notification preference is
+switched on) and `notification_show` (the agent's finished/waiting/failed
+banner; a tap opens that session). There is deliberately no
 `servers_start` / `servers_stop` — a phone has no child process to own — and the
 state answers `startable: false`, so the panel never draws the control. The list
 is `server_list` in SharedPreferences, migrated once from the single

@@ -154,6 +154,23 @@ pub fn handle_command(
             Ok(state(store))
         }
 
+        // There is no runtime permission for a freedesktop notification; the
+        // desktop's own notification settings govern it, and the shell cannot
+        // query them. `granted` therefore means "this shell can ask".
+        "notification_request" => Ok(serde_json::json!({ "granted": true })),
+
+        // Notifications are STARTED by `main.rs`: the banner has to wait for a
+        // click, and the click needs the webview, which this pure dispatcher
+        // does not own. The marker carries the three fields across.
+        "notification_show" => Ok(serde_json::json!({
+            "shown": true,
+            "__notify": {
+                "title": text_param(params, "title"),
+                "body": text_param(params, "body"),
+                "sessionId": text_param(params, "sessionId"),
+            },
+        })),
+
         // `update_apply` is NOT here: it downloads, and this handler runs on the
         // GTK main loop. It is answered by `main.rs`'s `start_update`, which puts
         // the blocking half on a thread and delivers the reply through the loop —

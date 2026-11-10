@@ -336,7 +336,10 @@ window.__kabmoReply(id, ok, payload)           // what the shell evaluates back
 ```
 
 Commands: `desktop_info`, `servers_state`, `servers_add`, `servers_remove`,
-`servers_activate`, `servers_start`, `servers_stop`, `dropped_paths`. There is
+`servers_activate`, `servers_start`, `servers_stop`, `dropped_paths`,
+`notification_request` (UserNotifications authorization) and
+`notification_show` (the agent's finished/waiting/failed banner; a click opens
+that session). There is
 no capability file and no per-origin allowance: the shell owns the webview, so
 the page cannot be anything but one this window chose to load.
 

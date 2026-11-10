@@ -29,6 +29,7 @@ import { createContext } from 'preact/compat';
 import type { ReactNode } from 'preact/compat';
 import { useRealtimeTopic } from '@/client/hooks/ui/realtime';
 import { useInputRequiredAlert } from '@/client/hooks/ui/input-required-alert';
+import { useRunOutcomeAlert } from '@/client/hooks/ui/run-outcome-alert';
 
 import { realtimeClient } from '@/shared/lib/realtime/client';
 import { TOPIC_SIDEBAR, TOPIC_SIDEBAR_ACTIVITY, TOPIC_SIDEBAR_STATUS } from '@/shared/lib/realtime/protocol';
@@ -206,6 +207,9 @@ export function SidebarDataProvider({ children, initialFolders = [] }: { childre
   // Fires for ANY session, including one this tab never opened — the cue that an
   // agent is blocked on an answer must not depend on the open timeline.
   useInputRequiredAlert(folders);
+  // The same list, for the terminal side of a run: a session that finished
+  // while the operator was reading another one is exactly what a banner is for.
+  useRunOutcomeAlert(folders);
 
   const markSeen = useCallback((sessionId: number | string) => {
     const key = String(sessionId);

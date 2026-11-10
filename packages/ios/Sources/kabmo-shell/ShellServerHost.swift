@@ -77,6 +77,10 @@ final class ShellServerHost: NSObject, WKScriptMessageHandler {
       await remove(id, params: params)
     case "servers_activate":
       await activate(id, params: params)
+    case "notification_request":
+      requestNotifications(id)
+    case "notification_show":
+      showNotification(id, params: params)
     default:
       // A page asking for a command this shell does not have is NOT a crash: it
       // is a refusal the console shows, which is how a newer console degrades on
@@ -118,6 +122,34 @@ final class ShellServerHost: NSObject, WKScriptMessageHandler {
     // otherwise the console's promise never settles and the panel spins.
     await answerState(id)
     await MainActor.run { self.onActivate?(url) }
+  }
+
+  /// Ask for notification permission; the answer is the state AFTER the prompt.
+  ///
+  /// The reply is sent from the authorization callback, not inline: a page that
+  /// turned a setting on wants the truth, and "not granted yet" while the
+  /// system dialog is still up would make the toggle look broken.
+  private func requestNotifications(_ id: Int) {
+    ShellNotifications.request { [weak self] granted in
+      self?.reply(id, ok: true, payload: NotificationWire.granted(granted))
+    }
+  }
+
+  /// Post one system notification. A platform refusal is a sentence, not a crash.
+  private func showNotification(_ id: Int, params: [String: String]) {
+    ShellNotifications.show(
+      title: params["title"] ?? "",
+      body: params["body"] ?? "",
+      tag: params["tag"] ?? "",
+      sessionId: params["sessionId"] ?? ""
+    ) { [weak self] result in
+      switch result {
+      case .success:
+        self?.reply(id, ok: true, payload: NotificationWire.shown(true))
+      case .failure(let error):
+        self?.reply(id, ok: false, payload: ServerWire.jsString(error.localizedDescription))
+      }
+    }
   }
 
   /// Evaluate one reply in the page.

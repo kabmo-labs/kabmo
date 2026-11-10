@@ -25,6 +25,7 @@ pub const APP_NAME: &str = "Kabmo";
 pub mod bridge;
 pub mod memory;
 pub mod navigation;
+pub mod notification;
 pub mod open_paths;
 pub mod palette;
 pub mod persisted;

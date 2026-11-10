@@ -13,6 +13,14 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <!--
+      Agent notifications (finished / waiting / failed). On API 33+ this is a
+      runtime permission the shell asks for only when a notification preference
+      is switched on; older releases grant it at install. The WebView cannot ask
+      for it, which is why the console asks the shell.
+    -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!--
       The in-app APK update (`ApkInstaller`). Android requires the permission to
       CREATE an install session at all; the user still grants the per-app
       "install unknown apps" toggle once, and the system still shows its own

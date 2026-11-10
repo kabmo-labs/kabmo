@@ -110,7 +110,9 @@ window.__kabmoReply(id, ok, payload)           // what the shell evaluates back
 ```
 
 Commands: `desktop_info`, `servers_state`, `servers_add`, `servers_remove`,
-`servers_activate`, `servers_start`, `servers_stop`, plus the window verbs
+`servers_activate`, `servers_start`, `servers_stop`, `notification_request`,
+`notification_show` (a `notify-send` banner; its "Open" action opens that
+session), plus the window verbs
 `window_minimize`, `window_maximize`, `window_close`, and the chrome intents
 `window_drag`, `window_toggle`, `window_menu` (posted with id 0, since there is
 nothing to answer). There is no capability file and no per-origin allowance: the

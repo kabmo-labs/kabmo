@@ -26,6 +26,7 @@ import { realtimeClient } from '@/shared/lib/realtime/client';
 import { TOPIC_SIDEBAR, TOPIC_SIDEBAR_STATUS } from '@/shared/lib/realtime/protocol';
 import { pluginContext } from '@/client/lib/plugins/context';
 import { publishClientSignal } from '@/client/lib/signals';
+import { openSessionInUrl } from '@/client/lib/router/open-session';
 import { startPendingSession } from '@/client/hooks/chat/omp/pending-sessions';
 import type { SidebarPayload, SidebarStatusPayload } from '@/shared/types/realtime';
 import type { WorkspaceFolderData } from '@/shared/types';
@@ -136,25 +137,6 @@ export function refreshSidebarThreads(): void {
   realtimeClient.refresh(TOPIC_SIDEBAR_STATUS);
 }
 
-/**
- * Select a session, as clicking its row does.
- *
- * The app's only routing state is `?sessionId=`, written through the same
- * `pushState` the sidebar uses — a plugin that set the URL itself would bypass
- * the module store every mounted component reads, and the sidebar would keep
- * showing the previous selection.
- */
-function openSession(sessionId: string): void {
-  const url = new URL(window.location.href);
-  url.searchParams.set('sessionId', sessionId);
-  window.history.pushState(null, '', url);
-  // `pushState` does not fire `popstate`, so the search-param store has to be
-  // told; otherwise only a reload would show the new selection. A plain Event
-  // is enough — the store re-reads `location.search`, which pushState already
-  // moved — and it avoids depending on a constructor some environments lack.
-  window.dispatchEvent(new Event('popstate'));
-}
-
 /** POST one session mutation, answering whether the server accepted it. */
 async function postSession(sessionId: string, suffix: string, body?: FormData): Promise<boolean> {
   try {
@@ -171,7 +153,7 @@ async function postSession(sessionId: string, suffix: string, body?: FormData): 
 /** The session actions, as the kit reads them. */
 export function sidebarActions(): SidebarThreadActions {
   return {
-    open: openSession,
+    open: openSessionInUrl,
     rename: async (sessionId, title) => {
       const body = new FormData();
       body.set('name', title);

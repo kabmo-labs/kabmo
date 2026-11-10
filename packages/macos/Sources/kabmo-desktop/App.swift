@@ -27,6 +27,7 @@
  */
 
 import AppKit
+import UserNotifications
 import WebKit
 
 import KabmoDesktop
@@ -116,6 +117,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
   /// `applicationDidFinishLaunching` on a cold start — and drained on every
   /// load finish, because that is the first moment a page can answer.
   private let openedPaths = OpenPathQueue()
+  /// The session a notification tap named, held until the page can take it.
+  private var pendingNotificationSession: String?
   /// The `accept` of the upload control that was last clicked.
   ///
   /// `WKUIDelegate`'s `runOpenPanel` is told the PARAMETERS of the control but
@@ -203,6 +206,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
     )
     buildMenu()
     buildWindow()
+    // A click has to be delivered to this shell, and `UNUserNotificationCenter`
+    // keeps only a weak delegate — the delegate is this AppDelegate, which the
+    // process holds for its lifetime.
+    UNUserNotificationCenter.current().delegate = self
     terminator = TerminateCoordinator(supervisor: supervisor)
     // The window is up on a splash until the first probe answers; this is what
     // moves it to the server the user was last on.
@@ -491,6 +498,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
     // land before the current navigation settles — both are drained here.
     pageReady = true
     flushOpenPaths()
+    flushNotificationSession()
     // The console has painted, so `window.__kabmoPalette()` answers the ACTIVE
     // theme. Stored for the next cold start — the only launch where the splash
     // has no page to ask — and applied to the live splash too, because a theme
@@ -516,6 +524,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
     let paths = openedPaths.take()
     guard !paths.isEmpty else { return }
     webView?.evaluateJavaScript(openPathsScript(paths), completionHandler: nil)
+  }
+
+  /**
+   Open the session a notification tap named.
+
+   The window comes forward and the id is queued until the page can take it: a
+   click on a cold start lands before the console exists, exactly as a document
+   launch does.
+   */
+  private func openNotificationSession(_ sessionId: String) {
+    let id = sessionId.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !id.isEmpty else { return }
+    NSApp.activate(ignoringOtherApps: true)
+    window?.makeKeyAndOrderFront(nil)
+    pendingNotificationSession = id
+    flushNotificationSession()
+  }
+
+  private func flushNotificationSession() {
+    guard pageReady, let sessionId = pendingNotificationSession else { return }
+    pendingNotificationSession = nil
+    webView?.evaluateJavaScript(NotificationWire.openSessionScript(sessionId), completionHandler: nil)
   }
 
   /**
@@ -696,6 +726,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
     case "servers_stop":
       await store.stop(params["id"] as? String ?? "")
       return encode(await store.snapshot())
+
+    /**
+     Ask for notification permission.
+
+     The answer is the state AFTER the system prompt, because that is what the
+     settings toggle needs: answering `false` while the dialog is still up would
+     make turning the setting on look broken.
+     */
+    case "notification_request":
+      return ["granted": await ShellNotifications.request()]
+
+    /**
+     Post one notification. A platform refusal is a thrown sentence, which the
+     bridge turns into the reply the page shows.
+     */
+    case "notification_show":
+      try await ShellNotifications.show(
+        title: params["title"] as? String ?? "",
+        body: params["body"] as? String ?? "",
+        tag: params["tag"] as? String ?? "",
+        sessionId: params["sessionId"] as? String ?? ""
+      )
+      return nil
 
     default:
       throw ServerError("Unknown shell command: \(method)")
@@ -886,5 +939,28 @@ struct SystemDeps: ServerDeps {
 
   func stop(_ id: String) async {
     await supervisor.stop(id)
+  }
+}
+
+/**
+ A notification the user CLICKED.
+
+ The tap lands on the session the banner was about: the id rides `userInfo` from
+ `ShellNotifications.show`, and `openNotificationSession` brings the window
+ forward and drains it into the page (queued until the console exists, because a
+ cold start has no page yet).
+ */
+extension AppDelegate: UNUserNotificationCenterDelegate {
+  func userNotificationCenter(
+    _ center: UNUserNotificationCenter,
+    didReceive response: UNNotificationResponse,
+    withCompletionHandler completionHandler: @escaping () -> Void
+  ) {
+    let session = response.notification.request.content.userInfo["sessionId"] as? String
+    DispatchQueue.main.async { [weak self] in
+      guard let session, !session.isEmpty else { return }
+      self?.openNotificationSession(session)
+    }
+    completionHandler()
   }
 }

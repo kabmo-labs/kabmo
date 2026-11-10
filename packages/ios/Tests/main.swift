@@ -13,6 +13,7 @@ import Foundation
 URLNormalizerTests.run()
 ShellNavigationTests.run()
 ServerListTests.run()
+NotificationWireTests.run()
 ShellSettingsTests.run()
 ShellPaletteTests.run()
 LoadingStateTests.run()

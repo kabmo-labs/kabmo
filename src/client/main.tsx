@@ -16,6 +16,7 @@ import { installBackDispatcher } from '@/client/lib/native/back';
 import { installPalettePublisher } from '@/client/lib/native/palette';
 import { installShellTransport } from '@/client/lib/shell/transport';
 import { installResumeDispatcher } from '@/client/lib/native/resume';
+import { installOpenSessionDispatcher } from '@/client/lib/native/open-session';
 import { installFileLaunchHandler } from '@/client/lib/launch/file-handlers';
 import { installOpenPaths } from '@/client/lib/native/open-paths';
 import { installDeviceFiles } from '@/client/lib/launch/device-files';
@@ -114,6 +115,11 @@ installResumeDispatcher();
 installFileLaunchHandler((result) => {
   if (!result.ok) console.warn(`[kabmo] ${result.message}`);
 });
+
+// A native shell calls `window.__kabmoOpenSession(id)` when the user clicks a
+// system notification. Installed before the first render for the same reason as
+// the other native hooks: a click on a cold start can land before hydration.
+installOpenSessionDispatcher();
 
 // A file the OS handed to a DESKTOP shell — a double-click in Finder, "Open
 // With → Kabmo", a drop on the Dock icon — arrives as a PATH, which no browser

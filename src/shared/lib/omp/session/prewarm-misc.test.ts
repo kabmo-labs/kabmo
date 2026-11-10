@@ -79,13 +79,14 @@ describe('contentProfile', () => {
 });
 
 describe('migrateSessionStreamStateColumns', () => {
-  test('issues the additive owner, provider, and model columns', async () => {
+  test('issues the additive owner, provider, model and failure columns', async () => {
     const statements: string[] = [];
     await migrateSessionStreamStateColumns({ exec: async (sql: string) => { statements.push(sql); } } as never);
     expect(statements).toEqual([
       'ALTER TABLE session_stream_state ADD COLUMN owner_pid INTEGER;',
       'ALTER TABLE session_stream_state ADD COLUMN model_provider TEXT;',
       'ALTER TABLE session_stream_state ADD COLUMN model_id TEXT;',
+      'ALTER TABLE session_stream_state ADD COLUMN failure TEXT;',
     ]);
   });
 
@@ -96,7 +97,7 @@ describe('migrateSessionStreamStateColumns', () => {
     await migrateSessionStreamStateColumns({
       exec: async () => { attempts += 1; throw new Error('duplicate column name: owner_pid'); },
     } as never);
-    expect(attempts).toBe(3);
+    expect(attempts).toBe(4);
   });
 });
 

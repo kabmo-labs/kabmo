@@ -22,10 +22,11 @@ import { DEFAULT_SESSION_SORT_OPTION, isValidSessionSortOption, sortFolders } fr
 import { groupSessionsByRoot, sessionTitleFor } from '@/shared/lib/omp/session/sidebar';
 import { loadOmpSidebarData } from '@/server/lib/omp/session/reader';
 import { sessionHasSubagents } from '@/server/lib/omp/session/subagent-presence';
-import { loadStreamStates, type SessionRunModel } from '@/shared/lib/omp/session/stream-state.server';
+import { loadStreamStates } from '@/shared/lib/omp/session/stream-state.server';
 import { healStaleStreamStatuses } from '@/shared/lib/omp/session/stream-heal.server';
 import { getAwaitingInputSessionIds, getLiveRunSessionIds, listRpcSessions } from '@/server/lib/omp/rpc/session-registry';
 import type { SessionItemData, SessionSortOption, WorkspaceFolderData } from '@/shared/types';
+import type { SidebarStatusEntry } from '@/shared/types/realtime';
 import { sessionWorktreeMap } from '@/server/lib/fs/worktree/topology';
 import { DEFAULT_HARNESS_ID, HARNESS_IDS } from '@/shared/lib/harness/catalog';
 import { knownHarness, loadAcpSessions, loadHarnessBySession } from '@/server/lib/harness/session-store.server';
@@ -153,13 +154,10 @@ export async function loadSidebarStructure(): Promise<SessionListPayload> {
  * belongs to the subscribe-time snapshot, which is the moment the old sidebar
  * poll used to provide it.
  */
+/** One session's volatile sidebar fields, as the status topic carries them. */
 export async function loadSidebarStatus(
   options: { repair?: boolean } = {},
-): Promise<Record<string, {
-  streamStatus?: 'stream' | 'finish' | 'abort';
-  awaitingInput?: boolean;
-  runModel?: SessionRunModel;
-}>> {
+): Promise<Record<string, SidebarStatusEntry>> {
   // No MOCK short-circuit: the simulated stream writes the same `stream` row a
   // real run does (`routes/chat/stream.ts`), so the sidebar spinner and the
   // chat's generating indicator have one source in every mode. Returning `{}`
@@ -182,13 +180,13 @@ export async function loadSidebarStatus(
     for (const session of listRpcSessions()) void session.runSettle.reconcile('request');
   }
 
-  const status: Record<string, {
-    streamStatus?: 'stream' | 'finish' | 'abort';
-    awaitingInput?: boolean;
-    runModel?: SessionRunModel;
-  }> = {};
+  const status: Record<string, SidebarStatusEntry> = {};
   for (const [id, state] of Object.entries(await loadStreamStates())) {
-    status[id] = { streamStatus: state.status, ...(state.model ? { runModel: state.model } : {}) };
+    status[id] = {
+      streamStatus: state.status,
+      ...(state.model ? { runModel: state.model } : {}),
+      ...(state.failure ? { runFailure: state.failure } : {}),
+    };
   }
   // Sessions blocked on a dialog nobody has answered yet. Read live from the
   // process registry (never persisted): the child that owns the question is the
