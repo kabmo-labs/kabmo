@@ -1,18 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
   <!--
-    Per-monitor DPI awareness, and the app's own identity.
+    The app's own identity, and long-path support.
 
-    Without the DPI declaration a window on a scaled display is bitmap-stretched
-    by the OS: the page is laid out at 100% and blown up, so text is soft and the
-    title bar's measurements (`SM_CXSIZE`) do not match what is drawn.
+    DPI awareness is NOT declared here. The project also enables WinForms (for
+    `NotifyIcon`), and its analyzer rejects a DPI block in the manifest —
+    `WFAC010`, measured on the Release publish — because WinForms owns that
+    decision through a project property. `ApplicationHighDpiMode` in the csproj
+    states PerMonitorV2, and WPF on .NET 8 defaults to it anyway, so a window on
+    a scaled display is still measured rather than bitmap-stretched.
   -->
   <!-- The app identity Windows reports: one name, the same one the exe carries. -->
   <assemblyIdentity version="0.1.0.0" name="Kabmo" />
   <application xmlns="urn:schemas-microsoft-com:asm.v3">
     <windowsSettings>
-      <dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true/pm</dpiAware>
-      <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2</dpiAwareness>
       <longPathAware xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">true</longPathAware>
     </windowsSettings>
   </application>

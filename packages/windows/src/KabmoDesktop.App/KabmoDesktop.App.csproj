@@ -16,6 +16,13 @@
     <!-- The notification-area icon a desktop notification needs; WinForms is
          where .NET ships something that posts one without an MSIX package. -->
     <UseWindowsForms>true</UseWindowsForms>
+    <!--
+      WinForms OWNS the DPI decision once it is enabled: its analyzer rejects a
+      DPI block in `app.manifest` (`WFAC010`), so the declaration lives here
+      instead. PerMonitorV2 is what WPF on .NET 8 gives a window anyway — stating
+      it keeps a scaled display measured rather than bitmap-stretched.
+    -->
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
