@@ -4,23 +4,36 @@
  */
 
 /**
- * Starting a harness update, and following the background job it becomes.
+ * Starting harness updates, and following every background run they became.
  *
  * The POST used to hold the request open for the whole install; now it answers
- * `202` and the run continues in a detached worker. So the dialog's job has two
+ * `202` and each run continues in a detached worker. So the dialog's job has two
  * halves: start it, then poll `GET /api/harness/update/status` until the record
- * says it finished — and, on open, ADOPT a run that is already in flight. That
+ * says it finished — and, on open, ADOPT whatever is already in flight. That
  * second half is what makes the update really background: closing About, or
  * reloading the page, does not lose the button's state, and a reopened card
  * shows the spinner for the run that is still installing.
  *
- * The rows are re-read once the run settles (`invalidateHarnessVersions`): the
+ * **ONE loop for EVERY run, because two presses are two records.** A second
+ * harness is accepted while the first installs: its record carries `queuedAt`
+ * and the server's queue starts it when the run ahead settles, so the card has
+ * to follow a run it did not start AND one that has not started yet. A finished
+ * run is reported once per harness, and a record that was already finished when
+ * the card opened is HISTORY — a reopened dialog must not re-toast last week's
+ * install.
+ *
+ * The rows are re-read once a run settles (`invalidateHarnessVersions`): the
  * update forgot the cached probe, so the next read is the first honest one.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { invalidateHarnessVersions } from '@/client/hooks/models/use-harness-versions';
-import { isHarnessUpdateJob, updateJobFrom } from '@/shared/lib/harness/update-job';
+import {
+  isHarnessUpdateJob,
+  jobMoving,
+  jobUnfinished,
+  updateJobsFrom,
+} from '@/shared/lib/harness/update-job';
 import type { HarnessUpdateJob } from '@/shared/types/harness-update';
 
 /** One poll per second: the worker flushes at 400ms, and this is a dialog. */
@@ -29,9 +42,10 @@ export const HARNESS_UPDATE_POLL_MS = 1_000;
 /**
  * Stop polling after this long and hand the control back.
  *
- * The install itself is bounded per step by the worker; this only stops an
- * open dialog from asking forever if the record stopped moving. The run is not
- * cancelled — closing the dialog never cancels anything.
+ * The install itself is bounded per step by the worker; this only stops an open
+ * dialog from asking forever if the server stopped answering. The run is not
+ * cancelled — closing the dialog never cancels anything, and a queued run is
+ * started by the server's own ticker.
  */
 const MAX_FOLLOW_MS = 45 * 60_000;
 
@@ -47,105 +61,137 @@ export interface HarnessUpdateOptions {
 }
 
 export interface HarnessUpdateController {
-  /** The harness whose run this dialog is following, or null. */
-  updating: string | null;
-  /** The step the worker is on (`adapter`, `Claude Code`, …), when it says. */
-  progress: string | null;
   /**
-   * The record itself — the last one read, running or finished.
+   * The last known record per harness — waiting, installing, or the last run
+   * that finished.
    *
-   * The log dialog renders from this: the worker streams every command's output
-   * into it, so the panel is the install's own console. It is NOT cleared when a
-   * run settles, because the interesting moment to read the log is often after
-   * it failed.
+   * The rows render from this: `jobQueued`/`jobRunning`/`runningStepOf` answer
+   * what to draw, and the log dialog renders the record's own steps and output.
+   * A settled run is NOT cleared, because the interesting moment to read the log
+   * is often after it failed.
    */
-  job: HarnessUpdateJob | null;
+  jobs: HarnessUpdateJob[];
   /** Start an update; resolves to a refusal, or null when the run was started
-   *  (or there was nothing to move). */
+   *  (immediately or queued behind the one already installing). */
   start: (id: string) => Promise<string | null>;
 }
 
 type Settled = (message: string, ok: boolean) => void;
 
-function runningStep(job: HarnessUpdateJob | null): string | null {
-  const steps = job && Array.isArray(job.steps) ? job.steps : [];
-  return steps.find((step) => step.state === 'running')?.part ?? null;
-}
-
 export function useHarnessUpdate(
   onSettled: Settled,
   { pollMs = HARNESS_UPDATE_POLL_MS, enabled = true }: HarnessUpdateOptions = {},
 ): HarnessUpdateController {
-  const [updating, setUpdating] = useState<string | null>(null);
-  const [progress, setProgress] = useState<string | null>(null);
-  const [job, setJob] = useState<HarnessUpdateJob | null>(null);
+  const [jobs, setJobs] = useState<HarnessUpdateJob[]>([]);
   const alive = useRef(true);
+  const polling = useRef(false);
+  // Which harnesses this card WATCHED install. A run it only saw as history is
+  // not one to toast about, and the same harness must not be reported twice.
+  const watched = useRef(new Set<string>());
+  const reported = useRef(new Set<string>());
+  // Runs whose post-install probe answer has already been reflected in the rows.
+  const probed = useRef(new Set<string>());
   // The callback is read through a ref so an inline arrow from the caller does
-  // not restart the mount effect (and re-adopt the job) on every render.
+  // not restart the mount effect (and re-adopt the records) on every render.
   const settled = useRef(onSettled);
   settled.current = onSettled;
 
-  const follow = useCallback(async (id: string): Promise<void> => {
-    const startedAt = Date.now();
-    while (alive.current) {
-      let job: HarnessUpdateJob | null = null;
-      try {
-        const response = await fetch('/api/harness/update/status', { cache: 'no-store' });
-        if (!response.ok) throw new Error(String(response.status));
-        job = updateJobFrom(await response.json());
-      } catch {
-        // A transient failure is not the update failing: the record lives on
-        // disk and the next poll reads it.
-      }
+  /** Fold one harness's record into the list, keeping the newer one. */
+  const merge = useCallback((incoming: HarnessUpdateJob | null) => {
+    if (!incoming) return;
+    setJobs((current) => {
+      const index = current.findIndex((job) => job.harness === incoming.harness);
+      if (index < 0) return [...current, incoming];
+      const next = current.slice();
+      next[index] = incoming;
+      return next;
+    });
+  }, []);
 
-      if (!alive.current) return;
-      // Kept even once it finishes: the log stays readable while the panel is
-      // open, and a failure is the case a reader wants the output for.
-      if (job) setJob(job);
-      if (job?.finishedAt != null) {
-        setUpdating(null);
-        setProgress(null);
+  /**
+   * Report the runs that went from unfinished to finished, and re-read the rows
+   * once each run's post-install PROBE answers.
+   *
+   * The probe is what stops the row quoting the version the update replaced, and
+   * it lands AFTER the run settles — so the settle report and the version refresh
+   * are two separate moments, not one.
+   */
+  const observe = useCallback((incoming: HarnessUpdateJob[]) => {
+    setJobs(incoming);
+    for (const job of incoming) {
+      if (jobUnfinished(job)) {
+        watched.current.add(job.harness);
+        reported.current.delete(job.harness);
+        continue;
+      }
+      if (watched.current.has(job.harness) && !reported.current.has(job.harness)) {
+        reported.current.add(job.harness);
         invalidateHarnessVersions();
         settled.current(job.message ?? (job.ok ? 'Update finished' : 'Update failed'), Boolean(job.ok));
-        return;
       }
-      if (job?.harness === id) setProgress(runningStep(job));
-
-      if (Date.now() - startedAt > MAX_FOLLOW_MS) {
-        setUpdating(null);
-        setProgress(null);
-        return;
+      // A run whose probe settled: the numbers the row reads are now the new
+      // ones, so the cached rows must be dropped. `startedAt` identifies the run,
+      // because the next update replaces the record under the same harness.
+      if (job.probe === 'done') {
+        const key = `${job.harness}:${job.startedAt}`;
+        if (!probed.current.has(key)) {
+          probed.current.add(key);
+          invalidateHarnessVersions();
+        }
       }
-      const { promise, resolve } = Promise.withResolvers<void>();
-      setTimeout(resolve, pollMs);
-      await promise;
     }
-  }, [pollMs]);
+  }, []);
 
-  // Adopt a run that is already going: another tab, or this dialog reopened.
+  /**
+   * Follow every unfinished record until they all settle.
+   *
+   * One loop, not one per harness: a queued run and an installing run are two
+   * rows of the same poll, and a loop per press would double the reads for no
+   * extra answer. `polling` keeps a second caller (the mount effect and a press
+   * landing together) from starting a second loop.
+   */
+  const follow = useCallback(async (): Promise<void> => {
+    if (polling.current) return;
+    polling.current = true;
+    const startedAt = Date.now();
+    try {
+      while (alive.current) {
+        let next: HarnessUpdateJob[] | null = null;
+        try {
+          const response = await fetch('/api/harness/update/status', { cache: 'no-store' });
+          if (!response.ok) throw new Error(String(response.status));
+          next = updateJobsFrom(await response.json());
+        } catch {
+          // A transient failure is not the update failing: the records live on
+          // disk and the next poll reads them.
+        }
+
+        if (!alive.current) return;
+        if (next) observe(next);
+        // Nothing left to watch — a queued run keeps this loop alive (the
+        // server starts it when the install ahead finishes), and so does a run
+        // whose post-install probe has not answered yet.
+        if (!next || !next.some(jobMoving)) return;
+        if (Date.now() - startedAt > MAX_FOLLOW_MS) return;
+        const { promise, resolve } = Promise.withResolvers<void>();
+        setTimeout(resolve, pollMs);
+        await promise;
+      }
+    } finally {
+      polling.current = false;
+    }
+  }, [observe, pollMs]);
+
+  // Adopt whatever is already going: another tab, a run accepted before a
+  // reload, or a queued one. A closed card has nothing to show and nothing to
+  // poll for; the workers and the queue keep going either way.
   useEffect(() => {
-    // A closed card has nothing to show and nothing to poll for; the run keeps
-    // going in its worker either way.
     if (!enabled) {
       alive.current = false;
       return;
     }
     alive.current = true;
-    void (async () => {
-      try {
-        const response = await fetch('/api/harness/update/status', { cache: 'no-store' });
-        if (!response.ok) return;
-        const running = updateJobFrom(await response.json());
-        if (!alive.current || !running) return;
-        setJob(running);
-        if (running.finishedAt !== null) return;
-        setUpdating(running.harness);
-        setProgress(runningStep(running));
-        void follow(running.harness);
-      } catch {
-        // Nothing running, or no server to ask: the list still renders.
-      }
-    })();
+    void follow();
     return () => {
       alive.current = false;
     };
@@ -168,7 +214,8 @@ export function useHarnessUpdate(
       message?: string;
       success?: boolean;
       started?: boolean;
-      job?: HarnessUpdateJob;
+      queued?: boolean;
+      job?: unknown;
     };
 
     // The POST's own record is trusted only if it IS a record; a payload that
@@ -176,16 +223,17 @@ export function useHarnessUpdate(
     const posted = isHarnessUpdateJob(payload.job) ? payload.job : null;
 
     if (response.status === 202 && payload.started) {
-      setUpdating(id);
-      setJob(posted);
-      setProgress(runningStep(posted));
-      void follow(id);
+      // `started` covers both halves: installing now, or waiting its turn.
+      watched.current.add(id);
+      reported.current.delete(id);
+      merge(posted);
+      void follow();
       return null;
     }
     if (!response.ok) {
-      // A refusal carries the run that caused it: the reader can open ITS log
-      // instead of only being told to wait.
-      if (response.status === 409 && posted) setJob(posted);
+      // A refusal carries the record that caused it (`job`), so the reader can
+      // open ITS log instead of only being told to wait.
+      if (posted) merge(posted);
       return payload.error ?? `Update failed (HTTP ${response.status})`;
     }
     if (payload.success) {
@@ -196,7 +244,7 @@ export function useHarnessUpdate(
       return null;
     }
     return payload.error ?? 'Update failed';
-  }, [follow]);
+  }, [follow, merge]);
 
-  return { updating, progress, job, start };
+  return { jobs, start };
 }

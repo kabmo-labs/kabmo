@@ -18,12 +18,14 @@
  *  - **One install at a time.** `flock` on a lock file is held for the run and
  *    released by the kernel if this process dies, so a second server (or a
  *    second press after a reload) cannot run a competing `npm install -g` over
- *    the same prefix.
+ *    the same prefix. A second harness's press is not refused any more — its
+ *    record waits in the queue and this worker is spawned for it when the run
+ *    ahead finishes.
  *
  * It writes the same record the server reads (`update-job-store.ts`), atomically,
  * at every state change and throttled while output streams. It cannot apply the
  * post-install side effects itself: those read the database, which the server
- * owns — `finalizeUpdateJob` does that on the next status read.
+ * owns — `update-queue.server.ts` does that on its next pass.
  *
  * Run as: `bun <this file> <spec.json>`.
  */
@@ -58,6 +60,9 @@ function freshJob(spec: HarnessUpdateJobSpec): HarnessUpdateJob {
     label: spec.label,
     startedAt: Date.now(),
     finishedAt: null,
+    // This process IS the worker: a record that said it was waiting has been
+    // taken over, so the stamp must not survive into the run.
+    queuedAt: null,
     pid: process.pid,
     steps: spec.steps.map((step): HarnessUpdateJobStep => ({ ...step, state: 'pending', code: null })),
     output: '',
@@ -88,7 +93,7 @@ async function pump(
 async function runSteps(spec: HarnessUpdateJobSpec, lock: FlockHandle | null): Promise<void> {
   const existing = await readUpdateJob(spec.statusPath);
   const job: HarnessUpdateJob = existing?.harness === spec.harness
-    ? { ...existing, pid: process.pid, finishedAt: null, ok: null, applied: false }
+    ? { ...existing, pid: process.pid, finishedAt: null, queuedAt: null, ok: null, applied: false }
     : freshJob(spec);
   // The plan always comes from the spec: the record on disk may be from an
   // earlier run of the same harness, and its steps must not be replayed.

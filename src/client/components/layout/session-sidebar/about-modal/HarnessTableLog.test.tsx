@@ -4,15 +4,15 @@
  */
 
 /**
- * The row's link to its update log.
+ * The row's link to its update log, in the three states a record can be in.
  *
  * A harness update runs in a background worker, so the row can only show *that*
- * something is installing — never what it printed. That output lives in the
- * job record, and these cases pin the row's half of the deal: while the worker
- * runs the row names the step and offers `View log`; once it settles the row
- * keeps offering the log with the run's own sentence, because a failure is
- * exactly when the output is worth reading; and a record never leaks onto a row
- * that does not own it.
+ * something is installing — never what it printed. That output lives in the job
+ * record, and these cases pin the row's half of the deal: while the worker runs
+ * the row names the step and offers `View log`; a run WAITING behind another one
+ * says so instead of claiming to install; once a run settles the row keeps
+ * offering the log with the run's own sentence; and a record never leaks onto a
+ * row that does not own it.
  */
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
@@ -25,6 +25,7 @@ import {
   mountHarnessTable,
   restoreHarnessTableDom,
   summary,
+  updateJob,
   version,
 } from '@/test-support/harness-table.test-util';
 
@@ -48,7 +49,7 @@ afterAll(() => {
   restoreHarnessTableDom();
 });
 
-/** The claude row, with an update record attached. */
+/** The claude row, with update records attached. */
 function mountClaude(state: Parameters<typeof mountHarnessTable>[5]): HTMLElement {
   return mountHarnessTable(
     container,
@@ -62,24 +63,43 @@ function mountClaude(state: Parameters<typeof mountHarnessTable>[5]): HTMLElemen
 
 describe('harness row update log', () => {
   test('while the worker runs, the row names the step and offers the log', () => {
-    let opened = 0;
+    const opened: string[] = [];
     const el = mountClaude({
-      updating: 'claude',
-      progress: 'adapter',
-      log: { harness: 'claude', message: null },
-      onOpenLog: () => { opened += 1; },
+      jobs: [updateJob()],
+      onOpenLog: (harness) => { opened.push(harness); },
     });
     const row = harnessRows(el)[0];
     expect(row.textContent).toContain('Installing adapter…');
     const log = row.querySelector<HTMLButtonElement>('[data-update-log]');
     expect(log?.textContent).toBe('View log');
     act(() => log!.click());
-    expect(opened).toBe(1);
+    // The opener names the harness: two records can be on screen at once.
+    expect(opened).toEqual(['claude']);
+  });
+
+  test('a run waiting behind another one says it is queued, and does not spin', () => {
+    const el = mountClaude({
+      jobs: [updateJob({ pid: null, queuedAt: Date.now() })],
+      onOpenLog: () => {},
+    });
+    const row = harnessRows(el)[0];
+    expect(row.textContent).toContain('Queued — starts when the install running now finishes');
+    expect(row.textContent).not.toContain('Installing');
+    const button = row.querySelector<HTMLButtonElement>('button[aria-label^="Queued:"]');
+    expect(button).not.toBeNull();
+    expect(button?.disabled).toBe(true);
   });
 
   test('after the run settles the log stays, with the run’s sentence', () => {
     const el = mountClaude({
-      log: { harness: 'claude', message: 'claude update failed (exit 3)' },
+      jobs: [updateJob({
+        pid: null,
+        finishedAt: Date.now(),
+        ok: false,
+        applied: true,
+        message: 'claude update failed (exit 3)',
+        steps: [{ part: 'adapter', command: 'npm install -g x', argv: ['npm'], state: 'failed', code: 3 }],
+      })],
       onOpenLog: () => {},
     });
     const row = harnessRows(el)[0];
@@ -88,7 +108,7 @@ describe('harness row update log', () => {
   });
 
   test('a record for another harness does not appear on this row', () => {
-    const el = mountClaude({ log: { harness: 'codex', message: 'codex updated' } });
+    const el = mountClaude({ jobs: [updateJob({ harness: 'codex', label: 'codex', message: 'codex updated' })] });
     expect(harnessRows(el)[0].querySelector('[data-update-log]')).toBeNull();
   });
 });

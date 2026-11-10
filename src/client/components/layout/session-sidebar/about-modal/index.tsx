@@ -1,4 +1,4 @@
-import { useRef, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { createPortal } from 'preact/compat';
 import { Heart, X } from 'lucide-preact';
 import packageJson from '@/../package.json';
@@ -31,9 +31,7 @@ export function AboutModal({ isOpen, onClose, updates, onToast }: AboutModalProp
   // Which product's "what am I running" notes are open. The dialog draws above
   // this panel instead of replacing it, so closing it returns here.
   const [notesTarget, setNotesTarget] = useState<UpdateTarget | null>(null);
-  // The update log panel. It is a boolean and not a harness id: one update runs
-  // at a time, and the record the hook holds IS the one that was opened.
-  const [logOpen, setLogOpen] = useState(false);
+  // The update log panel, opened for a harness id.
   // The About sheet is a dialog to assistive tech and to the keyboard. It had
   // neither: measured in the running console it carried no `role`, no
   // `aria-modal`, and Escape did nothing while focus sat inside it.
@@ -43,9 +41,22 @@ export function AboutModal({ isOpen, onClose, updates, onToast }: AboutModalProp
   // made in either appears here without a reload.
   const { harnesses, isLoading: harnessesLoading } = useHarnesses();
   const versions = useHarnessVersions();
-  // Which harness is mid-update, and the step it is on. The run is a BACKGROUND
-  // worker, so this hook also ADOPTS a run that is still going when the card
-  // opens — a reload no longer loses the update's state.
+  // The rows name what is on disk NOW. A run that settled while the card was
+  // closed — or a probe that answered after the last read — leaves the shared
+  // store holding the number the update replaced, and its `loaded` flag makes a
+  // remount skip the read. Re-reading on OPEN is what makes "updated" and the
+  // version beside it agree; it does not force the registry, so the cheap path.
+  const refreshVersions = versions.refresh;
+  useEffect(() => {
+    if (isOpen) refreshVersions();
+  }, [isOpen, refreshVersions]);
+  // Which harness's log is open. The run is a background worker and there can be
+  // MORE THAN ONE record (one installing, one waiting its turn), so the panel is
+  // opened for a harness id and renders THAT harness's record.
+  const [logHarness, setLogHarness] = useState<string | null>(null);
+  // Which harnesses have a record — installing, waiting, or settled. The run is a
+  // BACKGROUND worker, so this hook also ADOPTS runs that are still going when
+  // the card opens — a reload no longer loses an update's state.
   const update = useHarnessUpdate(
     (message, ok) => {
       // The hook re-reads the version rows itself once a run settles (the update
@@ -66,6 +77,10 @@ export function AboutModal({ isOpen, onClose, updates, onToast }: AboutModalProp
   });
 
   if (!isOpen) return null;
+
+  // The record the open log panel renders. Looked up per harness, so a settled
+  // row keeps its log while another harness installs.
+  const logJob = logHarness ? update.jobs.find((job) => job.harness === logHarness) ?? null : null;
 
   // Rendered through a portal, for the reason the update popup is: this dialog
   // is mounted inside whichever sidebar is on screen, and that sidebar is not
@@ -162,10 +177,8 @@ export function AboutModal({ isOpen, onClose, updates, onToast }: AboutModalProp
                 versions={versions.rows}
                 loading={harnessesLoading}
                 onUpdate={update.start}
-                updating={update.updating}
-                progress={update.progress}
-                log={update.job ? { harness: update.job.harness, message: update.job.message } : null}
-                onOpenLog={() => setLogOpen(true)}
+                jobs={update.jobs}
+                onOpenLog={setLogHarness}
                 onOpenHarness={(id) => {
                   onClose();
                   // The settings modal is the frame that owns harness pages; the
@@ -203,8 +216,10 @@ export function AboutModal({ isOpen, onClose, updates, onToast }: AboutModalProp
       {notesTarget && <NotesDialog target={notesTarget} onClose={() => setNotesTarget(null)} />}
       {/* The log draws ABOVE About and does not replace it — the card it was
           opened from keeps its glanceable state. It is not gated on a run being
-          in flight: a finished (or failed) record is what a reader came for. */}
-      {logOpen && update.job && <UpdateLogDialog job={update.job} onClose={() => setLogOpen(false)} />}
+          in flight: a finished (or failed) record is what a reader came for, and
+          a WAITING one is what says where the queue is. It renders the record of
+          the harness whose line was clicked — two runs can exist at once. */}
+      {logJob && <UpdateLogDialog job={logJob} onClose={() => setLogHarness(null)} />}
     </>,
     document.body,
   );

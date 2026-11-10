@@ -37,6 +37,19 @@ export interface HarnessUpdateJob {
   startedAt: number;
   /** Null while running: this is the field that says whether to poll. */
   finishedAt: number | null;
+  /**
+   * When this run was ACCEPTED while another harness was already installing.
+   *
+   * Two presses are no longer one press refused: the record carries this stamp
+   * and the queue starts the install when the one ahead of it finishes. A record
+   * with `pid: null`, `finishedAt: null` and this set is WAITING — not a worker
+   * that died — and must never be settled as a failure. The worker clears it
+   * when it takes the run over.
+   *
+   * Optional because a record written before the queue existed has no such
+   * field; readers normalize with `jobQueued`.
+   */
+  queuedAt?: number | null;
   /** The WORKER process, used to tell a run that is still alive from one that
    *  died without writing its result (a crash, a kill, a reboot). */
   pid: number | null;
@@ -51,6 +64,17 @@ export interface HarnessUpdateJob {
    *  probe and CLI version caches, repoint the launch line). The worker cannot
    *  do those: they read the database, which the server owns. */
   applied: boolean;
+  /**
+   * The post-install PROBE: the freshly installed agent is asked what it is, so
+   * the row stops quoting the version that was just replaced.
+   *
+   * `pending` while that probe runs (it spawns an agent process, so the
+   * install's own report is not held up by it), `done` once its answer is in the
+   * probe cache, and null when this run has nothing to probe — it failed, or the
+   * vendor owns the install. A polling dialog keys its "keep going" on this, and
+   * re-reads the version rows when it turns `done`.
+   */
+  probe?: 'pending' | 'done' | null;
   /** The launch command a successful install left behind, when it moved it. */
   repointed: string | null;
 }

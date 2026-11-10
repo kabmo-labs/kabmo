@@ -112,24 +112,29 @@ export function getLockPath(port: number | string): string {
 }
 
 /**
- * `<data>/run/harness-update.json` — the state of the harness update in flight
- * (or the last one that ran).
+ * `<data>/run/harness-update.<id>.json` — the state of THAT harness's update:
+ * waiting in the queue, installing, or the last one that ran.
  *
  * On disk, not in memory, because the run outlives the request that started it:
  * a reloaded page, a restarted server and a second tab all have to read the same
  * answer, and a run killed by a reboot has to be distinguishable from one still
- * installing.
+ * installing. One file PER HARNESS, because two presses are two records: the
+ * second waits in its own record while the first installs, and each row keeps
+ * the log of its own last run instead of overwriting its neighbour's.
  */
-export function getHarnessUpdateStatusPath(): string {
-  return path.join(getRunDir(), 'harness-update.json');
+export function getHarnessUpdateStatusPath(harness: string): string {
+  return path.join(getRunDir(), `harness-update.${harness}.json`);
 }
 
-/** `<data>/run/harness-update.spec.json` — what the detached worker was asked to run. */
-export function getHarnessUpdateSpecPath(): string {
-  return path.join(getRunDir(), 'harness-update.spec.json');
+/** `<data>/run/harness-update.<id>.spec.json` — what that harness's worker was asked to run. */
+export function getHarnessUpdateSpecPath(harness: string): string {
+  return path.join(getRunDir(), `harness-update.${harness}.spec.json`);
 }
 
-/** `<data>/run/harness-update.lock` — one harness install at a time, across processes. */
+/** `<data>/run/harness-update.lock` — one harness install at a time, across processes.
+ *  ONE lock for every harness, not one each: the installs share the global npm
+ *  prefix, and two `npm install -g` over the same prefix is how a tree is
+ *  corrupted. The queue above it is what lets a second press be accepted. */
 export function getHarnessUpdateLockPath(): string {
   return path.join(getRunDir(), 'harness-update.lock');
 }

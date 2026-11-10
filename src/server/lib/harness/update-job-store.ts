@@ -5,7 +5,7 @@
 
 /**
  * The harness update record on disk: read it, write it atomically, and tell a
- * live run from a dead one.
+ * live run from a queued one and from a dead one.
  *
  * Kept apart from `update-job.server.ts` because the DETACHED WORKER writes the
  * same record (`update-worker.ts`) and must not import the server's database and
@@ -14,13 +14,15 @@
  * **A run outlives the request that started it.** The POST answers in
  * milliseconds while the install keeps going, so the state cannot live in a
  * closure or a `Map`: a reloaded page, a second tab and a `bun --hot` reload all
- * have to read the same answer. It is one JSON file, replaced atomically
- * (`tmp` + `rename`), which is why a reader never sees half a record.
+ * have to read the same answer. It is one JSON file PER HARNESS, replaced
+ * atomically (`tmp` + `rename`), which is why a reader never sees half a record.
+ *
+ * The path is always passed in: the server derives it from the harness id
+ * (`getHarnessUpdateStatusPath`), and the worker uses the one its spec names.
  */
 
 import fs from 'node:fs';
-import { getHarnessUpdateStatusPath } from '@/server/lib/lifecycle/paths';
-import { isHarnessUpdateJob } from '@/shared/lib/harness/update-job';
+import { isHarnessUpdateJob, jobQueued } from '@/shared/lib/harness/update-job';
 import type { HarnessUpdateJob } from '@/shared/types/harness-update';
 
 /**
@@ -34,13 +36,14 @@ import type { HarnessUpdateJob } from '@/shared/types/harness-update';
  */
 export const UPDATE_START_GRACE_MS = 15_000;
 
-/** The current record, or null when none was ever written (or it is unreadable).
- *  `path` is the record the caller owns: the server uses the install's run
- *  directory, the detached worker uses the one its spec names. */
-export async function readUpdateJob(path = getHarnessUpdateStatusPath()): Promise<HarnessUpdateJob | null> {
+/** The record at `path`, or null when none was ever written (or it is
+ *  unreadable). `queuedAt` is normalized, because a record written before the
+ *  queue existed has no such field. */
+export async function readUpdateJob(path: string): Promise<HarnessUpdateJob | null> {
   try {
     const parsed = (await Bun.file(path).json()) as unknown;
-    return isHarnessUpdateJob(parsed) ? parsed : null;
+    if (!isHarnessUpdateJob(parsed)) return null;
+    return { ...parsed, queuedAt: typeof parsed.queuedAt === 'number' ? parsed.queuedAt : null };
   } catch {
     // Absent (never run) and corrupt (a half-written record from an old build)
     // are the same answer: there is nothing to report.
@@ -49,7 +52,7 @@ export async function readUpdateJob(path = getHarnessUpdateStatusPath()): Promis
 }
 
 /** Replace the record atomically. A reader sees the previous one or this one. */
-export async function writeUpdateJob(job: HarnessUpdateJob, path = getHarnessUpdateStatusPath()): Promise<void> {
+export async function writeUpdateJob(job: HarnessUpdateJob, path: string): Promise<void> {
   const target = path;
   const temp = `${target}.${process.pid}.tmp`;
   await Bun.write(temp, JSON.stringify(job, null, 2));
@@ -73,9 +76,10 @@ export function pidAlive(pid: number | null): boolean {
  * A known-live pid settles it. Without one the record is trusted only inside the
  * start grace window; after that an absent worker means the run died without
  * writing a result, and the caller reports that instead of polling forever.
+ * A QUEUED record is never in flight: it has no worker yet, by design.
  */
 export function jobInFlight(job: HarnessUpdateJob | null, now = Date.now()): boolean {
-  if (!job || job.finishedAt !== null) return false;
+  if (!job || job.finishedAt !== null || jobQueued(job)) return false;
   if (pidAlive(job.pid)) return true;
   return now - job.startedAt < UPDATE_START_GRACE_MS;
 }
@@ -85,16 +89,18 @@ export function jobInFlight(job: HarnessUpdateJob | null, now = Date.now()): boo
  *
  * `finishedAt` is what every reader keys on, so settling here is what stops the
  * dialog from spinning forever; the message says the install itself may have
- * completed, because a killed reporter is not proof the commands failed.
+ * completed, because a killed reporter is not proof the commands failed. A
+ * queued record is left alone — nothing was ever spawned for it.
  */
 export async function settleDeadJob(
   job: HarnessUpdateJob | null,
-  path = getHarnessUpdateStatusPath(),
+  path: string,
 ): Promise<HarnessUpdateJob | null> {
   // A record that already has a result is history, not a candidate: the worker
   // wrote it, and rewriting it would turn a success into a "stopped without
-  // reporting" failure.
-  if (!job || job.finishedAt !== null || jobInFlight(job)) return job;
+  // reporting" failure. A queued record is a candidate for the QUEUE, not for
+  // this.
+  if (!job || job.finishedAt !== null || jobQueued(job) || jobInFlight(job)) return job;
   const settled: HarnessUpdateJob = {
     ...job,
     finishedAt: Date.now(),

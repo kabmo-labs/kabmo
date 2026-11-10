@@ -20,6 +20,7 @@
 
 import { getDb } from '@/server/db.server';
 import { startHarnessAutoProbe } from '@/server/lib/harness/auto-probe.server';
+import { pumpUpdateQueue } from '@/server/lib/harness/update-queue.server';
 import { compactChatOverlayRows } from '@/server/lib/db/compact-chat-overlay';
 import { packageDir } from '@/server/lib/fs/package-root';
 import { isTrayEnabledByArgv } from '@/server/lib/lifecycle/argv-flags';
@@ -72,6 +73,14 @@ export async function runAfterListenTasks(target: AfterListenTarget): Promise<vo
   // listener is already serving tabs and chats. The pass is per PROCESS, so a
   // `bun --hot` reload does not start every agent again — see the module header.
   startHarnessAutoProbe();
+
+  // The harness-update queue. A run accepted before a restart (or one harness
+  // waiting behind an install) must not need a browser tab to move: this pass
+  // settles what died, applies a finished run's side effects, and starts the
+  // next waiting worker. Never awaited — it spawns a detached child.
+  void pumpUpdateQueue().catch((cause) => {
+    console.error('[harness-update] queue pump failed:', cause);
+  });
 }
 
 /**

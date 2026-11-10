@@ -45,9 +45,10 @@ import { harnessVersionState, type HarnessVersionState } from '@/server/lib/harn
 import { planHarnessUpdate, type HarnessUpdateStep } from '@/shared/lib/harness/update-plan';
 import { resolveOmpBin } from '@/server/lib/omp/core/cli';
 import {
-  runningUpdateJob,
   startHarnessUpdateJob,
+  unfinishedUpdateJob,
 } from '@/server/lib/harness/update-job.server';
+import { jobQueued } from '@/shared/lib/harness/update-job';
 
 /** The answer to a press that has nothing to move, still plain JSON. */
 interface HarnessUpdateOutcome {
@@ -111,13 +112,17 @@ export async function action({ request, params }: ActionFunctionArgs) {
     }, { status: 400 });
   }
 
-  // Read BEFORE planning: the answer to a press while an install runs must not
-  // depend on what this press would have planned, and planning reads the npm
-  // registry.
-  const running = await runningUpdateJob();
+  // Read BEFORE planning: the answer to a press must not depend on what this
+  // press would have planned, and planning reads the npm registry.
+  //
+  // Only THIS harness's own unfinished record refuses the press. A different
+  // harness is ACCEPTED and queued: one install runs at a time (they share the
+  // global npm prefix), but "update these two" is one decision the user gets to
+  // make, and the queue is what makes the second press work instead of 409.
+  const running = await unfinishedUpdateJob(harness);
   if (running) {
     return json({
-      error: `${running.label} update is already running — it continues in the background`,
+      error: `${running.label} update is already ${jobQueued(running) ? 'queued' : 'running'} — it continues in the background`,
       job: running,
     }, { status: 409, headers: NO_STORE_HEADERS });
   }
@@ -127,7 +132,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
     const { steps, error } = selfSteps(harness, label, facts.command);
     if (error) return json({ error }, { status: 400 });
     const job = await startHarnessUpdateJob(harness, label, steps);
-    return json({ started: true, job }, { status: 202, headers: NO_STORE_HEADERS });
+    return json({ started: true, queued: jobQueued(job), job }, { status: 202, headers: NO_STORE_HEADERS });
   }
 
   // `npm`: install the package at the version the registry reports NOW, so the
@@ -167,5 +172,5 @@ export async function action({ request, params }: ActionFunctionArgs) {
   }
 
   const job = await startHarnessUpdateJob(harness, label, steps);
-  return json({ started: true, job }, { status: 202, headers: NO_STORE_HEADERS });
+  return json({ started: true, queued: jobQueued(job), job }, { status: 202, headers: NO_STORE_HEADERS });
 }

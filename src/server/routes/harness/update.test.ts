@@ -6,11 +6,15 @@
 /**
  * `POST /api/harness/update` and `GET /api/harness/update/status`.
  *
- * The route used to run the installs itself; it now starts a background worker
- * and answers `202`. These cases pin the answers that do NOT spawn anything —
- * the refusals and the progress read — because those are the shapes the dialog
- * branches on, and a wrong status there either starts a competing install or
- * reports success it never observed.
+ * The route used to run the installs itself; it now accepts a run as a
+ * background job and answers `202`. These cases pin the answers that do NOT
+ * spawn anything — the refusals and the progress read — because those are the
+ * shapes the dialog branches on, and a wrong status there either starts a
+ * competing install or reports success it never observed.
+ *
+ * The queue's own decision (a second harness is accepted and waits) is pinned in
+ * `update-queue.test.ts`: reaching it through this route means planning an
+ * install, which reads the npm registry and probes the machine.
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
@@ -20,6 +24,7 @@ import { join } from 'node:path';
 import { action } from '@/server/routes/harness/update';
 import { loader as statusLoader } from '@/server/routes/harness/update-status';
 import { writeUpdateJob } from '@/server/lib/harness/update-job-store';
+import { getHarnessUpdateStatusPath } from '@/server/lib/lifecycle/paths';
 import type { HarnessUpdateJob } from '@/shared/types/harness-update';
 
 let dir = '';
@@ -54,6 +59,7 @@ function job(overrides: Partial<HarnessUpdateJob> = {}): HarnessUpdateJob {
     label: 'claude',
     startedAt: Date.now(),
     finishedAt: null,
+    queuedAt: null,
     pid: process.pid,
     steps: [{ part: 'adapter', command: 'npm install -g x', argv: ['npm', 'install', '-g', 'x'], state: 'running', code: null }],
     output: '',
@@ -82,38 +88,69 @@ describe('POST /api/harness/update', () => {
     expect(payload.error).toContain('installed by its vendor');
   });
 
-  test('a second press while a run is in flight is a 409 that names the run', async () => {
+  test('a second press for the SAME harness is a 409 that names the run', async () => {
     // Measured corruption vector: a reload forgot the run and offered the button,
     // so two `npm install -g` wrote the same prefix at once. The record on disk is
-    // what refuses it now.
-    await writeUpdateJob(job());
+    // what refuses it now. A DIFFERENT harness is accepted and queued instead —
+    // see `update-queue.test.ts`.
+    await writeUpdateJob(job(), getHarnessUpdateStatusPath('claude'));
     const response = (await action(post('claude'))) as Response;
     expect(response.status).toBe(409);
     const payload = (await response.json()) as { error: string; job: HarnessUpdateJob };
     expect(payload.error).toContain('already running');
     expect(payload.job.harness).toBe('claude');
   });
+
+  test('a press for a harness that is already QUEUED says queued, not running', async () => {
+    await writeUpdateJob(
+      job({ harness: 'codex', label: 'codex', pid: null, queuedAt: Date.now() }),
+      getHarnessUpdateStatusPath('codex'),
+    );
+    const response = (await action(post('codex'))) as Response;
+    expect(response.status).toBe(409);
+    const payload = (await response.json()) as { error: string; job: HarnessUpdateJob };
+    expect(payload.error).toContain('already queued');
+    expect(payload.job.queuedAt).not.toBeNull();
+  });
 });
 
 describe('GET /api/harness/update/status', () => {
-  test('no run ever started is null, not a 404', async () => {
+  test('no run ever started is an empty list, not a 404', async () => {
     const response = (await statusLoader()) as Response;
     expect(response.status).toBe(200);
-    expect(((await response.json()) as { job: unknown }).job).toBeNull();
+    expect(((await response.json()) as { jobs: unknown[] }).jobs).toEqual([]);
   });
 
   test('a finished run is reported with its message', async () => {
-    const done = job({
+    await writeUpdateJob(job({
       pid: null,
       finishedAt: Date.now(),
       ok: true,
       applied: true,
       message: 'claude updated (adapter) — check its status to read the new version',
-    });
-    await writeUpdateJob(done);
+    }), getHarnessUpdateStatusPath('claude'));
     const response = (await statusLoader()) as Response;
-    const payload = (await response.json()) as { job: HarnessUpdateJob };
-    expect(payload.job.ok).toBe(true);
-    expect(payload.job.message).toContain('claude updated');
+    const { jobs } = (await response.json()) as { jobs: HarnessUpdateJob[] };
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0].ok).toBe(true);
+    expect(jobs[0].message).toContain('claude updated');
+  });
+
+  test('an installing run and a QUEUED one are two records, and the queue is not started', async () => {
+    // The press that would have been a 409 is now a waiting record. The poll must
+    // report both, and the waiting one must stay waiting while the first installs
+    // — the whole point of one install at a time.
+    await writeUpdateJob(job(), getHarnessUpdateStatusPath('claude'));
+    await writeUpdateJob(
+      job({ harness: 'codex', label: 'codex', pid: null, queuedAt: Date.now() }),
+      getHarnessUpdateStatusPath('codex'),
+    );
+
+    const response = (await statusLoader()) as Response;
+    const { jobs } = (await response.json()) as { jobs: HarnessUpdateJob[] };
+    expect(jobs.map((entry) => entry.harness).sort()).toEqual(['claude', 'codex']);
+    const codex = jobs.find((entry) => entry.harness === 'codex');
+    expect(codex?.queuedAt).not.toBeNull();
+    expect(codex?.pid).toBeNull();
   });
 });

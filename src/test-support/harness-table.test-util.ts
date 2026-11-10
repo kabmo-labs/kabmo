@@ -15,6 +15,7 @@ import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { HarnessTable } from '@/client/components/layout/session-sidebar/about-modal/HarnessTable';
+import type { HarnessUpdateJob } from '@/shared/types/harness-update';
 import type { HarnessVersionRow } from '@/shared/types/harness-version';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
 import type { HarnessSummary } from '@/shared/types/harness';
@@ -83,15 +84,13 @@ export function mountHarnessTable(
   onOpen?: (id: string) => void,
   onUpdate?: (id: string) => Promise<string | null>,
   /**
-   * The in-flight update state and its record. Kept apart from the positional
-   * arguments because only the log cases need it, and the earlier callers are
+   * The update records and the log opener. Kept apart from the positional
+   * arguments because only the log cases need them, and the earlier callers are
    * about the row's layout.
    */
   state?: {
-    updating?: string | null;
-    progress?: string | null;
-    log?: { harness: string; message: string | null } | null;
-    onOpenLog?: () => void;
+    jobs?: HarnessUpdateJob[];
+    onOpenLog?: (harness: string) => void;
   },
 ): HTMLElement {
   act(() =>
@@ -101,15 +100,32 @@ export function mountHarnessTable(
         versions,
         onOpenHarness: onOpen ?? (() => {}),
         onUpdate: onUpdate ?? (async () => null),
-        updating: state?.updating ?? null,
-        progress: state?.progress ?? null,
-        log: state?.log ?? null,
+        jobs: state?.jobs ?? [],
         onOpenLog: state?.onOpenLog,
       }),
       container,
     ),
   );
   return container;
+}
+
+/** An update record: installing by default, queued or settled by override. */
+export function updateJob(overrides: Partial<HarnessUpdateJob> = {}): HarnessUpdateJob {
+  return {
+    harness: 'claude',
+    label: 'claude',
+    startedAt: Date.now(),
+    finishedAt: null,
+    queuedAt: null,
+    pid: 4242,
+    steps: [{ part: 'adapter', command: 'npm install -g x', argv: ['npm', 'install', '-g', 'x'], state: 'running', code: null }],
+    output: '',
+    ok: null,
+    message: null,
+    applied: false,
+    repointed: null,
+    ...overrides,
+  };
 }
 
 /** The rows, which are the direct children of the grid that draws them. */

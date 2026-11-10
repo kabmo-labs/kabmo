@@ -22,6 +22,7 @@ import { useEffect, useRef } from 'preact/hooks';
 import { createPortal } from 'preact/compat';
 import { Ban, CheckCircle2, CircleDashed, Loader2 } from 'lucide-preact';
 import { Modal } from '@/client/components/common/Modal';
+import { jobQueued, jobRunning } from '@/shared/lib/harness/update-job';
 import type { HarnessUpdateJob, HarnessUpdateJobStep } from '@/shared/types/harness-update';
 
 export interface UpdateLogDialogProps {
@@ -39,13 +40,17 @@ function StepMark({ state }: { state: HarnessUpdateJobStep['state'] }) {
 
 /** How the panel describes the run, in the same words the toast uses. */
 function phaseLabel(job: HarnessUpdateJob): string {
+  if (jobQueued(job)) return 'Queued — starts when the install running now finishes';
   if (job.finishedAt === null) return 'Installing…';
   return job.ok ? 'Finished' : 'Failed';
 }
 
 export function UpdateLogDialog({ job, onClose }: UpdateLogDialogProps) {
   const output = useRef<HTMLPreElement | null>(null);
-  const running = job.finishedAt === null;
+  // A QUEUED record has no worker yet: it must not spin, because nothing is
+  // happening to it until the run ahead of it settles.
+  const running = jobRunning(job);
+  const unfinished = job.finishedAt === null;
 
   // Pin to the newest line while the worker streams. Without it the panel shows
   // the top of npm's output and the reason for a failure is always below the
@@ -66,7 +71,10 @@ export function UpdateLogDialog({ job, onClose }: UpdateLogDialogProps) {
         <div className="flex min-w-0 items-center gap-3">
           {running
             ? <Loader2 size={15} className="shrink-0 animate-spin text-ink/70 motion-reduce:animate-none" />
-            : <StepMark state={job.ok ? 'ok' : 'failed'} />}
+            // A waiting run is neither a success nor a failure: `ok` is null, and
+            // reading that as `failed` painted a red ban over a run that had not
+            // started.
+            : <StepMark state={job.finishedAt === null ? 'pending' : job.ok ? 'ok' : 'failed'} />}
           <div className="min-w-0">
             <h2 className="truncate text-sm font-semibold text-ink">Updating {job.label}</h2>
             <p className="truncate font-mono text-[11px] text-ink/50">
@@ -111,7 +119,7 @@ export function UpdateLogDialog({ job, onClose }: UpdateLogDialogProps) {
           ref={output}
           className="max-h-[38vh] min-h-[8rem] overflow-auto rounded-lg border border-ink/10 bg-ink/[0.03] px-3 py-2 font-mono text-[10px] leading-[15px] whitespace-pre-wrap break-all text-ink/75"
         >
-          {job.output || (running ? 'Waiting for output…' : 'The commands printed nothing.')}
+          {job.output || (unfinished ? 'Waiting for output…' : 'The commands printed nothing.')}
         </pre>
       </div>
     </Modal>,
