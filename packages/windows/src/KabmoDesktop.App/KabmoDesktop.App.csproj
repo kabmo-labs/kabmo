@@ -60,6 +60,21 @@
   </ItemGroup>
 
   <!--
+    WinForms is here for ONE type — `NotifyIcon`, which is how an unpackaged WPF
+    app posts a notification. Turning it on also brings its implicit usings
+    (`System.Windows.Forms`, `System.Drawing`) into EVERY file, and those collide
+    with WPF's: `Button`, `ProgressBar` and `Color` are ambiguous against
+    `System.Windows.Controls` / `System.Windows.Media` in `Splash.cs`. Measured
+    on the Release build, as four CS0104 errors.
+
+    The only file that needs them, `Notifications.cs`, imports them itself.
+  -->
+  <ItemGroup>
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+
+  <!--
     The shell's version, read from `packages/windows/version.properties` — the
     same shape the Android and iOS shells use.
 
