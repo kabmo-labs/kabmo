@@ -163,6 +163,24 @@ describe('executeSend', () => {
     expect(h1.generating).toEqual([true, false]);
   });
 
+  test('mock mode falls through to the simulated stream instead of reporting', async () => {
+    // Mock has no agent process BY DESIGN, so there is no failure to report —
+    // the demo shell answers from the simulated stream. Measured on the CI E2E
+    // legs: `POST /api/agent/new` answered 400 (no `omp` on the runner) and the
+    // landing composer did nothing at all, so no chat ever opened.
+    const h1 = makeSendHarness({
+      isOmpSession: false,
+      sessionId: 'new-1',
+      folders: [{ id: 4, name: 'demo', project_path: '/tmp/demo' }],
+      selectedFolderId: 4,
+      agent: { spawnResult: null, spawnError: 'Mock mode runs no agent process', spawnCode: 'mock_mode' },
+    });
+    await act(async () => {
+      await h1.sends.executeSend('first prompt', []);
+    });
+    expect(h1.reported).not.toContainEqual(expect.stringContaining('Prompt not sent'));
+  });
+
   test('a harness picked on the pending view rides the spawn body', async () => {
     const h1 = makeSendHarness({
       isOmpSession: false,

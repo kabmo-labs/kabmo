@@ -162,7 +162,13 @@ export interface SpawnedSession {
  */
 export type SpawnPromptResult =
   | { ok: true; session: SpawnedSession }
-  | { ok: false; error: string };
+  /**
+   * `code` is the server's own discriminator when there is one. `mock_mode`
+   * means there is no agent process to start ON PURPOSE — the caller must take
+   * the simulated path instead of reporting a failure the operator cannot act
+   * on. Every other failure is reported.
+   */
+  | { ok: false; error: string; code?: string };
 
 /** Command surface returned by useOmpAgent — the live omp session handle the
  *  chat timeline drives. */

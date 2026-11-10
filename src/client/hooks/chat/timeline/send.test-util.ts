@@ -132,6 +132,8 @@ export interface AgentCalls {
   sendPromptError: string | undefined;
   /** The reason a fresh spawn failed, when `spawnResult` is null. */
   spawnError?: string;
+  /** The server's discriminator, e.g. `mock_mode`. */
+  spawnCode?: string;
   spawnResult: { sessionId: string; model?: { provider: string; modelId: string }; harness?: string } | null;
 }
 
@@ -162,7 +164,7 @@ export function makeAgent(overrides: Partial<AgentCalls> = {}): AgentRecorder {
       calls.newPrompts.push({ text, cwd, options });
       return calls.spawnResult
         ? { ok: true as const, session: calls.spawnResult }
-        : { ok: false as const, error: calls.spawnError ?? 'spawn failed' };
+        : { ok: false as const, error: calls.spawnError ?? 'spawn failed', ...(calls.spawnCode ? { code: calls.spawnCode } : {}) };
     },
     steerOmpRun: async (text: string, images: unknown) => {
       calls.interrupts.push({ text, images });

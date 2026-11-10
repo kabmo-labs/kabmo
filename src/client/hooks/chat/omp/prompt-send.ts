@@ -150,11 +150,15 @@ export function useOmpPromptSender(deps: OmpPromptSenderDeps): OmpPromptSender {
         model?: { provider: string; modelId: string } | null;
         harness?: string;
         error?: string;
+        code?: string;
       };
       if (!created.ok || !createdBody.sessionId) {
         const error = createdBody.error ?? `HTTP ${created.status}`;
         setState((prev) => ({ ...prev, isGenerating: false, error }));
-        return { ok: false, error };
+        // The CODE travels: `mock_mode` is a "there is nothing to spawn here",
+        // which the caller answers with the simulated stream rather than an
+        // error the operator cannot act on.
+        return { ok: false, error, ...(createdBody.code ? { code: createdBody.code } : {}) };
       }
       sid = createdBody.sessionId;
       connect(sid);

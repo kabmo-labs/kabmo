@@ -11,6 +11,7 @@ import { projectModelForCwd } from '@/server/lib/workspace/project-model.server'
 import { HARNESS_IDS, type HarnessId } from '@/shared/lib/harness/catalog';
 import { startAcpSession } from '@/server/lib/harness/spawn.server';
 import { mintAgentEnvironment, rememberAgentToken } from '@/server/lib/sessions/agent-token.server';
+import { isMockMode } from '@/server/mock.server';
 
 /** The model-dropdown persists its selection here (actionType 'selectModel');
  *  a spawn that arrives without an explicit provider/modelId falls back to it. */
@@ -41,6 +42,14 @@ async function loadPersistedModel(): Promise<{ provider: string; modelId: string
 // omp itself, so Kabmo adopts it via the URL param after the response.
 export async function action({ request }: ActionFunctionArgs) {
   try {
+    // MOCK mode has no agent process to start, and saying so with a CODE is what
+    // lets the composer take its simulated path instead of reporting "Prompt not
+    // sent: omp binary not found" — measured in the demo shell on a host without
+    // omp, where the landing composer silently did nothing. Real spawn failures
+    // still report, because they carry no `mock_mode`.
+    if (isMockMode()) {
+      return json({ error: 'Mock mode runs no agent process', code: 'mock_mode' }, { status: 400 });
+    }
     const body = await request.json().catch(() => null);
     if (!body || typeof body.type !== 'string' || !body.type.trim()) {
       return json({ error: 'command type is required', code: 'command_type_required' }, { status: 400 });

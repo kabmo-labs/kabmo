@@ -312,16 +312,24 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
           // waiting for the JSONL to carry the user turn.
           return { ok: true, busy: false };
         }
-        // The agent did not start. Falling through to the simulated stream here
-        // was the reason a failed ACP spawn looked like a slow chat and then
-        // "answered": nothing had started, and the server's reason was dropped.
-        // The picks stay armed so the operator can retry with the same choices.
-        setLocalMessages(prev => prev.filter(m => m.id !== userMsgId && m.id !== aiPlaceholderId));
-        aiPlaceholderIdRef.current = null;
-        optimisticUserIdRef.current = null;
-        setGenerating(false);
-        reportActionError(`Prompt not sent: ${spawned.error}`);
-        return { ok: false, busy: false, error: spawned.error };
+        // `mock_mode` is not a failure: mock has no agent process BY DESIGN, and
+        // the demo shell must answer from the simulated stream the way it does
+        // for a chat with no workspace. Reporting it as "Prompt not sent: omp
+        // binary not found" is what made the landing composer do nothing at all
+        // in the demo on a host without omp — measured on the CI E2E legs, where
+        // `POST /api/agent/new` answered 400 and the chat never opened.
+        if (spawned.code !== 'mock_mode') {
+          // The agent did not start. Falling through to the simulated stream here
+          // was the reason a failed ACP spawn looked like a slow chat and then
+          // "answered": nothing had started, and the server's reason was dropped.
+          // The picks stay armed so the operator can retry with the same choices.
+          setLocalMessages(prev => prev.filter(m => m.id !== userMsgId && m.id !== aiPlaceholderId));
+          aiPlaceholderIdRef.current = null;
+          optimisticUserIdRef.current = null;
+          setGenerating(false);
+          reportActionError(`Prompt not sent: ${spawned.error}`);
+          return { ok: false, busy: false, error: spawned.error };
+        }
       }
     }
 

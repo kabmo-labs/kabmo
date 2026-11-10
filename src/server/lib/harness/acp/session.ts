@@ -8,17 +8,15 @@
  * the `HarnessSession` contract every route already speaks.
  *
  * It owns the session's own state — the id, the config selectors, the resolved
- * model, the run flags the sidebar spinner and the queue's delivery gate read,
- * the agent's command list, and the approval queue a reloaded tab replays. The
- * RULES for each of those live beside it, one module per concern:
- * `session-handshake.ts` (initialize/new/load + the picks), `session-turns.ts`
- * (the ACK contract and turn-end bookkeeping), `session-config.ts` (adopting a
- * config answer, answering a parked dialog), `session-permissions.ts` (the
- * tier that answers before a dialog exists), `session-facts.ts` (the metadata an
- * agent publishes about itself between turns) and `session-web-state.ts`
- * (`get_state`, in the shape the omp transport reports it).
+ * model, the run flags the sidebar spinner and the queue delivery gate read, the
+ * agent's commands and the approval queue a reloaded tab replays. The RULES live
+ * beside it, one module per concern: `session-handshake.ts` (initialize/new/load
+ * + the picks), `session-turns.ts` (the ACK contract and turn-end bookkeeping),
+ * `session-config.ts` (config answers, parked dialogs), `session-permissions.ts`
+ * (the tier that answers before a dialog exists), `session-facts.ts` (what an
+ * agent publishes between turns) and `session-web-state.ts` (`get_state`).
  *
- * `send()` accepts the SAME command vocabulary the routes already send omp, so
+ * `send()` takes the SAME command vocabulary the routes already send omp, so
  * `routes/agent/command.ts` needs no second dispatch table.
  */
 
