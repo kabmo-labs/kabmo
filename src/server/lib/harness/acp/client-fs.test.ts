@@ -16,6 +16,7 @@ import { mkdtemp, rm, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { handleAcpFsRequest, isAcpFsMethod, type AcpFsHost } from '@/server/lib/harness/acp/client-fs';
+import { testPosix } from '@/test-support/platform';
 import { ACP_ERROR } from '@/server/lib/harness/acp/protocol';
 
 const scratch: string[] = [];
@@ -76,7 +77,13 @@ describe('fs/read_text_file', () => {
     expect(answer).toMatchObject({ answered: false, code: ACP_ERROR.invalidParams });
   });
 
-  test('a symlink out of the workspace is refused', async () => {
+  // POSIX only: the fixture links to `/etc/hosts`, which does not exist on
+  // Windows, and creating a symlink there needs a privilege a default runner
+  // does not have. Measured on the Windows gate: the link was never made, so the
+  // handler answered `-32002 File not found` instead of the refusal under test —
+  // a failure about the fixture, not about the guard. The case ABOVE still runs
+  // there: an absolute path outside the workspace is refused before any read.
+  testPosix('a symlink out of the workspace is refused', async () => {
     const host = await workspace();
     const link = join(host.cwd, 'escape.txt');
     await symlink('/etc/hosts', link);
