@@ -191,8 +191,17 @@ jobs:
       # The suite itself. `bun test` on Windows needs no shell gymnastics: Bun
       # runs the TypeScript directly, and the POSIX-bound suites skip
       # themselves.
+      #
+      # `--timeout 20000`, not the 5 s default: this runner is several times
+      # slower per case, and the DB-backed suites were timing out MID-CASE —
+      # measured on the Release gate, where `resuming a recorded non-omp chat`
+      # and `ACP prompt dispatch` each hit 5000 ms and the `getDb()` open still in
+      # flight then surfaced as an unhandled "database open was retired before it
+      # finished", failing the gate on cleanup rather than on an assertion. The
+      # Linux gate keeps the tighter budget it passes reliably, and 20 s is still
+      # a hang detector rather than an absence of one.
       - name: Test
-        run: bun test
+        run: bun test --timeout 20000
 
   # The settings panel is driven by a GENERATED table, so its staleness is a
   # gate rather than a review note: `bun run omp:schema:check` regenerates from
