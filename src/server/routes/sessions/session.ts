@@ -16,6 +16,9 @@ import { getLiveSession, harnessOfSession } from '@/server/lib/omp/rpc/session-r
 import { knownHarness, loadHarnessSession } from '@/server/lib/harness/session-store.server';
 import { HARNESS_IDS } from '@/shared/lib/harness/catalog';
 import { loadAcpGoalState } from '@/server/lib/harness/acp/acp-goal-state.server';
+import { selectValues } from '@/server/lib/harness/launch';
+import type { AcpConfigOption } from '@/server/lib/harness/acp/protocol';
+import type { SessionModeState } from '@/shared/lib/harness/session-modes';
 import { asHarnessSession } from '@/server/lib/harness/registry';
 import { applyHarnessMode } from '@/server/routes/agent/harness-command';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
@@ -77,12 +80,28 @@ export async function getSessionModes({ params }: LoaderFunctionArgs) {
       if (applied.ok) plan = (applied.data as { enabled?: unknown } | null)?.enabled === true;
     }
     const active = state.record?.status === 'active';
+    // The agent's own mode ladder, so the composer can offer all of it. `omp-acp`
+    // is excluded: its selector is just default/plan, which the dedicated Plan
+    // toggle (with the goal exclusion) already expresses.
+    let mode: SessionModeState | null = null;
+    if (liveSession?.isAlive() && acpHarness !== 'omp-acp') {
+      const snapshot = await liveSession.send({ type: 'get_state' }).catch(() => null) as
+        | { configOptions?: AcpConfigOption[] }
+        | null;
+      const selector = Array.isArray(snapshot?.configOptions)
+        ? snapshot.configOptions.find((option) => option.category === 'mode')
+        : undefined;
+      if (selector && typeof selector.currentValue === 'string') {
+        mode = { currentValue: selector.currentValue, values: selectValues(selector) };
+      }
+    }
     acpModes = {
       plan,
       goal: active,
       goalLive: active,
       goalRecord: state.record,
       goalContinuation: state.continuation,
+      ...(mode ? { mode } : {}),
     };
   }
 

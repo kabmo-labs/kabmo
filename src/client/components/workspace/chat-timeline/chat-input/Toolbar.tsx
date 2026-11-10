@@ -194,6 +194,8 @@ export function ComposerToolbar({
               onOpenGoal={onOpenGoal}
               planAvailable={modes.planAvailable}
               goalAvailable={modes.goalAvailable}
+              mode={modes.sessionMode ?? null}
+              onSelectMode={modes.onSelectSessionMode}
             />
           </>
         )}

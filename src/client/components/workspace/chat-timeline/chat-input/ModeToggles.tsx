@@ -30,6 +30,8 @@
 import { ClipboardList, Target } from 'lucide-preact';
 import type { GoalRecord } from '@/shared/lib/omp/mode/types';
 import type { ArmedGoal } from '@/shared/lib/omp/mode/actions';
+import type { SessionModeState } from '@/shared/lib/harness/session-modes';
+import { SessionModeDropdown } from '@/client/components/workspace/chat-timeline/chat-input/SessionModeDropdown';
 
 export interface ModeTogglesProps {
   plan: boolean;
@@ -49,6 +51,10 @@ export interface ModeTogglesProps {
   /** Whether Goal is offered at all: a non-omp ACP agent has no `/kabmo-mode`
    *  extension, so the button could only produce a refusal. */
   goalAvailable: boolean;
+  /** The agent's own mode selector. When it has more than one value the
+   *  dropdown replaces the Plan button, so plan is still reachable. */
+  mode?: SessionModeState | null;
+  onSelectMode?: (value: string) => void;
 }
 
 /** omp's own footer shows goal token usage beside the mode indicator; that
@@ -73,10 +79,18 @@ export function ModeToggles({
   onOpenGoal,
   planAvailable,
   goalAvailable,
+  mode,
+  onSelectMode,
 }: ModeTogglesProps) {
+  // More than one mode: the dropdown can express every value, including plan,
+  // so the single-purpose Plan button would be a second control for one item.
+  const hasModeMenu = Boolean(mode && mode.values.length > 1 && onSelectMode);
   return (
     <div className="flex items-center gap-0.5">
-      {planAvailable && (
+      {hasModeMenu && mode && onSelectMode && (
+        <SessionModeDropdown mode={mode} pending={pending} onSelect={onSelectMode} />
+      )}
+      {!hasModeMenu && planAvailable && (
         <button
           type="button"
           onClick={() => onTogglePlan(!plan)}

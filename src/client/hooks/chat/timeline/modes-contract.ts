@@ -16,6 +16,7 @@
 import type { KabmoModeSelection, GoalContinuation, GoalRecord } from '@/shared/lib/omp/mode/types';
 import type { GoalActionResult } from '@/client/hooks/chat/timeline/goal-command';
 import type { ArmedGoal, GoalAction } from '@/shared/lib/omp/mode/actions';
+import type { SessionModeState } from '@/shared/lib/harness/session-modes';
 
 export interface ChatTimelineModes {
   plan: boolean;
@@ -52,12 +53,16 @@ export interface ChatTimelineModes {
    *  flag only hides a button: a stale client or a typed `/plan` used to reach
    *  the child and turn both modes on. */
   planAvailable: boolean;
-  /**
-   * Whether Goal is offered at all. An ACP agent that is not omp has no
-   * `/kabmo-mode` extension, so the toggle could only ever produce a refusal —
-   * the same rule `planAvailable` already follows for the plan/goal exclusion.
+  /** Whether Goal is offered at all. An ACP agent that is not omp has no
+   *  `/kabmo-mode` extension, so the toggle could only ever produce a refusal —
+   *  the same rule `planAvailable` already follows for the plan/goal exclusion.
    */
   goalAvailable: boolean;
+  /** The agent's own mode selector (ACP). Null for omp and for an agent that
+   *  publishes none; the composer then keeps the Plan toggle. */
+  sessionMode?: SessionModeState | null;
+  /** Move the agent's mode selector. */
+  onSelectSessionMode?: (value: string) => void;
   /**
    * The last refusal, from either side of the wire: the route's own error, or a
    * `KABMO_MODE_ERROR` the extension emitted (an unknown action, a missing

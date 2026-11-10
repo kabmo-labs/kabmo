@@ -33,44 +33,20 @@ import {
 } from '@/shared/lib/omp/mode/types';
 import { goalMarkerPatch, useModeMarkers, type ModesResponse } from '@/client/hooks/chat/timeline/mode-markers';
 import { createGoalAction, type GoalActionResult } from '@/client/hooks/chat/timeline/goal-command';
-import { postModeCommand } from '@/client/hooks/chat/timeline/mode-post';
+import { postModeCommand, postSessionMode } from '@/client/hooks/chat/timeline/mode-post';
+import { subscribeClientSignal } from '@/client/lib/signals';
+import type { SessionModeState } from '@/shared/lib/harness/session-modes';
 import { isGoalOpen } from '@/shared/lib/omp/mode/status';
 import { isPendingSessionId } from '@/shared/lib/omp/session/default-title';
 import { isModeMarker } from '@/shared/lib/omp/mode/constants';
 import type { ArmedGoal, GoalAction } from '@/shared/lib/omp/mode/actions';
+import { modeAvailability, type ModeCapabilities } from '@/client/hooks/chat/timeline/mode-availability';
 
 import type { ChatTimelineModes } from '@/client/hooks/chat/timeline/modes-contract';
 
 export type { ChatTimelineModes };
 export type { ArmedGoal, GoalAction };
-
-/**
- * Which mode toggles a harness can actually honour.
- *
- * Pure, so the rule is testable without a render. Goal is available on every
- * harness: Kabmo owns the record and the loop for ACP (`acp-goal.server.ts`),
- * and omp carries the extension. Plan is different — it must be a real mode the
- * agent publishes (`claude` does, `opencode` does not), except on omp's own two
- * transports, which always expose the Plan toggle. An unknown harness keeps the
- * old surface: the row may simply not have arrived yet.
- */
-export function modeAvailability(capabilities: ModeCapabilities): { plan: boolean; goal: boolean } {
-  // Goal is Kabmo-owned on every harness now: `acp-goal.server.ts` stores the
-  // record and the driver opens the next turn after the audit, so an agent
-  // without the `/kabmo-mode` extension can still run one.
-  if (capabilities.harness === 'omp-rpc') return { plan: true, goal: true };
-  if (!capabilities.harness) return { plan: true, goal: true };
-  if (capabilities.harness === 'omp-acp') return { plan: true, goal: true };
-  return { plan: capabilities.modeValues?.includes('plan') === true, goal: true };
-}
-
-export interface ModeCapabilities {
-  /** The harness that owns this chat, when the tab knows it. */
-  harness?: string | null;
-  /** The harness's own `mode` values, from its probe: `plan` is a real mode on
-   *  the agents that publish one. */
-  modeValues?: string[];
-}
+export type { ModeCapabilities };
 
 export function useChatTimelineModes(
   sessionId: string | null,
@@ -88,6 +64,10 @@ export function useChatTimelineModes(
   const goalArmRef = useRef<ArmedGoal | null>(null);
   goalArmRef.current = goalArm;
   const [plan, setPlanState] = useState(false);
+  /** The agent's own mode selector (ACP), or null for omp and agents without one. */
+  const [sessionMode, setSessionMode] = useState<SessionModeState | null>(null);
+  const sessionModeRef = useRef<SessionModeState | null>(null);
+  sessionModeRef.current = sessionMode;
   const [goal, setGoalState] = useState(false);
   const [goalRecord, setGoalRecord] = useState<GoalRecord | null>(null);
   const [goalContinuation, setGoalContinuation] = useState<GoalContinuation | null>(null);
@@ -123,6 +103,7 @@ export function useChatTimelineModes(
   useEffect(() => {
     const current = sessionId;
     setPlanState(false);
+    setSessionMode(null);
     setGoalState(false);
     setGoalRecord(null);
     setGoalContinuation(null);
@@ -143,6 +124,7 @@ export function useChatTimelineModes(
       .then((data) => {
         if (cancelled || !data?.modes) return;
         setPlanState(data.modes.plan === true);
+        setSessionMode(data.modes.mode ?? null);
         setGoalState(data.modes.goal === true);
         setGoalRecord(data.modes.goalRecord ?? null);
         // The loop's last verdict rides the same record, so a reload shows
@@ -157,6 +139,18 @@ export function useChatTimelineModes(
       cancelled = true;
     };
   }, [sessionId]);
+
+  // An agent can move its own mode/config (`mode_changed`/`config_changed`).
+  // The frame carries no full list, so re-read the authoritative selector.
+  useEffect(() => subscribeClientSignal('session-modes-changed', (payload) => {
+    if (!sessionId || payload.sessionId !== sessionId || isPendingSessionId(sessionId)) return;
+    fetch(`/api/sessions/${encodeURIComponent(sessionId)}/modes`)
+      .then((res) => (res.ok ? (res.json() as Promise<ModesResponse>) : null))
+      .then((data) => {
+        if (data?.modes) setSessionMode(data.modes.mode ?? null);
+      })
+      .catch(() => {});
+  }), [sessionId]);
 
   // Live transitions. omp's own `goal_updated` and the extension's markers both
   // arrive through this one channel, so the toggles follow the CHILD — including
@@ -239,6 +233,23 @@ export function useChatTimelineModes(
     [send],
   );
 
+  const onSelectSessionMode = useCallback(async (value: string) => {
+    const current = sessionModeRef.current;
+    const session = sessionRef.current;
+    if (!current || !session || current.currentValue === value || isPendingSessionId(session)) return;
+    setSessionMode({ ...current, currentValue: value });
+    setPlanState(value === 'plan');
+    setPending(true);
+    setError(null);
+    const result = await postSessionMode(session, value);
+    setPending(false);
+    if (!result.ok) {
+      setSessionMode(current);
+      setPlanState(current.currentValue === 'plan');
+      setError(result.error ?? 'Mode change failed');
+    }
+  }, []);
+
   const runGoalAction = useMemo(
     () => createGoalAction({
       send: (scope, action, payload) => send(scope, action, payload),
@@ -316,6 +327,8 @@ export function useChatTimelineModes(
     pending,
     planAvailable: available.plan && !goal,
     goalAvailable: available.goal,
+    sessionMode,
+    onSelectSessionMode,
     error,
     clearError,
     spawnSelectionRef,

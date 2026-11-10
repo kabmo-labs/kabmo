@@ -29,15 +29,27 @@ export async function postModeCommand(
   action: string,
   payload?: Record<string, unknown>,
 ): Promise<ModeCommandResult> {
+  return postAgentCommand(sessionId, { type: MODE_COMMAND_TYPE, scope, action, ...(payload ? { payload } : {}) });
+}
+
+/** POST the agent's own `set_mode` command (an ACP mode selector value). */
+export async function postSessionMode(sessionId: string, mode: string): Promise<ModeCommandResult> {
+  return postAgentCommand(sessionId, { type: 'set_mode', mode });
+}
+
+async function postAgentCommand(
+  sessionId: string,
+  body: Record<string, unknown>,
+): Promise<ModeCommandResult> {
   try {
     const res = await fetch(`/api/agent/${encodeURIComponent(sessionId)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: MODE_COMMAND_TYPE, scope, action, ...(payload ? { payload } : {}) }),
+      body: JSON.stringify(body),
     });
     if (!res.ok) {
-      const body = (await res.json().catch(() => ({}))) as { error?: string };
-      return { ok: false, error: body.error ?? 'Mode command failed' };
+      const answer = (await res.json().catch(() => ({}))) as { error?: string };
+      return { ok: false, error: answer.error ?? 'Mode command failed' };
     }
     return { ok: true };
   } catch (err) {

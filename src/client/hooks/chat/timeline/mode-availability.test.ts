@@ -14,7 +14,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { modeAvailability } from '@/client/hooks/chat/timeline/modes';
+import { modeAvailability } from '@/client/hooks/chat/timeline/mode-availability';
 
 describe('modeAvailability', () => {
   test('omp RPC carries both modes', () => {

@@ -18,6 +18,7 @@ import { extractTextFromContent, toChatMessage } from '@/shared/lib/omp/session/
 import { normalizeNoticeText } from '@/shared/lib/chat/notice-text';
 import { parseModeMarker } from '@/shared/lib/omp/mode/markers';
 import { emitKabmoModeSignal } from '@/shared/lib/omp/mode/client-signal';
+import { emitSessionModesChanged } from '@/shared/lib/harness/mode-signal';
 import { KABMO_GOAL_EVALUATING_MARKER } from '@/shared/lib/omp/mode/types';
 import { materializeTerminalMessages } from '@/shared/lib/chat/omp/terminal-messages';
 import { invalidateComposerCache } from '@/shared/lib/chat/composer/client';
@@ -274,6 +275,13 @@ export function foldAgentEvent(data: OmpAgentEvent, deps: OmpAgentFoldDeps): voi
 
     case 'model_changed':
       callbacks?.onModelChanged?.();
+      break;
+
+    // An ACP agent changed a config selector itself. `mode` is one of them and
+    // the composer's mode dropdown reads the live session, so re-read it.
+    case 'mode_changed':
+    case 'config_changed':
+      emitSessionModesChanged(deps.sessionId);
       break;
 
     // The live `thinking_level_changed` frame carries the new session level

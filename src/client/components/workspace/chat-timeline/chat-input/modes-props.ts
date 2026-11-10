@@ -15,6 +15,7 @@
 import type { GoalContinuation, GoalRecord } from '@/shared/lib/omp/mode/types';
 import type { ArmedGoal, GoalAction } from '@/shared/lib/omp/mode/actions';
 import type { GoalActionResult } from '@/client/hooks/chat/timeline/goal-command';
+import type { SessionModeState } from '@/shared/lib/harness/session-modes';
 
 export interface ComposerModes {
   plan: boolean;
@@ -48,6 +49,10 @@ export interface ComposerModes {
    * button could only refuse.
    */
   goalAvailable: boolean;
+  /** The agent's own mode selector (ACP), or null when it publishes none. */
+  sessionMode?: SessionModeState | null;
+  /** Move the agent's mode selector. */
+  onSelectSessionMode?: (value: string) => void;
   /**
    * The last mode-command refusal, from either side of the wire (the route's
    * error, or a `KABMO_MODE_ERROR` from the extension). The composer renders

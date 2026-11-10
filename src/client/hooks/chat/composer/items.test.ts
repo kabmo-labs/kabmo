@@ -301,6 +301,25 @@ describe('loadComposerItems', () => {
     expect(requested.length).toBe(6);
   });
 
+  test('commands are scoped to the live session, with one cache entry per session', async () => {
+    answer = (url) => (url.includes('sessionId=s1')
+      ? { body: { commands: [{ id: 'c1', name: 'test', description: 'Run tests', scope: 'system', template: '' }], skills: [] } }
+      : { body: { commands: [], skills: [] } });
+
+    const forS1 = await loadComposerItems('command', '/repo', 's1');
+    expect(requested).toContain('/api/settings/commands?root=%2Frepo&sessionId=s1');
+    expect(forS1.some((item) => item.name === 'test')).toBe(true);
+
+    // Another chat must not be served s1's vocabulary from the cache.
+    const forS2 = await loadComposerItems('command', '/repo', 's2');
+    expect(requested.some((url) => url.includes('sessionId=s2'))).toBe(true);
+    expect(forS2.some((item) => item.name === 'test')).toBe(false);
+
+    const before = requested.length;
+    await loadComposerItems('command', '/repo', 's1');
+    expect(requested.length).toBe(before);
+  });
+
   test('a command entry is a /name token and a skill is prefixed', async () => {
     answer = (url) => url.includes('/commands')
       ? { body: { commands: [{ id: 'c', name: 'fix', description: 'fix it', scope: 'user', template: '/fix' }] } }

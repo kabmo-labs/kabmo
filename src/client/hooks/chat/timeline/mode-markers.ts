@@ -15,6 +15,7 @@
 
 import { useEffect, useRef } from 'preact/hooks';
 import type { KabmoModeSelection, GoalContinuation, GoalRecord } from '@/shared/lib/omp/mode/types';
+import type { SessionModeState } from '@/shared/lib/harness/session-modes';
 import { KABMO_MODE_SIGNAL } from '@/shared/lib/omp/mode/client-signal';
 import { isModeMarker } from '@/shared/lib/omp/mode/constants';
 import { subscribeClientSignal } from '@/client/lib/signals';
@@ -27,7 +28,12 @@ import {
 
 /** The persisted selection, plus the goal record the same read returns. */
 export interface ModesResponse {
-  modes?: KabmoModeSelection & { goalRecord?: GoalRecord | null; goalContinuation?: GoalContinuation | null };
+  modes?: KabmoModeSelection & {
+    goalRecord?: GoalRecord | null;
+    goalContinuation?: GoalContinuation | null;
+    /** The agent's own mode selector, for an ACP chat. */
+    mode?: SessionModeState | null;
+  };
 }
 
 /**

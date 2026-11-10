@@ -111,6 +111,8 @@ export function AttachmentToolbar({ attachments, onFilesSelected, onRemove, mode
               onOpenGoal={onOpenGoal}
               planAvailable={modes.planAvailable}
               goalAvailable={modes.goalAvailable}
+              mode={modes.sessionMode ?? null}
+              onSelectMode={modes.onSelectSessionMode}
             />
           </div>
         )}

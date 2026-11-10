@@ -5,16 +5,7 @@
 
 /**
  * The composer's mode hydration, and the rule that a session never wears
- * another session's modes.
- *
- * The mode record is read per session (`GET /api/sessions/:id/modes`), and the
- * read FAILS for a session with no file — a pending `new-…` chat, a deleted
- * one: the route answers 404. Keeping the previous answer there meant the goal
- * strip rendered the last chat's objective over a chat that has no goal at all,
- * and the Goal button stayed pressed for a mode this session is not in.
- *
- * Rendered with `h()` (no JSX) against happy-dom, the same way
- * `ModeToggles.test.ts` and `GoalBanner.test.ts` do.
+ * another session's modes. Rendered with `h()` against happy-dom.
  */
 
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
@@ -27,15 +18,15 @@ import { KABMO_MODE_SIGNAL } from '@/shared/lib/omp/mode/client-signal';
 import { publishClientSignal } from '@/client/lib/signals';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'Event', 'CustomEvent'] as const;
-/** The runner's own globals, restored on teardown — deleting them would strip natives (Event/CustomEvent) every later file needs. */const nativeGlobals: Partial<Record<(typeof DOM_GLOBALS)[number], unknown>> = {};
-/** The runner's own fetch — this file replaces it for the whole process. */
-/** The runner's own fetch, reached through `Bun` so a stub leaked onto the global cannot be mistaken for it. */
+/** The runner's own globals, restored on teardown — deleting them would strip natives (Event/CustomEvent) every later file needs. */
+const nativeGlobals: Partial<Record<(typeof DOM_GLOBALS)[number], unknown>> = {};
+/** The runner's own fetch, reached through `Bun` so a leaked stub cannot be mistaken for it. */
 const nativeFetch = Bun.fetch;
 
 const WITH_GOAL = 'session-with-goal';
-/** A live goal whose loop has NOT reported a verdict — the state in which the
- *  evaluating frame is the only activity to show. */
 const LIVE_GOAL = 'session-live-goal';
+/** An ACP chat whose agent publishes a mode selector. */
+const WITH_MODE = 'session-with-mode';
 const WITHOUT_FILE = 'new-1790756769131';
 
 let container: HTMLElement | undefined;
@@ -58,6 +49,8 @@ function Probe({ sessionId }: { sessionId: string }) {
     ),
     h('span', { id: 'spawn' }, JSON.stringify(modes.spawnSelectionRef.current)),
     h('span', { id: 'error' }, modes.error ?? ''),
+    h('span', { id: 'mode' }, modes.sessionMode?.currentValue ?? 'none'),
+    h('button', { id: 'set-code', onClick: () => modes.onSelectSessionMode?.('code') }, 'code'),
     modes.goalOpen && modes.goalRecord
       ? h(GoalBanner, {
           record: modes.goalRecord,
@@ -73,7 +66,7 @@ function Probe({ sessionId }: { sessionId: string }) {
 }
 
 /** Every request the hook issued, so a test can assert what was NOT sent. */
-const requests: Array<{ url: string; method: string }> = [];
+const requests: Array<{ url: string; method: string; body?: string }> = [];
 /** When set, a POST to the agent route answers this instead of success. */
 let postFailure: { status: number; error: string } | null = null;
 
@@ -84,9 +77,9 @@ beforeAll(() => {
     if (!(key in nativeGlobals)) nativeGlobals[key] = target[key];
     target[key] = (win as unknown as Record<string, unknown>)[key];
   }
-  target.fetch = async (input: unknown, init?: { method?: string }) => {
+  target.fetch = async (input: unknown, init?: { method?: string; body?: string }) => {
     const url = String(input);
-    requests.push({ url, method: init?.method ?? 'GET' });
+    requests.push({ url, method: init?.method ?? 'GET', ...(init?.body ? { body: init.body } : {}) });
     if (init?.method === 'POST') {
       if (postFailure) {
         return new Response(JSON.stringify({ error: postFailure.error }), {
@@ -98,6 +91,22 @@ beforeAll(() => {
         status: 200,
         headers: { 'content-type': 'application/json' },
       });
+    }
+    if (url.includes(`/${WITH_MODE}/modes`)) {
+      return new Response(
+        JSON.stringify({
+          sessionId: WITH_MODE,
+          modes: {
+            plan: false,
+            goal: false,
+            mode: {
+              currentValue: 'ask',
+              values: [{ value: 'ask', name: 'Ask' }, { value: 'code', name: 'Code' }],
+            },
+          },
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
     }
     if (url.includes(`/${WITH_GOAL}/modes`) || url.includes(`/${LIVE_GOAL}/modes`)) {
       const live = url.includes(`/${LIVE_GOAL}/modes`);
@@ -234,6 +243,35 @@ describe('useChatTimelineModes hydration', () => {
     const el = await mount(WITH_GOAL);
     expect(el.textContent).toContain('stopped at 5 turns');
     expect(el.querySelector('[aria-label="Resume the goal"]')).not.toBeNull();
+  });
+});
+
+describe('the agent mode selector', () => {
+  test('hydrates the agent list and moves it through set_mode', async () => {
+    const el = await mount(WITH_MODE);
+    expect(el.querySelector('#mode')?.textContent).toBe('ask');
+
+    await act(async () => {
+      (el.querySelector('#set-code') as HTMLButtonElement).click();
+    });
+    for (let i = 0; i < 10; i += 1) await act(async () => {});
+
+    expect(el.querySelector('#mode')?.textContent).toBe('code');
+    const post = requests.find((request) => request.method === 'POST' && request.url.includes(WITH_MODE));
+    expect(post?.body ? JSON.parse(post.body) : null).toMatchObject({ type: 'set_mode', mode: 'code' });
+  });
+
+  test('a refused mode change rolls back and names the reason', async () => {
+    postFailure = { status: 400, error: 'mode not supported' };
+    const el = await mount(WITH_MODE);
+    await act(async () => {
+      (el.querySelector('#set-code') as HTMLButtonElement).click();
+    });
+    for (let i = 0; i < 10; i += 1) await act(async () => {});
+
+    // Optimistic flip rolled back: the chip still names the mode the agent is in.
+    expect(el.querySelector('#mode')?.textContent).toBe('ask');
+    expect(el.querySelector('#error')?.textContent).toContain('mode not supported');
   });
 });
 

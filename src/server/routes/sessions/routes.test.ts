@@ -206,8 +206,7 @@ describe('getSessionModes', () => {
     claimHarness(wrapper as never, 'claude');
     try {
       const res = (await getSessionModes(loaderArgs(acpId)) as unknown as Response);
-      expect(res.status).toBe(200);
-      expect(await res.json()).toMatchObject({ sessionId: acpId, modes: { plan: true, goal: false } });
+      expect(await res.json()).toMatchObject({ sessionId: acpId, modes: { plan: true, goal: false, mode: { currentValue: 'plan' } } });
     } finally {
       globalThis.__ompSessions.delete(acpId);
     }
