@@ -5,7 +5,7 @@ the installed binary was **18.8.3** (2026-10-07); the pin now matches (F9). This
 of everything between the two versions that Kabmo either gets wrong or
 does not use, and the phased plan to close it.
 
-Status: **done** — every phase closed; P4b–d and P5 were measured and deliberately not adopted, and the pin has since moved on to 18.18.3 (2026-11-09).
+Status: **done** — every phase closed; P4b–d and P5 were measured and deliberately not adopted, and the pin has since moved on to 18.18.6 (2026-11-10).
 
 **Re-audited at 18.9.2 (2026-10-12)** — the pin moved on again and the schema had
 drifted 9 rows; see [the re-audit section](#omp-1892-re-audit-2026-10-12) at the
@@ -1716,3 +1716,84 @@ fixes. None has an RPC surface Kabmo reads.
 | R64 | `ask` form shape + answers + strict labels | `ask-form/`, new result paths, title matcher, Other row sends itself | 8 parser tests, 20 ask tests, 307 ask-adjacent tests; shapes read from `tools/ask.ts` and `rpc-mode.ts` |
 | R65 | `ParentIrc` additive | none needed | wire diff: 0 removed, 1 added definition, 1 added leaf |
 | R66 | host-side internals | none needed | slash, names and role tables identical; no RPC command added |
+
+# omp 18.18.6 adoption (2026-11-10)
+
+The pin moved **18.18.3 → 18.18.6**, carrying 18.18.4 and 18.18.5. 18.18.5 is a
+catalog-only release (Claude Fable 5.2 / Mythos 5.2, the Otari gateway, Google
+Antigravity paused by an auth rule), which Kabmo reads through `omp models
+--json` and therefore needs no code for. The settings surface and the RPC wire
+are effectively unchanged; the reachable change is the prose a timed-out `wait`
+returns.
+
+## Method
+
+- `bun add @oh-my-pi/pi-coding-agent@18.18.3` and `@18.18.6` (plus the matching
+  `pi-tui`) into temp trees, then `diff -r` over `src/` — 57 files differ.
+- `rpc-wire.schema.json` compared whole: **74 commands, 299 definitions**,
+  byte-identical in both trees (0 added, 0 removed, 0 changed), as are the 15
+  notifications, 13 session-event variants and 14 server-frame variants.
+- The schema generator run against 18.18.6 produces **10 tabs / 604 settings /
+  450 rows**, from a clean temp tree and in place. The only byte difference is
+  `lsp.enabled`'s description, which now names diagnostics and format-on-write.
+- `builtin-names.ts`, `config/model-roles.ts` and the 89-spec slash registry
+  (47 TUI-only names) are byte-identical.
+
+## Findings
+
+### R67 — a timed-out `wait` names the next rung (adopted)
+
+18.18.4/18.18.6 changed the sentence Kabmo's idle parser reads:
+
+- 18.18.3: `No reply within 5.0s.` / `No service finished within 5.0s. Read
+  proc:// for status.`
+- 18.18.6: `No reply within 5.0s; a back-to-back wait allows up to 10s.` /
+  `No service finished within 5.0s; a back-to-back wait allows up to 10s. Read
+  proc:// for status.`
+- a wait that watched jobs now prepends its snapshot and appends `No job
+  finished within 30s; a back-to-back wait allows up to 60s.`
+
+`waitIdleOf` required the trailing period, so the card's `idle 5.0s` chip and
+the summary's `idle 5s` fact both disappeared after the bump. The regex now
+accepts `;` after the window and the `job finished` subject, and the old period
+stays valid because persisted sessions carry the 18.18.3 sentence. The job
+subject is new coverage: a job-timeout wait previously carried no idle prose at
+all.
+
+### R68 — delivery lines and `settledAtMs` (no action)
+
+A settled job's model-facing result now says how it reached the caller —
+"delivered by this wait", "handed over by this snapshot … superseded its queued
+completion push", or "not auto-delivered … it had already finished 2m before
+this call" — and `JobSnapshot` gains `settledAtMs`. The lines are prose in the
+tool text and the field is additive; the card draws status, span and intent from
+the same snapshot, so nothing Kabmo parses changed. Showing the delivery line
+verbatim would duplicate `wait-parts`' own status chip.
+
+### R69 — `todo append` without a phase succeeds (no action)
+
+18.18.3 rejected an `append` with no `phase` ("Missing phase name"). 18.18.6
+targets the in-progress task's phase, then the first pending task's phase, then
+the last phase, then a new `Tasks` phase. Kabmo parses the resulting checklist
+from the tool text (`shared/lib/chat/todo/parser.ts`), so the successful shape
+needs no code; the old error is no longer produced.
+
+### R70 — catalog, SDK and host internals (no action)
+
+18.18.4 adds `PromptOptions.followUps` / `DroppedPrompt.followUps` and usage
+reporters (`onUsage`, title spend) to the SDK, stops advertising `task`'s
+per-call `model` unless `task.perCallModel` is on, and fixes retry fallback
+chains, abort budgets, compaction looping and LSP indent detection. 18.18.6
+gates write/edit writethrough on `lsp.enabled`, fixes ask notes, MCP
+command-backed headers, session-file id re-indexing, `gc --strip` retention and
+the Tern/browser rendering paths. None of these changes an RPC command, an
+event payload, a settings row or a tool-result field Kabmo reads.
+
+## 18.18.6 outcomes
+
+| # | Finding | Action | Verification |
+|---|---|---|---|
+| R67 | wait timeout sentence gains `; a back-to-back …` and `No job finished` | `wait-idle.ts` regex accepts both forms; card and summary tests added | 8 idle tests, summary-wait tests; shapes read in `tools/wait.ts` and `prompts/tools/wait-idle.md` |
+| R68 | delivery lines + `settledAtMs` additive | none needed | wire unchanged; field read in upstream `async/job-control.ts`, absent from any Kabmo parser |
+| R69 | `todo append` defaults its phase | none needed | parser reads tool text only; upstream `tools/todo.ts` |
+| R70 | catalog/SDK/host fixes | none needed | 74 commands / 299 definitions byte-identical; names, roles and slash registry identical; 604 settings / 450 rows |

@@ -307,7 +307,43 @@ fi
 # a copy of the session shell; Kabmo reads the output, not the shell); the
 # `sloppy` edit partial-apply and `logoutCredential`/`SessionStorage` API churn
 # (host-side changes behind no RPC surface).
-OMP_VERSION="${OMP_VERSION:-18.18.3}"
+#
+# 18.18.6 (2026-11-10), carrying 18.18.4 and 18.18.5: 18.18.5 is a catalog-only
+# release (Claude Fable 5.2 / Mythos 5.2, Otari, the paused Google Antigravity
+# provider) that Kabmo reads through `omp models --json`, so no code is coupled
+# to it. The schema's `source` line stays at 604 settings and the panel at 450
+# rows; ONE description changes (`lsp.enabled`, which now names the diagnostics
+# and format-on-write it also gates). The RPC wire is byte-identical — 74
+# commands, 299 definitions, 0 added/removed/changed — and `builtin-names.ts`,
+# `MODEL_ROLES` and the 89-spec slash registry (47 TUI-only names) are
+# identical, so nothing the bridge reads moved.
+#
+# Three upstream changes reach a Kabmo surface:
+#   - a timed-out `wait` ends its sentence with the ladder's next rung —
+#     `No reply within 5.0s; a back-to-back wait allows up to 10s.` — and a
+#     job timeout is worded `No job finished within …`. Kabmo's idle parser
+#     required the old trailing period, so both the card and the facts chip
+#     would have lost the window (`shared/lib/omp/session/wait-idle.ts`).
+#   - a settled job's result names HOW it was delivered ("delivered by this
+#     wait", "handed over by this snapshot — this snapshot superseded its
+#     queued completion push", "not auto-delivered … it had already finished
+#     2m before this call"), and `JobSnapshot` gains `settledAtMs`. The lines
+#     are model-facing and the field additive; the card already draws status,
+#     span and intent from the same snapshot and ignores the rest.
+#   - `todo append` without a phase now targets the in-progress task's phase,
+#     then the first pending one, then the last phase, then a new `Tasks`
+#     phase; 18.18.3 answered "Missing phase name". Kabmo parses the resulting
+#     checklist from the tool text, so the successful shape needs no code.
+#
+# Not adopted, deliberately: the SDK's `PromptOptions.followUps` /
+# `DroppedPrompt.followUps` and the usage reporters are host API with no RPC
+# verb; `task` stops advertising a per-call `model` unless `task.perCallModel`
+# is on (Kabmo never sets it, and a sent model is still refused);
+# `lsp.enabled` now also gating write/edit diagnostics (Kabmo renders the
+# result, not the server); and the session-file id repairs, `gc --strip`
+# retention, MCP command-backed headers and the Tern/browser fixes are
+# host-side with no RPC surface Kabmo reads.
+OMP_VERSION="${OMP_VERSION:-18.18.6}"
 PACKAGE="@oh-my-pi/pi-coding-agent"
 WANTED="omp/${OMP_VERSION}"
 

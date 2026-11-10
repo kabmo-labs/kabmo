@@ -93,6 +93,17 @@ describe('toolSummary — wait', () => {
     expect(summary?.line).toBe('15s · idle 15s total');
   });
 
+  test('the 18.18.6 hint after the window does not hide the idle chip', () => {
+    // omp 18.18.6: `No reply within 10s; a back-to-back wait allows up to 30s.`
+    const summary = toolSummary(tool({
+      type: 'wait',
+      durationMs: 10_000,
+      output: 'No reply within 10s; a back-to-back wait allows up to 30s.',
+      details: { op: 'wait', jobs: [] },
+    }));
+    expect(summary?.line).toBe('10s · idle 10s');
+  });
+
   test('an unreadable result keeps the generic fallback', () => {
     // No `details.op`, so this is not a wait result at all — the output's first
     // line is the only thing worth saying.

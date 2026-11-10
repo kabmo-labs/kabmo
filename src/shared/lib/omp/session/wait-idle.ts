@@ -17,6 +17,12 @@
  * omp's prose, which is what this module parses. It lives beside `wait.ts`
  * rather than inside it because the card's parser (jobs, agents, messages) and
  * the outcomes omp words are separate subjects, and the file ceiling is real.
+ *
+ * 18.18.6 ends that sentence with the ladder's next rung — `No reply within
+ * 5.0s; a back-to-back wait allows up to 10s.` — and words a job-timeout return
+ * the same way (`No job finished within …`). The parser accepts both the old
+ * period and the new semicolon, because persisted sessions carry the older
+ * sentence.
  */
 
 import { formatToolMs } from '@/shared/lib/chat/tool/labels';
@@ -29,8 +35,12 @@ export const WAIT_LADDER_MS = [5_000, 10_000, 30_000, 60_000, 300_000] as const;
 /** A span in omp's `formatDuration` spelling: `250ms`, `5.0s`, `30s`, `1m45s`, `5m`, `2h5m`. */
 const OMP_DURATION = String.raw`(?:\d+d)?(?:\d+h)?(?:\d+m)?(?:[\d.]+s)?(?:\d+ms)?`;
 
-/** `No reply within 5.0s.` / `No service finished within 30s. Read proc:// for status.` */
-const WAIT_WINDOW_TEXT = new RegExp(`^No (?:reply|service finished) within (${OMP_DURATION})\\.`, 'm');
+/** `No reply within 5.0s.` (≤18.18.3) and the 18.18.6 form
+ *  `No job finished within 5.0s; a back-to-back wait allows up to 10s.` */
+const WAIT_WINDOW_TEXT = new RegExp(
+  `^No (?:reply|job finished|service finished) within (${OMP_DURATION})(?:\\.|;)`,
+  'm',
+);
 
 /** `Nothing new after 15.0s of back-to-back waits.` — appended from the SECOND
  *  consecutive idle wait, inside a `<system-notice>` block, and the only place

@@ -25,6 +25,17 @@ describe('the idle ladder', () => {
     expect(waitIdleOf('No service finished within 30s. Read proc:// for status.')).toEqual({ windowMs: 30_000 });
   });
 
+  test('reads the 18.18.6 sentence, which names the next rung instead of ending', () => {
+    // 18.18.6 appends a back-to-back hint after a semicolon, and words a
+    // timeout that watched jobs the same way (`No job finished …`). A regex
+    // demanding the period stopped matching, so both cards lost the idle chip.
+    expect(waitIdleOf('No reply within 5.0s; a back-to-back wait allows up to 10s.')).toEqual({ windowMs: 5_000 });
+    expect(waitIdleOf('No service finished within 10s; a back-to-back wait allows up to 30s. Read proc:// for status.'))
+      .toEqual({ windowMs: 10_000 });
+    expect(waitIdleOf('1 background job still running.\n\nNo job finished within 30s; a back-to-back wait allows up to 60s.'))
+      .toEqual({ windowMs: 30_000 });
+  });
+
   test('reads the streak omp names from the second idle wait on', () => {
     // `WAIT_NOTICE_RUNG` appends the notice whose span is the RUNNING TOTAL:
     // 5 s + 10 s, then + 30 s, then + 60 s, then + 300 s.
