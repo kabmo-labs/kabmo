@@ -66,6 +66,6 @@ export function metadataCapabilities(
   kind: string,
 ): HarnessCapabilities {
   if (kind === 'usage_update') return { ...capabilities, hasUsage: true };
-  if (kind === 'plan') return { ...capabilities, hasPlan: true };
+  if (kind === 'plan' || kind === 'plan_update') return { ...capabilities, hasPlan: true };
   return capabilities;
 }

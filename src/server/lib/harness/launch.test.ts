@@ -83,6 +83,31 @@ describe('capabilitiesFrom', () => {
     });
   });
 
+  test('a null session capability is ABSENT, not support', () => {
+    const caps = capabilitiesFrom(
+      { protocolVersion: 1, agentCapabilities: { sessionCapabilities: { resume: null, list: {}, close: null } } },
+      undefined,
+      { usage: false, plan: false },
+    );
+    expect(caps.resumeSession).toBe(false);
+    expect(caps.closeSession).toBe(false);
+    expect(caps.listSessions).toBe(true);
+  });
+
+  test('an agent with only the legacy modes API still publishes a mode ladder', () => {
+    const caps = capabilitiesFrom(
+      { protocolVersion: 1 },
+      undefined,
+      { usage: false, plan: false },
+      {
+        currentModeId: 'code',
+        availableModes: [{ id: 'code', name: 'Code' }, { id: 'plan', name: 'Plan' }],
+      },
+    );
+    expect(caps.configMode).toBe(2);
+    expect(caps.modeValues).toEqual(['code', 'plan']);
+  });
+
   test('usage and plan are OBSERVED, never assumed', () => {
     const caps = capabilitiesFrom(ompInit, ompConfig, { usage: false, plan: true });
     expect(caps.hasUsage).toBe(false);

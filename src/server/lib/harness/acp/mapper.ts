@@ -80,6 +80,18 @@ function entryText(entry: unknown): string {
   if (!('type' in entry)) return '';
   if (entry.type === 'text' && 'text' in entry && typeof entry.text === 'string') return entry.text;
   if (entry.type === 'content' && 'content' in entry) return entryText(entry.content);
+  // MCP tool output commonly carries complete resources. The text form is
+  // readable; a blob has no text, so the card names it rather than showing
+  // nothing at all.
+  if (entry.type === 'resource' && 'resource' in entry && entry.resource && typeof entry.resource === 'object') {
+    if ('text' in entry.resource && typeof entry.resource.text === 'string') return entry.resource.text;
+    const uri = 'uri' in entry.resource && typeof entry.resource.uri === 'string' ? entry.resource.uri : '';
+    return uri ? `[binary resource ${uri}]` : '';
+  }
+  if (entry.type === 'resource_link' && 'uri' in entry && typeof entry.uri === 'string') {
+    const name = 'name' in entry && typeof entry.name === 'string' ? entry.name : entry.uri;
+    return `${name} (${entry.uri})`;
+  }
   return '';
 }
 

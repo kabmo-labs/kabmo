@@ -109,6 +109,12 @@ export class PendingPermissions {
     this.entries.length = 0;
   }
 
+  /** Remove and return every pending request, for a caller that must answer
+   *  each one (a cancelled turn answers them all with `cancelled`). */
+  drain(): PendingPermission[] {
+    return this.entries.splice(0, this.entries.length);
+  }
+
   size(): number {
     return this.entries.length;
   }

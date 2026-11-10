@@ -18,6 +18,18 @@
 
 import type { AcpId, AcpResponse } from '@/server/lib/harness/acp/protocol';
 
+/** A JSON-RPC error answer, with the code the spec defines for it. */
+export class AcpRequestError extends Error {
+  constructor(
+    message: string,
+    readonly code: number,
+    readonly data?: unknown,
+  ) {
+    super(message);
+    this.name = 'AcpRequestError';
+  }
+}
+
 export interface Pending {
   resolve: (value: unknown) => void;
   reject: (error: Error) => void;
@@ -60,8 +72,10 @@ export class PendingCalls {
     this.map.delete(response.id);
     clearTimeout(entry.timer);
     if (response.error) {
-      entry.reject(new Error(
+      entry.reject(new AcpRequestError(
         `${response.error.message}${response.error.data ? `: ${JSON.stringify(response.error.data)}` : ''}`,
+        response.error.code,
+        response.error.data,
       ));
       return true;
     }

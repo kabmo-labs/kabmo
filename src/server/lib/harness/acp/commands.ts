@@ -24,7 +24,7 @@ import { configOption, promptBlocks } from '@/server/lib/harness/acp/prompt';
 import { acpOptionValues } from '@/server/lib/harness/acp/protocol';
 import { notePromptTitle } from '@/server/lib/harness/session-title.server';
 import { isApprovalMode, type ApprovalMode } from '@/shared/lib/omp/config/access-mode';
-import type { AcpConfigOption } from '@/server/lib/harness/acp/protocol';
+import type { AcpConfigOption, AcpSessionModeState } from '@/server/lib/harness/acp/protocol';
 import type { HarnessCapabilities } from '@/server/lib/harness/capabilities';
 import type { HarnessId } from '@/shared/lib/harness/catalog';
 
@@ -35,6 +35,10 @@ export interface AcpCommandHost {
   readonly sessionId: string;
   readonly capabilities: HarnessCapabilities;
   readonly configOptions: AcpConfigOption[];
+  /** The older Session Modes API, when the agent publishes no selector. */
+  readonly modes?: AcpSessionModeState | null;
+  /** `session/set_mode`; present only when the session can speak it. */
+  setMode?(modeId: string): Promise<unknown>;
   /** Dispatch one turn. Returns the ACK (`{agentInvoked:true}`), never the
    *  turn: the route's answer means "accepted", and the turn's end arrives as
    *  the session's `agent_end` frame. */
@@ -137,7 +141,15 @@ export interface AcpCommandHost {
       case 'set_mode': {
         const mode = String(command.mode ?? '');
         const selector = configOption(host.configOptions, 'mode');
-        if (!selector) throw new Error(`This harness exposes no mode selector (${host.harness})`);
+        if (!selector) {
+          // The older Session Modes API. An agent that publishes `modes` and no
+          // `mode` selector can still move; inventing a selector write would
+          // call a method it did not advertise.
+          if (host.modes?.availableModes.some((entry) => entry.id === mode) && host.setMode) {
+            return host.setMode(mode);
+          }
+          throw new Error(`This harness exposes no mode selector (${host.harness})`);
+        }
         return host.setConfig(selector.id, mode);
       }
 

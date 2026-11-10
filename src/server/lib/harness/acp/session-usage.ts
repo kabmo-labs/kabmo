@@ -42,6 +42,10 @@ export class AcpUsageMeter {
       this.turnPeak = Math.max(this.turnPeak, used);
     }
     const cost = update.cost;
+    if (cost === null) {
+      this.totalCost = 0;
+      return;
+    }
     if (cost && typeof cost === 'object' && 'amount' in cost && typeof cost.amount === 'number') {
       this.totalCost = cost.amount;
     }

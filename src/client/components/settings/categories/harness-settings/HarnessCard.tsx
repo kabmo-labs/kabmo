@@ -193,7 +193,7 @@ export function HarnessCard({
         <div className="grid gap-x-6 sm:grid-cols-2">
           <div>
             <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-ink/40">Session</div>
-            <Capability label="Load / resume history" value={caps ? caps.loadSession : null} />
+            <Capability label="Load / resume history" value={caps ? caps.loadSession || caps.resumeSession : null} />
             <Capability label="List sessions" value={caps ? caps.listSessions : null} />
             <Capability label="Fork" value={caps ? caps.forkSession : null} />
             <Capability label="Delete" value={caps ? caps.deleteSession : null} />

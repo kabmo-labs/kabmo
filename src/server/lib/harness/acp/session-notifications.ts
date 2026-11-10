@@ -26,18 +26,26 @@ import {
   stampMessageModel,
   type AcpConfigNotice,
 } from '@/server/lib/harness/acp/session-config';
-import type { AcpConfigOption } from '@/server/lib/harness/acp/protocol';
+import type { AcpConfigOption, AcpProtocolVersion, AcpSessionModeState } from '@/server/lib/harness/acp/protocol';
 import type { HarnessId } from '@/shared/lib/harness/catalog';
+import { saveAcpPlanState } from '@/server/lib/harness/acp/acp-goal-state.server';
+import { normalizeConfigOptions, planEntries } from '@/server/lib/harness/acp/v2';
 
 export interface AcpNotificationHost extends AcpConfigNotice {
   readonly harness: HarnessId;
+  /** The negotiated major; v2 renamed a few update payloads. */
+  readonly protocol: AcpProtocolVersion;
   agentCommands: AgentCommand[];
   planEntries: unknown[];
+  /** The older Session Modes API; updated when the agent switches itself. */
+  modes: AcpSessionModeState | null;
   capabilities: HarnessCapabilities;
   messageCount: number;
   assistantCount: number;
   absorbUsage(update: Record<string, unknown>): void;
   acceptingFrames(): boolean;
+  /** v2's turn boundary; a no-op on v1 and when no turn is open. */
+  onStateUpdate(update: Record<string, unknown>): void;
   mapUpdate(update: Record<string, unknown>): AgentEvent[];
   emit(event: AgentEvent): void;
 }
@@ -61,7 +69,14 @@ export function handleSessionNotification(
   // capability flags entirely.
   if (kind === 'available_commands_update') host.agentCommands = parseAgentCommands(record);
   if (kind === 'plan') host.planEntries = Array.isArray(record.entries) ? record.entries : [];
+  if (kind === 'plan_update') host.planEntries = planEntries(record);
   if (kind === 'usage_update') host.absorbUsage(record);
+  // v2's foreground lifecycle. `idle` closes the turn; it must reach the turn
+  // machine even when the mapper has nothing to draw.
+  if (kind === 'state_update') {
+    host.onStateUpdate(record);
+    return;
+  }
   const absorbed = metadataCapabilities(host.capabilities, kind);
   if (absorbed !== host.capabilities) host.capabilities = absorbed;
   // The agent's own name for this chat arrives BETWEEN turns (measured on
@@ -76,8 +91,32 @@ export function handleSessionNotification(
   // is adopted BEFORE the turn gate below — the session, telemetry and the goal
   // audit must read the same model the client's `config_option_update` names.
   if (kind === 'config_option_update' && Array.isArray(record.configOptions)) {
-    adoptConfigList(host, record.configOptions as AcpConfigOption[]);
+    const options = host.protocol === 2
+      ? normalizeConfigOptions(record.configOptions)
+      : (record.configOptions as AcpConfigOption[]);
+    adoptConfigList(host, options);
     publishConfigChange(host);
+    // v2 removed `current_mode_update`; a mode change arrives here. The
+    // composer's Plan control reads the persisted flag, so mirror it.
+    const mode = options.find((option) => option.category === 'mode');
+    if (typeof mode?.currentValue === 'string') {
+      void saveAcpPlanState(host.sessionId, mode.currentValue === 'plan').catch(() => {});
+    }
+  }
+  // The agent moved its own mode (a plan-mode exit tool, a fallback). The
+  // composer's Plan control reads the persisted flag rather than the frame
+  // stream, so mirroring it here is what keeps the toggle truthful.
+  if (kind === 'current_mode_update' && typeof record.currentModeId === 'string') {
+    if (host.modes) host.modes = { ...host.modes, currentModeId: record.currentModeId };
+    void saveAcpPlanState(host.sessionId, record.currentModeId === 'plan').catch(() => {});
+  }
+  // A notice is a LIVE user-facing event, not conversation output: the spec
+  // allows it at any point while a session exists, and it requires the
+  // `session.notices` capability this client now advertises. Applying the turn
+  // gate below would have dropped exactly the notices that arrive between turns.
+  if (kind === 'notice') {
+    for (const event of host.mapUpdate(record)) host.emit(event);
+    return;
   }
 
   // No turn open: the user stopped it (or one is still queued), and anything

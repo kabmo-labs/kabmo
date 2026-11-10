@@ -40,6 +40,42 @@ export function preApprovedOption(
   return allowOption(options);
 }
 
+/** What `session/request_permission` returns; `AcpProcess` satisfies it. */
+export interface AcpPermissionResponder {
+  respond(id: string | number, result: unknown): void;
+}
+
+/**
+ * Answer one parked request with the `cancelled` outcome.
+ *
+ * ACP requires this whenever the turn is cancelled: a cancelled prompt whose
+ * permission request is still parked leaves the agent waiting on a question the
+ * user can no longer see. `requestId` is a JSON-RPC id from `$/cancel_request`,
+ * or the dialog id from the client's own Stop.
+ */
+export function cancelAcpPermission(
+  permissions: PendingPermissions,
+  responder: AcpPermissionResponder,
+  requestId: string | number,
+): boolean {
+  const entry = permissions.take(String(requestId));
+  if (!entry) return false;
+  responder.respond(entry.id, { outcome: { outcome: 'cancelled' } });
+  return true;
+}
+
+/** Cancel every parked request — the client's half of `session/cancel`. */
+export function cancelAllAcpPermissions(
+  permissions: PendingPermissions,
+  responder: AcpPermissionResponder,
+): number {
+  const drained = permissions.drain();
+  for (const entry of drained) {
+    responder.respond(entry.id, { outcome: { outcome: 'cancelled' } });
+  }
+  return drained.length;
+}
+
 /** The slice of a session a permission request needs. */
 export interface PermissionRequestHost {
   readonly sessionId: string;

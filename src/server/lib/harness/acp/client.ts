@@ -31,10 +31,13 @@ import { PendingCalls } from '@/server/lib/harness/acp/calls';
 import { killProcessTree } from '@/server/lib/lifecycle/kill-tree';
 import { stripKabmoHostEnv, withToolchainPath } from '@kabmo-labs/kabmo-sdk';
 import * as verbs from '@/server/lib/harness/acp/verbs';
+import { initializeAcpAgent } from '@/server/lib/harness/acp/client-initialize';
+import { ACP_ERROR } from '@/server/lib/harness/acp/protocol';
 import type {
   AcpId,
   AcpInitializeResult,
   AcpNotification,
+  AcpProtocolVersion,
   AcpRequest,
   AcpResponse,
 } from '@/server/lib/harness/acp/protocol';
@@ -46,7 +49,11 @@ export type AcpClientRequestHandler = (
   id: AcpId,
   method: string,
   params: Record<string, unknown>,
-) => Promise<{ answered: true; result: unknown } | { answered: false; message: string } | { answered: false; deferred: true }>;
+) => Promise<
+  | { answered: true; result: unknown }
+  | { answered: false; message: string; code?: number }
+  | { answered: false; deferred: true }
+>;
 
 export interface AcpClientOptions {
   command: string[];
@@ -75,6 +82,9 @@ export class AcpProcess {
   private exited = false;
   private stderrTail = '';
   private writeQueue: Promise<void> = Promise.resolve();
+  /** The negotiated ACP major. 1 until `initialize` answers; every verb that
+   *  changed shape between versions reads it. */
+  protocolVersion: AcpProtocolVersion = 1;
   /** Set once `initialize` answers, so a request sent earlier fails loudly
    *  instead of racing the handshake. */
   private initialized = false;
@@ -131,20 +141,10 @@ export class AcpProcess {
     return this.child.pid ?? undefined;
   }
 
-  /** `initialize`: the handshake that also publishes the agent's capabilities.
-   *  Kabmo advertises NO fs and NO terminal capability by default — declaring
-   *  one it cannot serve makes the agent hang on a call nobody answers. A driver
-   *  that wires real bridges passes them in. */
-  async initialize(capabilities: Record<string, unknown> = {}, timeoutMs = 60_000): Promise<AcpInitializeResult> {
-    const result = await this.request<AcpInitializeResult>(
-      'initialize',
-      {
-        protocolVersion: 1,
-        clientCapabilities: capabilities,
-        clientInfo: { name: 'kabmo', title: 'Kabmo', version: '0.1' },
-      },
-      timeoutMs,
-    );
+  /** `initialize`; the client advertises exactly what it can serve. */
+  async initialize(capabilities?: Record<string, unknown>, timeoutMs = 60_000): Promise<AcpInitializeResult> {
+    const result = await initializeAcpAgent(this.call, capabilities, timeoutMs);
+    this.protocolVersion = result.protocolVersion === 2 ? 2 : 1;
     this.initialized = true;
     return result;
   }
@@ -158,7 +158,7 @@ export class AcpProcess {
   // wire shape. Callers keep using `proc.newSession(...)`.
 
   newSession(cwd: string, timeoutMs?: number) {
-    return verbs.newSession(this.call, cwd, timeoutMs);
+    return verbs.newSession(this.call, cwd, timeoutMs, this.protocolVersion);
   }
 
   loadSession(sessionId: string, cwd: string, timeoutMs?: number) {
@@ -166,7 +166,7 @@ export class AcpProcess {
   }
 
   resumeSession(sessionId: string, cwd: string, timeoutMs?: number) {
-    return verbs.resumeSession(this.call, sessionId, cwd, timeoutMs);
+    return verbs.resumeSession(this.call, sessionId, cwd, timeoutMs, this.protocolVersion);
   }
 
   forkSession(sessionId: string, cwd: string, timeoutMs?: number, target?: Record<string, unknown>) {
@@ -192,7 +192,7 @@ export class AcpProcess {
   }
 
   setConfigOption(sessionId: string, configId: string, value: string | boolean, timeoutMs?: number) {
-    return verbs.setConfigOption(this.call, sessionId, configId, value, timeoutMs);
+    return verbs.setConfigOption(this.call, sessionId, configId, value, timeoutMs, this.protocolVersion);
   }
 
   steer(sessionId: string, blocks: unknown[], queue?: 'steering' | 'followUp', timeoutMs?: number) {
@@ -201,6 +201,14 @@ export class AcpProcess {
 
   closeSession(sessionId: string, timeoutMs?: number) {
     return verbs.closeSession(this.call, sessionId, timeoutMs);
+  }
+
+  setMode(sessionId: string, modeId: string, timeoutMs?: number) {
+    return verbs.setMode(this.call, sessionId, modeId, timeoutMs);
+  }
+
+  deleteSession(sessionId: string, timeoutMs?: number) {
+    return verbs.deleteSession(this.call, sessionId, timeoutMs);
   }
 
   /** The invoke seam `verbs.ts` binds to. Arrow so it survives being passed. */
@@ -212,7 +220,7 @@ export class AcpProcess {
     this.write({ jsonrpc: '2.0', id, result });
   }
 
-  respondError(id: AcpId, message: string, code = -32603): void {
+  respondError(id: AcpId, message: string, code: number = ACP_ERROR.internal): void {
     this.write({ jsonrpc: '2.0', id, error: { code, message } });
   }
 
@@ -329,8 +337,10 @@ export class AcpProcess {
       // the same request twice.
       if (handled && 'deferred' in handled) return;
       // A refusal is REQUIRED, not optional: an unanswered agent→client call
-      // parks the turn forever (the agent's dispatcher waits on it).
-      this.respondError(id, handled?.message ?? `Kabmo does not implement ${method}`);
+      // parks the turn forever (the agent's dispatcher waits on it). The code
+      // travels with it so the agent can distinguish "not implemented" from
+      // "that file is gone" and fall back accordingly.
+      this.respondError(id, handled?.message ?? `Kabmo does not implement ${method}`, handled?.code);
     } catch (error) {
       this.respondError(id, error instanceof Error ? error.message : String(error));
     }

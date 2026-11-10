@@ -52,6 +52,9 @@ export interface HarnessSession extends HarnessEventSource, HarnessSessionState 
   resolvePendingUiDialog(id: string): void;
   destroy(): void;
   destroyAndWait(): Promise<void>;
+  /** Delete the harness's own session record, when the agent advertises one
+   *  (`sessionCapabilities.delete`). Best-effort: the local rows are the caller's. */
+  deleteAgentSession?(): Promise<void>;
   onDestroy(callback: () => void): void;
 }
 

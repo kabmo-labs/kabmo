@@ -47,6 +47,10 @@ export interface MountedSession {
   turnEnds: () => number;
   /** The durable run markers written for this session, in order. */
   streamMarks: () => string[];
+  /** Results the session answered an agent→client request with. */
+  permissionAnswers: () => { id: unknown; result: unknown }[];
+  /** Session ids the session asked the agent to delete. */
+  deletedSessions: () => string[];
   /** How many times a command or frame deferred the idle reclaim. */
   idleResets: () => number;
   /** Whether a destroy stopped the reclaim clock. */
@@ -106,6 +110,11 @@ export function mountSession(): MountedSession {
     // A config write; the default reply omits the list, which is the shape a
     // harness that ignores the protocol's "complete list" rule returns.
     setConfigOption: async (_sessionId: string, _configId: string, _value: string | boolean) => ({}),
+    deleteSession: async (sessionId: string) => {
+      deletes.push(sessionId);
+      return {};
+    },
+    respond: (id: string | number, result: unknown) => answers.push({ id, result }),
     dispose: async () => {},
     isAlive: true,
   };
@@ -124,6 +133,8 @@ export function mountSession(): MountedSession {
     },
   });
   const marks: string[] = [];
+  const answers: { id: unknown; result: unknown }[] = [];
+  const deletes: string[] = [];
   const eventSink = new SessionListeners();
   eventSink.add((event) => events.push(event));
   let background: BackgroundProbeStub = {
@@ -163,6 +174,8 @@ export function mountSession(): MountedSession {
     turn,
     turnEnds: () => turnEndCount,
     streamMarks: () => marks,
+    permissionAnswers: () => answers,
+    deletedSessions: () => deletes,
     idleResets: () => idleResets,
     idleStopped: () => idleStopped,
     setBackground: (probe) => {

@@ -28,8 +28,11 @@ import { newSessionAfterActivation } from '@/server/lib/harness/acp/activation';
 import { applySelections, configOption, modelFromOption } from '@/server/lib/harness/acp/prompt';
 import { capabilitiesFrom } from '@/server/lib/harness/launch';
 import type {
+  AcpAgentCommand,
   AcpConfigOption,
   AcpInitializeResult,
+  AcpProtocolVersion,
+  AcpSessionModeState,
   AcpSessionNewResult,
 } from '@/server/lib/harness/acp/protocol';
 import type { HarnessCapabilities } from '@/server/lib/harness/capabilities';
@@ -37,9 +40,13 @@ import type { HarnessId } from '@/shared/lib/harness/catalog';
 
 /** The process slice a handshake drives; `AcpProcess` satisfies it as-is. */
 export interface AcpHandshakeProcess {
-  initialize(params: Record<string, unknown>, timeoutMs?: number): Promise<AcpInitializeResult>;
+  initialize(params?: Record<string, unknown>, timeoutMs?: number): Promise<AcpInitializeResult>;
   loadSession(sessionId: string, cwd: string, timeoutMs?: number): Promise<unknown>;
   newSession(cwd: string, timeoutMs?: number): Promise<AcpSessionNewResult>;
+  /** The negotiated major; absent on a test double, which is a v1 double. */
+  readonly protocolVersion?: AcpProtocolVersion;
+  /** `session/resume`; absent on a process double used by older tests. */
+  resumeSession?(sessionId: string, cwd: string, timeoutMs?: number): Promise<unknown>;
   /** `session/fork`; absent on a process double used by older tests. */
   forkSession?(
     sessionId: string,
@@ -55,9 +62,20 @@ export interface AcpHandshakeTarget {
   readonly harness: HarnessId;
   sessionId: string;
   configOptions: AcpConfigOption[];
+  /** The older Session Modes API, when the agent publishes no `mode` selector. */
+  modes?: AcpSessionModeState | null;
   runModel: { provider: string; modelId: string } | null;
   capabilities: HarnessCapabilities;
   setConfig(configId: string, value: string | boolean): Promise<unknown>;
+  /** `session/set_mode`; absent on a target that only speaks config options. */
+  setMode?(modeId: string): Promise<unknown>;
+  /** Whether prompts may carry image blocks; the agent advertised `image`. */
+  acceptsImages?: boolean;
+  /** Initial slash commands from a v2 setup response. */
+  agentCommands?: AcpAgentCommand[];
+  /** Called as soon as `initialize` answers, before any session request, so a
+   *  v2 resume snapshot can open a turn. */
+  onProtocol?(version: AcpProtocolVersion): void;
 }
 
 /** The picks the composer sent for a brand-new session. */
@@ -74,7 +92,8 @@ export async function handshakeAcpSession(
   sessionIdToLoad?: string,
   forkFromSessionId?: string,
 ): Promise<void> {
-  const init = await proc.initialize({}, 60_000);
+  const init = await proc.initialize(undefined, 60_000);
+  target.onProtocol?.(init.protocolVersion === 2 ? 2 : 1);
   /** opencode's plugin activation gate: the first `session/new`s refuse with
    *  `ServiceUnavailableError` until the agent's plugins finish booting. */
   const newSession = (cwd: string, timeoutMs?: number) =>
@@ -101,15 +120,73 @@ export async function handshakeAcpSession(
       target.harness === 'zcode' ? { kind: 'latestCheckpoint' } : undefined,
     );
   } else if (sessionIdToLoad) {
-    await proc.loadSession(sessionIdToLoad, target.cwd, 120_000);
-    const reloaded = await newSession(target.cwd).catch(() => null);
-    session = reloaded ?? { sessionId: sessionIdToLoad };
+    // ACP gates restoration on the AGENT's advertised capability: `loadSession`
+    // replays history, `sessionCapabilities.resume` restores without replay, and
+    // an agent that advertises neither must be refused in words. Calling
+    // `session/load` anyway asked a non-supporting agent for a method it had not
+    // advertised and surfaced its `-32601` as a spawn failure.
+    const caps = init.agentCapabilities ?? {};
+    const restored = proc.protocolVersion === 2
+      // v2 removed `session/load`; `session/resume` is baseline and replays
+      // nothing unless `replayFrom` asks, which is exactly what Kabmo wants —
+      // its own transcript is already on screen.
+      ? await (proc.resumeSession
+          ? proc.resumeSession(sessionIdToLoad, target.cwd, 120_000)
+          : Promise.reject(new Error(`${target.harness} cannot resume a session`)))
+      : caps.loadSession === true
+        ? await loadReplacement(proc, newSession, sessionIdToLoad, target.cwd)
+        : caps.sessionCapabilities?.resume != null
+          ? await (proc.resumeSession
+              ? proc.resumeSession(sessionIdToLoad, target.cwd, 120_000)
+              : Promise.reject(new Error(`${target.harness} cannot resume a session`)))
+          : null;
+    if (restored === null) {
+      throw new Error(
+        `${target.harness} cannot restore this chat: it supports neither session/load nor session/resume`,
+      );
+    }
+    const state = restored && typeof restored === 'object'
+      ? (restored as Partial<AcpSessionNewResult>)
+      : {};
+    // `session/resume` replays NOTHING and creates nothing: the id stays the
+    // caller's, and only the config/mode state the reply carries is adopted.
+    session = { ...state, sessionId: sessionIdToLoad };
   } else {
     session = await newSession(target.cwd, 120_000);
   }
   target.sessionId = session.sessionId || sessionIdToLoad || '';
   target.configOptions = session.configOptions ?? [];
+  target.modes = session.modes ?? null;
+  target.acceptsImages = init.agentCapabilities?.promptCapabilities?.image === true;
+  if (session.availableCommands) target.agentCommands = session.availableCommands;
   target.runModel = modelFromOption(configOption(target.configOptions, 'model'), target.harness);
-  target.capabilities = capabilitiesFrom(init, target.configOptions, { usage: false, plan: false });
+  target.capabilities = capabilitiesFrom(init, target.configOptions, { usage: false, plan: false }, target.modes);
   await applySelections(target, wanted);
+  // A mode the composer asked for, on an agent that publishes only the older
+  // `modes` list: `session/set_mode` is the only way to apply it.
+  if (
+    wanted.mode
+    && !configOption(target.configOptions, 'mode')
+    && target.modes?.availableModes.some((entry) => entry.id === wanted.mode)
+    && target.setMode
+  ) {
+    await target.setMode(wanted.mode).catch(() => {});
+  }
+}
+
+/**
+ * The v1 load path: replay the agent's history into the mapper, then continue on
+ * a fresh agent session.
+ *
+ * Deliberate: measured on omp, a load answers a FORKED id, and continuing on it
+ * would write a second sidebar row for one chat.
+ */
+async function loadReplacement(
+  proc: AcpHandshakeProcess,
+  create: (cwd: string, timeoutMs?: number) => Promise<AcpSessionNewResult>,
+  sessionId: string,
+  cwd: string,
+): Promise<unknown> {
+  await proc.loadSession(sessionId, cwd, 120_000);
+  return (await create(cwd).catch(() => null)) ?? { sessionId };
 }

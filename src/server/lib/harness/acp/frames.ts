@@ -33,35 +33,15 @@
  */
 
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
-import {
-  acpContentDetails,
-  acpContentText,
-  acpToolDetails,
-  acpToolOutput,
-  acpToolTarget,
-  isKnownToolName,
-  toolTypeFor,
-} from '@/server/lib/harness/acp/mapper';
-import type { AcpToolKind, AcpToolStatus } from '@/server/lib/harness/acp/protocol';
+import { acpContentText } from '@/server/lib/harness/acp/mapper';
+import { planEntries } from '@/server/lib/harness/acp/v2';
+import { AcpToolCalls, type ToolCallBlock } from '@/server/lib/harness/acp/tool-calls';
 
 /** One block of the accumulated assistant message, in `parseMessageBlocks` shape. */
 type MessageBlock =
   | { type: 'text'; text: string }
   | { type: 'thinking'; thinking: string }
-  | { type: 'toolCall'; id: string; name: string; arguments?: Record<string, unknown>; toolKind?: AcpToolKind; toolType?: string };
-
-interface OpenTool {
-  id: string;
-  name: string;
-  kind?: AcpToolKind;
-  title?: string;
-  status: AcpToolStatus;
-  rawOutput?: unknown;
-  /** `tool_call(Update).content` — where some agents put the diff/output. */
-  content?: unknown;
-  locations?: unknown;
-  startedAt: number;
-}
+  | ToolCallBlock;
 
 /** Per-session accumulator; one instance per live ACP session. */
 export class AcpFrameMapper {
@@ -71,7 +51,10 @@ export class AcpFrameMapper {
   private turnStartedAt: number | null = null;
   /** When the open message's first frame arrived, its timeline stamp. */
   private openedAt: number | null = null;
-  private readonly open = new Map<string, OpenTool>();
+  private readonly tools = new AcpToolCalls({
+    pushBlock: (block) => this.blocks.push(block),
+    snapshot: () => this.snapshot(),
+  });
 
   /** Forget per-turn state (an aborted run, a fresh load) and start its clock. */
   reset(startedAt: number = Date.now()): void {
@@ -79,15 +62,13 @@ export class AcpFrameMapper {
     this.messageId = null;
     this.openedAt = null;
     this.turnStartedAt = startedAt;
-    this.open.clear();
+    this.tools.reset();
   }
 
   /** Tool calls still running — the driver closes them if the agent exits
    *  mid-turn, so no card is left spinning forever. */
   openCalls(): string[] {
-    return [...this.open.values()]
-      .filter((call) => call.status === 'pending' || call.status === 'in_progress')
-      .map((call) => call.id);
+    return this.tools.openCalls();
   }
 
   /**
@@ -103,14 +84,29 @@ export class AcpFrameMapper {
         return this.appendChunk(update, 'text');
       case 'agent_thought_chunk':
         return this.appendChunk(update, 'thinking');
+      // v2 whole-message upserts: replace that message's content, keep tool blocks.
+      case 'agent_message':
+        return this.upsertMessage(update, 'text');
+      case 'agent_thought':
+        return this.upsertMessage(update, 'thinking');
+      case 'user_message':
       case 'user_message_chunk':
         // Live user chunks only arrive on replay/steering; the composer already
         // drew the optimistic bubble, so this is a receipt, not a new row.
         return [];
       case 'tool_call':
-        return this.openTool(update);
+        return this.tools.open(update);
       case 'tool_call_update':
-        return this.patchTool(update);
+        return this.tools.patch(update);
+      case 'tool_call_content_chunk':
+        return this.tools.appendContent(update);
+      // v2's turn boundary is handled by `AcpTurns.onStateUpdate`, not mapped.
+      case 'state_update':
+      case 'terminal_update':
+      case 'terminal_output_chunk':
+      case 'compaction_update':
+      case 'compaction_summary_chunk':
+        return [];
       case 'usage_update':
         return this.usage(update);
       case 'available_commands_update':
@@ -129,6 +125,9 @@ export class AcpFrameMapper {
         // The spec defines it; no measured agent sends it. Forwarded so a future
         // adapter lights the panel with no change here.
         return [{ type: 'plan_updated', entries: update.entries ?? [] }];
+      case 'plan_update':
+        // v2 keyed plans; Kabmo's Todos panel renders one list.
+        return [{ type: 'plan_updated', entries: planEntries(update) }];
       case 'notice':
         return [{
           type: 'notice',
@@ -209,134 +208,33 @@ export class AcpFrameMapper {
     return frames;
   }
 
-  private openTool(update: Record<string, unknown>): AgentEvent[] {
-    const toolCallId = typeof update.toolCallId === 'string' ? update.toolCallId : '';
-    if (!toolCallId) return [];
-    const name = typeof update.name === 'string' && update.name
-      ? update.name
-      : typeof update.title === 'string' && update.title
-        ? update.title
-        : 'tool';
-    const kind = typeof update.kind === 'string' ? (update.kind as AcpToolKind) : undefined;
-    const status = typeof update.status === 'string' ? (update.status as AcpToolStatus) : 'pending';
-    // A specific kind is authoritative. `other`/absent is only an explicit type
-    // when the name is one the renderers know; otherwise the shared parser's
-    // own inference from the name is better informed than a forced `read`.
-    const toolType = kind !== undefined && kind !== 'other'
-      ? toolTypeFor(kind, name)
-      : isKnownToolName(name) ? toolTypeFor(kind, name) : undefined;
-    const rawInput = update.rawInput;
-    const args = rawInput && typeof rawInput === 'object' && !Array.isArray(rawInput)
-      ? Object.fromEntries(Object.entries(rawInput))
-      : undefined;
-
-    // The card is drawn from the message block, so opening a call means adding
-    // the block and re-emitting the message — not emitting a separate card row.
-    // `toolType` travels with the block: the shared parser's name inference
-    // cannot know that ACP `kind:"execute"` means bash when the name is `Shell`.
-    this.blocks.push({
-      type: 'toolCall',
-      id: toolCallId,
-      name,
-      ...(args ? { arguments: args } : {}),
-      ...(kind ? { toolKind: kind } : {}),
-      ...(toolType ? { toolType } : {}),
-    });
-
-    const frames: AgentEvent[] = [
-      { type: 'message_update', message: this.snapshot(), assistantMessageEvent: { type: 'toolcall_start' } },
-      {
-        type: 'tool_execution_start',
-        toolCallId,
-        toolName: name,
-        ...(toolType ? { toolType } : {}),
-        ...(args ? { args } : {}),
-        ...(typeof update.title === 'string' ? { intent: update.title } : {}),
-        ...(acpToolTarget(update.locations, rawInput) ? { target: acpToolTarget(update.locations, rawInput) } : {}),
-      },
-    ];
-
-    // Some agents announce a call ONLY once it is finished (`tool_call` with
-    // `status:"completed"` and no later update). Leaving it in the open map
-    // meant the turn's cleanup closed it as an ERROR, overwriting a success.
-    if (status === 'completed' || status === 'failed') {
-      frames.push({
-        type: 'tool_execution_end',
-        toolCallId,
-        toolName: name,
-        result: update.rawOutput ?? (update.content === undefined ? undefined : { content: update.content }),
-        isError: status === 'failed',
-        details: acpToolDetails(update.rawOutput) ?? acpContentDetails(update.content),
-        output: acpToolOutput(update.rawOutput) || acpContentText(update.content),
-      });
-    } else {
-      this.open.set(toolCallId, {
-        id: toolCallId,
-        name,
-        kind,
-        title: typeof update.title === 'string' ? update.title : undefined,
-        status,
-        rawOutput: update.rawOutput,
-        content: update.content,
-        locations: update.locations,
-        startedAt: Date.now(),
-      });
-    }
-    return frames;
-  }
-
   /**
-   * `tool_call_update` is a PATCH: every field but `toolCallId` is optional and
-   * an omitted one means UNCHANGED. Merging is what keeps a completed card's
-   * body — measured, the completion update carries only `status` and
-   * `rawOutput.details`.
+   * v2 whole-message upsert: replace that message's blocks of one kind.
+   *
+   * Tool-call blocks are entities of their own in v2; they stay in place, and
+   * the text/thinking content for the message is replaced wholesale.
    */
-  private patchTool(update: Record<string, unknown>): AgentEvent[] {
-    const toolCallId = typeof update.toolCallId === 'string' ? update.toolCallId : '';
-    if (!toolCallId) return [];
-    const existing = this.open.get(toolCallId);
-    // An update for a call this mapper never saw (a replay window, a resumed
-    // session): treat it as an opening call rather than dropping the work.
-    if (!existing) return this.openTool(update);
-
-    if (update.rawOutput !== undefined) existing.rawOutput = update.rawOutput;
-    if (update.content !== undefined) existing.content = update.content;
-    if (update.locations !== undefined) existing.locations = update.locations;
-    if (typeof update.title === 'string') existing.title = update.title;
-    const status = typeof update.status === 'string' ? (update.status as AcpToolStatus) : existing.status;
-    existing.status = status;
-
-    // Some agents report the result as `content` blocks instead of `rawOutput`;
-    // the diff block only becomes visible through the details bridge.
-    const result = existing.rawOutput ?? (existing.content === undefined ? undefined : { content: existing.content });
-    const output = acpToolOutput(existing.rawOutput) || acpContentText(existing.content);
-    const details = acpToolDetails(existing.rawOutput) ?? acpContentDetails(existing.content);
-
-    if (status === 'completed' || status === 'failed') {
-      const failed = status === 'failed';
-      this.open.delete(toolCallId);
-      return [{
-        type: 'tool_execution_end',
-        toolCallId,
-        toolName: existing.name,
-        result,
-        isError: failed,
-        details,
-        durationMs: Math.max(0, Date.now() - existing.startedAt),
-        output,
-      }];
+  private upsertMessage(update: Record<string, unknown>, kind: 'text' | 'thinking'): AgentEvent[] {
+    const messageId = typeof update.messageId === 'string' ? update.messageId : '';
+    if (!messageId || !('content' in update)) return [];
+    const frames: AgentEvent[] = [];
+    if (this.messageId && this.messageId !== messageId) frames.push(...this.closeMessage());
+    this.messageId = messageId;
+    const raw = update.content;
+    const text = raw === null || (Array.isArray(raw) && raw.length === 0) ? '' : acpContentText(raw);
+    this.blocks = this.blocks.filter((block) => block.type !== kind);
+    if (text) {
+      this.blocks.push(kind === 'text' ? { type: 'text', text } : { type: 'thinking', thinking: text });
     }
-
-    return [{
-      type: 'tool_execution_update',
-      toolCallId,
-      toolName: existing.name,
-      partialResult: result,
-      // The ACP output shape may nest text (`{type:"content", content:{…}}`),
-      // which `toolResultText` does not walk. The flattened read travels with
-      // the raw result so the card is not blank while the call is running.
-      output,
-    }];
+    frames.push({
+      type: 'message_update',
+      message: this.snapshot(),
+      assistantMessageEvent: {
+        type: kind === 'text' ? 'text_delta' : 'thinking_delta',
+        delta: text,
+      },
+    });
+    return frames;
   }
 
   private usage(update: Record<string, unknown>): AgentEvent[] {

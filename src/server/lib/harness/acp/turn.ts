@@ -19,6 +19,7 @@
  */
 
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
+import { AcpRequestError } from '@/server/lib/harness/acp/calls';
 import { turnEndFrame } from '@/server/lib/harness/acp/frames';
 
 /** What a closed turn reports to its session and the parent notice. */
@@ -57,6 +58,12 @@ export interface AcpTurnSeams {
 export class AcpTurns {
   isStreaming = false;
   isPromptRunning = false;
+  /**
+   * How a turn ENDS. v1: the `session/prompt` response carries `stopReason`.
+   * v2: the response acknowledges insertion; an idle `state_update` ends the
+   * turn, so the prompt's resolution only clears the acceptance request.
+   */
+  completion: 'response' | 'state' = 'response';
   /** The turn whose frames are accepted, null when none is open. */
   private open: number | null = null;
   /** Identity of the last turn started; only ever grows, so a late reply can be
@@ -66,6 +73,8 @@ export class AcpTurns {
   private request: Promise<unknown> | null = null;
   /** The prompt text of the turn being opened, for the silent-turn verdict. */
   private promptText = '';
+  /** Set by a local cancel: non-idle states are the cancelled run, not new work. */
+  private awaitingCancellation = false;
 
   constructor(private readonly seams: AcpTurnSeams) {}
 
@@ -78,6 +87,7 @@ export class AcpTurns {
     this.seq += 1;
     const turnId = this.seq;
     this.promptText = message;
+    this.awaitingCancellation = false;
     this.isPromptRunning = true;
     this.isStreaming = true;
     this.seams.emit({ type: 'agent_start' });
@@ -93,9 +103,20 @@ export class AcpTurns {
     this.request = request;
     void request
       .then(
-        (result) => this.settle(turnId, () => this.finish(result)),
+        (result) => {
+          // v2: acceptance is not completion. The idle `state_update` closes it.
+          if (this.completion === 'state') return;
+          this.settle(turnId, () => this.finish(result as { stopReason?: string } | undefined));
+        },
         (error: unknown) =>
           this.settle(turnId, () => {
+            // `-32800` is ACP's "Request cancelled": an agent that aborted the
+            // turn itself (context limit, internal timeout) answered with this
+            // instead of a stop reason. It is not a failure to show the user.
+            if (error instanceof AcpRequestError && error.code === -32800) {
+              this.finish({ stopReason: 'cancelled' });
+              return;
+            }
             const message = error instanceof Error ? error.message : String(error);
             this.seams.emit({ type: 'prompt_error', errorMessage: message });
             // The agent's own error is the reason. `finish` must not append its
@@ -121,6 +142,7 @@ export class AcpTurns {
    * turn is chained behind.
    */
   cancel(): void {
+    this.awaitingCancellation = true;
     if (this.open === null) {
       // Nothing dispatched yet, but a turn may be queued behind the previous
       // request: clear its flags too, or Stop leaves the session permanently
@@ -138,6 +160,59 @@ export class AcpTurns {
   /** Is a turn accepting the agent's frames right now? */
   acceptingFrames(): boolean {
     return this.open !== null;
+  }
+
+  /**
+   * v2's turn boundary: an idle `state_update` ends foreground work.
+   *
+   * `running`/`requires_action` do not open a turn: a prompt that is still being
+   * inserted is already open, and agent-initiated work without a prompt is not
+   * represented as a Kabmo turn yet. Repeats are idempotent because `settle`
+   * matches the turn id.
+   */
+  onStateUpdate(update: Record<string, unknown>): void {
+    if (this.completion !== 'state') return;
+    const state = typeof update.state === 'string' ? update.state : '';
+    if (state !== 'idle') {
+      // The cancelled run may still report running/requires_action before its
+      // idle; those are not a new foreground interval.
+      if (this.awaitingCancellation) return;
+      // v2 allows foreground work with no prompt (a goal, a follow-up on a
+      // background task). Open a turn so its frames are accepted and rendered.
+      if (this.open === null && !this.isPromptRunning && !this.isStreaming) this.beginAgentTurn();
+      return;
+    }
+    this.awaitingCancellation = false;
+    if (this.open === null) return;
+    const turnId = this.open;
+    this.settle(turnId, () => {
+      const error = update.error && typeof update.error === 'object'
+        ? (update.error as Record<string, unknown>)
+        : undefined;
+      const failure = typeof error?.message === 'string' ? error.message : undefined;
+      const stopReason = typeof update.stopReason === 'string' ? update.stopReason : undefined;
+      if (stopReason === 'error') {
+        this.seams.emit({
+          type: 'prompt_error',
+          errorMessage: failure ?? 'The agent ended the turn with an error',
+        });
+        this.finish({ stopReason: 'error' }, true, failure);
+        return;
+      }
+      this.finish(stopReason ? { stopReason } : undefined);
+    });
+  }
+
+  /** A v2 foreground interval that no `session/prompt` started. */
+  private beginAgentTurn(): void {
+    this.seq += 1;
+    this.open = this.seq;
+    this.promptText = '';
+    this.isPromptRunning = true;
+    this.isStreaming = true;
+    this.seams.resetMapper();
+    this.seams.emit({ type: 'agent_start' });
+    this.seams.emit({ type: 'turn_start' });
   }
 
   /** Close a turn, unless it was cancelled first: a cancelled turn's late reply
@@ -172,14 +247,14 @@ export class AcpTurns {
     const answered = hasRenderableAnswer(closed) || abandoned.length > 0;
     const cancelled = result?.stopReason === 'cancelled';
     const slash = this.promptText.trimStart().startsWith('/');
-    // `reported` means the caller already emitted the agent's own error. It is
-    // still a failed turn, and the parent notice must say so rather than let a
-    // refused worker read as completed.
-    const failed = !cancelled && !slash && (reported || !answered);
+    // v2 says clients cannot infer failure from an idle without a stop reason;
+    // the "silent answer is a failure" rule is a v1 agent behaviour (pi-acp).
+    const failed = !cancelled && !slash
+      && (reported || (this.completion === 'response' && !answered));
     const reason = failed
       ? failure ?? 'The agent ended the turn without sending an answer'
       : null;
-    if (!answered && !cancelled && !reported && !slash) {
+    if (failed && !reported && !slash) {
       this.seams.emit({
         type: 'prompt_error',
         errorMessage: reason ?? 'The agent ended the turn without sending an answer',

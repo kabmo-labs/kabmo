@@ -22,6 +22,25 @@
 /** A JSON-RPC id. ACP forbids `null`, and replies echo whatever was sent. */
 export type AcpId = string | number;
 
+/**
+ * The JSON-RPC/ACP error codes Kabmo answers with.
+ *
+ * A refusal is not "internal error": an agent decides whether to fall back, retry
+ * or give up from the code, so `-32601` for a method this client does not
+ * implement and `-32002` for a missing file are part of the contract rather than
+ * cosmetic detail.
+ */
+export const ACP_ERROR = {
+  parse: -32700,
+  invalidRequest: -32600,
+  methodNotFound: -32601,
+  invalidParams: -32602,
+  internal: -32603,
+  cancelled: -32800,
+  authRequired: -32000,
+  notFound: -32002,
+} as const;
+
 export interface AcpRequest {
   jsonrpc: '2.0';
   id: AcpId;
@@ -61,7 +80,17 @@ export type AcpToolKind =
   | 'switch_mode'
   | 'other';
 
-export type AcpToolStatus = 'pending' | 'in_progress' | 'completed' | 'failed';
+export type AcpToolStatus = 'pending' | 'in_progress' | 'paused' | 'completed' | 'failed' | 'cancelled';
+
+/** A protocol major this client can speak. */
+export type AcpProtocolVersion = 1 | 2;
+
+/** One slash command, in the shape the composer consumes. */
+export interface AcpAgentCommand {
+  name: string;
+  description?: string;
+  inputHint?: string;
+}
 
 export interface AcpToolLocation {
   path: string;
@@ -112,7 +141,17 @@ export interface AcpConfigOption {
 export interface AcpSessionNewResult {
   sessionId: string;
   configOptions?: AcpConfigOption[];
-  modes?: unknown;
+  /** The older Session Modes API. A client that understands `configOptions`
+   *  SHOULD ignore this; Kabmo falls back to it when no `mode` selector exists. */
+  modes?: AcpSessionModeState;
+  /** v2 setup responses may advertise the initial slash commands. */
+  availableCommands?: AcpAgentCommand[];
+}
+
+/** `session/new|load|resume`'s legacy mode state, and `session/set_mode`. */
+export interface AcpSessionModeState {
+  currentModeId: string;
+  availableModes: { id: string; name: string; description?: string }[];
 }
 
 export interface AcpInitializeResult {

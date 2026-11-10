@@ -23,7 +23,7 @@
 import { AcpProcess } from '@/server/lib/harness/acp/client';
 import { AcpTurns, type AcpTurnEndInfo } from '@/server/lib/harness/acp/turn';
 import { AcpFrameMapper } from '@/server/lib/harness/acp/frames';
-import type { AcpConfigOption, AcpId } from '@/server/lib/harness/acp/protocol';
+import type { AcpConfigOption, AcpId, AcpProtocolVersion, AcpSessionModeState } from '@/server/lib/harness/acp/protocol';
 import { promptBlocks } from '@/server/lib/harness/acp/prompt';
 import { withGatewayCompatibility } from '@/server/lib/harness/acp/gateway-env';
 import { adoptConfigAnswer, publishConfigChange, settlePermissionDialog, stampMessageModel } from '@/server/lib/harness/acp/session-config';
@@ -32,9 +32,10 @@ import { driveAcpGoalAfterTurn } from '@/server/lib/harness/acp/acp-goal-driver.
 import { handshakeAcpSession } from '@/server/lib/harness/acp/session-handshake';
 import { capabilitiesFrom } from '@/server/lib/harness/launch';
 import { PendingPermissions } from '@/server/lib/harness/acp/permissions';
+import { cancelAllAcpPermissions } from '@/server/lib/harness/acp/session-permissions';
 import { handleSessionNotification } from '@/server/lib/harness/acp/session-notifications';
 import { AcpUsageMeter, type AcpContextUsage } from '@/server/lib/harness/acp/session-usage';
-import { handleAcpClientRequest, type AcpClientRequestAnswer } from '@/server/lib/harness/acp/session-requests';
+import { handleAcpClientRequest, handleAcpCancelRequest, type AcpClientRequestAnswer } from '@/server/lib/harness/acp/session-requests';
 import { acpExitFailureFrames } from '@/server/lib/harness/acp/session-exit';
 import { SessionListeners } from '@/server/lib/harness/acp/session-listeners';
 import {
@@ -64,13 +65,9 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
   /** The turn in flight — the only one whose frames are accepted. */
   private readonly turns: AcpTurns;
   runModel: { provider: string; modelId: string } | null = null;
-  /** The agent's own slash-command list, from `available_commands_update`; the
-   *  composer's `/` pool reads it for this session (omp's utility child answers
-   *  that question for the RPC transport). */
+  /** The agent's own slash-command list; the composer's `/` pool reads it. */
   agentCommands: { name: string; description?: string; inputHint?: string }[] = [];
-  /** The agent's plan entries from `session/update plan`, as published. The
-   *  Todos panel renders them through the same payload omp's transcript
-   *  snapshot produces. */
+  /** The agent's plan entries, published for the Todos panel. */
   planEntries: unknown[] = [];
   /** Messages this session has moved: prompts sent plus assistant messages the
    *  mapper closed. omp reports the same quantity from its transcript. */
@@ -81,22 +78,17 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
   assistantCount = 0;
   /** The last `usage_update` the agent reported, or null when it never did. */
   private readonly usage = new AcpUsageMeter();
-
-  get contextUsage(): AcpContextUsage | null {
-    return this.usage.contextUsage;
-  }
-
-  get totalCost(): number {
-    return this.usage.totalCost;
-  }
-
-  get usageTokens(): number {
-    return this.usage.usageTokens;
-  }
+  get contextUsage(): AcpContextUsage | null { return this.usage.contextUsage; }
+  get totalCost(): number { return this.usage.totalCost; }
+  get usageTokens(): number { return this.usage.usageTokens; }
   /** The composer's approval tier. Answered in-process by {@link onClientRequest}. */
   accessMode: ApprovalMode = DEFAULT_APPROVAL_MODE;
   capabilities: HarnessCapabilities = capabilitiesFrom({ protocolVersion: 1 }, [], { usage: false, plan: false });
   configOptions: AcpConfigOption[] = [];
+  /** The older Session Modes API, adopted when the agent publishes one. */
+  modes: AcpSessionModeState | null = null;
+  /** Whether the agent advertised `promptCapabilities.image`. */
+  acceptsImages = false;
   private readonly proc: AcpProcess;
   /** The quiet-window reclaim; the rules live in `session-idle.ts`. */
   readonly idle: IdleReaper;
@@ -107,9 +99,7 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
   readonly permissions = new PendingPermissions();
   private destroyHook: (() => void) | null = null;
   private destroyed = false;
-  /** Set when Kabmo is the one ending the process, so the exit is not reported
-   *  as an agent failure. `force_reset` is the Stop button's escalation, and the
-   *  user must not get an "agent exited" error for a stop they asked for. */
+  /** Set when Kabmo ends the process, so a requested stop is not reported as a failure. */
   private closing = false;
 
   constructor(options: AcpSessionOptions, cwd: string) {
@@ -173,33 +163,16 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
     return { sessionId: this.sessionId };
   }
 
-  isAlive(): boolean {
-    return !this.destroyed && this.proc.isAlive;
-  }
-
-  get isStreaming(): boolean {
-    return this.turns.isStreaming;
-  }
-
-  get isPromptRunning(): boolean {
-    return this.turns.isPromptRunning;
-  }
-
-  isRunning(): boolean {
-    return this.isAlive() && (this.turns.isPromptRunning || this.turns.isStreaming);
-  }
-
-  isBusy(): boolean {
-    return this.isRunning() || this.permissions.size() > 0;
-  }
-
-  onEvent(listener: (event: AgentEvent) => void): () => void {
-    return this.events.add(listener);
-  }
-
-  emit(event: AgentEvent): void {
-    this.events.emit(event);
-  }
+  get protocol(): AcpProtocolVersion { return this.proc.protocolVersion === 2 ? 2 : 1; }
+  /** Set by the handshake as soon as `initialize` answers. */
+  onProtocol(version: AcpProtocolVersion): void { this.turns.completion = version === 2 ? 'state' : 'response'; }
+  isAlive(): boolean { return !this.destroyed && this.proc.isAlive; }
+  get isStreaming(): boolean { return this.turns.isStreaming; }
+  get isPromptRunning(): boolean { return this.turns.isPromptRunning; }
+  isRunning(): boolean { return this.isAlive() && (this.turns.isPromptRunning || this.turns.isStreaming); }
+  isBusy(): boolean { return this.isRunning() || this.permissions.size() > 0; }
+  onEvent(listener: (event: AgentEvent) => void): () => void { return this.events.add(listener); }
+  emit(event: AgentEvent): void { this.events.emit(event); }
 
   getPendingUiDialogs(): Record<string, unknown>[] {
     // Widened for the shared `HarnessSession` contract, which predates the
@@ -253,10 +226,11 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
     void driveAcpGoalAfterTurn(this, info.message, { cancelled: info.cancelled === true }).catch(() => {});
   }
 
-  /** Dispatcher seam: stop the turn. The rules live in `AcpTurns.cancel`. */
+  /** Dispatcher seam: stop the turn and answer every parked approval. */
   cancelTurn(): void {
     this.background.stop();
     this.turns.cancel();
+    cancelAllAcpPermissions(this.permissions, this.proc);
   }
 
   /** Dispatcher seam: adopt the composer's access pick. ACP answers approvals
@@ -268,9 +242,22 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
   /** Dispatcher seam: write one config selector and adopt the answer — see
    *  `session-config.ts` for why the AGENT's resolved value is what is kept. */
   async setConfig(configId: string, value: string | boolean): Promise<unknown> {
+    // The synthesized selector `webState()` publishes for an agent that speaks
+    // only `modes`; there is no config option to write, so the mode verb is.
+    if (configId === 'mode' && typeof value === 'string' && !this.configOptions.some((option) => option.id === 'mode') && this.modes) {
+      return this.setMode(value);
+    }
     const result = await this.proc.setConfigOption(this.sessionId, configId, value);
     adoptConfigAnswer(this, result, { configId, value });
     publishConfigChange(this, configId);
+    return result;
+  }
+
+  /** `session/set_mode`: the pre-config-options way to move a mode. */
+  async setMode(modeId: string): Promise<unknown> {
+    const result = await this.proc.setMode(this.sessionId, modeId);
+    if (this.modes) this.modes = { ...this.modes, currentModeId: modeId };
+    this.emit({ type: 'mode_changed', modeId });
     return result;
   }
 
@@ -281,9 +268,7 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
     return null;
   }
 
-  webState(): Record<string, unknown> {
-    return acpWebState(this);
-  }
+  webState(): Record<string, unknown> { return acpWebState(this); }
 
   /** Run one turn. The promise IS the turn: ACP resolves `session/prompt` when
    *  the agent is done, so the reply is awaited for its whole duration. The ACK,
@@ -291,6 +276,11 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
    *  `session-turns.ts`.
    */
   startTurn(message: string, images: unknown): unknown {
+    // ACP's prompt capabilities are a MUST: an agent that did not advertise
+    // `image` has to be told, not sent blocks its dispatcher rejects.
+    if (!this.acceptsImages && Array.isArray(images) && images.length > 0) {
+      throw new Error(`This harness does not accept image attachments (${this.harness})`);
+    }
     // A new prompt is the next request, so the agent flushes any held update
     // itself; a probe would duplicate it.
     this.background.stop();
@@ -302,6 +292,9 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
   private onNotification(method: string, params: Record<string, unknown>): void {
     // A long turn emits no commands but plenty of `session/update` frames.
     this.idle.reset();
+    // `$/cancel_request` names an agent→client request the agent no longer
+    // wants; the approval it parks is answered `cancelled`.
+    if (handleAcpCancelRequest(this, method, params)) return;
     // A `session/load` replay repeats the whole chat; leave it to the probe.
     if (this.background.consume(method, params)) return;
     handleSessionNotification(this, method, params);
@@ -310,9 +303,10 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
   absorbUsage(update: Record<string, unknown>): void { this.usage.absorb(update); }
   resetUsageTokens(): void { this.usage.reset(); }
   acceptingFrames(): boolean { return this.turns.acceptingFrames(); }
-
   mapUpdate(update: Record<string, unknown>): AgentEvent[] { return this.mapper.mapUpdate(update); }
-
+  onStateUpdate(update: Record<string, unknown>): void { this.turns.onStateUpdate(update); }
+  /** Answer an agent→client request with a result (cancellation uses it). */
+  respond(id: AcpId, result: unknown): void { this.proc.respond(id, result); }
   /** Agent→client requests: every branch answers or refuses — an unanswered call parks the turn. */
   private onClientRequest(
     id: AcpId,
@@ -333,8 +327,14 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
     this.destroyHook?.();
   }
 
-  destroy(): void {
-    void this.destroyAndWait();
+  destroy(): void { void this.destroyAndWait(); }
+
+  /** Remove this chat from the agent's own history, when it offers the method. */
+  async deleteAgentSession(): Promise<void> {
+    if (!this.sessionId || !this.capabilities.deleteSession) return;
+    await this.proc.deleteSession(this.sessionId, 10_000).catch((error: unknown) => {
+      console.error(`[harness] could not delete ${this.harness} session ${this.sessionId}:`, error);
+    });
   }
 
   async destroyAndWait(): Promise<void> {

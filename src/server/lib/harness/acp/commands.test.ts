@@ -23,12 +23,12 @@ const option = (id: string, category: string, values: string[]): AcpConfigOption
   options: values.map((value) => ({ value })),
 });
 
-function host(): AcpCommandHost & { writes: [string, string | boolean][]; modes: string[] } {
+function host(): AcpCommandHost & { writes: [string, string | boolean][]; accessModes: string[] } {
   const writes: [string, string | boolean][] = [];
-  const modes: string[] = [];
+  const accessModes: string[] = [];
   return {
     writes,
-    modes,
+    accessModes,
     harness: 'claude',
     sessionId: 's1',
     capabilities: {
@@ -48,7 +48,7 @@ function host(): AcpCommandHost & { writes: [string, string | boolean][]; modes:
     steer: async () => ({}),
     cancelTurn: () => {},
     setAccessMode: (mode) => {
-      modes.push(mode);
+      accessModes.push(mode);
     },
     setConfig: async (id, value) => {
       writes.push([id, value]);
@@ -82,7 +82,7 @@ describe('ACP dispatchCommand', () => {
   test('the access tier is adopted before the command runs', async () => {
     const stub = host();
     await dispatchCommand(stub, { type: 'get_state', accessMode: 'yolo' });
-    expect(stub.modes).toEqual(['yolo']);
+    expect(stub.accessModes).toEqual(['yolo']);
   });
 
   test('get_commands answers the agent’s own list', async () => {

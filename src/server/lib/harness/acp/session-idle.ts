@@ -33,15 +33,16 @@ export interface AcpIdleHost {
  * the user's question with it), and the answer is `false` so `IdleReaper`
  * re-arms instead of waiting for a frame that a parked dialog will not send.
  *
- * A child that cannot be restored is also left alone: a non-`session/load`
- * agent has no way back, and `resumeRecordedHarnessSession` refuses to spawn a
- * fresh agent under a chat's id, so reclaiming one would leave a chat that can
- * never take another prompt. `omp-acp` is the exception — it writes a session
- * file, so the chat is restored over RPC.
+ * A child that cannot be restored is also left alone: an agent with neither
+ * `session/load` nor `session/resume` has no way back, and
+ * `resumeRecordedHarnessSession` refuses to spawn a fresh agent under a chat's
+ * id, so reclaiming one would leave a chat that can never take another prompt.
+ * `omp-acp` is the exception — it writes a session file, so the chat is restored
+ * over RPC.
  */
 export function reclaimIdleAcpSession(host: AcpIdleHost): boolean {
   if (host.isBusy()) return false;
-  if (!host.capabilities.loadSession && host.harness !== 'omp-acp') return true;
+  if (!host.capabilities.loadSession && !host.capabilities.resumeSession && host.harness !== 'omp-acp') return true;
   host.destroy();
   return true;
 }

@@ -80,6 +80,7 @@ export async function removeSession(sessionId: string): Promise<SessionRemoval> 
           error: 'This session is working. Stop the run before deleting it.',
         };
       }
+      if ('deleteAgentSession' in live && live.deleteAgentSession) await live.deleteAgentSession();
       await live.destroyAndWait();
     }
 

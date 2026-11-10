@@ -169,6 +169,24 @@ describe('ACP session facts', () => {
     expect(await session.send({ type: 'get_commands' })).toEqual({ commands: session.agentCommands });
   });
 
+  test('presents a notice that arrives with no turn open', () => {
+    const { session, events } = mountSession();
+    // `session.notices` is advertised, so a spec-compliant agent sends these
+    // between turns. The turn gate exists for abandoned output, not for a live
+    // notice — dropping it here would have made the advertisement a lie.
+    notify(session, {
+      sessionUpdate: 'notice',
+      severity: 'warning',
+      title: 'MCP server unavailable',
+      description: 'Continuing without it.',
+    });
+    expect(events.at(-1)).toEqual({
+      type: 'notice',
+      level: 'warning',
+      message: 'MCP server unavailable — Continuing without it.',
+    });
+  });
+
   test('records the agent’s own title, which arrives BETWEEN turns', async () => {
     const { session } = mountSession();
     await saveHarnessSession({ sessionId: 'acp-1', harness: 'opencode', agentSessionId: '', cwd: '/tmp' });
@@ -189,5 +207,38 @@ describe('ACP session facts', () => {
 
     const [row] = await loadAcpSessions();
     expect(row.title).toBe('Release train');
+  });
+
+  test('publishes the legacy mode list as a selector every consumer reads', () => {
+    const { session } = mountSession();
+    session.modes = {
+      currentModeId: 'plan',
+      availableModes: [{ id: 'plan', name: 'Plan' }, { id: 'code', name: 'Code' }],
+    };
+    expect(session.webState().configOptions).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'mode', category: 'mode', currentValue: 'plan' }),
+    ]));
+  });
+
+  test('an agent-initiated mode change is adopted by the session', () => {
+    const { session } = mountSession();
+    session.modes = { currentModeId: 'code', availableModes: [{ id: 'code', name: 'Code' }] };
+    notify(session, { sessionUpdate: 'current_mode_update', currentModeId: 'plan' });
+    expect(session.modes?.currentModeId).toBe('plan');
+  });
+
+  test('agent-side delete runs only when the agent advertises it', async () => {
+    const { session, deletedSessions } = mountSession();
+    await session.deleteAgentSession();
+    expect(deletedSessions()).toEqual([]);
+    session.capabilities = { ...session.capabilities, deleteSession: true };
+    await session.deleteAgentSession();
+    expect(deletedSessions()).toEqual(['acp-1']);
+  });
+
+  test('an image prompt is refused when the agent did not advertise image', () => {
+    const { session } = mountSession();
+    expect(() => session.startTurn('look', [{ data: 'AAAA', mimeType: 'image/png' }]))
+      .toThrow('does not accept image attachments');
   });
 });

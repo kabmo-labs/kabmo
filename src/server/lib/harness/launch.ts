@@ -24,7 +24,7 @@
 import { AcpProcess } from '@/server/lib/harness/acp/client';
 import { withGatewayCompatibility } from '@/server/lib/harness/acp/gateway-env';
 import { newSessionAfterActivation } from '@/server/lib/harness/acp/activation';
-import type { AcpConfigOption, AcpInitializeResult } from '@/server/lib/harness/acp/protocol';
+import type { AcpConfigOption, AcpInitializeResult, AcpSessionModeState } from '@/server/lib/harness/acp/protocol';
 import { acpOptionValues } from '@/server/lib/harness/acp/protocol';
 import { UNPROBED_CAPABILITIES, type HarnessCapabilities, type HarnessProbe } from '@/server/lib/harness/capabilities';
 import { HARNESS_LAUNCH, type HarnessLaunch } from '@/server/lib/harness/launch-table';
@@ -59,12 +59,19 @@ export function capabilitiesFrom(
   init: AcpInitializeResult,
   configOptions: AcpConfigOption[] | undefined,
   observed: { usage: boolean; plan: boolean },
+  modes?: AcpSessionModeState | null,
 ): HarnessCapabilities {
   const caps = init.agentCapabilities ?? {};
   const sessionCaps = caps.sessionCapabilities ?? {};
   const model = configByCategory(configOptions ?? [], 'model');
   const thinking = configByCategory(configOptions ?? [], 'thought_level');
   const mode = configByCategory(configOptions ?? [], 'mode');
+  // Config options supersede the older Session Modes API, but an agent may
+  // publish only `modes`. A client that understands `configOptions` should
+  // ignore `modes` when a selector exists; otherwise the ladder is this list.
+  const modeValues = mode
+    ? acpOptionValues(mode)
+    : (modes?.availableModes ?? []).map((entry) => entry.id);
   // omp advertises steering at the RESULT root (`_meta.steering`), a sibling of
   // `agentCapabilities` — measured on 18.16.0. Reading it from inside
   // `agentCapabilities` found nothing, so the capability record said "no
@@ -73,18 +80,23 @@ export function capabilitiesFrom(
   const steeringSupported = Boolean(
     steering && typeof steering === 'object' && 'supported' in steering && steering.supported === true,
   );
+  // A session capability is advertised by PRESENCE, and `null` is the spec's
+  // other way of saying absent — `'key' in caps` would read `{resume: null}` as
+  // support and then call a method the agent does not implement.
+  const advertises = (key: string): boolean =>
+    sessionCaps[key] !== undefined && sessionCaps[key] !== null;
   return {
     ...UNPROBED_CAPABILITIES,
     configModel: model ? acpOptionValues(model).length : 0,
     configThinking: thinking ? acpOptionValues(thinking).length : 0,
-    configMode: mode ? acpOptionValues(mode).length : 0,
-    modeValues: mode ? acpOptionValues(mode) : [],
+    configMode: modeValues.length,
+    modeValues,
     loadSession: caps.loadSession === true,
-    listSessions: 'list' in sessionCaps,
-    forkSession: 'fork' in sessionCaps,
-    deleteSession: 'delete' in sessionCaps,
-    resumeSession: 'resume' in sessionCaps,
-    closeSession: 'close' in sessionCaps,
+    listSessions: advertises('list'),
+    forkSession: advertises('fork'),
+    deleteSession: advertises('delete'),
+    resumeSession: advertises('resume'),
+    closeSession: advertises('close'),
     hasUsage: observed.usage,
     hasPlan: observed.plan,
     steerMode: steeringSupported ? 'steer' : null,
@@ -160,7 +172,7 @@ export async function probeHarness(
         if (!update || typeof update !== 'object') return;
         if (!('sessionUpdate' in update)) return;
         if (update.sessionUpdate === 'usage_update') observed.usage = true;
-        if (update.sessionUpdate === 'plan') observed.plan = true;
+        if (update.sessionUpdate === 'plan' || update.sessionUpdate === 'plan_update') observed.plan = true;
       },
     });
     proc = agentProcess;

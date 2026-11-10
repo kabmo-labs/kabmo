@@ -103,3 +103,32 @@ describe('ACP permission gating', () => {
     turn.finish({ stopReason: 'end_turn' });
   });
 });
+
+describe('ACP cancellation answers parked approvals', () => {
+  test('Stop answers every parked request with the cancelled outcome', async () => {
+    const { session, permissionAnswers } = mountSession();
+    await permission(session, 21, 'execute');
+    session.cancelTurn();
+    expect(permissionAnswers()).toEqual([
+      { id: 21, result: { outcome: { outcome: 'cancelled' } } },
+    ]);
+    expect(session.isBusy()).toBe(false);
+  });
+
+  test('$/cancel_request answers the named request and ignores an unknown id', async () => {
+    const { session, permissionAnswers } = mountSession();
+    await permission(session, 22, 'execute');
+    const cancel = (requestId: unknown): void => {
+      (session as unknown as {
+        onNotification(method: string, params: Record<string, unknown>): void;
+      }).onNotification('$/cancel_request', { requestId });
+    };
+    cancel(999);
+    expect(permissionAnswers()).toEqual([]);
+    cancel(22);
+    expect(permissionAnswers()).toEqual([
+      { id: 22, result: { outcome: { outcome: 'cancelled' } } },
+    ]);
+    expect(session.isBusy()).toBe(false);
+  });
+});

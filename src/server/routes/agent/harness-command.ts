@@ -40,9 +40,10 @@ import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
  *
  *  - an id this build's catalog no longer lists spawns NOTHING (a retired
  *    adapter must not be guessed at from a stale row);
- *  - a harness whose probe says it cannot `session/load` is refused in words,
- *    because the only alternative is starting a FRESH agent session under this
- *    chat's id — which would silently throw the conversation away.
+ *  - a harness whose probe says it can neither `session/load` nor
+ *    `session/resume` is refused in words, because the only alternative is
+ *    starting a FRESH agent session under this chat's id — which would silently
+ *    throw the conversation away.
  *
  * `omp-acp` is excluded even though ACP is what it speaks. It WRITES a session
  * file, so the locator resumes it in place over RPC — the same chat, the same
@@ -63,8 +64,8 @@ export async function resumeRecordedHarnessSession(
 
   const label = harnessDescriptor(harness)?.label ?? harness;
   const probe = await freshProbe(harness);
-  if (probe?.capabilities.loadSession === false) {
-    throw new Error(`${label} cannot restore this chat: it does not support session/load.`);
+  if (probe && !probe.capabilities.loadSession && !probe.capabilities.resumeSession) {
+    throw new Error(`${label} cannot restore this chat: it supports neither session/load nor session/resume.`);
   }
   const { token, env } = mintAgentEnvironment();
   const { session, realSessionId } = await startAcpSession({

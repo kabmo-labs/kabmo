@@ -20,7 +20,7 @@
  */
 
 import { configOption, modelFromOption } from '@/server/lib/harness/acp/prompt';
-import type { AcpConfigOption } from '@/server/lib/harness/acp/protocol';
+import type { AcpConfigOption, AcpSessionModeState } from '@/server/lib/harness/acp/protocol';
 import type { HarnessId } from '@/shared/lib/harness/catalog';
 
 export interface AcpStateView {
@@ -34,7 +34,32 @@ export interface AcpStateView {
   totalCost: number;
   runModel: { provider: string; modelId: string } | null;
   configOptions: AcpConfigOption[];
+  /** The older Session Modes API, when the agent published no selector. */
+  modes: AcpSessionModeState | null;
   harness: HarnessId;
+}
+
+/**
+ * The agent's legacy mode list as the selector every Kabmo consumer already
+ * reads. `applyHarnessMode` and the composer look for a `category: "mode"`
+ * config option; without this an agent that only speaks `modes` had no Plan
+ * control at all. Writing the synthesized id routes back to `session/set_mode`
+ * in `AcpSession.setConfig`.
+ */
+function modeSelector(modes: AcpSessionModeState | null): AcpConfigOption[] {
+  if (!modes) return [];
+  return [{
+    id: 'mode',
+    name: 'Session Mode',
+    category: 'mode',
+    type: 'select',
+    currentValue: modes.currentModeId,
+    options: modes.availableModes.map((entry) => ({
+      value: entry.id,
+      name: entry.name,
+      ...(entry.description ? { description: entry.description } : {}),
+    })),
+  }];
 }
 
 export function acpWebState(view: AcpStateView): Record<string, unknown> {
@@ -44,6 +69,9 @@ export function acpWebState(view: AcpStateView): Record<string, unknown> {
   // must report, since an alias or a fallback can differ from the request. The
   // fallback exists only for a session whose selector list never carried a model.
   const serving = view.runModel ?? modelFromOption(configOption(view.configOptions, 'model'), view.harness);
+  const configOptions = configOption(view.configOptions, 'mode')
+    ? view.configOptions
+    : [...view.configOptions, ...modeSelector(view.modes)];
   return {
     sessionId: view.sessionId,
     isStreaming: view.isStreaming,
@@ -56,6 +84,6 @@ export function acpWebState(view: AcpStateView): Record<string, unknown> {
     totalCost: view.totalCost,
     model: serving ? { id: serving.modelId, provider: serving.provider } : undefined,
     thinkingLevel: typeof thinking?.currentValue === 'string' ? thinking.currentValue : undefined,
-    configOptions: view.configOptions,
+    configOptions,
   };
 }

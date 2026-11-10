@@ -17,6 +17,7 @@
  */
 
 import type { AcpSessionInfo, AcpSessionNewResult } from '@/server/lib/harness/acp/protocol';
+import { normalizeConfigOptions, normalizeSessionResult } from '@/server/lib/harness/acp/v2';
 
 /** One request/response round trip against an ACP agent. Implemented by
  *  `AcpProcess.call`; a test supplies its own. */
@@ -24,16 +25,32 @@ export type AcpInvoke = <T>(method: string, params: unknown, timeoutMs: number) 
 /** Fire-and-forget frame (notifications only). */
 export type AcpNotify = (method: string, params: unknown) => void;
 
-export async function newSession(invoke: AcpInvoke, cwd: string, timeoutMs = 120_000): Promise<AcpSessionNewResult> {
-  return invoke<AcpSessionNewResult>('session/new', { cwd, mcpServers: [] }, timeoutMs);
+/** The negotiated major, so a verb can shape its params and normalize its answer. */
+export type AcpDialect = 1 | 2;
+
+export async function newSession(
+  invoke: AcpInvoke,
+  cwd: string,
+  timeoutMs = 120_000,
+  dialect: AcpDialect = 1,
+): Promise<AcpSessionNewResult> {
+  const result = await invoke<Record<string, unknown>>('session/new', { cwd, mcpServers: [] }, timeoutMs);
+  return dialect === 2 ? normalizeSessionResult(result) : (result as unknown as AcpSessionNewResult);
 }
 
 export async function loadSession(invoke: AcpInvoke, sessionId: string, cwd: string, timeoutMs = 120_000): Promise<unknown> {
   return invoke('session/load', { sessionId, cwd, mcpServers: [] }, timeoutMs);
 }
 
-export async function resumeSession(invoke: AcpInvoke, sessionId: string, cwd: string, timeoutMs = 120_000): Promise<unknown> {
-  return invoke('session/resume', { sessionId, cwd, mcpServers: [] }, timeoutMs);
+export async function resumeSession(
+  invoke: AcpInvoke,
+  sessionId: string,
+  cwd: string,
+  timeoutMs = 120_000,
+  dialect: AcpDialect = 1,
+): Promise<unknown> {
+  const result = await invoke<Record<string, unknown>>('session/resume', { sessionId, cwd, mcpServers: [] }, timeoutMs);
+  return dialect === 2 ? normalizeSessionResult(result) : result;
 }
 
 export async function forkSession(
@@ -63,7 +80,7 @@ export async function prompt(
   sessionId: string,
   blocks: unknown[],
   timeoutMs = 0,
-): Promise<{ stopReason?: string; usage?: unknown }> {
+): Promise<{ stopReason?: string; messageId?: string; usage?: unknown }> {
   return invoke('session/prompt', { sessionId, prompt: blocks }, timeoutMs);
 }
 
@@ -77,8 +94,15 @@ export async function setConfigOption(
   configId: string,
   value: string | boolean,
   timeoutMs = 30_000,
+  dialect: AcpDialect = 1,
 ): Promise<unknown> {
-  return invoke('session/set_config_option', { sessionId, configId, value }, timeoutMs);
+  // v2 requires the value's shape: `id` for select options, `boolean` otherwise.
+  const params = dialect === 2
+    ? { sessionId, configId, type: typeof value === 'boolean' ? 'boolean' : 'id', value }
+    : { sessionId, configId, value };
+  const result = await invoke<Record<string, unknown>>('session/set_config_option', params, timeoutMs);
+  if (dialect !== 2) return result;
+  return { ...result, ...(Array.isArray(result.configOptions) ? { configOptions: normalizeConfigOptions(result.configOptions) } : {}) };
 }
 
 /** omp's steering extension (advertised as `_meta.steering.supported`). */
@@ -94,4 +118,20 @@ export async function steer(
 
 export async function closeSession(invoke: AcpInvoke, sessionId: string, timeoutMs = 30_000): Promise<unknown> {
   return invoke('session/close', { sessionId }, timeoutMs);
+}
+
+/** The older Session Modes API; `configOptions` supersedes it but agents still
+ *  publish one or the other. */
+export async function setMode(
+  invoke: AcpInvoke,
+  sessionId: string,
+  modeId: string,
+  timeoutMs = 30_000,
+): Promise<unknown> {
+  return invoke('session/set_mode', { sessionId, modeId }, timeoutMs);
+}
+
+/** Remove one session from the agent's own history (`sessionCapabilities.delete`). */
+export async function deleteSession(invoke: AcpInvoke, sessionId: string, timeoutMs = 30_000): Promise<unknown> {
+  return invoke('session/delete', { sessionId }, timeoutMs);
 }
