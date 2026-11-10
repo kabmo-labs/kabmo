@@ -29,6 +29,17 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
 
+// Aliased because this project also enables WinForms — for `NotifyIcon`, which
+// is how an unpackaged app posts a notification — and its GLOBAL usings put
+// `System.Windows.Forms` / `System.Drawing` into every file. `Button`,
+// `ProgressBar`, `Color`, `Point` and `Rectangle` then name two types each and
+// CS0104 fails the build. Measured on the Release publish.
+using Button = System.Windows.Controls.Button;
+using Color = System.Windows.Media.Color;
+using Point = System.Windows.Point;
+using ProgressBar = System.Windows.Controls.ProgressBar;
+using Rectangle = System.Windows.Shapes.Rectangle;
+
 namespace KabmoDesktop.App;
 
 public sealed class SplashView : Grid
