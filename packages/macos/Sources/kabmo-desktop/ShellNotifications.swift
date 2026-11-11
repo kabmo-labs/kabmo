@@ -16,10 +16,11 @@ import KabmoDesktop
  `notification_request`, which the page sends when a notification preference is
  switched on, never at launch.
 
- No delegate is installed on purpose. The console only asks for a banner while
- it is not the focused window (see `shouldShowSystemNotification` in the client),
- and the platform's default is to suppress a notification for the app the user
- is looking at — which is the behaviour we want if a race delivers one anyway.
+ The console sends a banner for every enabled event regardless of window state
+ (only the Desktop / Mobile master switch and the event preference gate it), so
+ `AppDelegate` installs a `willPresent` presentation: the platform's default is
+ to SUPPRESS a notification for the app the user is looking at, which would make
+ a focused Kabmo look broken.
  */
 enum ShellNotifications {
 

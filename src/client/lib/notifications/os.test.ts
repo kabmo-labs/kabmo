@@ -3,14 +3,13 @@
  * SPDX-License-Identifier: MIT
  */
 
-/** The one rule that decides whether an OS banner is worth sending. */
+/** Permission, the two transports, and the refusals that must stay quiet. */
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
 
 import {
   requestNotificationPermission,
-  shouldShowSystemNotification,
   showOsNotification,
 } from '@/client/lib/notifications/os';
 
@@ -30,34 +29,6 @@ beforeEach(() => {
 afterEach(() => {
   const target = globalThis as unknown as Record<string, unknown>;
   for (const key of DOM_GLOBALS) target[key] = nativeGlobals[key];
-});
-
-function setVisibility(value: 'visible' | 'hidden'): void {
-  Object.defineProperty(document, 'visibilityState', { configurable: true, value });
-}
-
-function setFocus(value: boolean): void {
-  Object.defineProperty(document, 'hasFocus', { configurable: true, value: () => value });
-}
-
-describe('shouldShowSystemNotification', () => {
-  test('a backgrounded tab is worth a banner', () => {
-    setVisibility('hidden');
-    setFocus(false);
-    expect(shouldShowSystemNotification()).toBe(true);
-  });
-
-  test('a desktop window behind another app is worth a banner', () => {
-    setVisibility('visible');
-    setFocus(false);
-    expect(shouldShowSystemNotification()).toBe(true);
-  });
-
-  test('the window the user is reading is not', () => {
-    setVisibility('visible');
-    setFocus(true);
-    expect(shouldShowSystemNotification()).toBe(false);
-  });
 });
 
 describe('a browser without the Notification API', () => {

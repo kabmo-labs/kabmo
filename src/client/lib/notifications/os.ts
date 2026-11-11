@@ -113,18 +113,3 @@ export async function showOsNotification(notification: OsNotification): Promise<
     console.warn('[notifications] the browser could not show a notification:', error);
   }
 }
-
-/**
- * Whether a system notification is worth sending right now.
- *
- * Only when Kabmo is NOT the window the user is looking at. The sidebar badge
- * and the inline error card already say these things on screen; a banner over
- * the app the user is reading is noise. `visibilityState` catches a backgrounded
- * tab and a paused WebView (both phones), `hasFocus` catches a desktop window
- * behind another application.
- */
-export function shouldShowSystemNotification(): boolean {
-  if (typeof document === 'undefined') return false;
-  if (document.visibilityState === 'hidden') return true;
-  return !document.hasFocus();
-}

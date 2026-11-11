@@ -951,6 +951,22 @@ struct SystemDeps: ServerDeps {
  cold start has no page yet).
  */
 extension AppDelegate: UNUserNotificationCenterDelegate {
+  /**
+   Present the banner even when Kabmo is the frontmost app.
+
+   The console sends a notification for every enabled event whether or not the
+   window has focus, so the platform default (suppress for the active app)
+   would swallow exactly the case the user asked to be told about. `.list`
+   keeps it in Notification Centre after the banner retracts.
+   */
+  func userNotificationCenter(
+    _ center: UNUserNotificationCenter,
+    willPresent notification: UNNotification,
+    withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+  ) {
+    completionHandler([.banner, .list, .sound])
+  }
+
   func userNotificationCenter(
     _ center: UNUserNotificationCenter,
     didReceive response: UNNotificationResponse,

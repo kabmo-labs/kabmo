@@ -82,9 +82,20 @@ export interface SettingsState {
   soundAlerts: boolean;
   chatCompletionSound: boolean;
   /**
+   * Whether this client's DESKTOP delivery is on: a browser tab, a PWA, or
+   * the desktop shell. Defaults to true because the key postdates the feature —
+   * an install that already opted into an event must keep receiving it — and
+   * only the literal `false` silences it. Events are gated separately by
+   * `notifyOnFinish` / `notifyOnAsk` / `notifyOnError`.
+   */
+  notifyDesktopEnabled: boolean;
+  /** Whether PHONE/TABLET delivery is on. Same default and precedence as `notifyDesktopEnabled`. */
+  notifyMobileEnabled: boolean;
+  /**
    * System notification when a run finishes. Off by default: a fresh install
    * never asks for notification permission until one of these is turned on.
-   * Shown only while Kabmo is not the focused window.
+   * Delivered whether or not Kabmo is the focused window, on every platform
+   * whose master switch is on.
    */
   notifyOnFinish: boolean;
   /** System notification when an agent blocks on an ask/approval dialog. */

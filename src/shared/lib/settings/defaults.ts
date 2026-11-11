@@ -36,6 +36,8 @@ export const DEFAULT_SETTINGS = {
   autoSessionTitle: true,
   soundAlerts: true,
   chatCompletionSound: true,
+  notifyDesktopEnabled: true,
+  notifyMobileEnabled: true,
   notifyOnFinish: false,
   notifyOnAsk: false,
   notifyOnError: false,

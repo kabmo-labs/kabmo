@@ -121,6 +121,21 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
 extension AppDelegate: UNUserNotificationCenterDelegate {
 
   /**
+   Present the banner even while Kabmo is the active app.
+
+   The console sends a notification for every enabled event whether or not the
+   window has focus; without this the platform default (suppress for the
+   foreground app) swallows it. `.list` keeps it in Notification Centre.
+   */
+  func userNotificationCenter(
+    _ center: UNUserNotificationCenter,
+    willPresent notification: UNNotification,
+    withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+  ) {
+    completionHandler([.banner, .list, .sound])
+  }
+
+  /**
    The user CLICKED a notification.
 
    The tap is what makes a banner useful: it has to land on the session the

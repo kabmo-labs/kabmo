@@ -6,11 +6,11 @@ import KabmoShell
 /**
  The iOS half of the console's system notifications.
 
- The console decides WHEN one is sent — three preferences, all off by default —
- and this file only talks to `UNUserNotificationCenter`. Permission is asked on
- `notification_request`, which the page sends when a notification preference is
- switched on, never at launch: a fresh install must not be prompted for banners
- it has not chosen.
+ The console decides WHEN one is sent — a Desktop/Mobile master switch plus three
+ event preferences, all off by default — and this file only talks to
+ `UNUserNotificationCenter`. Permission is asked on `notification_request`,
+ which the page sends when a notification preference is switched on, never at
+ launch: a fresh install must not be prompted for banners it has not chosen.
  */
 enum ShellNotifications {
 

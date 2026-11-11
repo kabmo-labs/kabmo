@@ -11,11 +11,15 @@ import { primeKabmoSettings } from '@/shared/lib/settings/client';
 import { DEFAULT_SETTINGS } from '@/shared/lib/settings/defaults';
 import {
   isNotificationEnabled,
+  isNotificationPlatformEnabled,
+  NOTIFICATION_PLATFORM_KEYS,
   NOTIFICATION_SETTING_KEYS,
   type NotificationEvent,
+  type NotificationPlatform,
 } from '@/shared/lib/notifications/settings';
 
 const EVENTS: NotificationEvent[] = ['finish', 'ask', 'error'];
+const PLATFORMS: NotificationPlatform[] = ['desktop', 'mobile'];
 
 afterEach(() => {
   primeKabmoSettings({});
@@ -45,5 +49,22 @@ describe('notification settings', () => {
   test('a truthy non-boolean does not opt in', () => {
     primeKabmoSettings({ notifyOnFinish: 'yes' });
     expect(isNotificationEnabled('finish')).toBe(false);
+  });
+
+  test('both platform switches ship ON, so the event opt-ins keep working', () => {
+    for (const platform of PLATFORMS) {
+      expect(DEFAULT_SETTINGS[NOTIFICATION_PLATFORM_KEYS[platform] as keyof typeof DEFAULT_SETTINGS]).toBe(true);
+    }
+  });
+
+  test('an install that predates the master keys still delivers', () => {
+    primeKabmoSettings({});
+    for (const platform of PLATFORMS) expect(isNotificationPlatformEnabled(platform)).toBe(true);
+  });
+
+  test('only the literal false silences a platform', () => {
+    primeKabmoSettings({ notifyDesktopEnabled: false, notifyMobileEnabled: true });
+    expect(isNotificationPlatformEnabled('desktop')).toBe(false);
+    expect(isNotificationPlatformEnabled('mobile')).toBe(true);
   });
 });

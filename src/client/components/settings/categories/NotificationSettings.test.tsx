@@ -4,13 +4,14 @@
  */
 
 /**
- * The three system-notification preferences.
+ * The system-notification preferences: two delivery switches and three events.
  *
- * They ship FALSE, and the UI is where that promise becomes a user-visible
- * fact: a default of `true` would show three switches already on, and the first
- * agent run would ask the OS for permission nobody chose. The toggle must also
- * write ONE key — the settings modal persists the diff, so a handler that
- * touched the others would republish values the user never changed.
+ * The events ship FALSE, and the UI is where that promise becomes a
+ * user-visible fact: a default of `true` would show three switches already on,
+ * and the first agent run would ask the OS for permission nobody chose. The two
+ * platform masters are the opposite — they ship ON so an install that already
+ * opted into an event keeps receiving it — and every toggle must write ONE key,
+ * because the settings modal persists the diff.
  */
 
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
@@ -57,20 +58,45 @@ function switches(): HTMLElement[] {
   return [...document.querySelectorAll('[role="switch"]')] as HTMLElement[];
 }
 
+function switchNamed(label: string): HTMLElement | undefined {
+  return switches().find((toggle) => toggle.getAttribute('aria-label')?.includes(label));
+}
+
 describe('NotificationSettings', () => {
-  test('the three system toggles are off on a fresh install', () => {
+  test('both delivery sections are on and the three events are off on a fresh install', () => {
     mount(() => {});
-    // The sound switch is first and keeps its shipped-on default; the three
-    // system preferences follow it.
-    const system = switches().slice(1);
-    expect(system).toHaveLength(3);
-    for (const toggle of system) expect(toggle.getAttribute('aria-checked')).toBe('false');
+    // Sound, Desktop, Mobile, then the three event preferences.
+    const [, desktop, mobile, ...events] = switches();
+    expect(desktop.getAttribute('aria-checked')).toBe('true');
+    expect(mobile.getAttribute('aria-checked')).toBe('true');
+    expect(events).toHaveLength(3);
+    for (const toggle of events) expect(toggle.getAttribute('aria-checked')).toBe('false');
+  });
+
+  test('disabling the Desktop section writes only its key', () => {
+    const updates: Updater[] = [];
+    mount((update) => updates.push(update));
+
+    act(() => {
+      switchNamed('Desktop notifications')?.click();
+    });
+    expect(updates).toEqual([{ notifyDesktopEnabled: false }]);
+  });
+
+  test('disabling the Mobile section writes only its key', () => {
+    const updates: Updater[] = [];
+    mount((update) => updates.push(update));
+
+    act(() => {
+      switchNamed('Mobile notifications')?.click();
+    });
+    expect(updates).toEqual([{ notifyMobileEnabled: false }]);
   });
 
   test('turning Run finished on writes only that key', () => {
     const updates: Updater[] = [];
     mount((update) => updates.push(update));
-    const finish = switches().find((toggle) => toggle.getAttribute('aria-label')?.includes('Run finished'));
+    const finish = switchNamed('Run finished');
     expect(finish).toBeDefined();
 
     act(() => {
@@ -82,10 +108,9 @@ describe('NotificationSettings', () => {
   test('turning Waiting for you on writes its own key', () => {
     const updates: Updater[] = [];
     mount((update) => updates.push(update));
-    const ask = switches().find((toggle) => toggle.getAttribute('aria-label')?.includes('Waiting for you'));
 
     act(() => {
-      ask?.click();
+      switchNamed('Waiting for you')?.click();
     });
     expect(updates).toEqual([{ notifyOnAsk: true }]);
   });
