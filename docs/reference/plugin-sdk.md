@@ -392,13 +392,6 @@ their positions are decided by the registrations the bundle makes when it loads.
     "description": "Shows the active workspace and keeps a note per session.",
     "app": "dist/app.js",
     "server": "dist/server.js",
-    "settings": {
-      "notePrefix": {
-        "type": "string",
-        "label": "Note prefix",
-        "default": ""
-      }
-    },
     "engines": { "kabmo": "^0.0.1", "pluginSdk": "^0.0.1" },
     "capabilities": ["panel"]
   },
@@ -410,6 +403,9 @@ their positions are decided by the registrations the bundle makes when it loads.
 }
 ```
 
+Settings are declared in a separate `settings-schema.json` at the plugin root
+(see [Settings schema](#settings-schema)); the manifest no longer carries them.
+
 | Field | Required | Notes |
 |---|---|---|
 | `id` | yes | `[a-z0-9][a-z0-9._-]*`, ≤ 64 chars. The plugin's namespace. |
@@ -417,7 +413,7 @@ their positions are decided by the registrations the bundle makes when it loads.
 | `version` | yes | Free-form string; displayed, not parsed. |
 | `app` | one of `app`/`server` | The BUILT ESM bundle, relative to the plugin root — conventionally `dist/app.js`. Its default export must be a `definePluginApp(...)` definition. |
 | `server` | one of `app`/`server` | The BUILT server entry, conventionally `dist/server.js`. Its default export is a `KabmoPluginApi` factory. Built for Bun, not for the browser. |
-| `settings` | no | Declared settings, keyed by name: `{ type: 'string'\|'number'\|'boolean', label, description?, default?, secret? }`. Declarative so the host can draw a form and validate a value **without the plugin running** — a switched-off plugin still shows its settings. A `secret` value is stored and never returned to a client. |
+| `settings` | no | **Legacy.** Declared settings used to live here; they now live in `settings-schema.json` at the plugin root. The inline key is still read when that file is absent, so a plugin written before the file existed keeps its form. |
 | `engines` | no | `{ kabmo?, pluginSdk? }` — version RANGES (`^0.0.1`, `>=0.0.1 <1`, `*`). Absent means "any". A range the running host does not satisfy refuses the plugin BY NAME, naming both sides. The pre-rename spelling `engines.ompchamber` is accepted and read as `kabmo`. |
 | `capabilities` | no | Host capabilities the plugin requires. Today only `panel` exists — the list is what the host actually provides, so declaring something not yet shipped is refused rather than silently ignored. |
 | `icon` | no | Image, relative to the plugin root. Omit and the pane draws the plugin's initials. |
@@ -479,6 +475,59 @@ beside Remove. It renders through Kabmo's markdown pipeline — sanitized,
 with the same Shiki highlighting, KaTeX and mermaid hydration the chat timeline
 has — so a plugin's README reads like the rest of the app. No button is drawn for
 a plugin that ships none.
+
+## Settings schema
+
+A plugin that has settings ships a `settings-schema.json` at its root. The file
+is optional: a plugin with nothing to configure ships none, and the host draws no
+settings button for it.
+
+```json
+{
+  "notePrefix": {
+    "type": "string",
+    "label": "Note prefix",
+    "description": "Prepended to every note saved by the server half.",
+    "default": ""
+  },
+  "maxRuns": {
+    "type": "number",
+    "label": "Concurrent runs",
+    "default": 8
+  },
+  "verbose": {
+    "type": "boolean",
+    "label": "Verbose logging",
+    "default": false
+  },
+  "token": {
+    "type": "string",
+    "label": "API token",
+    "secret": true
+  }
+}
+```
+
+The file is a map of setting name → definition. Every definition needs a `type`
+(`string`, `number` or `boolean`) and a `label`; `description`, `default` and
+`secret` are optional. A definition the host cannot render is refused at scan
+time and reported in the pane, rather than drawn as a control whose value the
+server would then reject.
+
+The host renders the schema as a form behind the **settings** button on the
+plugin's card in Settings → Plugins Kabmo. The form is drawn from the file, not
+from the plugin's code, so it opens for a plugin that is switched off or not
+built. Saving writes every field in one change; a value is validated against its
+definition before anything is stored.
+
+A `secret` is write-only: the server never returns the stored value, so the field
+starts empty with a "stored" placeholder, and leaving it untouched keeps the
+existing value. The plugin reads its values through `api.settings` (see
+[Writing a plugin](#writing-a-plugin)).
+
+The manifest's inline `settings` key is still read when the file is absent, so a
+plugin written before the file existed keeps its form. When both are present the
+file wins.
 
 ## Running model: in-process, not sandboxed
 
@@ -710,7 +759,7 @@ export default function plugin(api: KabmoPluginApi) {
   api.storage.kv; // read / write / remove / keys
   api.storage.records; // put / get / list / remove / clear
 
-  // Declared settings (see the manifest), validated against their definitions.
+  // Declared settings (see settings-schema.json), validated against their definitions.
   api.settings.read(); // + readOne / write / subscribe
 
   // Push a VALUE to connected clients on `plugin:<id>`.

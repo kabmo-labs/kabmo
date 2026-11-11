@@ -11,6 +11,7 @@ import * as panelsIcon from '@/server/routes/panels/icon';
 import * as panelsReadme from '@/server/routes/panels/readme';
 import * as panelsInstall from '@/server/routes/panels/install';
 import * as panelsBuild from '@/server/routes/panels/build';
+import * as panelsSettings from '@/server/routes/panels/settings';
 
 export const panelsBindings: HandlerBinding[] = [
   ...bindingsFor(panelsRegistry, '/api/panels'),
@@ -20,4 +21,5 @@ export const panelsBindings: HandlerBinding[] = [
   ...bindingsFor(panelsReadme, '/api/panels/readme/:plugin/*'),
   ...bindingsFor(panelsInstall, '/api/panels/install'),
   ...bindingsFor(panelsBuild, '/api/panels/build'),
+  ...bindingsFor(panelsSettings, '/api/panels/settings/:plugin'),
 ];

@@ -75,8 +75,10 @@ export interface PanelPluginManifest {
    */
   server?: string;
   /**
-   * Declared settings, keyed by setting name. Declarative so the host can draw
-   * a form and validate a value without the plugin running.
+   * **Legacy.** Declared settings used to live here; they now live in
+   * `settings-schema.json` at the plugin root, which the host reads without the
+   * plugin running. This key is still read when that file is absent, so a
+   * plugin written before the file existed keeps its form.
    */
   settings?: Record<string, PluginSettingDefinition>;
   /**

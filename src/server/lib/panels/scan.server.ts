@@ -27,6 +27,7 @@ import { pathExists } from '@/server/lib/omp/core/paths';
 import { pluginEnablementKey } from '@/shared/lib/workspace/panel-ids';
 import { readPluginManifest, subdirectories } from '@/server/lib/panels/files.server';
 import { toManifest } from '@/server/lib/panels/manifest';
+import { pluginSettingsDefinitions } from '@/server/lib/panels/settings-schema.server';
 import { bundleUrl, cssUrl, iconUrl, readmeUrlFor } from '@/server/lib/panels/assets.server';
 import { readGitOrigin } from '@/server/lib/panels/git-clone.server';
 import { describeIncompatibility, type RunningVersions } from '@/server/lib/panels/compat.server';
@@ -39,6 +40,17 @@ export interface ScannedPlugins {
   panels: PanelRegistryEntry[];
   /** Plugin id → its directory, for the asset routes. */
   dirs: Record<string, string>;
+  /**
+   * Plugin id → its directory, for EVERY plugin whose manifest parsed — even
+   * one that is disabled or unbuilt.
+   *
+   * `dirs` is the asset routes' root and must stay limited to what is servable.
+   * The settings route is the opposite case: a switched-off plugin still owns
+   * its declared settings and its stored values, and its form has to open
+   * without the bundle running. Keeping the two maps apart is what stops
+   * disabled plugin CODE from being reachable while its CONFIG stays editable.
+   */
+  pluginDirs: Record<string, string>;
   errors: PanelPluginError[];
 }
 
@@ -57,7 +69,7 @@ export async function scanInstalledPlugins(options: {
   marketplace: string;
 }): Promise<ScannedPlugins> {
   const { pluginsRoot, disabled, running, marketplace } = options;
-  const scanned: ScannedPlugins = { pluginStatus: [], panels: [], dirs: {}, errors: [] };
+  const scanned: ScannedPlugins = { pluginStatus: [], panels: [], dirs: {}, pluginDirs: {}, errors: [] };
   const fail = (dir: string, reason: string) =>
     scanned.errors.push({ dir, reason, marketplace });
 
@@ -75,6 +87,15 @@ export async function scanInstalledPlugins(options: {
       continue;
     }
 
+    // A settings-schema file that exists but cannot be read is the same class of
+    // fault as a malformed manifest: the plugin SAID it has settings, and a form
+    // drawn from half of them would write values its own contract rejects.
+    const settings = await pluginSettingsDefinitions(pluginDir, manifest);
+    if ('error' in settings) {
+      fail(pluginDir, settings.error);
+      continue;
+    }
+
     // Refused BEFORE it is admitted: an incompatible plugin must contribute
     // nothing — no panel, no bundle, no directory for the route to resolve.
     // The reason names both sides, because the pane's only repair is the author
@@ -84,6 +105,9 @@ export async function scanInstalledPlugins(options: {
       fail(pluginDir, refusal);
       continue;
     }
+    // Admitted, so its settings are reachable even when it is switched off or
+    // unbuilt — the form is drawn from the file, not from the plugin's code.
+    scanned.pluginDirs[manifest.id] = pluginDir;
 
     // A plugin is served from its build output, so every entry its manifest
     // declares must already exist. A plugin whose build has not run is reported
@@ -122,7 +146,7 @@ export async function scanInstalledPlugins(options: {
       bundled: false,
       origin: gitOrigin ? 'git' : 'local',
       gitOrigin,
-      settingsCount: Object.keys(manifest.settings ?? {}).length,
+      settingsCount: Object.keys(settings.definitions).length,
       ...(manifest.description ? { description: manifest.description } : {}),
       ...(manifest.author ? { author: manifest.author } : {}),
       ...(manifest.homepage ? { homepage: manifest.homepage } : {}),

@@ -22,6 +22,7 @@
 
 import { getDb } from '@/server/db.server';
 import type { DbClient } from '@/server/lib/db/client';
+import { PLUGIN_SECRET_MASK } from '@/shared/lib/plugins/settings';
 import type { PluginSettingDefinition, PluginSettingsApi } from '@kabmo-labs/kabmo-sdk';
 
 export type PluginSettingsValues = Record<string, string | number | boolean>;
@@ -104,7 +105,11 @@ export async function readPluginSettings(
   for (const [key, definition] of Object.entries(definitions)) {
     const raw = stored.get(key);
     if (raw !== undefined) values[key] = coerce(definition, raw);
-    else if (definition.default !== undefined) values[key] = definition.default;
+    // A secret's `default` is not a value: the settings form uses it as a
+    // placeholder shape at most, and filling it here would make `maskSecrets`
+    // report a credential the user never stored — the form would say "stored"
+    // and the plugin would read an empty string as if the user had set it.
+    else if (definition.default !== undefined && !definition.secret) values[key] = definition.default;
   }
   return values;
 }
@@ -119,9 +124,56 @@ export function maskSecrets(
 ): PluginSettingsValues {
   const out: PluginSettingsValues = {};
   for (const [key, value] of Object.entries(values)) {
-    out[key] = definitions[key]?.secret ? '••••••••' : value;
+    out[key] = definitions[key]?.secret ? PLUGIN_SECRET_MASK : value;
   }
   return out;
+}
+
+/**
+ * Write several values as ONE change.
+ *
+ * Validation happens for every key BEFORE the first row is written, so a form
+ * with one bad field cannot leave the plugin half-saved. The listeners fire
+ * once, after the whole set is committed — a plugin reacting to a form save
+ * would otherwise restart its work once per field.
+ *
+ * An undeclared key is refused rather than stored: the definitions are the
+ * plugin's own contract, and a value under a key it never declared is a typo
+ * the plugin would then never read.
+ */
+export async function writePluginSettings(
+  db: DbClient,
+  pluginId: string,
+  definitions: Record<string, PluginSettingDefinition>,
+  values: Record<string, unknown>,
+): Promise<{ ok: true; values: PluginSettingsValues } | { ok: false; error: string }> {
+  const stored: Array<{ key: string; value: string }> = [];
+  for (const [key, value] of Object.entries(values)) {
+    const definition = definitions[key];
+    if (!definition) return { ok: false, error: `"${key}" is not a declared setting of this plugin` };
+    const checked = validateSettingValue(definition, value);
+    if (!checked.ok) return { ok: false, error: `setting "${key}": ${checked.error}` };
+    stored.push({ key, value: checked.stored });
+  }
+
+  const now = Date.now();
+  for (const { key, value } of stored) {
+    await db.run(
+      'INSERT OR REPLACE INTO plugin_settings (plugin_id, key, value, updated_at) VALUES (?, ?, ?, ?)',
+      [pluginId, key, value, now],
+    );
+  }
+
+  const next = await readPluginSettings(db, pluginId, definitions);
+  for (const listener of [...listenersFor(pluginId)]) {
+    try {
+      listener(next);
+    } catch {
+      // A throwing listener must not break the write it is reporting on — the
+      // same rule the realtime signal bus follows.
+    }
+  }
+  return { ok: true, values: next };
 }
 
 /** Build the API one plugin is handed at load. */
@@ -137,23 +189,8 @@ export function createPluginSettings(
       return (await read())[key] as T | undefined;
     },
     async write(key, value) {
-      const definition = definitions[key];
-      if (!definition) throw new Error(`"${key}" is not a declared setting of this plugin`);
-      const checked = validateSettingValue(definition, value);
-      if (!checked.ok) throw new Error(`setting "${key}": ${checked.error}`);
-      await db.run(
-        'INSERT OR REPLACE INTO plugin_settings (plugin_id, key, value, updated_at) VALUES (?, ?, ?, ?)',
-        [pluginId, key, checked.stored, Date.now()],
-      );
-      const next = await read();
-      for (const listener of [...listenersFor(pluginId)]) {
-        try {
-          listener(next);
-        } catch {
-          // A throwing listener must not break the write it is reporting on —
-          // the same rule the realtime signal bus follows.
-        }
-      }
+      const result = await writePluginSettings(db, pluginId, definitions, { [key]: value });
+      if (!result.ok) throw new Error(result.error);
     },
     subscribe(listener) {
       const set = listenersFor(pluginId);

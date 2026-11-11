@@ -170,7 +170,7 @@ export interface PanelPluginStatus {
   /** The mark colour the manifest declares, when it declares one. */
   color?: string;
   capabilities?: string[];
-  /** How many settings the manifest declares, so the card can say what is configurable. */
+  /** How many settings the plugin's schema declares, so the card can say what is configurable. */
   settingsCount?: number;
   /**
    * The version the SOURCE offers, when it is known and newer.

@@ -1,0 +1,14 @@
+{
+  "logTailKb": {
+    "type": "number",
+    "label": "Log tail (KB)",
+    "description": "How much of a run's output the panel reads at a time. The full buffer is kept server-side; this is only what one read returns.",
+    "default": 64
+  },
+  "maxRuns": {
+    "type": "number",
+    "label": "Concurrent runs",
+    "description": "A run beyond this is refused with a reason rather than queued, so a runaway script cannot start a hundred processes.",
+    "default": 8
+  }
+}

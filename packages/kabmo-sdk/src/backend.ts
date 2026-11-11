@@ -174,7 +174,7 @@ export interface PluginStorageApi {
 }
 
 /**
- * One declared setting, from the plugin's manifest.
+ * One declared setting, from the plugin's `settings-schema.json`.
  *
  * Declarative so the host can render a form and validate a value without the
  * plugin running: a plugin that is switched off still shows its settings, and
@@ -182,10 +182,11 @@ export interface PluginStorageApi {
  * rule the plugin declared.
  */
 export interface PluginSettingDefinition {
-  /** `string` is the only editor the host renders today; the rest are refused. */
+  /** The editor the host renders: a text box, a number box, or a checkbox. */
   type: 'string' | 'number' | 'boolean';
   label: string;
   description?: string;
+  /** Ignored for a `secret`: a credential has no default, only a stored value. */
   default?: string | number | boolean;
   /** A secret is stored, never returned to the client — only its presence is. */
   secret?: boolean;

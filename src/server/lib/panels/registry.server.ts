@@ -91,6 +91,8 @@ const SCAN_CACHE_TTL_MS = 5_000;
  */
 interface PanelScan extends PanelRegistryPayload {
   dirs: Record<string, string>;
+  /** Every parsed plugin's directory, including disabled and unbuilt ones. */
+  pluginDirs: Record<string, string>;
 }
 
 declare global {
@@ -116,6 +118,7 @@ async function runPanelScan(): Promise<PanelScan> {
     autoUpdate: false,
     syncBlocked: {},
     dirs: {},
+    pluginDirs: {},
   };
 
   // Rejections are tagged with the marketplace id so the pane groups by a value
@@ -173,6 +176,7 @@ async function runPanelScan(): Promise<PanelScan> {
   scan.plugins = scanned.pluginStatus;
   scan.panels = scanned.panels;
   scan.dirs = scanned.dirs;
+  scan.pluginDirs = scanned.pluginDirs;
   scan.errors.push(...scanned.errors);
 
   // The status cache is read BEFORE the offers are folded in, because a git
@@ -205,7 +209,7 @@ async function cachedScan(): Promise<PanelScan> {
 
 /** The client payload: the marketplace, its panels, and its rejections. */
 export async function discoverPanelPlugins(): Promise<PanelRegistryPayload> {
-  const { dirs: _dirs, ...payload } = await cachedScan();
+  const { dirs: _dirs, pluginDirs: _pluginDirs, ...payload } = await cachedScan();
   return payload;
 }
 
@@ -237,4 +241,17 @@ export async function findPluginDir(pluginName: string): Promise<string | undefi
     if (dir === pluginName) return join(bundledRoot, dir);
   }
   return undefined;
+}
+
+/**
+ * The directory of an INSTALLED plugin, addressed by its manifest id.
+ *
+ * Unlike `findPluginDir` this answers for a plugin that is disabled or unbuilt:
+ * its settings are still declared and its stored values still exist, so the
+ * settings route must reach the directory without the bundle being servable.
+ * The bundled store is deliberately not searched — a store offer has no install
+ * and therefore no settings to edit.
+ */
+export async function findInstalledPluginDir(pluginId: string): Promise<string | undefined> {
+  return (await cachedScan()).pluginDirs[pluginId];
 }

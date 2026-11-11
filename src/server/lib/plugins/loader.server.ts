@@ -32,6 +32,7 @@ import { getDb } from '@/server/db.server';
 import { findPluginDir, discoverPanelPlugins } from '@/server/lib/panels/registry.server';
 import { readPluginManifest } from '@/server/lib/panels/files.server';
 import { toManifest } from '@/server/lib/panels/manifest';
+import { pluginSettingsDefinitions } from '@/server/lib/panels/settings-schema.server';
 import { createPluginStorage } from '@/server/lib/plugins/storage.server';
 import { createPluginSettings, clearPluginSettingListeners } from '@/server/lib/plugins/settings.server';
 import { registerRpcMethod, clearPluginRpcMethods } from '@/server/lib/plugins/rpc.server';
@@ -169,6 +170,9 @@ export async function loadPluginServer(pluginId: string): Promise<LoadedPlugin> 
   const entry = join(dir, parsed.server);
   if (!(await pathExists(entry))) throw new Error(`plugin "${pluginId}" is not built: ${parsed.server} is missing`);
 
+  const settings = await pluginSettingsDefinitions(dir, parsed);
+  if ('error' in settings) throw new Error(`plugin "${pluginId}" has an invalid settings schema: ${settings.error}`);
+
   const module = (await import(entry)) as { default?: unknown };
   if (typeof module.default !== 'function') {
     throw new Error(`plugin "${pluginId}" has no server factory default export (export default function plugin(api) {})`);
@@ -190,7 +194,7 @@ export async function loadPluginServer(pluginId: string): Promise<LoadedPlugin> 
     pluginId,
     log: createPluginLogger(pluginId),
     storage,
-    settings: createPluginSettings(db, pluginId, parsed.settings ?? {}),
+    settings: createPluginSettings(db, pluginId, settings.definitions),
     rpc: {
       register(method, definition) {
         const dispose = registerRpcMethod(pluginId, method, definition);

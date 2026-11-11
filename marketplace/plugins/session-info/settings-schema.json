@@ -1,0 +1,8 @@
+{
+  "notePrefix": {
+    "type": "string",
+    "label": "Note prefix",
+    "description": "Prepended to every note saved by the server half.",
+    "default": ""
+  }
+}

@@ -15,21 +15,7 @@
     "color": "#f59e0b",
     "author": { "name": "Kabmo Labs", "url": "https://github.com/kabmo-labs" },
     "slots": ["rightPanel"],
-    "capabilities": ["server", "storage", "rpc", "realtime", "repo-scope"],
-    "settings": {
-      "logTailKb": {
-        "type": "number",
-        "label": "Log tail (KB)",
-        "description": "How much of a run's output the panel reads at a time. The full buffer is kept server-side; this is only what one read returns.",
-        "default": 64
-      },
-      "maxRuns": {
-        "type": "number",
-        "label": "Concurrent runs",
-        "description": "A run beyond this is refused with a reason rather than queued, so a runaway script cannot start a hundred processes.",
-        "default": 8
-      }
-    }
+    "capabilities": ["server", "storage", "rpc", "realtime", "repo-scope"]
   },
   "peerDependencies": {
     "@kabmo-labs/kabmo-sdk": "*",

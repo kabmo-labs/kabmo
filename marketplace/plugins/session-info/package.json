@@ -15,14 +15,6 @@
     "color": "#38bdf8",
     "author": { "name": "Kabmo Labs", "url": "https://github.com/kabmo-labs" },
     "slots": ["rightPanel", "panel", "headerPanel"],
-    "settings": {
-      "notePrefix": {
-        "type": "string",
-        "label": "Note prefix",
-        "description": "Prepended to every note saved by the server half.",
-        "default": ""
-      }
-    },
     "css": "dist/app.css"
   },
   "peerDependencies": {

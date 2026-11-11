@@ -24,7 +24,7 @@
  * now share the version, author, origin and slot pieces in `Meta.tsx`.
  */
 
-import { ArrowDownToLine, Hammer, Loader2, BookOpen } from 'lucide-preact';
+import { ArrowDownToLine, Hammer, Loader2, BookOpen, SlidersHorizontal } from 'lucide-preact';
 import type { PanelGitStatus, PanelPluginStatus } from '@/shared/types';
 import { pluginUpdate } from '@/shared/lib/panels/update';
 import { PluginMark } from '@/client/components/settings/categories/panel-plugins/PluginMark';
@@ -59,6 +59,8 @@ interface PluginCardProps {
   /** Panel placement, so a panel's own card can say (and change) where it lives. */
   dock: LeftDockHandle;
   onReadme: () => void;
+  /** Open the schema-driven settings form; only offered when the plugin declares settings. */
+  onSettings: () => void;
   onBuild: (pluginId: string) => Promise<boolean>;
   onRemove: (pluginId: string) => Promise<boolean>;
   onSetEnabled: (pluginId: string, enabled: boolean) => Promise<boolean>;
@@ -75,6 +77,7 @@ export function PluginCard({
   gitStatus,
   dock,
   onReadme,
+  onSettings,
   onBuild,
   onRemove,
   onSetEnabled,
@@ -269,6 +272,17 @@ export function PluginCard({
           </button>
         ) : null}
         <span className="ml-auto flex items-center gap-1">
+          {plugin.settingsCount ? (
+            <button
+              type="button"
+              onClick={onSettings}
+              title={`Configure ${plugin.name}`}
+              aria-label={`Configure ${plugin.name}`}
+              className="p-1 rounded text-ink/40 hover:text-ink hover:bg-ink/5 flex-shrink-0"
+            >
+              <SlidersHorizontal size={13} />
+            </button>
+          ) : null}
           {readmeUrl ? (
             <button
               type="button"

@@ -17,7 +17,7 @@
  */
 
 import { test, expect, describe } from 'bun:test';
-import { toManifest, toMarketplaceCatalog } from '@/server/lib/panels/manifest';
+import { toManifest, toMarketplaceCatalog, toSettingsSchema } from '@/server/lib/panels/manifest';
 
 const ROOT = '/market/plugins/demo';
 
@@ -280,5 +280,51 @@ describe('toMarketplaceCatalog', () => {
 
   test('refuses a non-object body', () => {
     expect(toMarketplaceCatalog(null, ROOT)).toMatchObject({ error: expect.stringContaining('not an object') });
+  });
+});
+
+describe('toSettingsSchema', () => {
+  test('accepts a map of definitions and keeps every rendered field', () => {
+    expect(
+      toSettingsSchema({
+        note: { type: 'string', label: 'Note', description: 'Shown above the box', default: 'hi' },
+        token: { type: 'string', label: 'Token', secret: true },
+        retries: { type: 'number', label: 'Retries', default: 3 },
+        verbose: { type: 'boolean', label: 'Verbose', default: false },
+      }),
+    ).toEqual({
+      value: {
+        note: { type: 'string', label: 'Note', description: 'Shown above the box', default: 'hi' },
+        token: { type: 'string', label: 'Token', secret: true },
+        retries: { type: 'number', label: 'Retries', default: 3 },
+        verbose: { type: 'boolean', label: 'Verbose', default: false },
+      },
+    });
+  });
+
+  test('an empty object is a valid schema, not a refusal', () => {
+    expect(toSettingsSchema({})).toEqual({ value: {} });
+  });
+
+  test('refuses a type the host cannot render', () => {
+    expect(toSettingsSchema({ mode: { type: 'select', label: 'Mode' } })).toMatchObject({
+      error: expect.stringContaining('unknown type'),
+    });
+  });
+
+  test('refuses a definition with no label, and a non-object body', () => {
+    expect(toSettingsSchema({ mode: { type: 'string' } })).toMatchObject({
+      error: expect.stringContaining('no label'),
+    });
+    expect(toSettingsSchema([])).toMatchObject({ error: expect.stringContaining('not an object') });
+  });
+
+  test('refuses a default of the wrong shape and a non-boolean secret', () => {
+    expect(toSettingsSchema({ note: { type: 'string', label: 'Note', default: {} } })).toMatchObject({
+      error: expect.stringContaining('invalid default'),
+    });
+    expect(toSettingsSchema({ note: { type: 'string', label: 'Note', secret: 'yes' } })).toMatchObject({
+      error: expect.stringContaining('invalid secret'),
+    });
   });
 });

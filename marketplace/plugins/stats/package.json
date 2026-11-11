@@ -14,27 +14,7 @@
     "icon": "icon.svg",
     "color": "#34d399",
     "author": { "name": "Kabmo Labs", "url": "https://github.com/kabmo-labs" },
-    "slots": ["rightPanel", "headerPanel"],
-    "settings": {
-      "sampleMs": {
-        "type": "number",
-        "label": "Sample interval (ms)",
-        "description": "How often the process table is sampled while a Stats panel is open. 1000 is the floor at which a CPU rate is meaningful.",
-        "default": 1000
-      },
-      "includeBrokers": {
-        "type": "boolean",
-        "label": "Include omp daemons",
-        "description": "Follow every registered omp daemon broker, even when its parent is no longer Kabmo. A browser daemon outlives the omp process that started it, so this is the only way it is reachable.",
-        "default": true
-      },
-      "historyPoints": {
-        "type": "number",
-        "label": "History points",
-        "description": "Samples retained per series for the sparklines. 0 disables history.",
-        "default": 60
-      }
-    }
+    "slots": ["rightPanel", "headerPanel"]
   },
   "peerDependencies": {
     "@kabmo-labs/kabmo-sdk": "*",

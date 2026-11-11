@@ -219,6 +219,25 @@ function isSettingType(value: unknown): value is PluginSettingDefinition['type']
 }
 
 /**
+ * Validate a standalone `settings-schema.json` body.
+ *
+ * The file is the canonical declaration: a map of setting name → definition,
+ * the same shape the manifest's `settings` key accepts. It is read without the
+ * plugin running, which is what lets a switched-off plugin still show its form.
+ *
+ * An empty object is a valid schema — a plugin may ship the file before it has
+ * any setting, and a form with nothing to draw is better than refusing the
+ * plugin for a file whose only job is to say "none yet".
+ */
+export function toSettingsSchema(
+  raw: unknown,
+): { value: Record<string, PluginSettingDefinition> } | { error: string } {
+  const parsed = toSettings(raw);
+  if ('error' in parsed) return parsed;
+  return { value: parsed.value ?? {} };
+}
+
+/**
  * Validate `settings`: an optional map of setting name → definition.
  *
  * Only the fields the host renders or validates are read, and each is checked

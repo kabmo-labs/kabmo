@@ -2,6 +2,7 @@ import { useState } from 'preact/hooks';
 import type { PanelGitStatus, PanelPluginStatus } from '@/shared/types';
 import { PluginCard } from '@/client/components/settings/categories/panel-plugins/PluginCard';
 import { PluginReadmeModal } from '@/client/components/settings/categories/panel-plugins/ReadmeModal';
+import { PluginSettingsModal } from '@/client/components/settings/categories/panel-plugins/SettingsModal';
 import type { PluginSlots } from '@/client/lib/plugins/slots';
 import { countPluginUpdates } from '@/shared/lib/panels/update';
 import type { LeftDockHandle } from '@/client/hooks/workspace/left-dock';
@@ -55,6 +56,7 @@ export function InstalledList({
   onUpdate,
 }: InstalledGridProps) {
   const [reading, setReading] = useState<PanelPluginStatus | null>(null);
+  const [configuring, setConfiguring] = useState<PanelPluginStatus | null>(null);
   const enabledCount = plugins.filter((plugin) => plugin.enabled).length;
   // The SAME predicate the cards and the Update-all button use, so the header
   // cannot announce a count no button would act on.
@@ -87,6 +89,7 @@ export function InstalledList({
             gitStatus={gitStatus[plugin.pluginId]}
             dock={dock}
             onReadme={() => setReading(plugin)}
+            onSettings={() => setConfiguring(plugin)}
             onBuild={onBuild}
             onRemove={onRemove}
             onSetEnabled={onSetEnabled}
@@ -101,6 +104,14 @@ export function InstalledList({
           name={reading.name}
           readmeUrl={readmeUrls.get(reading.pluginId) as string}
           onClose={() => setReading(null)}
+        />
+      ) : null}
+
+      {configuring ? (
+        <PluginSettingsModal
+          pluginId={configuring.pluginId}
+          name={configuring.name}
+          onClose={() => setConfiguring(null)}
         />
       ) : null}
     </section>
