@@ -23,8 +23,15 @@
  * would come back null and the next start would leave a second ticker running.
  */
 
+import { getDb } from '@/server/db.server';
 import { advancePluginSchedule, type PluginSchedule } from '@/server/lib/plugins/background.server';
 import { loadedPlugins } from '@/server/lib/plugins/loader.server';
+import {
+  claimPluginSchedule,
+  insertPluginSchedule,
+  readPluginScheduleNext,
+  setPluginScheduleNext,
+} from '@/server/lib/plugins/schedule-store.server';
 
 /** How often the clock looks for due schedules. The grammar's floor is 1m. */
 export const PLUGIN_SCHEDULE_TICK_MS = 15_000;
@@ -68,6 +75,39 @@ export async function tickPluginSchedules(now = Date.now()): Promise<number> {
 }
 
 async function runOne(pluginId: string, schedule: PluginSchedule): Promise<void> {
+  const dueAt = schedule.nextRunAt;
+  const db = await getDb();
+  let claim: 'claimed' | 'lost' | 'absent';
+  try {
+    claim = await claimPluginSchedule(db, pluginId, schedule.id, dueAt);
+  } catch (error) {
+    // Fail CLOSED and leave the in-memory time alone: a claim that could not be
+    // written must not be treated as won, and the next tick retries it.
+    console.error(`[plugins] ${pluginId}: schedule "${schedule.id}" could not be claimed — ${message(error)}`);
+    return;
+  }
+  if (claim === 'lost') {
+    // Another instance owns this fire. Adopt the time it wrote, or this tick
+    // would keep claiming a value the row no longer holds.
+    const stored = await readPluginScheduleNext(db, pluginId, schedule.id).catch(() => undefined);
+    schedule.nextRunAt = stored === undefined ? dueAt + 1 : (stored ?? Number.POSITIVE_INFINITY);
+    return;
+  }
+  // Computed AFTER the claim, from this process's clock: a server that was down
+  // for three intervals runs the job once, not three times.
+  const next = advancePluginSchedule(schedule, Date.now());
+  schedule.nextRunAt = next ?? Number.POSITIVE_INFINITY;
+  if (claim === 'absent') {
+    // A schedule declared before the table existed (or a test double): record
+    // the fire we are about to run so the next tick has a row to claim.
+    await insertPluginSchedule(db, pluginId, schedule.id, next).catch((error: unknown) => {
+      console.error(`[plugins] ${pluginId}: schedule "${schedule.id}" could not be recorded — ${message(error)}`);
+    });
+  } else {
+    await setPluginScheduleNext(db, pluginId, schedule.id, next).catch((error: unknown) => {
+      console.error(`[plugins] ${pluginId}: schedule "${schedule.id}" could not be advanced — ${message(error)}`);
+    });
+  }
   try {
     await schedule.run();
   } catch (error) {
@@ -75,16 +115,12 @@ async function runOne(pluginId: string, schedule: PluginSchedule): Promise<void>
     // rethrown into the ticker, or one broken schedule stops every other.
     console.error(`[plugins] ${pluginId}: schedule "${schedule.id}" failed — ${message(error)}`);
   }
-  const next = advancePluginSchedule(schedule, Date.now());
   if (next === null) {
     // A cron expression that can never match again (a spent date) has no next
     // fire. Parking it at Infinity is honest: the schedule stays listed, and
     // the log says why it stopped.
-    schedule.nextRunAt = Number.POSITIVE_INFINITY;
     console.error(`[plugins] ${pluginId}: schedule "${schedule.id}" has no next fire and is stopped`);
-    return;
   }
-  schedule.nextRunAt = next;
 }
 
 /** Start the tick. Idempotent: a second call is a no-op while one is running. */

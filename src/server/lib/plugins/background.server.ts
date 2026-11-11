@@ -68,8 +68,18 @@ function resolveKind(spec: string, now: number): { kind: ScheduleKind; nextRunAt
   return { error: `"${spec}" is neither an interval (5m, 1h30m) nor a 5-field cron expression` };
 }
 
-/** The API one plugin is handed at load, plus what it declared. */
-export function createPluginBackground(pluginId: string, now = Date.now()): {
+/**
+ * The API one plugin is handed at load, plus what it declared.
+ *
+ * `stored` is the next fire already on disk for this plugin. A schedule that
+ * has one keeps it, so a restart does not restart its countdown; a schedule
+ * with none starts from `now`.
+ */
+export function createPluginBackground(
+  pluginId: string,
+  now = Date.now(),
+  stored: ReadonlyMap<string, number> = new Map(),
+): {
   api: PluginBackgroundApi;
   handle: PluginBackgroundHandle;
 } {
@@ -103,7 +113,15 @@ export function createPluginBackground(pluginId: string, now = Date.now()): {
       if (typeof run !== 'function') throw new Error(`schedule "${id}" has no run()`);
       const resolved = resolveKind(spec, now);
       if ('error' in resolved) throw new Error(`schedule "${id}": ${resolved.error}`);
-      handle.schedules.push({ pluginId, id, kind: resolved.kind, spec, run, nextRunAt: resolved.nextRunAt });
+      const persisted = stored.get(id);
+      handle.schedules.push({
+        pluginId,
+        id,
+        kind: resolved.kind,
+        spec,
+        run,
+        nextRunAt: persisted ?? resolved.nextRunAt,
+      });
     },
   };
   return { api, handle };

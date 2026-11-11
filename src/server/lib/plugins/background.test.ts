@@ -77,6 +77,19 @@ describe('background', () => {
     expect(() => api.service('broken', { start: () => { throw new Error('no start'); } })).toThrow('no start');
   });
 
+  test('a stored fire time is adopted instead of restarting the countdown', () => {
+    const stored = new Map([['refresh', 9_000_000]]);
+    const { api, handle } = createPluginBackground('alpha', 1_000, stored);
+    api.schedule('refresh', '5m', () => {});
+    expect(handle.schedules[0]?.nextRunAt).toBe(9_000_000);
+  });
+
+  test('a schedule with no stored time starts from now', () => {
+    const { api, handle } = createPluginBackground('alpha', 1_000, new Map());
+    api.schedule('refresh', '5m', () => {});
+    expect(handle.schedules[0]?.nextRunAt).toBe(1_000 + 300_000);
+  });
+
   test('a schedule resolves its next fire with Kabmo own grammar', () => {
     const { api, handle } = createPluginBackground('alpha', 1_000_000);
     api.schedule('sweep', '5m', () => {});

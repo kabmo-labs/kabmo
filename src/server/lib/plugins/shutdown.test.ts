@@ -29,18 +29,23 @@
  */
 
 import { afterEach, describe, expect, test } from 'bun:test';
-import { disposeAllPluginsOnShutdown, loadedPluginIds } from '@/server/lib/plugins/loader.server';
+import { loadedPluginIds } from '@/server/lib/plugins/loader.server';
+import { disposeAllPluginsOnShutdown } from '@/server/lib/plugins/shutdown.server';
 import type { KabmoPluginApi } from '@kabmo-labs/kabmo-sdk';
 
 /** The registry `disposePlugin` reads, process-wide and anchored on globalThis. */
-function seed(pluginId: string, disposers: Array<() => void | Promise<void>>): void {
+function seed(
+  pluginId: string,
+  disposers: Array<() => void | Promise<void>>,
+  services: Array<{ pluginId: string; id: string; stop?: () => void | Promise<void> }> = [],
+): void {
   const record = {
     pluginId,
     // A record is only ever read for its disposers by the disposal path, and a
     // real api would need a database. The cast keeps the fixture honest about
     // what is exercised.
     api: { pluginId } as unknown as KabmoPluginApi,
-    background: { services: [], schedules: [] },
+    background: { services, schedules: [] },
     disposers,
   };
   const host = globalThis as unknown as { __kabmoLoadedPlugins?: Map<string, typeof record> };
@@ -72,6 +77,26 @@ describe('disposeAllPluginsOnShutdown', () => {
     // Disposal is what unloads them; a record left behind would be re-disposed
     // on the next pass and its registrations would answer after shutdown.
     expect(loadedPluginIds()).toEqual([]);
+  });
+
+  test('a service stop runs on disposal, in reverse order', async () => {
+    const stopped: string[] = [];
+    seed('alpha', [], [
+      { pluginId: 'alpha', id: 'one', stop: () => { stopped.push('one'); } },
+      { pluginId: 'alpha', id: 'two', stop: () => { stopped.push('two'); } },
+    ]);
+    await disposeAllPluginsOnShutdown(500);
+    expect(stopped).toEqual(['two', 'one']);
+  });
+
+  test('a throwing service stop does not skip the others', async () => {
+    const stopped: string[] = [];
+    seed('alpha', [], [
+      { pluginId: 'alpha', id: 'one', stop: () => { stopped.push('one'); } },
+      { pluginId: 'alpha', id: 'two', stop: () => { throw new Error('boom'); } },
+    ]);
+    await disposeAllPluginsOnShutdown(500);
+    expect(stopped).toEqual(['one']);
   });
 
   test('a disposer that never settles does not block the exit', async () => {

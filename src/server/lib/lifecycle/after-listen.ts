@@ -28,7 +28,8 @@ import { installMemoryMaintenance, stopMemoryMaintenance } from '@/server/lib/li
 import { syncDiscoveryRootsWatch, stopDiscoveryRootsWatch } from '@/server/lib/omp/config/roots-watch.server';
 import { startPanelAutoUpdate } from '@/server/lib/panels/auto-update.server';
 import { syncBundledPlugins } from '@/server/lib/panels/sync.server';
-import { disposeAllPluginsOnShutdown, loadPluginServers } from '@/server/lib/plugins/loader.server';
+import { loadPluginServers } from '@/server/lib/plugins/loader.server';
+import { disposeAllPluginsOnShutdown } from '@/server/lib/plugins/shutdown.server';
 import { startPluginScheduleRuntime, stopPluginScheduleRuntime } from '@/server/lib/plugins/schedule-runner.server';
 import { startScheduleRuntime, stopScheduleRuntime } from '@/server/lib/schedule/runtime.server';
 import { ensureTray } from '@/server/lib/tray/runtime.server';

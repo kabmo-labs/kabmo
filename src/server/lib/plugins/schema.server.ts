@@ -52,6 +52,13 @@ const PLUGIN_SCHEMA_SQL = `
     updated_at INTEGER NOT NULL,
     PRIMARY KEY (plugin_id, key)
   );
+
+  CREATE TABLE IF NOT EXISTS plugin_schedules (
+    plugin_id TEXT NOT NULL,
+    id TEXT NOT NULL,
+    next_run_at INTEGER,
+    PRIMARY KEY (plugin_id, id)
+  );
 `;
 
 /** Idempotent: the plugin platform's tables, created on every database open. */
@@ -72,4 +79,5 @@ export async function purgePluginState(db: DbClient, pluginId: string): Promise<
   await db.run('DELETE FROM plugin_kv WHERE plugin_id = ?', [pluginId]);
   await db.run('DELETE FROM plugin_records WHERE plugin_id = ?', [pluginId]);
   await db.run('DELETE FROM plugin_settings WHERE plugin_id = ?', [pluginId]);
+  await db.run('DELETE FROM plugin_schedules WHERE plugin_id = ?', [pluginId]);
 }

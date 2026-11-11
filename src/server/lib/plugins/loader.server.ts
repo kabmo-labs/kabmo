@@ -40,6 +40,7 @@ import { createPluginRealtime, clearPluginTopic } from '@/server/lib/plugins/rea
 import { createPluginEvents, clearPluginEvents } from '@/server/lib/plugins/events.server';
 import { createPluginBackground, type PluginBackgroundHandle } from '@/server/lib/plugins/background.server';
 import { clearPluginMcp, createPluginMcp } from '@/server/lib/plugins/mcp.server';
+import { insertPluginSchedule, readPluginScheduleState } from '@/server/lib/plugins/schedule-store.server';
 import { createPluginLogger } from '@/server/lib/plugins/log.server';
 import type { KabmoPluginApi, KabmoPluginFactory } from '@kabmo-labs/kabmo-sdk';
 
@@ -180,7 +181,9 @@ export async function loadPluginServer(pluginId: string): Promise<LoadedPlugin> 
   };
 
   const storage = createPluginStorage(db, pluginId);
-  const background = createPluginBackground(pluginId);
+  // Read BEFORE the factory: a schedule declared during load must adopt the
+  // fire time already on disk, or every restart would restart its countdown.
+  const background = createPluginBackground(pluginId, Date.now(), await readPluginScheduleState(db, pluginId));
   const events = createPluginEvents(pluginId);
 
   const api: KabmoPluginApi = {
@@ -214,6 +217,11 @@ export async function loadPluginServer(pluginId: string): Promise<LoadedPlugin> 
 
   try {
     await (module.default as KabmoPluginFactory)(api);
+    // Persist what the factory declared. `INSERT OR IGNORE` keeps a stored fire
+    // time, which is the one the in-memory schedule already adopted.
+    for (const schedule of background.handle.schedules) {
+      await insertPluginSchedule(db, pluginId, schedule.id, schedule.nextRunAt);
+    }
   } catch (error) {
     await disposePlugin(pluginId);
     throw new Error(`plugin "${pluginId}" failed to load: ${error instanceof Error ? error.message : String(error)}`);
@@ -240,6 +248,19 @@ export async function disposePlugin(pluginId: string): Promise<void> {
   clearPluginTopic(pluginId);
   clearPluginMcp(pluginId);
   if (!record) return;
+
+  // A service's `stop` is the only thing that releases the child, socket or
+  // timer it started. It is not a disposer (the plugin never registered one),
+  // so the loader has to run it — reverse order, and one failure must not skip
+  // the rest.
+  for (const service of [...record.background.services].reverse()) {
+    if (!service.stop) continue;
+    try {
+      await service.stop();
+    } catch (error) {
+      console.error(`[plugins] ${pluginId}: service "${service.id}" stop threw — ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
 
   for (const dispose of [...record.disposers].reverse()) {
     try {
@@ -297,53 +318,4 @@ export async function disposeAllPlugins(): Promise<void> {
   for (const pluginId of [...loaded().keys()]) {
     await disposePlugin(pluginId);
   }
-}
-
-/** How long shutdown waits for a plugin's disposers before giving up. */
-const SHUTDOWN_DISPOSE_TIMEOUT_MS = 3_000;
-
-/**
- * Unload every plugin on the way out, BOUNDED so a plugin cannot block the exit.
- *
- * A plugin's disposer owns real work — a spawned child, a listener, a timer —
- * and `onDispose` is the only place it is released. Without this the process
- * exits with those alive: a detached child outlives its parent by definition,
- * so a command a plugin started would keep running after Kabmo is gone
- * (verified: the plugin's own `Bun.spawn({ detached: true })` children survive a
- * `SIGTERM` to the server).
- *
- * The timeout is the other half of the contract. `disposePlugin` awaits each
- * disposer in turn, and one that never settles would hang the shutdown forever
- * — worse than the leak, because the operator cannot get their port back. The
- * pass therefore resolves on its own and reports what it had to abandon; the
- * process exits either way.
- *
- * Never throws: a failure here must not turn a clean shutdown into a crash.
- */
-export async function disposeAllPluginsOnShutdown(
-  /** The bound, overridable so a test does not wait out the real one. */
-  timeoutMs: number = SHUTDOWN_DISPOSE_TIMEOUT_MS,
-): Promise<{ disposed: number; timedOut: boolean }> {
-  const ids = [...loaded().keys()];
-  if (ids.length === 0) return { disposed: 0, timedOut: false };
-
-  const gate = Promise.withResolvers<boolean>();
-  const timer = setTimeout(() => gate.resolve(false), timeoutMs);
-  const pass = disposeAllPlugins().then(
-    () => true,
-    (error: unknown) => {
-      console.error(`[plugins] shutdown: disposal failed — ${error instanceof Error ? error.message : String(error)}`);
-      return true;
-    },
-  );
-  // Either the pass settles or the timer fires; the loser is abandoned rather
-  // than awaited, which is the whole point of the bound.
-  const completed = await Promise.race([pass, gate.promise]);
-  clearTimeout(timer);
-  if (!completed) {
-    console.error(
-      `[plugins] shutdown: disposal did not finish within ${timeoutMs}ms — exiting anyway`,
-    );
-  }
-  return { disposed: ids.length, timedOut: !completed };
 }

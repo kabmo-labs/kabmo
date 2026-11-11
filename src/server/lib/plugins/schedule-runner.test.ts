@@ -12,7 +12,9 @@
  * map, which is the same seam the boot uses.
  */
 
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
+import { isolateDb, releaseDb } from '@/test-support/isolated-db';
+import { getDb } from '@/server/db.server';
 import type { LoadedPlugin } from '@/server/lib/plugins/loader.server';
 import type { PluginSchedule } from '@/server/lib/plugins/background.server';
 import {
@@ -46,9 +48,18 @@ function install(plugins: LoadedPlugin[]): void {
   globalThis.__kabmoLoadedPlugins = new Map(plugins.map((plugin) => [plugin.pluginId, plugin]));
 }
 
-afterEach(() => {
+beforeAll(async () => {
+  await isolateDb();
+});
+
+afterAll(async () => {
+  await releaseDb();
+});
+
+afterEach(async () => {
   stopPluginScheduleRuntime();
   globalThis.__kabmoLoadedPlugins = undefined;
+  await (await getDb()).run('DELETE FROM plugin_schedules');
 });
 
 describe('tickPluginSchedules', () => {
@@ -108,6 +119,50 @@ describe('tickPluginSchedules', () => {
     }
     expect(entry.nextRunAt).toBe(Number.POSITIVE_INFINITY);
     expect(errors[0]).toContain('no next fire');
+  });
+
+  test('a fire another instance already claimed is not run twice', async () => {
+    const runs: number[] = [];
+    const entry = schedule({ run: () => void runs.push(1) });
+    install([host('alpha', [entry])]);
+    // The row says a different instance already moved this fire.
+    await (await getDb()).run(
+      'INSERT INTO plugin_schedules (plugin_id, id, next_run_at) VALUES (?, ?, ?)',
+      ['alpha', 'refresh', 9_999],
+    );
+    expect(await tickPluginSchedules(1_000)).toBe(1);
+    expect(runs).toHaveLength(0);
+    expect(entry.nextRunAt).toBeGreaterThan(1_000);
+  });
+
+  test('a claimed fire advances the stored row', async () => {
+    const runs: number[] = [];
+    const entry = schedule({ run: () => void runs.push(1) });
+    install([host('alpha', [entry])]);
+    await (await getDb()).run(
+      'INSERT INTO plugin_schedules (plugin_id, id, next_run_at) VALUES (?, ?, ?)',
+      ['alpha', 'refresh', 1_000],
+    );
+    await tickPluginSchedules(1_000);
+    expect(runs).toHaveLength(1);
+    const row = await (await getDb()).get<{ next_run_at: number }>(
+      'SELECT next_run_at FROM plugin_schedules WHERE plugin_id = ? AND id = ?',
+      ['alpha', 'refresh'],
+    );
+    expect(row?.next_run_at).toBe(entry.nextRunAt);
+  });
+
+  test('a claim left behind by a crash is due on the next tick', async () => {
+    const runs: number[] = [];
+    const entry = schedule({ nextRunAt: -1, run: () => void runs.push(1) });
+    install([host('alpha', [entry])]);
+    await (await getDb()).run(
+      'INSERT INTO plugin_schedules (plugin_id, id, next_run_at) VALUES (?, ?, ?)',
+      ['alpha', 'refresh', -1],
+    );
+    await tickPluginSchedules(1_000);
+    expect(runs).toHaveLength(1);
+    expect(entry.nextRunAt).toBeGreaterThan(1_000);
   });
 
   test('every loaded plugin is visited, not just the first', async () => {
