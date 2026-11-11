@@ -25,7 +25,6 @@
  */
 
 import { useEffect, useState } from 'preact/hooks';
-import { ChevronDown, ChevronUp } from 'lucide-preact';
 import { useSearchParams } from '@/client/lib/router/search-params';
 import { useFetcher } from '@/client/lib/router/fetcher';
 import { useShowMore } from '@/client/hooks/ui/show-more';
@@ -42,6 +41,7 @@ import { SessionDeleteModal } from '@/client/components/common/session-delete-mo
 import { WorkspaceOptionsMenu } from '@/client/components/common/workspace-options-menu';
 import { NewWorktreeModal } from '@/client/components/workspace/worktree-modal/index';
 import { WorkspaceHeader } from '@/client/components/layout/session-sidebar/modern/WorkspaceHeader';
+import { WorkspaceRevealRow } from '@/client/components/layout/session-sidebar/modern/RevealRow';
 import { folderBatchState } from '@/client/components/common/batch-selection/folder-state';
 import { relativeTimeAgo } from '@/shared/lib/workspace/relative-time';
 import { isPendingSessionId } from '@/shared/lib/omp/session/default-title';
@@ -289,32 +289,13 @@ export function WorkspaceSection({
             );
           })}
 
-          {/* Reveal and collapse are two controls, not a toggle: the list is
-              truncated for height, so after a partial reveal the user needs to
-              keep going AND to start over. */}
-          {(hiddenCount > 0 || canShowLess) && !forceExpanded && !sessionCheckboxes && (
-            <div className="flex items-center gap-1 pl-6">
-              {hiddenCount > 0 && (
-                <button
-                  type="button"
-                  onClick={showMore}
-                  className="min-w-0 truncate rounded-md px-1 py-1 text-[11px] text-ink/45 transition-colors cursor-pointer hover:bg-ink/[0.04] hover:text-ink/80"
-                >
-                  <ChevronDown size={11} className="mr-1 inline align-[-2px]" />
-                  {hiddenCount} more
-                </button>
-              )}
-              {canShowLess && (
-                <button
-                  type="button"
-                  onClick={showLess}
-                  className="ml-auto shrink-0 rounded-md px-1 py-1 text-[11px] text-ink/45 transition-colors cursor-pointer hover:bg-ink/[0.04] hover:text-ink/80"
-                >
-                  <ChevronUp size={11} className="mr-1 inline align-[-2px]" />
-                  Less
-                </button>
-              )}
-            </div>
+          {!forceExpanded && !sessionCheckboxes && (
+            <WorkspaceRevealRow
+              hiddenCount={hiddenCount}
+              canShowLess={canShowLess}
+              onShowMore={showMore}
+              onShowLess={showLess}
+            />
           )}
 
           {offered.length === 0 && (
