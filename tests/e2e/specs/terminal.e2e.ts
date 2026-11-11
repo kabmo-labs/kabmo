@@ -141,7 +141,13 @@ test.describe('terminal', () => {
       .toContain('"t":"ready"');
 
     const marker = `omc-e2e-${Date.now()}`;
-    await page.locator('[data-terminal-input]').focus();
+    // Opening the panel IS the intent to type: the terminal takes focus once it
+    // is on screen and mounted, so the first command needs no click. This used
+    // to be an explicit `.focus()` on the hidden input, which hid the defect
+    // behind the test's own click. The focused element is the renderer's own
+    // container (`Terminal.open` makes it `tabindex=0 contenteditable`); the
+    // textarea is a paste sink that is never focused.
+    await expect(page.locator('[data-terminal-root]')).toBeFocused();
     await page.keyboard.type(`echo ${marker}\n`);
 
     // The shell echoes the typed line and then its output — both arrive as
@@ -152,6 +158,14 @@ test.describe('terminal', () => {
     // The marker proved the bytes reached the app; this proves they arrived as
     // binary frames, which is what the client's ArrayBuffer branch consumes.
     expect(binaryFrames).toBeGreaterThan(0);
+
+    // The view stays MOUNTED across panel switches (that is what keeps the
+    // shell alive), so the second open has no fresh mount to hang focus on: the
+    // panel itself has to ask for it again.
+    await page.getByRole('button', { name: 'Files' }).click();
+    await expect(page.locator('[data-terminal-root]')).toBeHidden();
+    await page.getByRole('button', { name: 'Terminal (Bun)' }).click();
+    await expect(page.locator('[data-terminal-root]')).toBeFocused();
 
     // A theme switch cannot recolor the WASM palette in place: the view rebuilds
     // the terminal and reattaches, which produces a second `ready` and replays

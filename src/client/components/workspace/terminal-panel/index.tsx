@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'preact/hooks';
+import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { useTerminal } from '@/client/hooks/workspace/terminal';
 import { useRepoList, useRepoScope } from '@/client/hooks/workspace/repo-scope';
 import { useTheme } from '@/client/hooks/ui/theme';
@@ -52,6 +52,19 @@ export function TerminalPanel({ className = '', enabled = true, rootPath, showHe
   const handleOutput = useCallback((bytes: Uint8Array) => {
     terminalRef.current?.write(bytes);
   }, []);
+
+  /**
+   * Opening the panel IS the intent to type, so focus follows the view becoming
+   * visible: a terminal that needs a click before it accepts keystrokes is a
+   * terminal that swallowed the first command. `active` is "selected AND the
+   * column is open" (see `PanelBodyProps`), so a collapsed column or another
+   * view on screen never points focus here, and the request survives the
+   * renderer's async mount (`focus.ts`).
+   */
+  useEffect(() => {
+    if (!active || !enabled) return;
+    terminalRef.current?.focus();
+  }, [active, enabled]);
 
   const handleReplay = useCallback((bytes: Uint8Array, frame: { replayCols: number; replayRows: number }) => {
     terminalRef.current?.writeReplay(bytes, frame.replayCols, frame.replayRows);

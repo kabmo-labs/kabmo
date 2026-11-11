@@ -3,6 +3,7 @@ import { forwardRef } from 'preact/compat';
 import { ArrowDown } from 'lucide-preact';
 import { useTheme } from '@/client/hooks/ui/theme';
 import { mountTerminal, type TerminalMount } from '@/client/components/workspace/terminal-panel/mount';
+import { createFocusLatch, type FocusLatch } from '@/client/components/workspace/terminal-panel/focus';
 
 export interface RealtimeTerminalHandle {
   /** Raw PTY output. Bytes, not text: the WASM parser reassembles them. */
@@ -63,6 +64,11 @@ export const RealtimeTerminalView = forwardRef<RealtimeTerminalHandle, RealtimeT
     const containerRef = useRef<HTMLDivElement>(null);
     const mountRef = useRef<TerminalMount | null>(null);
     const [isScrolledUp, setIsScrolledUp] = useState(false);
+    // The renderer is imported asynchronously, so a focus request can arrive
+    // before there is a terminal to take it; the latch holds it until then.
+    const focusLatchRef = useRef<FocusLatch | null>(null);
+    if (!focusLatchRef.current) focusLatchRef.current = createFocusLatch();
+    const focusLatch = focusLatchRef.current;
 
     const inputRef = useRef(onInput);
     inputRef.current = onInput;
@@ -101,7 +107,7 @@ export const RealtimeTerminalView = forwardRef<RealtimeTerminalHandle, RealtimeT
         mountRef.current?.reset();
       },
       focus() {
-        mountRef.current?.focus();
+        focusLatch.request();
       },
       applicationCursorKeys() {
         return mountRef.current?.applicationCursorKeys() ?? false;
@@ -147,10 +153,12 @@ export const RealtimeTerminalView = forwardRef<RealtimeTerminalHandle, RealtimeT
         // E2E types into the terminal's hidden input. The renderer creates it
         // inside `open`, so the hook cannot be written on the JSX element.
         container.querySelector('textarea')?.setAttribute('data-terminal-input', '');
+        focusLatch.attach(() => mountRef.current?.focus());
       });
 
       return () => {
         cancelled = true;
+        focusLatch.detach();
         mountRef.current?.dispose();
         mountRef.current = null;
       };

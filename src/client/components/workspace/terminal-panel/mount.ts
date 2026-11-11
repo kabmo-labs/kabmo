@@ -248,10 +248,11 @@ export async function mountTerminal(
   const grid = createGridAnnouncer({
     current: () => current?.term,
     fit: safeFit,
-    onReady: (cols, rows) => {
-      callbacks.onReady(cols, rows);
-      current?.term.focus();
-    },
+    // Focus is NOT taken here: the panel asks for it when it becomes the
+    // visible view (`focus.ts`), and a terminal that grabs focus 120ms after
+    // the grid settles would steal it back from whatever the user clicked in
+    // the meantime.
+    onReady: callbacks.onReady,
     onGridChange: callbacks.onGridChange,
   });
 
