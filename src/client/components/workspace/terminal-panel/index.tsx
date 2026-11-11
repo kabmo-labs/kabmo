@@ -72,6 +72,9 @@ export function TerminalPanel({ className = '', enabled = true, rootPath, showHe
     restart,
     reattach,
   } = useTerminal({
+    // "Open" is this panel being selected with its column shown; the view is
+    // mounted even when hidden, so mounting alone must never start a shell.
+    visible: active && enabled,
     root: enabled ? rootPath : undefined,
     repo: activeRepo,
     theme: isDark ? 'dark' : 'light',

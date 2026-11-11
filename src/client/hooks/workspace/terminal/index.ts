@@ -22,11 +22,22 @@ import { useSessionState } from '@/client/hooks/workspace/session-state';
 import { useSessionStateContext } from '@/client/hooks/workspace/session-state/context';
 import { getSessionValue } from '@/shared/lib/workspace/session-state/store';
 import { connectTerminal, type TerminalSocket } from '@/client/hooks/workspace/terminal/socket';
+import { terminalConnection } from '@/client/hooks/workspace/terminal/connection';
 import { newTerminalId, type TerminalReadyFrame } from '@/shared/lib/workspace/terminal/protocol';
 
 export type TerminalStatus = 'connecting' | 'running' | 'exited' | 'error';
 
 export interface UseTerminalOptions {
+  /**
+   * True while the panel is actually on screen — selected AND its column open
+   * — and there is a workspace to launch the shell in.
+   *
+   * The desktop keeps every built-in view mounted while hidden, so a socket
+   * opened on mount started a PTY for every session the user merely visited.
+   * The shell starts on the first visible render instead, and stays for the
+   * rest of the session (see `connection.ts`).
+   */
+  visible?: boolean;
   root?: string;
   repo?: string;
   theme?: 'light' | 'dark';
@@ -59,6 +70,15 @@ export interface UseTerminalResult {
 export function useTerminal(options: UseTerminalOptions = {}): UseTerminalResult {
   const { sessionId, ready } = useSessionStateContext();
   const [terminalId, setTerminalId] = useSessionState<string>('terminal.id', '');
+  // Set the first time the panel is genuinely on screen for this session; read
+  // on every later mount so a reload or a view switch reattaches to the shell
+  // instead of waiting for the user to open the panel again.
+  const [storedOpened, setStoredOpened] = useSessionState<boolean>('terminal.opened', false);
+  const connection = terminalConnection({
+    visible: options.visible === true,
+    ready,
+    opened: storedOpened,
+  });
   const [status, setStatus] = useState<TerminalStatus>('connecting');
   const [shell, setShell] = useState('');
   const [exitCode, setExitCode] = useState<number | null>(null);
@@ -87,19 +107,30 @@ export function useTerminal(options: UseTerminalOptions = {}): UseTerminalResult
   /** Last `root\0repo` the shell was launched for; null until the first. */
   const scopeRef = useRef<string | null>(null);
 
+  // The first render where the panel is on screen is the opening; from then on
+  // the session owns its shell, because the persisted flag — not the current
+  // visibility — is what the socket effect below reads.
+  useEffect(() => {
+    if (!connection.persist) return;
+    setStoredOpened(true);
+  }, [connection.persist]);
+
   // One id per Kabmo session. The check reads the store, not the hook's local
   // value: on the render where the blob first becomes ready, `useSessionState`
   // still reports the fallback (its restore effect has not run yet), so
   // deciding from the local value would mint a second id and overwrite the
   // stored one — orphaning the live shell and its scrollback.
+  //
+  // Minted only for a session that may connect: an id for a panel nobody opened
+  // is state no shell will ever use.
   useEffect(() => {
-    if (!ready) return;
+    if (!connection.connect || !ready) return;
     if (getSessionValue<string>(sessionId, 'terminal.id')) return;
     setIdRef.current(newTerminalId());
-  }, [ready, sessionId]);
+  }, [connection.connect, ready, sessionId]);
 
   useEffect(() => {
-    if (!ready || !terminalId) return;
+    if (!connection.connect || !ready || !terminalId) return;
 
     setStatus('connecting');
     setError(null);
@@ -141,7 +172,7 @@ export function useTerminal(options: UseTerminalOptions = {}): UseTerminalResult
       socket.release();
       socketRef.current = null;
     };
-  }, [ready, terminalId, generation]);
+  }, [connection.connect, ready, terminalId, generation]);
 
   const restart = useCallback(() => {
     // Kill the old shell before minting a new id: leaving it to the idle

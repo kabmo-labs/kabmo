@@ -45,6 +45,10 @@
  * - userBrowser.viewportMode  string
  * - userBrowser.zoomLevel     number
  * - terminal.id               string (server-side PTY id; reattached on reload)
+ * - terminal.opened           boolean — the session has had its terminal panel on
+ *                             screen, so its shell belongs to the session. A PTY
+ *                             is never started merely because the (hidden) panel
+ *                             mounted; see `hooks/workspace/terminal/connection.ts`
  * - git.viewMode              'flat' | 'tree'
  * - git.commitDraft           string
  * - git.stagedExpanded        boolean
