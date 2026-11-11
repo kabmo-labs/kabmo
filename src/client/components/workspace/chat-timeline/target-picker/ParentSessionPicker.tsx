@@ -16,7 +16,7 @@
  */
 
 import { useCallback, useMemo, useRef, useState } from 'preact/hooks';
-import { Check, ChevronDown, GitBranch, X } from 'lucide-preact';
+import { Check, ChevronDown, GitFork, X } from 'lucide-preact';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 import type { WorkspaceFolderData } from '@/shared/types';
 
@@ -92,7 +92,7 @@ export function ParentSessionPicker({
           selected ? 'bg-ink/10 text-ink' : 'text-ink/75 hover:text-ink hover:bg-ink/5'
         }`}
       >
-        <GitBranch size={13} className={`flex-shrink-0 ${selected ? 'text-ink/80' : 'text-ink/50 group-hover:text-ink/80'}`} />
+        <GitFork size={13} className={`flex-shrink-0 ${selected ? 'text-ink/80' : 'text-ink/50 group-hover:text-ink/80'}`} />
         <span className="max-w-[220px] truncate tracking-tight">{triggerLabel}</span>
         <ChevronDown
           size={13}
