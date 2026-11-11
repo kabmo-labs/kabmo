@@ -17,21 +17,22 @@
  *
  * A count of zero is shown rather than hidden — "0 releases" is information, and
  * a missing row would make the reader wonder whether the section exists at all.
- * A `+` says the host returned a full page, and a `—` says the section could not
- * be read at all (a 403 is not an empty project).
+ * A `+` says the host returned a full page, and a `!` says the section could not
+ * be read at all (a 403 is not an empty project). Both carry a tooltip, because
+ * a one-character answer is only useful when it can be explained.
  *
- * There is no provider header here: the header's own badge already names the
+ * There is no provider header here: the header's own chip already names the
  * host, and a second `GITHUB` label six lines below it was the panel saying the
  * same thing twice in a 40px column.
  *
  * The state filter (open / closed / all) is deliberately NOT here. It belongs to
- * the list it filters, so it sits in the header beside the refresh — a control
+ * the list it filters, so it sits in the header beside the search — a control
  * that changes the list must not look like a fourth section.
  */
 
 import type { ForgeList, ForgeProvider, ForgeSection } from '../protocol';
 import { Glyph, ICON } from './Glyph';
-import { sectionLabel, sectionShort } from './format';
+import { countLabel, countTitle, sectionLabel, sectionShort } from './format';
 
 interface SidebarProps {
   sections: readonly ForgeSection[];
@@ -55,9 +56,7 @@ export function Sidebar({ sections, active, list, provider, onSelect }: SidebarP
         {sections.map((section) => {
           const isActive = section === active;
           const data = list?.sections[section];
-          // A section whose read FAILED has no count: `0 issues` over a 403 is a
-          // confident wrong number, and it is the number a reader acts on.
-          const count = data && !data.failed ? data.items.length : null;
+          const count = countLabel(data);
           const name = sectionLabel(section, provider);
           // The name is stated ONCE, explicitly. Both the long and the short
           // label are in the DOM (the breakpoint decides which is drawn), so
@@ -65,10 +64,7 @@ export function Sidebar({ sections, active, list, provider, onSelect }: SidebarP
           // `IssuesIssues2+`, which a screen reader reads as two words and a
           // count with no separation. The count is part of the name because it
           // is the reason the row exists.
-          const accessibleName =
-            count === null
-              ? name
-              : `${name} — ${count}${data?.truncated ? '+' : ''}`;
+          const accessibleName = count ? `${name}, ${count} items` : name;
           return (
             <button
               key={section}
@@ -77,7 +73,7 @@ export function Sidebar({ sections, active, list, provider, onSelect }: SidebarP
               title={name}
               aria-label={accessibleName}
               aria-current={isActive ? 'true' : undefined}
-              className={`flex flex-shrink-0 items-center gap-1.5 whitespace-nowrap px-2.5 py-1 text-left text-xs transition-colors @[520px]:w-full @[520px]:whitespace-normal ${
+              className={`flex flex-shrink-0 tap-target cursor-pointer items-center gap-1.5 whitespace-nowrap px-2.5 py-1.5 text-left text-xs transition-colors focus-visible:outline-none ring-inset focus-visible:ring-2 focus-visible:ring-ink/20 @[520px]:w-full @[520px]:whitespace-normal ${
                 isActive ? 'bg-ink/8 font-medium text-ink' : 'text-ink/70 hover:bg-ink/5 hover:text-ink'
               }`}
             >
@@ -88,8 +84,14 @@ export function Sidebar({ sections, active, list, provider, onSelect }: SidebarP
               <span aria-hidden="true" className="@[520px]:hidden">
                 {sectionShort(section, provider)}
               </span>
-              <span aria-hidden="true" className="ml-auto flex-shrink-0 pl-1 font-mono text-[10px] text-ink/40">
-                {count === null ? (data?.failed ? '—' : '') : data?.truncated ? `${count}+` : count}
+              <span
+                aria-hidden="true"
+                title={countTitle(data)}
+                className={`ml-auto flex-shrink-0 pl-1 font-mono text-[10px] tabular-nums ${
+                  data?.failed ? 'text-error-text' : 'text-ink/60'
+                }`}
+              >
+                {count}
               </span>
             </button>
           );

@@ -11,6 +11,7 @@
     "description": "Reads and acts on a repository's issues, pull/merge requests and releases on GitHub, GitLab, Gitea or Bitbucket.",
     "app": "dist/app.js",
     "server": "dist/server.js",
+    "css": "panel.css",
     "icon": "icon.svg",
     "color": "#a855f7",
     "author": { "name": "Kabmo Labs", "url": "https://github.com/kabmo-labs" },

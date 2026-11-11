@@ -7,11 +7,15 @@
  * The panel's glyphs, inline.
  *
  * The kit has no icon dependency and neither does this plugin: a `lucide-preact`
- * import would bundle a whole icon set for a dozen shapes. Same convention as the
+ * import would bundle a whole icon set for a dozen shapes. Same convention as
  * Kabmo's own `RepoPicker` and the other bundled plugins' icons — geometry inset
  * 2/24 of the box with a 2/24 stroke, so the marks carry the same ink weight as
  * everything beside them. Paint is `currentColor`, so the surrounding text colour
  * is the state.
+ *
+ * A glyph is never the only carrier of a fact: every state also has its word,
+ * and every icon-only control has an `aria-label`. The shapes exist to make a
+ * list scannable, not to replace the text a screen reader reads.
  */
 
 export function Glyph({ path, size = 12 }: { path: string; size?: number }) {
@@ -43,20 +47,32 @@ export const ICON = {
   issueOpen: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 8v8M8 12h8',
   /** A ticked circle — an issue that is closed. */
   issueClosed: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM8 12l3 3 5-5',
+  /** A plain circle — an open change, without the issue's plus. */
+  circle: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z',
+  /** A circle with a dash — a draft, which is open but not ready. */
+  draft: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM9 12h6',
   /** A merge request. */
   pull: 'M6 9v12M6 6a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 18a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM13 6h3a2 2 0 0 1 2 2v7',
   /** A tag — a release. */
   release: 'M20.6 13.4 12 22l-9-9V4h9l8.6 8.6a1.4 1.4 0 0 1 0 1.8zM7.5 7.5h.01',
   /** A funnel — "there are filters on". */
   filter: 'M22 3H2l8 9.46V19l4 2v-8.54z',
+  /** A magnifier — the search field. */
+  search: 'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.35-4.35',
+  /** A chevron — a disclosure. */
+  chevron: 'M6 9l6 6 6-6',
   /** A ticked circle — a passing pipeline. */
   check: 'M22 11.08V12a10 10 0 1 1-5.93-9.14M22 4 12 14.01l-3-3',
-  /** A cross — a failing pipeline. */
+  /** A cross — a failing pipeline, and a close control. */
   cross: 'M18 6 6 18M6 6l12 12',
   /** A clock — a pipeline still running. */
   clock: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 6v6l4 2',
   /** A dash — a verdict with nothing to say. */
   dash: 'M5 12h14',
+  /** A warning triangle — a read that failed. */
+  warning: 'M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01',
+  /** An empty tray — a section with nothing in it. */
+  inbox: 'M22 12h-6l-2 3h-4l-2-3H2M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.7 4H7.3a2 2 0 0 0-1.8 1.1z',
   /** A file — one entry of a change. */
   file: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6',
   /** A commit — a dot on a line. */

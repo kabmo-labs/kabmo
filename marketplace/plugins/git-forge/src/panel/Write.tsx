@@ -22,6 +22,10 @@
  * fail is worse than no button, and a second copy of the rules here would drift
  * from the one the server enforces.
  *
+ * **No verbs means no bar.** A read-only credential used to leave an empty
+ * bordered strip at the bottom of the item, which reads as a control that failed
+ * to load. The bar is absent instead, and the detail's own note says why.
+ *
  * ## A refusal is reported where the action was
  *
  * The server's sentence ("GitLab has no request-changes event…") lands in the
@@ -31,20 +35,12 @@
 
 import { useState } from 'preact/hooks';
 
-import type {
-  ForgeCapabilities,
-  ForgeCredential,
-  ForgeDetail,
-  ForgeItem,
-  ForgeMergeMethod,
-  ForgeWrite,
-} from '../protocol';
+import type { ForgeCapabilities, ForgeCredential, ForgeItem, ForgeMergeMethod, ForgeWrite } from '../protocol';
 import type { ForgeWriteState } from './use-forge';
 import { Glyph, ICON } from './Glyph';
 
 interface WriteProps {
   item: ForgeItem;
-  detail: ForgeDetail | null;
   capabilities: ForgeCapabilities | null;
   write: ForgeWriteState;
   /** Which credential the server resolved. Absent when it could not be read. */
@@ -68,11 +64,16 @@ const MERGE_METHODS: Array<{ value: ForgeMergeMethod; label: string; hint: strin
   { value: 'rebase', label: 'Rebase', hint: 'Replays the commits onto the target, with no merge commit.' },
 ];
 
+const FOCUS = 'tap-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/20';
+
 /** The sentence a confirmation shows before an irreversible verb runs. */
 export function consequence(item: ForgeItem, pending: Pending, method: ForgeMergeMethod): string {
   if (pending === 'merge') {
     const chosen = MERGE_METHODS.find((entry) => entry.value === method);
-    return `Merge ${item.number !== null ? `#${item.number}` : item.title} into its target branch with "${chosen?.label ?? method}". ${chosen?.hint ?? ''}`;
+    // The sentence names WHAT happens; the radio list below names what each
+    // style means. Repeating the chosen style's hint here made the default
+    // choice read twice in a row.
+    return `Merge ${item.number !== null ? `#${item.number}` : item.title} into its target branch with "${chosen?.label ?? method}".`;
   }
   if (pending === 'close') return `Close ${item.number !== null ? `#${item.number}` : item.title}. It stays readable and can be reopened.`;
   if (pending === 'reopen') return `Reopen ${item.number !== null ? `#${item.number}` : item.title}.`;
@@ -81,7 +82,16 @@ export function consequence(item: ForgeItem, pending: Pending, method: ForgeMerg
   return '';
 }
 
-export function WriteBar({ item, detail, capabilities, write }: WriteProps) {
+/** The word on the confirm button, per verb. */
+const CONFIRM_LABEL: Record<Exclude<Pending, null>, string> = {
+  merge: 'Merge',
+  close: 'Close',
+  reopen: 'Reopen',
+  approve: 'Approve',
+  request_changes: 'Request changes',
+};
+
+export function WriteBar({ item, capabilities, write }: WriteProps) {
   const [body, setBody] = useState('');
   const [pending, setPending] = useState<Pending>(null);
   const [method, setMethod] = useState<ForgeMergeMethod>('merge');
@@ -125,23 +135,32 @@ export function WriteBar({ item, detail, capabilities, write }: WriteProps) {
     if (ok && (pending === 'approve' || pending === 'request_changes')) setBody('');
   };
 
-  if (!anyVerb && !detail?.capabilities) {
-    // A repository read without a credential: the reason is the server's own
-    // note, which the detail already carries above the body.
-    return null;
-  }
+  // No verb this read can perform: the bar is absent rather than empty. The
+  // detail's own note already says why (no credential, a release, a read-only
+  // token), so a second sentence here would repeat it.
+  if (!anyVerb) return null;
+
+  // Escape cancels the confirmation instead of leaving the item. The event is
+  // stopped here so the panel's own Escape handler (which returns to the list)
+  // does not also run: cancelling a dialog must not discard the item the reader
+  // is still working on.
+  const onKeyDown = (event: KeyboardEvent) => {
+    if (event.key !== 'Escape' || !pending) return;
+    event.stopPropagation();
+    setPending(null);
+  };
 
   return (
-    <div className="flex flex-shrink-0 flex-col gap-1.5 border-t border-ink/10 px-2.5 py-1.5">
+    <div className="flex flex-shrink-0 flex-col gap-1.5 border-t border-ink/10 bg-paper px-2.5 py-2" onKeyDown={onKeyDown}>
       {caps?.comment && (
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1.5">
           <textarea
             value={body}
             onInput={(event) => setBody(event.currentTarget.value)}
             placeholder="Add a comment…"
             aria-label="Comment"
             rows={2}
-            className="w-full resize-y rounded border border-ink/15 bg-canvas px-2 py-1.5 text-[11px] text-ink outline-none placeholder-ink/35 focus:border-ink/40"
+            className="w-full resize-y rounded border border-ink/15 bg-canvas px-2 py-1.5 text-[11px] leading-relaxed text-ink outline-none placeholder-ink/40 focus:border-ink/40"
           />
           <div className="flex flex-wrap items-center gap-1">
             <button
@@ -149,7 +168,7 @@ export function WriteBar({ item, detail, capabilities, write }: WriteProps) {
               onClick={() => void submitComment()}
               disabled={write.pending || body.trim().length === 0}
               aria-label={`Post a comment on ${label}`}
-              className="rounded border border-ink/15 px-2 py-1 text-[10px] text-ink transition-colors hover:bg-ink/5 disabled:opacity-40"
+              className={`cursor-pointer rounded border border-ink/15 px-2 py-1 text-[10px] text-ink transition-colors hover:bg-ink/5 disabled:cursor-default disabled:opacity-40 ${FOCUS}`}
             >
               Comment
             </button>
@@ -162,7 +181,7 @@ export function WriteBar({ item, detail, capabilities, write }: WriteProps) {
                     onClick={() => setPending('approve')}
                     disabled={write.pending}
                     aria-label={`Approve ${label}`}
-                    className="rounded border border-ink/15 px-2 py-1 text-[10px] text-ink transition-colors hover:bg-ink/5 disabled:opacity-40"
+                    className={`cursor-pointer rounded border border-ink/15 px-2 py-1 text-[10px] text-ink transition-colors hover:bg-ink/5 disabled:cursor-default disabled:opacity-40 ${FOCUS}`}
                   >
                     Approve
                   </button>
@@ -173,7 +192,7 @@ export function WriteBar({ item, detail, capabilities, write }: WriteProps) {
                     onClick={() => setPending('request_changes')}
                     disabled={write.pending}
                     aria-label={`Request changes on ${label}`}
-                    className="rounded border border-ink/15 px-2 py-1 text-[10px] text-ink transition-colors hover:bg-ink/5 disabled:opacity-40"
+                    className={`cursor-pointer rounded border border-ink/15 px-2 py-1 text-[10px] text-ink transition-colors hover:bg-ink/5 disabled:cursor-default disabled:opacity-40 ${FOCUS}`}
                   >
                     Request changes
                   </button>
@@ -181,50 +200,54 @@ export function WriteBar({ item, detail, capabilities, write }: WriteProps) {
               </>
             )}
 
-            {canMerge && !closed && (
-              <button
-                type="button"
-                onClick={() => setPending('merge')}
-                disabled={write.pending}
-                aria-label={`Merge ${label}`}
-                className="ml-auto flex items-center gap-1 rounded border border-ink/15 px-2 py-1 text-[10px] text-ink transition-colors hover:bg-ink/5 disabled:opacity-40"
-              >
-                <Glyph path={ICON.merge} size={10} />
-                Merge
-              </button>
-            )}
+            <div className="ml-auto flex items-center gap-1">
+              {canMerge && !closed && (
+                <button
+                  type="button"
+                  onClick={() => setPending('merge')}
+                  disabled={write.pending}
+                  aria-label={`Merge ${label}`}
+                  className={`flex cursor-pointer items-center gap-1 rounded border border-ink/20 bg-ink px-2 py-1 text-[10px] text-canvas transition-opacity hover:opacity-90 disabled:cursor-default disabled:opacity-40 ${FOCUS}`}
+                >
+                  <Glyph path={ICON.merge} size={10} />
+                  Merge
+                </button>
+              )}
 
-            {/*
-              The accessible name carries the ITEM (`Close #12`), because the
-              bare word collides with the header's `Closed` filter: two controls
-              whose names differ by a letter are ambiguous to a screen reader and
-              to anything else that addresses a control by name.
-            */}
-            {caps.state && (
-              <button
-                type="button"
-                onClick={() => setPending(closed ? 'reopen' : 'close')}
-                disabled={write.pending}
-                aria-label={`${closed ? 'Reopen' : 'Close'} ${label}`}
-                className={`${canMerge && !closed ? '' : 'ml-auto'} rounded border border-ink/15 px-2 py-1 text-[10px] text-ink transition-colors hover:bg-ink/5 disabled:opacity-40`}
-              >
-                {closed ? 'Reopen' : 'Close'}
-              </button>
-            )}
+              {/*
+                The accessible name carries the ITEM (`Close #12`), because the
+                bare word collides with the header's `Closed` filter: two controls
+                whose names differ by a letter are ambiguous to a screen reader and
+                to anything else that addresses a control by name.
+              */}
+              {caps.state && (
+                <button
+                  type="button"
+                  onClick={() => setPending(closed ? 'reopen' : 'close')}
+                  disabled={write.pending}
+                  aria-label={`${closed ? 'Reopen' : 'Close'} ${label}`}
+                  className={`cursor-pointer rounded border border-ink/15 px-2 py-1 text-[10px] text-ink transition-colors hover:bg-ink/5 disabled:cursor-default disabled:opacity-40 ${FOCUS}`}
+                >
+                  {closed ? 'Reopen' : 'Close'}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
 
-      {write.error && <p className="text-[10.5px] text-error">{write.error}</p>}
-      {write.notice && <p className="text-[10.5px] text-success">{write.notice}</p>}
+      <div aria-live="polite" className="flex flex-col gap-0.5">
+        {write.error && <p className="text-[10px] leading-relaxed text-error-text">{write.error}</p>}
+        {write.notice && <p className="text-[10px] leading-relaxed text-success-text">{write.notice}</p>}
+      </div>
 
       {pending && (
-        <div className="rounded border border-ink/20 bg-canvas p-2">
+        <div className="flex flex-col gap-1.5 rounded border border-ink/20 bg-canvas p-2" role="group" aria-label="Confirm the action">
           <p className="text-[11px] leading-snug text-ink">{consequence(item, pending, chosen)}</p>
           {pending === 'merge' && (
-            <div className="mt-1.5 flex flex-col gap-0.5">
+            <div className="flex flex-col gap-1">
               {MERGE_METHODS.filter((entry) => methods.includes(entry.value)).map((entry) => (
-                <label key={entry.value} className="flex items-start gap-1.5 text-[10.5px] text-ink/80">
+                <label key={entry.value} className="flex cursor-pointer items-start gap-1.5 text-[10px] text-ink/80">
                   <input
                     type="radio"
                     name="forge-merge-method"
@@ -234,25 +257,25 @@ export function WriteBar({ item, detail, capabilities, write }: WriteProps) {
                   />
                   <span>
                     <span className="font-medium text-ink">{entry.label}</span>
-                    <span className="text-ink/50"> — {entry.hint}</span>
+                    <span className="text-ink/60">: {entry.hint}</span>
                   </span>
                 </label>
               ))}
             </div>
           )}
-          <div className="mt-1.5 flex items-center gap-1">
+          <div className="flex items-center gap-1">
             <button
               type="button"
               onClick={() => void confirm()}
               disabled={write.pending}
-              className="rounded bg-ink px-2 py-1 text-[10px] text-canvas transition-opacity hover:opacity-90 disabled:opacity-40"
+              className={`cursor-pointer rounded bg-ink px-2 py-1 text-[10px] text-canvas transition-opacity hover:opacity-90 disabled:cursor-default disabled:opacity-40 ${FOCUS}`}
             >
-              {pending === 'merge' ? 'Merge' : pending === 'close' ? 'Close' : pending === 'reopen' ? 'Reopen' : pending === 'approve' ? 'Approve' : 'Request changes'}
+              {CONFIRM_LABEL[pending]}
             </button>
             <button
               type="button"
               onClick={() => setPending(null)}
-              className="rounded px-2 py-1 text-[10px] text-ink/60 hover:text-ink"
+              className={`cursor-pointer rounded px-2 py-1 text-[10px] text-ink/60 transition-colors hover:text-ink ${FOCUS}`}
             >
               Cancel
             </button>

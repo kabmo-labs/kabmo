@@ -1,0 +1,16 @@
+/**
+ * The Forge panel's own stylesheet.
+ *
+ * One rule, and it exists because the host's utility set is not guaranteed to
+ * carry every signal token: `merged` is the info hue, and the readable slot for
+ * it is `--theme-info-text` (the raw `--theme-info` is chosen for a chip's
+ * ground and measures 1.94:1 as text on `aura-light`). Reading the variable
+ * directly keeps the state legible in every palette and in every host build,
+ * whether or not that build emitted a `text-info-text` utility.
+ *
+ * Everything else is a Tailwind utility from the host, so this file stays one
+ * rule rather than a second design system.
+ */
+.forge-merged {
+  color: var(--theme-info-text);
+}

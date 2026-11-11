@@ -25,14 +25,16 @@
 import { useState } from 'preact/hooks';
 import type { ForgeCommit, ForgeFile } from '../protocol';
 import { Glyph, ICON } from './Glyph';
-import { relativeTime } from './format';
+import { fullTime, relativeTime } from './format';
+
+const FOCUS = 'tap-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/20';
 
 /** A `+n −n` pair, with the sign that matters for an empty side dropped. */
 function Counts({ additions, deletions }: { additions: number; deletions: number }) {
   return (
-    <span className="flex flex-shrink-0 items-center gap-1 font-mono text-[10px]">
-      {additions > 0 && <span className="text-success">+{additions}</span>}
-      {deletions > 0 && <span className="text-error">−{deletions}</span>}
+    <span className="flex flex-shrink-0 items-center gap-1 font-mono text-[10px] tabular-nums">
+      {additions > 0 && <span className="text-success-text">+{additions}</span>}
+      {deletions > 0 && <span className="text-error-text">−{deletions}</span>}
     </span>
   );
 }
@@ -61,15 +63,15 @@ function FileRow({ file }: { file: ForgeFile }) {
           aria-expanded={expandable ? open : undefined}
           aria-controls={expandable ? bodyId : undefined}
           aria-label={`${file.path}, ${STATUS[file.status] ?? file.status}`}
-          className="flex min-w-0 flex-1 items-center gap-1.5 text-left disabled:cursor-default"
+          className={`flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 rounded text-left disabled:cursor-default ${FOCUS}`}
         >
-          <span aria-hidden="true" className="w-3 flex-shrink-0 font-mono text-ink/40">
+          <span aria-hidden="true" className="w-3 flex-shrink-0 font-mono text-ink/50">
             {expandable ? (open ? '▾' : '▸') : ''}
           </span>
           <Glyph path={ICON.file} size={10} />
-          <span className="min-w-0 truncate font-mono text-[10.5px] text-ink/80">{file.path}</span>
+          <span className="min-w-0 truncate font-mono text-[10px] text-ink/80">{file.path}</span>
         </button>
-        <span className="flex-shrink-0 text-[9.5px] uppercase tracking-wider text-ink/40">
+        <span className="flex-shrink-0 text-[10px] uppercase tracking-wider text-ink/55">
           {STATUS[file.status] ?? file.status}
         </span>
         <Counts additions={file.additions} deletions={file.deletions} />
@@ -77,7 +79,7 @@ function FileRow({ file }: { file: ForgeFile }) {
       {expandable && (
         <div id={bodyId} data-expanded={open} inert={!open} className="section-reveal">
           <div className="min-h-0 overflow-hidden">
-            <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all bg-canvas/60 px-2.5 py-1.5 font-mono text-[10px] leading-[1.35] text-ink/75">
+            <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all bg-canvas/60 px-2.5 py-1.5 font-mono text-[10px] leading-[1.4] text-ink/80">
               {file.patch}
             </pre>
           </div>
@@ -87,15 +89,7 @@ function FileRow({ file }: { file: ForgeFile }) {
   );
 }
 
-function Section({
-  title,
-  count,
-  children,
-}: {
-  title: string;
-  count: number;
-  children: preact.ComponentChildren;
-}) {
+function Section({ title, count, children }: { title: string; count: number; children: preact.ComponentChildren }) {
   const [open, setOpen] = useState(false);
   const bodyId = `forge-section-${title.toLowerCase()}`;
   return (
@@ -105,13 +99,13 @@ function Section({
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
         aria-controls={bodyId}
-        className="flex w-full items-center gap-1.5 px-2.5 py-1 text-left"
+        className={`flex w-full cursor-pointer items-center gap-1.5 px-2.5 py-1.5 text-left transition-colors hover:bg-ink/5 ${FOCUS}`}
       >
-        <span aria-hidden="true" className="w-3 flex-shrink-0 font-mono text-ink/40">
+        <span aria-hidden="true" className="w-3 flex-shrink-0 font-mono text-ink/50">
           {open ? '▾' : '▸'}
         </span>
-        <span className="text-[9.5px] font-semibold uppercase tracking-wider text-ink/40">{title}</span>
-        <span className="font-mono text-[10px] text-ink/40">{count}</span>
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-ink/55">{title}</span>
+        <span className="font-mono text-[10px] tabular-nums text-ink/55">{count}</span>
       </button>
       <div id={bodyId} data-expanded={open} inert={!open} className="section-reveal">
         <div className="min-h-0 overflow-hidden">{children}</div>
@@ -141,8 +135,10 @@ export function ChangeCommits({ commits }: { commits: readonly ForgeCommit[] }) 
           <span className="min-w-0 flex-1 truncate text-[11px] text-ink/80" title={commit.message}>
             {commit.message}
           </span>
-          <span className="flex-shrink-0 font-mono text-[9.5px] text-ink/40">{commit.sha.slice(0, 7)}</span>
-          <span className="flex-shrink-0 text-[9.5px] text-ink/40">{relativeTime(commit.at)}</span>
+          <span className="flex-shrink-0 font-mono text-[10px] text-ink/55">{commit.sha.slice(0, 7)}</span>
+          <span className="flex-shrink-0 text-[10px] text-ink/55" title={fullTime(commit.at)}>
+            {relativeTime(commit.at)}
+          </span>
         </div>
       ))}
     </Section>

@@ -33,7 +33,7 @@ import {
 } from '@kabmo-labs/kabmo-ui';
 
 import { ForgePanel } from './index';
-import { type ForgeDetail, type ForgeFilter, type ForgeList, type ForgeSection } from '../protocol';
+import { type ForgeDetail, type ForgeList } from '../protocol';
 import { detail, item, list, section } from './test-fixtures';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'HTMLElement', 'Node', 'Text', 'Element', 'SVGElement'] as const;
@@ -161,6 +161,18 @@ function row(title: string): HTMLButtonElement | null {
   return buttons.find((entry) => (entry.getAttribute('aria-label') ?? '').includes(title)) ?? null;
 }
 
+/** The state a recorded list call carried, without trusting the wire shape. */
+function stateOf(input: unknown): unknown {
+  if (typeof input !== 'object' || input === null || !('filter' in input)) return null;
+  const filter = input.filter;
+  return typeof filter === 'object' && filter !== null && 'state' in filter ? filter.state : null;
+}
+
+/** The section a recorded detail call carried, without trusting the wire shape. */
+function sectionOf(input: unknown): unknown {
+  return typeof input === 'object' && input !== null && 'section' in input ? input.section : null;
+}
+
 describe('ForgePanel', () => {
   test('reads the scope it is given, and shows the counts', async () => {
     await mount();
@@ -249,8 +261,8 @@ describe('ForgePanel', () => {
     };
     await mount();
     expect(container.textContent).toContain('could not be read');
-    // The sidebar's count is a dash, never `0`, over a refused read.
-    expect(container.textContent).toContain('—');
+    // The sidebar's count is `!`, never `0`, over a refused read.
+    expect(container.textContent).toContain('!');
   });
 
   test('the state filter asks the server again, with the new state', async () => {
@@ -264,7 +276,7 @@ describe('ForgePanel', () => {
     });
     const states = calls
       .filter((call) => call.method === 'list')
-      .map((call) => (call.input as { filter: ForgeFilter }).filter.state);
+      .map((call) => stateOf(call.input));
     expect(states).toContain('closed');
   });
 
@@ -324,6 +336,98 @@ describe('ForgePanel', () => {
       await Promise.resolve();
     });
     const detailCall = calls.find((call) => call.method === 'detail');
-    expect((detailCall?.input as { section: ForgeSection }).section).toBe('pulls');
+    expect(sectionOf(detailCall?.input)).toBe('pulls');
+  });
+
+  test('releases carry no filter row, because no host filters them', async () => {
+    await mount();
+    const releases = button('Releases');
+    await act(async () => {
+      releases?.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    });
+    expect(button('Closed')).toBeNull();
+    expect(button('Mine')).toBeNull();
+    expect(container.textContent).toContain('Releases are not filtered.');
+  });
+
+  test('Bitbucket offers no Mine toggle, because its list takes no assignee filter', async () => {
+    listOutcome = { ok: true, value: list({ provider: 'bitbucket' }) };
+    await mount();
+    expect(button('Mine')).toBeNull();
+    // The state segment still applies: Bitbucket filters by state through BBQL.
+    expect(button('Closed')).not.toBeNull();
+  });
+
+  test('an open item keeps a back control at every width', async () => {
+    await mount();
+    await act(async () => {
+      row('Something is broken')?.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    // The item replaces the list, so the back control is the only way out and
+    // must not be hidden by a container query.
+    expect(button('Back to the list')).not.toBeNull();
+  });
+
+  test('Escape returns from the item to the list', async () => {
+    await mount();
+    await act(async () => {
+      row('Something is broken')?.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(button('Back to the list')).not.toBeNull();
+
+    await act(async () => {
+      document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    });
+    expect(button('Back to the list')).toBeNull();
+    expect(row('Something is broken')).not.toBeNull();
+  });
+
+  test('Escape in the comment box does not throw away the draft', async () => {
+    await mount();
+    await act(async () => {
+      row('Something is broken')?.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    const box = container.querySelector('textarea[aria-label="Comment"]');
+    expect(box).not.toBeNull();
+    await act(async () => {
+      box?.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    });
+    // The item is still open: Escape in a text field belongs to the field.
+    expect(button('Back to the list')).not.toBeNull();
+  });
+
+  test('arrow keys move between rows', async () => {
+    listOutcome = {
+      ok: true,
+      value: list({
+        sections: {
+          ...list().sections,
+          issues: section({
+            items: [item(), item({ id: '2', number: 2, title: 'A second issue' })],
+            total: 2,
+          }),
+        },
+      }),
+    };
+    await mount();
+    const first = row('Something is broken');
+    const second = row('A second issue');
+    expect(first).not.toBeNull();
+    expect(second).not.toBeNull();
+
+    first?.focus();
+    await act(async () => {
+      first?.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    });
+    expect(document.activeElement).toBe(second);
   });
 });

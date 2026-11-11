@@ -55,18 +55,31 @@ export function useForgeList(scope: Scope | null, filter: ForgeFilter, active: b
   const [list, setList] = useState<ForgeList | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  /**
+   * The read that owns the state.
+   *
+   * A filter is typed, so two reads can be in flight at once and the host does
+   * not promise they answer in order. Without this ticket a slow read for
+   * `state: open` could land after the fast one for `state: closed` and repaint
+   * the list with the filter the reader already left.
+   */
+  const ticket = useRef(0);
 
   const callRef = useRef(call.call);
   callRef.current = call.call;
 
   const read = useCallback(async () => {
     if (!scope) {
+      ticket.current += 1;
       setList(null);
       setError(null);
+      setLoading(false);
       return;
     }
+    const mine = ++ticket.current;
     setLoading(true);
     const outcome = await callRef.current({ ...scope, filter });
+    if (mine !== ticket.current) return;
     setLoading(false);
     if (outcome.ok) {
       setList(outcome.value as ForgeList);
@@ -235,6 +248,10 @@ export function useForgeCredential(scope: Scope | null, active: boolean): ForgeC
   callRef.current = call.call;
 
   useEffect(() => {
+    // A different repository has a different credential, so the previous answer
+    // is dropped before the new read: a green key over a repo that has none is
+    // the one wrong fact this indicator can show.
+    setCredential(null);
     if (!scope || !active) return;
     let cancelled = false;
     void callRef.current({ ...scope }).then((outcome) => {

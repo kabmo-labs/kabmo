@@ -44,9 +44,15 @@
  * because a forge reader moves between sections constantly — a pull request that
  * closes an issue is two sections apart. Only the ITEM is a drill: it replaces
  * the list with a back control, and the sections stay on screen.
+ *
+ * ## Escape leaves the item
+ *
+ * The item is a drill, so Escape is the keyboard's back: it returns to the list
+ * without reaching for the back control. It is scoped to the panel being the
+ * visible view, so a hidden panel does not consume the key.
  */
 
-import { useEffect, useMemo } from 'preact/hooks';
+import { useEffect, useMemo, useRef } from 'preact/hooks';
 import { usePanelHost, useRepoScope, useSessionState } from '@kabmo-labs/kabmo-ui';
 
 import { DEFAULT_FILTER, type ForgeFilter, type ForgeItem, type ForgeSection } from '../protocol';
@@ -105,8 +111,13 @@ export function ForgePanel(_props: ForgePanelProps) {
 
   // A repo switch is a different repository: drop the open item AND the filter,
   // so the panel lands on the new repository's own open issues rather than on a
-  // filter that named the previous one.
+  // filter that named the previous one. The FIRST run is skipped: on mount the
+  // stored filter belongs to the scope that is already selected, and resetting it
+  // there would discard the reader's own filter on every reload.
+  const firstScope = useRef(scopeKey);
   useEffect(() => {
+    if (firstScope.current === scopeKey) return;
+    firstScope.current = scopeKey;
     setPick((current) => (current && current.scope !== scopeKey ? null : current));
     setFilter(DEFAULT_FILTER);
   }, [scopeKey, setPick, setFilter]);
@@ -116,6 +127,24 @@ export function ForgePanel(_props: ForgePanelProps) {
   useEffect(() => {
     if (selected && !item && items.length > 0) setPick(null);
   }, [selected, item, items.length, setPick]);
+
+  // Escape is the keyboard's back. Scoped to the visible panel, so a hidden one
+  // does not consume the key from the view the reader is actually looking at,
+  // and skipped while a text field has focus: Escape in the comment box must not
+  // throw away the draft by closing the item.
+  useEffect(() => {
+    if (!active || !selected) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      const target = event.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || target?.isContentEditable) return;
+      event.preventDefault();
+      setPick(null);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [active, selected, setPick]);
 
   const openSection = (next: ForgeSection) => {
     setSection(next);
@@ -131,8 +160,8 @@ export function ForgePanel(_props: ForgePanelProps) {
   // say so rather than sit on a spinner no request will ever answer.
   if (!enabled) {
     return (
-      <div className="flex h-full flex-col items-center justify-center bg-paper text-ink/40">
-        <span className="text-xs font-mono">No session selected</span>
+      <div className="flex h-full flex-col items-center justify-center bg-paper text-ink/55">
+        <span className="text-[11px]">No session selected</span>
       </div>
     );
   }
@@ -144,7 +173,9 @@ export function ForgePanel(_props: ForgePanelProps) {
       <Header
         scope={repo}
         showHeader={host.showHeader !== false}
+        section={section}
         list={list.list}
+        provider={provider}
         filter={filter}
         loading={list.loading}
         credential={credential}
@@ -174,6 +205,7 @@ export function ForgePanel(_props: ForgePanelProps) {
               credential={credential}
               write={write}
               onBack={() => setPick(null)}
+              onRetry={detail.reload}
             />
           ) : (
             <ItemList
@@ -184,6 +216,7 @@ export function ForgePanel(_props: ForgePanelProps) {
               loading={list.loading}
               error={list.error}
               onOpen={openItem}
+              onRetry={() => void list.reload()}
             />
           )}
         </div>

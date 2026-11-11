@@ -6,47 +6,60 @@
 /**
  * A row's badges: the state, and the host's labels.
  *
- * Both are monochrome by default and coloured only where the host supplied a
- * colour of its own. GitHub sends six hex digits per label and GitLab sends
- * plain names; a label with no colour must still be legible, so it falls back to
- * the theme's own ink rather than to a generated shade — a hash-derived colour
- * is a colour the author never chose.
+ * **The state is a shape AND a word.** A colour alone is the one thing a
+ * colour-blind reader cannot use, and the word alone is slow to scan down a
+ * column, so the badge carries both: a glyph whose silhouette differs per state
+ * (circle, ticked circle, merge arrow, dashed circle, tag) and the state's own
+ * name.
  *
- * The label's own colour is used for the TEXT and a 12% tint for its plate, the
- * same treatment the theme applies to a semantic token, because a label's colour
- * is authored against white and a solid fill would be unreadable in a dark
- * palette.
+ * **A label's colour is a DOT, not its text.** GitHub sends six hex digits per
+ * label and GitLab sends plain names; the colour is authored against white, so
+ * painting the name in it makes the chip unreadable on every dark palette. The
+ * dot carries the host's colour and the name stays in the theme's ink, which is
+ * the only combination that is legible in all 63 palettes.
  */
 
 import type { ForgeItemState, ForgeLabel } from '../protocol';
+import { Glyph, ICON } from './Glyph';
 import { STATE_LABEL, STATE_TONE } from './format';
+
+/** The silhouette that makes each state distinguishable without colour. */
+const STATE_GLYPH: Record<ForgeItemState, string> = {
+  open: ICON.circle,
+  closed: ICON.issueClosed,
+  merged: ICON.merge,
+  draft: ICON.draft,
+  published: ICON.release,
+  prerelease: ICON.release,
+};
 
 export function StateBadge({ state }: { state: ForgeItemState }) {
   return (
     <span
-      className={`flex-shrink-0 text-[10px] font-medium uppercase tracking-wide ${STATE_TONE[state]}`}
+      className={`flex flex-shrink-0 items-center gap-1 text-[10px] font-medium uppercase tracking-wide ${STATE_TONE[state]}`}
       title={STATE_LABEL[state]}
     >
+      <Glyph path={STATE_GLYPH[state]} size={10} />
       {STATE_LABEL[state]}
     </span>
   );
 }
 
-/** One label chip. */
+/** One label chip: the host's colour as a dot, the name in the theme's ink. */
 function LabelChip({ label }: { label: ForgeLabel }) {
-  if (!label.color) {
-    return (
-      <span className="rounded border border-ink/15 px-1 py-px text-[9.5px] leading-tight text-ink/60">
-        {label.name}
-      </span>
-    );
-  }
   return (
     <span
-      className="rounded px-1 py-px text-[9.5px] leading-tight"
-      style={{ color: `#${label.color}`, backgroundColor: `#${label.color}1f` }}
+      className="flex max-w-[9rem] items-center gap-1 rounded border border-ink/15 px-1 py-px text-[10px] leading-tight text-ink/70"
+      title={label.name}
     >
-      {label.name}
+      {label.color && (
+        <span
+          aria-hidden="true"
+          className="h-1.5 w-1.5 flex-shrink-0 rounded-full"
+          style={{ backgroundColor: `#${label.color}` }}
+        />
+      )}
+      <span className="truncate">{label.name}</span>
     </span>
   );
 }
@@ -67,7 +80,7 @@ export function LabelChips({ labels, max = 2 }: { labels: readonly ForgeLabel[];
         <LabelChip key={label.name} label={label} />
       ))}
       {rest > 0 && (
-        <span className="text-[9.5px] text-ink/40" title={labels.map((label) => label.name).join(', ')}>
+        <span className="text-[10px] text-ink/60" title={labels.map((label) => label.name).join(', ')}>
           +{rest}
         </span>
       )}

@@ -170,6 +170,9 @@ describe('WriteBar', () => {
     for (const label of ['Post a comment on #1', 'Approve #1', 'Merge #1', 'Close #1']) {
       expect(button(label)).toBeNull();
     }
+    // No verbs means no bar: an empty bordered strip reads as a control that
+    // failed to load.
+    expect(container.querySelector('textarea[aria-label="Comment"]')).toBeNull();
   });
 
   test('closing asks first, and the dialog names what happens', async () => {
@@ -244,6 +247,34 @@ describe('WriteBar', () => {
       await Promise.resolve();
     });
     expect(container.textContent).toContain('Comment posted.');
+  });
+
+  test('Escape cancels the confirmation and keeps the item', async () => {
+    detailOutcome = {
+      ok: true,
+      value: {
+        ...detail(),
+        capabilities: {
+          comment: true,
+          state: true,
+          review: true,
+          merge: true,
+          mergeMethods: ['merge', 'squash', 'rebase'],
+          reviewVerdicts: ['approve', 'request_changes'],
+        },
+      },
+    };
+    await mount();
+    await click('Merge #1');
+    expect(container.textContent).toContain('into its target branch');
+
+    const box = container.querySelector('textarea[aria-label="Comment"]') as HTMLTextAreaElement;
+    await act(async () => {
+      box.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    });
+    // The dialog closed; the item it belongs to did not.
+    expect(container.textContent).not.toContain('into its target branch');
+    expect(button('Back to the list')).not.toBeNull();
   });
 
   test('a refused write shows the server sentence where the action was', async () => {

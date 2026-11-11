@@ -11,7 +11,8 @@ this shows what is waiting on the host.
 
 The sidebar lists the three collections with their counts, in the shape the wiki
 panel's nav already taught: a section is a place you go, not a filter you toggle.
-A `+` on a count means the host returned a full page.
+A `+` on a count means the host returned a full page, and a `!` means the section
+could not be read at all (a 403 is not an empty project). Both carry a tooltip.
 
 **The vocabulary follows the host**: `Pull requests` on GitHub, `Merge requests`
 on GitLab, and the provider badge in the header says which one you are looking
@@ -63,6 +64,17 @@ matches nothing.
 
 Typed filters are committed after a pause (400 ms): every keystroke would
 otherwise be one request against a 30/minute budget.
+
+**Search is a field, not a hidden mode.** The text filter is always visible; the
+label filter is the one that folds behind the funnel. **Releases carry no filter
+row**, because no host filters a release collection by state, assignee, label or
+text, and a row of switches that changes nothing is a lie; the row says "Newest
+first" instead.
+
+**Arrow keys move between rows**, and **Escape returns from an item to the
+list** at every panel width. A read in flight draws skeleton rows, a failed read
+offers a retry where it failed, and an empty section names the filter that might
+find something.
 
 ## Reading an item
 
@@ -157,12 +169,10 @@ Three sources, tried in this order:
 Bitbucket accepts an access token (`Bearer`) or an app password
 (`user:app-password`, sent as Basic) — the colon is what tells them apart.
 
-The manifest also declares a `token` setting, and the server half reads it first —
-but **this host has no editor for a panel plugin's declared settings yet** (no
-route, no form), so today that value is only reachable if something else writes
-it. The environment and CLI above are the sources that work out of the box, and
-the panel's own sentences name them rather than pointing at a screen that does
-not exist. The same applies to `provider`, `apiBase` and `perPage`.
+The plugin's `token`, `provider`, `apiBase` and `perPage` settings are editable in
+**Settings → Plugins Kabmo → Forge**. The server half reads the stored `token`
+first; the environment and CLI above are the sources that work with no setup, and
+the credential sheet names them.
 
 The header carries a key glyph that opens a **credential sheet**: which source is
 in use, and — on request — whether that credential can WRITE. The probe is one
