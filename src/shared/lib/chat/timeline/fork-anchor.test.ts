@@ -12,6 +12,40 @@
 
 import { describe, expect, test } from 'bun:test';
 import { canForkAt, forkAnchorFor } from '@/shared/lib/chat/timeline/fork-anchor';
+import { canForkChat, forkCapability } from '@/shared/lib/harness/fork';
+
+describe('forkCapability', () => {
+  test('omp and the AIR adapters fork at a message', () => {
+    expect(forkCapability('omp-rpc')).toBe('message');
+    expect(forkCapability('omp-acp')).toBe('message');
+    expect(forkCapability('claude')).toBe('message');
+    expect(forkCapability('codex')).toBe('message');
+  });
+
+  test('a whole-chat-only harness is tip', () => {
+    expect(forkCapability('opencode')).toBe('tip');
+    expect(forkCapability('minimax')).toBe('tip');
+    expect(forkCapability('zcode')).toBe('tip');
+  });
+
+  test('a harness with no session/fork is none', () => {
+    expect(forkCapability('qwen')).toBe('none');
+    expect(forkCapability('dsh')).toBe('none');
+    expect(forkCapability('antigravity')).toBe('none');
+  });
+});
+
+describe('canForkChat', () => {
+  test('the probe is authoritative when it has an answer', () => {
+    expect(canForkChat('qwen', true)).toBe(true);
+    expect(canForkChat('claude', false)).toBe(false);
+  });
+
+  test('without a probe the expected capability decides', () => {
+    expect(canForkChat('zcode')).toBe(true);
+    expect(canForkChat('qwen')).toBe(false);
+  });
+});
 
 describe('canForkAt', () => {
   test('omp forks at either row', () => {

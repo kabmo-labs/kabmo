@@ -20,7 +20,7 @@
  */
 
 import { harnessHasLocalTranscript } from '@/shared/lib/harness/transcript';
-import { harnessForksAtMessage } from '@/shared/lib/harness/fork';
+import { forkCapability } from '@/shared/lib/harness/fork';
 
 /** The two rows that offer Fork: a user turn and an assistant run footer. */
 export type ForkAnchorRole = 'user' | 'assistant';
@@ -34,8 +34,8 @@ export function canForkAt(
   harness: string | null | undefined,
   role: ForkAnchorRole,
 ): boolean {
-  if (harnessHasLocalTranscript(harness)) return true;
-  return harnessForksAtMessage(harness) && role === 'assistant';
+  if (forkCapability(harness) !== 'message') return false;
+  return harnessHasLocalTranscript(harness) || role === 'assistant';
 }
 
 export function forkAnchorFor(

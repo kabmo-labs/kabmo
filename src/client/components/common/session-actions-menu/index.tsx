@@ -28,12 +28,15 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { TargetedMouseEvent } from 'preact';
 import { createPortal } from 'preact/compat';
-import { Archive, ArchiveRestore, GitBranch, Hourglass, Pencil, Trash2, WandSparkles } from 'lucide-preact';
+import { Archive, ArchiveRestore, GitBranch, GitFork, Hourglass, Pencil, Trash2, WandSparkles } from 'lucide-preact';
 import { useSearchParams } from '@/client/lib/router/search-params';
 import { startPendingSession } from '@/client/hooks/chat/omp/pending-sessions';
 import { expandSessionBranch } from '@/client/hooks/workspace/expanded-sessions';
 import { setHarnessPick } from '@/client/hooks/chat/timeline/session-harness';
 import { formatNewSessionTitle } from '@/shared/lib/omp/session/default-title';
+import { canForkChat } from '@/shared/lib/harness/fork';
+import { openForkSession } from '@/client/hooks/chat/timeline/fork-open';
+import { useHarnesses } from '@/client/hooks/models/use-harnesses';
 
 /** Viewport coordinates the menu hangs off, plus which edge it aligns to. */
 export interface MenuAnchor {
@@ -127,10 +130,20 @@ export function SessionActionsMenu({
   const menuRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const [, setSearchParams] = useSearchParams();
+  const { harnesses } = useHarnesses();
   const canSpawnChild =
     sessionId !== undefined &&
     !String(sessionId).startsWith('new-') &&
     !isArchived;
+  // The probe is authoritative when it has an answer; without one the
+  // harness's expected capability decides. A harness that cannot fork at all
+  // (qwen, dsh, antigravity, pi, command-code) gets no item.
+  const probeFork = harnesses.find((entry) => entry.id === harness)?.probe?.capabilities.forkSession;
+  const canForkChatHere =
+    sessionId !== undefined &&
+    !String(sessionId).startsWith('new-') &&
+    !isArchived &&
+    canForkChat(harness, probeFork);
 
   /**
    * "New child session" opens the SAME pending-chat composer as New Session,
@@ -155,6 +168,24 @@ export function SessionActionsMenu({
       if (folderId !== undefined) next.set('folderId', String(folderId));
       return next;
     }, { replace: true });
+  };
+
+  /**
+   * "Fork chat" opens the same pending composer as the per-message Fork, with
+   * no anchor: the branch copies the whole conversation. It is the only fork
+   * entry point for a harness whose agent takes no fork point (zcode, opencode,
+   * minimax) — the per-row button is reserved for message-level forks.
+   */
+  const startForkChat = () => {
+    if (sessionId === undefined) return;
+    const numericFolderId = folderId === undefined ? null : Number(folderId);
+    openForkSession({
+      sourceSessionId: String(sessionId),
+      ...(harness ? { harness } : {}),
+      folderId: numericFolderId !== null && Number.isFinite(numericFolderId) ? numericFolderId : null,
+      anchorEntryId: null,
+      setSearchParams,
+    });
   };
 
   useLayoutEffect(() => {
@@ -224,6 +255,17 @@ export function SessionActionsMenu({
           >
             <GitBranch size={12} className="text-ink/60" />
             <span>New child session</span>
+          </button>
+        )}
+        {canForkChatHere && (
+          <button
+            type="button"
+            role="menuitem"
+            onClick={run(startForkChat)}
+            className="w-full text-left px-3 py-1.5 hover:bg-ink/5 flex items-center gap-2 transition-colors cursor-pointer"
+          >
+            <GitFork size={12} className="text-ink/60" />
+            <span>Fork chat</span>
           </button>
         )}
         {onRename && (
