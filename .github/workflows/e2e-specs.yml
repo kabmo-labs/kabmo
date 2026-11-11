@@ -26,7 +26,8 @@ name: E2E specs
 # `stop`'s ownership guard and the `taskkill` tree kill. See the
 # `chromium-windows` job for what the harness had to change to make that
 # possible (it is not a portability nicety — `Bun.spawn` cannot start a shell
-# script on Windows at all) and for the two specs that skip themselves there.
+# script on Windows at all) and for how a spec states a limit that is real
+# (`skipOnWindows`, whose reason prints in the report beside the test).
 #
 # Each operating system is SHARDED across runners, and that is a measurement
 # rather than a preference. The suite is 163 tests at `workers: 1` (see
@@ -142,10 +143,13 @@ jobs:
   # shell script and a `.cmd` are both unspawnable there however they are
   # chmod-ed. Teardown uses `taskkill /t`, since Windows has no process groups.
   #
-  # Two specs skip themselves on Windows and both say why in their own header:
-  # the terminal spec (the server's PTY is a `Bun.Terminal`, which is POSIX-only)
-  # and the command-runner stop case (it needs a `#!/bin/sh` marker script and
-  # `pgrep`). Everything else runs.
+  # A spec that needs something Windows does not have skips itself through
+  # `skipOnWindows(reason)` (`tests/e2e/fixtures/app.ts`), so the reason prints in
+  # the report beside the test instead of living in a comment nobody reads.
+  # `Bun.Terminal` is NOT one of those limits — it works here through ConPTY, and
+  # the terminal spec's frame assertions run on this leg; what skips is the one
+  # test whose input is a POSIX `sh` loop and whose copy chord is `Meta+C`.
+  # Everything else runs.
   #
   # `--project=chromium` only. A cross-platform browser difference is not what
   # this leg is for; the OS is the variable under test.

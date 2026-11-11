@@ -35,7 +35,7 @@
  * and `cmd.exe` exited 1 immediately. See `session.server.ts`.
  */
 
-import { test, expect, openApp } from '../fixtures/app';
+import { test, expect, openApp, skipOnWindows } from '../fixtures/app';
 import { seedWorkspace } from '../fixtures/seed';
 
 test.describe('terminal', () => {
@@ -417,8 +417,19 @@ test.describe('terminal', () => {
   //
   // The clipboard is read through Chromium's own permission; the selection under
   // a moving stream is the one thing a pixel assertion cannot see.
+  //
+  // POSIX-only, and the failure says why: the stream is a `sh` loop typed into
+  // the shell, and on Windows the shell is `cmd.exe` — measured on the 4/4 shard
+  // of run 43112230252, `sh`'s `clear` resolved to a Git-for-Windows `clear.exe`
+  // that printed its usage and left the `while` loop as ARGUMENTS, so the buffer
+  // never grew past one screen and the wheel had nothing to scroll into. The
+  // copy chord is the second half: ghostty-web binds copy to `Meta+C` only, so
+  // `cmd.exe` satisfies neither end. The renderer behaviour under test — the
+  // viewport held while output arrives, a selection outliving the drag — is
+  // covered by the Linux shards.
   test('a stream can be scrolled and selected from', async ({ harness, page, context }, testInfo) => {
     test.skip(testInfo.project.name !== 'chromium', 'reads the clipboard through Chromium permissions');
+    skipOnWindows('streams with a POSIX sh loop and copies with Meta+C; cmd.exe has neither');
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);
     const server = await harness('real');
     const workspace = await seedWorkspace(server, 'e2e-terminal-stream');
