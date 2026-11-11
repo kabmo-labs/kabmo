@@ -16,7 +16,7 @@
  * `session/prompt` answer (`stopReason: "cancelled"`).
  */
 
-import type { AcpSessionInfo, AcpSessionNewResult } from '@/server/lib/harness/acp/protocol';
+import type { AcpMcpServer, AcpSessionInfo, AcpSessionNewResult } from '@/server/lib/harness/acp/protocol';
 import { normalizeConfigOptions, normalizeSessionResult } from '@/server/lib/harness/acp/v2';
 
 /** One request/response round trip against an ACP agent. Implemented by
@@ -33,13 +33,20 @@ export async function newSession(
   cwd: string,
   timeoutMs = 120_000,
   dialect: AcpDialect = 1,
+  mcpServers: AcpMcpServer[] = [],
 ): Promise<AcpSessionNewResult> {
-  const result = await invoke<Record<string, unknown>>('session/new', { cwd, mcpServers: [] }, timeoutMs);
+  const result = await invoke<Record<string, unknown>>('session/new', { cwd, mcpServers }, timeoutMs);
   return dialect === 2 ? normalizeSessionResult(result) : (result as unknown as AcpSessionNewResult);
 }
 
-export async function loadSession(invoke: AcpInvoke, sessionId: string, cwd: string, timeoutMs = 120_000): Promise<unknown> {
-  return invoke('session/load', { sessionId, cwd, mcpServers: [] }, timeoutMs);
+export async function loadSession(
+  invoke: AcpInvoke,
+  sessionId: string,
+  cwd: string,
+  timeoutMs = 120_000,
+  mcpServers: AcpMcpServer[] = [],
+): Promise<unknown> {
+  return invoke('session/load', { sessionId, cwd, mcpServers }, timeoutMs);
 }
 
 export async function resumeSession(
@@ -48,8 +55,9 @@ export async function resumeSession(
   cwd: string,
   timeoutMs = 120_000,
   dialect: AcpDialect = 1,
+  mcpServers: AcpMcpServer[] = [],
 ): Promise<unknown> {
-  const result = await invoke<Record<string, unknown>>('session/resume', { sessionId, cwd, mcpServers: [] }, timeoutMs);
+  const result = await invoke<Record<string, unknown>>('session/resume', { sessionId, cwd, mcpServers }, timeoutMs);
   return dialect === 2 ? normalizeSessionResult(result) : result;
 }
 
@@ -60,10 +68,11 @@ export async function forkSession(
   timeoutMs = 120_000,
   target?: Record<string, unknown>,
   meta?: Record<string, unknown>,
+  mcpServers: AcpMcpServer[] = [],
 ): Promise<AcpSessionNewResult> {
   return invoke<AcpSessionNewResult>(
     'session/fork',
-    { sessionId, cwd, mcpServers: [], ...(target ? { target } : {}), ...(meta ? { _meta: meta } : {}) },
+    { sessionId, cwd, mcpServers, ...(target ? { target } : {}), ...(meta ? { _meta: meta } : {}) },
     timeoutMs,
   );
 }

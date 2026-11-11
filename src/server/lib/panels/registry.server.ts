@@ -61,7 +61,7 @@ export function getMarketplaceCatalogPath(): string {
 /**
  * The STORE: the marketplace bundled with the package.
  *
- * Read-only and never copied. The bundled plugins are what the Panel Plugins
+ * Read-only and never copied. The bundled plugins are what the Plugins Kabmo
  * pane offers to install — an offer, not an install — so nothing here is
  * scanned as a contribution and nothing here is built. Installing one copies
  * its directory into the working marketplace and builds it there, exactly as a

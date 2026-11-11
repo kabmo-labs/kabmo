@@ -244,6 +244,49 @@ export interface PluginBackgroundApi {
   schedule(id: string, spec: string, run: () => void | Promise<void>): void;
 }
 
+/** How a plugin's MCP server is reached. */
+export type PluginMcpTransport = 'stdio' | 'http';
+
+/**
+ * One MCP server a plugin contributes.
+ *
+ * The host registers it with EVERY harness that can take one — ACP agents on
+ * `session/new`, omp through its own `mcp.json` — so a plugin that ships a tool
+ * server does not have to know which agent the user picked. `id` is unique
+ * within the plugin; the name the agent sees is `<pluginId>:<id>` unless the
+ * plugin states one, which is what keeps two plugins' `notes` servers apart.
+ */
+export interface PluginMcpServer {
+  /** Unique within the plugin. */
+  id: string;
+  /** The name the agent sees. Defaults to `<pluginId>:<id>`. */
+  name?: string;
+  transport: PluginMcpTransport;
+  /** `stdio` only: the executable. */
+  command?: string;
+  /** `stdio` only: its arguments. */
+  args?: string[];
+  /** `stdio` only: environment for the child. */
+  env?: Record<string, string>;
+  /** `http` only: the endpoint. */
+  url?: string;
+  /** `http` only: request headers (a credential, a tenant id). */
+  headers?: Record<string, string>;
+}
+
+/**
+ * A plugin's MCP contribution.
+ *
+ * Declared at load, never spawned by the plugin: the host owns the process and
+ * the per-harness delivery, so a reload cannot leave a second server behind.
+ * A registration is refused when it is malformed (no command for `stdio`, no
+ * URL for `http`) rather than silently skipped — a tool server that never
+ * appears is the failure this surface exists to prevent.
+ */
+export interface PluginMcpApi {
+  register(server: PluginMcpServer): void;
+}
+
 /** A leveled logger, prefixed with the plugin's id so a log line says whose it is. */
 export interface PluginLogger {
   debug(message: string, detail?: PluginJson): void;
@@ -293,6 +336,7 @@ export interface KabmoPluginApi {
   readonly realtime: PluginRealtimeApi;
   readonly events: PluginEventsApi;
   readonly background: PluginBackgroundApi;
+  readonly mcp: PluginMcpApi;
   /**
    * Register cleanup, run on reload, disable and removal.
    *

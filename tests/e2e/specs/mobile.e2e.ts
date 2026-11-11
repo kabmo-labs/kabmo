@@ -347,7 +347,7 @@ test.describe('mobile layout', () => {
   test('boots the plugin system — context, content script and stylesheet', async ({ harness, page }) => {
     const server = await harness('real');
 
-    // Through the real route, the same call the Panel Plugins pane makes. A
+    // Through the real route, the same call the Plugins Kabmo pane makes. A
     // hand-copied directory would skip the build the route performs (measured:
     // 29ms for this plugin).
     const installed = await fetch(`${server.baseURL}/api/panels/install`, {

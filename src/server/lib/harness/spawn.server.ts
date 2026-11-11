@@ -33,6 +33,8 @@ import { loadHarnessSessionTitle, saveHarnessSession } from '@/server/lib/harnes
 import { noteHarnessLease, removeHarnessLease } from '@/server/lib/harness/session-lease.server';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
 import { harnessDescriptor, type HarnessId } from '@/shared/lib/harness/catalog';
+import { mcpDelivery } from '@/shared/lib/harness/mcp-facts';
+import { mcpServersFor, toAcpMcpServers } from '@/server/lib/mcp/registry.server';
 import type { HarnessConfig } from '@/shared/lib/harness/config';
 import type { AcpProcess } from '@/server/lib/harness/acp/client';
 import type { HarnessSession } from '@/server/lib/harness/session';
@@ -121,6 +123,12 @@ export async function openAcpSession(
   }
 
   const picks = await resolvePicks(request, configured);
+  // The MCP list is read per SPAWN, not cached: a server added in Settings must
+  // reach the next chat without a restart. A harness whose delivery is a file
+  // (omp's RPC mode) is not an ACP session, so this branch is the ACP contract.
+  const mcpServers = mcpDelivery(request.harness) === 'acp'
+    ? toAcpMcpServers(await mcpServersFor(request.cwd))
+    : [];
   // Built here rather than behind a factory in the session module: this is the
   // only place a session is constructed, and the handshake it runs (load vs
   // new) is decided by the request this function already holds.
@@ -135,6 +143,7 @@ export async function openAcpSession(
       thinkingLevel: picks.thinking,
       mode: picks.mode,
       accessMode: request.accessMode ?? null,
+      mcpServers,
     },
     request.cwd,
   );

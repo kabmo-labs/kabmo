@@ -1,33 +1,16 @@
 import { json } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
-import type { DbClient } from '@/server/lib/db/client';
 import { getDb } from '@/server/db.server';
 import { DEFAULT_MCP_SERVERS } from '@/client/data/settings/mcp';
 import { isMockMode } from '@/server/mock.server';
-import { createSettingsListStore } from '@/server/lib/db/settings-store';
+import { mcpStore, readCustomMcpServers, writeCustomMcpServers } from '@/server/lib/mcp/store.server';
 import { resolveRoot } from '@/server/lib/fs/root';
 import type { McpServerItem } from '@/shared/types';
 import { deleteProjectMcpServer, deleteUserMcpServer, nativeToServerItem, readProjectMcpConfig, readUserMcpConfig, redactEnvVars, writeProjectMcpServer, writeUserMcpServer } from '@/server/lib/omp/config/mcp';
 
-const mcpStore = createSettingsListStore<McpServerItem>({
-  key: 'omp_mcp_servers',
-  mockDefaults: DEFAULT_MCP_SERVERS,
-  idOf: (server) => server.id,
-  singular: 'server',
-  plural: 'servers',
-});
-
 const NATIVE_USER_PREFIX = 'omp-user-';
 const NATIVE_PROJECT_PREFIX = 'omp-project-';
-
-async function readCustomServers(db: DbClient): Promise<McpServerItem[]> {
-  return mcpStore.readStored(db, { absent: isMockMode() ? DEFAULT_MCP_SERVERS : [] });
-}
-
-async function writeCustomServers(db: DbClient, servers: McpServerItem[]): Promise<void> {
-  await mcpStore.write(db, servers);
-}
 
 /** Resolve a client-supplied path to a registered workspace project root. */
 async function validateProjectPath(raw: unknown): Promise<string | null> {
@@ -126,7 +109,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       return json({ error: 'Project is not a registered workspace folder' }, { status: 400 });
     }
 
-    let servers = await mcpStore.read(db);
+    let servers = await readCustomMcpServers(db);
 
     if (includeNative && !mock) {
       servers = await mergeServers(servers, projectPath ?? undefined);
@@ -159,7 +142,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
         return json({ error: 'Project is not a registered workspace folder' }, { status: 400 });
       }
 
-      let custom = await readCustomServers(db);
+      let custom = await readCustomMcpServers(db);
       const target = custom.find((server) => server.id === id);
 
       // Native omp server deletion (id prefix omp-user-/omp-project-) hits mcp.json directly.
@@ -167,7 +150,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
         const name = id.slice(NATIVE_USER_PREFIX.length);
         try { await deleteUserMcpServer(name); } catch {}
         custom = custom.filter((server) => server.name.toLowerCase() !== name.toLowerCase());
-        await writeCustomServers(db, custom);
+        await writeCustomMcpServers(db, custom);
         return json({ success: true, servers: await mergeServers(custom, projectPath ?? undefined) });
       }
 
@@ -178,7 +161,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
         }
         try { await deleteProjectMcpServer(projectPath, name); } catch {}
         custom = custom.filter((server) => server.name.toLowerCase() !== name.toLowerCase());
-        await writeCustomServers(db, custom);
+        await writeCustomMcpServers(db, custom);
         return json({ success: true, servers: await mergeServers(custom, projectPath) });
       }
 
@@ -196,7 +179,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
         } catch {}
       }
       custom = custom.filter((server) => server.id !== id);
-      await writeCustomServers(db, custom);
+      await writeCustomMcpServers(db, custom);
       return json({ success: true, servers: isMockMode() ? custom : await mergeServers(custom, projectPath ?? undefined) });
     }
 
@@ -206,13 +189,13 @@ export async function action({ request, params }: ActionFunctionArgs) {
       // Backward-compatible explicit user-scope write: { scope: "user", name, server }
       if (body.scope === 'user' && typeof body.name === 'string' && body.server) {
         await writeUserMcpServer(body.name, toNativeServer(body.server));
-        const custom = await readCustomServers(db);
+        const custom = await readCustomMcpServers(db);
         return json({ success: true, servers: await mergeServers(custom) });
       }
 
       if (Array.isArray(body) || Array.isArray(body.servers)) {
         const updatedServers: McpServerItem[] = Array.isArray(body) ? body : body.servers;
-        await writeCustomServers(db, updatedServers);
+        await writeCustomMcpServers(db, updatedServers);
         return json({ success: true, servers: isMockMode() ? updatedServers : await mergeServers(updatedServers) });
       }
 
@@ -257,7 +240,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
       const custom = previousName
         ? upserted.filter((entry) => entry.name.toLowerCase() !== previousName.toLowerCase())
         : upserted;
-      await writeCustomServers(db, custom);
+      await writeCustomMcpServers(db, custom);
 
       return json({ success: true, servers: mock ? custom : await mergeServers(custom, projectPath ?? undefined) });
     }

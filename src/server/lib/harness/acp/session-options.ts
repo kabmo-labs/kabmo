@@ -15,6 +15,7 @@
 import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 import type { HarnessId } from '@/shared/lib/harness/catalog';
 import type { AcpProcess } from '@/server/lib/harness/acp/client';
+import type { AcpMcpServer } from '@/server/lib/harness/acp/protocol';
 
 export interface AcpSessionOptions {
   harness: HarnessId;
@@ -37,4 +38,12 @@ export interface AcpSessionOptions {
   /** Quiet window before the child is reclaimed; defaults to the omp window so
    *  both transports release an idle agent after the same time. */
   idleDestroyMs?: number;
+  /**
+   * MCP servers every `session/new|load|resume|fork` carries.
+   *
+   * ACP is the delivery for every harness but omp's RPC mode, so this is where
+   * the settings list reaches an agent. Empty means "none configured", which is
+   * also what an audit reader passes.
+   */
+  mcpServers?: AcpMcpServer[];
 }

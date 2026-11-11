@@ -79,7 +79,7 @@ nothing. `isPluginAppDefinition` is the check the host applies.
 | `app.rightPanel({ id, title?, component, minWidth?, defaultFraction? })` | The right panel's body, behind an activity-bar button. | `{ sessionId, workspacePath }` |
 | `app.panel({ … })` | The editor column, taken over whole — no tabs, no file tree, no chrome. | `{ sessionId, workspacePath }` |
 | `app.headerPanel({ id, title?, component, dropdown?, opensPanel? })` | The navbar, on both layouts. Without `dropdown` or `opensPanel` the trigger is inert text, not a button. | `{ sessionId, workspacePath }` |
-| `app.settingsSection({ id, title?, component })` | A block in Settings → Panel Plugins. | `{ pluginId }` |
+| `app.settingsSection({ id, title?, component })` | A block in Settings → Plugins Kabmo. | `{ pluginId }` |
 
 A second registration for the same positional slot **throws**: the layout gives
 a plugin one button, one navbar entry and one column, so a second one would be
@@ -157,6 +157,9 @@ export default function plugin(api: KabmoPluginApi) {
   api.rpc.register('list', { handler: async () => api.storage.records.list('items') });
   api.http.route('/status', () => Response.json({ ok: true }));
   api.realtime.publish({ count: 3 });
+  // A tool server every harness receives: ACP agents on session/new, omp
+  // through its own mcp.json.
+  api.mcp.register({ id: 'notes', transport: 'stdio', command: 'npx', args: ['-y', 'notes-mcp'] });
   api.onDispose(() => api.log.info('disposed'));
 }
 ```
@@ -172,7 +175,8 @@ export default function plugin(api: KabmoPluginApi) {
 | `http` | `route(path, request => Response)`, under `/api/plugins/<id>/http/*`. Paths match exactly. |
 | `realtime` | `publish` / `current` / `seed` on the plugin's own `plugin:<id>` topic. |
 | `events` | `on(name, listener)` and `emit(name, payload)` between plugins and the client. |
-| `background` | `service(id, { start, stop? })` and `schedule(id, spec, run)`. Declared, never run by the plugin. |
+| `background` | `service(id, { start, stop? })` and `schedule(id, spec, run)`. Declared, never run by the plugin; the host starts services at load and fires schedules on its own clock. |
+| `mcp` | `register({ id, name?, transport, command/args/env or url/headers })`. The host registers the server with every harness that can take one. |
 | `onDispose` | Cleanup on reload, disable and removal — LIFO, exactly once per registration. |
 
 Everything is namespaced by the host, so a plugin holds no string it could point

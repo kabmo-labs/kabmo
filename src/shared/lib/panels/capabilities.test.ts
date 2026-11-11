@@ -38,7 +38,7 @@ function manifest(overrides: Partial<PanelPluginManifest> = {}): PanelPluginMani
 describe('HOST_CAPABILITIES', () => {
   test('names the shipped capabilities, each individually', () => {
     // One assertion per row: a missing row is the bug, not a changed length.
-    for (const capability of ['panel', 'server', 'storage', 'rpc', 'realtime', 'settings', 'repo-scope']) {
+    for (const capability of ['panel', 'server', 'storage', 'rpc', 'realtime', 'settings', 'repo-scope', 'mcp']) {
       expect(HOST_CAPABILITIES).toContain(capability);
     }
   });

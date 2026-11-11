@@ -29,6 +29,7 @@ import { syncDiscoveryRootsWatch, stopDiscoveryRootsWatch } from '@/server/lib/o
 import { startPanelAutoUpdate } from '@/server/lib/panels/auto-update.server';
 import { syncBundledPlugins } from '@/server/lib/panels/sync.server';
 import { disposeAllPluginsOnShutdown, loadPluginServers } from '@/server/lib/plugins/loader.server';
+import { startPluginScheduleRuntime, stopPluginScheduleRuntime } from '@/server/lib/plugins/schedule-runner.server';
 import { startScheduleRuntime, stopScheduleRuntime } from '@/server/lib/schedule/runtime.server';
 import { ensureTray } from '@/server/lib/tray/runtime.server';
 import { startWaitingRuntime, stopWaitingRuntime } from '@/server/lib/waiting/runtime.server';
@@ -62,6 +63,8 @@ export async function runAfterListenTasks(target: AfterListenTarget): Promise<vo
 
   await syncBundledPluginsAndReport();
   await loadPluginServerHalves();
+  // After the halves: a schedule exists only once its plugin's factory ran.
+  startPluginScheduleRuntime();
   startPanelAutoUpdate();
   startTray(target);
 
@@ -95,6 +98,7 @@ export function installShutdownHandlers(stopListener: () => void | Promise<void>
       stopDiscoveryRootsWatch();
       stopMemoryMaintenance();
       stopScheduleRuntime();
+      stopPluginScheduleRuntime();
       stopWaitingRuntime();
       void stopListener();
       // Plugins own children and listeners nothing else releases, and a detached

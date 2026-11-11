@@ -11,7 +11,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { forkSession } from '@/server/lib/harness/acp/verbs';
+import { forkSession, loadSession, newSession, resumeSession } from '@/server/lib/harness/acp/verbs';
 
 function recorder() {
   const calls: Array<{ method: string; params: unknown }> = [];
@@ -58,6 +58,40 @@ describe('forkSession verb', () => {
           _meta: meta,
         },
       },
+    ]);
+  });
+});
+
+describe('MCP servers on the session verbs', () => {
+  const servers = [{ name: 'notes', command: 'npx', args: ['-y', 'notes'], env: [] }];
+
+  test('session/new carries the list', async () => {
+    const { calls, invoke } = recorder();
+    await newSession(invoke, '/tmp/project', 1000, 1, servers);
+    expect(calls).toEqual([{ method: 'session/new', params: { cwd: '/tmp/project', mcpServers: servers } }]);
+  });
+
+  test('session/load carries the list', async () => {
+    const { calls, invoke } = recorder();
+    await loadSession(invoke, 'agent-1', '/tmp/project', 1000, servers);
+    expect(calls).toEqual([
+      { method: 'session/load', params: { sessionId: 'agent-1', cwd: '/tmp/project', mcpServers: servers } },
+    ]);
+  });
+
+  test('session/resume carries the list', async () => {
+    const { calls, invoke } = recorder();
+    await resumeSession(invoke, 'agent-1', '/tmp/project', 1000, 1, servers);
+    expect(calls).toEqual([
+      { method: 'session/resume', params: { sessionId: 'agent-1', cwd: '/tmp/project', mcpServers: servers } },
+    ]);
+  });
+
+  test('session/fork carries the list', async () => {
+    const { calls, invoke } = recorder();
+    await forkSession(invoke, 'src', '/tmp/project', 1000, undefined, undefined, servers);
+    expect(calls).toEqual([
+      { method: 'session/fork', params: { sessionId: 'src', cwd: '/tmp/project', mcpServers: servers } },
     ]);
   });
 });

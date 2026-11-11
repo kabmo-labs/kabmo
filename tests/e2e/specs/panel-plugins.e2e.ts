@@ -73,10 +73,10 @@ function makePluginRepo(root: string, id = 'e2e-plugin'): PluginRepo {
   };
 }
 
-/** The Panel Plugins settings category, opened from the sidebar. */
+/** The Plugins Kabmo settings category, opened from the sidebar. */
 async function openPanelPlugins(page: import('@playwright/test').Page): Promise<void> {
   await page.getByRole('button', { name: 'Settings' }).first().click();
-  await page.getByRole('button', { name: 'Panel Plugins' }).click();
+  await page.getByRole('button', { name: 'Plugins Kabmo' }).click();
 }
 
 /** Install one plugin through the pane's own form. */

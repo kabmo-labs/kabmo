@@ -65,7 +65,7 @@ Two surfaces, one write:
   checkbox. A view that is switched off leaves the bar but KEEPS its row here,
   which is the only place it can be switched back on. Nothing is pinned any more:
   a built-in view is as switchable as a plugin.
-- **Settings → Panel Plugins** — a `Built-in` group listing all eleven views with
+- **Settings → Plugins Kabmo** — a `Built-in` group listing all eleven views with
   the same switch a plugin card gets, and no Remove (there is nothing to remove:
   the code is in the bundle).
 

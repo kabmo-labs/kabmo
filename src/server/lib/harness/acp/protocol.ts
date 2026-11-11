@@ -138,6 +138,29 @@ export interface AcpConfigOption {
   options?: ({ value: string; name?: string; description?: string } | { group: string; name?: string; options: { value: string; name?: string }[] })[];
 }
 
+/**
+ * One MCP server as `session/new|load|resume|fork` carries it.
+ *
+ * stdio is the ACP baseline; `http` is the typed variant an agent advertises
+ * through `mcpCapabilities.http`. `env` and `headers` are LISTS of name/value
+ * pairs on the wire, not maps — a map would lose ordering and duplicate keys.
+ */
+export interface AcpMcpServerStdio {
+  name: string;
+  command: string;
+  args: string[];
+  env: Array<{ name: string; value: string }>;
+}
+
+export interface AcpMcpServerHttp {
+  type: 'http';
+  name: string;
+  url: string;
+  headers: Array<{ name: string; value: string }>;
+}
+
+export type AcpMcpServer = AcpMcpServerStdio | AcpMcpServerHttp;
+
 export interface AcpSessionNewResult {
   sessionId: string;
   configOptions?: AcpConfigOption[];

@@ -51,6 +51,7 @@ import { DEFAULT_APPROVAL_MODE, isApprovalMode, type ApprovalMode } from '@/shar
 import { dispatchCommand, type AcpCommandHost } from '@/server/lib/harness/acp/commands';
 import { markStreamStatus } from '@/shared/lib/omp/session/stream-state.server';
 import type { AcpSessionOptions } from '@/server/lib/harness/acp/session-options';
+import type { AcpMcpServer } from '@/server/lib/harness/acp/protocol';
 import type { HarnessCapabilities } from '@/server/lib/harness/capabilities';
 import type { HarnessSession } from '@/server/lib/harness/session';
 import type { HarnessId } from '@/shared/lib/harness/catalog';
@@ -89,6 +90,8 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
   modes: AcpSessionModeState | null = null;
   /** Whether the agent advertised `promptCapabilities.image`. */
   acceptsImages = false;
+  /** MCP servers every session request carries; empty when none are configured. */
+  readonly mcpServers: AcpMcpServer[];
   private readonly proc: AcpProcess;
   /** The quiet-window reclaim; the rules live in `session-idle.ts`. */
   readonly idle: IdleReaper;
@@ -136,6 +139,7 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
       // omp's wrapper.
       onTurnEnd: (info) => this.onTurnEnded(info),
     });
+    this.mcpServers = options.mcpServers ?? [];
     this.requestedModel = options.model ?? null;
     this.requestedThinking = options.thinkingLevel ?? null;
     this.requestedMode = options.mode ?? null;
@@ -146,11 +150,7 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
   private readonly requestedThinking: string | null;
   private readonly requestedMode: string | null;
   /** `initialize` + `session/new|load|resume`, then the requested selections. */
-  async start(
-    sessionIdToLoad?: string,
-    forkFromSessionId?: string,
-    forkMeta?: Record<string, unknown>,
-  ): Promise<{ sessionId: string }> {
+  async start(sessionIdToLoad?: string, forkFromSessionId?: string, forkMeta?: Record<string, unknown>): Promise<{ sessionId: string }> {
     await handshakeAcpSession(
       this,
       this.proc,
@@ -311,11 +311,7 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
   /** Answer an agent→client request with a result (cancellation uses it). */
   respond(id: AcpId, result: unknown): void { this.proc.respond(id, result); }
   /** Agent→client requests: every branch answers or refuses — an unanswered call parks the turn. */
-  private onClientRequest(
-    id: AcpId,
-    method: string,
-    params: Record<string, unknown>,
-  ): Promise<AcpClientRequestAnswer> {
+  private onClientRequest(id: AcpId, method: string, params: Record<string, unknown>): Promise<AcpClientRequestAnswer> {
     this.idle.reset();
     return handleAcpClientRequest(this, id, method, params);
   }

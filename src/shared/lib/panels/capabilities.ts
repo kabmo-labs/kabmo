@@ -32,6 +32,9 @@ export const HOST_CAPABILITIES: readonly string[] = [
   // on the UI kit's services. A plugin that renders a repo picker requires this
   // rather than drawing one that cannot reach the shared slot.
   'repo-scope',
+  // A plugin may contribute MCP servers, which the host registers with every
+  // harness that can take one (`api.mcp.register`).
+  'mcp',
 ];
 
 /** The required capabilities this host does not provide, in declared order. */

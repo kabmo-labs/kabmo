@@ -39,6 +39,7 @@ import { createPluginHttp, clearPluginHttpRoutes } from '@/server/lib/plugins/ht
 import { createPluginRealtime, clearPluginTopic } from '@/server/lib/plugins/realtime.server';
 import { createPluginEvents, clearPluginEvents } from '@/server/lib/plugins/events.server';
 import { createPluginBackground, type PluginBackgroundHandle } from '@/server/lib/plugins/background.server';
+import { clearPluginMcp, createPluginMcp } from '@/server/lib/plugins/mcp.server';
 import { createPluginLogger } from '@/server/lib/plugins/log.server';
 import type { KabmoPluginApi, KabmoPluginFactory } from '@kabmo-labs/kabmo-sdk';
 
@@ -139,6 +140,11 @@ export function loadedPluginIds(): string[] {
   return [...loaded().keys()];
 }
 
+/** Every loaded plugin record, in load order — the schedule runner's input. */
+export function loadedPlugins(): LoadedPlugin[] {
+  return [...loaded().values()];
+}
+
 /**
  * Load one plugin's server half.
  *
@@ -193,6 +199,7 @@ export async function loadPluginServer(pluginId: string): Promise<LoadedPlugin> 
     realtime: createPluginRealtime(pluginId),
     events: events,
     background: background.api,
+    mcp: createPluginMcp(pluginId),
     onDispose(hook) {
       if (typeof hook !== 'function') throw new Error('onDispose expects a function');
       track(hook);
@@ -231,6 +238,7 @@ export async function disposePlugin(pluginId: string): Promise<void> {
   clearPluginEvents(pluginId);
   clearPluginSettingListeners(pluginId);
   clearPluginTopic(pluginId);
+  clearPluginMcp(pluginId);
   if (!record) return;
 
   for (const dispose of [...record.disposers].reverse()) {

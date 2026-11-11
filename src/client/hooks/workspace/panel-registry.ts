@@ -55,7 +55,7 @@ interface PanelRegistryState {
   /**
    * Every panel id switched off — a bare built-in view id, or `plugin:<id>`.
    * Read by the built-in registrations and the activity bar; the single source
-   * of "is this panel on", shared with the Panel Plugins switches.
+   * of "is this panel on", shared with the Plugins Kabmo switches.
    */
   disabledPanels: string[];
   /** The last known freshness of each git-installed plugin, by plugin id. */

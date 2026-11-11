@@ -1,7 +1,7 @@
 import { PanelPluginsSection } from '@/client/components/settings/categories/panel-plugins/Section';
 
 /**
- * The Panel Plugins settings category.
+ * The Plugins Kabmo settings category.
  *
  * Its own category rather than a segment of LIBRARY → Plugins, because the two
  * are different nouns that only share the word "plugin": LIBRARY holds **omp's**

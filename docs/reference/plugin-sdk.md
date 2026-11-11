@@ -100,7 +100,7 @@ is built when it is INSTALLED — never at boot — and the manifest's `app` nam
 file inside `dist/`, with the pane offering **Rebuild** whenever it is missing.
 
 **The bundled marketplace is a store, not a preinstalled set.** A plugin the
-package ships is available in Settings → Panel Plugins and contributes nothing
+package ships is available in Settings → Plugins Kabmo and contributes nothing
 until you install it, which is the shape VS Code uses: an extension is not
 installed until you install it. A fresh Kabmo therefore starts with an empty
 activity bar, and nothing is ever copied into your data directory behind your
@@ -232,7 +232,7 @@ author runs locally exactly what Kabmo will run on install.
 
 ## Installing
 
-Settings → **Panel Plugins**. Two ways in, one install step out:
+Settings → **Plugins Kabmo**. Two ways in, one install step out:
 
 - **Available** — the offers, from two sources in one grid: plugins bundled with
   Kabmo (the store inside the package) and plugins a `marketplace.json` lists by
@@ -339,7 +339,7 @@ The second case is the one a user can end up in without doing anything wrong. Th
 catalog is a record; the directory is what makes a plugin exist. Delete the
 directory by any route other than **Remove** — a hand `rm`, a cleanup script, an
 install interrupted between the copy and the catalog write — and the file still
-claims an install that is not there, so Settings → Panel Plugins shows:
+claims an install that is not there, so Settings → Plugins Kabmo shows:
 
 ```
 Rejected
@@ -555,10 +555,10 @@ module error.
 
 | Method | Where it appears | Props |
 |---|---|---|
-| `app.rightPanel({ id, title, component, minWidth?, defaultFraction? })` | A button in a panel activity bar; the view opens in that panel. The RIGHT column unless the user places it on the left dock (`Settings → Panel Plugins → Left dock`), which is a per-install preference and needs no change on your side. | `{ sessionId, workspacePath }` |
+| `app.rightPanel({ id, title, component, minWidth?, defaultFraction? })` | A button in a panel activity bar; the view opens in that panel. The RIGHT column unless the user places it on the left dock (`Settings → Plugins Kabmo → Left dock`), which is a per-install preference and needs no change on your side. | `{ sessionId, workspacePath }` |
 | `app.panel({ id, title, component, minWidth?, defaultFraction? })` | The editor COLUMN, taken over whole. | `{ sessionId, workspacePath }` |
 | `app.headerPanel({ id, title, component, dropdown?, opensPanel? })` | An entry in the navbar, on BOTH layouts. `opensPanel` makes it an ACTION that opens one of your own panels. | `{ sessionId, workspacePath }` |
-| `app.settingsSection({ id, title, component })` | A block in Settings → Panel Plugins, under the plugin's row. | `{ pluginId }` |
+| `app.settingsSection({ id, title, component })` | A block in Settings → Plugins Kabmo, under the plugin's row. | `{ pluginId }` |
 
 **One registration per slot.** A second call THROWS: the layout gives a plugin
 one activity-bar button, one navbar entry and one column, so a second
@@ -722,6 +722,11 @@ export default function plugin(api: KabmoPluginApi) {
   // Long-lived work, declared rather than run: Kabmo owns the timer.
   api.background.schedule('refresh', '5m', async () => { /* … */ });
 
+  // A tool server every harness receives: ACP agents on `session/new`, omp
+  // through its own `mcp.json`. The name agents see is `<pluginId>:<id>`
+  // unless you state one.
+  api.mcp.register({ id: 'notes', transport: 'stdio', command: 'npx', args: ['-y', 'notes-mcp'] });
+
   api.onDispose(() => api.log.info('disposed'));
 }
 ```
@@ -744,6 +749,13 @@ Four properties worth knowing:
 
 A server-only plugin (no `app`) is legitimate: a background job that owns storage
 and answers RPC but draws nothing.
+
+**MCP servers are a contribution, not a process.** `api.mcp.register` adds a
+server to the list every session receives; the host owns delivery, so a plugin
+never learns which harness the user picked and a reload cannot leave a second
+child behind. A malformed declaration (no `command` for `stdio`, no `url` for
+`http`) is refused at load by name, because a tool server that silently never
+appears is the failure this surface exists to prevent.
 
 ### Testing a plugin
 
@@ -1179,7 +1191,7 @@ mkdir -p ~/.kabmo/marketplace/plugins/my-panel/src
 #   src/app.tsx    export default definePluginApp((app) => { ... })
 ```
 
-Then press **Refresh** in Settings → Panel Plugins, and **Rebuild** if the pane
+Then press **Refresh** in Settings → Plugins Kabmo, and **Rebuild** if the pane
 says it is not built. The panel appears in the activity bar under the plugin's
 own mark — its `icon` when it ships one, and its initials otherwise (`Session
 Info` → `si.`), the same rule every other surface uses.

@@ -26,7 +26,7 @@ export const SETTINGS_CATEGORIES: CategoryDef[] = [
   { id: 'notifications', label: 'Notifications', icon: Bell, section: 'KABMO', description: 'Completion sound, separate Desktop and Mobile delivery switches, and the finished, waiting-for-you and failed run triggers.' },
   { id: 'usage', label: 'Usage', icon: BarChart3, section: 'KABMO', description: 'Build minutes quota, storage, and general usage.' },
   { id: 'token-usage', label: 'Token Usage', icon: Coins, section: 'KABMO', description: 'Token telemetry, cache, and cost breakdown.' },
-  { id: 'panel-plugins', label: 'Panel Plugins', icon: Puzzle, section: 'KABMO', description: 'Panels a plugin adds to Kabmo: right-panel views, navbar readouts and editor tabs.' },
+  { id: 'panel-plugins', label: 'Plugins Kabmo', icon: Puzzle, section: 'KABMO', description: 'Plugins installed into Kabmo: panels, background services, and the MCP servers they register.' },
   // WORKSPACE
   { id: 'projects', label: 'Projects', icon: FolderGit, section: 'WORKSPACE', description: 'Workspace directories, roots, and ignored paths.' },
   // OMP

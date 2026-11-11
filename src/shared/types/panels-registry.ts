@@ -194,7 +194,7 @@ export interface PanelPluginStatus {
 /**
  * One plugin the bundled marketplace offers, whether or not it is installed.
  *
- * The catalog is what the Panel Plugins pane lists as AVAILABLE: the bundled
+ * The catalog is what the Plugins Kabmo pane lists as AVAILABLE: the bundled
  * marketplace is a store the user installs from, so a plugin sitting in
  * `<package>/marketplace/plugins/` is an offer, not an install. A catalog entry
  * cannot describe what a plugin CONTRIBUTES — that is known only after its
@@ -248,7 +248,7 @@ export interface PanelRegistryPayload {
    * built-in panel list, and does not need one, because the client is what
    * resolves a bare id to a component. Carrying the set here rather than in the
    * Kabmo settings blob is what keeps ONE store: the activity-bar menu and
-   * the Panel Plugins switches write the same ids through the same endpoint,
+   * the Plugins Kabmo switches write the same ids through the same endpoint,
    * so the two surfaces cannot disagree about whether a panel is on.
    */
   disabledPanels: string[];

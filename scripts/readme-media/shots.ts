@@ -90,7 +90,7 @@ export async function captureShots(browser: Browser, baseURL: string, assetsDir:
 
   // Settings pages. The modal has no role, so a category is addressed by the
   // label its own sidebar row renders.
-  await openSettings(page, 'Panel Plugins');
+  await openSettings(page, 'Plugins Kabmo');
   await shot(page, assetsDir, 'settings-panel-plugins');
   await openSettings(page, 'Providers');
   await shot(page, assetsDir, 'settings-providers');

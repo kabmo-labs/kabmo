@@ -118,7 +118,7 @@ function StatsPanel() {
           <Note tone="error">The Stats server half is not running, so nothing is being measured.</Note>
           <Note>
             It loads when Kabmo starts. If you just installed or updated this plugin, restart Kabmo — a fresh
-            start loads it. If it is already running, check the plugin is enabled in Settings → Panel Plugins.
+            start loads it. If it is already running, check the plugin is enabled in Settings → Plugins Kabmo.
           </Note>
         </div>
       </Panel>
