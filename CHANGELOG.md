@@ -4,6 +4,32 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.28.0](https://github.com/kabmo-labs/kabmo/compare/v0.27.0...v0.28.0) — 2026-11-11
+
+### Added
+
+* **editor:** follow disk changes by content hash and turn Revert into Reload ([985aed4](https://github.com/kabmo-labs/kabmo/commit/985aed4126e97e07feb0fc3bf8ddb74fa767b657)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **forge:** give the forge panel a searchable toolbar and fix its dead controls ([88e789e](https://github.com/kabmo-labs/kabmo/commit/88e789ed5f8cfeb9649e0ddb4deeee64f0d0a879)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **fork:** fork at a message on claude and codex, and draw the button only where it works ([8fba680](https://github.com/kabmo-labs/kabmo/commit/8fba68071b4ec6f731b50de2d58765bb75b2fbf9)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **fork:** offer a whole-chat fork on every harness that can fork ([8e27c07](https://github.com/kabmo-labs/kabmo/commit/8e27c078411bc0b7c9ad8b7e3d42eb712a72f1c9)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** let users add their own ACP harness ([0e0ef34](https://github.com/kabmo-labs/kabmo/commit/0e0ef34e779f37a61da0fbf37579096200c9094a)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** prewarm ACP agents and move the composer's modes with the pick ([4f6d7b7](https://github.com/kabmo-labs/kabmo/commit/4f6d7b7b5b17da5eb1a0f2380c0e03d3f24f931e)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **notifications:** add desktop and mobile delivery switches and always send banners ([a1a9a44](https://github.com/kabmo-labs/kabmo/commit/a1a9a445d23980b5acd81141980c96e10ea7fa88)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **plugins:** run background schedules and deliver MCP to every harness ([f8ede4d](https://github.com/kabmo-labs/kabmo/commit/f8ede4d21e4842ca90dc91743ba4a2d0f820bc74)) (thanks [@rajebdev](https://github.com/rajebdev))
+* render panel plugin settings from settings-schema.json ([e8ac946](https://github.com/kabmo-labs/kabmo/commit/e8ac946e968c62773e6178b2222ded1d26898631)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **schedule:** timezone-aware tasks with per-task harness and model ([43c154d](https://github.com/kabmo-labs/kabmo/commit/43c154d7327453acf6414d89726f5c0da5f4bf18)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **sidebar:** show a full-date tooltip on a session row's age ([56880af](https://github.com/kabmo-labs/kabmo/commit/56880af476c2319ad3a7914d50fcda7887fae2d1)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **stats:** name every ACP harness session from a per-pid lease ([7bfa770](https://github.com/kabmo-labs/kabmo/commit/7bfa770e1878e96ad4bd5929170a243fdd3da41d)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **waiting:** hold any chat's next prompt and restore drafts on cancel ([061c03d](https://github.com/kabmo-labs/kabmo/commit/061c03d570fccae70673b120eb9c5b2c29a669a5)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **chat:** name the provider and model while a run streams, not "Loading" ([12ef78f](https://github.com/kabmo-labs/kabmo/commit/12ef78f9bb9cd533d3f4069cbf23bdae9f651bd3)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **composer:** draw the parent-session picker as a fork, not a branch ([93b9b80](https://github.com/kabmo-labs/kabmo/commit/93b9b80a62b61386e0c7dd246bbae897becbfc08)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **plugins:** persist schedule fire times and stop services on dispose ([3a1228c](https://github.com/kabmo-labs/kabmo/commit/3a1228cc343805748d3f9591cd0a5001da4c42ca)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **terminal:** focus the shell when the panel opens ([abd822e](https://github.com/kabmo-labs/kabmo/commit/abd822edbef28c21f65b3f08cd22cdd48ccf0318)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **terminal:** hold the viewport so a stream can be read and copied from ([9072433](https://github.com/kabmo-labs/kabmo/commit/9072433e16ee5e34ecb8c6252e12a9c10da47517)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.27.0](https://github.com/kabmo-labs/kabmo/compare/v0.26.0...v0.27.0) — 2026-11-11
 
 ### Added
