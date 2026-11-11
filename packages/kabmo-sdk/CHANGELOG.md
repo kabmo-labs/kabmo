@@ -5,6 +5,13 @@ All notable changes to this package are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0](https://github.com/kabmo-labs/kabmo/compare/kabmo-sdk/v0.1.3...kabmo-sdk/v0.2.0) — 2026-11-11
+
+### Added
+
+* **plugins:** run background schedules and deliver MCP to every harness ([f8ede4d](https://github.com/kabmo-labs/kabmo/commit/f8ede4d21e4842ca90dc91743ba4a2d0f820bc74)) (thanks [@rajebdev](https://github.com/rajebdev))
+* render panel plugin settings from settings-schema.json ([e8ac946](https://github.com/kabmo-labs/kabmo/commit/e8ac946e968c62773e6178b2222ded1d26898631)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.1.3](https://github.com/kabmo-labs/kabmo/compare/kabmo-sdk/v0.1.2...kabmo-sdk/v0.1.3) — 2026-10-31
 
 ### Fixed
