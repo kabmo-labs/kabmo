@@ -23,6 +23,7 @@ import { adoptPendingSession, pendingEntryFor } from '@/client/hooks/chat/omp/pe
 import { recordSpawnHarness } from '@/client/hooks/chat/timeline/spawn-harness';
 import { childSpawnBody } from '@/client/hooks/chat/timeline/child-spawn';
 import { forkRequestBody } from '@/client/hooks/chat/timeline/fork-request';
+import { forkPreviewMessages } from '@/shared/lib/chat/timeline/fork-preview';
 import { collectImages } from '@/client/hooks/chat/timeline/send-helpers';
 
 type PendingDispatchDeps = Pick<
@@ -83,6 +84,48 @@ function persistUserTurn(sessionId: string, newUserMsg: ChatMessageData): void {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ messages: [newUserMsg] }),
   }).catch((err) => console.error('Error persisting spawned user turn:', err));
+}
+
+/**
+ * Put the branch's inherited history above the optimistic turn.
+ *
+ * The fork's file already holds these rows, but the timeline cannot show them
+ * on its own: while a run THIS PAGE dispatched owns the rows, a committed read
+ * is a lagging snapshot and is skipped (`timelineOwnedByLiveRun`), and a run
+ * that ends cleanly does not re-read the transcript (only one that lost frames
+ * does). So the first fork turn rendered in an apparently empty chat, and the
+ * conversation it continues appeared only after a reload.
+ *
+ * The slice is the preview's own (`forkPreviewMessages`, the server's cut), so
+ * what lands here is exactly the prefix the branch file starts with. Read-only
+ * and non-blocking: the run is already in flight, and a failed read costs the
+ * prefix — never the turn.
+ */
+function prependInheritedHistory(
+  deps: PendingDispatchDeps,
+  adoptedId: string,
+  sourceSessionId: string,
+  anchorEntryId: string | null,
+): void {
+  fetch(`/api/chat/${encodeURIComponent(sourceSessionId)}?limit=all`)
+    .then(async (response) => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const body = (await response.json()) as { session?: { messages?: ChatMessageData[] } } | null;
+      const inherited = forkPreviewMessages(body?.session?.messages ?? [], anchorEntryId);
+      // The operator may have switched chats while this read was in flight: the
+      // rows belong to the fork adopted above, never to whatever is on screen.
+      if (inherited.length === 0 || deps.adoptedSessionIdRef.current !== adoptedId) return;
+      deps.setLocalMessages((prev) =>
+        // A committed read may already carry the prefix (e.g. a reload raced
+        // this one); prepending it again would render the history twice.
+        prev.some((row) => row.id === inherited[0]!.id) ? prev : [...inherited, ...prev],
+      );
+    })
+    .catch((error: unknown) => {
+      deps.reportActionError(
+        `Could not show the forked history: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    });
 }
 
 export async function dispatchPendingChat(
@@ -147,6 +190,12 @@ export async function dispatchPendingChat(
       next.delete('parentSessionId');
       return next;
     }, { replace: true });
+    prependInheritedHistory(
+      deps,
+      body.sessionId,
+      entry.forkSourceSessionId,
+      entry.forkAnchorEntryId ?? null,
+    );
     return { ok: true, busy: false };
   }
 

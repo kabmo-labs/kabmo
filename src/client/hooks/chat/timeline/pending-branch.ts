@@ -42,6 +42,10 @@ export interface PendingBranchComposerProps {
 export interface PendingBranch {
   /** The linked session id, under either meaning. */
   parentSessionId: string | null;
+  /** The session this chat forks from, or null for a child / top-level chat. */
+  forkSourceSessionId: string | null;
+  /** The source row the fork cuts at; absent means that source's tip. */
+  forkAnchorEntryId: string | null;
   /** The model the linked session runs on, so the composer starts on it. */
   parentModel: { provider: string; modelId: string } | null;
   viewProps: PendingBranchViewProps;
@@ -76,6 +80,9 @@ export function usePendingBranch(args: {
   const entry = entries.find((candidate) => candidate.id === sessionId);
   const forkSourceId = entry?.forkSourceSessionId ?? urlForkFrom ?? null;
   const isFork = Boolean(forkSourceId);
+  const forkAnchorEntryId = entry?.forkSourceSessionId
+    ? (entry.forkAnchorEntryId ?? null)
+    : (urlForkFrom ? urlForkAt : null);
   const parentSessionId = forkSourceId ?? entry?.parentSessionId ?? urlParentId ?? null;
   const sessionOf = useCallback(
     (id: string) => folders
@@ -193,6 +200,8 @@ export function usePendingBranch(args: {
 
   return {
     parentSessionId,
+    forkSourceSessionId: forkSourceId,
+    forkAnchorEntryId,
     parentModel: linked?.runModel ?? null,
     viewProps: {
       parentSessionId,

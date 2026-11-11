@@ -14,6 +14,7 @@ import { useSessionTitle } from '@/client/hooks/chat/timeline/session-title';
 import { useSubagentView } from '@/client/hooks/chat/timeline/subagent-view';
 import { useUndoConfirmation } from '@/client/hooks/chat/timeline/undo-confirmation';
 import { usePendingBranch } from '@/client/hooks/chat/timeline/pending-branch';
+import { useForkPreview } from '@/client/hooks/chat/timeline/fork-preview';
 import { useForkSession } from '@/client/hooks/chat/timeline/use-fork-session';
 import { useStopWithQueuedPrompts } from '@/client/hooks/chat/timeline/stop-with-queue';
 import { useModelNames } from '@/client/hooks/models/use-model-names';
@@ -152,6 +153,9 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
   const sessionDataModel = typeof sessionData?.model === 'object' ? sessionData.model : null;
   const branch = usePendingBranch({ sessionId, folders, selectedFolderId, setSelectedFolderId, urlParentId: searchParams.get('parentSessionId'), urlForkFrom: searchParams.get('forkFrom'), urlForkAt: searchParams.get('forkAt'), setSearchParams, harnessPicker: activeHarness.picker, pendingHarnessRef });
   const fork = useForkSession(sessionId, folders, selectedFolderId);
+  // A fork's source transcript, drawn above the pending composer and reloaded
+  // when "Fork from" moves to another session.
+  const forkPreview = useForkPreview(branch.forkSourceSessionId, branch.forkAnchorEntryId);
 
   // The chat-level "a run is in flight" flag is computed in `useChatTimeline`
   // (it owns the queue-vs-send decision that depends on it) and consumed here
@@ -207,6 +211,7 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
         spawnTarget={spawnTarget}
         onSpawnTargetChange={setSpawnTarget}
         {...branch.viewProps}
+        {...(branch.forkSourceSessionId ? { branchPreview: forkPreview } : {})}
         onWorktreeReport={(message) => pushToast(message, 'success', { duration: 6000 })}
         {...branch.composerProps}
       />

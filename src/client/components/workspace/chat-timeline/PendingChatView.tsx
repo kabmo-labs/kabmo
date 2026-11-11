@@ -16,6 +16,7 @@
 
 import type { Attachment, ChatMessageData, WorkspaceFolderData } from '@/shared/types';
 import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
+import type { ForkPreview } from '@/client/hooks/chat/timeline/fork-preview';
 import type { ComposerModes } from '@/client/components/workspace/chat-timeline/chat-input/modes-props';
 import type { WaitingCandidate } from '@/client/components/workspace/chat-timeline/chat-input/WaitingDependencyPicker';
 import type { DeferredModelStore } from '@/client/hooks/chat/timeline/deferred-model';
@@ -69,6 +70,13 @@ export interface PendingChatViewProps {
   /** "Parent session" for a child, "Fork from" for a fork. */
   branchLabel?: string;
   branchAllowNone?: boolean;
+  /**
+   * The source transcript a FORK will carry, rendered above the composer so the
+   * operator composes the first turn with the history it continues in sight. The
+   * same prop keeps the branch picker reachable while the transcript is docked:
+   * switching "Fork from" swaps the rows, because the composer has not sent yet.
+   */
+  branchPreview?: ForkPreview | null;
   onWorktreeReport?: (message: string) => void;
   /**
    * The harness this chat will spawn on, and the pick that writes it.
@@ -129,6 +137,7 @@ export function PendingChatView(props: PendingChatViewProps) {
       onParentSessionChange={props.onParentSessionChange}
       branchLabel={props.branchLabel}
       branchAllowNone={props.branchAllowNone}
+      {...(props.branchPreview ? { branchPreview: props.branchPreview } : {})}
       onWorktreeReport={props.onWorktreeReport}
       {...(props.harness ? { harness: props.harness } : {})}
       harnessEditable={props.harnessEditable}

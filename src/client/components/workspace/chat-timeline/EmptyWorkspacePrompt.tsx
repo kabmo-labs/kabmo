@@ -1,13 +1,10 @@
 import type { SetStateAction } from 'preact/compat';
-import { Fragment } from 'preact';
 import { useEffect, useMemo, useRef } from 'preact/hooks';
 import type { Attachment, ChatMessageData, WorkspaceFolderData } from '@/shared/types';
 import { ChatInput } from '@/client/components/workspace/chat-timeline/chat-input/index';
-import { ChatMessageItem } from '@/client/components/workspace/chat-timeline/MessageItem';
-import { RunFooter } from '@/client/components/workspace/chat-timeline/RunFooter';
+import { PendingTranscript } from '@/client/components/workspace/chat-timeline/PendingTranscript';
 import { ComposerDockFrame } from '@/client/components/workspace/chat-timeline/ComposerDockFrame';
 import { GeneratingIndicator } from '@/client/components/workspace/chat-timeline/GeneratingIndicator';
-import { resolveRunFooters, streamingRowIndex } from '@/shared/lib/chat/timeline/run-footer';
 import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 import {
   waitingCandidates,
@@ -15,7 +12,9 @@ import {
 } from '@/client/components/workspace/chat-timeline/chat-input/WaitingDependencyPicker';
 import { Hourglass } from 'lucide-preact';
 import { DraftTargetRow } from '@/client/components/workspace/chat-timeline/target-picker/DraftTargetRow';
+import { ParentSessionPicker } from '@/client/components/workspace/chat-timeline/target-picker/ParentSessionPicker';
 import type { SpawnTarget } from '@/client/hooks/chat/timeline/spawn-target';
+import type { ForkPreview } from '@/client/hooks/chat/timeline/fork-preview';
 
 interface EmptyWorkspacePromptProps {
   className?: string;
@@ -78,6 +77,15 @@ interface EmptyWorkspacePromptProps {
   /** "Parent session" for a child, "Fork from" for a fork. */
   branchLabel?: string;
   branchAllowNone?: boolean;
+  /**
+   * The source transcript this FORK will carry.
+   *
+   * Present only for a fork that has not been created yet (the branch is built
+   * on the first send), so it both draws the history above the composer and
+   * marks the view as docked — which is what keeps the branch picker reachable
+   * while switching "Fork from".
+   */
+  branchPreview?: ForkPreview | null;
   /** Reports a worktree the composer created or failed to create. */
   onWorktreeReport?: (message: string) => void;
   /** The "wait for session" pick, persisted per chat. */
@@ -134,6 +142,7 @@ export function EmptyWorkspacePrompt({
   onParentSessionChange,
   branchLabel,
   branchAllowNone,
+  branchPreview = null,
   onWorktreeReport,
   waitingFor = null,
   onWaitingForChange,
@@ -152,21 +161,16 @@ export function EmptyWorkspacePrompt({
     [folders, streamStatusMap, titleForSession],
   );
 
-  // Run footers are boundary rows: emitted after the run's last row, so a
-  // trailing notice never separates the footer from the next user message.
-  const { streamingIdx, footers } = useMemo(
-    () => ({
-      streamingIdx: streamingRowIndex(messages),
-      footers: resolveRunFooters(messages, isGenerating),
-    }),
-    [messages, isGenerating],
-  );
+  // The rows the fork will carry, above the composer. A fork is composed on an
+  // empty `new-…` chat, so without this the operator chose the branch's first
+  // turn with none of the history it continues in sight.
+  const previewLength = branchPreview?.messages.length ?? 0;
 
   useEffect(() => {
     if (timelineRef.current) {
       timelineRef.current.scrollTop = timelineRef.current.scrollHeight;
     }
-  }, [messages.length]);
+  }, [messages.length, previewLength]);
 
   const isMobile = variant === 'mobile';
   // A chat with rows to show (or a prompt in flight) draws the SAME dock the
@@ -176,7 +180,11 @@ export function EmptyWorkspacePrompt({
   // pane's bottom) than once the run streamed in the real timeline
   // (`Thinking…`, 113px). The row jumped at the moment the chat was adopted,
   // which read as two different indicators.
-  const docked = messages.length > 0 || isGenerating;
+  //
+  // A fork's preview docks from the FIRST frame, with or without rows: the
+  // "Fork from" picker must stay reachable while the source is being changed,
+  // and it lives in the docked branch.
+  const docked = messages.length > 0 || isGenerating || Boolean(branchPreview);
 
   const heldPrompt = heldWait ? (
     <div className="flex items-center gap-2 rounded-lg border border-ink/15 bg-ink/[0.03] px-3 py-2 text-xs text-ink/70">
@@ -224,8 +232,9 @@ export function EmptyWorkspacePrompt({
       variant={variant}
       expandable
       // A brand-new chat has no turns: the `stage` composer style draws its
-      // wider, taller card here and nowhere else.
-      hero={messages.length === 0}
+      // wider, taller card here and nowhere else. A fork's preview is history,
+      // so its composer docks like any chat that already has rows.
+      hero={messages.length === 0 && previewLength === 0}
     />
   );
 
@@ -236,6 +245,21 @@ export function EmptyWorkspacePrompt({
     >
       {docked ? (
         <>
+          {/* A fork is composed, not created: the source it branches from is
+              still switchable, so its picker stays above the transcript the
+              preview draws. Every other pending chat loses the row once docked
+              because its first send already dispatched the spawn. */}
+          {branchPreview && onParentSessionChange && (
+            <div className={`shrink-0 flex items-center gap-1 flex-wrap ${isMobile ? 'pl-4 pr-3 pt-3' : 'px-4 pt-3'}`}>
+              <ParentSessionPicker
+                folders={folders as WorkspaceFolderData[]}
+                value={parentSessionId}
+                onChange={onParentSessionChange}
+                label={branchLabel ?? 'Fork from'}
+                allowNone={branchAllowNone ?? false}
+              />
+            </div>
+          )}
           {/* The pending transcript reserves the box the real timeline's own
               scroller does (`TimelineBody`), so adoption moves no text either. */}
           <div
@@ -244,42 +268,21 @@ export function EmptyWorkspacePrompt({
               isMobile ? 'pl-4 pr-3 py-3 pb-8' : 'p-4 pb-10'
             }`}
           >
-            <div className="chat-column">
-              {messages.map((msg, idx) => {
-                const prev = messages[idx - 1];
-                const isLoading = isGenerating && idx === streamingIdx && msg.role === 'ai';
-                const isAiFragment = msg.role !== 'user' && prev && prev.role !== 'user';
-                const footer = footers[idx];
-                return (
-                  <Fragment key={msg.id}>
-                    <ChatMessageItem
-                      msg={msg}
-                      isStreaming={isLoading}
-                      onUndo={onUndo}
-                      onNewChat={onNewChat}
-                      isMobile={isMobile}
-                      className={isAiFragment ? 'mt-1' : 'mt-8'}
-                    />
-                    {footer && (
-                      <RunFooter
-                        msg={footer.msg}
-                        provider={provider}
-                        providerNames={providerNames}
-                        modelName={modelName}
-                        modelNames={modelNames}
-                        thinkingLevel={sessionThinkingLevel ?? undefined}
-                        {...(harness ? { harness } : {})}
-                        durationMs={footer.durationMs}
-                        answerText={footer.answerText}
-                        retryTargetId={footer.runUserId}
-                        onRetry={onRetry}
-                        onNewChat={onNewChat}
-                      />
-                    )}
-                  </Fragment>
-                );
-              })}
-            </div>
+            <PendingTranscript
+              messages={messages}
+              preview={branchPreview}
+              isGenerating={isGenerating}
+              isMobile={isMobile}
+              {...(provider ? { provider } : {})}
+              {...(providerNames ? { providerNames } : {})}
+              {...(modelName ? { modelName } : {})}
+              {...(modelNames ? { modelNames } : {})}
+              sessionThinkingLevel={sessionThinkingLevel}
+              {...(harness ? { harness } : {})}
+              {...(onUndo ? { onUndo } : {})}
+              {...(onRetry ? { onRetry } : {})}
+              {...(onNewChat ? { onNewChat } : {})}
+            />
           </div>
 
           {/* One frame with the real dock (`ComposerDock`), so the indicator and
