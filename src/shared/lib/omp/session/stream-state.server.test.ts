@@ -12,6 +12,7 @@
 import { afterEach, beforeEach, describe, expect, setDefaultTimeout, test } from 'bun:test';
 
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
+import { onRealtimeSignal } from '@/server/lib/realtime/signals.server';
 import {
   loadStreamStates,
   loadStreamStatuses,
@@ -111,6 +112,30 @@ describe('run model on the stream row', () => {
       status: 'stream',
       model: { provider: 'openai', modelId: 'gpt-5' },
     });
+  });
+
+  test('fills in a LIVE row that carries no model, and stays quiet when it already matches', async () => {
+    // A `stream` row written by `agent_start` alone named no model; the probe
+    // must repair it, and must not republish an unchanged row.
+    await markStreamStatus('s1', 'stream');
+    const signals: string[] = [];
+    const off = onRealtimeSignal((event) => signals.push(event.signal));
+    try {
+      await markStreamModel('s1', { provider: 'openai', modelId: 'gpt-5' });
+      expect((await loadStreamStates()).s1).toEqual({
+        status: 'stream',
+        model: { provider: 'openai', modelId: 'gpt-5' },
+      });
+      // A repair is a change: subscribers must see the pair.
+      expect(signals).toContain('stream-status');
+
+      signals.length = 0;
+      await markStreamModel('s1', { provider: 'openai', modelId: 'gpt-5' });
+      // Already naming this model: no write, no republish for every probe.
+      expect(signals).toEqual([]);
+    } finally {
+      off();
+    }
   });
 
   test('never resurrects a row for a run that already ended', async () => {

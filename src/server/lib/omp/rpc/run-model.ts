@@ -40,6 +40,9 @@ export interface RunModelHost {
  *
  * The write is deliberately live-only (`markStreamModel`): a fallback landing
  * on the run's last frame must not resurrect a `stream` row.
+ *
+ * Written on EVERY probe, not only when the pair moved: a live row can carry no
+ * model at all, and skipping the write left the indicator on `Loading…`.
  */
 export function syncRunModel(host: RunModelHost): void {
   void host.proc
@@ -47,9 +50,8 @@ export function syncRunModel(host: RunModelHost): void {
     .then((state) => {
       if (!state.model) return;
       const next = { provider: state.model.provider, modelId: state.model.id };
-      const changed = host.runModel?.provider !== next.provider || host.runModel?.modelId !== next.modelId;
       host.runModel = next;
-      if (changed && host.sessionId) void markStreamModel(host.sessionId, next);
+      if (host.sessionId) void markStreamModel(host.sessionId, next);
     })
     .catch(() => {
       // A state read that fails (destroyed child, timeout) leaves the last

@@ -40,6 +40,18 @@ describe('runIdentityFor', () => {
     expect(identity).toEqual({ sessionProvider: 'p', sessionModelName: 'served' });
   });
 
+  test('a live run whose row carries no model still names the session model', () => {
+    // A `stream` row written by a frame has no pair; the metadata still names
+    // the run, and discarding it read `Loading…` for the whole answer.
+    const identity = runIdentityFor({
+      folders: [folder({ id: 's1', streamStatus: 'stream', runModel: null })],
+      sessionId: 's1',
+      sessionData: { model: { provider: 'p', modelId: 'known' } },
+      modelNames: { known: 'Known' },
+    });
+    expect(identity).toEqual({ sessionProvider: 'p', sessionModelName: 'Known' });
+  });
+
   test('falls back to the run row when the session metadata has no model', () => {
     const identity = runIdentityFor({
       folders: [folder({ id: 's1', streamStatus: 'finish', runModel: { provider: 'p', modelId: 'last' } })],

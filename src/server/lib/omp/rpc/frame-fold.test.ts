@@ -19,7 +19,8 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { foldSessionFrame, type SessionFrameHost } from '@/server/lib/omp/rpc/frame-fold';
+import { foldSessionFrame } from '@/server/lib/omp/rpc/frame-fold';
+import type { SessionFrameHost } from '@/server/lib/omp/rpc/frame-fold-contract';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
 import { makeHost } from '@/server/lib/omp/rpc/frame-fold-host.test-util';
 

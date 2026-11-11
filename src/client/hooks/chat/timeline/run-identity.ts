@@ -39,10 +39,13 @@ export function runIdentityFor(input: RunIdentityInput): RunIdentity {
   // never reached it, so the footer and the composer kept naming the first
   // model the chat ever picked. An idle chat reads the session's own metadata,
   // which `/api/chat/:id` re-reads from the live agent on a `model_changed`.
+  //
+  // A live row is preferred, not trusted blindly: a row written by a frame can
+  // carry no pair, and the session metadata then names the run instead.
   const liveRun = sidebar?.streamStatus === 'stream';
   const fallback = sessionData?.model;
   const fallbackModel = typeof fallback === 'object' ? fallback : null;
-  const chosen = liveRun ? runModel : (fallbackModel ?? runModel);
+  const chosen = liveRun ? (runModel ?? fallbackModel) : (fallbackModel ?? runModel);
   return {
     sessionProvider: chosen?.provider,
     sessionModelName: chosen?.modelId

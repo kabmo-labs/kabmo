@@ -14,11 +14,19 @@
  * idle-looking session in the middle of a compaction.
  */
 
-import { describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
 import { foldSessionFrame } from '@/server/lib/omp/rpc/frame-fold';
 import { releasesStreamRowOnPromptResult } from '@/shared/lib/omp/session/stream-heal.server';
 import { makeHost } from '@/server/lib/omp/rpc/frame-fold-host.test-util';
+import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
+import { onRealtimeSignal } from '@/server/lib/realtime/signals.server';
+import { isolateDb, releaseDb } from '@/test-support/isolated-db';
+import {
+  loadStreamStates,
+  markStreamStatus,
+  type SessionRunModel,
+} from '@/shared/lib/omp/session/stream-state.server';
 
 /**
  * The `prompt_result` frame is where omp reports `agentInvoked`, and the
@@ -128,4 +136,59 @@ describe('compaction frames', () => {
     expect(globalThis.__kabmoSessionScanCache.entries.size).toBe(0);
   });
 
+});
+
+/**
+ * The `stream` row a frame opens must name the model the run is served by.
+ *
+ * `agent_start`/`turn_start`/`message_start` are the only writers for a run
+ * whose prompt never went through the dispatcher, and they wrote the status
+ * alone: the sidebar's `runModel` was then empty and the docked indicator read
+ * `Loading…` for the whole answer.
+ */
+describe('the stream row names the run model', () => {
+  beforeEach(async () => {
+    // The row writes resolve the database; isolated so the real `~/.kabmo` is
+    // never opened. Same helper the stream-state suite uses.
+    await isolateDb();
+  });
+
+  afterEach(async () => {
+    await releaseDb();
+  });
+
+  /** Fold one frame and wait for its fire-and-forget write via `stream-status`. */
+  async function foldAndReadRow(
+    sessionId: string,
+    frame: AgentEvent,
+    runModel: SessionRunModel | null,
+  ) {
+    const { promise, resolve } = Promise.withResolvers<void>();
+    const off = onRealtimeSignal((event) => {
+      if (event.signal === 'stream-status') resolve();
+    });
+    try {
+      foldSessionFrame(makeHost({ sessionId, runModel }), frame);
+      await promise;
+    } finally {
+      off();
+    }
+    return (await loadStreamStates())[sessionId];
+  }
+
+  test('agent_start writes the host model into the row it opens', async () => {
+    expect(await foldAndReadRow('s1', { type: 'agent_start' }, { provider: 'anthropic', modelId: 'claude' })).toEqual({
+      status: 'stream',
+      model: { provider: 'anthropic', modelId: 'claude' },
+    });
+  });
+
+  test('a later frame with no reconciled model keeps a pair the dispatch stored', async () => {
+    await markStreamStatus('s1', 'stream', { provider: 'openai', modelId: 'gpt-5' });
+
+    expect(await foldAndReadRow('s1', { type: 'turn_start' }, null)).toEqual({
+      status: 'stream',
+      model: { provider: 'openai', modelId: 'gpt-5' },
+    });
+  });
 });

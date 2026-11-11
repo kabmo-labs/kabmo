@@ -121,18 +121,22 @@ export async function markStreamStatus(
  * `stream` row, which would RESURRECT a spinner for a run that already ended
  * (a fallback landing on the run's last frame). This can only ever rename a row
  * that still means "a run is in flight".
+ *
+ * The `IS NOT` pair makes the write a repair as well as a rename: a live row
+ * with no pair is filled in, and an unchanged row raises no signal.
  */
 export async function markStreamModel(sessionId: string, model: SessionRunModel): Promise<void> {
   try {
     const db = await getDb();
-    await db.run(
+    const result = await db.run(
       `UPDATE session_stream_state
          SET model_provider = ?, model_id = ?, updated_at = CURRENT_TIMESTAMP
-       WHERE session_id = ? AND status = 'stream'`,
-      [model.provider, model.modelId, sessionId],
+       WHERE session_id = ? AND status = 'stream'
+         AND (model_provider IS NOT ? OR model_id IS NOT ?)`,
+      [model.provider, model.modelId, sessionId, model.provider, model.modelId],
     );
     // The row the sidebar names a run by just changed, so subscribers must see it.
-    emitRealtimeSignal('stream-status');
+    if ((result.changes ?? 0) > 0) emitRealtimeSignal('stream-status');
   } catch {
     // Status tracking is best-effort by design.
   }

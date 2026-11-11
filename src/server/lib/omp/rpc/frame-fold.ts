@@ -23,9 +23,7 @@ import { clearSessionFileCaches } from '@/server/lib/omp/session/files';
 import {
   consumeAutoTitleOutput,
   triggerAutoSessionTitle,
-  type AutoTitleHost,
 } from '@/server/lib/omp/session/auto-title.server';
-import { type QueueDeliveryHost } from '@/server/lib/queue/delivery.server';
 import { clearStreamStatus, markStreamStatus } from '@/shared/lib/omp/session/stream-state.server';
 import { releasesStreamRowOnPromptResult } from '@/shared/lib/omp/session/stream-heal.server';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
@@ -34,46 +32,7 @@ import { NON_TERMINAL_CONTINUATION_GRACE_MS, type AgentEvent } from '@/server/li
 import { settleTerminalRun } from '@/server/lib/omp/rpc/terminal-settle';
 import { parseModeMarker } from '@/shared/lib/omp/mode/markers';
 import { SKILL_PROMPT_CUSTOM_TYPE } from '@/shared/lib/omp/session/operator-title';
-import type { ModeMirror } from '@/server/lib/omp/rpc/mode-mirror';
-
-/**
- * Wrapper surface the fold reads and writes. Every field is owned by the
- * wrapper; the fold mutates them in place exactly as the inline switch did.
- * Composes the two host contracts the settle path hands the wrapper to
- * (auto-title, queue delivery) so the wrapper itself satisfies this whole type.
- */
-export interface SessionFrameHost extends AutoTitleHost, QueueDeliveryHost {
-  promptRunning: boolean;
-  streaming: boolean;
-  compacting: boolean;
-  /** Abort verdict of the current run — see `endedAborted` in `terminal-settle.ts`. */
-  runAborted: boolean;
-  awaitingAgentStart: boolean;
-  awaitingAgentStartDeadline: number;
-  continuationGraceUntil: number;
-  emit(event: AgentEvent): void;
-  /** Remember a blocking ask/approval dialog so a reattaching client can answer it. */
-  trackUiDialog(frame: AgentEvent): void;
-  /** Mirror of omp's plan/goal mode, fed by the frames this fold sees. */
-  modeMirror: ModeMirror;
-  /** Fold a subagent frame into the liveness roster. */
-  observeSubagent(frame: AgentEvent, now: number): void;
-  /**
-   * Re-read the model the child is actually serving with and rename the live run
-   * row to match — omp's payload-less `model_changed`, e.g. a fallback-chain
-   * retry that swapped the model mid-run.
-   */
-  syncRunModel(): void;
-}
-
-/** What the caller must do after the fold. */
-export interface FrameFoldResult {
-  /** The fold already handled this frame's user-visible effect and the caller
-   *  must NOT forward it: a failed `prompt` response has emitted its own
-   *  `prompt_error`, and a `command_output` belonging to Kabmo's own
-   *  background rename must stay out of the timeline. */
-  suppressForward: boolean;
-}
+import type { FrameFoldResult, SessionFrameHost } from '@/server/lib/omp/rpc/frame-fold-contract';
 
 /**
  * The `message_end` branch: the one place a title can be derived from the
@@ -201,7 +160,9 @@ export function foldSessionFrame(host: SessionFrameHost, event: AgentEvent): Fra
       // what bounds this to the conversation's first run.
       host.autoTitleRequested = false;
       clearSessionFileCaches();
-      if (host.sessionId) void markStreamStatus(host.sessionId, 'stream');
+      // The row carries the model the wrapper reconciled; a run whose dispatch
+      // stored none would otherwise name no provider/model. COALESCE keeps a pair.
+      if (host.sessionId) void markStreamStatus(host.sessionId, 'stream', host.runModel);
       // Belt for a switch omp did not announce: a fallback that landed between
       // runs leaves `runModel` (and the row the indicator names the run by) on
       // the pre-fallback model. `model_changed` covers the switches omp reports;
@@ -213,13 +174,13 @@ export function foldSessionFrame(host: SessionFrameHost, event: AgentEvent): Fra
       // Redundant with agent_start in the happy path, but the run-level
       // counterpart can be missed (e.g. the state was cleared by a command
       // between frames). The turn is proof enough the session is live.
-      if (host.sessionId) void markStreamStatus(host.sessionId, 'stream');
+      if (host.sessionId) void markStreamStatus(host.sessionId, 'stream', host.runModel);
       break;
     case 'message_start':
       // Same recovery as turn_start: a message frame is only emitted inside a
       // live run, so its arrival re-arms the `stream` row no matter what stale
       // status sits there (upsert overwrites any terminal badge).
-      if (host.sessionId) void markStreamStatus(host.sessionId, 'stream');
+      if (host.sessionId) void markStreamStatus(host.sessionId, 'stream', host.runModel);
       break;
     case 'message_end':
       handleMessageEnd(host, event);

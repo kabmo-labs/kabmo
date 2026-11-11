@@ -15,7 +15,7 @@
  * returns first and the tests stay pure.
  */
 
-import type { SessionFrameHost } from '@/server/lib/omp/rpc/frame-fold';
+import type { SessionFrameHost } from '@/server/lib/omp/rpc/frame-fold-contract';
 import { ModeMirror } from '@/server/lib/omp/rpc/mode-mirror';
 
 export function makeHost(overrides: Partial<SessionFrameHost> = {}): SessionFrameHost {
@@ -34,6 +34,7 @@ export function makeHost(overrides: Partial<SessionFrameHost> = {}): SessionFram
     awaitingAgentStartDeadline: 0,
     continuationGraceUntil: 0,
     proc: { sendCommand: async () => undefined as never },
+    runModel: null,
     emit() {},
     trackUiDialog() {},
     observeSubagent() {},
