@@ -21,6 +21,7 @@ import type { AIModelOption, Attachment } from '@/shared/types';
 import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 import type { ComposerRow } from '@/shared/lib/chat/composer/style';
 import type { ComposerModes } from '@/client/components/workspace/chat-timeline/chat-input/modes-props';
+import type { WaitingCandidate } from '@/client/components/workspace/chat-timeline/chat-input/WaitingDependencyPicker';
 import type { ComposerPickerPlacement } from '@/client/components/common/ComposerPicker';
 import { AttachmentToolbar } from '@/client/components/workspace/chat-timeline/chat-input/AttachmentToolbar';
 import { ComposerNotice } from '@/client/components/workspace/chat-timeline/chat-input/ComposerNotice';
@@ -85,6 +86,12 @@ export interface ComposerRowsInput {
   voiceListening?: boolean;
   voiceBusy?: boolean;
   onVoiceToggle?: () => void;
+  /** "Wait for session": the pick and the sessions it may name. */
+  waiting?: {
+    value: WaitingCandidate | null;
+    candidates: WaitingCandidate[];
+    onChange: (candidate: WaitingCandidate | null) => void;
+  };
   /** Which harness runs this chat, and whether the tab strip may change it. */
   harness?: string;
   harnessEditable?: boolean;
@@ -180,6 +187,7 @@ export function composerRows({
         voiceBusy={input.voiceBusy}
         onVoiceToggle={input.onVoiceToggle}
         text={input.value}
+        {...(input.waiting ? { waiting: input.waiting } : {})}
         harness={input.harness}
         harnessEditable={input.harnessEditable}
         onSelectHarness={input.onSelectHarness}

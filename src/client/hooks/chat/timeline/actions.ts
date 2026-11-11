@@ -185,10 +185,10 @@ export function useChatTimelineActions(deps: ChatTimelineActionsDeps): ChatTimel
     // keep the draft so the user can edit or retype it.
     if (blockTuiOnlySend(textToSend, setLocalMessages, harness)) return;
 
-    // A NEW chat whose prompt is held for another session: nothing is sent now,
-    // and the pending row stays on screen saying what it waits for. Checked
-    // before the queue-vs-send split — a pending chat has no run to queue behind.
-    if (await holdFromComposer(deps, textToSend, attachments, isGenerating || chatRunning)) return;
+    // A prompt held for another session: nothing is sent now, and the chat's
+    // pending/held row stays on screen saying what it waits for. Checked before
+    // the queue-vs-send split, so a busy chat still defers instead of queueing.
+    if (await holdFromComposer(deps, textToSend, attachments)) return;
 
     // "A run is in flight" is the CHAT-level flag, not this client's own:
     // `isGenerating` only knows the run THIS page started, so a second tab, a

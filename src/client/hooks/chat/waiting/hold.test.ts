@@ -46,6 +46,7 @@ function harness(overrides: Partial<HoldDeps> = {}): { deps: HoldDeps; recorded:
   const recorded: Recorded = { drafts: [], attachments: [], errors: [], cleared: 0, posted: [] };
   const deps: HoldDeps = {
     sessionId: pendingId,
+    targetSessionId: null,
     folders: [{ id: 1, name: 'alpha', project_path: '/tmp/alpha', isExpanded: true, hasMore: false, totalSessions: 0, sessions: [] }],
     selectedFolderId: 1,
     composerModelRef: { current: { provider: 'anthropic', modelId: 'claude', thinkingLevel: 'high' } },
@@ -105,6 +106,27 @@ describe('holdPromptForDependency', () => {
     const { deps, recorded } = harness();
     expect(await holdPromptForDependency(deps, null, 'hello', [])).toBe(false);
     expect(recorded.drafts).toEqual([]);
+  });
+
+  // A NEXT prompt in a chat that already exists is delivered into that chat.
+  // It has no pending slot to mark, and the cwd comes from the session itself.
+  test('an existing chat targets its own session and needs no pending cue', async () => {
+    const { deps, recorded } = harness({
+      sessionId: 'sess-open',
+      targetSessionId: 'sess-open',
+      selectedFolderId: null,
+      folders: [],
+    });
+    expect(await holdPromptForDependency(deps, DEPENDENCY, 'do it after', [])).toBe(true);
+    expect(createdBody).toMatchObject({
+      pendingId: null,
+      targetSessionId: 'sess-open',
+      dependsOn: 'sess-a',
+      prompt: 'do it after',
+      cwd: '',
+    });
+    expect(recorded.drafts).toEqual(['']);
+    expect(recorded.errors).toEqual([]);
   });
 
   // The dropdown was opened while the dependency was running; by the time the

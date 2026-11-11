@@ -141,8 +141,9 @@ export function useChatTimeline({
   // Access control is a GLOBAL persisted preference, unlike per-session picks.
   const { accessMode, accessModeRef, setAccessMode: handleAccessModeChange } = useChatTimelineAccessMode(appSettings);
 
-  // "Wait for session" on a NEW chat: the pick and the ref the send reads.
-  const waitingDependency = useWaitingDependencyChoice(sessionId);
+  // "Wait for session": the pick (first prompt or a NEXT one) and the ref the
+  // send reads. It is per-session UI state, so each chat keeps its own.
+  const waitingDependency = useWaitingDependencyChoice();
 
   const persistMessages = useCallback((messagesToSave: any[]) => {
     if (!sessionId) return;
@@ -293,6 +294,7 @@ export function useChatTimeline({
     localMessages,
     isGenerating,
     timelineRunning,
+    reloadMessages,
     hasMore,
     loadingOlder,
     loadOlderError,

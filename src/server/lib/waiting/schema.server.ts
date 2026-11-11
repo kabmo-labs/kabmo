@@ -21,6 +21,7 @@ const WAITING_SCHEMA_SQL = `
     pending_id TEXT,
     depends_on TEXT NOT NULL,
     depends_on_title TEXT,
+    target_session_id TEXT,
     message TEXT NOT NULL DEFAULT '',
     attachments TEXT NOT NULL DEFAULT '[]',
     provider TEXT,
@@ -43,4 +44,11 @@ const WAITING_SCHEMA_SQL = `
 /** Idempotent: the waiting prompts' own table, created on every database open. */
 export async function ensureWaitingSchema(db: DbClient): Promise<void> {
   await db.exec(WAITING_SCHEMA_SQL);
+  // `CREATE TABLE IF NOT EXISTS` does not add a column to an install that
+  // predates it, so the target column is installed separately. Same pattern as
+  // `btw/schema.server.ts`: introspect, then one ALTER.
+  const columns = (await db.all('PRAGMA table_info(waiting_prompts)')) as { name?: string }[];
+  if (!columns.some((column) => column.name === 'target_session_id')) {
+    await db.exec('ALTER TABLE waiting_prompts ADD COLUMN target_session_id TEXT');
+  }
 }

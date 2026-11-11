@@ -27,7 +27,7 @@ import { usePendingProjectModel } from '@/client/hooks/chat/timeline/pending-mod
 import { useNewChatOpen } from '@/client/hooks/chat/timeline/new-chat-open';
 import { usePendingWarmup } from '@/client/hooks/chat/timeline/pending-warmup';
 import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
-import { useHeldWait } from '@/client/hooks/chat/waiting/held';
+import { useComposerWait } from '@/client/hooks/chat/waiting/composer-wait';
 import { useSessionHarness } from '@/client/hooks/chat/timeline/session-harness';
 
 interface ChatTimelineProps {
@@ -55,6 +55,7 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
     localMessages,
     isGenerating,
     timelineRunning,
+    reloadMessages,
     hasMore,
     loadingOlder, loadOlderError, sessionLoading,
     loadOlder,
@@ -145,8 +146,7 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
   // A pending "new-…" chat has no messages yet, so the workspace picker stays
   // available until the first send spawns the real session.
   const isPendingSession = Boolean(sessionId?.startsWith('new-'));
-
-  const { heldWait, cancelHeldWait } = useHeldWait(sessionId, isPendingSession, pushToast);
+  const composerWait = useComposerWait({ sessionId, folders, streamStatusMap, titleFor: titleHint, value: waitingDependency.value, onChange: waitingDependency.set, onNotice: pushToast, onDispatched: reloadMessages });
   const composerRoot = composerRootFor(folders, sessionId, selectedFolderId);
   // The workspace's own default model, resolved by the same rule the spawn
   // uses, so the pending composer's pill does not promise Kabmo's global pick.
@@ -211,8 +211,7 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
         titleForSession={titleHint}
         waitingFor={waitingDependency.value}
         onWaitingForChange={waitingDependency.set}
-        heldWait={heldWait ? { title: heldWait.dependsOnTitle } : null}
-        onCancelWait={cancelHeldWait}
+        {...composerWait.held}
         spawnTarget={spawnTarget}
         onSpawnTargetChange={setSpawnTarget}
         {...branch.viewProps}
@@ -305,6 +304,8 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
                 modes={modes}
                 composerModelRef={composerModelRef}
                 deferredComposerPickRef={deferredComposerPickRef}
+                waiting={composerWait.waiting}
+                {...composerWait.held}
                 sessionModel={typeof sessionData?.model === 'object' ? sessionData.model : null}
                 sessionThinkingLevel={sessionData?.thinkingLevel}
                 {...activeHarness.picker}

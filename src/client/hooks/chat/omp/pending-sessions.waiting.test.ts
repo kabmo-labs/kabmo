@@ -24,9 +24,9 @@ import {
 } from '@/client/hooks/chat/omp/pending-sessions';
 import {
   clearPendingSessionWaiting,
+  markPendingSessionDraft,
   markPendingSessionWaiting,
   pendingSessionWait,
-  releasePendingSessionByWait,
 } from '@/client/hooks/chat/omp/pending-waiting';
 
 afterEach(() => {
@@ -66,16 +66,17 @@ describe('pending session waiting state', () => {
     expect(listPendingSessions().map((entry) => entry.id)).toContain(id);
   });
 
-  test('a cancelled wait drops its row by the wait id', () => {
-    const first = startPendingSession(1);
-    const second = startPendingSession(1);
-    markPendingSessionWaiting(first, { waitId: 'wait-1', dependsOn: 'sess-a', dependsOnTitle: 'A' });
-    markPendingSessionWaiting(second, { waitId: 'wait-2', dependsOn: 'sess-b', dependsOnTitle: 'B' });
+  // Cancelling keeps the chat: the prompt's text is written back into that
+  // chat's composer, so the row the user returns to must still exist — and it
+  // must survive the settle pass that a SENT prompt would expire, because it is
+  // an unsent draft again.
+  test('a cancelled wait becomes an unsent draft that keeps its row', () => {
+    const id = startPendingSession(1);
+    markPendingSessionWaiting(id, { waitId: 'wait-1', dependsOn: 'sess-a', dependsOnTitle: 'A' });
 
-    releasePendingSessionByWait('wait-1');
-    const ids = listPendingSessions().map((entry) => entry.id);
-    expect(ids).not.toContain(first);
-    expect(ids).toContain(second);
+    markPendingSessionDraft(id);
+    expect(pendingSessionWait(id)).toBeNull();
+    expect(listPendingSessions().find((entry) => entry.id === id)?.sentAt).toBeNull();
   });
 
   // The wait ends where the spawn answers: the new row is a real session from

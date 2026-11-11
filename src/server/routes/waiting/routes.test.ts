@@ -118,4 +118,25 @@ describe('/api/waiting — the rest of the validation order', () => {
     await call({ dependsOn: 'sess-anything', prompt: 'x', cwd: 'relative/path' });
     expect(await listWaitingPrompts()).toHaveLength(0);
   });
+
+  test('a prompt cannot wait for the chat it is sent to', async () => {
+    const res = await call({ dependsOn: 'sess-a', targetSessionId: 'sess-a', prompt: 'x', cwd: '/tmp/x' });
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe('target_self');
+  });
+
+  test('a target id that could name a path is refused', async () => {
+    const res = await call({ dependsOn: 'sess-a', targetSessionId: '../sess', prompt: 'x', cwd: '/tmp/x' });
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe('target_invalid');
+  });
+
+  // An existing chat's home is its session's own cwd. When neither the client
+  // nor the session can name one, the hold is refused rather than stored with
+  // an empty directory for a later sweep to spawn into.
+  test('a target session with no resolvable cwd is refused', async () => {
+    const res = await call({ dependsOn: 'sess-a', targetSessionId: 'unknown-session', prompt: 'x' });
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe('cwd_required');
+  });
 });

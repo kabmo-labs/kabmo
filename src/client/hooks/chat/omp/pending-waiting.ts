@@ -35,14 +35,22 @@ export function clearPendingSessionWaiting(id: string): void {
   patchPendingEntry(id, (entry) => (entry.waiting ? { ...entry, waiting: undefined } : entry));
 }
 
+/**
+ * The wait was cancelled (or failed) and its text is back in the composer.
+ *
+ * `sentAt` is cleared with the cue: the entry is an UNSENT draft again, so the
+ * reconcile pass keeps it while that draft exists instead of expiring it on the
+ * sent-prompt settle window and taking the restored text's row away.
+ */
+export function markPendingSessionDraft(id: string): void {
+  patchPendingEntry(id, (entry) => (
+    entry.waiting || entry.sentAt !== null
+      ? { ...entry, waiting: undefined, sentAt: null }
+      : entry
+  ));
+}
+
 /** The waiting half of one entry, or null when the row is not waiting. */
 export function pendingSessionWait(id: string): PendingWait | null {
   return listPendingSessions().find((entry) => entry.id === id)?.waiting ?? null;
-}
-
-/** Drop the entry whose prompt was held by `waitId` (the wait was cancelled). */
-export function releasePendingSessionByWait(waitId: string): void {
-  for (const entry of listPendingSessions()) {
-    if (entry.waiting?.waitId === waitId) patchPendingEntry(entry.id, () => null);
-  }
 }

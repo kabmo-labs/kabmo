@@ -8,7 +8,9 @@ import { QueueList } from '@/client/components/workspace/chat-timeline/QueueList
 import type { Attachment, QueuedMessage } from '@/shared/types';
 import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 import type { ComposerModes } from '@/client/components/workspace/chat-timeline/chat-input/modes-props';
+import type { WaitingCandidate } from '@/client/components/workspace/chat-timeline/chat-input/WaitingDependencyPicker';
 import { PluginComposerBanners } from '@/client/components/workspace/chat-timeline/chat-input/PluginComposerSlots';
+import { Hourglass } from 'lucide-preact';
 
 interface ComposerDockProps {
   isMobile: boolean;
@@ -71,6 +73,15 @@ interface ComposerDockProps {
    *  switching needs a new chat rather than changing the transport silently. */
   harnessEditable?: boolean;
   onSelectHarness?: (harness: string) => void;
+  /** "Wait for session" for the next prompt, mounted in the toolbar. */
+  waiting?: {
+    value: WaitingCandidate | null;
+    candidates: WaitingCandidate[];
+    onChange: (candidate: WaitingCandidate | null) => void;
+  };
+  /** A held prompt for THIS chat: the composer waits until it is released. */
+  heldWait?: { title: string | null } | null;
+  onCancelWait?: () => void;
 }
 
 /**
@@ -115,6 +126,9 @@ export function ComposerDock({
   harness,
   harnessEditable = true,
   onSelectHarness,
+  waiting,
+  heldWait = null,
+  onCancelWait,
 }: ComposerDockProps) {
   // Side questions take over the composer entirely: the chat's own input is
   // hidden while the form is open, so a stray Enter cannot send to the wrong
@@ -135,6 +149,24 @@ export function ComposerDock({
           providerNames={providerNames}
           {...(harness ? { harness } : {})}
         />
+      )}
+      {heldWait && (
+        <div className="mb-2 flex items-center gap-2 rounded-lg border border-ink/15 bg-ink/[0.03] px-3 py-2 text-xs text-ink/70">
+          <Hourglass size={12} className="shrink-0 animate-pulse text-ink/60" />
+          <span className="min-w-0 flex-1 truncate">
+            Waiting for {heldWait.title ?? 'another session'} to finish before this prompt is sent.
+          </span>
+          {onCancelWait && (
+            <button
+              type="button"
+              data-testid="cancel-held-prompt"
+              onClick={onCancelWait}
+              className="shrink-0 rounded border border-ink/20 px-2 py-0.5 text-[11px] text-ink/70 hover:bg-ink/5 hover:text-ink cursor-pointer"
+            >
+              Cancel
+            </button>
+          )}
+        </div>
       )}
       <QueueList
         queue={messageQueue}
@@ -164,6 +196,7 @@ export function ComposerDock({
           onAttachmentsChange={setAttachments}
           onSend={onSend}
           isGenerating={isGenerating}
+          disabled={Boolean(heldWait)}
           chatRunning={showGeneratingIndicator}
           onStop={onStop}
           appSettings={appSettings}
@@ -174,6 +207,7 @@ export function ComposerDock({
           modes={modes}
           composerModelRef={composerModelRef}
           deferredComposerPickRef={deferredComposerPickRef}
+          {...(waiting ? { waiting } : {})}
           sessionModel={sessionModel}
           sessionThinkingLevel={sessionThinkingLevel}
           harness={harness}

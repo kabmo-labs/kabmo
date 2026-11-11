@@ -4,10 +4,12 @@
  */
 
 /**
- * "Wait for session" — the composer's dependency pick for a NEW chat.
+ * "Wait for session" — the composer's dependency pick.
  *
- * Only sessions with a run in flight are offered, and that is a rule rather than
- * a filter for convenience: a prompt held on an idle session would be released
+ * Two mounts, one control: the draft row above a chat that has not started, and
+ * the toolbar of a chat that already has a session (the NEXT prompt). Only
+ * sessions with a run in flight are offered, and that is a rule rather than a
+ * filter for convenience: a prompt held on an idle session would be released
  * by the very next sweep, so the dropdown would be promising a wait that cannot
  * happen. The list is derived from the sidebar's server-tracked status map —
  * the same `stream` rows the row spinner is drawn from — so a session that
@@ -19,7 +21,7 @@
  * immediately.
  */
 
-import { useCallback, useMemo, useRef, useState } from 'preact/hooks';
+import { useCallback, useRef, useState } from 'preact/hooks';
 import { Hourglass, ChevronDown, Check, X } from 'lucide-preact';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 import type { WorkspaceFolderData } from '@/shared/types';
@@ -31,15 +33,12 @@ export interface WaitingCandidate {
 }
 
 export interface WaitingDependencyPickerProps {
-  folders: WorkspaceFolderData[];
-  /** Server-tracked `stream` ids — the only sessions that may be waited on. */
-  streamStatusMap: Record<string, string | undefined>;
-  /** The session this composer writes to; never offered as its own dependency. */
-  sessionId: string | null;
-  /** A name for a streaming id the sidebar structure has not scanned yet. */
-  titleFor?: (id: string) => string | undefined;
+  /** Sessions that may be waited on, from `waitingCandidates`. */
+  candidates: WaitingCandidate[];
   value: WaitingCandidate | null;
   onChange: (candidate: WaitingCandidate | null) => void;
+  /** Toolbar mount: the label collapses on a narrow composer. */
+  compactLabel?: boolean;
 }
 
 /**
@@ -82,12 +81,10 @@ export function waitingCandidates(
 }
 
 export function WaitingDependencyPicker({
-  folders,
-  streamStatusMap,
-  sessionId,
-  titleFor,
+  candidates,
   value,
   onChange,
+  compactLabel = false,
 }: WaitingDependencyPickerProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -96,10 +93,6 @@ export function WaitingDependencyPicker({
   // render — including every stream-status frame.
   const close = useCallback(() => setOpen(false), []);
   useOnClickOutside(ref, close);
-  const candidates = useMemo(
-    () => waitingCandidates(folders, streamStatusMap, sessionId, titleFor),
-    [folders, streamStatusMap, sessionId, titleFor],
-  );
   const unavailable = candidates.length === 0;
 
   return (
@@ -117,7 +110,7 @@ export function WaitingDependencyPicker({
         }`}
       >
         <Hourglass size={13} className={`flex-shrink-0 ${value ? 'text-ink/80' : 'text-ink/50 group-hover:text-ink/80'}`} />
-        <span className="max-w-[200px] truncate tracking-tight">
+        <span className={`max-w-[200px] truncate tracking-tight ${compactLabel ? 'hidden @[520px]:inline' : ''}`}>
           {value ? `Wait for ${value.title}` : 'Wait for session'}
         </span>
         <ChevronDown

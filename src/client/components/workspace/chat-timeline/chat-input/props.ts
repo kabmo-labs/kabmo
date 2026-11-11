@@ -129,11 +129,11 @@ export interface ChatInputProps {
    * "Wait for session": the pick, the sessions that may be waited on, and the
    * setter.
    *
-   * Omitted by every composer that is not a NEW chat's — the pick defers a
-   * prompt that has no session yet, so an existing chat has nothing to defer.
-   * The chat composer never passes it either: its own timeline renders
-   * `EmptyWorkspacePrompt` while the session is pending, and that is where the
-   * picker lives.
+   * The pick defers the NEXT prompt of THIS chat. It reaches the composer in
+   * two places — a chat that has not started shows it in its draft row, and
+   * every chat with a session shows it at the far right of the toolbar — so a
+   * composer that does not own a chat turn (the New Chat modal, the side-question
+   * form) omits it.
    */
   waiting?: {
     value: WaitingCandidate | null;

@@ -55,6 +55,7 @@ const input = {
   pendingId: 'new-1700000000000',
   dependsOn: 'session-a',
   dependsOnTitle: 'Session A',
+  targetSessionId: null,
   prompt: 'summarise the diff',
   attachments: [{ id: 'a1', preview: '', name: 'notes.txt', type: 'text/plain', content: 'hello' }],
   model: { provider: 'anthropic', modelId: 'claude', thinkingLevel: 'high', accessMode: 'yolo' },
@@ -72,6 +73,7 @@ describe('waiting prompt store', () => {
       pendingId: 'new-1700000000000',
       dependsOn: 'session-a',
       dependsOnTitle: 'Session A',
+      targetSessionId: null,
       prompt: 'summarise the diff',
       cwd: '/tmp/project',
       folderId: 3,
@@ -84,6 +86,18 @@ describe('waiting prompt store', () => {
       accessMode: 'yolo',
     });
     expect(stored?.attachments[0]?.content).toBe('hello');
+  });
+
+  test('a next prompt keeps the session it targets', async () => {
+    const created = await createWaitingPrompt({
+      ...input,
+      pendingId: null,
+      targetSessionId: 'sess-open',
+    });
+    expect(await getWaitingPrompt(created.id)).toMatchObject({
+      pendingId: null,
+      targetSessionId: 'sess-open',
+    });
   });
 
   test('the claim is won once, and only from `waiting`', async () => {

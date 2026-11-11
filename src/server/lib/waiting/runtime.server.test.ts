@@ -34,6 +34,7 @@ function prompt(overrides: Partial<WaitingPrompt> = {}): WaitingPrompt {
     pendingId: 'new-1',
     dependsOn: 'dep-a',
     dependsOnTitle: 'Session A',
+    targetSessionId: null,
     prompt: 'do the thing',
     attachments: [],
     model: null,
@@ -61,6 +62,8 @@ interface Harness {
   setRowWrittenAt(at: number | null): void;
   setQueued(queued: boolean): void;
   setDelivering(delivering: boolean): void;
+  /** Make an existing chat live, and record the commands sent to it. */
+  setExisting(sessionId: string): void;
   failSpawnWith(error: Error | null): void;
   failSendWith(error: Error | null): void;
 }
@@ -76,6 +79,7 @@ function harness(initial: WaitingPrompt[] = [prompt()]): Harness {
   let delivering = false;
   let spawnError: Error | null = null;
   let sendError: Error | null = null;
+  let existing: Record<string, { sessionId: string; isAlive(): boolean; isBusy(): boolean; send(command: Record<string, unknown>): Promise<unknown> }> = {};
   const sent: Harness['sent'] = {};
   const spawned: string[] = [];
   const writes: string[] = [];
@@ -100,6 +104,12 @@ function harness(initial: WaitingPrompt[] = [prompt()]): Harness {
       };
     },
     getSession: () => undefined,
+    ensureSessionLive: async (sessionId) => {
+      const host = existing[sessionId];
+      if (!host) return null;
+      sent[sessionId] = [];
+      return host;
+    },
     loadStreamStates: async () => streams,
     streamRowWrittenAt: async () => rowWrittenAt,
     hasQueuedItem: async () => queued,
@@ -158,6 +168,22 @@ function harness(initial: WaitingPrompt[] = [prompt()]): Harness {
     },
     setDelivering: (next) => {
       delivering = next;
+    },
+    setExisting: (sessionId) => {
+      sent[sessionId] = [];
+      existing = {
+        ...existing,
+        [sessionId]: {
+          sessionId,
+          isAlive: () => true,
+          isBusy: () => false,
+          async send(command) {
+            if (sendError) throw sendError;
+            sent[sessionId].push(command);
+            return null;
+          },
+        },
+      };
     },
     failSpawnWith: (error) => {
       spawnError = error;
@@ -274,5 +300,27 @@ describe('sweepWaitingPrompts', () => {
     const h = harness([prompt({ status: 'dispatched', sessionId: 'done' })]);
     expect(await sweepWaitingPrompts({ now: NOW, deps: h.deps })).toBe(0);
     expect(h.spawned).toEqual([]);
+  });
+
+  // A NEXT prompt in a chat that already exists belongs to that chat. Spawning
+  // a second session would strand the text in a conversation the user never
+  // opened.
+  test('delivers a next prompt into the existing session it names', async () => {
+    const h = harness([prompt({ pendingId: null, targetSessionId: 'sess-open' })]);
+    h.setExisting('sess-open');
+    expect(await sweepWaitingPrompts({ now: NOW, deps: h.deps })).toBe(1);
+    expect(h.spawned).toEqual([]);
+    expect(h.sent['sess-open']).toEqual([{ type: 'prompt', message: 'do the thing' }]);
+    expect(h.writes).toContain('dispatched wait-1 sess-open');
+  });
+
+  // The target may itself be mid-turn when the dependency ends. omp refuses a
+  // prompt mid-turn and drops it, so the row stays `waiting` for a later sweep.
+  test('holds the prompt while its target session is still streaming', async () => {
+    const h = harness([prompt({ pendingId: null, targetSessionId: 'sess-open' })]);
+    h.setExisting('sess-open');
+    h.setStreams({ 'dep-a': { status: 'finish' }, 'sess-open': { status: 'stream' } });
+    expect(await sweepWaitingPrompts({ now: NOW, deps: h.deps })).toBe(0);
+    expect(h.sent['sess-open']).toEqual([]);
   });
 });

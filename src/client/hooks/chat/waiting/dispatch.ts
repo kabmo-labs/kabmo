@@ -21,9 +21,9 @@ import { useEffect, useRef } from 'preact/hooks';
 import { useWaitingPrompts } from '@/client/hooks/chat/waiting/store';
 import {
   adoptPendingSession,
-  releasePendingSession,
 } from '@/client/hooks/chat/omp/pending-sessions';
-import { clearPendingSessionWaiting, pendingSessionWait } from '@/client/hooks/chat/omp/pending-waiting';
+import { markPendingSessionDraft, pendingSessionWait } from '@/client/hooks/chat/omp/pending-waiting';
+import { restoreHeldDraft } from '@/client/hooks/chat/waiting/restore';
 import { useSearchParams } from '@/client/lib/router/search-params';
 import type { ToastTone } from '@/shared/lib/ui/toast-duration';
 
@@ -47,45 +47,65 @@ export function useWaitingDispatch({ onNotice }: WaitingDispatchOptions = {}): v
   // be an effect dependency: every unrelated render would re-run this walk.
   const noticeRef = useRef(onNotice);
   noticeRef.current = onNotice;
+  // Rows are retained for a day, so an outcome must be handled ONCE per tab —
+  // otherwise every waiting-topic frame adopts again and repeats the toast.
+  const handledRef = useRef(new Set<string>());
 
   useEffect(() => {
+    const openId = new URLSearchParams(window.location.search).get('sessionId');
     for (const prompt of prompts) {
       const pendingId = prompt.pendingId;
-      if (!pendingId) continue;
-      const held = pendingSessionWait(pendingId);
+      const targetId = prompt.targetSessionId;
+      const held = pendingId ? pendingSessionWait(pendingId) : null;
+      // The chat this outcome belongs to: a pending slot this tab still holds
+      // (or has open), or an existing session open in this tab.
+      const ownsPending = Boolean(pendingId) && (Boolean(held) || openId === pendingId);
+      const ownsTarget = Boolean(targetId) && openId === targetId;
+      if (!pendingId && !targetId) continue;
+
+      const outcomeKey = `${prompt.id}:${prompt.status}`;
+      if (handledRef.current.has(outcomeKey)) continue;
 
       if (prompt.status === 'dispatched' && prompt.sessionId) {
-        // Adopt when this tab OWNS the chat: it still holds the cue, or its URL
-        // names the pending id (a reload, a second tab on the same chat). A row
-        // from someone else's chat is left alone — adopting it would mint a
-        // sidebar entry for a session this tab never opened.
-        const openId = new URLSearchParams(window.location.search).get('sessionId');
-        if (!held && openId !== pendingId) continue;
-        adoptPendingSession(pendingId, prompt.sessionId, prompt.folderId);
-        // The URL may still name the pending id — this tab was left on the chat
-        // while the dispatch happened elsewhere.
-        setSearchParams((prev) => {
-          if (prev.get('sessionId') !== pendingId) return prev;
-          const next = new URLSearchParams(prev);
-          next.set('sessionId', prompt.sessionId as string);
-          return next;
-        }, { replace: true });
-        noticeRef.current?.(`Waiting finished — your prompt is now running in a new session.`, 'success');
+        handledRef.current.add(outcomeKey);
+        if (pendingId && ownsPending) {
+          adoptPendingSession(pendingId, prompt.sessionId, prompt.folderId);
+          // The URL may still name the pending id — this tab was left on the chat
+          // while the dispatch happened elsewhere.
+          setSearchParams((prev) => {
+            if (prev.get('sessionId') !== pendingId) return prev;
+            const next = new URLSearchParams(prev);
+            next.set('sessionId', prompt.sessionId as string);
+            return next;
+          }, { replace: true });
+          noticeRef.current?.('Waiting finished — your prompt is now running in a new session.', 'success');
+        } else if (targetId && ownsTarget) {
+          // The transcript reload is driven by the chat's own `useHeldWait`
+          // (it sees this row flip); this is only the user-facing report.
+          noticeRef.current?.('Waiting finished — your prompt is now running in this chat.', 'success');
+        }
         continue;
       }
 
       if (prompt.status === 'error') {
-        const openId = new URLSearchParams(window.location.search).get('sessionId');
-        if (!held && openId !== pendingId) continue;
-        clearPendingSessionWaiting(pendingId);
-        releasePendingSession(pendingId);
-        noticeRef.current?.(`The prompt you held was not sent: ${prompt.error ?? 'the dispatch failed.'}`, 'error');
+        handledRef.current.add(outcomeKey);
+        if (!ownsPending && !ownsTarget) continue;
+        restoreHeldDraft(prompt);
+        if (pendingId) markPendingSessionDraft(pendingId);
+        noticeRef.current?.(
+          `The prompt you held was not sent: ${prompt.error ?? 'the dispatch failed.'} Your draft is back in the composer.`,
+          'error',
+        );
         continue;
       }
 
-      if (prompt.status === 'cancelled' && held) {
-        clearPendingSessionWaiting(pendingId);
-        noticeRef.current?.('The held prompt was cancelled.', 'success');
+      if (prompt.status === 'cancelled') {
+        handledRef.current.add(outcomeKey);
+        if (!ownsPending && !ownsTarget) continue;
+        // The tab that cancelled already reported it; this covers a cancel from
+        // another tab/instance. The chat and its draft are kept either way.
+        restoreHeldDraft(prompt);
+        if (pendingId) markPendingSessionDraft(pendingId);
       }
     }
   }, [prompts, setSearchParams]);

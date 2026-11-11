@@ -41,9 +41,6 @@ export interface DraftTargetRowProps {
   branchAllowNone?: boolean;
   waitingFor?: WaitingCandidate | null;
   onWaitingForChange?: (candidate: WaitingCandidate | null) => void;
-  streamStatusMap?: Record<string, string | undefined>;
-  /** A name for a streaming session the sidebar has not scanned yet. */
-  titleForSession?: (id: string) => string | undefined;
   candidates: WaitingCandidate[];
 }
 
@@ -60,8 +57,6 @@ export function DraftTargetRow({
   branchAllowNone = true,
   waitingFor = null,
   onWaitingForChange,
-  streamStatusMap = {},
-  titleForSession,
   candidates,
 }: DraftTargetRowProps) {
   return (
@@ -103,10 +98,7 @@ export function DraftTargetRow({
           wait for (or a pick already made). */}
       {onWaitingForChange && (waitingFor || candidates.length > 0) && (
         <WaitingDependencyPicker
-          folders={folders}
-          streamStatusMap={streamStatusMap}
-          sessionId={null}
-          titleFor={titleForSession}
+          candidates={candidates}
           value={waitingFor}
           onChange={onWaitingForChange}
         />

@@ -70,6 +70,7 @@ export function useWaitingPrompts(): WaitingPromptsState {
 /** Create a held prompt. Throws the server's own reason on a refusal. */
 export async function createWaitingPromptRequest(input: {
   pendingId: string | null;
+  targetSessionId: string | null;
   dependsOn: string;
   dependsOnTitle: string | null;
   prompt: string;
@@ -91,10 +92,15 @@ export async function createWaitingPromptRequest(input: {
   return data.prompt as WaitingPrompt;
 }
 
-/** Cancel a held prompt. Returns the server's refusal rather than swallowing it. */
-export async function cancelWaitingPromptRequest(id: string): Promise<{ ok: boolean; error?: string }> {
+/** Cancel a held prompt. Returns the server's refusal rather than swallowing it,
+ *  and the cancelled row so the caller can restore its draft. */
+export async function cancelWaitingPromptRequest(
+  id: string,
+): Promise<{ ok: boolean; error?: string; prompt?: WaitingPrompt }> {
   const response = await fetch(`/api/waiting?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
-  if (response.ok) return { ok: true };
   const data = await response.json().catch(() => null);
+  if (response.ok) {
+    return { ok: true, ...(data?.prompt ? { prompt: data.prompt as WaitingPrompt } : {}) };
+  }
   return { ok: false, error: typeof data?.error === 'string' ? data.error : `HTTP ${response.status}` };
 }

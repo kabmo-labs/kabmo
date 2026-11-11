@@ -227,6 +227,9 @@ export function EmptyWorkspacePrompt({
       modes={modes}
       composerModelRef={composerModelRef}
       deferredComposerPickRef={deferredComposerPickRef}
+      {...(onWaitingForChange && docked
+        ? { waiting: { value: waitingFor ?? null, candidates, onChange: onWaitingForChange } }
+        : {})}
       {...(harness ? { harness } : {})}
       harnessEditable={harnessEditable}
       {...(onSelectHarness ? { onSelectHarness } : {})}
@@ -320,8 +323,6 @@ export function EmptyWorkspacePrompt({
             branchAllowNone={branchAllowNone}
             waitingFor={waitingFor}
             onWaitingForChange={onWaitingForChange}
-            streamStatusMap={streamStatusMap}
-            titleForSession={titleForSession}
             candidates={candidates}
           />
           {/* A held prompt owns this chat until it is released: there is no

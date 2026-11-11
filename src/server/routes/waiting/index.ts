@@ -33,6 +33,7 @@ import {
 import { attachmentHasPayload } from '@/shared/lib/chat/attachments';
 import { parseModeSelection } from '@/server/lib/omp/mode/request';
 import { isSinglePathSegment } from '@/server/lib/fs/path-segment';
+import { resolveSessionRef } from '@/server/lib/sessions/resolve.server';
 import { isMockMode } from '@/server/mock.server';
 
 /** GET — every prompt a client may still need (waiting + recent outcomes). */
@@ -61,6 +62,19 @@ async function createPrompt(request: Request) {
   }
   const prompt = typeof body.prompt === 'string' ? body.prompt : '';
   const attachments = Array.isArray(body.attachments) ? body.attachments : [];
+  // A NEXT prompt in an existing chat names its target; a pending chat names
+  // none and the dispatch spawns the session. The two are exclusive: a prompt
+  // with both would either spawn a second chat or silently pick one.
+  const targetSessionId = typeof body.targetSessionId === 'string' ? body.targetSessionId.trim() : '';
+  if (targetSessionId && !isSinglePathSegment(targetSessionId)) {
+    return json({ error: 'The target session id is not valid', code: 'target_invalid' }, { status: 400 });
+  }
+  if (targetSessionId && targetSessionId === dependsOn) {
+    return json(
+      { error: 'A prompt cannot wait for the session it is sent to.', code: 'target_self' },
+      { status: 400 },
+    );
+  }
   // Same rule the composer's own send guard applies: an empty prompt is not a
   // prompt. Without it a row would be created, spawn a session, and deliver
   // nothing to it.
@@ -68,11 +82,15 @@ async function createPrompt(request: Request) {
     return json({ error: 'The prompt is empty', code: 'prompt_required' }, { status: 400 });
   }
   const cwd = typeof body.cwd === 'string' ? body.cwd.trim() : '';
+  // An existing chat already has a home: its session's own cwd is the truthful
+  // answer, and a client that forgot to send one must not be refused. The spawn
+  // path still requires an absolute directory (a new chat has no other source).
+  const resolvedCwd = cwd || (targetSessionId ? (await resolveSessionRef(targetSessionId)).cwd ?? '' : '');
   // `isAbsolute`, not `startsWith('/')`: a Windows workspace names its directory
   // `C:\…`, and the POSIX-only test refused every hold there with
   // `cwd_required` — the prompt was sent immediately instead of being held
   // (measured on the Windows CI leg of `waiting-prompt.e2e.ts`).
-  if (!isAbsolute(cwd)) {
+  if (!isAbsolute(resolvedCwd)) {
     return json({ error: 'An absolute working directory is required', code: 'cwd_required' }, { status: 400 });
   }
   if (await isDependencySettled(dependsOn)) {
@@ -86,11 +104,12 @@ async function createPrompt(request: Request) {
     pendingId: typeof body.pendingId === 'string' ? body.pendingId : null,
     dependsOn,
     dependsOnTitle: typeof body.dependsOnTitle === 'string' ? body.dependsOnTitle : null,
+    targetSessionId: targetSessionId || null,
     prompt,
     attachments,
     model: body.model,
     modes: body.modes === undefined ? null : parseModeSelection(asRecord(body.modes)),
-    cwd,
+    cwd: resolvedCwd,
     folderId: typeof body.folderId === 'number' ? body.folderId : null,
   });
   emitRealtimeSignal('waiting-changed');

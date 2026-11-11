@@ -54,6 +54,7 @@ export function ChatInput({
   composerModelRef,
   /** Pending pick from a previous turn; omits for non-streaming composers. */
   deferredComposerPickRef = NO_PENDING_PICK,
+  waiting,
   chatRunning,
   expandable = false,
   hero = false,
@@ -331,6 +332,7 @@ export function ChatInput({
         voiceListening,
         voiceBusy,
         onVoiceToggle: handleVoiceToggle,
+        ...(waiting ? { waiting } : {}),
       })}
     />
   );

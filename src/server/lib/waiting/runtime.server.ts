@@ -31,6 +31,8 @@ import {
   type AgentSessionWrapper,
 } from '@/server/lib/omp/rpc/manager';
 import { getRpcSession } from '@/server/lib/omp/rpc/session-registry';
+import { ensureSessionLive } from '@/server/lib/sessions/dispatch.server';
+import type { QueueDeliveryHost } from '@/server/lib/queue/delivery.server';
 import { kabmoModeEnv } from '@/server/lib/omp/extensions/locator';
 import { hasQueuedItem } from '@/server/lib/queue/store.server';
 import { hasPendingDelivery } from '@/server/lib/queue/delivery.server';
@@ -86,6 +88,8 @@ export interface WaitingDeps {
     modeEnv?: Record<string, string>,
   ): Promise<{ session: WaitingSessionHandle; realSessionId: string }>;
   getSession(sessionId: string): AgentSessionWrapper | undefined;
+  /** Wake an EXISTING chat so a held next prompt can be delivered into it. */
+  ensureSessionLive(sessionId: string): Promise<QueueDeliveryHost | null>;
   loadStreamStates(): Promise<StreamRowMap>;
   /** Epoch ms of a session's last status write, or null when unknown. */
   streamRowWrittenAt(sessionId: string): Promise<number | null>;
@@ -113,6 +117,7 @@ function defaultDeps(): WaitingDeps {
   return {
     startNewRpcSession,
     getSession: getRpcSession,
+    ensureSessionLive,
     loadStreamStates,
     streamRowWrittenAt,
     hasQueuedItem,
@@ -181,6 +186,16 @@ async function dispatchWaitingPrompt(
   prompt: WaitingPrompt,
   deps: WaitingDeps,
 ): Promise<{ sessionId: string }> {
+  // A next prompt in a chat that already exists is delivered THERE. Spawning
+  // would create a second session for text the user wrote in the first one.
+  if (prompt.targetSessionId) {
+    const target = await deps.ensureSessionLive(prompt.targetSessionId);
+    if (!target) throw new Error(`Session ${prompt.targetSessionId} could not be woken for the held prompt.`);
+    const send = (command: Record<string, unknown>) => target.send(command);
+    await applyModelSnapshot(send, prompt.model);
+    await send(promptCommand({ text: prompt.prompt, attachments: prompt.attachments, model: prompt.model }));
+    return { sessionId: prompt.targetSessionId };
+  }
   const accessMode = prompt.model?.accessMode ?? (await deps.loadPersistedAccessMode());
   const modeEnv = prompt.modes ? kabmoModeEnv(prompt.modes) : undefined;
   const { session, realSessionId } = await deps.startNewRpcSession(prompt.cwd, accessMode, modeEnv);
@@ -215,6 +230,13 @@ export async function sweepWaitingPrompts(
   for (const prompt of waiting) {
     const state = await readDependencyState(prompt.dependsOn, deps, streams);
     if (!dependencyVerdict(state, now).settled) continue;
+    // A target that is itself mid-turn refuses a prompt (omp drops it). The
+    // prompt is still wanted, so it stays `waiting` for the next sweep — the
+    // same conservative rule the dependency's own queue uses.
+    if (prompt.targetSessionId) {
+      const target = await readDependencyState(prompt.targetSessionId, deps, streams);
+      if (!dependencyVerdict(target, now).settled) continue;
+    }
     if (!(await deps.claimWaitingPrompt(prompt.id))) continue;
     try {
       const { sessionId } = await withTimeout(

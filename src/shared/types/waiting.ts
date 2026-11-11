@@ -33,6 +33,15 @@ export interface WaitingPrompt {
   pendingId: string | null;
   /** The session whose completion releases this prompt. */
   dependsOn: string;
+  /**
+   * The chat this prompt is sent INTO, when it already exists.
+   *
+   * Null on the original path: the prompt belongs to a pending `new-…` chat and
+   * the dispatch spawns its session. A next prompt in a running chat names the
+   * session it belongs to, and the dispatch wakes that session instead of
+   * creating a second one.
+   */
+  targetSessionId: string | null;
   /** Title of `dependsOn` at creation time, for the waiting row's own label. */
   dependsOnTitle: string | null;
   /** Composer text as the user typed it. */

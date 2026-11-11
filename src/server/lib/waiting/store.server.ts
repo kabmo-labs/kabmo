@@ -32,6 +32,7 @@ interface WaitingRow {
   pending_id: string | null;
   depends_on: string;
   depends_on_title: string | null;
+  target_session_id: string | null;
   message: string;
   attachments: string;
   provider: string | null;
@@ -88,6 +89,7 @@ function rowToWaitingPrompt(row: WaitingRow): WaitingPrompt {
     pendingId: row.pending_id,
     dependsOn: row.depends_on,
     dependsOnTitle: row.depends_on_title,
+    targetSessionId: row.target_session_id,
     prompt: row.message,
     attachments: Array.isArray(attachments) ? (attachments as Attachment[]) : [],
     model: readModel(row),
@@ -106,6 +108,7 @@ export interface WaitingPromptInput {
   pendingId?: string | null;
   dependsOn: string;
   dependsOnTitle?: string | null;
+  targetSessionId?: string | null;
   prompt: string;
   attachments?: unknown;
   model?: unknown;
@@ -150,15 +153,16 @@ export async function createWaitingPrompt(input: WaitingPromptInput): Promise<Wa
   const now = Date.now();
   await db.run(
     `INSERT INTO waiting_prompts
-       (id, pending_id, depends_on, depends_on_title, message, attachments,
+       (id, pending_id, depends_on, depends_on_title, target_session_id, message, attachments,
         provider, model_id, thinking_level, access_mode, modes, cwd, folder_id,
         status, session_id, error, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'waiting', NULL, NULL, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'waiting', NULL, NULL, ?, ?)`,
     [
       id,
       input.pendingId ?? null,
       input.dependsOn,
       input.dependsOnTitle ?? null,
+      input.targetSessionId ?? null,
       input.prompt,
       JSON.stringify(Array.isArray(input.attachments) ? input.attachments : []),
       model?.provider ?? null,

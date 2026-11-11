@@ -46,24 +46,30 @@ export interface ComposerHoldDeps {
   waitingDependencyRef?: { current: WaitingCandidate | null };
 }
 
+/** A pending chat has no omp id yet; everything else is a real session. */
+function isPendingChat(sessionId: string | null): boolean {
+  return !sessionId || sessionId.startsWith('new-');
+}
+
 /**
- * The composer's own entry point: hold the draft if a dependency is picked and
- * the chat is idle, else answer false and let the normal send proceed.
+ * The composer's own entry point: hold the draft if a dependency is picked,
+ * else answer false and let the normal send proceed.
  *
- * Idle is part of the condition rather than the caller's business: a chat with
- * a run in flight queues its follow-up (or steers), which is a different
- * decision made further down the send path.
+ * A chat with a run in flight is NOT excluded: holding is a deferral to another
+ * session, not a send, so it is the one path that may run while this chat is
+ * busy. The running chat's own follow-up still takes the queue branch, because
+ * without a pick this function returns false and the send path queues it.
  */
 export async function holdFromComposer(
   deps: ComposerHoldDeps,
   text: string,
   attachments: Attachment[],
-  busy: boolean,
 ): Promise<boolean> {
   const choice = deps.waitingDependencyRef?.current ?? null;
-  if (!choice || busy) return false;
+  if (!choice) return false;
   return holdPromptForDependency({
     sessionId: deps.sessionId,
+    targetSessionId: isPendingChat(deps.sessionId) ? null : deps.sessionId,
     folders: deps.folders,
     selectedFolderId: deps.selectedFolderId,
     composerModelRef: deps.composerModelRef,
@@ -79,6 +85,8 @@ export async function holdFromComposer(
 
 export interface HoldDeps {
   sessionId: string | null;
+  /** The existing chat this prompt is sent into; null for a pending chat. */
+  targetSessionId: string | null;
   folders: WorkspaceFolderData[];
   selectedFolderId: number | null;
   composerModelRef: { current: { provider: string; modelId: string; thinkingLevel: string } | null };
@@ -114,8 +122,8 @@ export async function holdPromptForDependency(
     return false;
   }
   const folder = deps.folders.find((entry) => String(entry.id) === String(deps.selectedFolderId));
-  const cwd = folder?.project_path || folder?.name;
-  if (!cwd) {
+  const cwd = folder?.project_path || folder?.name || '';
+  if (!cwd && !deps.targetSessionId) {
     deps.reportActionError('Pick a workspace before holding this prompt.');
     return false;
   }
@@ -126,7 +134,8 @@ export async function holdPromptForDependency(
   const composerPick = deps.composerModelRef.current;
   try {
     const created = await createWaitingPromptRequest({
-      pendingId: deps.sessionId,
+      pendingId: deps.targetSessionId ? null : deps.sessionId,
+      targetSessionId: deps.targetSessionId,
       dependsOn: dependency.id,
       dependsOnTitle: dependency.title,
       prompt: text,
@@ -136,7 +145,7 @@ export async function holdPromptForDependency(
       cwd,
       folderId: folder ? Number(folder.id) : null,
     });
-    if (deps.sessionId) {
+    if (deps.sessionId && !deps.targetSessionId) {
       markPendingSessionWaiting(deps.sessionId, {
         waitId: created.id,
         dependsOn: dependency.id,
