@@ -407,4 +407,70 @@ test.describe('terminal', () => {
 
     workspace.dispose();
   });
+
+  // ghostty-web's `writeInternal` ends with `viewportY !== 0 && scrollToBottom()`,
+  // so EVERY chunk of PTY output re-anchored the view to the live end: a wheel-up
+  // during a stream was undone by the next frame, nothing above the live line
+  // could be read, and a drag copied whatever had scrolled in under the pointer
+  // instead of the rows it started on. Measured before the fix: two dragged rows
+  // during a 100 lines/s stream copied TWELVE lines.
+  //
+  // The clipboard is read through Chromium's own permission; the selection under
+  // a moving stream is the one thing a pixel assertion cannot see.
+  test('a stream can be scrolled and selected from', async ({ harness, page, context }, testInfo) => {
+    test.skip(testInfo.project.name !== 'chromium', 'reads the clipboard through Chromium permissions');
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    const server = await harness('real');
+    const workspace = await seedWorkspace(server, 'e2e-terminal-stream');
+
+    await openApp(page, `${server.baseURL}/?folderId=${workspace.id}`);
+    await page.getByRole('button', { name: 'Terminal (Bun)' }).click();
+    const canvas = page.locator('[data-terminal-root] canvas');
+    await expect(canvas).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText('LIVE', { exact: true })).toBeVisible({ timeout: 20_000 });
+
+    // A shell loop, not a file: the stream has to keep arriving while the
+    // assertions run, and `tail -F` on a path the spec does not own is a flake.
+    await page.locator('[data-terminal-input]').focus();
+    await page.keyboard.type("clear; seq 1 120; i=0; while :; do i=$((i+1)); echo \"STREAM-LINE-$i\"; sleep 0.05; done");
+    await page.keyboard.press('Enter');
+
+    const box = await canvas.boundingBox();
+    if (!box) throw new Error('the canvas has no box');
+    // The wheel needs scrollback to scroll into: the shell has to have printed
+    // past one screen first, or the gesture is a no-op on an empty buffer.
+    await page.waitForTimeout(1_500);
+
+    // The "Latest" button is the viewport's own report — it is rendered from
+    // `onScroll` — so it is the honest non-visual observable of "the reader is
+    // scrolled back". Before the fix it was already gone on the next chunk.
+    const latest = page.getByRole('button', { name: /Latest/ });
+    await page.mouse.move(box.x + 60, box.y + 60);
+    await page.mouse.wheel(0, -500);
+    await expect(latest).toBeVisible();
+    await page.waitForTimeout(1_200);
+    await expect(latest).toBeVisible();
+
+    // Drag two rows inside the held history, while output keeps arriving.
+    await page.evaluate(() => navigator.clipboard.writeText('SENTINEL'));
+    await page.mouse.move(box.x + 4, box.y + 40);
+    await page.mouse.down();
+    await page.mouse.move(box.x + 110, box.y + 54, { steps: 10 });
+    await page.mouse.up();
+
+    // The selection outlives the drag, because a selection holds the viewport.
+    await page.waitForTimeout(1_200);
+    await page.keyboard.press('Meta+c');
+    const copied = await page.evaluate(() => navigator.clipboard.readText());
+    expect(copied).not.toBe('SENTINEL');
+    // Two dragged rows select at most a handful of lines; twelve was the bug,
+    // because the rows moved behind the gesture.
+    expect(copied.split('\n').length).toBeLessThanOrEqual(4);
+
+    // Asking for the live end lets output scroll again.
+    await latest.click();
+    await expect(latest).toBeHidden();
+
+    workspace.dispose();
+  });
 });

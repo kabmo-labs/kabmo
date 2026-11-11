@@ -47,6 +47,7 @@ import {
 import { installFullWidthFit } from '@/client/components/workspace/terminal-panel/fit';
 import { createGridAnnouncer } from '@/client/components/workspace/terminal-panel/grid';
 import { attachTouchScroll, handleKeyNavigation } from '@/client/components/workspace/terminal-panel/navigation';
+import { holdAcrossWrite, watchPointerPress } from '@/client/components/workspace/terminal-panel/scroll-hold';
 import {
   getTerminalTheme,
   TERMINAL_FONT_FAMILY,
@@ -111,10 +112,9 @@ export async function mountTerminal(
 ): Promise<TerminalMount | null> {
   // One dynamic import, and the WASM module is loaded once per page. Fonts are
   // fetched in parallel: the renderer measures its cell box at `open()`, and a
-  // face that lands after that is repaired by `watchTerminalFonts`.
-  // Dynamic on purpose: ghostty-web and its ~424 KB WASM are only needed once
-  // the terminal panel is opened, so a static import would put them in the
-  // initial client bundle for every page.
+  // face that lands after that is repaired by `watchTerminalFonts`. Dynamic on
+  // purpose: ghostty-web and its ~424 KB WASM are only needed once the panel is
+  // opened, so a static import would put them in every page's initial bundle.
   const module = await import('ghostty-web');
   const [ghostty] = await Promise.all([module.Ghostty.load(), waitForTerminalFonts()]);
   if (isCancelled()) return null;
@@ -256,6 +256,8 @@ export async function mountTerminal(
     onGridChange: callbacks.onGridChange,
   });
 
+  const pointer = watchPointerPress(container);
+
   current = create(currentThemeId);
   safeFit();
   grid.schedule();
@@ -294,7 +296,11 @@ export async function mountTerminal(
 
   return {
     write(bytes: Uint8Array) {
-      current?.term.write(bytes);
+      const term = current?.term;
+      if (!term) return;
+      // ghostty-web snaps the viewport to the bottom on every write; see
+      // `scroll-hold.ts` for why that made a stream impossible to select from.
+      holdAcrossWrite(term, pointer, () => term.write(bytes));
     },
     writeReplay,
     reset() {
@@ -334,6 +340,7 @@ export async function mountTerminal(
       grid.dispose();
       stopFontWatch();
       touch();
+      pointer.stop();
       resizeObserver.disconnect();
       disposeInstance(current);
       current = null;
