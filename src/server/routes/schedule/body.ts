@@ -18,6 +18,8 @@ import { getDb } from '@/server/db.server';
 import { normalizeModel } from '@/server/lib/queue/store.server';
 import { readSettingsJson } from '@/server/lib/db/settings-store';
 import { loadPersistedAccessMode } from '@/shared/lib/omp/config/access-mode.server';
+import { harnessDescriptor } from '@/shared/lib/harness/catalog';
+import { isValidTimeZone, serverTimeZone } from '@/shared/lib/schedule/timezone';
 import { isRecord } from '@/shared/lib/util/guards';
 import type { ScheduleKind, ScheduledTaskModel } from '@/shared/types/schedule';
 
@@ -88,6 +90,8 @@ export function readTaskBody(body: unknown): {
   prompt: string;
   kind: ScheduleKind;
   spec: string;
+  harness: string;
+  timezone: string;
   folderId: number | null;
   sessionId: string | null;
   model: ScheduledTaskModel | null;
@@ -97,11 +101,21 @@ export function readTaskBody(body: unknown): {
   if (typeof body.prompt !== 'string' || !body.prompt.trim()) return null;
   if (!isScheduleKind(body.kind)) return null;
   if (typeof body.spec !== 'string' || !body.spec.trim()) return null;
+  // Absent means the built-in transport; a value that is present but unknown is
+  // a client bug, not a default, so the whole body is refused.
+  const harness = body.harness === undefined ? 'omp-rpc' : optionalText(body.harness);
+  if (!harness || !harnessDescriptor(harness)) return null;
+  // Absent means "the server's zone"; a value that is present but unknown is a
+  // client bug, not a default, so the whole body is refused.
+  const timezone = body.timezone === undefined ? serverTimeZone() : optionalText(body.timezone);
+  if (!timezone || !isValidTimeZone(timezone)) return null;
   return {
     name: typeof body.name === 'string' ? body.name.trim() : '',
     prompt: body.prompt.trim(),
     kind: body.kind,
     spec: body.spec.trim(),
+    harness,
+    timezone,
     folderId: optionalNumber(body.folderId),
     sessionId: optionalText(body.sessionId),
     model: parseModelField(body),

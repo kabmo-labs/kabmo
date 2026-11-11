@@ -24,19 +24,31 @@ export interface ScheduleDraft {
   prompt: string;
   kind: ScheduleKind;
   spec: string;
+  harness: string;
+  timezone: string;
   folderId: number | null;
   sessionId: string | null;
   model: ScheduledTaskModel | null;
 }
 
-async function readList(res: Response): Promise<ScheduledTask[] | null> {
-  const data = (await res.json().catch(() => null)) as { tasks?: ScheduledTask[]; error?: string } | null;
+/** The schedule topic's payload: the list plus the zone a new task defaults to. */
+export interface ScheduleSnapshot {
+  tasks: ScheduledTask[];
+  serverTimeZone: string;
+}
+
+async function readList(res: Response): Promise<ScheduleSnapshot | null> {
+  const data = (await res.json().catch(() => null)) as
+    | { tasks?: ScheduledTask[]; serverTimeZone?: string; error?: string }
+    | null;
   if (!res.ok || !data || data.error) return null;
-  return data.tasks ?? [];
+  return { tasks: data.tasks ?? [], serverTimeZone: data.serverTimeZone ?? '' };
 }
 
 export interface ScheduleController {
   tasks: ScheduledTask[];
+  /** The server's IANA zone; a new task defaults to it. */
+  serverTimeZone: string;
   loading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
@@ -49,15 +61,17 @@ export interface ScheduleController {
 
 export function useScheduledTasks(active: boolean): ScheduleController {
   const [tasks, setTasks] = useState<ScheduledTask[]>([]);
+  const [serverTimeZone, setServerTimeZone] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const list = await readList(await fetch('/api/schedule'));
-      if (list) {
-        setTasks(list);
+      const snapshot = await readList(await fetch('/api/schedule'));
+      if (snapshot) {
+        setTasks(snapshot.tasks);
+        if (snapshot.serverTimeZone) setServerTimeZone(snapshot.serverTimeZone);
         setError(null);
       } else {
         setError('Could not load scheduled tasks.');
@@ -72,10 +86,11 @@ export function useScheduledTasks(active: boolean): ScheduleController {
   // The schedule topic is the read path: a snapshot on subscribe, then a push
   // whenever a task is written — by this tab, another tab, or the runtime's own
   // fire. `refresh` stays for a caller that needs an immediate re-read.
-  const topic = useRealtimeTopic<ScheduledTask[]>(TOPIC_SCHEDULE, { enabled: active });
+  const topic = useRealtimeTopic<ScheduleSnapshot>(TOPIC_SCHEDULE, { enabled: active });
   useEffect(() => {
     if (!topic.data) return;
-    setTasks(topic.data);
+    setTasks(topic.data.tasks);
+    if (topic.data.serverTimeZone) setServerTimeZone(topic.data.serverTimeZone);
     setLoading(false);
     setError(null);
   }, [topic.data]);
@@ -139,7 +154,7 @@ export function useScheduledTasks(active: boolean): ScheduleController {
     }
   }, []);
 
-  return { tasks, loading, error, refresh, create, patch, remove, runNow, loadRuns };
+  return { tasks, serverTimeZone, loading, error, refresh, create, patch, remove, runNow, loadRuns };
 }
 
 /**
@@ -154,6 +169,6 @@ export function useScheduledTasks(active: boolean): ScheduleController {
 export function useScheduledTaskCount(): number {
   // Derived from the SAME topic the modal reads, so the badge cannot disagree
   // with the list, and the modal's own writes reach it without an event.
-  const topic = useRealtimeTopic<ScheduledTask[]>(TOPIC_SCHEDULE);
-  return useMemo(() => (topic.data ?? []).filter((task) => task.enabled).length, [topic.data]);
+  const topic = useRealtimeTopic<ScheduleSnapshot>(TOPIC_SCHEDULE);
+  return useMemo(() => (topic.data?.tasks ?? []).filter((task) => task.enabled).length, [topic.data]);
 }

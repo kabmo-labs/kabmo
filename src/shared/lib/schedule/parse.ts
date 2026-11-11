@@ -25,6 +25,7 @@
  */
 
 import type { ScheduleKind } from '@/shared/types/schedule';
+import { isValidTimeZone, serverTimeZone, wallClock, wallTimeToInstant } from '@/shared/lib/schedule/timezone';
 
 /** Shortest interval the runtime can honour: it ticks once a minute. */
 export const MIN_INTERVAL_MS = 60_000;
@@ -153,10 +154,9 @@ export function parseCron(spec: string): CronFields | null {
   };
 }
 
-function dayMatches(fields: CronFields, date: Date): boolean {
-  const dom = date.getDate();
-  const dow = date.getDay();
-  const byDom = fields.daysOfMonth.includes(dom);
+function dayMatches(fields: CronFields, year: number, month: number, day: number): boolean {
+  const dow = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+  const byDom = fields.daysOfMonth.includes(day);
   const byDow = fields.daysOfWeek.includes(dow);
   // Vixie cron: with both fields restricted the day matches if EITHER does.
   if (fields.domRestricted && fields.dowRestricted) return byDom || byDow;
@@ -165,59 +165,77 @@ function dayMatches(fields: CronFields, date: Date): boolean {
   return true;
 }
 
-function firstAtLeast(values: number[], floor: number): number | null {
-  for (const value of values) if (value >= floor) return value;
-  return null;
-}
-
 /**
- * The first fire strictly after `from`, in local time. Null when the
+ * The first fire strictly after `from`, in the task's zone. Null when the
  * expression never matches inside the horizon (an impossible date such as
  * `0 0 30 2 *`).
+ *
+ * The walk advances one CALENDAR DAY at a time in the zone's own calendar, and
+ * a month the month-field excludes is jumped whole. Advancing by an offset
+ * instead would land mid-month after a skip and miss the first of the month it
+ * jumped to. Candidate wall times are converted through the zone, so a DST
+ * transition neither shifts the fire nor produces a duplicate.
  */
-export function nextCronOccurrence(fields: CronFields, from: Date): number | null {
-  // Cron fires on minute boundaries; the next candidate is the start of the
-  // minute after `from`, so a fire at exactly `from` is not re-scheduled.
-  const cursor = new Date(from.getTime());
-  cursor.setSeconds(0, 0);
-  cursor.setMinutes(cursor.getMinutes() + 1);
+export function nextCronOccurrence(fields: CronFields, from: Date, timeZone?: string): number | null {
+  const zone = timeZone && isValidTimeZone(timeZone) ? timeZone : serverTimeZone();
+  const start = wallClock(from.getTime(), zone);
+  const horizon = Date.UTC(start.year + 8, start.month - 1, start.day);
 
-  const cursorDayStart = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate()).getTime();
-  const horizon = new Date(cursorDayStart);
-  horizon.setFullYear(horizon.getFullYear() + 8);
-
-  // The walk advances one CALENDAR DAY at a time, and a month the month-field
-  // excludes is jumped whole. Advancing by an offset instead would land
-  // mid-month after a skip and miss the first of the month it jumped to.
-  for (let day = new Date(cursorDayStart); day.getTime() <= horizon.getTime(); ) {
-    if (!fields.months.includes(day.getMonth() + 1)) {
-      day = new Date(day.getFullYear(), day.getMonth() + 1, 1);
+  for (let dayCursor = Date.UTC(start.year, start.month - 1, start.day); dayCursor <= horizon; ) {
+    const date = new Date(dayCursor);
+    const year = date.getUTCFullYear();
+    const month = date.getUTCMonth() + 1;
+    const day = date.getUTCDate();
+    if (!fields.months.includes(month)) {
+      dayCursor = Date.UTC(year, month, 1);
       continue;
     }
-    if (dayMatches(fields, day)) {
-      const sameDay = day.getTime() === cursorDayStart;
-      const hourFloor = sameDay ? cursor.getHours() : 0;
-      const hour = firstAtLeast(fields.hours, hourFloor);
-      if (hour !== null) {
-        const minuteFloor = sameDay && hour === cursor.getHours() ? cursor.getMinutes() : 0;
-        const minute = firstAtLeast(fields.minutes, minuteFloor);
-        if (minute !== null) {
-          return new Date(day.getFullYear(), day.getMonth(), day.getDate(), hour, minute, 0, 0).getTime();
+    if (dayMatches(fields, year, month, day)) {
+      for (const hour of fields.hours) {
+        for (const minute of fields.minutes) {
+          const instant = wallTimeToInstant(year, month, day, hour, minute, zone);
+          if (instant !== null && instant > from.getTime()) return instant;
         }
       }
     }
-    day = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1);
+    dayCursor = Date.UTC(year, month - 1, day + 1);
   }
   return null;
 }
 
-/** Parse a `once` spec (ISO-8601 timestamp, or epoch ms). */
-export function parseOnce(spec: string): number | null {
+/** A datetime with no offset: its wall time is read in the task's zone. */
+const NAIVE_DATETIME = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?$/;
+
+/**
+ * Parse a `once` spec (ISO-8601 timestamp, or epoch ms).
+ *
+ * A spec that carries an offset (`Z`, `+02:00`) is absolute and is left to
+ * `Date.parse`. A naive datetime is a wall-clock statement, so with a zone it
+ * is resolved in that zone; without one it keeps `Date.parse`'s local reading.
+ */
+export function parseOnce(spec: string, timeZone?: string): number | null {
   const text = spec.trim();
   if (!text) return null;
   if (/^\d+$/.test(text)) {
     const ms = Number(text);
     return ms > 0 ? ms : null;
+  }
+  if (timeZone) {
+    const match = text.match(NAIVE_DATETIME);
+    if (match) {
+      const [, year, month, day, hour, minute, second, fraction] = match;
+      const instant = wallTimeToInstant(
+        Number(year),
+        Number(month),
+        Number(day),
+        Number(hour),
+        Number(minute),
+        timeZone,
+      );
+      if (instant === null) return null;
+      const millis = (second ? Number(second) * 1_000 : 0) + (fraction ? Number(fraction.padEnd(3, '0')) : 0);
+      return instant + millis;
+    }
   }
   const ms = Date.parse(text);
   return Number.isNaN(ms) ? null : ms;
@@ -232,10 +250,15 @@ export type ScheduleValidation =
  * both the modal (inline feedback) and the route (a stale client) use, so a
  * row can never be written with a spec the runtime cannot schedule.
  */
-export function validateSchedule(kind: ScheduleKind, spec: string, now = Date.now()): ScheduleValidation {
+export function validateSchedule(
+  kind: ScheduleKind,
+  spec: string,
+  now = Date.now(),
+  timeZone?: string,
+): ScheduleValidation {
   if (!spec.trim()) return { ok: false, error: 'Enter a schedule.' };
   if (kind === 'once') {
-    const at = parseOnce(spec);
+    const at = parseOnce(spec, timeZone);
     if (at === null) return { ok: false, error: 'Use an ISO timestamp, e.g. 2026-10-01T09:00.' };
     if (at <= now) return { ok: false, error: 'That time is already in the past.' };
     return { ok: true, nextRunAt: at };
@@ -250,7 +273,7 @@ export function validateSchedule(kind: ScheduleKind, spec: string, now = Date.no
   if (!fields) {
     return { ok: false, error: 'Use 5 fields: minute hour day-of-month month day-of-week.' };
   }
-  const next = nextCronOccurrence(fields, new Date(now));
+  const next = nextCronOccurrence(fields, new Date(now), timeZone);
   if (next === null) return { ok: false, error: 'That expression never matches a date.' };
   return { ok: true, nextRunAt: next };
 }
@@ -263,6 +286,7 @@ export function nextRunAfter(
   kind: ScheduleKind,
   spec: string,
   after: number,
+  timeZone?: string,
 ): number | null {
   if (kind === 'once') return null;
   if (kind === 'every') {
@@ -270,15 +294,15 @@ export function nextRunAfter(
     return interval === null ? null : after + interval;
   }
   const fields = parseCron(spec);
-  return fields ? nextCronOccurrence(fields, new Date(after)) : null;
+  return fields ? nextCronOccurrence(fields, new Date(after), timeZone) : null;
 }
 
 /** Human summary of a schedule for the task list and the run log. */
-export function describeSchedule(kind: ScheduleKind, spec: string): string {
+export function describeSchedule(kind: ScheduleKind, spec: string, timeZone?: string): string {
   const text = spec.trim();
   if (kind === 'once') {
-    const at = parseOnce(text);
-    return at === null ? text : `Once at ${new Date(at).toLocaleString()}`;
+    const at = parseOnce(text, timeZone);
+    return at === null ? text : `Once at ${new Date(at).toLocaleString(undefined, timeZone ? { timeZone } : undefined)}`;
   }
   if (kind === 'every') {
     const interval = parseInterval(text);

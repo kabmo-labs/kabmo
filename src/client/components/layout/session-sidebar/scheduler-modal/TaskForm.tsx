@@ -17,9 +17,10 @@ import { CHECKBOX_CLASS } from '@/client/components/common/checkbox/style';
 import { useEffect, useState } from 'preact/hooks';
 import { Loader2 } from 'lucide-preact';
 import { validateSchedule } from '@/shared/lib/schedule/parse';
-import type { ScheduleKind } from '@/shared/types/schedule';
+import type { ScheduleKind, ScheduledTaskModel } from '@/shared/types/schedule';
 import type { ScheduleDraft } from '@/client/hooks/workspace/scheduled-tasks';
 import type { ScheduleFolderOption } from '@/client/components/layout/session-sidebar/scheduler-modal/folders';
+import { ModelFields } from '@/client/components/layout/session-sidebar/scheduler-modal/ModelFields';
 
 interface TaskFormProps {
   /** Workspace folders a task can run in. */
@@ -28,6 +29,8 @@ interface TaskFormProps {
   initial: (ScheduleDraft & { id: string }) | null;
   /** The session the composer is on, offered as "resume this conversation". */
   activeSessionId: string | null;
+  /** The server's zone, the default for a new task. */
+  serverTimeZone: string;
   busy: boolean;
   onSubmit: (draft: ScheduleDraft) => void;
   onCancel: () => void;
@@ -61,10 +64,37 @@ function formatNext(at: number): string {
   return `in ${Math.round(hours / 24)}d`;
 }
 
+/**
+ * The zones the picker offers. `Intl.supportedValuesOf` is the runtime's own
+ * list, so the picker cannot offer a zone the parser would refuse; the current
+ * value is prepended when the runtime does not list it (a legacy or alias name).
+ */
+let cachedZones: string[] | null = null;
+
+function supportedZones(): string[] {
+  if (cachedZones) return cachedZones;
+  // `Intl.supportedValuesOf` is in the runtime but not in the ES2022 lib types.
+  const intlWithZones = Intl as typeof Intl & { supportedValuesOf?: (key: string) => string[] };
+  let supported: string[] = [];
+  try {
+    supported = intlWithZones.supportedValuesOf?.('timeZone') ?? [];
+  } catch {
+    supported = [];
+  }
+  cachedZones = supported.length ? supported : ['UTC'];
+  return cachedZones;
+}
+
+function timeZoneOptions(current: string): string[] {
+  const zones = supportedZones();
+  return current && !zones.includes(current) ? [current, ...zones] : zones;
+}
+
 export function TaskForm({
   folders,
   initial,
   activeSessionId,
+  serverTimeZone,
   busy,
   onSubmit,
   onCancel,
@@ -73,6 +103,12 @@ export function TaskForm({
   const [prompt, setPrompt] = useState('');
   const [kind, setKind] = useState<ScheduleKind>('every');
   const [spec, setSpec] = useState('1h');
+  const [harness, setHarness] = useState('omp-rpc');
+  const [model, setModel] = useState<ScheduledTaskModel | null>(null);
+  // The topic snapshot carries the server's zone; before it lands (or when the
+  // server reports none) the browser's zone is the honest stand-in.
+  const defaultZone = serverTimeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  const [timezone, setTimezone] = useState(defaultZone);
   const [folderId, setFolderId] = useState<number | null>(null);
   const [useActiveSession, setUseActiveSession] = useState(false);
 
@@ -83,11 +119,14 @@ export function TaskForm({
     setPrompt(initial?.prompt ?? '');
     setKind(initial?.kind ?? 'every');
     setSpec(initial?.spec ?? '1h');
+    setHarness(initial?.harness ?? 'omp-rpc');
+    setModel(initial?.model ?? null);
+    setTimezone(initial?.timezone ?? defaultZone);
     setFolderId(initial?.folderId ?? null);
     setUseActiveSession(Boolean(initial?.sessionId));
-  }, [initial?.id]);
+  }, [initial?.id, defaultZone]);
 
-  const validation = validateSchedule(kind, spec);
+  const validation = validateSchedule(kind, spec, Date.now(), timezone);
   const canSubmit = Boolean(prompt.trim()) && validation.ok && !busy;
 
   const submit = () => {
@@ -97,13 +136,13 @@ export function TaskForm({
       prompt: prompt.trim(),
       kind,
       spec: spec.trim(),
+      harness,
+      timezone,
       folderId,
       // Resuming a session only makes sense for a fresh draft; an existing
       // task keeps whatever it was saved with unless the box is re-ticked.
       sessionId: useActiveSession ? initial?.sessionId ?? activeSessionId : null,
-      // The model snapshot is resolved server-side from the persisted
-      // composer selection, so an edit never rewrites it.
-      model: initial?.model ?? null,
+      model,
     });
   };
 
@@ -160,12 +199,24 @@ export function TaskForm({
 
       <p className={`text-[11px] ${validation.ok ? 'text-ink/50' : 'text-error'}`}>
         {validation.ok
-          ? `Next run ${formatNext(validation.nextRunAt)} · ${new Date(validation.nextRunAt).toLocaleString()}`
+          ? `Next run ${formatNext(validation.nextRunAt)} · ${new Date(validation.nextRunAt).toLocaleString(undefined, { timeZone: timezone })} · ${timezone}`
           : validation.error}
       </p>
       <p className="text-[11px] text-ink/40">{KIND_HINTS[kind]}</p>
 
       <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="block font-semibold mb-1 text-ink">Timezone</label>
+          <select
+            value={timezone}
+            onChange={(e) => setTimezone(e.currentTarget.value)}
+            className="w-full bg-paper border border-ink/20 rounded px-2 py-1.5 outline-none focus:border-ink/50 text-xs"
+          >
+            {timeZoneOptions(timezone).map((zone) => (
+              <option key={zone} value={zone}>{zone}</option>
+            ))}
+          </select>
+        </div>
         <div>
           <label className="block font-semibold mb-1 text-ink">Run in</label>
           <select
@@ -179,19 +230,29 @@ export function TaskForm({
             ))}
           </select>
         </div>
-        <div className="flex items-end">
-          <label className={`flex items-center gap-2 text-[11px] ${activeSessionId ? 'text-ink/70' : 'text-ink/35'}`}>
-            <input
-              type="checkbox"
-              checked={useActiveSession}
-              disabled={!activeSessionId}
-              onChange={(e) => setUseActiveSession(e.currentTarget.checked)}
-              className={`${CHECKBOX_CLASS} accent-ink`}
-            />
-            <span>Resume the open session each run</span>
-          </label>
-        </div>
       </div>
+
+      <ModelFields
+        harness={harness}
+        model={model}
+        onHarnessChange={(next) => {
+          setHarness(next);
+          // A model snapshot belongs to the harness that published it.
+          setModel(null);
+        }}
+        onModelChange={setModel}
+      />
+
+      <label className={`flex items-center gap-2 text-[11px] ${activeSessionId ? 'text-ink/70' : 'text-ink/35'}`}>
+        <input
+          type="checkbox"
+          checked={useActiveSession}
+          disabled={!activeSessionId}
+          onChange={(e) => setUseActiveSession(e.currentTarget.checked)}
+          className={`${CHECKBOX_CLASS} accent-ink`}
+        />
+        <span>Resume the open session each run</span>
+      </label>
 
       <div className="flex justify-end gap-2 pt-1">
         <button

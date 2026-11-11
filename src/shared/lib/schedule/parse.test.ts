@@ -30,6 +30,7 @@ import {
   parseOnce,
   validateSchedule,
 } from '@/shared/lib/schedule/parse';
+import { isValidTimeZone } from '@/shared/lib/schedule/timezone';
 
 describe('parseInterval', () => {
   test('accepts compact and spaced spellings', () => {
@@ -183,5 +184,52 @@ describe('parseOnce', () => {
     expect(parseOnce('1770000000000')).toBe(1_770_000_000_000);
     expect(parseOnce('')).toBeNull();
     expect(parseOnce('tomorrow')).toBeNull();
+  });
+});
+
+describe('timezone-aware schedules', () => {
+  test('a cron fires at the wall time of the task zone, not the server zone', () => {
+    const fields = parseCron('0 9 * * *')!;
+    // 2026-03-02T00:00Z is exactly 09:00 in Asia/Tokyo, so the next fire is
+    // the following day — not the same instant.
+    const from = Date.UTC(2026, 2, 2, 0, 0);
+    expect(nextCronOccurrence(fields, new Date(from), 'Asia/Tokyo')).toBe(Date.UTC(2026, 2, 3, 0, 0));
+  });
+
+  test('a spring-forward gap is skipped, not shifted', () => {
+    const fields = parseCron('0 2 * * *')!;
+    // 2026-03-08 02:00 does not exist in New York; the next fire is the 9th.
+    const from = Date.UTC(2026, 2, 8, 0, 0);
+    expect(nextCronOccurrence(fields, new Date(from), 'America/New_York')).toBe(Date.UTC(2026, 2, 9, 6, 0));
+  });
+
+  test('a fall-back overlap resolves to its first occurrence', () => {
+    const fields = parseCron('0 1 * * *')!;
+    // 2026-11-01 01:00 occurs twice in New York; the first is 05:00Z (EDT).
+    const from = Date.UTC(2026, 10, 1, 0, 0);
+    expect(nextCronOccurrence(fields, new Date(from), 'America/New_York')).toBe(Date.UTC(2026, 10, 1, 5, 0));
+  });
+
+  test('a naive once spec is read in the task zone', () => {
+    expect(parseOnce('2026-10-01T09:00', 'Europe/Kyiv')).toBe(Date.UTC(2026, 9, 1, 6, 0));
+  });
+
+  test('an offset-bearing once spec stays absolute', () => {
+    expect(parseOnce('2026-10-01T09:00:00Z', 'Europe/Kyiv')).toBe(Date.UTC(2026, 9, 1, 9, 0));
+  });
+
+  test('validateSchedule previews in the task zone', () => {
+    const now = Date.UTC(2026, 2, 2, 0, 0);
+    expect(validateSchedule('cron', '0 9 * * *', now, 'Asia/Tokyo')).toEqual({
+      ok: true,
+      nextRunAt: Date.UTC(2026, 2, 3, 0, 0),
+    });
+  });
+
+  test('isValidTimeZone accepts IANA names and rejects junk', () => {
+    expect(isValidTimeZone('Europe/Kyiv')).toBe(true);
+    expect(isValidTimeZone('UTC')).toBe(true);
+    expect(isValidTimeZone('Mars/Olympus')).toBe(false);
+    expect(isValidTimeZone('')).toBe(false);
   });
 });

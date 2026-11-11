@@ -22,6 +22,8 @@
 import { getDb } from '@/server/db.server';
 import { withTransaction } from '@/shared/lib/db/transaction.server';
 import { nextRunAfter, validateSchedule } from '@/shared/lib/schedule/parse';
+import { isValidTimeZone, serverTimeZone } from '@/shared/lib/schedule/timezone';
+import { harnessDescriptor } from '@/shared/lib/harness/catalog';
 import { rowToRun, rowToScheduledTask, type RunRow, type TaskRow } from '@/server/lib/schedule/rows.server';
 import type {
   ScheduleKind,
@@ -63,6 +65,8 @@ export interface ScheduledTaskInput {
   prompt: string;
   kind: ScheduleKind;
   spec: string;
+  harness: string;
+  timezone: string;
   folderId: number | null;
   cwd: string | null;
   sessionId: string | null;
@@ -75,19 +79,24 @@ export interface ScheduledTaskInput {
  * be a task the runtime can only skip forever.
  */
 export async function createScheduledTask(input: ScheduledTaskInput): Promise<ScheduledTask> {
-  const validation = validateSchedule(input.kind, input.spec);
+  const harness = input.harness.trim() || 'omp-rpc';
+  if (!harnessDescriptor(harness)) throw new Error(`Unknown harness: ${harness}`);
+  const timezone = input.timezone.trim() || serverTimeZone();
+  if (!isValidTimeZone(timezone)) throw new Error(`Unknown timezone: ${timezone}`);
+  const validation = validateSchedule(input.kind, input.spec, Date.now(), timezone);
   if (!validation.ok) throw new Error(validation.error);
   const db = await getDb();
   const now = Date.now();
   const id = crypto.randomUUID();
   await db.run(
     `INSERT INTO scheduled_tasks
-       (id, name, prompt, kind, spec, folder_id, cwd, session_id,
+       (id, name, prompt, kind, spec, harness, timezone, folder_id, cwd, session_id,
         provider, model_id, thinking_level, access_mode,
         enabled, next_run_at, run_count, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, 0, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, 0, ?, ?)`,
     [
-      id, input.name, input.prompt, input.kind, input.spec.trim(), input.folderId, input.cwd, input.sessionId,
+      id, input.name, input.prompt, input.kind, input.spec.trim(), harness, timezone,
+      input.folderId, input.cwd, input.sessionId,
       input.model?.provider ?? null, input.model?.modelId ?? null,
       input.model?.thinkingLevel ?? null, input.model?.accessMode ?? null,
       validation.nextRunAt, now, now,
@@ -101,6 +110,8 @@ export interface ScheduledTaskPatch {
   prompt?: string;
   kind?: ScheduleKind;
   spec?: string;
+  harness?: string;
+  timezone?: string;
   folderId?: number | null;
   cwd?: string | null;
   sessionId?: string | null;
@@ -121,16 +132,24 @@ export async function updateScheduledTask(id: string, patch: ScheduledTaskPatch)
 
   const kind = patch.kind ?? existing.kind;
   const spec = patch.spec !== undefined ? patch.spec.trim() : existing.spec;
+  const harness = patch.harness !== undefined ? patch.harness.trim() : existing.harness;
+  if (!harnessDescriptor(harness)) throw new Error(`Unknown harness: ${harness}`);
+  const harnessChanged = harness !== existing.harness;
+  const timezone = patch.timezone !== undefined ? patch.timezone.trim() : existing.timezone;
+  if (!isValidTimeZone(timezone)) throw new Error(`Unknown timezone: ${timezone}`);
   const enabled = patch.enabled ?? existing.enabled;
   const scheduleChanged = patch.kind !== undefined || patch.spec !== undefined;
+  // A zone change moves every wall-clock fire, so it resets the clock exactly
+  // like a spec edit does.
+  const timezoneChanged = timezone !== existing.timezone;
 
   let nextRunAt = existing.nextRunAt;
-  if (scheduleChanged || (enabled && !existing.enabled)) {
+  if (scheduleChanged || timezoneChanged || (enabled && !existing.enabled)) {
     // The old clock described a schedule (or a pause) that no longer applies.
     if (!enabled) {
       nextRunAt = null;
     } else {
-      const validation = validateSchedule(kind, spec);
+      const validation = validateSchedule(kind, spec, Date.now(), timezone);
       if (!validation.ok) throw new Error(validation.error);
       nextRunAt = validation.nextRunAt;
     }
@@ -138,11 +157,14 @@ export async function updateScheduledTask(id: string, patch: ScheduledTaskPatch)
     nextRunAt = null;
   }
 
-  const model = patch.model !== undefined ? patch.model : existing.model;
+  // A model snapshot belongs to the harness that published it: an omp model id
+  // means nothing to an ACP agent. A harness change without an explicit model
+  // therefore drops the snapshot and lets the new harness's default apply.
+  const model = patch.model !== undefined ? patch.model : harnessChanged ? null : existing.model;
   const db = await getDb();
   await db.run(
     `UPDATE scheduled_tasks SET
-       name = ?, prompt = ?, kind = ?, spec = ?, folder_id = ?, cwd = ?, session_id = ?,
+       name = ?, prompt = ?, kind = ?, spec = ?, harness = ?, timezone = ?, folder_id = ?, cwd = ?, session_id = ?,
        provider = ?, model_id = ?, thinking_level = ?, access_mode = ?,
        enabled = ?, next_run_at = ?, updated_at = ?
      WHERE id = ?`,
@@ -151,6 +173,8 @@ export async function updateScheduledTask(id: string, patch: ScheduledTaskPatch)
       patch.prompt ?? existing.prompt,
       kind,
       spec,
+      harness,
+      timezone,
       patch.folderId !== undefined ? patch.folderId : existing.folderId,
       patch.cwd !== undefined ? patch.cwd : existing.cwd,
       patch.sessionId !== undefined ? patch.sessionId : existing.sessionId,
@@ -197,7 +221,7 @@ export async function claimDueTasks(now: number): Promise<ScheduledTask[]> {
     const claimed: ScheduledTask[] = [];
     for (const row of rows) {
       const task = rowToScheduledTask(row);
-      const next = nextRunAfter(task.kind, task.spec, now);
+      const next = nextRunAfter(task.kind, task.spec, now, task.timezone);
       db.raw.run(
         'UPDATE scheduled_tasks SET next_run_at = ?, enabled = ?, updated_at = ? WHERE id = ?',
         [next, next === null ? 0 : 1, now, task.id],

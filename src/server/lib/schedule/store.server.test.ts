@@ -28,6 +28,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createDb, type DbClient } from '@/server/lib/db/client';
 import { ensureScheduleSchema } from '@/server/lib/schedule/schema.server';
+import { rowToScheduledTask, type TaskRow } from '@/server/lib/schedule/rows.server';
+import { serverTimeZone } from '@/shared/lib/schedule/timezone';
 
 const paths: string[] = [];
 
@@ -144,6 +146,38 @@ describe('ensureScheduleSchema', () => {
     const db = await tempDb();
     const indexes = (await db.all("SELECT name FROM sqlite_master WHERE type = 'index'")) as { name: string }[];
     expect(indexes.map((index) => index.name)).toContain('idx_scheduled_tasks_due');
+  });
+
+  test('adds the timezone column to a table created before it existed', async () => {
+    const path = join(tmpdir(), `schedule-legacy-${crypto.randomUUID()}.sqlite`);
+    paths.push(path);
+    const db = createDb(path);
+    await db.exec(`CREATE TABLE scheduled_tasks (
+      id TEXT PRIMARY KEY, name TEXT NOT NULL DEFAULT '', prompt TEXT NOT NULL DEFAULT '',
+      kind TEXT NOT NULL, spec TEXT NOT NULL, folder_id INTEGER, cwd TEXT, session_id TEXT,
+      provider TEXT, model_id TEXT, thinking_level TEXT, access_mode TEXT,
+      enabled INTEGER NOT NULL DEFAULT 1, next_run_at INTEGER, last_run_at INTEGER,
+      last_status TEXT, last_error TEXT, run_count INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
+    )`);
+    await ensureScheduleSchema(db);
+    const columns = (await db.all('PRAGMA table_info(scheduled_tasks)')) as { name: string }[];
+    expect(columns.map((column) => column.name)).toContain('timezone');
+    expect(columns.map((column) => column.name)).toContain('harness');
+  });
+
+  test('a legacy row with no timezone reads as the server zone', async () => {
+    const db = await tempDb();
+    await insertTask(db, { id: 'legacy', kind: 'cron', spec: '0 9 * * *' });
+    const row = db.raw.query('SELECT * FROM scheduled_tasks WHERE id = ?').get('legacy') as TaskRow;
+    expect(rowToScheduledTask(row).timezone).toBe(serverTimeZone());
+  });
+
+  test('a legacy row with no harness reads as omp-rpc', async () => {
+    const db = await tempDb();
+    await insertTask(db, { id: 'legacy-harness', kind: 'every', spec: '1h' });
+    const row = db.raw.query('SELECT * FROM scheduled_tasks WHERE id = ?').get('legacy-harness') as TaskRow;
+    expect(rowToScheduledTask(row).harness).toBe('omp-rpc');
   });
 });
 

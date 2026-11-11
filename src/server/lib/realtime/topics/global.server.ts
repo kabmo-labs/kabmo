@@ -24,6 +24,7 @@ import {
 } from '@/shared/lib/realtime/protocol';
 import { type TopicDescriptor } from '@/server/lib/realtime/hub.server';
 import { listScheduledTasks } from '@/server/lib/schedule/store.server';
+import { serverTimeZone } from '@/shared/lib/schedule/timezone';
 import { listWaitingPrompts } from '@/server/lib/waiting/store.server';
 import { buildUsageReport } from '@/server/lib/usage/report.server';
 import { discoverPanelPlugins } from '@/server/lib/panels/registry.server';
@@ -35,7 +36,10 @@ import { loadModelsWithCache } from '@/server/lib/models/registry.server';
  * share or to drift.
  */
 const RESOLVERS: Record<string, () => Promise<unknown>> = {
-  [TOPIC_SCHEDULE]: () => listScheduledTasks(),
+  // The zone travels with the list: the editor's "new task" default and its
+  // next-run preview must use the SERVER's zone, not the browser's, or a task
+  // created from a remote tab would be previewed in the wrong clock.
+  [TOPIC_SCHEDULE]: async () => ({ tasks: await listScheduledTasks(), serverTimeZone: serverTimeZone() }),
   // The waiting list is the same read the runtime sweeps over, so a client and
   // the dispatcher can never disagree about which prompt is still held.
   [TOPIC_WAITING]: () => listWaitingPrompts(),

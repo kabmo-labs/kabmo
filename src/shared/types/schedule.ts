@@ -34,6 +34,19 @@ export interface ScheduledTask {
   prompt: string;
   kind: ScheduleKind;
   spec: string;
+  /**
+   * Which harness runs the task (`omp-rpc`, `claude`, `codex`, …). A spawn-time
+   * property, not a label: it decides the transport, the model catalog and the
+   * launch command. `omp-rpc` is the built-in default.
+   */
+  harness: string;
+  /**
+   * IANA zone the spec is read in. A cron expression is a wall-clock statement,
+   * so `0 9 * * 1-5` means 09:00 here, not 09:00 in the server's zone. Resolved
+   * at write time (the server's zone when the request names none) so a task
+   * keeps firing at the hour it was created for even if the server moves.
+   */
+  timezone: string;
   /** Workspace folder the run starts in; null uses the server's default cwd. */
   folderId: number | null;
   /** Resolved at creation from the folder, so a deleted folder cannot strand it. */

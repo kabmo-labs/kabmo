@@ -21,8 +21,10 @@
 import { json, NO_STORE_HEADERS } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
-import { runScheduledTask } from '@/server/lib/schedule/runtime.server';
+import { runScheduledTask, isTaskRunning } from '@/server/lib/schedule/runtime.server';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
+import { isValidTimeZone, serverTimeZone } from '@/shared/lib/schedule/timezone';
+import { harnessDescriptor } from '@/shared/lib/harness/catalog';
 import {
   createScheduledTask,
   deleteScheduledTask,
@@ -41,7 +43,7 @@ import {
 } from '@/server/routes/schedule/body';
 
 export async function loader(_args: LoaderFunctionArgs) {
-  return json({ tasks: await listScheduledTasks() }, { headers: NO_STORE_HEADERS });
+  return json({ tasks: await listScheduledTasks(), serverTimeZone: serverTimeZone() }, { headers: NO_STORE_HEADERS });
 }
 
 /** POST — create a task. */
@@ -49,7 +51,7 @@ async function createTask({ request }: ActionFunctionArgs) {
   const body = readTaskBody(await request.json().catch(() => null));
   if (!body) {
     return json(
-      { error: 'Expected { prompt, kind: once|every|cron, spec } with a non-empty prompt and spec.' },
+      { error: 'Expected { prompt, kind: once|every|cron, spec, harness?, timezone? } with a non-empty prompt and spec.' },
       { status: 400 },
     );
   }
@@ -59,10 +61,14 @@ async function createTask({ request }: ActionFunctionArgs) {
       prompt: body.prompt,
       kind: body.kind,
       spec: body.spec,
+      harness: body.harness,
+      timezone: body.timezone,
       folderId: body.folderId,
       cwd: await resolveTaskCwd(body.folderId),
       sessionId: body.sessionId,
-      model: body.model ?? (await resolveDefaultTaskModel()),
+      // The composer's persisted model is an omp model; an ACP harness has its
+      // own catalog, so a task on one starts on that harness's default instead.
+      model: body.model ?? (body.harness === 'omp-rpc' ? await resolveDefaultTaskModel() : null),
     });
     emitRealtimeSignal('schedule-changed');
     return json({ task, tasks: await listScheduledTasks() });
@@ -93,6 +99,20 @@ async function patchTask({ request }: ActionFunctionArgs) {
       return json({ error: 'spec cannot be empty' }, { status: 400 });
     }
     patch.spec = raw.spec.trim();
+  }
+  if (raw.harness !== undefined) {
+    const harness = optionalText(raw.harness);
+    if (!harness || !harnessDescriptor(harness)) {
+      return json({ error: 'harness must be a known harness id' }, { status: 400 });
+    }
+    patch.harness = harness;
+  }
+  if (raw.timezone !== undefined) {
+    const timezone = optionalText(raw.timezone);
+    if (!timezone || !isValidTimeZone(timezone)) {
+      return json({ error: 'timezone must be an IANA zone, e.g. Europe/Kyiv' }, { status: 400 });
+    }
+    patch.timezone = timezone;
   }
   if (raw.folderId !== undefined) {
     patch.folderId = typeof raw.folderId === 'number' ? raw.folderId : null;
@@ -137,6 +157,10 @@ async function runNow({ request }: ActionFunctionArgs) {
   const task = await getScheduledTask(id);
   if (!task) return json({ error: 'Task not found' }, { status: 404 });
   if (!task.prompt.trim()) return json({ error: 'This task has no prompt to run' }, { status: 400 });
+  // A second click (or a click while the scheduled fire is still dispatching)
+  // would spawn a second omp session for the same prompt. The runtime tracks
+  // the in-flight run; this is the user-facing refusal.
+  if (isTaskRunning(id)) return json({ error: 'This task is already running.' }, { status: 409 });
   const sessionId = await runScheduledTask(task, { manual: true });
   const updated = await getScheduledTask(id);
   if (!sessionId) {

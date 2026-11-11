@@ -21,6 +21,7 @@
 
 import { describe, expect, test } from 'bun:test';
 import { runScheduledTask, type ScheduleDeps, type ScheduleSessionHandle } from '@/server/lib/schedule/runtime.server';
+import type { AcpSpawnRequest } from '@/server/lib/harness/spawn.server';
 import type { ScheduledTask } from '@/shared/types/schedule';
 
 interface RunRecord {
@@ -36,18 +37,28 @@ interface Harness {
   runs: RunRecord[];
   /** Commands sent to each session, keyed by the session id it was opened for. */
   sent: Record<string, Record<string, unknown>[]>;
+  /** Every ACP spawn request, in order. */
+  acpRequests: AcpSpawnRequest[];
+  /** Rows `loadHarnessSession` answers with, keyed by Kabmo session id. */
+  harnessSessions: Record<string, { harness: string; agentSessionId: string }>;
   /** Make the next spawn throw, to exercise the failure path. */
   failSpawnWith(error: Error | null): void;
   /** Whether the resumed session's file resolves. */
   setResumeFound(found: boolean): void;
+  /** Hold `startScheduledRun` until the returned release is called. */
+  holdStart(): () => void;
 }
 
 function makeHarness(): Harness {
   const runs: RunRecord[] = [];
   const sent: Record<string, Record<string, unknown>[]> = {};
+  const acpRequests: AcpSpawnRequest[] = [];
+  const harnessSessions: Record<string, { harness: string; agentSessionId: string }> = {};
   let spawnFailure: Error | null = null;
   let resumeFound = false;
   let runCounter = 0;
+  let startGate: Promise<void> | null = null;
+  let releaseStart: (() => void) | null = null;
 
   const makeSession = (key: string): ScheduleSessionHandle => ({
     send: async (command) => {
@@ -68,9 +79,16 @@ function makeHarness(): Harness {
       resumeFound
         ? { filePath: `/sessions/${sessionId}.jsonl`, recordedCwd: '/work/other' }
         : { response: new Response('{"error":"Session not found"}', { status: 404 }) },
+    startAcpSession: async (request) => {
+      if (spawnFailure) throw spawnFailure;
+      acpRequests.push(request);
+      return { session: makeSession(`acp-${request.harness}`), realSessionId: `acp-${request.harness}` };
+    },
+    loadHarnessSession: async (sessionId) => harnessSessions[sessionId] ?? null,
     loadPersistedAccessMode: async () => 'always-ask',
     claimDueTasks: async () => [],
     startScheduledRun: async (taskId) => {
+      if (startGate) await startGate;
       const id = `run-${runCounter++}`;
       runs.push({ runId: id, taskId, status: 'running', detail: '', options: {} });
       return id;
@@ -85,11 +103,23 @@ function makeHarness(): Harness {
     deps,
     runs,
     sent,
+    acpRequests,
+    harnessSessions,
     failSpawnWith: (error) => {
       spawnFailure = error;
     },
     setResumeFound: (found) => {
       resumeFound = found;
+    },
+    holdStart: () => {
+      const gate = Promise.withResolvers<void>();
+      startGate = gate.promise;
+      releaseStart = gate.resolve;
+      return () => {
+        startGate = null;
+        releaseStart?.();
+        releaseStart = null;
+      };
     },
   };
 }
@@ -101,6 +131,8 @@ function task(overrides: Partial<ScheduledTask> = {}): ScheduledTask {
     prompt: 'do the thing',
     kind: 'every',
     spec: '1h',
+    harness: 'omp-rpc',
+    timezone: 'UTC',
     folderId: null,
     cwd: '/work/proj',
     sessionId: null,
@@ -187,5 +219,64 @@ describe('runScheduledTask', () => {
       detail: 'Ran now (new session)',
       options: { countRun: false },
     });
+  });
+
+  test('a second manual run is refused while the first is in flight', async () => {
+    const h = makeHarness();
+    const release = h.holdStart();
+    const first = runScheduledTask(task(), { manual: true, deps: h.deps });
+
+    // The guard is set synchronously, before the first await.
+    const second = await runScheduledTask(task(), { manual: true, deps: h.deps });
+    expect(second).toBe('');
+    expect(h.runs).toHaveLength(0);
+
+    release();
+    await first;
+    expect(h.runs).toHaveLength(1);
+    expect(h.runs[0].status).toBe('success');
+  });
+
+  test('an ACP task spawns on its harness and sends only the prompt', async () => {
+    const h = makeHarness();
+    const id = await runScheduledTask(
+      task({
+        harness: 'claude',
+        model: { provider: 'anthropic', modelId: 'opus', thinkingLevel: 'high', accessMode: 'yolo' },
+      }),
+      { deps: h.deps },
+    );
+
+    expect(id).toBe('acp-claude');
+    expect(h.acpRequests).toHaveLength(1);
+    expect(h.acpRequests[0]).toMatchObject({
+      harness: 'claude',
+      cwd: '/work/proj',
+      model: { provider: 'anthropic', modelId: 'opus' },
+      thinkingLevel: 'high',
+      accessMode: 'yolo',
+    });
+    // The handshake applied the picks; a second set_model would ask an agent
+    // that may publish no such selector.
+    expect(h.sent['acp-claude'].map((command) => command.type)).toEqual(['prompt']);
+    expect(h.runs[0]).toMatchObject({ status: 'success', detail: 'new session' });
+  });
+
+  test('an ACP task resumes the agent session recorded for the same harness', async () => {
+    const h = makeHarness();
+    h.harnessSessions['sess-1'] = { harness: 'claude', agentSessionId: 'agent-1' };
+    await runScheduledTask(task({ harness: 'claude', sessionId: 'sess-1' }), { deps: h.deps });
+
+    expect(h.acpRequests[0].resumeAgentSessionId).toBe('agent-1');
+    expect(h.runs[0].detail).toBe('resumed session');
+  });
+
+  test('an ACP task does not resume a session recorded for another harness', async () => {
+    const h = makeHarness();
+    h.harnessSessions['sess-1'] = { harness: 'codex', agentSessionId: 'agent-1' };
+    await runScheduledTask(task({ harness: 'claude', sessionId: 'sess-1' }), { deps: h.deps });
+
+    expect(h.acpRequests[0].resumeAgentSessionId).toBeUndefined();
+    expect(h.runs[0].detail).toBe('session not found; started a new one');
   });
 });

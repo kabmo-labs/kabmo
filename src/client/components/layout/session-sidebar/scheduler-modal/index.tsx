@@ -165,6 +165,7 @@ export function SchedulerModal({
               folders={folders}
               initial={editor}
               activeSessionId={activeSessionId}
+              serverTimeZone={controller.serverTimeZone}
               busy={busy}
               onSubmit={submit}
               onCancel={() => {
@@ -196,6 +197,8 @@ export function SchedulerModal({
                   prompt: task.prompt,
                   kind: task.kind,
                   spec: task.spec,
+                  harness: task.harness,
+                  timezone: task.timezone,
                   folderId: task.folderId,
                   sessionId: task.sessionId,
                   model: task.model,

@@ -12,6 +12,8 @@
  */
 
 import { isApprovalMode } from '@/shared/lib/omp/config/access-mode';
+import { harnessDescriptor } from '@/shared/lib/harness/catalog';
+import { isValidTimeZone, serverTimeZone } from '@/shared/lib/schedule/timezone';
 import type {
   ScheduleKind,
   ScheduleRunStatus,
@@ -26,6 +28,8 @@ export interface TaskRow {
   prompt: string;
   kind: string;
   spec: string;
+  harness: string | null;
+  timezone: string | null;
   folder_id: number | null;
   cwd: string | null;
   session_id: string | null;
@@ -83,6 +87,11 @@ export function rowToScheduledTask(row: TaskRow): ScheduledTask {
     prompt: row.prompt,
     kind: isScheduleKind(row.kind) ? row.kind : 'every',
     spec: row.spec,
+    // A row written before the column existed ran on the built-in transport.
+    harness: row.harness && harnessDescriptor(row.harness) ? row.harness : 'omp-rpc',
+    // A row written before the column existed (or with a zone this runtime no
+    // longer knows) reads as the server's zone — the behaviour it had.
+    timezone: row.timezone && isValidTimeZone(row.timezone) ? row.timezone : serverTimeZone(),
     folderId: row.folder_id,
     cwd: row.cwd,
     sessionId: row.session_id,

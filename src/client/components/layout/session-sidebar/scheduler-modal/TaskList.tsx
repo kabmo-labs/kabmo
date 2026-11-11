@@ -26,7 +26,7 @@ import {
   RotateCw,
   Trash2,
 } from 'lucide-preact';
-import { describeSchedule } from '@/shared/lib/schedule/parse';
+import { describeSchedule, formatDuration } from '@/shared/lib/schedule/parse';
 import type { ScheduledTask, ScheduledTaskRun } from '@/shared/types/schedule';
 
 interface TaskListProps {
@@ -111,7 +111,13 @@ export function TaskList({
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-medium text-ink truncate">{taskLabel(task)}</p>
                 <p className="text-[11px] text-ink/60 mt-0.5">
-                  {describeSchedule(task.kind, task.spec)}
+                  {describeSchedule(task.kind, task.spec, task.timezone)}
+                  {task.kind !== 'every' && (
+                    <>
+                      <span className="text-ink/30"> · </span>
+                      {task.timezone}
+                    </>
+                  )}
                   <span className="text-ink/30"> · </span>
                   {!task.enabled
                     ? task.kind === 'once' && task.lastRunAt !== null
@@ -120,6 +126,10 @@ export function TaskList({
                     : `Next ${formatAbsolute(task.nextRunAt)}`}
                 </p>
                 {task.cwd && <p className="text-[10.5px] text-ink/40 font-mono truncate mt-0.5">{task.cwd}</p>}
+                <p className="text-[10.5px] text-ink/40 truncate mt-0.5">
+                  {task.harness}
+                  {task.model && ` · ${task.model.provider}/${task.model.modelId}`}
+                </p>
                 {task.sessionId && (
                   <p className="text-[10.5px] text-ink/40 font-mono truncate mt-0.5">
                     resumes {task.sessionId.slice(0, 8)}
@@ -204,7 +214,17 @@ export function TaskList({
                       >
                         {run.status}
                       </span>
-                      <span className="min-w-0 flex-1 text-ink/60 break-words">{run.detail || '–'}</span>
+                      <span className="w-12 shrink-0 text-ink/40">
+                        {run.finishedAt === null ? '…' : formatDuration(run.finishedAt - run.startedAt)}
+                      </span>
+                      <span className="min-w-0 flex-1 text-ink/60 break-words">
+                        {run.detail || '–'}
+                        {run.sessionId && (
+                          <span className="block font-mono text-[10px] text-ink/40">
+                            session {run.sessionId.slice(0, 8)}
+                          </span>
+                        )}
+                      </span>
                     </div>
                   ))}
               </div>

@@ -27,9 +27,12 @@
 
 import { startNewRpcSession, startRpcSession, resolveSpawnCwd } from '@/server/lib/omp/rpc/manager';
 import { resolveSessionPathOr404 } from '@/server/lib/omp/session/locator';
+import { startAcpSession, type AcpSpawnRequest } from '@/server/lib/harness/spawn.server';
+import { loadHarnessSession } from '@/server/lib/harness/session-store.server';
 import { loadPersistedAccessMode } from '@/shared/lib/omp/config/access-mode.server';
 import { claimDueTasks, finishScheduledRun, startScheduledRun } from '@/server/lib/schedule/store.server';
 import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
+import type { HarnessId } from '@/shared/lib/harness/catalog';
 import type { ScheduledTask } from '@/shared/types/schedule';
 
 /**
@@ -78,6 +81,10 @@ export interface ScheduleDeps {
   ): Promise<{ session: ScheduleSessionHandle; realSessionId: string }>;
   resolveSpawnCwd(recordedCwd?: string | null): Promise<string>;
   resolveSessionPathOr404(sessionId: string): Promise<{ filePath: string; recordedCwd: string | null } | { response: Response }>;
+  /** Start an ACP session for a task whose harness is not the built-in RPC. */
+  startAcpSession(request: AcpSpawnRequest): Promise<{ session: ScheduleSessionHandle; realSessionId: string }>;
+  /** The agent's own session id, for resuming an ACP chat. */
+  loadHarnessSession(sessionId: string): Promise<{ harness: string; agentSessionId: string } | null>;
   loadPersistedAccessMode(): Promise<ApprovalMode>;
   claimDueTasks(now: number): Promise<ScheduledTask[]>;
   startScheduledRun(taskId: string, sessionId: string | null): Promise<string>;
@@ -95,6 +102,8 @@ const defaultDeps: ScheduleDeps = {
   startRpcSession,
   resolveSpawnCwd,
   resolveSessionPathOr404,
+  startAcpSession,
+  loadHarnessSession,
   loadPersistedAccessMode,
   claimDueTasks,
   startScheduledRun,
@@ -105,6 +114,13 @@ interface ScheduleRuntimeSlot {
   timer: NodeJS.Timeout | null;
   /** In-flight tick, so a slow dispatch does not overlap the next interval. */
   ticking: boolean;
+  /**
+   * Runs in flight, keyed by task id. A manual "Run now" is refused while one
+   * is present: a second click would spawn a second omp session for the same
+   * prompt. A scheduled fire is NOT refused — the claim already advanced its
+   * clock, so skipping it would lose the fire.
+   */
+  running: Map<string, number>;
 }
 
 declare global {
@@ -113,7 +129,12 @@ declare global {
 }
 
 function slot(): ScheduleRuntimeSlot {
-  return (globalThis.__kabmoScheduleRuntime ??= { timer: null, ticking: false });
+  return (globalThis.__kabmoScheduleRuntime ??= { timer: null, ticking: false, running: new Map() });
+}
+
+/** Whether a run for this task is in flight right now. */
+export function isTaskRunning(id: string): boolean {
+  return (slot().running.get(id) ?? 0) > 0;
 }
 
 function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
@@ -133,7 +154,46 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
 }
 
 /**
- * Resolve the omp child a fire should drive, and the prompt to send.
+ * Open an ACP session for a task whose harness is not the built-in RPC.
+ *
+ * A task that names a session resumes it only when the recorded row belongs to
+ * the SAME harness: an omp session id means nothing to `claude`, and asking the
+ * agent to load it would fail the run. A missing or foreign row starts a fresh
+ * conversation, which is the same fallback the RPC path uses for a pruned file.
+ */
+async function openAcpTarget(
+  task: ScheduledTask,
+  deps: ScheduleDeps,
+  mode: ApprovalMode,
+): Promise<{ session: ScheduleSessionHandle; sessionId: string; note: string }> {
+  const cwd = await deps.resolveSpawnCwd(task.cwd);
+  let resumeAgentSessionId: string | undefined;
+  let note = 'new session';
+
+  if (task.sessionId) {
+    const recorded = await deps.loadHarnessSession(task.sessionId);
+    if (recorded && recorded.harness === task.harness && recorded.agentSessionId) {
+      resumeAgentSessionId = recorded.agentSessionId;
+      note = 'resumed session';
+    } else {
+      note = 'session not found; started a new one';
+    }
+  }
+
+  const { session, realSessionId } = await deps.startAcpSession({
+    harness: task.harness as HarnessId,
+    sessionId: `__new__${crypto.randomUUID()}`,
+    cwd,
+    model: task.model ? { provider: task.model.provider, modelId: task.model.modelId } : null,
+    thinkingLevel: task.model?.thinkingLevel ?? null,
+    accessMode: mode,
+    ...(resumeAgentSessionId ? { resumeAgentSessionId } : {}),
+  });
+  return { session, sessionId: realSessionId, note };
+}
+
+/**
+ * Resolve the child a fire should drive, and the prompt to send.
  *
  * A task with `sessionId` RESUMES that conversation, so "every morning, in this
  * thread" keeps one transcript. A missing file falls back to a fresh session
@@ -145,6 +205,10 @@ async function openDispatchTarget(
   deps: ScheduleDeps,
 ): Promise<{ session: ScheduleSessionHandle; sessionId: string; note: string }> {
   const mode = task.model?.accessMode ?? (await deps.loadPersistedAccessMode());
+
+  if (task.harness && task.harness !== 'omp-rpc') {
+    return openAcpTarget(task, deps, mode);
+  }
 
   if (task.sessionId) {
     const resolved = await deps.resolveSessionPathOr404(task.sessionId);
@@ -179,30 +243,44 @@ export async function runScheduledTask(
   options: { manual?: boolean; deps?: ScheduleDeps } = {},
 ): Promise<string> {
   const deps = options.deps ?? defaultDeps;
-  const runId = await deps.startScheduledRun(task.id, task.sessionId);
+  const state = slot();
+  // Backstop for the route's own check: a manual run never overlaps another
+  // run of the same task.
+  if (options.manual && isTaskRunning(task.id)) return '';
+  state.running.set(task.id, (state.running.get(task.id) ?? 0) + 1);
   try {
-    const target = await withTimeout(openDispatchTarget(task, deps), DISPATCH_TIMEOUT_MS, 'The omp process did not start in time.');
-    if (task.model) {
-      await target.session.send({ type: 'set_model', provider: task.model.provider, modelId: task.model.modelId });
-      if (task.model.thinkingLevel !== 'auto') {
-        await target.session.send({ type: 'set_thinking_level', level: task.model.thinkingLevel });
+    const runId = await deps.startScheduledRun(task.id, task.sessionId);
+    try {
+      const target = await withTimeout(openDispatchTarget(task, deps), DISPATCH_TIMEOUT_MS, 'The omp process did not start in time.');
+      // An ACP session applies the model and thinking picks during its
+      // handshake; sending them again would ask an agent that may publish no
+      // such selector, and the spawn already refused a model it does not list.
+      if (task.harness === 'omp-rpc' && task.model) {
+        await target.session.send({ type: 'set_model', provider: task.model.provider, modelId: task.model.modelId });
+        if (task.model.thinkingLevel !== 'auto') {
+          await target.session.send({ type: 'set_thinking_level', level: task.model.thinkingLevel });
+        }
       }
+      await withTimeout(
+        target.session.send({ type: 'prompt', message: task.prompt }),
+        DISPATCH_TIMEOUT_MS,
+        'The omp session did not accept the prompt in time.',
+      );
+      const detail = options.manual ? `Ran now (${target.note})` : target.note;
+      await deps.finishScheduledRun(runId, task.id, 'success', detail, {
+        sessionId: target.sessionId,
+        countRun: !options.manual,
+      });
+      return target.sessionId;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      await deps.finishScheduledRun(runId, task.id, 'error', message, { countRun: !options.manual });
+      return '';
     }
-    await withTimeout(
-      target.session.send({ type: 'prompt', message: task.prompt }),
-      DISPATCH_TIMEOUT_MS,
-      'The omp session did not accept the prompt in time.',
-    );
-    const detail = options.manual ? `Ran now (${target.note})` : target.note;
-    await deps.finishScheduledRun(runId, task.id, 'success', detail, {
-      sessionId: target.sessionId,
-      countRun: !options.manual,
-    });
-    return target.sessionId;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    await deps.finishScheduledRun(runId, task.id, 'error', message, { countRun: !options.manual });
-    return '';
+  } finally {
+    const remaining = (state.running.get(task.id) ?? 1) - 1;
+    if (remaining > 0) state.running.set(task.id, remaining);
+    else state.running.delete(task.id);
   }
 }
 

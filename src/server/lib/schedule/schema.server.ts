@@ -24,6 +24,8 @@ const SCHEDULE_SCHEMA_SQL = `
     prompt TEXT NOT NULL DEFAULT '',
     kind TEXT NOT NULL,
     spec TEXT NOT NULL,
+    harness TEXT,
+    timezone TEXT,
     folder_id INTEGER,
     cwd TEXT,
     session_id TEXT,
@@ -57,4 +59,17 @@ const SCHEDULE_SCHEMA_SQL = `
 /** Idempotent: the scheduler's own tables, created on every database open. */
 export async function ensureScheduleSchema(db: DbClient): Promise<void> {
   await db.exec(SCHEDULE_SCHEMA_SQL);
+  // `timezone` arrived after the table shipped. `CREATE TABLE IF NOT EXISTS`
+  // leaves an existing table alone, so an install created before it would miss
+  // the column and every read would fail on the absent field. A legacy row
+  // reads as the server's zone, which is the behaviour it had.
+  const columns = (await db.all('PRAGMA table_info(scheduled_tasks)')) as { name?: string }[];
+  if (!columns.some((column) => column.name === 'timezone')) {
+    await db.exec('ALTER TABLE scheduled_tasks ADD COLUMN timezone TEXT');
+  }
+  // `harness` arrived with the per-task harness picker. A legacy row reads as
+  // `omp-rpc`, which is the transport it actually ran on.
+  if (!columns.some((column) => column.name === 'harness')) {
+    await db.exec('ALTER TABLE scheduled_tasks ADD COLUMN harness TEXT');
+  }
 }
