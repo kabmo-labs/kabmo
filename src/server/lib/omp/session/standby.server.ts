@@ -35,6 +35,7 @@
  */
 
 import { restartPrewarmedSessions } from '@/server/lib/omp/rpc/prewarm-pool';
+import { restartPrewarmedAcpSessions } from '@/server/lib/harness/acp/prewarm.server';
 import { restartUtilityProcesses } from '@/server/lib/omp/rpc/utility';
 import { invalidateSkillCache } from '@/server/lib/omp/config/skills';
 import { invalidateOmpCliCache } from '@/server/lib/omp/core/cli';
@@ -52,6 +53,9 @@ export interface StandbyRecycleReport {
 export interface StandbyDeps {
   restartUtility: () => Promise<number>;
   restartPrewarmed: () => Promise<number>;
+  /** Unclaimed ACP agents warmed for a pending chat. Optional so a caller that
+   *  only knows the omp pools (and the tests) need not supply it. */
+  restartAcpPrewarmed?: () => Promise<number>;
   /** Drop the caches that were built FROM a process or from the omp binary. */
   invalidateCaches: () => void;
 }
@@ -84,7 +88,7 @@ export function createStandbyRecycler(deps: StandbyDeps): StandbyRecycler {
     // Both pools are independent, and a failure in one must not skip the other:
     // a pool that refuses to dispose is still better reported than silently
     // leaving the other stale.
-    const [utility, prewarmed] = await Promise.all([
+    const [utility, ompPrewarmed, acpPrewarmed] = await Promise.all([
       deps.restartUtility().catch((error) => {
         console.error(`Failed to recycle utility omp processes: ${error instanceof Error ? error.message : String(error)}`);
         return 0;
@@ -93,9 +97,15 @@ export function createStandbyRecycler(deps: StandbyDeps): StandbyRecycler {
         console.error(`Failed to recycle prewarmed omp processes: ${error instanceof Error ? error.message : String(error)}`);
         return 0;
       }),
+      (deps.restartAcpPrewarmed?.() ?? Promise.resolve(0)).catch((error) => {
+        console.error(`Failed to recycle prewarmed ACP agents: ${error instanceof Error ? error.message : String(error)}`);
+        return 0;
+      }),
     ]);
     deps.invalidateCaches();
-    return { utility, prewarmed };
+    // Both prewarm pools are "a process nobody has claimed yet", which is what
+    // the report's one number means.
+    return { utility, prewarmed: ompPrewarmed + acpPrewarmed };
   }
 
   function recycle(): Promise<StandbyRecycleReport> {
@@ -112,6 +122,7 @@ export function createStandbyRecycler(deps: StandbyDeps): StandbyRecycler {
 const serverRecycler = createStandbyRecycler({
   restartUtility: restartUtilityProcesses,
   restartPrewarmed: restartPrewarmedSessions,
+  restartAcpPrewarmed: restartPrewarmedAcpSessions,
   invalidateCaches: invalidateProcessDerivedCaches,
 });
 

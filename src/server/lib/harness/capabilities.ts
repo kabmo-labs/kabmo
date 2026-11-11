@@ -63,5 +63,13 @@ export interface HarnessProbe {
   models: { value: string; name: string }[];
   thinking: { value: string; name: string }[];
   modes: { value: string; name: string }[];
+  /**
+   * The mode the agent was in when it answered `session/new`, when it said.
+   *
+   * The composer's mode control on a chat that has not spawned yet has no live
+   * session to ask, and `modes` alone says nothing about which one is current —
+   * showing the first as current would be a guess the agent never made.
+   */
+  currentMode?: string;
   probedAt: number;
 }

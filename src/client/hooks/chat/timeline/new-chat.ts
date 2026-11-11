@@ -26,7 +26,8 @@ import type { Dispatch, SetStateAction } from 'preact/compat';
 import type { Attachment, ChatMessageData, PromptDispatchResult, WorkspaceFolderData } from '@/shared/types';
 import type { SetSearchParams } from '@/client/lib/router/search-params';
 import { activeProjectForSession } from '@/shared/lib/workspace/active-project';
-import { startPendingSession } from '@/client/hooks/chat/omp/pending-sessions';
+import { startPendingSession, patchPendingEntry } from '@/client/hooks/chat/omp/pending-sessions';
+import { setHarnessPick } from '@/client/hooks/chat/timeline/session-harness';
 
 export interface NewChatSubmitDeps {
   /** Session the dialog was opened from — the scope this send must NOT use. */
@@ -71,6 +72,14 @@ export function useNewChatSubmit(
     // sidebar/navbar show a default title immediately, and the row survives the
     // `new-…` → omp-UUID switch when the first send spawns.
     const pendingId = startPendingSession(activeProjectForSession(folders, sessionId).folder?.id ?? selectedFolderId);
+    // The card's agent becomes the PENDING chat's agent now, not at the send:
+    // the composer's mode surface and the prewarm both read the pick, and a
+    // harness that only appears when the prompt lands showed omp's toggles over
+    // an agent that was about to run `claude`.
+    if (harness) {
+      setHarnessPick(pendingId, harness);
+      patchPendingEntry(pendingId, (current) => ({ ...current, harness }));
+    }
     parkedRef.current = { pendingId, text, attachments, ...(harness ? { harness } : {}) };
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);

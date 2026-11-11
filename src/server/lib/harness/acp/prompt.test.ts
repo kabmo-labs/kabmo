@@ -15,7 +15,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { applySelections, modelFromOption } from '@/server/lib/harness/acp/prompt';
+import { applyLaunchSelections, applySelections, modelFromOption } from '@/server/lib/harness/acp/prompt';
 import type { AcpConfigOption } from '@/server/lib/harness/acp/protocol';
 
 function selector(currentValue: string | undefined): AcpConfigOption {
@@ -146,5 +146,74 @@ describe('applySelections', () => {
       // default is a provider-less id. That is the spelling this write uses.
       { model: { provider: '', modelId: '["kenari","qwen3-8-27b:free"]' }, thinking: null, mode: null },
     )).rejects.toThrow('dsh refused model "["kenari","qwen3-8-27b:free"]"');
+  });
+});
+
+describe('applyLaunchSelections', () => {
+  const legacy = (modeIds: string[]): AcpConfigOption => ({
+    id: 'mode',
+    category: 'mode',
+    type: 'select',
+    currentValue: modeIds[0],
+    options: modeIds.map((value) => ({ value })),
+  });
+
+  test('a mode selector is written through setConfig, not set_mode', async () => {
+    const writes: string[] = [];
+    const setModes: string[] = [];
+    await applyLaunchSelections(
+      {
+        configOptions: [legacy(['default', 'plan'])],
+        runModel: null,
+        setConfig: async (id, value) => {
+          writes.push(`${id}=${String(value)}`);
+        },
+        setMode: async (mode) => {
+          setModes.push(mode);
+        },
+      },
+      { model: null, thinking: null, mode: 'plan' },
+    );
+    expect(writes).toEqual(['mode=plan']);
+    // The config selector supersedes the older list: calling both would write
+    // the same mode twice, in two different verbs.
+    expect(setModes).toEqual([]);
+  });
+
+  test('an agent with only the older modes list moves through set_mode', async () => {
+    // This is the branch the claim relies on: a prewarmed session handshaked
+    // with no picks, so the mode the operator chose arrives here, one write
+    // after the fact.
+    const setModes: string[] = [];
+    await applyLaunchSelections(
+      {
+        configOptions: [],
+        modes: { currentModeId: 'default', availableModes: [{ id: 'default', name: 'Default' }, { id: 'plan', name: 'Plan' }] },
+        runModel: null,
+        setConfig: async () => {},
+        setMode: async (mode) => {
+          setModes.push(mode);
+        },
+      },
+      { model: null, thinking: null, mode: 'plan' },
+    );
+    expect(setModes).toEqual(['plan']);
+  });
+
+  test('a mode the agent never advertised is not written', async () => {
+    const setModes: string[] = [];
+    await applyLaunchSelections(
+      {
+        configOptions: [],
+        modes: { currentModeId: 'default', availableModes: [{ id: 'default', name: 'Default' }] },
+        runModel: null,
+        setConfig: async () => {},
+        setMode: async (mode) => {
+          setModes.push(mode);
+        },
+      },
+      { model: null, thinking: null, mode: 'architect' },
+    );
+    expect(setModes).toEqual([]);
   });
 });

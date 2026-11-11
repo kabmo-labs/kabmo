@@ -14,11 +14,18 @@
 
 import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 import type { HarnessId } from '@/shared/lib/harness/catalog';
+import type { AcpProcess } from '@/server/lib/harness/acp/client';
 
 export interface AcpSessionOptions {
   harness: HarnessId;
   command: string[];
   env?: Record<string, string>;
+  /**
+   * A process that has already been spawned and `initialize`d — a prewarmed
+   * agent. The session adopts it, so the handshake it runs costs only
+   * `session/new` and the config writes; the frame sinks are re-bound here.
+   */
+  process?: AcpProcess;
   /** Provider/model this session starts on, applied with
    *  `session/set_config_option` right after `session/new`. */
   model?: { provider: string; modelId: string } | null;

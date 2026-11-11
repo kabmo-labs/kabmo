@@ -184,6 +184,7 @@ function makeSendHarness(options: {
     pendingComposerModelRef: { current: null },
     pendingThinkingLevelRef: { current: null },
     pendingHarnessRef: { current: null },
+    pendingAgentModeRef: { current: null },
     deferredComposerPickRef: options.deferredPick ?? { current: null },
     accessModeRef: { current: 'always-ask' },
     spawnSelectionRef,

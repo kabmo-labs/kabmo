@@ -35,7 +35,10 @@ export function SessionModeDropdown({ mode, pending, onSelect }: SessionModeDrop
 
   if (!mode || mode.values.length < 2) return null;
   const current = mode.values.find((choice) => choice.value === mode.currentValue);
-  const label = current?.name ?? mode.currentValue;
+  // A chat that has not spawned yet has no live selector to ask: the probe names
+  // the ladder but not always which value is current, and an empty label read as
+  // a broken chip beside a working list.
+  const label = current?.name ?? (mode.currentValue || 'Mode');
 
   return (
     <div className="relative" ref={ref}>

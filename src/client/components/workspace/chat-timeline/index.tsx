@@ -25,6 +25,7 @@ import { ChatOverlays } from '@/client/components/workspace/chat-timeline/ChatOv
 import { composerRootFor } from '@/shared/lib/workspace/active-project';
 import { usePendingProjectModel } from '@/client/hooks/chat/timeline/pending-model';
 import { useNewChatOpen } from '@/client/hooks/chat/timeline/new-chat-open';
+import { usePendingWarmup } from '@/client/hooks/chat/timeline/pending-warmup';
 import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
 import { useHeldWait } from '@/client/hooks/chat/waiting/held';
 import { useSessionHarness } from '@/client/hooks/chat/timeline/session-harness';
@@ -153,6 +154,10 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
   const sessionDataModel = typeof sessionData?.model === 'object' ? sessionData.model : null;
   const branch = usePendingBranch({ sessionId, folders, selectedFolderId, setSelectedFolderId, urlParentId: searchParams.get('parentSessionId'), urlForkFrom: searchParams.get('forkFrom'), urlForkAt: searchParams.get('forkAt'), setSearchParams, harnessPicker: activeHarness.picker, pendingHarnessRef });
   const fork = useForkSession(sessionId, folders, selectedFolderId);
+  // Warm the boot here: the harness and the Plan pick are known here only.
+  usePendingWarmup({
+    sessionId, folders, selectedFolderId, harness: activeHarness.harness, plan: modes.plan, worktreePath: spawnTarget?.worktreePath ?? null,
+  });
   // A fork's source transcript, drawn above the pending composer and reloaded
   // when "Fork from" moves to another session.
   const forkPreview = useForkPreview(branch.forkSourceSessionId, branch.forkAnchorEntryId);

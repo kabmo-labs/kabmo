@@ -21,11 +21,11 @@
  */
 
 import { AcpProcess } from '@/server/lib/harness/acp/client';
+import { openSessionProcess } from '@/server/lib/harness/acp/session-process';
 import { AcpTurns, type AcpTurnEndInfo } from '@/server/lib/harness/acp/turn';
 import { AcpFrameMapper } from '@/server/lib/harness/acp/frames';
 import type { AcpConfigOption, AcpId, AcpProtocolVersion, AcpSessionModeState } from '@/server/lib/harness/acp/protocol';
 import { promptBlocks } from '@/server/lib/harness/acp/prompt';
-import { withGatewayCompatibility } from '@/server/lib/harness/acp/gateway-env';
 import { adoptConfigAnswer, publishConfigChange, settlePermissionDialog, stampMessageModel } from '@/server/lib/harness/acp/session-config';
 import { beginAcpTurn, settleAcpTurn } from '@/server/lib/harness/acp/session-turns';
 import { driveAcpGoalAfterTurn } from '@/server/lib/harness/acp/acp-goal-driver.server';
@@ -105,11 +105,7 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
   constructor(options: AcpSessionOptions, cwd: string) {
     this.harness = options.harness;
     this.cwd = cwd;
-    const env = withGatewayCompatibility(options.harness, options.env);
-    this.proc = new AcpProcess({
-      command: options.command,
-      cwd,
-      ...(env ? { env } : {}),
+    this.proc = openSessionProcess(options, cwd, {
       onNotification: (method, params) => this.onNotification(method, params),
       onClientRequest: (id, method, params) => this.onClientRequest(id, method, params),
       onExit: (info) => this.onExit(info),

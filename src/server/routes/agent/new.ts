@@ -158,23 +158,34 @@ async function startAcpChat({ harness, cwd, body, model, accessMode }: {
   accessMode: ApprovalMode;
 }): Promise<Response> {
   const type = String(body.type ?? '');
-  const projectModel = await projectModelForCwd(await getDb(), cwd);
   const thinkingLevel = typeof body.thinkingLevel === 'string' ? body.thinkingLevel : null;
   const mode = harnessModeSelection(body);
   const { token, env: agentEnv } = mintAgentEnvironment();
-  const { session, realSessionId } = await startAcpSession({
+  const { session, realSessionId, adopted } = await startAcpSession({
     harness,
     sessionId: `__new__${Bun.randomUUIDv7()}`,
     cwd,
-    model: model ?? projectModel ?? await loadPersistedModel(),
+    // The composer's pick, else the HARNESS's own configured default — resolved
+    // inside `startAcpSession` against what the agent published. omp's project
+    // and global model picks are deliberately NOT consulted: they name models
+    // this agent does not serve, and a value it happens to list would silently
+    // start the chat on a model the user never chose for it.
+    model,
     thinkingLevel,
     mode,
     accessMode,
     env: agentEnv,
+    // A pending chat's prewarm (fired when the harness was picked) is this
+    // chat's to adopt: the boot already happened while the prompt was written.
+    claimPrewarmed: true,
   });
-  await rememberAgentToken(realSessionId, token).catch((cause: unknown) => {
-    console.error(`[sessions] could not record the agent token for ${realSessionId}:`, cause);
-  });
+  // A claimed warm child already recorded the token its environment carries;
+  // overwriting it here invalidated every callback that agent makes.
+  if (!adopted) {
+    await rememberAgentToken(realSessionId, token).catch((cause: unknown) => {
+      console.error(`[sessions] could not record the agent token for ${realSessionId}:`, cause);
+    });
+  }
 
   if (type === 'ensure_session') {
     return json({ success: true, sessionId: realSessionId, model: session.runModel, data: null, harness });
@@ -190,8 +201,18 @@ async function startAcpChat({ harness, cwd, body, model, accessMode }: {
   return json({ error: `Unsupported command: ${type}` }, { status: 400 });
 }
 
-/** The ACP mode id a new chat asked for, when the composer sent one. */
-function harnessModeSelection(body: Record<string, unknown>): string | null {
+/**
+ * The ACP mode id a new chat asked for, when the composer sent one.
+ *
+ * Exported for its ONE contract: which of the two spellings wins. The route's
+ * ACP branch is a spawn, so this mapping is where a composer pick either reaches
+ * the agent or is silently dropped.
+ */
+export function harnessModeSelection(body: Record<string, unknown>): string | null {
+  // The composer's own mode ladder (a pending chat's pick from the harness
+  // probe). It wins over the Plan flag: the ladder IS the agent's vocabulary,
+  // and 'plan' is just one of its values.
+  if (typeof body.sessionMode === 'string' && body.sessionMode.trim()) return body.sessionMode;
   const modes = asRecord(body.modes);
   if (modes.plan === true) return 'plan';
   return null;

@@ -231,6 +231,7 @@ export function useChatTimeline({
     pendingHarnessRef,
     accessModeRef,
     spawnSelectionRef: modes.spawnSelectionRef,
+    pendingAgentModeRef: modes.pendingAgentModeRef,
     goalArmRef: modes.goalArmRef,
     disarmGoal: modes.disarmGoal,
     spawnWorktreeRef: spawn.worktreePathRef,

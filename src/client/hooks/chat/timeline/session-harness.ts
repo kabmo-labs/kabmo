@@ -150,6 +150,10 @@ export function useSessionHarness(
   const pick = useCallback((next: string) => {
     // The ref is what the SEND path reads; the store is what every renderer
     // reads. A pick that moved only one of them is the reported defect.
+    //
+    // The WARM of the picked agent is not fired here: `usePendingWarmup` owns it
+    // and re-fires on this store change, so there is one path that decides which
+    // process is warmed (and it resolves the cwd exactly as the send does).
     pendingHarnessRef.current = next;
     setHarnessPick(sessionId, next);
   }, [pendingHarnessRef, sessionId]);

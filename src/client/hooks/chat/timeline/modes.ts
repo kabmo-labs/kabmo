@@ -41,6 +41,8 @@ import { isPendingSessionId } from '@/shared/lib/omp/session/default-title';
 import { isModeMarker } from '@/shared/lib/omp/mode/constants';
 import type { ArmedGoal, GoalAction } from '@/shared/lib/omp/mode/actions';
 import { modeAvailability, type ModeCapabilities } from '@/client/hooks/chat/timeline/mode-availability';
+import { usePendingSessionMode } from '@/client/hooks/chat/timeline/pending-session-mode';
+import { useSessionModesHydration } from '@/client/hooks/chat/timeline/modes-hydrate';
 
 import type { ChatTimelineModes } from '@/client/hooks/chat/timeline/modes-contract';
 
@@ -68,6 +70,9 @@ export function useChatTimelineModes(
   const [sessionMode, setSessionMode] = useState<SessionModeState | null>(null);
   const sessionModeRef = useRef<SessionModeState | null>(null);
   sessionModeRef.current = sessionMode;
+  // The ladder and the pick for a chat that has not spawned yet, from its
+  // harness probe — see `pending-session-mode.ts`.
+  const pendingSession = usePendingSessionMode(sessionId, capabilities);
   const [goal, setGoalState] = useState(false);
   const [goalRecord, setGoalRecord] = useState<GoalRecord | null>(null);
   const [goalContinuation, setGoalContinuation] = useState<GoalContinuation | null>(null);
@@ -90,55 +95,19 @@ export function useChatTimelineModes(
   // updater that React may run twice.
   const goalIdRef = useRef<string | null>(null);
 
-  // Hydrate from the session's own record. A fresh session answers the empty
-  // selection, so a brand-new chat renders both toggles off without a request
-  // having to distinguish "unknown" from "off".
-  //
-  // The reset happens BEFORE the read, not only from its answer: a session whose
-  // record cannot be read at all (a pending `new-…` chat, a deleted session —
-  // the route answers 404) would otherwise keep the PREVIOUS session's modes,
-  // and the composer would show another chat's goal banner and a pressed Goal
-  // button. Measured: switching to a pending chat rendered the last session's
-  // objective in the goal strip.
-  useEffect(() => {
-    const current = sessionId;
-    setPlanState(false);
-    setSessionMode(null);
-    setGoalState(false);
-    setGoalRecord(null);
-    setGoalContinuation(null);
-    setGoalEvaluating(false);
-    goalIdRef.current = null;
-    // The pending selection is spent at the spawn that adopts a real id: this
-    // hook is now rendering the CHILD's modes, and a stale ref would re-apply
-    // the pending chat's picks to an unrelated later spawn.
-    if (!isPendingSessionId(current)) spawnSelectionRef.current = null;
-    if (!current) return;
-    // A pending `new-…` id has no session file, so the route can only answer
-    // 404. Skipped rather than fetched-and-ignored: the read is what a network
-    // panel shows, and a request whose only possible outcome is a 404 is noise.
-    if (isPendingSessionId(current)) return;
-    let cancelled = false;
-    fetch(`/api/sessions/${encodeURIComponent(current)}/modes`)
-      .then((res) => (res.ok ? (res.json() as Promise<ModesResponse>) : null))
-      .then((data) => {
-        if (cancelled || !data?.modes) return;
-        setPlanState(data.modes.plan === true);
-        setSessionMode(data.modes.mode ?? null);
-        setGoalState(data.modes.goal === true);
-        setGoalRecord(data.modes.goalRecord ?? null);
-        // The loop's last verdict rides the same record, so a reload shows
-        // "stopped at N turns" (and its Resume) instead of an active-looking
-        // goal the child has already given up on. A verdict never reported is
-        // null: the child's own counter cannot be reconstructed from a file.
-        setGoalContinuation(data.modes.goalContinuation ?? null);
-        goalIdRef.current = data.modes.goalRecord?.id ?? null;
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [sessionId]);
+  // Hydrate from the session's own record; the reset-before-read rule lives in
+  // `modes-hydrate.ts`.
+  useSessionModesHydration({
+    sessionId,
+    spawnSelectionRef,
+    goalIdRef,
+    setPlan: setPlanState,
+    setMode: setSessionMode,
+    setGoal: setGoalState,
+    setGoalRecord,
+    setGoalContinuation,
+    setGoalEvaluating,
+  });
 
   // An agent can move its own mode/config (`mode_changed`/`config_changed`).
   // The frame carries no full list, so re-read the authoritative selector.
@@ -236,7 +205,17 @@ export function useChatTimelineModes(
   const onSelectSessionMode = useCallback(async (value: string) => {
     const current = sessionModeRef.current;
     const session = sessionRef.current;
-    if (!current || !session || current.currentValue === value || isPendingSessionId(session)) return;
+    if (!session) return;
+    // A pending chat has no child: the pick is held for the spawn, the same seam
+    // the model and harness picks use. POSTing it answered 404 and dropped the
+    // click, which is why the control read as inert before the first prompt.
+    if (isPendingSessionId(session)) {
+      pendingSession.select(value);
+      setPlanState(value === 'plan');
+      setError(null);
+      return;
+    }
+    if (!current || current.currentValue === value) return;
     setSessionMode({ ...current, currentValue: value });
     setPlanState(value === 'plan');
     setPending(true);
@@ -248,7 +227,7 @@ export function useChatTimelineModes(
       setPlanState(current.currentValue === 'plan');
       setError(result.error ?? 'Mode change failed');
     }
-  }, []);
+  }, [pendingSession.select]);
 
   const runGoalAction = useMemo(
     () => createGoalAction({
@@ -327,8 +306,9 @@ export function useChatTimelineModes(
     pending,
     planAvailable: available.plan && !goal,
     goalAvailable: available.goal,
-    sessionMode,
+    sessionMode: sessionMode ?? pendingSession.mode,
     onSelectSessionMode,
+    pendingAgentModeRef: pendingSession.spawnRef,
     error,
     clearError,
     spawnSelectionRef,

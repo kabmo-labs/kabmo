@@ -17,12 +17,19 @@
  * arrived yet.
  */
 
+import type { SessionModeChoice } from '@/shared/lib/harness/session-modes';
+
 export interface ModeCapabilities {
   /** The harness that owns this chat, when the tab knows it. */
   harness?: string | null;
   /** The harness's own `mode` values, from its probe: `plan` is a real mode on
    *  the agents that publish one. */
   modeValues?: string[];
+  /** The ladder itself (value + label) from the same probe, so a chat that has
+   *  not spawned can still draw the agent's mode control. */
+  modeChoices?: readonly SessionModeChoice[];
+  /** The mode the agent reported as current at probe time, when it said. */
+  modeCurrent?: string;
 }
 
 export function modeAvailability(capabilities: ModeCapabilities): { plan: boolean; goal: boolean } {

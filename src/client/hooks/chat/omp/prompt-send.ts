@@ -141,6 +141,9 @@ export function useOmpPromptSender(deps: OmpPromptSenderDeps): OmpPromptSender {
           // Plan/goal picks from the pending view. Omitted when the user made
           // none, so a spawn with no selection behaves exactly as before.
           ...(composerOptions?.modes ? { modes: composerOptions.modes } : {}),
+          // The ACP ladder pick from the same view — the agent's own vocabulary,
+          // applied by the route as a config write after `session/new`.
+          ...(composerOptions?.sessionMode ? { sessionMode: composerOptions.sessionMode } : {}),
           ...(composerOptions?.harness ? { harness: composerOptions.harness } : {}),
         }),
       });

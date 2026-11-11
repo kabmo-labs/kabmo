@@ -33,9 +33,20 @@ export function useComposerModes(sessionId: string | null, harness?: string | nu
   // mode list is the agent's own, and a non-omp agent has no `/kabmo-mode`
   // extension to fall back on.
   const { harnesses } = useHarnesses();
-  const modeValues = harnesses.find((entry) => entry.id === harness)?.probe?.capabilities.modeValues;
+  const probe = harnesses.find((entry) => entry.id === harness)?.probe;
+  const modeValues = probe?.capabilities.modeValues;
+  // The ladder itself comes from the same probe, so a pending chat — which has
+  // no session to ask — still shows the agent's own modes as soon as its harness
+  // is picked. `omp-acp` is excluded for the reason `GET /modes` excludes it:
+  // its selectors are default/plan, which the dedicated Plan toggle expresses.
+  const modeChoices = harness && harness !== 'omp-acp' && probe?.modes.length ? probe.modes : undefined;
   return {
-    modes: useChatTimelineModes(sessionId, { harness, ...(modeValues ? { modeValues } : {}) }),
+    modes: useChatTimelineModes(sessionId, {
+      harness,
+      ...(modeValues ? { modeValues } : {}),
+      ...(modeChoices ? { modeChoices } : {}),
+      ...(modeChoices && probe?.currentMode ? { modeCurrent: probe.currentMode } : {}),
+    }),
     planReview: usePlanReview(sessionId),
   };
 }

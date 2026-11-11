@@ -64,6 +64,12 @@ export interface ChatTimelineModes {
   /** Move the agent's mode selector. */
   onSelectSessionMode?: (value: string) => void;
   /**
+   * For a pending `new-…` chat only: the ACP mode its spawn must request. A
+   * chat with no child cannot be commanded, so the pick is held here and read
+   * by the send path (`SpawnOptions.sessionMode`).
+   */
+  pendingAgentModeRef: { current: string | null };
+  /**
    * The last refusal, from either side of the wire: the route's own error, or a
    * `KABMO_MODE_ERROR` the extension emitted (an unknown action, a missing
    * omp API, the plan/goal exclusion). Surfaced by the composer because a mode

@@ -51,6 +51,8 @@ export interface ChatTimelineSendDeps {
   pendingThinkingLevelRef: { current: string | null };
   /** Harness picked on the pending `new-…` chat; rides the spawn. */
   pendingHarnessRef: { current: string | null };
+  /** ACP mode picked on the pending `new-…` chat; rides the spawn. */
+  pendingAgentModeRef: { current: string | null };
   /** Global access-control mode (persisted user preference), read at send time
    *  so the spawn-capable requests carry the latest value. */
   accessModeRef: { current: ApprovalMode };

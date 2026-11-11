@@ -16,7 +16,7 @@
  *    approve.
  */
 
-import { acpOptionValues, type AcpConfigOption } from '@/server/lib/harness/acp/protocol';
+import { acpOptionValues, type AcpConfigOption, type AcpSessionModeState } from '@/server/lib/harness/acp/protocol';
 
 /** The selector in a `configOptions` list for one ACP category. */
 export function configOption(options: AcpConfigOption[], category: string): AcpConfigOption | undefined {
@@ -105,6 +105,37 @@ export interface ConfigSelectionHost {
   setConfig(configId: string, value: string | boolean): Promise<unknown>;
   /** The harness id, so a refused write names the agent instead of "it". */
   readonly harness?: string;
+}
+
+/** The host plus the older Session Modes API, for the launch picks. */
+export interface LaunchSelectionHost extends ConfigSelectionHost {
+  readonly modes?: AcpSessionModeState | null;
+  /** `session/set_mode`; present only when the session can speak it. */
+  setMode?: (modeId: string) => Promise<unknown>;
+}
+
+/**
+ * Apply the picks a spawn carries: the config selectors, then the legacy
+ * `modes` verb for an agent that publishes only that list.
+ *
+ * The ONE place a launch's picks are applied — a cold spawn and a prewarmed
+ * process both reach it through `handshakeAcpSession`, which is what keeps the
+ * two from disagreeing about the mode an agent that speaks only
+ * `session/set_mode` ends up in.
+ */
+export async function applyLaunchSelections(
+  host: LaunchSelectionHost,
+  wanted: ConfigSelections,
+): Promise<void> {
+  await applySelections(host, wanted);
+  if (
+    wanted.mode
+    && !configOption(host.configOptions, 'mode')
+    && host.modes?.availableModes.some((entry) => entry.id === wanted.mode)
+    && host.setMode
+  ) {
+    await host.setMode(wanted.mode).catch(() => {});
+  }
 }
 
 /**

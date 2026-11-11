@@ -70,6 +70,9 @@ export interface HarnessSummary {
     models: HarnessSelectorValue[];
     thinking: HarnessSelectorValue[];
     modes: HarnessSelectorValue[];
+    /** The mode the agent reported as current when its probe session opened,
+     *  when it published one. */
+    currentMode?: string;
     probedAt: number;
     /** True when the record is older than `PROBE_TTL_MS`. The answer is still
      *  shown — with its age — rather than being reported as "never probed". */

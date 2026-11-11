@@ -132,6 +132,12 @@ export interface SpawnOptions {
    *  transcript to restore them from, so they ride the spawn environment. */
   modes?: { plan: boolean; goal: boolean } | null;
   /**
+   * The ACP mode id the composer picked on a pending chat. ACP applies modes as
+   * a config write right after `session/new`, so this travels with the spawn
+   * rather than as an environment value.
+   */
+  sessionMode?: string | null;
+  /**
    * Which harness runs the chat. A SPAWN property — it decides the transport,
    * the model list and every capability the panels can show — so it can only be
    * chosen on a chat with no transcript. Absent means omp's RPC mode.

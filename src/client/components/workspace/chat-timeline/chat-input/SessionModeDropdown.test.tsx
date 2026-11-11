@@ -82,4 +82,13 @@ describe('SessionModeDropdown', () => {
     expect(picks).toEqual(['code']);
     expect(el.querySelector('[role="listbox"]')).toBeNull();
   });
+
+  test('a chat that has not spawned says "Mode", not an empty chip', async () => {
+    // The ladder comes from the harness probe, which names the values but not
+    // always which one is current; an empty label read as a broken control
+    // beside a working list.
+    const el = await mount({ currentValue: '', values: TWO_MODES.values });
+    const trigger = el.querySelector('button[aria-haspopup="listbox"]');
+    expect(trigger?.getAttribute('aria-label')).toBe('Session mode: Mode');
+  });
 });

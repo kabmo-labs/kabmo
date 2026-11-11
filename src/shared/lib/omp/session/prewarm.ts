@@ -4,10 +4,11 @@
  */
 
 /**
- * Client-side trigger for the server's prewarm pool: asking Kabmo server
- * to start an idle `omp --mode rpc-ui` process for a project cwd before the
- * first prompt is sent. Fired when the user opens a new (pending) session —
- * the seconds between the click and the first send then hide the omp boot.
+ * Client-side trigger for the server's prewarm pools: asking Kabmo server to
+ * start an idle agent for a project cwd before the first prompt is sent.
+ * Fired when the user opens a new (pending) session and whenever a pending
+ * chat's harness or mode pick moves — the seconds between the click and the
+ * first send then hide the boot.
  *
  * Fire-and-forget by contract: a failed or slow prewarm must never block or
  * error the UI. The next send spawns cold in that case, exactly as before.
@@ -23,19 +24,37 @@
  * the phone passed nothing at all, so every prewarm there was always-ask
  * against a yolo install. `writeSetting` updates the snapshot synchronously,
  * so this reads exactly what the composer last chose.
+ *
+ * **`harness` picks the POOL.** Only omp's RPC pool existed at first, so every
+ * pending chat on an ACP agent paid that agent's full boot on its first prompt.
+ * `modes` is the pending chat's Plan pick: omp's child reads it from its
+ * start-time environment, so a warm child without it can never serve the chat.
  */
 
 import { ACCESS_MODE_SETTING_KEY, isApprovalMode } from '@/shared/lib/omp/config/access-mode';
 import { readKabmoSetting } from '@/shared/lib/settings/client';
 
-export function triggerSessionPrewarm(cwd: string): void {
+export interface PrewarmOptions {
+  /** The harness the pending chat will spawn on. Absent means omp's RPC pool. */
+  harness?: string | null;
+  /** The pending chat's mode selection (omp only; ACP applies modes at spawn). */
+  modes?: { plan: boolean; goal: boolean } | null;
+}
+
+export function triggerSessionPrewarm(cwd: string, options: PrewarmOptions = {}): void {
   if (!cwd) return;
   const stored = readKabmoSetting<unknown>(ACCESS_MODE_SETTING_KEY);
   const accessMode = isApprovalMode(stored) ? stored : undefined;
+  const harness = options.harness || 'omp-rpc';
   fetch('/api/agent/prewarm', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ cwd, ...(accessMode ? { accessMode } : {}) }),
+    body: JSON.stringify({
+      cwd,
+      harness,
+      ...(accessMode ? { accessMode } : {}),
+      ...(options.modes ? { modes: options.modes } : {}),
+    }),
   }).catch(() => {});
 }
 

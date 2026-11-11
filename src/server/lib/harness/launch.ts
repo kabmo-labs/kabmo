@@ -187,12 +187,17 @@ export async function probeHarness(
       agentProcess.newSession(dir, timeoutMs),
     );
     const options = session.configOptions ?? [];
+    const modeSelector = configByCategory(options, 'mode');
+    const currentMode = typeof modeSelector?.currentValue === 'string'
+      ? modeSelector.currentValue
+      : session.modes?.currentModeId;
     return {
       harness: id,
       capabilities: capabilitiesFrom(init, options, observed),
       models: selectValues(configByCategory(options, 'model')),
       thinking: selectValues(configByCategory(options, 'thought_level')),
-      modes: selectValues(configByCategory(options, 'mode')),
+      modes: selectValues(modeSelector),
+      ...(currentMode ? { currentMode } : {}),
       probedAt: Date.now(),
     };
   } catch (error) {

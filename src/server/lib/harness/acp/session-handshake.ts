@@ -25,7 +25,7 @@
  */
 
 import { newSessionAfterActivation } from '@/server/lib/harness/acp/activation';
-import { applySelections, configOption, modelFromOption } from '@/server/lib/harness/acp/prompt';
+import { applyLaunchSelections, configOption, modelFromOption } from '@/server/lib/harness/acp/prompt';
 import { capabilitiesFrom } from '@/server/lib/harness/launch';
 import type {
   AcpAgentCommand,
@@ -161,17 +161,7 @@ export async function handshakeAcpSession(
   if (session.availableCommands) target.agentCommands = session.availableCommands;
   target.runModel = modelFromOption(configOption(target.configOptions, 'model'), target.harness);
   target.capabilities = capabilitiesFrom(init, target.configOptions, { usage: false, plan: false }, target.modes);
-  await applySelections(target, wanted);
-  // A mode the composer asked for, on an agent that publishes only the older
-  // `modes` list: `session/set_mode` is the only way to apply it.
-  if (
-    wanted.mode
-    && !configOption(target.configOptions, 'mode')
-    && target.modes?.availableModes.some((entry) => entry.id === wanted.mode)
-    && target.setMode
-  ) {
-    await target.setMode(wanted.mode).catch(() => {});
-  }
+  await applyLaunchSelections(target, wanted);
 }
 
 /**

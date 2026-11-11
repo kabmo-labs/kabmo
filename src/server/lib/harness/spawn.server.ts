@@ -12,12 +12,17 @@
  * client keeps posting to the id it holds. `registerSpawnedSession` owns that
  * rule; this module only supplies the driver.
  *
- * The model/thinking/mode picks ride the CONFIG WRITES after `session/new` — not
- * an environment variable — because ACP publishes them as selectors and the
- * agent applies them to the session it just created.
+ * The model/thinking/mode picks ride the CONFIG WRITES after `session/new` —
+ * not an environment variable — because ACP publishes them as selectors and the
+ * agent applies them to the session it just created. That is also what lets a
+ * PREWARMED process (spawned and initialized before the picks were known) serve
+ * the request: the adopting session runs the same `session/new` and the same
+ * writes, minus the boot.
  */
 
 import { AcpSession } from '@/server/lib/harness/acp/session';
+import { claimPrewarmedAcpSession } from '@/server/lib/harness/acp/prewarm.server';
+import { rememberAgentToken } from '@/server/lib/sessions/agent-token.server';
 import { loadHarnessConfig, resolveLaunch } from '@/server/lib/harness/config.server';
 import { sessionLaunchCommand } from '@/server/lib/harness/launch';
 import { resolveDefaultModel, modelProvider } from '@/shared/lib/harness/config';
@@ -27,6 +32,8 @@ import { registerAcpSession } from '@/server/lib/harness/register.server';
 import { saveHarnessSession } from '@/server/lib/harness/session-store.server';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
 import { harnessDescriptor, type HarnessId } from '@/shared/lib/harness/catalog';
+import type { HarnessConfig } from '@/shared/lib/harness/config';
+import type { AcpProcess } from '@/server/lib/harness/acp/client';
 import type { HarnessSession } from '@/server/lib/harness/session';
 import type { SelectedModel } from '@/shared/types/models';
 import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
@@ -49,18 +56,51 @@ export interface AcpSpawnRequest {
   accessMode?: ApprovalMode | null;
   /** Extra environment for this child only (the agent token and server URL). */
   env?: Record<string, string>;
+  /** A prewarmed (spawned + initialized) agent to adopt instead of spawning. */
+  process?: AcpProcess;
+  /**
+   * Adopt a prewarmed agent for this harness+cwd, when one is waiting.
+   *
+   * Opt-in rather than always: the prewarm belongs to the pending chat that
+   * triggered it (a New Chat click or a harness pick), and a child spawn or a
+   * resume must not consume it. Only a brand-new top-level chat claims.
+   */
+  claimPrewarmed?: boolean;
 }
 
 export class HarnessNotLaunchableError extends Error {
   constructor(harness: HarnessId, reason: string) {
-    super(`Cannot start ${harnessDescriptor(harness)?.label ?? harness}: ${reason}`);
+    super(`${harnessDescriptor(harness)?.label ?? harness} cannot start: ${reason}`);
     this.name = 'HarnessNotLaunchableError';
   }
 }
 
-export async function startAcpSession(
+/** The model/thinking/mode a start would apply, resolved against what the agent
+ *  published. Shared by the cold spawn and the claim, so a prewarmed session
+ *  ends on exactly the picks a cold one would have started with. */
+async function resolvePicks(
   request: AcpSpawnRequest,
-): Promise<{ session: HarnessSession; realSessionId: string }> {
+  loaded?: HarnessConfig,
+): Promise<{
+  model: SelectedModel | null;
+  thinking: string | null;
+  mode: string | null;
+}> {
+  const configured = loaded ?? await loadHarnessConfig(request.harness);
+  const probedModels = await harnessProbeModels(request.harness);
+  const configuredDefault = resolveDefaultModel(configured, probedModels);
+  const model = request.model
+    ?? (configuredDefault ? { provider: modelProvider(configuredDefault), modelId: configuredDefault } : null);
+  return {
+    model,
+    thinking: request.thinkingLevel ?? configured.thinking ?? null,
+    mode: request.mode ?? configured.mode ?? null,
+  };
+}
+
+export async function openAcpSession(
+  request: AcpSpawnRequest,
+): Promise<{ session: AcpSession; realSessionId: string }> {
   // The USER's launch line, merged over the build's table. A command override is
   // the only way to start an agent installed outside PATH, and an env override is
   // the only provider switch an ACP agent actually honours — Kabmo routes nothing
@@ -76,14 +116,7 @@ export async function startAcpSession(
     );
   }
 
-  // The model the chat starts on: the request's pick, else the harness's own
-  // configured default. Resolved against what the AGENT published, so a stale
-  // default falls through rather than failing the first prompt.
-  const probedModels = await harnessProbeModels(request.harness);
-  const configuredDefault = resolveDefaultModel(configured, probedModels);
-  const startingModel = request.model
-    ?? (configuredDefault ? { provider: modelProvider(configuredDefault), modelId: configuredDefault } : null);
-
+  const picks = await resolvePicks(request, configured);
   // Built here rather than behind a factory in the session module: this is the
   // only place a session is constructed, and the handshake it runs (load vs
   // new) is decided by the request this function already holds.
@@ -93,9 +126,10 @@ export async function startAcpSession(
       harness: request.harness,
       command: sessionLaunchCommand(request.harness, launch.command),
       ...(Object.keys(childEnv).length > 0 ? { env: childEnv } : {}),
-      model: startingModel,
-      thinkingLevel: request.thinkingLevel ?? configured.thinking ?? null,
-      mode: request.mode ?? configured.mode ?? null,
+      ...(request.process ? { process: request.process } : {}),
+      model: picks.model,
+      thinkingLevel: picks.thinking,
+      mode: picks.mode,
       accessMode: request.accessMode ?? null,
     },
     request.cwd,
@@ -117,6 +151,28 @@ export async function startAcpSession(
   if (!realSessionId) {
     await session.destroyAndWait().catch(() => {});
     throw new Error(`${request.harness} started a session without an id`);
+  }
+  return { session, realSessionId };
+}
+
+export async function startAcpSession(
+  request: AcpSpawnRequest,
+): Promise<{ session: HarnessSession; realSessionId: string; adopted: boolean }> {
+  const claimable = request.claimPrewarmed && !request.resumeAgentSessionId && !request.forkAgentSessionId;
+  // A warm agent skips the spawn AND the `initialize` handshake; `session/new`
+  // and the picks still run, in the same place a cold spawn runs them, so there
+  // is one definition of "the session a chat starts in".
+  const warm = claimable ? await claimPrewarmedAcpSession(request.harness, request.cwd) : null;
+  const { session, realSessionId } = await openAcpSession(
+    warm ? { ...request, process: warm.process } : request,
+  );
+  if (warm) {
+    // The process's environment already carries the credential minted at
+    // prewarm; recording a different one here would authenticate its callbacks
+    // against a token nobody holds.
+    await rememberAgentToken(realSessionId, warm.token).catch((cause: unknown) => {
+      console.error(`[harness] could not record the agent token for ${realSessionId}:`, cause);
+    });
   }
 
   claimHarness(session, request.harness);
@@ -142,5 +198,8 @@ export async function startAcpSession(
   // snapshot; the child exists now, so the topic must re-snapshot.
   emitRealtimeSignal('session-attached', realSessionId);
   if (request.sessionId !== realSessionId) emitRealtimeSignal('session-attached', request.sessionId);
-  return { session, realSessionId };
+  // `adopted` is what tells the route NOT to record its own callback token: the
+  // claimed child's environment already carries the one minted when it warmed,
+  // and replacing it made every callback from that agent fail authentication.
+  return { session, realSessionId, adopted: warm !== null };
 }

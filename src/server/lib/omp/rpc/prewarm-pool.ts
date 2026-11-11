@@ -43,14 +43,28 @@ export function getPrewarmed(): Map<string, PrewarmedEntry> {
   return globalThis.__ompPrewarmed;
 }
 
+/** The same selection spellings the claim compares, so the two cannot drift. */
+function modesOf(env?: Record<string, string>): string {
+  return env?.KABMO_MODES ?? env?.CHAMBER_MODES ?? '';
+}
+
 /** Spawn (at most one) idle omp process for `cwd` so the next new-session
  *  send starts instantly. Fire-and-forget; a failed spawn just clears itself.
- *  Safe to call repeatedly — an existing live or in-flight entry wins. */
+ *  Safe to call repeatedly — an existing live or in-flight entry wins, unless it
+ *  was warmed for a DIFFERENT selection: that child can never serve this chat
+ *  (the extension reads the mode env once, at start), so it is recycled here
+ *  instead of being killed by the claim and paid for twice. */
 export function prewarmRpcSession(cwd: string, approvalMode?: ApprovalMode, modeEnv?: Record<string, string>): void {
   const pool = getPrewarmed();
-  const existing = pool.get(cwd);
-  if (existing) return;
   const mode = approvalMode ?? DEFAULT_APPROVAL_MODE;
+  const existing = pool.get(cwd);
+  if (existing) {
+    if (existing.claimed) return;
+    if (existing.approvalMode === mode && modesOf(existing.modeEnv) === modesOf(modeEnv)) return;
+    existing.claimed = true;
+    pool.delete(cwd);
+    void existing.ready.then((wrapper) => wrapper.destroyAndWait()).catch(() => {});
+  }
   // The prewarmed child is a session host with a real id, so it gets its own
   // callback credential now; the claim path must not replace it, because the
   // child's environment already carries this value.
@@ -146,8 +160,8 @@ export async function claimPrewarmedSession(
   // time, so a MODE selection that differs from its own can no longer be served
   // by it — the extension reads the mode env once, at session start. Treated
   // exactly like a mode mismatch: claim and kill, then spawn cold.
-  const entryModes = entry.modeEnv?.KABMO_MODES ?? entry.modeEnv?.CHAMBER_MODES ?? '';
-  const wantedModes = modeEnv?.KABMO_MODES ?? modeEnv?.CHAMBER_MODES ?? '';
+  const entryModes = modesOf(entry.modeEnv);
+  const wantedModes = modesOf(modeEnv);
   const usable = !entry.claimed && entry.approvalMode === approvalMode && entryModes === wantedModes;
 
   if (usable) {

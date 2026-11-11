@@ -271,6 +271,17 @@ describe('useOmpPromptSender.sendNewPrompt', () => {
     expect(probe.connected).toEqual(['omp-9']);
   });
 
+  test('sends the ACP mode pick on the spawn body', async () => {
+    // The composer's pending chat has no session to command, so a mode picked on
+    // it can only travel here; dropping it started the chat in the agent's
+    // default mode while the chip named the operator's pick.
+    const requests = installFetch({ [NEW]: { body: { success: true, sessionId: 'acp-1', harness: 'claude' } } });
+    const probe = mountSender(null);
+    await probe.sender().sendNewPrompt('first', '/w', undefined, { harness: 'claude', sessionMode: 'architect' });
+
+    expect(requests[0].body).toMatchObject({ harness: 'claude', sessionMode: 'architect' });
+  });
+
   test('omits every unset pick so a bare spawn behaves as before', async () => {
     const requests = installFetch({ [NEW]: { body: { success: true, sessionId: 'omp-1' } } });
     const probe = mountSender(null);

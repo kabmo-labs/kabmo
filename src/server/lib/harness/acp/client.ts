@@ -25,11 +25,8 @@
  *    explicitly refused — never dropped.
  */
 
-import type { Subprocess } from 'bun';
-import { readLines } from '@/server/lib/omp/rpc/lines';
 import { PendingCalls } from '@/server/lib/harness/acp/calls';
-import { killProcessTree } from '@/server/lib/lifecycle/kill-tree';
-import { stripKabmoHostEnv, withToolchainPath } from '@kabmo-labs/kabmo-sdk';
+import { AgentStdio } from '@/server/lib/harness/acp/stdio';
 import * as verbs from '@/server/lib/harness/acp/verbs';
 import { initializeAcpAgent } from '@/server/lib/harness/acp/client-initialize';
 import { ACP_ERROR } from '@/server/lib/harness/acp/protocol';
@@ -72,15 +69,13 @@ export interface AcpClientOptions {
 }
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 60_000;
-const STDERR_TAIL_LIMIT = 8_000;
 
 export class AcpProcess {
-  private readonly child: Subprocess<'pipe', 'pipe', 'pipe'>;
+  private readonly stdio: AgentStdio;
   private readonly pending = new PendingCalls();
   private readonly options: AcpClientOptions;
   private nextId = 1;
   private exited = false;
-  private stderrTail = '';
   private writeQueue: Promise<void> = Promise.resolve();
   /** The negotiated ACP major. 1 until `initialize` answers; every verb that
    *  changed shape between versions reads it. */
@@ -88,49 +83,38 @@ export class AcpProcess {
   /** Set once `initialize` answers, so a request sent earlier fails loudly
    *  instead of racing the handshake. */
   private initialized = false;
+  /** The one `initialize` this process ever runs. A prewarmed child is handed
+   *  to a session that would otherwise handshake a second time; the cached
+   *  answer is what makes adopting it free. */
+  private init: Promise<AcpInitializeResult> | null = null;
+  /** The frame sinks, re-bindable: a prewarmed process is created before the
+   *  session that will own it exists, so its handlers are attached at claim. */
+  private sinks: Pick<AcpClientOptions, 'onNotification' | 'onClientRequest' | 'onExit' | 'onStderr'>;
 
   constructor(options: AcpClientOptions) {
     this.options = options;
-    const [command, ...args] = options.command;
-    if (!command) throw new Error('ACP launch command is empty');
-    const childEnv = withToolchainPath(
-      stripKabmoHostEnv({ ...Bun.env, ...options.env }, process.platform),
-      process.platform,
-    );
-    try {
-      this.child = Bun.spawn({
-        cmd: [command, ...args],
+    this.sinks = options;
+    this.stdio = new AgentStdio(
+      {
+        command: options.command,
         cwd: options.cwd,
-        env: childEnv,
-        stdin: 'pipe',
-        stdout: 'pipe',
-        stderr: 'pipe',
-        windowsHide: true,
-        // Its own process group, exactly like the omp child: an ACP adapter
-        // spawns ITS own agent binary (codex-acp runs codex, pi-acp runs pi),
-        // so killing only the adapter leaves the real agent running.
-        detached: process.platform !== 'win32',
-      });
-    } catch (error) {
-      throw new Error(
-        `Could not start ${command}: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
-
-    void readLines(this.child.stdout, (line) => this.handleLine(line));
-    void readLines(this.child.stderr, (line) => {
-      this.stderrTail = `${this.stderrTail}${line}\n`.slice(-STDERR_TAIL_LIMIT);
-      this.options.onStderr?.(line);
-    });
-    void this.child.exited.then((code) => {
-      this.exited = true;
-      // The agent's own last words, when it left any: `exited (code 0)` is what
-      // a shadowed/deprecated binary prints while it explains itself on stderr,
-      // and without the tail the spawn failure names nothing actionable.
-      const detail = this.stderrTail.trim().split('\n').slice(-3).join(' · ');
-      this.rejectAll(new Error(`ACP agent exited (code ${code})${detail ? ` — ${detail}` : ''}`));
-      this.options.onExit?.({ code, signal: null, stderrTail: this.stderrTail });
-    });
+        ...(options.env ? { env: options.env } : {}),
+      },
+      {
+        onLine: (line) => this.handleLine(line),
+        onStderr: (line) => this.sinks.onStderr?.(line),
+        onExit: ({ code, stderrTail }) => {
+          this.exited = true;
+          // The agent's own last words, when it left any: `exited (code 0)` is
+          // what a shadowed/deprecated binary prints while it explains itself on
+          // stderr, and without the tail the spawn failure names nothing
+          // actionable.
+          const detail = stderrTail.trim().split('\n').slice(-3).join(' · ');
+          this.rejectAll(new Error(`ACP agent exited (code ${code})${detail ? ` — ${detail}` : ''}`));
+          this.sinks.onExit?.({ code, signal: null, stderrTail });
+        },
+      },
+    );
   }
 
   get isAlive(): boolean {
@@ -138,15 +122,35 @@ export class AcpProcess {
   }
 
   get pid(): number | undefined {
-    return this.child.pid ?? undefined;
+    return this.stdio.pid;
   }
 
-  /** `initialize`; the client advertises exactly what it can serve. */
-  async initialize(capabilities?: Record<string, unknown>, timeoutMs = 60_000): Promise<AcpInitializeResult> {
-    const result = await initializeAcpAgent(this.call, capabilities, timeoutMs);
-    this.protocolVersion = result.protocolVersion === 2 ? 2 : 1;
-    this.initialized = true;
-    return result;
+  /**
+   * `initialize`; the client advertises exactly what it can serve.
+   *
+   * Idempotent: a prewarmed process has already answered, and the session that
+   * adopts it must not pay a second round trip (or, worse, send a second
+   * `initialize` the agent may refuse).
+   */
+  initialize(capabilities?: Record<string, unknown>, timeoutMs = 60_000): Promise<AcpInitializeResult> {
+    this.init ??= initializeAcpAgent(this.call, capabilities, timeoutMs).then((result) => {
+      this.protocolVersion = result.protocolVersion === 2 ? 2 : 1;
+      this.initialized = true;
+      return result;
+    });
+    return this.init;
+  }
+
+  /**
+   * Re-bind the frame sinks.
+   *
+   * A prewarmed process is spawned before the session that will own it exists,
+   * so its notifications and agent→client requests have nowhere to go until the
+   * claim. Attaching here is what makes the warm child indistinguishable from a
+   * cold one for the rest of its life.
+   */
+  attachSinks(sinks: Pick<AcpClientOptions, 'onNotification' | 'onClientRequest' | 'onExit' | 'onStderr'>): void {
+    this.sinks = sinks;
   }
 
   get hasInitialized(): boolean {
@@ -239,23 +243,7 @@ export class AcpProcess {
   /** Graceful then forceful shutdown of the whole process group. */
   async dispose(gracePeriodMs = 5_000): Promise<void> {
     if (this.exited) return;
-    const exited = this.child.exited.then(() => undefined);
-    try {
-      this.child.stdin.end();
-    } catch {
-      // Already closed.
-    }
-    const term = setTimeout(() => {
-      if (!this.exited) killProcessTree(this.child.pid, false, 'SIGTERM');
-    }, gracePeriodMs);
-    const kill = setTimeout(() => {
-      if (!this.exited) killProcessTree(this.child.pid, true, 'SIGKILL');
-    }, gracePeriodMs * 2);
-    term.unref?.();
-    kill.unref?.();
-    await exited;
-    clearTimeout(term);
-    clearTimeout(kill);
+    await this.stdio.dispose(gracePeriodMs);
     this.rejectAll(new Error('ACP agent disposed'));
   }
 
@@ -284,14 +272,12 @@ export class AcpProcess {
   private write(frame: AcpRequest | AcpNotification | AcpResponse): void {
     if (this.exited) return;
     const line = `${JSON.stringify(frame)}\n`;
+    // Serialized: two frames interleaved on one pipe would corrupt the stream,
+    // and a closed pipe is reported by `exited` rather than thrown into the
+    // queue (which would wedge every later frame).
     this.writeQueue = this.writeQueue.then(async () => {
-      try {
-        this.child.stdin.write(line);
-        await this.child.stdin.flush();
-      } catch {
-        // A closed pipe is reported by `exited`; the writer must not throw into
-        // the queue and wedge every later frame.
-      }
+      this.stdio.write(line);
+      await this.stdio.flush();
     });
   }
 
@@ -315,7 +301,7 @@ export class AcpProcess {
       if (record.id !== undefined && record.id !== null) {
         void this.handleAgentRequest(record.id as AcpId, record.method, record.params);
       } else {
-        this.options.onNotification(record.method, (record.params ?? {}) as Record<string, unknown>);
+        this.sinks.onNotification(record.method, (record.params ?? {}) as Record<string, unknown>);
       }
       return;
     }
@@ -327,7 +313,7 @@ export class AcpProcess {
   private async handleAgentRequest(id: AcpId, method: string, params: unknown): Promise<void> {
     const bag = (params ?? {}) as Record<string, unknown>;
     try {
-      const handled = await this.options.onClientRequest?.(id, method, bag);
+      const handled = await this.sinks.onClientRequest?.(id, method, bag);
       if (handled?.answered) {
         this.respond(id, handled.result);
         return;

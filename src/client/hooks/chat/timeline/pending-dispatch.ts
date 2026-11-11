@@ -41,6 +41,7 @@ type PendingDispatchDeps = Pick<
   | 'pendingComposerModelRef'
   | 'pendingThinkingLevelRef'
   | 'pendingHarnessRef'
+  | 'pendingAgentModeRef'
   | 'accessModeRef'
   | 'spawnSelectionRef'
   | 'goalArmRef'
@@ -254,6 +255,7 @@ export async function dispatchPendingChat(
 
   // Top-level pending chat: the existing `/api/agent/new` spawn.
   const spawnModes = deps.spawnSelectionRef.current;
+  const spawnSessionMode = deps.pendingAgentModeRef.current;
   const armed = deps.goalArmRef.current;
   const spawned = await deps.ompAgent.sendNewPrompt(
     input.promptText,
@@ -264,6 +266,7 @@ export async function dispatchPendingChat(
       thinkingLevel: composerThinking,
       accessMode: deps.accessModeRef.current,
       modes: spawnModes,
+      ...(spawnSessionMode ? { sessionMode: spawnSessionMode } : {}),
       ...((input.options?.harness ?? deps.pendingHarnessRef.current)
         ? { harness: input.options?.harness ?? deps.pendingHarnessRef.current }
         : {}),
@@ -278,6 +281,7 @@ export async function dispatchPendingChat(
     // reported as the agent running the chat.
     recordSpawnHarness(session.sessionId, session.harness ?? 'omp-rpc');
     deps.spawnSelectionRef.current = null;
+    deps.pendingAgentModeRef.current = null;
     deps.adoptedSessionIdRef.current = session.sessionId;
     // The pending row moves with the id; without this it vanished the moment
     // the URL stopped naming the pending id.

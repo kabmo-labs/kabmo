@@ -41,7 +41,7 @@ describe('triggerSessionPrewarm', () => {
     prime('yolo');
     triggerSessionPrewarm('/tmp/project');
     expect(calls).toEqual([
-      { url: '/api/agent/prewarm', method: 'POST', body: { cwd: '/tmp/project', accessMode: 'yolo' } },
+      { url: '/api/agent/prewarm', method: 'POST', body: { cwd: '/tmp/project', harness: 'omp-rpc', accessMode: 'yolo' } },
     ]);
   });
 
@@ -55,7 +55,7 @@ describe('triggerSessionPrewarm', () => {
     calls.length = 0;
     triggerSessionPrewarm('/tmp/project');
     expect(calls).toEqual([
-      { url: '/api/agent/prewarm', method: 'POST', body: { cwd: '/tmp/project', accessMode: 'yolo' } },
+      { url: '/api/agent/prewarm', method: 'POST', body: { cwd: '/tmp/project', harness: 'omp-rpc', accessMode: 'yolo' } },
     ]);
   });
 
@@ -67,8 +67,8 @@ describe('triggerSessionPrewarm', () => {
     primeKabmoSettings({ [ACCESS_MODE_SETTING_KEY]: 'turbo' });
     triggerSessionPrewarm('/tmp/project');
     expect(calls).toEqual([
-      { url: '/api/agent/prewarm', method: 'POST', body: { cwd: '/tmp/project' } },
-      { url: '/api/agent/prewarm', method: 'POST', body: { cwd: '/tmp/project' } },
+      { url: '/api/agent/prewarm', method: 'POST', body: { cwd: '/tmp/project', harness: 'omp-rpc' } },
+      { url: '/api/agent/prewarm', method: 'POST', body: { cwd: '/tmp/project', harness: 'omp-rpc' } },
     ]);
   });
 
@@ -76,6 +76,30 @@ describe('triggerSessionPrewarm', () => {
     prime('yolo');
     triggerSessionPrewarm('');
     expect(calls).toEqual([]);
+  });
+
+  test('an ACP pick names its harness, which selects the pool', () => {
+    // The pool is chosen by the harness: warming omp's RPC child for a chat that
+    // will spawn `claude` is a process the send never claims.
+    prime('yolo');
+    triggerSessionPrewarm('/tmp/project', { harness: 'claude' });
+    expect(calls).toEqual([
+      { url: '/api/agent/prewarm', method: 'POST', body: { cwd: '/tmp/project', harness: 'claude', accessMode: 'yolo' } },
+    ]);
+  });
+
+  test('a Plan pick rides the omp prewarm, so the warm child can serve the send', () => {
+    // omp's child reads the selection from its start-time environment; a child
+    // warmed without it is killed by the claim and the boot is paid twice.
+    prime('yolo');
+    triggerSessionPrewarm('/tmp/project', { modes: { plan: true, goal: false } });
+    expect(calls).toEqual([
+      {
+        url: '/api/agent/prewarm',
+        method: 'POST',
+        body: { cwd: '/tmp/project', harness: 'omp-rpc', accessMode: 'yolo', modes: { plan: true, goal: false } },
+      },
+    ]);
   });
 
   test('a rejected request is swallowed — prewarm must never reach the UI', () => {

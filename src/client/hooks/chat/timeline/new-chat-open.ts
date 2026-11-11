@@ -15,8 +15,8 @@
  * The folder resolution mirrors `useNewChatSubmit` — the active session's
  * folder, else the composer's pick — because a prewarm in a different cwd is a
  * process the send never claims, which costs a spawn AND a kill. The HARNESS is
- * the second half of that rule: the pool holds omp RPC children, so a card
- * opened from an ACP chat (whose new chat stays on that agent) warms nothing.
+ * the second half of that rule: a card opened from an ACP chat stays on that
+ * agent, so the agent warmed here is the one that agent — not omp's default.
  */
 
 import { useCallback, useState } from 'preact/hooks';
@@ -59,10 +59,11 @@ export function useNewChatOpen({ folders, sessionId, selectedFolderId, harness }
   const open = useCallback((next: string, rows?: Attachment[]) => {
     const folderId = activeProjectForSession(folders, sessionId).folder?.id ?? selectedFolderId ?? undefined;
     const cwd = spawnCwdForNewSession(folders, sessionId, folderId);
-    // The prewarm pool holds `omp --mode rpc-ui` children only. A card opened
-    // from an ACP chat now spawns that same agent, so warming omp would start a
-    // process the send never claims (then idle-reap it).
-    if (cwd && (!harness || harness === 'omp-rpc')) triggerSessionPrewarm(cwd);
+    // Warm the agent the card will spawn on. A card opened from an ACP chat now
+    // warms THAT agent — it used to be skipped entirely, because the only pool
+    // was omp's and warming omp for a `claude` chat started a child the send
+    // never claimed.
+    if (cwd) triggerSessionPrewarm(cwd, { harness: harness ?? 'omp-rpc' });
     setContent(next);
     setAttachments(rows ?? []);
     setOpenedHarness(harness);

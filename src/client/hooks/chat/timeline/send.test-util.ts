@@ -255,6 +255,7 @@ export function makeSendHarness(options: {
     pendingComposerModelRef: { current: null },
     pendingThinkingLevelRef: { current: null },
     pendingHarnessRef: { current: null },
+    pendingAgentModeRef: { current: null },
     deferredComposerPickRef: (options.deferredPick ?? { current: null }) as ChatTimelineSendDeps['deferredComposerPickRef'],
     accessModeRef: { current: 'always-ask' },
     spawnSelectionRef,
