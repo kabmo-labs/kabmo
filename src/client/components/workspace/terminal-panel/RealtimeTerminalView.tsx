@@ -156,12 +156,15 @@ export const RealtimeTerminalView = forwardRef<RealtimeTerminalHandle, RealtimeT
       };
     }, []);
 
-    // No background and no padding: the terminal is not a surface of its own,
-    // and the panel's paper shows through the strip the fit addon leaves for
-    // its in-canvas scrollbar. `p-1.5` also made the grid narrower than the
-    // panel, which read as a terminal that was not full width.
+    // The gutter lives on this WRAPPER, never on the measured container:
+    // `safeFit` gates on `container.clientWidth/clientHeight`, and `clientWidth`
+    // includes padding — padding on the container itself would size the canvas
+    // wider than the box it is drawn in. Here the grid is measured against the
+    // content box, so it is narrower by exactly the padding, which is the point.
+    // No background: the terminal is not a surface of its own, and the panel's
+    // paper shows through the strip the fit addon leaves for its scrollbar.
     return (
-      <div className="relative flex-1 w-full h-full overflow-hidden">
+      <div className="relative flex-1 w-full h-full overflow-hidden p-2">
         <div
           ref={containerRef}
           data-terminal-root=""
