@@ -27,7 +27,7 @@ import {
   harnessMenuEntries,
   isHarnessCategory,
 } from '@/shared/lib/harness/menu';
-import { HARNESS_IDS, harnessDescriptor } from '@/shared/lib/harness/catalog';
+import { HARNESS_IDS, harnessDescriptor, registerHarnessDescriptors } from '@/shared/lib/harness/catalog';
 import { SETTINGS_CATEGORIES } from '@/client/components/settings/Sidebar';
 
 describe('harness menu ids', () => {
@@ -89,6 +89,21 @@ describe('harnessMenuEntries', () => {
     for (const entry of harnessMenuEntries()) {
       const category = SETTINGS_CATEGORIES.find((c) => c.id === entry.id);
       expect(category?.section).toBe('HARNESSES');
+    }
+  });
+});
+
+describe('a user-added harness', () => {
+  test('gets a menu entry from the roster it is given', () => {
+    registerHarnessDescriptors([
+      { id: 'my-agent', label: 'My Agent', initial: 'M', transport: 'acp', glyph: 'custom' },
+    ]);
+    try {
+      const entries = harnessMenuEntries(['claude', 'my-agent']);
+      expect(entries.map((entry) => entry.harness)).toEqual([null, 'claude', 'my-agent']);
+      expect(entries.find((entry) => entry.harness === 'my-agent')?.label).toBe('My Agent');
+    } finally {
+      registerHarnessDescriptors([]);
     }
   });
 });

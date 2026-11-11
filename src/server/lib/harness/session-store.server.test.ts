@@ -91,15 +91,15 @@ describe('harness session store', () => {
     expect(await loadHarnessSession('never-spawned')).toBeNull();
   });
 
-  test('a harness this build does not know is refused, not drawn', async () => {
-    // A row written by a newer build (an adapter since removed) would otherwise
-    // draw an empty box with no name.
+  test('a well-formed id is kept even without a descriptor, a malformed one is not', async () => {
     expect(knownHarness('opencode', HARNESS_IDS)).toBe('opencode');
-    // A row naming a harness this build no longer lists — `opencode2`, retired when
-    // the preview became a shim for `opencode` — draws no mark rather than a wrong
-    // one. Both spellings of "unknown" are covered: a retired id and an invented one.
-    expect(knownHarness('opencode2', HARNESS_IDS)).toBeUndefined();
-    expect(knownHarness('some-future-agent', HARNESS_IDS)).toBeUndefined();
+    // A user-added harness has no static descriptor, and a REMOVED one never
+    // will: dropping the id would rewrite the chat's harness to `omp-rpc` and
+    // resume it against the wrong agent. The id is kept; the launch path is what
+    // refuses in words.
+    expect(knownHarness('opencode2', HARNESS_IDS)).toBe('opencode2');
+    expect(knownHarness('some-future-agent', HARNESS_IDS)).toBe('some-future-agent');
+    expect(knownHarness('Not An Id', HARNESS_IDS)).toBeUndefined();
     expect(knownHarness(undefined, HARNESS_IDS)).toBeUndefined();
   });
 

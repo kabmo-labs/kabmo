@@ -17,7 +17,7 @@
  * known agent name.
  */
 
-import { HARNESS_CATALOG, HARNESS_IDS, type HarnessId } from '@/shared/lib/harness/catalog';
+import { harnessDescriptor, type HarnessId } from '@/shared/lib/harness/catalog';
 
 export interface HarnessDelegation {
   harness: HarnessId;
@@ -59,7 +59,7 @@ const HARNESS_ALIASES: Readonly<Record<string, HarnessId>> = {
 };
 
 function harnessIdFor(name: string): HarnessId | null {
-  return HARNESS_ALIASES[name] ?? (HARNESS_IDS.includes(name as HarnessId) ? (name as HarnessId) : null);
+  return HARNESS_ALIASES[name] ?? (harnessDescriptor(name) ? (name as HarnessId) : null);
 }
 
 /**
@@ -182,7 +182,7 @@ export function formatDelegationPrompt(plan: DelegationPlan): string {
     const model = delegation.model ?? 'default model';
     lines.push(
       '',
-      `${index + 1}. ${HARNESS_CATALOG[delegation.harness]?.label ?? delegation.harness} · ${model}`,
+      `${index + 1}. ${harnessDescriptor(delegation.harness)?.label ?? delegation.harness} · ${model}`,
       delegationCommand(delegation, index),
     );
   });

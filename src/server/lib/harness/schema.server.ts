@@ -115,9 +115,30 @@ const HARNESS_USAGE_STATE_SQL = `
   );
 `;
 
+/**
+ * Harnesses the USER added, as opposed to the ones this build ships.
+ *
+ * A row is the whole definition: the launch line, the label and the initial the
+ * UI draws. Kept in a table rather than `app_settings` because the roster is
+ * read on every catalog answer and written one row at a time — the same reason
+ * `harness_sessions` is a table.
+ */
+const CUSTOM_HARNESSES_SQL = `
+  CREATE TABLE IF NOT EXISTS custom_harnesses (
+    id TEXT PRIMARY KEY,
+    label TEXT NOT NULL,
+    initial TEXT NOT NULL,
+    command TEXT NOT NULL,
+    env TEXT NOT NULL DEFAULT '',
+    note TEXT NOT NULL DEFAULT '',
+    created_at INTEGER NOT NULL
+  );
+`;
+
 /** Idempotent: created on every database open, like every other feature table. */
 export async function ensureHarnessSchema(db: DbClient): Promise<void> {
   await db.exec(HARNESS_SESSIONS_SQL);
+  await db.exec(CUSTOM_HARNESSES_SQL);
   await db.exec(HARNESS_PROBES_SQL);
   await db.exec(HARNESS_GOAL_STATE_SQL);
   await db.exec(HARNESS_USAGE_STATE_SQL);

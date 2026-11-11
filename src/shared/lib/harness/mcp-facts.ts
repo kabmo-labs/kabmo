@@ -23,7 +23,7 @@
  * error, so a new agent cannot silently receive no MCP servers.
  */
 
-import type { HarnessId } from '@/shared/lib/harness/catalog';
+import type { BuiltinHarnessId, HarnessId } from '@/shared/lib/harness/catalog';
 
 export type McpDelivery = 'acp' | 'omp-config';
 
@@ -33,7 +33,7 @@ export interface HarnessMcpFacts {
   note: string;
 }
 
-export const HARNESS_MCP_FACTS: Record<HarnessId, HarnessMcpFacts> = {
+export const HARNESS_MCP_FACTS: Record<BuiltinHarnessId, HarnessMcpFacts> = {
   'omp-rpc': {
     delivery: 'omp-config',
     note: 'omp reads ~/.omp/agent/mcp.json at spawn; a change applies to the next session.',
@@ -53,7 +53,13 @@ export const HARNESS_MCP_FACTS: Record<HarnessId, HarnessMcpFacts> = {
   zcode: { delivery: 'acp', note: 'Injected on session/new, so every new chat sees the current list.' },
 };
 
-/** The delivery for one harness. */
+/**
+ * The delivery for one harness.
+ *
+ * A user-added harness is ACP by definition — that is the only transport the
+ * add form offers — so an id with no row takes the ACP path rather than
+ * crashing the spawn on an undefined table entry.
+ */
 export function mcpDelivery(harness: HarnessId): McpDelivery {
-  return HARNESS_MCP_FACTS[harness].delivery;
+  return (HARNESS_MCP_FACTS as Record<string, HarnessMcpFacts | undefined>)[harness]?.delivery ?? 'acp';
 }

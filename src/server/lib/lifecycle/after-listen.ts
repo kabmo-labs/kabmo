@@ -20,6 +20,7 @@
 
 import { getDb } from '@/server/db.server';
 import { startHarnessAutoProbe } from '@/server/lib/harness/auto-probe.server';
+import { ensureCustomHarnesses } from '@/server/lib/harness/custom.server';
 import { pumpUpdateQueue } from '@/server/lib/harness/update-queue.server';
 import { compactChatOverlayRows } from '@/server/lib/db/compact-chat-overlay';
 import { packageDir } from '@/server/lib/fs/package-root';
@@ -49,6 +50,11 @@ export interface AfterListenTarget {
  */
 export async function runAfterListenTasks(target: AfterListenTarget): Promise<void> {
   await compactChatOverlay();
+  // Before any probe or spawn: a user-added harness is a database row, and the
+  // launch resolver is synchronous.
+  await ensureCustomHarnesses().catch((error) => {
+    console.error('[harness] custom harnesses skipped:', error);
+  });
   await watchDiscoveryRoots();
 
   // The scheduled-task clock. Started after the listener is up and the watchers

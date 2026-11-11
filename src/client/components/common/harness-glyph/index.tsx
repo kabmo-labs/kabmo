@@ -70,8 +70,25 @@ export function HarnessGlyph({ harness, size = 12, className = '', inherit = fal
   const descriptor = harnessDescriptor(harness);
   if (!descriptor) return null;
   const glyph = HARNESS_BRAND_GLYPHS[descriptor.glyph];
-  if (!glyph) return null;
   const label = harnessBadgeLabel(harness);
+  // A user-added harness has no vendor mark. Its INITIAL is the honest stand-in:
+  // a generic lucide shape would claim a brand, and rendering nothing left the
+  // row's identity column blank.
+  if (!glyph) {
+    return (
+      <span
+        className={`inline-flex shrink-0 items-center justify-center rounded-[3px] border border-current/30 font-semibold leading-none ${inherit ? '' : 'text-ink/55'} ${className}`}
+        aria-label={decorative ? undefined : label}
+        title={decorative ? undefined : `Session runs on ${label}`}
+        data-harness={descriptor.id}
+        role={decorative ? undefined : 'img'}
+        aria-hidden={decorative ? 'true' : undefined}
+        style={{ width: size, height: size, fontSize: Math.max(7, Math.round(size * 0.62)) }}
+      >
+        {descriptor.initial}
+      </span>
+    );
+  }
   return (
     <span
       className={`inline-flex shrink-0 items-center justify-center ${inherit ? '' : 'text-ink/55'} ${className}`}

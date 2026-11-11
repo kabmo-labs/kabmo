@@ -56,6 +56,10 @@ export interface HarnessSummary {
    *  to install, probe or configure, so the settings page leaves it out and the
    *  picker never draws it as blocked. */
   builtIn?: true;
+  /** True for a harness the user added, so the card can offer Remove. */
+  custom?: true;
+  /** The letter the UI draws when there is no vendor mark. */
+  initial?: string;
   install?: string;
   note?: string;
   /** False when the user switched this harness off: it then leaves the settings

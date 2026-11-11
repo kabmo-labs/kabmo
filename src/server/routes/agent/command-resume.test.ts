@@ -48,13 +48,18 @@ describe('resuming a recorded non-omp chat', () => {
     await releaseDb();
   });
 
-  test('a retired harness id spawns NOTHING and keeps the 404', async () => {
+  test('a retired harness id spawns NOTHING and refuses by name', async () => {
     // `opencode2` is out of this build's catalog: a stale row must not be
-    // guessed at, and there is no other producer to ask.
+    // guessed at. The id is kept (a user-added harness has no static descriptor
+    // either), so the refusal names the missing launch line instead of the
+    // misleading "Session not found" — and no process is spawned.
     await saveHarnessSession({ sessionId: RETIRED, harness: 'opencode2', agentSessionId: RETIRED, cwd: '/tmp' });
     const response = await post(RETIRED, { type: 'prompt', message: 'hello' });
-    expect(response.status).toBe(404);
-    expect(await payload(response)).toMatchObject({ error: 'Session not found' });
+    expect(response.status).toBe(400);
+    const body = await payload(response);
+    const message = typeof body.error === 'string' ? body.error : '';
+    expect(message).toContain('opencode2');
+    expect(message).not.toContain('Session not found');
   });
 
   test('a recorded non-omp chat is respawned on ITS OWN harness', async () => {

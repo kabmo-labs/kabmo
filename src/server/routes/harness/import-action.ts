@@ -24,7 +24,7 @@
  */
 
 import { json } from '@/server/lib/remix-compat';
-import { HARNESS_IDS, type HarnessId } from '@/shared/lib/harness/catalog';
+import { isBuiltinHarness, type HarnessId } from '@/shared/lib/harness/catalog';
 import { adaptBaseUrl, planProtocol, supportedProtocols, type CanonicalProtocol } from '@/shared/lib/harness/dialects';
 import { providerFacts } from '@/shared/lib/harness/provider-facts';
 import { providerEnv, providerLevel, registryLabel } from '@/shared/lib/harness/providers';
@@ -270,7 +270,7 @@ export function isImportBody(value: unknown): boolean {
 
 /** A source id the import may read from. Refuses before any file is touched. */
 export function importSourceOf(value: unknown): HarnessId | null {
-  return typeof value === 'string' && HARNESS_IDS.includes(value as HarnessId)
+  return typeof value === 'string' && isBuiltinHarness(value)
     ? (value as HarnessId)
     : null;
 }

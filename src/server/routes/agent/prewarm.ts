@@ -10,7 +10,7 @@ import { isApprovalMode } from '@/shared/lib/omp/config/access-mode';
 import { loadPersistedAccessMode } from '@/shared/lib/omp/config/access-mode.server';
 import { rpcErrorResponse } from '@/server/lib/omp/rpc/errors';
 import { isMockMode } from '@/server/mock.server';
-import { HARNESS_IDS, harnessDescriptor, type HarnessId } from '@/shared/lib/harness/catalog';
+import { harnessDescriptor, type HarnessId } from '@/shared/lib/harness/catalog';
 
 /** A JSON object, or `{}` for anything else — same read as the spawn route. */
 function asRecord(value: unknown): Record<string, unknown> {
@@ -35,7 +35,7 @@ export async function action({ request }: ActionFunctionArgs) {
     }
     // Trust a client-supplied mode only when valid; else use the persisted pick.
     const accessMode = isApprovalMode(body?.accessMode) ? body.accessMode : await loadPersistedAccessMode();
-    const harness: HarnessId = HARNESS_IDS.includes(body?.harness as HarnessId)
+    const harness: HarnessId = harnessDescriptor(typeof body?.harness === 'string' ? body.harness : null)
       ? body.harness as HarnessId
       : 'omp-rpc';
     // MOCK mode runs no agent BY DESIGN: spawning one here would either fail on

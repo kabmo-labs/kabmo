@@ -43,9 +43,10 @@ import type { HarnessConfig } from '@/shared/lib/harness/config';
 import { loadDisabledHarnesses } from '@/server/lib/harness/enabled.server';
 import { blockedProbe, probeHarness } from '@/server/lib/harness/launch';
 import { HARNESS_LAUNCH, harnessRequirementMet, type HarnessLaunch } from '@/server/lib/harness/launch-table';
+import { customLaunch } from '@/server/lib/harness/custom.server';
 import { resolveOmpBin } from '@/server/lib/omp/core/cli';
 import { rememberProbe } from '@/server/lib/harness/probe-cache.server';
-import { HARNESS_IDS, harnessDescriptor, type HarnessId } from '@/shared/lib/harness/catalog';
+import { harnessDescriptor, harnessIds, type HarnessId } from '@/shared/lib/harness/catalog';
 import { harnessEnabled } from '@/shared/lib/harness/enabled';
 
 declare global {
@@ -64,7 +65,7 @@ declare global {
  */
 export function commandAvailable(id: HarnessId, config?: HarnessConfig): boolean {
   if (id === 'omp-acp') return Boolean(resolveOmpBin());
-  let launch: HarnessLaunch | undefined = HARNESS_LAUNCH[id];
+  let launch: HarnessLaunch | undefined = HARNESS_LAUNCH[id] ?? customLaunch(id);
   if (config) {
     try {
       const configured = launchFromConfig(id, config);
@@ -113,7 +114,7 @@ export interface AutoProbeOptions {
 export async function autoProbeTargets(
   options: Pick<AutoProbeOptions, 'ids' | 'available'> = {},
 ): Promise<HarnessId[]> {
-  const ids = options.ids ?? HARNESS_IDS;
+  const ids = options.ids ?? harnessIds();
   const available = options.available ?? commandAvailable;
   const disabled = await loadDisabledHarnesses();
   const targets: HarnessId[] = [];

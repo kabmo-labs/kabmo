@@ -24,7 +24,7 @@
  * own body is `exec "$(dirname "$0")/opencode" "$@"`. A second catalog entry for
  * the same binary would offer two tabs that run one program.
  */
-export type HarnessId =
+export type BuiltinHarnessId =
   | 'omp-rpc'
   | 'omp-acp'
   | 'claude'
@@ -48,8 +48,19 @@ export type HarnessId =
    *  bridge and the bridge finds the CLI by itself. */
   | 'zcode';
 
-/** Every harness this build knows how to launch or display. */
-export const HARNESS_IDS: readonly HarnessId[] = [
+/**
+ * A harness id: one this build ships, or one the user added.
+ *
+ * The union stays for the built-ins so a typo in a table is still a compile
+ * error, while `(string & {})` lets a runtime id through without widening every
+ * call site to `string` (which would lose the autocomplete that makes the
+ * built-in list discoverable). Tables that must be COMPLETE are keyed by
+ * `BuiltinHarnessId`; tables that may be partial use `HarnessId`.
+ */
+export type HarnessId = BuiltinHarnessId | (string & {});
+
+/** Every harness this build ships. Custom ids are added at runtime. */
+export const HARNESS_IDS: readonly BuiltinHarnessId[] = [
   'omp-rpc',
   'omp-acp',
   'claude',
@@ -115,13 +126,15 @@ export type HarnessGlyph =
   | 'qwen'
   | 'cursor'
   | 'antigravity'
-  | 'zcode';
+  | 'zcode'
+  /** A user-added ACP harness: no vendor mark, drawn as its initial. */
+  | 'custom';
 
 /**
  * The catalog. Order is the tab/legend order: omp's two surfaces first because
  * they are the default, then the adapters in the order the research measured.
  */
-export const HARNESS_CATALOG: Readonly<Record<HarnessId, HarnessDescriptor>> = {
+export const HARNESS_CATALOG: Readonly<Record<BuiltinHarnessId, HarnessDescriptor>> = {
   'omp-rpc': { id: 'omp-rpc', label: 'omp', initial: 'o', transport: 'rpc', glyph: 'omp', builtIn: true },
   'omp-acp': { id: 'omp-acp', label: 'omp (ACP)', initial: 'o', transport: 'acp', glyph: 'omp' },
   claude: { id: 'claude', label: 'claude', initial: 'A', transport: 'acp', glyph: 'claudecode' },
@@ -150,11 +163,40 @@ export const HARNESS_CATALOG: Readonly<Record<HarnessId, HarnessDescriptor>> = {
  */
 export const DEFAULT_HARNESS_ID: HarnessId = 'omp-rpc';
 
+/**
+ * Descriptors for harnesses the user added, process-wide.
+ *
+ * The server fills this from `custom_harnesses` at boot and after every write;
+ * the client fills it from the `/api/harness` payload. One overlay rather than a
+ * second catalog keeps `harnessDescriptor` synchronous for the ~40 call sites
+ * that only need a label or a transport.
+ */
+const customDescriptors = new Map<string, HarnessDescriptor>();
+
+/** Replace the custom descriptors. Built-in ids are ignored: the static table wins. */
+export function registerHarnessDescriptors(descriptors: readonly HarnessDescriptor[]): void {
+  customDescriptors.clear();
+  for (const descriptor of descriptors) {
+    if ((HARNESS_CATALOG as Record<string, HarnessDescriptor | undefined>)[descriptor.id]) continue;
+    customDescriptors.set(descriptor.id, descriptor);
+  }
+}
+
+/** True for an id this build ships (not a user-added one). */
+export function isBuiltinHarness(id: string | null | undefined): id is BuiltinHarnessId {
+  return Boolean(id) && (HARNESS_IDS as readonly string[]).includes(id as string);
+}
+
+/** Every id this process knows: the built-ins, then the custom ones. */
+export function harnessIds(): string[] {
+  return [...HARNESS_IDS, ...customDescriptors.keys()];
+}
+
 /** The descriptor for an id, or undefined for a value this build does not know
  *  (a newer adapter's id arriving over the wire). */
 export function harnessDescriptor(id: string | null | undefined): HarnessDescriptor | undefined {
   if (!id) return undefined;
-  return (HARNESS_CATALOG as Record<string, HarnessDescriptor | undefined>)[id];
+  return (HARNESS_CATALOG as Record<string, HarnessDescriptor | undefined>)[id] ?? customDescriptors.get(id);
 }
 
 /**

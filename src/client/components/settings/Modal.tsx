@@ -11,7 +11,7 @@ import { applySettingsSideEffects } from '@/client/components/settings/apply-sid
 import { useKabmoEvent } from '@/client/hooks/ui/window-event';
 import { useToasts } from '@/client/hooks/ui/toasts';
 import { useDialogBehaviour } from '@/client/hooks/ui/dialog-behaviour';
-import { SETTINGS_CATEGORIES, SettingsSidebar } from '@/client/components/settings/Sidebar';
+import { SettingsSidebar, settingsCategoriesFor } from '@/client/components/settings/Sidebar';
 import { harnessIdFromCategory } from '@/shared/lib/harness/menu';
 import { useHarnesses } from '@/client/hooks/models/use-harnesses';
 import { AppearanceSettings } from '@/client/components/settings/categories/AppearanceSettings';
@@ -145,7 +145,10 @@ export function SettingsModal({
 
   if (!isOpen) return null;
 
-  const currentCategoryDef = SETTINGS_CATEGORIES.find(c => c.id === activeCategory) || SETTINGS_CATEGORIES[0];
+  // The roster's own list: a user-added harness has a page but no entry in the
+  // build's static table, so the header would otherwise fall back to Appearance.
+  const categories = settingsCategoriesFor(harnesses.map((entry) => entry.id));
+  const currentCategoryDef = categories.find(c => c.id === activeCategory) || categories[0];
 
   const renderCategoryContent = () => {
     switch (activeCategory) {
@@ -234,6 +237,7 @@ export function SettingsModal({
             onRestartKabmo={handleRestartKabmo}
             isRestarting={isRestarting}
             disabledHarnesses={disabledHarnesses}
+            categories={categories}
             className="w-full"
           />
         </div>

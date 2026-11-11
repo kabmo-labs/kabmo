@@ -18,7 +18,8 @@
 import { json } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
-import { HARNESS_IDS, harnessDescriptor, type HarnessId } from '@/shared/lib/harness/catalog';
+import { harnessDescriptor, harnessIds, isBuiltinHarness, type HarnessId } from '@/shared/lib/harness/catalog';
+import { customLaunch, ensureCustomHarnesses, removeCustomHarness, saveCustomHarness, type CustomHarnessInput } from '@/server/lib/harness/custom.server';
 import { HARNESS_LAUNCH } from '@/server/lib/harness/launch-table';
 import type { HarnessProbe } from '@/server/lib/harness/capabilities';
 import { forgetProbe, loadProbes, rememberProbe } from '@/server/lib/harness/probe-cache.server';
@@ -54,6 +55,10 @@ export interface HarnessSummary {
    *  choice, so the settings page omits it — see `installable` on the catalog
    *  descriptor. */
   builtIn?: true;
+  /** True for a harness the user added, so the card can offer Remove. */
+  custom?: true;
+  /** The letter the UI draws when there is no vendor mark. */
+  initial: string;
   install?: string;
   note?: string;
   probe: HarnessProbe | null;
@@ -62,6 +67,9 @@ export interface HarnessSummary {
 }
 
 export async function listHarnesses(): Promise<HarnessSummary[]> {
+  // A user-added harness is a database row; the synchronous launch resolver
+  // reads the registry this fills.
+  await ensureCustomHarnesses();
   // ONE read for the whole catalog, from disk when memory is cold: the probe
   // cache used to be process-only, so every restart — every `bun --hot` reload —
   // turned a harness the user had just checked back into `not probed`.
@@ -72,10 +80,10 @@ export async function listHarnesses(): Promise<HarnessSummary[]> {
   // above — this is the one catalog answer.
   const disabled = await loadDisabledHarnesses();
   const configs: Record<string, HarnessConfig> = {};
-  for (const id of HARNESS_IDS) configs[id] = await loadHarnessConfig(id);
-  return HARNESS_IDS.map((id) => {
+  for (const id of harnessIds()) configs[id] = await loadHarnessConfig(id);
+  return harnessIds().map((id) => {
     const descriptor = harnessDescriptor(id);
-    const launch = HARNESS_LAUNCH[id];
+    const launch = HARNESS_LAUNCH[id] ?? customLaunch(id);
     const cached = stored.get(id) ?? null;
     // A BUILT-IN transport is never represented by a probe. There is no agent to
     // spawn, so `probeHarness` can only answer "no launch command is configured"
@@ -88,9 +96,11 @@ export async function listHarnesses(): Promise<HarnessSummary[]> {
       id,
       label: descriptor?.label ?? id,
       transport: descriptor?.transport ?? 'acp',
+      initial: descriptor?.initial ?? id.charAt(0).toUpperCase(),
       canLaunch: available,
       enabled: harnessEnabled(id, disabled),
       ...(descriptor?.builtIn ? { builtIn: true as const } : {}),
+      ...(isBuiltinHarness(id) ? {} : { custom: true as const }),
       ...(launch?.install ? { install: launch.install } : {}),
       ...(launch?.note ? { note: launch.note } : {}),
       probe: fresh,
@@ -104,10 +114,11 @@ export async function listHarnesses(): Promise<HarnessSummary[]> {
 }
 
 export async function loader({ request }: LoaderFunctionArgs) {
+  await ensureCustomHarnesses();
   const url = new URL(request.url);
   const target = url.searchParams.get('probe');
   if (target) {
-    if (!HARNESS_IDS.includes(target as HarnessId)) {
+    if (!harnessDescriptor(target)) {
       return json({ error: `Unknown harness: ${target}` }, { status: 400 });
     }
     // Refused, not probed: a built-in transport has nothing to spawn, and the
@@ -126,14 +137,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
   // card renders its form from this one payload, so opening a card cannot show a
   // stale value the server would then refuse to save.
   const configs: Record<string, HarnessConfig> = {};
-  for (const id of HARNESS_IDS) configs[id] = await loadHarnessConfig(id);
+  for (const id of harnessIds()) configs[id] = await loadHarnessConfig(id);
 
   // What each harness can do about OTHER providers, from the MEASURED table: the
   // file, the field names, whether Kabmo may write it, and the credential-free
   // list of entries a copy could take. No credential travels here — the key is
   // read by the request that writes.
   const providerSupportByHarness: Record<string, HarnessProviderSupport> = {};
-  for (const id of HARNESS_IDS) {
+  for (const id of harnessIds()) {
     const facts = providerFacts(id);
     const level = providerLevel(id);
     if (level === 'none') continue;
@@ -168,6 +179,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export async function action({ request, params }: ActionFunctionArgs) {
   if (request.method !== 'POST') return methodNotAllowed({ request, params });
+  // A custom harness is a database row and the descriptor helpers are
+  // synchronous; load the registry before any branch reads one.
+  await ensureCustomHarnesses();
   // The body is UNTRUSTED and every branch below reads a different field, so it
   // is narrowed to a record ONCE. `record` is a real runtime check, not a cast:
   // a request that is not a JSON object falls through to the probe validation
@@ -177,8 +191,27 @@ export async function action({ request, params }: ActionFunctionArgs) {
     parsed && typeof parsed === 'object' && !Array.isArray(parsed)
       ? (parsed as Record<string, unknown>)
       : {};
+  // A CUSTOM HARNESS write: `{ customHarness: { id, label, command, env? } }`.
+  // Handled before the probe validation because it names no probe.
+  if (body.customHarness !== undefined) {
+    try {
+      const saved = await saveCustomHarness(body.customHarness as CustomHarnessInput);
+      return json({ customHarness: saved });
+    } catch (cause) {
+      return json({ error: cause instanceof Error ? cause.message : 'Could not save this harness' }, { status: 400 });
+    }
+  }
+  // A REMOVAL: `{ removeHarness: id }`. Built-ins are refused by name.
+  if (typeof body.removeHarness === 'string') {
+    const target = body.removeHarness;
+    if (isBuiltinHarness(target)) {
+      return json({ error: `${target} is a harness this build ships and cannot be removed` }, { status: 400 });
+    }
+    await removeCustomHarness(target);
+    return json({ removed: target });
+  }
   const id = typeof body.probe === 'string' ? body.probe : null;
-  if (!id || !HARNESS_IDS.includes(id as HarnessId)) {
+  if (!id || !harnessDescriptor(id)) {
     return json({ error: 'probe must name a known harness id' }, { status: 400 });
   }
   // A TOGGLE: `{ probe: id, enabled: boolean }`.

@@ -8,7 +8,7 @@ import { rpcErrorResponse } from '@/server/lib/omp/rpc/errors';
 import { kabmoModeEnv } from '@/server/lib/omp/extensions/locator';
 import { parseModeSelection } from '@/server/lib/omp/mode/request';
 import { projectModelForCwd } from '@/server/lib/workspace/project-model.server';
-import { HARNESS_IDS, type HarnessId } from '@/shared/lib/harness/catalog';
+import { harnessDescriptor, type HarnessId } from '@/shared/lib/harness/catalog';
 import { startAcpSession } from '@/server/lib/harness/spawn.server';
 import { mintAgentEnvironment, rememberAgentToken } from '@/server/lib/sessions/agent-token.server';
 import { isMockMode } from '@/server/mock.server';
@@ -80,7 +80,7 @@ export async function action({ request }: ActionFunctionArgs) {
     const modeEnv = modes ? kabmoModeEnv(modes) : undefined;
     // A harness other than omp's RPC runs over ACP. The pick is validated
     // against the catalog, so a typo cannot spawn an arbitrary binary.
-    const harness = HARNESS_IDS.includes(body.harness as HarnessId) ? body.harness as HarnessId : 'omp-rpc';
+    const harness = harnessDescriptor(typeof body.harness === 'string' ? body.harness : null) ? body.harness as HarnessId : 'omp-rpc';
     // startNewRpcSession adopts the prewarmed idle process for this cwd when
     // one exists (fired by the sidebar's New Session click) and otherwise
     // cold-spawns — same contract, minus the boot wait when prewarmed.

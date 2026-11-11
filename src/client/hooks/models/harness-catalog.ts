@@ -16,6 +16,7 @@
 import type {
   HarnessConfig, HarnessProviderSupport, HarnessesPayload, HarnessSummary, LiveHarnessModels,
 } from '@/shared/types/harness';
+import { registerHarnessDescriptors } from '@/shared/lib/harness/catalog';
 
 export interface HarnessStore {
   harnesses: HarnessSummary[];
@@ -73,6 +74,20 @@ export async function loadCatalog(): Promise<void> {
     })
     .then((payload) => {
       loaded = true;
+      // A user-added harness has no entry in the build's static catalog, and the
+      // glyph/badge helpers are synchronous. Publish the descriptors the server
+      // answered before any surface renders a row for one.
+      registerHarnessDescriptors(
+        (payload.harnesses ?? [])
+          .filter((entry) => entry.custom)
+          .map((entry) => ({
+            id: entry.id,
+            label: entry.label,
+            initial: entry.initial ?? entry.label.charAt(0).toUpperCase(),
+            transport: entry.transport,
+            glyph: 'custom' as const,
+          })),
+      );
       emit({
         harnesses: Array.isArray(payload.harnesses) ? payload.harnesses : [],
         // Absent from an answer written before per-harness config existed: an

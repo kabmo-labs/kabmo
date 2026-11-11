@@ -232,7 +232,7 @@ describe('a sidebar row names its harness', () => {
     expect(sessions.map((entry) => String(entry.id))).not.toContain('ses_elsewhere');
   });
 
-  test('a harness this build no longer knows draws no mark, not a wrong one', async () => {
+  test('a harness this build no longer knows keeps its id, and draws no mark', async () => {
     const folderId = await registerFolder(project);
     await saveHarnessSession({
       sessionId: 'ses_gone', harness: 'some-future-agent', agentSessionId: 'ses_gone', cwd: project,
@@ -241,7 +241,10 @@ describe('a sidebar row names its harness', () => {
     const sessions = await folderSessions(folderId);
     const row = sessions.find((entry) => String(entry.id) === 'ses_gone');
     expect(row).toBeDefined();
-    // Absent, not fabricated: `HarnessGlyph` renders nothing for an unknown id.
-    expect(row?.harness).toBeUndefined();
+    // The ID is kept: a user-added harness has no static descriptor, and a
+    // removed one never will — dropping it would rewrite the chat to `omp-rpc`
+    // and resume it against the wrong agent. The MARK is what stays absent:
+    // `HarnessGlyph` renders nothing when no descriptor exists.
+    expect(row?.harness).toBe('some-future-agent');
   });
 });

@@ -29,7 +29,7 @@ import { startAcpSession } from '@/server/lib/harness/spawn.server';
 import { getLiveSession, harnessOfSession, startNewRpcSession } from '@/server/lib/omp/rpc/session-registry';
 import { harnessProbeModels } from '@/server/lib/harness/probe-cache.server';
 import { getDb } from '@/server/db.server';
-import { HARNESS_IDS, harnessDescriptor, type HarnessId } from '@/shared/lib/harness/catalog';
+import { harnessDescriptor, type HarnessId } from '@/shared/lib/harness/catalog';
 import type { SelectedModel } from '@/shared/types/models';
 import type { AgentImage } from '@/shared/types/omp/agent';
 import { MAX_SESSION_DEPTH } from '@/server/lib/sessions/relation-types';
@@ -122,7 +122,7 @@ export interface SpawnChildSessionResult {
 
 function harnessOf(value: string | null | undefined): HarnessId | null {
   if (!value) return null;
-  return HARNESS_IDS.includes(value as HarnessId) ? (value as HarnessId) : null;
+  return harnessDescriptor(value) ? (value as HarnessId) : null;
 }
 
 /**

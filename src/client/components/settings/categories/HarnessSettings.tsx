@@ -29,6 +29,7 @@ import { RefreshCw } from 'lucide-preact';
 import { useHarnesses } from '@/client/hooks/models/use-harnesses';
 import { HarnessCard } from '@/client/components/settings/categories/harness-settings/HarnessCard';
 import { HarnessToggleList } from '@/client/components/settings/categories/harness-settings/ToggleList';
+import { CustomHarnessForm } from '@/client/components/settings/categories/harness-settings/CustomHarnessForm';
 import { SettingsNotice, SettingsSearchField } from '@/client/components/settings/categories/harness-settings/parts';
 import { harnessCategoryId } from '@/shared/lib/harness/menu';
 
@@ -194,13 +195,16 @@ export function HarnessSettings({ only }: HarnessSettingsProps = {}) {
           No harness matches “{query}”.
         </div>
       ) : (
-        <HarnessToggleList
-          harnesses={filtered}
-          busy={busy}
-          onSetEnabled={(id, enabled) => void toggle(id, enabled)}
-          onOpen={openHarness}
-          onProbe={(id) => void check(id)}
-        />
+        <>
+          <HarnessToggleList
+            harnesses={filtered}
+            busy={busy}
+            onSetEnabled={(id, enabled) => void toggle(id, enabled)}
+            onOpen={openHarness}
+            onProbe={(id) => void check(id)}
+          />
+          <CustomHarnessForm harnesses={harnesses} onChanged={reload} />
+        </>
       )}
     </div>
   );

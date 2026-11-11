@@ -38,7 +38,7 @@
 import { json, NO_STORE_HEADERS } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
-import { HARNESS_IDS, harnessDescriptor, type HarnessId } from '@/shared/lib/harness/catalog';
+import { harnessDescriptor, isBuiltinHarness, type HarnessId } from '@/shared/lib/harness/catalog';
 import { harnessUpdateFacts, latestSourceFor } from '@/shared/lib/harness/updates';
 import { loadProbes } from '@/server/lib/harness/probe-cache.server';
 import { harnessVersionState, type HarnessVersionState } from '@/server/lib/harness/update-state.server';
@@ -92,7 +92,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
     return json({ error: 'Request body is not valid JSON' }, { status: 400 });
   }
   const id = body && typeof body === 'object' && 'harness' in body ? body.harness : undefined;
-  if (typeof id !== 'string' || !HARNESS_IDS.includes(id as HarnessId)) {
+  if (typeof id !== 'string' || !isBuiltinHarness(id)) {
     return json({ error: 'Unknown harness' }, { status: 400 });
   }
 

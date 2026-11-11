@@ -17,6 +17,7 @@
 import { getDb } from '@/server/db.server';
 import { readSettingsJson, writeSettingsJson } from '@/server/lib/db/settings-store';
 import { HARNESS_LAUNCH, type HarnessLaunch } from '@/server/lib/harness/launch-table';
+import { customLaunch } from '@/server/lib/harness/custom.server';
 import {
   harnessConfigKey,
   isHarnessConfigured,
@@ -60,7 +61,7 @@ export function probeInvalidatedBy(previous: HarnessConfig, next: HarnessConfig)
 /** The launch shape an override produces from the table entry, or null when the
  *  config says nothing about launching. Pure, so the merge is testable. */
 export function launchFromConfig(id: HarnessId, config: HarnessConfig): HarnessLaunch | null {
-  const base = HARNESS_LAUNCH[id];
+  const base = HARNESS_LAUNCH[id] ?? customLaunch(id);
   if (!base) return null;
   const command = splitCommand(config.command);
   const { env: parsedEnv, invalid } = parseEnvLines(config.env);
@@ -89,7 +90,7 @@ export function resolveLaunch(id: HarnessId, config: HarnessConfig): HarnessLaun
   if (harnessDescriptor(id)?.builtIn) {
     throw new Error(`${id} is built in and is not launched`);
   }
-  if (!HARNESS_LAUNCH[id]) {
+  if (!HARNESS_LAUNCH[id] && !customLaunch(id)) {
     throw new Error(`No launch command is configured for ${id}`);
   }
   const launch = launchFromConfig(id, config);

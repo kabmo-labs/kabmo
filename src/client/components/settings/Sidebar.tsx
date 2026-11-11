@@ -55,6 +55,30 @@ export const SETTINGS_CATEGORIES: CategoryDef[] = [
   { id: 'skills-catalog', label: 'Skills Catalog', icon: BookOpen, section: 'LIBRARY', description: 'Browse and install new skills.' },
 ];
 
+/**
+ * The category list for a roster.
+ *
+ * `SETTINGS_CATEGORIES` is the build's own list; a user-added harness is not in
+ * it, so the HARNESSES section is rebuilt from the ids the catalog answered.
+ * The rest of the list keeps its order, which is why the harness block is
+ * spliced back in front of LIBRARY rather than appended.
+ */
+export function settingsCategoriesFor(harnessIds?: readonly string[]): CategoryDef[] {
+  // Before the catalog answers, the build's own list is the honest one: an
+  // empty roster would hide every built-in harness page until the fetch lands.
+  const harnessEntries = harnessMenuEntries(harnessIds && harnessIds.length > 0 ? harnessIds : undefined).map((entry) => ({
+    id: entry.id,
+    label: entry.label,
+    icon: Waypoints,
+    section: 'HARNESSES' as const,
+    ...(entry.harness ? { harness: entry.harness } : {}),
+    description: entry.description,
+  }));
+  const rest = SETTINGS_CATEGORIES.filter((category) => category.section !== 'HARNESSES');
+  const library = rest.findIndex((category) => category.section === 'LIBRARY');
+  return [...rest.slice(0, library), ...harnessEntries, ...rest.slice(library)];
+}
+
 interface SettingsSidebarProps {
   activeCategory: SettingsCategoryId;
   onSelectCategory: (id: SettingsCategoryId) => void;
@@ -66,6 +90,8 @@ interface SettingsSidebarProps {
   isRestarting: boolean;
   /** Harness ids the user switched OFF: their rows leave the drawer. */
   disabledHarnesses?: string[];
+  /** The roster's categories, when the caller has a live harness list. */
+  categories?: CategoryDef[];
   className?: string;
 }
 
@@ -79,6 +105,7 @@ export function SettingsSidebar({
   onRestartKabmo,
   isRestarting,
   disabledHarnesses = [],
+  categories = SETTINGS_CATEGORIES,
   className = ''
 }: SettingsSidebarProps) {
   // A switched-off agent has no row here. The catalog list above stays complete
@@ -86,7 +113,7 @@ export function SettingsSidebar({
   // every entry in it with the switch that decides this. The ids arrive as a
   // PROP rather than from `useHarnesses()` so the drawer stays presentational:
   // it is drawn in table tests that must not fire a catalog read.
-  const filteredCategories = SETTINGS_CATEGORIES.filter(cat => {
+  const filteredCategories = categories.filter(cat => {
     if (cat.harness && disabledHarnesses.includes(cat.harness)) return false;
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();

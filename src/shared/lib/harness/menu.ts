@@ -65,7 +65,7 @@ export interface HarnessMenuEntry {
  * filters with it, and the All Harnesses overview — which always lists every
  * agent — is where a switched-off one is switched back on.
  */
-export function harnessMenuEntries(): HarnessMenuEntry[] {
+export function harnessMenuEntries(ids: readonly string[] = HARNESS_IDS): HarnessMenuEntry[] {
   const entries: HarnessMenuEntry[] = [
     {
       id: HARNESS_INDEX_CATEGORY as SettingsCategoryId,
@@ -74,7 +74,7 @@ export function harnessMenuEntries(): HarnessMenuEntry[] {
       harness: null,
     },
   ];
-  for (const id of HARNESS_IDS) {
+  for (const id of ids) {
     const descriptor = harnessDescriptor(id);
     if (!descriptor || descriptor.builtIn) continue;
     entries.push({

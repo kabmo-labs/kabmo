@@ -35,6 +35,7 @@ import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
 import { harnessDescriptor, type HarnessId } from '@/shared/lib/harness/catalog';
 import { mcpDelivery } from '@/shared/lib/harness/mcp-facts';
 import { mcpServersFor, toAcpMcpServers } from '@/server/lib/mcp/registry.server';
+import { ensureCustomHarnesses } from '@/server/lib/harness/custom.server';
 import type { HarnessConfig } from '@/shared/lib/harness/config';
 import type { AcpProcess } from '@/server/lib/harness/acp/client';
 import type { HarnessSession } from '@/server/lib/harness/session';
@@ -111,6 +112,9 @@ export async function openAcpSession(
   // the only way to start an agent installed outside PATH, and an env override is
   // the only provider switch an ACP agent actually honours — Kabmo routes nothing
   // model-side for these agents, so pretending to would be a wrong setting.
+  // A user-added harness lives in the database, and `resolveLaunch` is
+  // synchronous: load the registry before asking it for a launch line.
+  await ensureCustomHarnesses();
   const configured = await loadHarnessConfig(request.harness);
   let launch;
   try {

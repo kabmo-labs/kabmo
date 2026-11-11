@@ -35,7 +35,7 @@ import { invalidateOmpCliCache } from '@/server/lib/omp/core/cli';
 import { getHarnessUpdateStatusPath } from '@/server/lib/lifecycle/paths';
 import { readUpdateJob, settleDeadJob, writeUpdateJob } from '@/server/lib/harness/update-job-store';
 import { spawnUpdateWorker } from '@/server/lib/harness/update-spawn.server';
-import { HARNESS_IDS, type HarnessId } from '@/shared/lib/harness/catalog';
+import { HARNESS_IDS, isBuiltinHarness, type HarnessId } from '@/shared/lib/harness/catalog';
 import { harnessUpdateFacts, type HarnessUpdateFacts } from '@/shared/lib/harness/updates';
 import { repointAdapterLaunch, type HarnessUpdateStep } from '@/shared/lib/harness/update-plan';
 import { jobMoving, jobQueued, jobRunning } from '@/shared/lib/harness/update-job';
@@ -162,7 +162,7 @@ async function probeAfterUpdate(
 
 /** Run the probe for a settled record, once per run, in the background. */
 function startProbe(job: HarnessUpdateJob, options: HarnessQueueOptions): void {
-  if (!HARNESS_IDS.includes(job.harness as HarnessId)) return;
+  if (!isBuiltinHarness(job.harness)) return;
   const key = `${job.harness}:${job.startedAt}`;
   if (probing.has(key)) return;
   probing.add(key);
@@ -178,7 +178,7 @@ async function applyFinishedJob(
   // The record is a file, so its id is not proof of a catalog entry; an unknown
   // one has no facts and nothing to repoint — it is still marked applied, so it
   // is not re-applied on every tick.
-  const harness = HARNESS_IDS.includes(job.harness as HarnessId) ? job.harness as HarnessId : null;
+  const harness = isBuiltinHarness(job.harness) ? job.harness : null;
   const facts = harness ? harnessUpdateFacts(harness) : null;
   let repointed: string | null = null;
 

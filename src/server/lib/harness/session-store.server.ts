@@ -207,9 +207,21 @@ export async function loadHarnessSession(sessionId: string): Promise<HarnessSess
   };
 }
 
-/** Narrow a stored value to a harness this build knows. A row written by a
- *  newer build (an adapter since removed) must not draw a mark that has no art
- *  and no name. */
+/** The shape every harness id has, built-in or user-added. */
+const HARNESS_ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,31}$/;
+
+/**
+ * Narrow a stored value to a harness id.
+ *
+ * A built-in is accepted by the caller's list; a WELL-FORMED id is accepted even
+ * when this process has no descriptor for it, because that is exactly the case a
+ * user-added harness produces after a restart (the registry loads asynchronously)
+ * and the case a REMOVED one produces forever. Dropping it would rewrite the
+ * chat's harness to `omp-rpc` — a wrong mark and a resume against the wrong
+ * agent. A malformed value is still refused.
+ */
 export function knownHarness(value: string | undefined, ids: readonly HarnessId[]): HarnessId | undefined {
-  return value && (ids as readonly string[]).includes(value) ? (value as HarnessId) : undefined;
+  if (!value) return undefined;
+  if ((ids as readonly string[]).includes(value)) return value as HarnessId;
+  return HARNESS_ID_PATTERN.test(value) ? (value as HarnessId) : undefined;
 }
