@@ -18,27 +18,29 @@ import { useSearchParams } from '@/client/lib/router/search-params';
 import { startPendingSession } from '@/client/hooks/chat/omp/pending-sessions';
 import { setHarnessPick } from '@/client/hooks/chat/timeline/session-harness';
 import { formatNewSessionTitle } from '@/shared/lib/omp/session/default-title';
+import { forkAnchorFor, type ForkAnchorRole } from '@/shared/lib/chat/timeline/fork-anchor';
 import type { WorkspaceFolderData } from '@/shared/types';
 
 export function useForkSession(
   sessionId: string | null | undefined,
   folders: WorkspaceFolderData[],
   selectedFolderId: number | null,
-): (messageId: string) => void {
+): (messageId: string, role: ForkAnchorRole) => void {
   const [, setSearchParams] = useSearchParams();
 
   return useCallback(
-    (messageId: string) => {
+    (messageId: string, role: ForkAnchorRole) => {
       if (!sessionId) return;
       const source = folders
         .flatMap((folder) => folder.sessions ?? [])
         .find((session) => String(session.id) === sessionId);
       const folderId = source?.folder_id ?? selectedFolderId ?? null;
+      const anchorEntryId = forkAnchorFor(source?.harness, messageId, role);
       const pendingId = startPendingSession(folderId, {
         title: formatNewSessionTitle(new Date(), 'Fork'),
         ...(source?.harness ? { harness: source.harness } : {}),
         forkSourceSessionId: String(sessionId),
-        forkAnchorEntryId: messageId,
+        ...(anchorEntryId ? { forkAnchorEntryId: anchorEntryId } : {}),
       });
       // The picker's first tab is the source's agent; the fork cannot change
       // provider because that agent owns the history being branched.
@@ -47,7 +49,8 @@ export function useForkSession(
         const next = new URLSearchParams(prev);
         next.set('sessionId', pendingId);
         next.set('forkFrom', String(sessionId));
-        next.set('forkAt', messageId);
+        if (anchorEntryId) next.set('forkAt', anchorEntryId);
+        else next.delete('forkAt');
         next.delete('parentSessionId');
         if (folderId !== null && folderId !== undefined) next.set('folderId', String(folderId));
         return next;

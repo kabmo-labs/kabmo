@@ -6,6 +6,7 @@ import { MobileTurnJump } from '@/client/components/workspace/chat-timeline/Mobi
 import { LoadingOlderIndicator } from '@/client/components/workspace/chat-timeline/SessionSkeleton';
 import { OrphanAsks } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/OrphanAsks';
 import type { Attachment, ChatMessageData, UserTurnRef } from '@/shared/types';
+import type { ForkAnchorRole } from '@/shared/lib/chat/timeline/fork-anchor';
 
 interface TimelineBodyProps {
   isMobile: boolean;
@@ -35,7 +36,7 @@ interface TimelineBodyProps {
   onUndo: (id: string, content?: string) => void;
   onRetry: (id: string) => void;
   onNewChat: (content: string, attachments?: Attachment[]) => void;
-  onFork?: (msgId: string) => void;
+  onFork?: (msgId: string, role: ForkAnchorRole) => void;
   showScrollBottom: boolean;
   jumpToBottom: (behavior?: ScrollBehavior) => void;
   /** Which rows of `messages` are mounted (see `useTimelineRowWindow`). */

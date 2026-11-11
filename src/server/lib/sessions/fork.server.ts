@@ -36,6 +36,7 @@ import {
   transcriptTitle,
 } from '@/server/lib/omp/session/transcript-copy';
 import type { HarnessId } from '@/shared/lib/harness/catalog';
+import { airForkPoint, harnessForksAtMessage } from '@/shared/lib/harness/fork';
 import type { SelectedModel } from '@/shared/types/models';
 import type { AgentImage } from '@/shared/types/omp/agent';
 import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
@@ -56,6 +57,7 @@ export type SessionForkErrorCode =
   | 'source_archived'
   | 'cwd_required'
   | 'anchor_not_found'
+  | 'anchor_unsupported'
   | 'fork_unsupported'
   | 'fork_requires_checkpoint'
   | 'fork_failed';
@@ -89,6 +91,8 @@ export interface ForkSessionDeps {
     harness: HarnessId;
     sessionId: string;
     forkAgentSessionId: string;
+    /** The fork point an agent extension reads; omitted forks the whole chat. */
+    forkMeta?: Record<string, unknown>;
     cwd: string;
     accessMode: ApprovalMode;
     model: SelectedModel | null;
@@ -228,7 +232,7 @@ export async function forkSession(
     if (input.anchorEntryId && !records.some((record) => record?.id === input.anchorEntryId)) {
       throw new SessionForkError(
         'anchor_not_found',
-        `The transcript has no entry ${input.anchorEntryId}`,
+        `The transcript has no entry ${input.anchorEntryId}; a builtin command's row is stored by Kabmo only, so fork at a chat turn instead.`,
       );
     }
     const cutIndex = cutIndexFor(records, input.anchorEntryId ?? null);
@@ -255,6 +259,17 @@ export async function forkSession(
     if (!harness || harness === 'omp-rpc') {
       throw new SessionForkError('fork_unsupported', 'This session has no transcript to fork');
     }
+    // `session/fork` copies the agent's WHOLE history and takes no anchor.
+    // The AIR adapters (claude, codex) read a fork point from `_meta` and keep
+    // the history up to that message. Every other agent would silently hand
+    // back turns the user did not point at, so an anchor there is refused
+    // instead of being answered with the tip.
+    if (input.anchorEntryId && !harnessForksAtMessage(harness)) {
+      throw new SessionForkError(
+        'anchor_unsupported',
+        `${harness} keeps this chat's history in its own store, so it can only be forked whole.`,
+      );
+    }
     if (!(await deps.probeForkSupported(harness))) {
       throw new SessionForkError('fork_unsupported', `${harness} does not support session/fork`);
     }
@@ -263,6 +278,7 @@ export async function forkSession(
         harness,
         sessionId: `__new__${Bun.randomUUIDv7()}`,
         forkAgentSessionId: source.agentSessionId || input.sourceSessionId,
+        ...(input.anchorEntryId ? { forkMeta: airForkPoint(input.anchorEntryId) } : {}),
         cwd,
         accessMode,
         model,

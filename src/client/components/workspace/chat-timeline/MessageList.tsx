@@ -11,6 +11,7 @@ import { previousNonNoticeIndex, resolveRunFooters, streamingRowIndex } from '@/
 import { groupTraceRows } from '@/shared/lib/chat/timeline/trace-groups';
 import type { TimelineRowWindow } from '@/client/hooks/chat/timeline/row-window';
 import type { Attachment, ChatMessageData } from '@/shared/types';
+import type { ForkAnchorRole } from '@/shared/lib/chat/timeline/fork-anchor';
 
 export interface MessageListProps {
   messages: ChatMessageData[];
@@ -29,7 +30,7 @@ export interface MessageListProps {
   /** Seeds a new chat from a row. A user row also hands over its attachments. */
   onNewChat?: (content: string, attachments?: Attachment[]) => void;
   /** Branch the session at a user row. */
-  onFork?: (msgId: string) => void;
+  onFork?: (msgId: string, role: ForkAnchorRole) => void;
   isMobile?: boolean;
   /**
    * Whether chat-owning actions render: a USER row's Undo / Fork / New-chat,
@@ -143,6 +144,7 @@ export const MessageList = memo(function MessageList({
                   onUndo={onUndo}
                   onNewChat={onNewChat}
                   onFork={onFork}
+                  {...(harness ? { harness } : {})}
                   isPrevAssistant={isPrevAssistant}
                   userActions={userActions}
                   isMobile={isMobile}

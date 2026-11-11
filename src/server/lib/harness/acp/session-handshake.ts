@@ -53,6 +53,7 @@ export interface AcpHandshakeProcess {
     cwd: string,
     timeoutMs?: number,
     target?: Record<string, unknown>,
+    meta?: Record<string, unknown>,
   ): Promise<AcpSessionNewResult>;
 }
 
@@ -91,6 +92,7 @@ export async function handshakeAcpSession(
   wanted: AcpHandshakeSelections,
   sessionIdToLoad?: string,
   forkFromSessionId?: string,
+  forkMeta?: Record<string, unknown>,
 ): Promise<void> {
   const init = await proc.initialize(undefined, 60_000);
   target.onProtocol?.(init.protocolVersion === 2 ? 2 : 1);
@@ -118,6 +120,9 @@ export async function handshakeAcpSession(
       // required" for a request it cannot place. Other harnesses reject an
       // unknown `target`, so it is sent only where it is understood.
       target.harness === 'zcode' ? { kind: 'latestCheckpoint' } : undefined,
+      // claude-agent-acp's AIR extension: the fork point, when the caller has
+      // one. An agent that does not read it ignores the key and forks whole.
+      forkMeta,
     );
   } else if (sessionIdToLoad) {
     // ACP gates restoration on the AGENT's advertised capability: `loadSession`

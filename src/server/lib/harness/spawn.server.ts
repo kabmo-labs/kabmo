@@ -48,6 +48,9 @@ export interface AcpSpawnRequest {
   /** Fork this agent session instead of starting a new one. Mutually exclusive
    *  with `resumeAgentSessionId`; the returned id is the child's own. */
   forkAgentSessionId?: string;
+  /** `_meta` for `session/fork` — the fork point an agent extension reads
+   *  (claude-agent-acp's AIR `fork`). Omitted forks the whole session. */
+  forkMeta?: Record<string, unknown>;
   cwd: string;
   model?: SelectedModel | null;
   thinkingLevel?: string | null;
@@ -146,6 +149,7 @@ export async function openAcpSession(
     ({ sessionId: realSessionId } = await session.start(
       request.resumeAgentSessionId || undefined,
       request.forkAgentSessionId,
+      request.forkMeta,
     ));
   } catch (error) {
     // A refused handshake (an agent that will not `session/load`, a launch line

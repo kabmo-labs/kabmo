@@ -173,8 +173,14 @@ export class AcpProcess {
     return verbs.resumeSession(this.call, sessionId, cwd, timeoutMs, this.protocolVersion);
   }
 
-  forkSession(sessionId: string, cwd: string, timeoutMs?: number, target?: Record<string, unknown>) {
-    return verbs.forkSession(this.call, sessionId, cwd, timeoutMs, target);
+  forkSession(
+    sessionId: string,
+    cwd: string,
+    timeoutMs?: number,
+    target?: Record<string, unknown>,
+    meta?: Record<string, unknown>,
+  ) {
+    return verbs.forkSession(this.call, sessionId, cwd, timeoutMs, target, meta);
   }
 
   listSessions(cwd?: string, timeoutMs?: number) {

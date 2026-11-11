@@ -2,6 +2,7 @@ import type { Attachment, ChatMessageData } from '@/shared/types';
 import { AiMessageFooter } from '@/client/components/workspace/chat-timeline/AiMessageFooter';
 import { messageAnswerText } from '@/shared/lib/chat/notice-row';
 import { formatMessageStamp } from '@/shared/lib/format/time';
+import type { ForkAnchorRole } from '@/shared/lib/chat/timeline/fork-anchor';
 
 interface RunFooterProps {
   /** The run's last real AI message (`RunFooterSlot.msg`). */
@@ -36,7 +37,7 @@ interface RunFooterProps {
    * (`msg.id`), never `retryTargetId`: the opening user row would fork BEFORE
    * the answer, while the footer sits under it.
    */
-  onFork?: (msgId: string) => void;
+  onFork?: (msgId: string, role: ForkAnchorRole) => void;
   /** Mobile uses a compact provider/model footer with a bottom-sheet menu. */
   isMobile?: boolean;
   /**

@@ -146,13 +146,18 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
   private readonly requestedThinking: string | null;
   private readonly requestedMode: string | null;
   /** `initialize` + `session/new|load|resume`, then the requested selections. */
-  async start(sessionIdToLoad?: string, forkFromSessionId?: string): Promise<{ sessionId: string }> {
+  async start(
+    sessionIdToLoad?: string,
+    forkFromSessionId?: string,
+    forkMeta?: Record<string, unknown>,
+  ): Promise<{ sessionId: string }> {
     await handshakeAcpSession(
       this,
       this.proc,
       { model: this.requestedModel, thinking: this.requestedThinking, mode: this.requestedMode },
       sessionIdToLoad,
       forkFromSessionId,
+      forkMeta,
     );
     // A slow handshake is not idleness: the window starts once it is usable.
     this.idle.reset(true);

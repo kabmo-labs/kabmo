@@ -245,6 +245,53 @@ describe('forkSession (ACP)', () => {
     ]);
   });
 
+  test('an anchored fork of a session with no local transcript is refused, not forked whole', async () => {
+    await saveHarnessSession({
+      sessionId: 'acp-source',
+      harness: 'zcode',
+      agentSessionId: 'agent-1',
+      cwd: '/tmp/project',
+    });
+    const deps = fakeDeps('never', { forkSupported: true });
+    await expect(
+      forkSession({ sourceSessionId: 'acp-source', anchorEntryId: 'u1' }, deps),
+    ).rejects.toMatchObject({ code: 'anchor_unsupported' });
+    expect(deps.acpCalls).toHaveLength(0);
+    expect(await getSessionRelation('never')).toBeNull();
+  });
+
+  test('claude and codex fork at the anchored message through the AIR extension', async () => {
+    for (const harness of ['claude', 'codex'] as const) {
+      await saveHarnessSession({
+        sessionId: 'acp-source',
+        harness,
+        agentSessionId: 'agent-1',
+        cwd: '/tmp/project',
+      });
+      const deps = fakeDeps(`acp-fork-${harness}`, { forkSupported: true });
+      await forkSession({ sourceSessionId: 'acp-source', anchorEntryId: 'a2' }, deps);
+      expect(deps.acpCalls).toEqual([
+        expect.objectContaining({
+          harness,
+          forkMeta: { jetbrains: { air: { fork: { version: 1, messageId: 'a2' } } } },
+        }),
+      ]);
+    }
+  });
+
+  test('a whole-chat claude fork sends no fork point', async () => {
+    await saveHarnessSession({
+      sessionId: 'acp-source',
+      harness: 'claude',
+      agentSessionId: 'agent-1',
+      cwd: '/tmp/project',
+    });
+    const deps = fakeDeps('acp-fork', { forkSupported: true });
+    await forkSession({ sourceSessionId: 'acp-source' }, deps);
+    expect(deps.acpCalls).toEqual([expect.objectContaining({ harness: 'claude' })]);
+    expect(deps.acpCalls[0]).not.toHaveProperty('forkMeta');
+  });
+
   test('a harness without fork support is refused before spawning', async () => {
     await saveHarnessSession({
       sessionId: 'acp-source',

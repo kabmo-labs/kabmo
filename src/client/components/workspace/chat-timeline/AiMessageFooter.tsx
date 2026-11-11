@@ -7,6 +7,7 @@ import { PluginMessageActions } from '@/client/components/workspace/chat-timelin
 import { formatDuration } from '@/shared/lib/chat/duration';
 import { providerLabel } from '@/shared/lib/models/provider/label';
 import { formatCompactTokens } from '@/shared/lib/format/number';
+import { canForkAt, type ForkAnchorRole } from '@/shared/lib/chat/timeline/fork-anchor';
 
 interface AiMessageFooterProps {
   provider?: string;
@@ -40,7 +41,7 @@ interface AiMessageFooterProps {
    * keeps the answer.
    */
   forkTargetId?: string;
-  onFork?: (msgId: string) => void;
+  onFork?: (msgId: string, role: ForkAnchorRole) => void;
   isMobile?: boolean;
   /**
    * Whether the row offers Retry / Fork / New-chat. All of them act on the
@@ -70,6 +71,9 @@ export function AiMessageFooter({
   showActions = true,
 }: AiMessageFooterProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  // A harness that cannot fork at an assistant row draws no Fork action: the
+  // button would only ever answer "whole chat", which is the dropdown's job.
+  const canFork = Boolean(onFork && forkTargetId) && canForkAt(harness, 'assistant');
 
   const handleRetry = () => {
     setIsMenuOpen(false);
@@ -83,7 +87,7 @@ export function AiMessageFooter({
 
   const handleFork = () => {
     setIsMenuOpen(false);
-    if (forkTargetId) onFork?.(forkTargetId);
+    if (forkTargetId) onFork?.(forkTargetId, 'assistant');
   };
 
   useEffect(() => {
@@ -236,7 +240,7 @@ export function AiMessageFooter({
                       <RotateCcw size={20} className="shrink-0 text-ink/55" />
                       <span>Retry response</span>
                     </button>
-                    {onFork && forkTargetId && (
+                    {canFork && (
                       <button type="button" aria-label="Fork session from this answer" onClick={handleFork} className="flex min-h-12 w-full items-center gap-3 rounded-lg px-3 text-left text-sm text-ink transition-colors hover:bg-ink/5 cursor-pointer">
                         <GitFork size={20} className="shrink-0 text-ink/55" />
                         <span>Fork from this answer</span>
@@ -288,7 +292,7 @@ export function AiMessageFooter({
           ariaLabel="Copy response"
           emptyTitle="Nothing to copy — this run produced no text"
         />
-        {showActions && onFork && forkTargetId && (
+        {showActions && canFork && (
           <button type="button" className="flex items-center hover:text-ink transition-colors p-1 rounded hover:bg-ink/5 cursor-pointer" title="Fork from here" aria-label="Fork session from this answer" onClick={handleFork}>
             <GitFork size={12} />
           </button>

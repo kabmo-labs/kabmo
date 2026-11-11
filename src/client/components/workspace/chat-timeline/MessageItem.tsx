@@ -3,6 +3,7 @@ import { useMemo } from 'preact/hooks';
 import { memo } from 'preact/compat';
 import { AlertCircle, Bot, GitFork, Info, MessageSquarePlus, Undo2, User } from 'lucide-preact';
 import type { Attachment, ChatMessageData } from '@/shared/types';
+import { canForkAt, type ForkAnchorRole } from '@/shared/lib/chat/timeline/fork-anchor';
 import { toAttachmentList } from '@/shared/lib/chat/attachments';
 import { ThinkingSection } from '@/client/components/workspace/chat-timeline/ThinkingSection';
 import { ToolCallingSection } from '@/client/components/workspace/chat-timeline/ToolCallingSection';
@@ -30,7 +31,10 @@ interface ChatMessageItemProps {
    */
   onNewChat?: (content: string, attachments?: Attachment[]) => void;
   /** Branch the chat before/at this row. Absent draws no button. */
-  onFork?: (msgId: string) => void;
+  onFork?: (msgId: string, role: ForkAnchorRole) => void;
+  /** The agent behind this chat; a harness that cannot fork at a user row
+   *  draws no Fork button here. */
+  harness?: string;
 
   /** Extra classes on the root wrapper (e.g. spacing between messages). */
   className?: string;
@@ -55,12 +59,14 @@ export const ChatMessageItem = memo(function ChatMessageItem({
   onUndo,
   onNewChat,
   onFork,
+  harness,
   className = '',
   isPrevAssistant = false,
   userActions = true,
   isMobile = false,
 }: ChatMessageItemProps) {
   const isUser = msg.role === 'user';
+  const canFork = Boolean(onFork) && canForkAt(harness, 'user');
 
   /** A notice row renders as a card. When omp diverted the turn's answer into
    *  `notice` instead, the row is an answer (it kept the turn's own metadata)
@@ -161,7 +167,7 @@ export const ChatMessageItem = memo(function ChatMessageItem({
             {/* Fork Button — branches the session at this row, leaving the
                 source untouched. Separate from New Chat: a fork carries the
                 history, a new chat does not. */}
-            {userActions && onFork && (
+            {userActions && canFork && (
               <button
                 type="button"
                 className="flex items-center hover:text-ink transition-colors p-1 rounded hover:bg-ink/5 cursor-pointer"
@@ -169,7 +175,7 @@ export const ChatMessageItem = memo(function ChatMessageItem({
                 aria-label="Fork this session from this message"
                 onClick={(e) => {
                   e.preventDefault();
-                  onFork(msg.id);
+                  onFork?.(msg.id, 'user');
                 }}
               >
                 <GitFork size={12} />

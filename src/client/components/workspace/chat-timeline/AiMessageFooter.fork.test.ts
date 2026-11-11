@@ -91,4 +91,28 @@ describe('assistant footer fork', () => {
     const el = mount(h(RunFooter, { msg: answerRow, retryTargetId: 'user-3' }));
     expect(el.querySelector('button[aria-label="Fork session from this answer"]')).toBeNull();
   });
+
+  test('an AIR adapter offers Fork on the answer', () => {
+    for (const harness of ['claude', 'codex']) {
+      const el = mount(h(RunFooter, {
+        msg: answerRow,
+        retryTargetId: 'user-3',
+        harness,
+        onFork: () => {},
+      }));
+      expect(el.querySelector('button[aria-label="Fork session from this answer"]')).not.toBeNull();
+    }
+  });
+
+  test('a harness that can only fork the whole chat draws no Fork action', () => {
+    for (const harness of ['zcode', 'opencode', 'dsh']) {
+      const el = mount(h(RunFooter, {
+        msg: answerRow,
+        retryTargetId: 'user-3',
+        harness,
+        onFork: () => {},
+      }));
+      expect(el.querySelector('button[aria-label="Fork session from this answer"]')).toBeNull();
+    }
+  });
 });

@@ -59,10 +59,11 @@ export async function forkSession(
   cwd: string,
   timeoutMs = 120_000,
   target?: Record<string, unknown>,
+  meta?: Record<string, unknown>,
 ): Promise<AcpSessionNewResult> {
   return invoke<AcpSessionNewResult>(
     'session/fork',
-    { sessionId, cwd, mcpServers: [], ...(target ? { target } : {}) },
+    { sessionId, cwd, mcpServers: [], ...(target ? { target } : {}), ...(meta ? { _meta: meta } : {}) },
     timeoutMs,
   );
 }

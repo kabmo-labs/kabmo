@@ -181,6 +181,32 @@ describe('handshakeAcpSession', () => {
     expect(session.sessionId).toBe('forked-id');
   });
 
+  test('a fork point travels to the agent as the request _meta', async () => {
+    const seen: unknown[] = [];
+    const proc = processDouble({
+      async forkSession(
+        sessionId: string,
+        _cwd: string,
+        _timeoutMs?: number,
+        _target?: Record<string, unknown>,
+        meta?: Record<string, unknown>,
+      ) {
+        seen.push({ sessionId, meta });
+        return { sessionId: 'forked-id' };
+      },
+    });
+    const meta = { jetbrains: { air: { fork: { version: 1, messageId: 'a2' } } } };
+    await handshakeAcpSession(
+      target(),
+      proc,
+      { model: null, thinking: null, mode: null },
+      undefined,
+      'agent-1',
+      meta,
+    );
+    expect(seen).toEqual([{ sessionId: 'agent-1', meta }]);
+  });
+
   test('a process with no fork verb refuses instead of creating an empty session', async () => {
     const proc = processDouble();
     await expect(
