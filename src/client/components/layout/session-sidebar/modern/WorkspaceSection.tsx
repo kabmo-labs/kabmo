@@ -32,6 +32,7 @@ import { useShowMore } from '@/client/hooks/ui/show-more';
 import { useWorkspaceFolderActions } from '@/client/hooks/workspace/workspace-folder-actions';
 import { useSessionDelete } from '@/client/hooks/workspace/session-delete';
 import { useExpandedSessions } from '@/client/hooks/workspace/expanded-sessions';
+import type { ToastTone } from '@/shared/lib/ui/toast-duration';
 import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
 import { SessionRow, sessionRowBranchStyle, type SessionRowDensity } from '@/client/components/common/session-row';
 import { SessionBranch, branchControlFor } from '@/client/components/common/session-branch';
@@ -61,7 +62,7 @@ export interface WorkspaceSectionProps {
   onSelectSession: (id: number | string) => void;
   onNewSessionForFolder: (folderId: number) => void;
   onNewWorktreeSession?: (folderId: number, worktreePath: string) => void;
-  onToast: (message: string, type?: 'success' | 'error') => void;
+  onToast: (message: string, type?: ToastTone) => void;
   onStartSessionSelection?: (folderId: number) => void;
   onCancelWait?: (waitId: string) => void;
 }

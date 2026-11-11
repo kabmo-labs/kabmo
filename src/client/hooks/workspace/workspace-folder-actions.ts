@@ -23,6 +23,7 @@ import { useState } from 'preact/hooks';
 import { useFetcher } from '@/client/lib/router/fetcher';
 import { useSessionActions } from '@/client/hooks/workspace/session-actions';
 import type { SessionItemData } from '@/shared/types';
+import type { ToastTone } from '@/shared/lib/ui/toast-duration';
 
 /** Minimal folder shape the actions touch — avoids coupling to a full row. */
 export interface WorkspaceFolderLike {
@@ -64,7 +65,7 @@ export interface WorkspaceFolderActions {
  * same channel ("Renamed to …"), while a folder's own failures are the error
  * tone their callers already assume.
  */
-export type ReportFolderOutcome = (message: string, tone?: 'success' | 'error') => void;
+export type ReportFolderOutcome = (message: string, tone?: ToastTone) => void;
 
 export function useWorkspaceFolderActions(
   folder: WorkspaceFolderLike,

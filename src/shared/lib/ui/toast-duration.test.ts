@@ -14,7 +14,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { TOAST_EXIT_MS, toastDurationMs } from '@/shared/lib/ui/toast-duration';
+import { TOAST_EXIT_MS, toastDurationMs, updateOutcomeTone } from '@/shared/lib/ui/toast-duration';
 
 describe('toastDurationMs', () => {
   test('a short confirmation gets the success floor, not a flicker', () => {
@@ -67,8 +67,32 @@ describe('toastDurationMs', () => {
     );
   });
 
+  test('a warning outlasts a confirmation and gives way to a failure', () => {
+    const message = 'Merging feature stopped on a conflict; resolve it above.';
+    expect(toastDurationMs({ tone: 'warning', message })).toBeGreaterThan(
+      toastDurationMs({ tone: 'success', message })!,
+    );
+    expect(toastDurationMs({ tone: 'warning', message })).toBeLessThan(
+      toastDurationMs({ tone: 'error', message })!,
+    );
+  });
+
   test('the exit animation is a real duration, short enough to read as a fade', () => {
     expect(TOAST_EXIT_MS).toBeGreaterThan(0);
     expect(TOAST_EXIT_MS).toBeLessThan(400);
+  });
+});
+
+describe('updateOutcomeTone', () => {
+  test('a run that finished is a success', () => {
+    expect(updateOutcomeTone({ success: true, manual: false })).toBe('success');
+  });
+
+  test('a run the environment cannot perform is a warning: the user still has to act', () => {
+    expect(updateOutcomeTone({ success: true, manual: true })).toBe('warning');
+  });
+
+  test('a failed run is an error, even when it also names a manual command', () => {
+    expect(updateOutcomeTone({ success: false, manual: true })).toBe('error');
   });
 });

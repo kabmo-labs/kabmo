@@ -1,12 +1,13 @@
 import { AlertCircle, Check, Download, Loader2, RefreshCw, Sparkles } from 'lucide-preact';
 import type { UpdateTarget, UpdateTargetInfo } from '@/shared/types/updates';
+import { updateOutcomeTone, type ToastTone } from '@/shared/lib/ui/toast-duration';
 import type { UseUpdatesResult } from '@/client/hooks/ui/updates';
 import { UpdateLog } from '@/client/components/common/UpdateLog';
 import { UPDATE_POPUP_OPEN_EVENT } from '@/shared/lib/updates/popup-state';
 
 interface UpdateSectionProps {
   updates: UseUpdatesResult;
-  onToast?: (message: string, type?: 'success' | 'error') => void;
+  onToast?: (message: string, type?: ToastTone) => void;
 }
 
 interface UpdateRowProps {
@@ -70,7 +71,7 @@ export function UpdateSection({ updates, onToast }: UpdateSectionProps) {
 
     // `manual` means the environment cannot self-update and the message is the
     // command to run — action required, not a success.
-    onToast(result.message, result.success && !result.manual ? 'success' : 'error');
+    onToast(result.message, updateOutcomeTone(result));
   };
 
   const showResult = Boolean(updates.info && !updates.checking && !updates.error);

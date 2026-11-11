@@ -28,6 +28,7 @@ import { useEffect, useRef } from 'preact/hooks';
 import type { CommitHistoryPage } from '@/shared/types';
 import type { GitActionFetcher } from '@/client/hooks/workspace/git-actions';
 import { gitActionSuccessMessage } from '@/client/lib/git/action-message';
+import type { ToastTone } from '@/shared/lib/ui/toast-duration';
 
 export interface GitActionOutcomeOptions {
   /** The mutation channel, with the action its payload answers. */
@@ -36,8 +37,8 @@ export interface GitActionOutcomeOptions {
   onPage: (page: CommitHistoryPage) => void;
   /** An accepted mutation landed: re-read the working tree. */
   onReload: () => void;
-  /** An accepted mutation, in the sentence the user reads. */
-  onSuccess: (message: string) => void;
+  /** An accepted mutation, in the sentence the user reads and the tone it earns. */
+  onSuccess: (message: string, tone: ToastTone) => void;
   /** The server's refusal, or a transport failure. */
   onError: (message: string) => void;
 }
@@ -81,6 +82,6 @@ export function useGitActionOutcome(options: GitActionOutcomeOptions): void {
     const message = dispatched
       ? gitActionSuccessMessage({ ...dispatched, stopped: payload.stopped })
       : null;
-    if (message) handlers.onSuccess(message);
+    if (message) handlers.onSuccess(message, payload.stopped ? 'warning' : 'success');
   }, [fetcher.state, fetcher.data, fetcher.lastAction]);
 }

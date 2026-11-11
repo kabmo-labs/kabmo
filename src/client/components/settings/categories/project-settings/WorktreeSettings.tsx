@@ -25,13 +25,14 @@ import { useWorktrees } from '@/client/hooks/workspace/worktree/index';
 import { removeWorktree } from '@/client/hooks/workspace/worktree/index';
 import { WORKTREE_CARRY_SETTING, WORKTREE_DIRECTORY_SETTING } from '@/shared/lib/fs/worktree/settings-keys';
 import { branchDeletable, removalRefusal, worktreeRowDetail } from '@/client/components/settings/categories/project-settings/worktree-row';
+import type { ToastTone } from '@/shared/lib/ui/toast-duration';
 
 export interface WorktreeSettingsProps {
   /** The selected project's `project_path`; the section is inert without one. */
   root: string | null;
   folderId: number | null;
   /** Report a refusal — the section never claims a removal it did not get. */
-  onReport: (message: string, tone?: 'success' | 'error') => void;
+  onReport: (message: string, tone?: ToastTone) => void;
 }
 
 export function WorktreeSettings({ root, folderId, onReport }: WorktreeSettingsProps) {

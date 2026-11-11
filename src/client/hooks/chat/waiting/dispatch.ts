@@ -25,10 +25,11 @@ import {
 } from '@/client/hooks/chat/omp/pending-sessions';
 import { clearPendingSessionWaiting, pendingSessionWait } from '@/client/hooks/chat/omp/pending-waiting';
 import { useSearchParams } from '@/client/lib/router/search-params';
+import type { ToastTone } from '@/shared/lib/ui/toast-duration';
 
 export interface WaitingDispatchOptions {
   /** Surfaces an outcome the user must know about (a failed or cancelled wait). */
-  onNotice?: (message: string) => void;
+  onNotice?: (message: string, tone?: ToastTone) => void;
 }
 
 /**
@@ -69,7 +70,7 @@ export function useWaitingDispatch({ onNotice }: WaitingDispatchOptions = {}): v
           next.set('sessionId', prompt.sessionId as string);
           return next;
         }, { replace: true });
-        noticeRef.current?.(`Waiting finished — your prompt is now running in a new session.`);
+        noticeRef.current?.(`Waiting finished — your prompt is now running in a new session.`, 'success');
         continue;
       }
 
@@ -78,13 +79,13 @@ export function useWaitingDispatch({ onNotice }: WaitingDispatchOptions = {}): v
         if (!held && openId !== pendingId) continue;
         clearPendingSessionWaiting(pendingId);
         releasePendingSession(pendingId);
-        noticeRef.current?.(`The prompt you held was not sent: ${prompt.error ?? 'the dispatch failed.'}`);
+        noticeRef.current?.(`The prompt you held was not sent: ${prompt.error ?? 'the dispatch failed.'}`, 'error');
         continue;
       }
 
       if (prompt.status === 'cancelled' && held) {
         clearPendingSessionWaiting(pendingId);
-        noticeRef.current?.('The held prompt was cancelled.');
+        noticeRef.current?.('The held prompt was cancelled.', 'success');
       }
     }
   }, [prompts, setSearchParams]);

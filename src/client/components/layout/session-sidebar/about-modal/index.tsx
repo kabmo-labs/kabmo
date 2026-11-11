@@ -3,6 +3,7 @@ import { createPortal } from 'preact/compat';
 import { Heart, X } from 'lucide-preact';
 import packageJson from '@/../package.json';
 import type { UseUpdatesResult } from '@/client/hooks/ui/updates';
+import type { ToastTone } from '@/shared/lib/ui/toast-duration';
 import { BrandWordmark } from '@/client/components/common/brand-wordmark';
 import { NotesDialog } from '@/client/components/layout/session-sidebar/about-modal/NotesDialog';
 import { SocialLinks } from '@/client/components/layout/session-sidebar/about-modal/SocialLinks';
@@ -24,7 +25,7 @@ export interface AboutModalProps {
   isOpen: boolean;
   onClose: () => void;
   updates: UseUpdatesResult;
-  onToast?: (message: string, type?: 'success' | 'error') => void;
+  onToast?: (message: string, type?: ToastTone) => void;
 }
 
 export function AboutModal({ isOpen, onClose, updates, onToast }: AboutModalProps) {

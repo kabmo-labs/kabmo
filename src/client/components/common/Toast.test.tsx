@@ -18,8 +18,10 @@
  * - **Two live toasts were painted in the same place.** Each card used to be its
  *   own `fixed bottom-4 right-4` portal; the stack is one column, so a second
  *   card pushes the first up instead of covering it.
- * - **An error drew a check mark.** The tone picks both the icon and the live
- *   region — `alert` for a failure.
+ * - **An error drew a check mark.** The tone picks the icon, its tint, the
+ *   card's border and the live region — `alert` for a failure. A third tone
+ *   (`warning`) covers the partial outcomes, so an operation that stopped on a
+ *   conflict cannot be painted as either a success or a failure.
  */
 
 import { afterAll, afterEach, beforeAll, describe, expect, jest, test } from 'bun:test';
@@ -242,6 +244,30 @@ describe('Toast', () => {
     advance(200);
     advance(TOAST_EXIT_MS);
     expect(dismissed).toEqual([11]);
+  });
+
+  test('each tone draws its own glyph and tint', async () => {
+    const cases = [
+      { type: 'success' as const, tint: 'text-success-text' },
+      { type: 'warning' as const, tint: 'text-warning-text' },
+      { type: 'error' as const, tint: 'text-error-text' },
+    ];
+
+    for (const { type, tint } of cases) {
+      if (container) render(null, container);
+      document.body.replaceChildren();
+      mount(
+        h(Toast, {
+          toast: { id: 12, message: 'Tone check', type, duration: 3000 },
+          onDismiss: () => {},
+        }),
+      );
+      await settle();
+
+      expect(card().getAttribute('data-tone')).toBe(type);
+      const glyph = card().querySelector('svg');
+      expect(glyph?.getAttribute('class')).toContain(tint);
+    }
   });
 
   test('a failure is an alert, a confirmation is a status', async () => {

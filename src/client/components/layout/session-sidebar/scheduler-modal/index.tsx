@@ -25,6 +25,7 @@ import { TaskForm } from '@/client/components/layout/session-sidebar/scheduler-m
 import { TaskList } from '@/client/components/layout/session-sidebar/scheduler-modal/TaskList';
 import { useScheduleFolders } from '@/client/components/layout/session-sidebar/scheduler-modal/folders';
 import type { ScheduledTask } from '@/shared/types/schedule';
+import type { ToastTone } from '@/shared/lib/ui/toast-duration';
 
 export interface SchedulerModalProps {
   isOpen: boolean;
@@ -32,7 +33,7 @@ export interface SchedulerModalProps {
   /** Session the composer is on, offered as "resume this conversation". */
   activeSessionId?: string | null;
   /** Surfaces a failure outside the modal (the sidebar's toast stack). */
-  onToast?: (message: string, type?: 'success' | 'error') => void;
+  onToast?: (message: string, type?: ToastTone) => void;
 }
 
 /** The editor's shape: a draft plus the id it edits, or null when creating. */

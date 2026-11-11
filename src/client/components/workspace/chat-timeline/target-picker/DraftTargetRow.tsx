@@ -22,6 +22,7 @@ import {
 } from '@/client/components/workspace/chat-timeline/chat-input/WaitingDependencyPicker';
 import type { SpawnTarget } from '@/client/hooks/chat/timeline/spawn-target';
 import type { WorkspaceFolderData } from '@/shared/types';
+import type { ToastTone } from '@/shared/lib/ui/toast-duration';
 
 export interface DraftTargetRowProps {
   folders: WorkspaceFolderData[];
@@ -30,7 +31,7 @@ export interface DraftTargetRowProps {
   spawnTarget?: SpawnTarget | null;
   onSpawnTargetChange?: (next: SpawnTarget | null) => void;
   /** Reports a worktree the composer created or failed to create. */
-  onWorktreeReport?: (message: string) => void;
+  onWorktreeReport?: (message: string, tone?: ToastTone) => void;
   /** The session this chat runs under, or null for a top-level chat. */
   parentSessionId?: string | null;
   onParentSessionChange?: (sessionId: string | null) => void;

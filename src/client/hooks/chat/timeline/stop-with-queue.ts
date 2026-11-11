@@ -26,7 +26,7 @@ export function useStopWithQueuedPrompts<T>(
     if (heldCount === 0) return;
     pushToast(
       `Stopped. ${heldCount} message${heldCount > 1 ? 's' : ''} still queued — nothing was sent.`,
-      'success',
+      'warning',
       {
         action: {
           label: 'Send now',

@@ -4,6 +4,7 @@ import { useSearchParams } from '@/client/lib/router/search-params';
 import { MobileSessionRow, MOBILE_BRANCH_STYLE } from '@/client/components/mobile/mobile-session-sidebar/SessionRow';
 import { SessionBranch, branchControlFor } from '@/client/components/common/session-branch';
 import type { BranchControl } from '@/client/components/common/session-branch';
+import type { ToastTone } from '@/shared/lib/ui/toast-duration';
 import { buildSessionTree } from '@/client/lib/session-tree';
 import { useWorktreeDialog } from '@/client/components/mobile/mobile-session-sidebar/WorktreeDialog';
 import { useShowMore } from '@/client/hooks/ui/show-more';
@@ -33,7 +34,7 @@ interface MobileSessionCategoryProps {
   onToggleExpand: () => void;
   showArchived?: boolean;
   sessionStatus?: Record<string, 'stream' | 'finish' | 'abort'>;
-  onToast?: (message: string, type?: 'success' | 'error') => void;
+  onToast?: (message: string, type?: ToastTone) => void;
   /** Present only while a batch selection is active; absent is the normal list. */
   batch?: BatchBinding;
   /** Start a session selection scoped to this workspace, from its `⋯` menu. */

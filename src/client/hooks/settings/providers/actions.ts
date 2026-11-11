@@ -31,12 +31,13 @@ import type { ProviderItem } from '@/shared/types';
 import { saveProviderOverlay, setProviderEnabled, deleteProvider } from '@/shared/lib/models/provider/connection';
 import { addProviderMessage } from '@/client/hooks/settings/providers/messages';
 import { loadProvidersFromApi } from '@/client/hooks/settings/providers/api';
+import type { ToastTone } from '@/shared/lib/ui/toast-duration';
 
 export interface ProviderActionsDeps {
   providers: ProviderItem[];
   selectedProvider: ProviderItem | undefined;
   isDeletingProvider: boolean;
-  pushToast: (message: string, tone: 'success' | 'error') => void;
+  pushToast: (message: string, tone: ToastTone) => void;
   setProviders: (providers: ProviderItem[]) => void;
   setSelectedProviderId: (id: string) => void;
   setIsAddModalOpen: (open: boolean) => void;
@@ -209,7 +210,7 @@ export function createProviderActions(deps: ProviderActionsDeps) {
       // The overlay row is gone even when the file cleanup failed, so the
       // warning is reported rather than presented as a clean delete.
       if (result.warning) {
-        pushToast(`${provider.name} removed from Kabmo, but models.yml cleanup failed: ${result.warning}`, 'error');
+        pushToast(`${provider.name} removed from Kabmo, but models.yml cleanup failed: ${result.warning}`, 'warning');
       } else if (result.removedFromOmp) {
         const count = result.modelsRemoved ?? 0;
         pushToast(

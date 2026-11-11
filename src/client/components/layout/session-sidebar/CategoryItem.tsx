@@ -6,6 +6,7 @@ import { useShowMore } from '@/client/hooks/ui/show-more';
 import { useWorkspaceFolderActions } from '@/client/hooks/workspace/workspace-folder-actions';
 import { useSessionDelete } from '@/client/hooks/workspace/session-delete';
 import { SessionDeleteModal } from '@/client/components/common/session-delete-modal';
+import type { ToastTone } from '@/shared/lib/ui/toast-duration';
 import { SessionItem, SESSION_ITEM_BRANCH_STYLE } from '@/client/components/layout/session-sidebar/SessionItem';
 import { CategoryHeader } from '@/client/components/layout/session-sidebar/CategoryHeader';
 import { SessionBranch, branchControlFor } from '@/client/components/common/session-branch';
@@ -43,7 +44,7 @@ export function Category({
   forceExpanded?: boolean;
   showArchived?: boolean;
   sessionStatus?: Record<string, 'stream' | 'finish' | 'abort'>;
-  onToast?: (message: string, type?: 'success' | 'error') => void;
+  onToast?: (message: string, type?: ToastTone) => void;
   /** Present only while a batch selection is active; absent is the normal list. */
   batch?: BatchBinding;
   /** Start a session selection scoped to this workspace, from its `⋯` menu. */

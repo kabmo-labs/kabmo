@@ -15,6 +15,7 @@ import { DraftTargetRow } from '@/client/components/workspace/chat-timeline/targ
 import { ParentSessionPicker } from '@/client/components/workspace/chat-timeline/target-picker/ParentSessionPicker';
 import type { SpawnTarget } from '@/client/hooks/chat/timeline/spawn-target';
 import type { ForkPreview } from '@/client/hooks/chat/timeline/fork-preview';
+import type { ToastTone } from '@/shared/lib/ui/toast-duration';
 
 interface EmptyWorkspacePromptProps {
   className?: string;
@@ -87,7 +88,7 @@ interface EmptyWorkspacePromptProps {
    */
   branchPreview?: ForkPreview | null;
   /** Reports a worktree the composer created or failed to create. */
-  onWorktreeReport?: (message: string) => void;
+  onWorktreeReport?: (message: string, tone?: ToastTone) => void;
   /** The "wait for session" pick, persisted per chat. */
   waitingFor?: WaitingCandidate | null;
   onWaitingForChange?: (candidate: WaitingCandidate | null) => void;

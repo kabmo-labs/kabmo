@@ -27,6 +27,7 @@ import { act } from 'preact/test-utils';
 import { useSessionActions, type SessionActions } from '@/client/hooks/workspace/session-actions';
 import { isSessionRenaming, setSessionRenaming } from '@/client/hooks/workspace/renaming-sessions';
 import type { SessionItemData } from '@/shared/types';
+import type { ToastTone } from '@/shared/lib/ui/toast-duration';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'Event', 'CustomEvent'] as const;
 /** The runner's own globals, restored on teardown — deleting them would strip natives (Event/CustomEvent) every later file needs. */
@@ -65,7 +66,7 @@ const session: SessionItemData = { id: 's1', folder_id: 1, title: 'old name' };
 
 interface Reported {
   message: string;
-  tone: 'success' | 'error' | undefined;
+  tone: ToastTone | undefined;
 }
 
 interface Harness {

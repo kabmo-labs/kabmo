@@ -21,6 +21,7 @@
 
 import type { SessionSortOption, WorkspaceFolderData } from '@/shared/types';
 import type { BatchBinding } from '@/client/components/common/batch-selection/types';
+import type { ToastTone } from '@/shared/lib/ui/toast-duration';
 
 export type SessionStatusMap = Record<string, 'stream' | 'finish' | 'abort'>;
 
@@ -67,7 +68,7 @@ export interface SessionSidebarVariantProps {
   /** Start a chat in a worktree made from this folder. */
   onNewWorktreeSession?: (folderId: number, worktreePath: string) => void;
   /** Reports a refused folder action (the reveal endpoint's own reason). */
-  onToast: (message: string, type?: 'success' | 'error') => void;
+  onToast: (message: string, type?: ToastTone) => void;
   onCancelWait?: (waitId: string) => void;
 
   /** The active batch mode, or undefined when the list is not selecting. */

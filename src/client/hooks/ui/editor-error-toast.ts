@@ -24,11 +24,12 @@
 
 import { useKabmoEvent } from '@/client/hooks/ui/window-event';
 import { EDITOR_ERROR_EVENT } from '@/client/lib/editor-errors';
+import type { ToastTone } from '@/shared/lib/ui/toast-duration';
 
 /** What `pushToast` accepts, named so this hook does not import the toast host. */
 type PushToast = (
   message: string,
-  type?: 'success' | 'error',
+  type?: ToastTone,
   options?: { duration?: number | null },
 ) => void;
 

@@ -1,7 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
-import { AlertCircle, CheckCircle2, X } from 'lucide-preact';
+import { AlertCircle, AlertTriangle, CheckCircle2, X, type LucideIcon } from 'lucide-preact';
 import { TOAST_EXIT_MS } from '@/shared/lib/ui/toast-duration';
 import type { ToastTone } from '@/shared/lib/ui/toast-duration';
+
+/**
+ * What each tone looks like.
+ *
+ * The tone owns ALL three signals — the icon, its colour and the card's border —
+ * so a success cannot draw an alert, and the tint is never decided at a call
+ * site. `text-*-text` (not the raw fill token) is the contrast-solved half of
+ * the palette: the raw signal colours drop under 2:1 on the light themes.
+ */
+const TONES: Record<ToastTone, { Icon: LucideIcon; icon: string; border: string }> = {
+  success: { Icon: CheckCircle2, icon: 'text-success-text', border: 'border-success/35' },
+  warning: { Icon: AlertTriangle, icon: 'text-warning-text', border: 'border-warning/40' },
+  error: { Icon: AlertCircle, icon: 'text-error-text', border: 'border-error/40' },
+};
 
 export interface ToastData {
   id: number;
@@ -90,11 +104,13 @@ export function Toast({ toast, onDismiss }: ToastProps) {
   const hold = useCallback(() => setPaused(true), []);
   const release = useCallback(() => setPaused(false), []);
 
+  const tone = TONES[toast.type];
   const isError = toast.type === 'error';
   return (
     <div
       role={isError ? 'alert' : 'status'}
       aria-live={isError ? 'assertive' : 'polite'}
+      data-tone={toast.type}
       onPointerEnter={hold}
       onPointerLeave={release}
       onFocus={hold}
@@ -106,16 +122,12 @@ export function Toast({ toast, onDismiss }: ToastProps) {
         if (next instanceof Node && event.currentTarget.contains(next)) return;
         release();
       }}
-      className={`pointer-events-auto flex items-start gap-2 rounded-lg border bg-paper px-3.5 py-2.5 text-xs font-sans shadow-xl transition-all ${
-        isError ? 'border-error/40' : 'border-ink/15'
-      } ${entered && !leaving ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}
+      className={`pointer-events-auto flex items-start gap-2 rounded-lg border bg-paper px-3.5 py-2.5 text-xs font-sans shadow-xl transition-all ${tone.border} ${
+        entered && !leaving ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
+      }`}
       style={{ transitionDuration: `${TOAST_EXIT_MS}ms` }}
     >
-      {isError ? (
-        <AlertCircle size={15} className="mt-px text-error flex-shrink-0" />
-      ) : (
-        <CheckCircle2 size={15} className="mt-0.5 text-success flex-shrink-0" />
-      )}
+      <tone.Icon size={15} className={`mt-px flex-shrink-0 ${tone.icon}`} aria-hidden="true" />
       <span className="min-w-0 flex-1 whitespace-pre-line break-words leading-relaxed text-ink">
         {toast.message}
       </span>

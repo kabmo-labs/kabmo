@@ -122,7 +122,7 @@ export function SettingsModal({
       writeKabmoSettings(diffSettings(prev, next, updater));
       return next;
     });
-    showToast('Setting was saved');
+    showToast('Setting was saved', 'success');
   };
 
   const handleReloadOmp = async () => {

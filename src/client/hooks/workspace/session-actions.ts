@@ -18,9 +18,10 @@ import { publishClientSignal } from '@/client/lib/signals';
 import { useFetcher } from '@/client/lib/router/fetcher';
 import { isSessionRenaming, setSessionRenaming } from '@/client/hooks/workspace/renaming-sessions';
 import type { SessionItemData } from '@/shared/types';
+import type { ToastTone } from '@/shared/lib/ui/toast-duration';
 
 /** Surfaces an outcome to the user; omitted callers stay silent. */
-export type ReportSessionOutcome = (message: string, tone?: 'success' | 'error') => void;
+export type ReportSessionOutcome = (message: string, tone?: ToastTone) => void;
 
 export interface SessionActions {
   handleArchive: (session: SessionItemData) => void;

@@ -14,12 +14,13 @@
  */
 
 import type { ProviderItem } from '@/shared/types';
+import type { ToastTone } from '@/shared/lib/ui/toast-duration';
 
 /** The success/failure line for an Add Provider submission. */
 export function addProviderMessage(
   provider: ProviderItem,
   options: { fetchedCount: number; ompNote?: string },
-): { text: string; tone: 'success' | 'error' } {
+): { text: string; tone: ToastTone } {
   if (provider.modelSource === 'discovery') {
     return { text: `${provider.name} registered — omp discovers its models on each run.`, tone: 'success' };
   }
@@ -37,12 +38,13 @@ export function addProviderMessage(
   }
   if (options.fetchedCount === -1) {
     // The listing failed. When omp reported a reason it is the actionable half,
-    // so it is quoted rather than replaced by a generic line.
+    // so it is quoted rather than replaced by a generic line. The provider IS
+    // registered, so this is a partial outcome, not a failed add.
     return {
       text: options.ompNote
         ? `Provider registered, but models could not be listed: ${options.ompNote}`
         : 'Auto-fetch models failed — provider added with default models.',
-      tone: 'error',
+      tone: 'warning',
     };
   }
   return { text: `${provider.name} registered — no new models to add.`, tone: 'success' };
@@ -56,7 +58,7 @@ export function addProviderMessage(
  */
 export function fetchModelsMessage(counts: { addedCount: number; removedCount: number }): {
   text: string;
-  tone: 'success' | 'error';
+  tone: ToastTone;
 } {
   const plural = (count: number) => (count === 1 ? '' : 's');
   if (counts.addedCount > 0 && counts.removedCount > 0) {
@@ -87,7 +89,7 @@ export function fetchModelsMessage(counts: { addedCount: number; removedCount: n
  */
 export function fetchModelsNote(result: {
   omp?: { written: boolean; addedCount: number; backfilledCount: number; removedCount?: number; reason?: string };
-}): { text: string; tone: 'success' | 'error' } | null {
+}): { text: string; tone: ToastTone } | null {
   if (!result.omp) return null;
   if (result.omp.written) {
     const parts: string[] = [];
@@ -106,7 +108,7 @@ export function fetchModelsNote(result: {
     };
   }
   if (result.omp.reason) {
-    return { text: `omp models.yml not updated: ${result.omp.reason}`, tone: 'error' };
+    return { text: `omp models.yml not updated: ${result.omp.reason}`, tone: 'warning' };
   }
   return null;
 }
@@ -122,7 +124,7 @@ export function fetchModelsNote(result: {
 export function refreshModelsMessage(
   providerName: string,
   result: { added: number; removed: number },
-): { text: string; tone: 'success' | 'error' } {
+): { text: string; tone: ToastTone } {
   const plural = (count: number) => (count === 1 ? '' : 's');
   if (result.added > 0 || result.removed > 0) {
     const parts: string[] = [];

@@ -11,6 +11,7 @@ import { useWaitingDispatch } from '@/client/hooks/chat/waiting/dispatch';
 import { useUpdates } from '@/client/hooks/ui/updates';
 import { useSidebarStyle } from '@/client/hooks/workspace/sidebar-style';
 import { UPDATE_REQUEST_EVENT } from '@/shared/lib/updates/popup-state';
+import { updateOutcomeTone } from '@/shared/lib/ui/toast-duration';
 import { useScheduledTaskCount } from '@/client/hooks/workspace/scheduled-tasks';
 import { phoneLeftStripVisible } from '@/shared/lib/workspace/mobile-dock';
 import { MobileDockBody, MobileDockStrip } from '@/client/components/mobile/mobile-session-sidebar/Dock';
@@ -123,7 +124,7 @@ export function MobileSessionSidebar({
     setAboutOpen(true);
     void updates.apply('kabmo').then((result) => {
       if (!result) return;
-      pushToast(result.message, result.success && !result.manual ? 'success' : 'error');
+      pushToast(result.message, updateOutcomeTone(result));
     });
   });
 

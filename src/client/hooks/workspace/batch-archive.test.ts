@@ -34,14 +34,14 @@ describe('archiveOutcomeMessage', () => {
       .toEqual({ message: 'Archived 1 session.', tone: 'success' });
   });
 
-  test('a partial refusal names both counts and is not dressed as success', () => {
+  test('a partial refusal names both counts and is dressed as a warning', () => {
     const report = archiveOutcomeMessage(outcome({
       archived: ['a', 'b'],
       refused: [{ id: 'new-1', error: 'This chat has not been created yet.' }],
     }));
     expect(report?.message).toContain('Archived 2 sessions');
     expect(report?.message).toContain('1 refused');
-    expect(report?.tone).toBe('error');
+    expect(report?.tone).toBe('warning');
   });
 
   test('an all-refused run is an error and names the refusal count', () => {

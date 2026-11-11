@@ -212,7 +212,7 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
         onSpawnTargetChange={setSpawnTarget}
         {...branch.viewProps}
         {...(branch.forkSourceSessionId ? { branchPreview: forkPreview } : {})}
-        onWorktreeReport={(message) => pushToast(message, 'success', { duration: 6000 })}
+        onWorktreeReport={(message, tone) => pushToast(message, tone ?? 'success', { duration: 6000 })}
         {...branch.composerProps}
       />
     );

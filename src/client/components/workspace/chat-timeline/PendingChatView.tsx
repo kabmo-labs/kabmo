@@ -22,6 +22,7 @@ import type { WaitingCandidate } from '@/client/components/workspace/chat-timeli
 import type { DeferredModelStore } from '@/client/hooks/chat/timeline/deferred-model';
 import { EmptyWorkspacePrompt } from '@/client/components/workspace/chat-timeline/EmptyWorkspacePrompt';
 import type { SpawnTarget } from '@/client/hooks/chat/timeline/spawn-target';
+import type { ToastTone } from '@/shared/lib/ui/toast-duration';
 
 export interface PendingChatViewProps {
   className: string;
@@ -77,7 +78,7 @@ export interface PendingChatViewProps {
    * switching "Fork from" swaps the rows, because the composer has not sent yet.
    */
   branchPreview?: ForkPreview | null;
-  onWorktreeReport?: (message: string) => void;
+  onWorktreeReport?: (message: string, tone?: ToastTone) => void;
   /**
    * The harness this chat will spawn on, and the pick that writes it.
    *

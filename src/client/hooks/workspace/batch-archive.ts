@@ -14,6 +14,8 @@
  * against the list.
  */
 
+import type { ToastTone } from '@/shared/lib/ui/toast-duration';
+
 export interface BatchArchiveRefusal {
   id: string;
   error: string;
@@ -60,7 +62,7 @@ export function archiveSessionsBatch(ids: readonly string[]): Promise<BatchArchi
  */
 export function archiveOutcomeMessage(
   outcome: BatchArchiveOutcome,
-): { message: string; tone: 'success' | 'error' } | null {
+): { message: string; tone: ToastTone } | null {
   if (outcome.error) return { message: outcome.error, tone: 'error' };
   const archived = outcome.archived.length;
   const refused = outcome.refused.length;
@@ -73,6 +75,6 @@ export function archiveOutcomeMessage(
   }
   return {
     message: `Archived ${archived} ${archived === 1 ? 'session' : 'sessions'}; ${refused} refused.`,
-    tone: 'error',
+    tone: 'warning',
   };
 }

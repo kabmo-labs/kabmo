@@ -32,6 +32,7 @@ import type { SpawnTarget } from '@/client/hooks/chat/timeline/spawn-target';
 import type { WorktreeInfo } from '@/shared/lib/workspace/worktree/types';
 import { lastPathSegment } from '@/shared/lib/fs/paths';
 import type { WorkspaceFolderData } from '@/shared/types';
+import type { ToastTone } from '@/shared/lib/ui/toast-duration';
 
 export interface WorktreePickerProps {
   folders: WorkspaceFolderData[];
@@ -39,7 +40,7 @@ export interface WorktreePickerProps {
   target: SpawnTarget | null;
   setTarget: (next: SpawnTarget | null) => void;
   /** Reports a completed create, or the refusal that stopped one. */
-  onReport?: (message: string) => void;
+  onReport?: (message: string, tone?: ToastTone) => void;
 }
 
 /** The worktree row the pick names, or null for the project root. */
@@ -131,9 +132,9 @@ export function WorktreePicker({ folders, selectedFolderId, target, setTarget, o
       // is `wt/groovy-yak` (measured in the browser, and for the whole time the
       // menu stays closed, which is when the label matters).
       await refresh();
-      onReport?.(`Worktree ${created.branch || lastPathSegment(created.path)} created`);
+      onReport?.(`Worktree ${created.branch || lastPathSegment(created.path)} created`, 'success');
     } catch (failure) {
-      onReport?.(failure instanceof Error ? failure.message : String(failure));
+      onReport?.(failure instanceof Error ? failure.message : String(failure), 'error');
     } finally {
       setCreating(false);
     }
@@ -277,7 +278,7 @@ export function WorktreePicker({ folders, selectedFolderId, target, setTarget, o
           // this control holds has never seen, so the trigger would fall back to
           // the folder name until the menu was opened again.
           void refresh();
-          onReport?.(`Worktree ${created.branch} created`);
+          onReport?.(`Worktree ${created.branch} created`, 'success');
         }}
       />
     </div>

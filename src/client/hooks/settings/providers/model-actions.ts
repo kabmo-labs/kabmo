@@ -24,12 +24,13 @@ import {
 import { removeLegacyKenariModels } from '@/shared/lib/models/provider/cleanup';
 import { fetchModelsMessage, fetchModelsNote, refreshModelsMessage } from '@/client/hooks/settings/providers/messages';
 import { saveModelOverrideRemote } from '@/client/hooks/settings/providers/api';
+import type { ToastTone } from '@/shared/lib/ui/toast-duration';
 
 export interface ModelActionsDeps {
   providers: ProviderItem[];
   selectedProvider: ProviderItem | undefined;
   isFetchingModels: boolean;
-  pushToast: (message: string, tone: 'success' | 'error') => void;
+  pushToast: (message: string, tone: ToastTone) => void;
   setProviders: (providers: ProviderItem[]) => void;
   setIsFetchingModels: (fetching: boolean) => void;
   persistProviders: (updated: ProviderItem[]) => Promise<void>;

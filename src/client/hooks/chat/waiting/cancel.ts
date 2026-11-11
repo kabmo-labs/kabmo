@@ -15,10 +15,11 @@
 import { useCallback } from 'preact/hooks';
 import { cancelWaitingPromptRequest } from '@/client/hooks/chat/waiting/store';
 import { releasePendingSessionByWait } from '@/client/hooks/chat/omp/pending-waiting';
+import type { ToastTone } from '@/shared/lib/ui/toast-duration';
 
 export type CancelWait = (waitId: string) => void;
 
-export function useCancelWait(onNotice?: (message: string, type?: 'success' | 'error') => void): CancelWait {
+export function useCancelWait(onNotice?: (message: string, type?: ToastTone) => void): CancelWait {
   return useCallback((waitId: string) => {
     void cancelWaitingPromptRequest(waitId).then((result) => {
       if (!result.ok) {

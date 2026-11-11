@@ -88,8 +88,8 @@ export function GitPanel({ className = '', enabled = true, rootPath, refreshKey 
     fetcher: actionFetcher,
     onPage: setViewingOutput,
     onReload: loadRepo,
-    onSuccess: (message) => pushToast(message, 'success'),
-    onError: (message) => pushToast(message),
+    onSuccess: (message, tone) => pushToast(message, tone),
+    onError: (message) => pushToast(message, 'error'),
   });
 
   useOnClickOutside(optionsRef, () => setShowOptions(false));

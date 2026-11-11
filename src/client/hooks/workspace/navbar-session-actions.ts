@@ -23,6 +23,7 @@ import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
 import { useSessionActions } from '@/client/hooks/workspace/session-actions';
 import { useSessionDelete, type SessionDeleteActions } from '@/client/hooks/workspace/session-delete';
 import type { WorkspaceFolderData } from '@/shared/types';
+import type { ToastTone } from '@/shared/lib/ui/toast-duration';
 
 /** What `TopNavbar` needs to draw its title menu. */
 export interface NavbarSessionMenu {
@@ -42,7 +43,7 @@ export interface NavbarSessionActions {
 export function useNavbarSessionActions(
   folders: WorkspaceFolderData[],
   sessionId: string | null,
-  report: (message: string, tone?: 'success' | 'error') => void,
+  report: (message: string, tone?: ToastTone) => void,
 ): NavbarSessionActions {
   const sidebar = useSidebarData();
   const actions = useSessionActions(sidebar.refresh, report);

@@ -51,6 +51,7 @@ import { useToasts } from '@/client/hooks/ui/toasts';
 import { useUpdates } from '@/client/hooks/ui/updates';
 import { UPDATE_REQUEST_EVENT } from '@/shared/lib/updates/popup-state';
 import { MAX_LEFT_PANEL_WIDTH } from '@/shared/lib/workspace/sidebar-width';
+import { updateOutcomeTone } from '@/shared/lib/ui/toast-duration';
 import type { AgentStreamStatus } from '@/shared/lib/chat/omp/status';
 
 interface LeftColumnProps {
@@ -102,7 +103,7 @@ export function LeftColumn({
     setInfoOpen(true);
     void updates.apply('kabmo').then((result) => {
       if (!result) return;
-      pushToast(result.message, result.success && !result.manual ? 'success' : 'error');
+      pushToast(result.message, updateOutcomeTone(result));
     });
   });
 

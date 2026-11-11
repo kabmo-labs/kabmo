@@ -15,6 +15,7 @@ import { useCallback, useMemo } from 'preact/hooks';
 import { useWaitingPrompts } from '@/client/hooks/chat/waiting/store';
 import { useCancelWait } from '@/client/hooks/chat/waiting/cancel';
 import type { WaitingPrompt } from '@/shared/types/waiting';
+import type { ToastTone } from '@/shared/lib/ui/toast-duration';
 
 export interface HeldWait {
   /** The waiting row for the open chat, or null. */
@@ -25,7 +26,7 @@ export interface HeldWait {
 export function useHeldWait(
   sessionId: string | null,
   isPendingSession: boolean,
-  onNotice?: (message: string, type?: 'success' | 'error') => void,
+  onNotice?: (message: string, type?: ToastTone) => void,
 ): HeldWait {
   const { prompts } = useWaitingPrompts();
   const cancelWait = useCancelWait(onNotice);

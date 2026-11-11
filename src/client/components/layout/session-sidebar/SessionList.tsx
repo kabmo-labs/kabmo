@@ -1,6 +1,7 @@
 import { Category } from '@/client/components/layout/session-sidebar/CategoryItem';
 import type { BatchBinding } from '@/client/components/common/batch-selection/types';
 import type { WorkspaceFolderData } from '@/shared/types';
+import type { ToastTone } from '@/shared/lib/ui/toast-duration';
 
 interface SessionSidebarSessionListProps {
   folders: WorkspaceFolderData[];
@@ -13,7 +14,7 @@ interface SessionSidebarSessionListProps {
   /** Start a chat in a worktree made from this folder. */
   onNewWorktreeSession?: (folderId: number, worktreePath: string) => void;
   /** Surfaces a refused folder action (the reveal endpoint's own reason). */
-  onToast?: (message: string, type?: 'success' | 'error') => void;
+  onToast?: (message: string, type?: ToastTone) => void;
   /** Present only while a batch selection is active. */
   batch?: BatchBinding;
   onStartSessionSelection?: (folderId: number) => void;

@@ -20,6 +20,7 @@ import { MobileSessionListSkeleton } from '@/client/components/mobile/mobile-ses
 import { SessionListNotice } from '@/client/components/layout/session-sidebar/SessionListNotice';
 import type { BatchBinding } from '@/client/components/common/batch-selection/types';
 import type { SessionSortOption, WorkspaceFolderData } from '@/shared/types';
+import type { ToastTone } from '@/shared/lib/ui/toast-duration';
 
 export interface ClassicDrawerProps {
   folders: WorkspaceFolderData[];
@@ -54,7 +55,7 @@ export interface ClassicDrawerProps {
   onNewSessionForFolder: (folderId: number) => void;
   onNewWorktreeSession?: (folderId: number, worktreePath: string) => void;
   onToggleFolder: (folderId: number) => void;
-  onToast: (message: string, type?: 'success' | 'error') => void;
+  onToast: (message: string, type?: ToastTone) => void;
   onStartSessionSelection: (folderId: number) => void;
   onCancelWait?: (waitId: string) => void;
 }
