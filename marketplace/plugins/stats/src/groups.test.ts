@@ -16,6 +16,7 @@ import { describe, expect, test } from 'bun:test';
 
 import type { DaemonEntry } from './daemons';
 import { assignGroups } from './groups';
+import type { SessionLease } from './harness-leases';
 import type { ProcessInfo } from './proc/types';
 
 const SERVER_PID = 100;
@@ -26,6 +27,19 @@ function proc(pid: number, ppid: number, argv: string[] | null): ProcessInfo {
 
 function daemon(name: string, pid: number, brokerPid: number | null, state = 'ready'): DaemonEntry {
   return { name, pid, state, projectDir: '/p', brokerPid };
+}
+
+/** A session lease as the sampler hands it to the grouper. */
+function lease(sessionId: string, overrides: Partial<SessionLease> = {}): SessionLease {
+  return {
+    sessionId,
+    harness: 'omp-rpc',
+    label: 'omp',
+    title: '',
+    state: 'session',
+    cwd: '/p',
+    ...overrides,
+  };
 }
 
 describe('assignGroups', () => {
@@ -48,10 +62,41 @@ describe('assignGroups', () => {
     // host that adopted a prewarm keeps the prewarm's argv for its whole life.
     const argv = ['bun', 'omp', '--mode', 'rpc-ui', '--cwd', '/p'];
     const list = [proc(SERVER_PID, 1, ['bun', '--kabmo-server']), proc(101, SERVER_PID, argv), proc(102, SERVER_PID, argv)];
-    const leases = new Map([[101, '01a13ceb-bb58-7351-baa5-30abb45cad14']]);
+    const leases = new Map([[101, lease('01a13ceb-bb58-7351-baa5-30abb45cad14')]]);
     const groups = assignGroups(list, { serverPid: SERVER_PID, daemons: [], leases });
     expect(groups.get(101)?.kind).toBe('session');
     expect(groups.get(102)?.kind).toBe('prewarm');
+  });
+
+  test('an ACP child is a session root from its lease, whatever its launch line', () => {
+    // Measured against the real launch table: 12 of the 13 ACP harnesses have
+    // no argv shape the panel could recognise (`npx … claude-agent-acp`,
+    // `opencode acp`, `dsh --profile acp`, …). The lease is the only source
+    // that says which of them is a chat.
+    const list = [
+      proc(SERVER_PID, 1, ['bun', '--kabmo-server']),
+      proc(101, SERVER_PID, ['node', '/x/npx', '-y', '@agentclientprotocol/claude-agent-acp@0.100.0']),
+      proc(102, SERVER_PID, ['/opt/homebrew/bin/opencode', 'acp']),
+    ];
+    const leases = new Map([
+      [101, lease('sess-claude', { harness: 'claude', label: 'claude' })],
+      [102, lease('sess-opencode', { harness: 'opencode', label: 'opencode' })],
+    ]);
+    const groups = assignGroups(list, { serverPid: SERVER_PID, daemons: [], leases });
+    expect(groups.get(101)?.kind).toBe('session');
+    expect(groups.get(101)?.key).toBe('session:101');
+    expect(groups.get(102)?.kind).toBe('session');
+    expect(groups.get(102)?.key).toBe('session:102');
+  });
+
+  test('a prewarm lease is a prewarm group, not a session', () => {
+    const list = [
+      proc(SERVER_PID, 1, ['bun', '--kabmo-server']),
+      proc(101, SERVER_PID, ['node', '/x/npx', '-y', '@agentclientprotocol/claude-agent-acp@0.100.0']),
+    ];
+    const leases = new Map([[101, lease('', { state: 'prewarm' })]]);
+    const groups = assignGroups(list, { serverPid: SERVER_PID, daemons: [], leases });
+    expect(groups.get(101)?.kind).toBe('prewarm');
   });
 
   test('`--no-session` is a utility, not a prewarm', () => {

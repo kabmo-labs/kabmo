@@ -160,6 +160,8 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
   }
 
   get protocol(): AcpProtocolVersion { return this.proc.protocolVersion === 2 ? 2 : 1; }
+  /** The OS pid of the agent child, for the Stats panel's lease. */
+  get pid(): number | undefined { return this.proc.pid; }
   /** Set by the handshake as soon as `initialize` answers. */
   onProtocol(version: AcpProtocolVersion): void { this.turns.completion = version === 2 ? 'state' : 'response'; }
   isAlive(): boolean { return !this.destroyed && this.proc.isAlive; }

@@ -21,6 +21,7 @@ import { ensureTlsCertificate, isTlsEnabledByArgv } from '@/server/lib/lifecycle
 import { SHELL_ROUTE } from '@/server/lib/lifecycle/shell-route';
 import { isMockMode } from '@/server/mock.server';
 import { migrateLegacyDataDir } from '@/server/lib/lifecycle/paths';
+import { pruneHarnessLeases } from '@/server/lib/harness/session-lease.server';
 import { seedDefaultMarketplace } from '@/server/lib/panels/seed.server';
 import { installRejectionGuard } from '@/server/lib/lifecycle/rejection-guard';
 import { installShutdownHandlers, runAfterListenTasks } from '@/server/lib/lifecycle/after-listen';
@@ -30,6 +31,12 @@ import { installShutdownHandlers, runAfterListenTasks } from '@/server/lib/lifec
 // the first statement in the file for that reason — the auth secret, the
 // instance record and the SQLite file all live there.
 migrateLegacyDataDir();
+
+// A lease left by a crashed server names a pid that no longer exists. The Stats
+// panel ignores it (it only reads pids in its own sweep), but one file per
+// session ever spawned is unbounded growth, so the boot that owns the directory
+// clears what the previous one could not.
+pruneHarnessLeases();
 
 // Before anything starts a timer, a plugin or a socket: a rejection from code we
 // do not own (a marketplace plugin's own background loop) must be REPORTED, not

@@ -26,6 +26,7 @@
  */
 
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
+import { updateHarnessLeaseTitle } from '@/server/lib/harness/session-lease.server';
 import {
   saveHarnessSessionTitle,
   saveHarnessSessionTitleIfEmpty,
@@ -56,7 +57,13 @@ export async function notePromptTitle(sessionId: string, message: string): Promi
   const title = titleFromPrompt(message);
   if (!sessionId || !title) return false;
   const written = await saveHarnessSessionTitleIfEmpty(sessionId, title).catch(() => false);
-  if (written) emitRealtimeSignal('sidebar-structure');
+  if (written) {
+    // The Stats panel names a session from its lease, not from the database it
+    // cannot read; a title that only reached SQLite left the panel on
+    // `session <short>` for the life of the chat.
+    updateHarnessLeaseTitle(sessionId, title);
+    emitRealtimeSignal('sidebar-structure');
+  }
   return written;
 }
 
@@ -65,6 +72,9 @@ export async function noteAgentTitle(sessionId: string, title: string): Promise<
   const next = title.trim();
   if (!sessionId || !next) return false;
   const written = await saveHarnessSessionTitle(sessionId, next).catch(() => false);
-  if (written) emitRealtimeSignal('sidebar-structure');
+  if (written) {
+    updateHarnessLeaseTitle(sessionId, next);
+    emitRealtimeSignal('sidebar-structure');
+  }
   return written;
 }

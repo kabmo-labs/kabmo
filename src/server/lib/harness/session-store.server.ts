@@ -182,6 +182,15 @@ export async function loadHarnessBySession(): Promise<Map<string, string>> {
   return new Map(rows.map((row) => [row.session_id, row.harness]));
 }
 
+/** The stored name of a session, or '' when it has none yet. */
+export async function loadHarnessSessionTitle(sessionId: string): Promise<string> {
+  const db = await getDb();
+  const row = (await db.get('SELECT title FROM harness_sessions WHERE session_id = ?', [sessionId])) as {
+    title: string | null;
+  } | null;
+  return row?.title ?? '';
+}
+
 /** The row for one session, or null. */
 export async function loadHarnessSession(sessionId: string): Promise<HarnessSessionRecord | null> {
   const db = await getDb();

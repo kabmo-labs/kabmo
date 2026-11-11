@@ -112,7 +112,25 @@ export function getLockPath(port: number | string): string {
 }
 
 /**
- * `<data>/run/harness-update.<id>.json` — the state of THAT harness's update:
+ * `<data>/run/harness-sessions` — one lease per live ACP child, keyed by pid.
+ *
+ * The Stats panel reads this directory to name an ACP chat: an ACP agent holds
+ * no omp session lease, so without this file the panel can only see argv and
+ * draws every `claude`/`codex`/`opencode` chat as a bare `npx` row inside
+ * Kabmo's own group. See `harness/session-lease.server.ts`.
+ */
+export function getHarnessLeaseDir(): string {
+  const dir = path.join(getRunDir(), 'harness-sessions');
+  fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+  return dir;
+}
+
+/** `<data>/run/harness-sessions/<pid>.json` — the lease for one ACP child. */
+export function getHarnessLeasePath(pid: number): string {
+  return path.join(getHarnessLeaseDir(), `${pid}.json`);
+}
+
+/** `<data>/run/harness-update.<id>.json` — the state of THAT harness's update:
  * waiting in the queue, installing, or the last one that ran.
  *
  * On disk, not in memory, because the run outlives the request that started it:

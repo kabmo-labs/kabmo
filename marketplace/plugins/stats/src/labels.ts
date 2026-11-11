@@ -37,6 +37,7 @@
 import os from 'node:os';
 
 import type { ProcessInfo } from './proc/types';
+import type { SessionLease } from './harness-leases';
 import { isAcpSessionArgv } from './groups';
 import { sessionFileForId, titleForSessionFile, sessionIdFromPath, lastWriteMs } from './sessions';
 
@@ -64,10 +65,12 @@ export interface LabelContext {
   /**
    * The session lease this pid holds, when the caller read one.
    *
-   * Passed in rather than probed here because the walk is per-pid and the
-   * sampler already iterates the processes it keeps.
+   * Two sources, one shape: omp's own `flock` lease (an RPC host) and Kabmo's
+   * per-pid file for an ACP child. Passed in rather than probed here because
+   * the walk is per-pid and the sampler already iterates the processes it
+   * keeps.
    */
-  lease?: string | null;
+  lease?: SessionLease | null;
 }
 
 const RUNTIMES = new Set(['bun', 'node']);
@@ -143,6 +146,17 @@ function detailOf(parts: (string | null | undefined)[]): string {
 }
 
 /**
+ * A harness label with its transport, for a chat that has no name yet.
+ *
+ * `omp-acp`'s catalog label already says `(ACP)`; every other adapter's is the
+ * bare agent name, and a row that reads `claude` beside an omp row would hide
+ * which transport is running.
+ */
+function acpTitle(label: string): string {
+  return label.includes('(ACP)') ? label : `${label} (ACP)`;
+}
+
+/**
  * The title and detail for one process.
  *
  * Ordered by specificity: the most particular recognition wins, so a daemon
@@ -179,10 +193,22 @@ export function describeProcess(process: ProcessInfo, context: LabelContext): Pr
       ? { title: `codegraph MCP${project ? ` · ${project}` : ''}`, detail: detailOf(['--mcp', age]) }
       : { title: 'codegraph watchdog', detail: age };
   }
+  const lease = context.lease ?? null;
+  if (lease && lease.harness !== 'omp-rpc') {
+    // An ACP chat's id and name live in Kabmo's lease, not in argv: the launch
+    // line is `npx … claude-agent-acp` or `opencode acp`, which names neither
+    // the chat nor the harness. The lease is the only source that does.
+    if (lease.state === 'prewarm') {
+      return { title: `${lease.label} prewarm`, detail: detailOf([cwdArg ?? project, 'no session', age]) };
+    }
+    const short = lease.sessionId.slice(0, 8);
+    const title = lease.title || (short ? `session ${short}` : acpTitle(lease.label));
+    return { title, detail: detailOf([short || null, cwdArg ?? project, age]) };
+  }
   if (isAcpSessionArgv(argv)) {
-    // An ACP chat's id lives in Kabmo's `harness_sessions` table, not in argv, and
-    // its transcript lives behind the agent — so the honest two lines are the
-    // transport and the project, never a fabricated session title.
+    // No lease yet — the window between the spawn and the first write, or a
+    // host that predates the lease. The honest two lines are the transport and
+    // the project, never a fabricated session title.
     return { title: 'omp (ACP)', detail: detailOf([cwdArg ?? project, age]) };
   }
   if (line.includes('--mode rpc-ui')) {
@@ -191,7 +217,7 @@ export function describeProcess(process: ProcessInfo, context: LabelContext): Pr
     }
     // The lease first: a host that adopted a prewarm never gained a `--resume`.
     const resume = argOf(argv, '--resume');
-    const id = context.lease ?? (resume ? sessionIdFromPath(resume) : null);
+    const id = lease?.sessionId || (resume ? sessionIdFromPath(resume) : null);
     if (id) {
       const file = sessionFileForId(id);
       const title = file ? titleForSessionFile(file) : null;

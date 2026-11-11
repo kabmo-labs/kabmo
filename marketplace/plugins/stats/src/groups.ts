@@ -36,6 +36,7 @@
  */
 
 import type { DaemonEntry } from './daemons';
+import type { SessionLease } from './harness-leases';
 import type { ProcessInfo } from './proc/types';
 
 /** What a group IS, which decides its icon, tone and ordering. */
@@ -76,13 +77,14 @@ export interface GroupOptions {
   /**
    * Session leases by pid, when the caller read them.
    *
-   * This is what separates a live session from an idle prewarm: argv cannot,
-   * because a host that ADOPTED a prewarm keeps the prewarm's argv forever.
-   * Measured on this machine: three hosts whose argv said `prewarm` held live
-   * leases with titles and hundreds of messages. A host with a lease is a
-   * session; one without is idle capacity.
+   * Two sources, one map: omp's own `flock` lease (an RPC host) and Kabmo's
+   * per-pid file for an ACP child. The lease is what separates a live session
+   * from an idle prewarm — argv cannot, because a host that ADOPTED a prewarm
+   * keeps the prewarm's argv forever. Measured on this machine: three hosts
+   * whose argv said `prewarm` held live leases with titles and hundreds of
+   * messages. A host with a lease is a session; one without is idle capacity.
    */
-  leases?: ReadonlyMap<number, string | null>;
+  leases?: ReadonlyMap<number, SessionLease>;
 }
 
 /** A group root the sampler should treat as an owner. */
@@ -116,9 +118,20 @@ function rootsOf(list: readonly ProcessInfo[], options: GroupOptions): Map<numbe
   }
 
   // Then a direct child of Kabmo that the registry did not claim: an omp
-  // session host (its argv says which kind), or a PTY shell.
+  // session host (its argv says which kind), an ACP child (its lease says
+  // which chat), or a PTY shell.
   for (const process of list) {
     if (process.ppid !== options.serverPid || roots.has(process.pid)) continue;
+    // The LEASE first, for every transport. An ACP child's argv is the launch
+    // line (`npx … claude-agent-acp`, `opencode acp`, …), which says nothing
+    // about whether it is a chat or a prewarm — and 12 of the 13 ACP harnesses
+    // have no argv shape the panel could recognise. The lease is written by the
+    // process that owns the child, so it is the only source that knows.
+    const lease = options.leases?.get(process.pid);
+    if (lease) {
+      roots.set(process.pid, { kind: lease.state === 'prewarm' ? 'prewarm' : 'session' });
+      continue;
+    }
     const line = (process.argv ?? []).join(' ');
     if (isAcpSessionArgv(process.argv)) {
       roots.set(process.pid, { kind: 'session' });
@@ -130,11 +143,9 @@ function rootsOf(list: readonly ProcessInfo[], options: GroupOptions): Map<numbe
       // reported three live sessions as idle hosts.
       const kind: GroupKind = process.argv?.includes('--no-session')
         ? 'utility'
-        : options.leases?.get(process.pid)
+        : (process.argv ?? []).some((value) => value === '--resume')
           ? 'session'
-          : (process.argv ?? []).some((value) => value === '--resume')
-            ? 'session'
-            : 'prewarm';
+          : 'prewarm';
       roots.set(process.pid, { kind });
       continue;
     }

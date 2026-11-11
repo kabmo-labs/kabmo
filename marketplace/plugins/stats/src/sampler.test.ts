@@ -47,6 +47,7 @@ function deps(rows: ProcessInfo[], overrides: Partial<SampleDeps> = {}): SampleD
     // No leases by default: every rpc-ui host reads as a prewarm unless a test
     // supplies one, which is exactly what a fresh pool looks like.
     readLease: () => null,
+    readHarnessLeases: () => new Map(),
     ...overrides,
   };
 }
@@ -159,6 +160,66 @@ describe('createSampler', () => {
     const sampler = createSampler(deps(rows, { readLease: (pid) => leases.get(pid) ?? null }));
     const snapshot = sampler.sample();
     expect(snapshot.groups.find((group) => group.ownerPid === 101)?.kind).toBe('session');
+  });
+
+  test('an ACP child is a session group named by its lease', () => {
+    const rows: ProcessInfo[] = [
+      proc(SERVER_PID, 1, ['bun', '--kabmo-server']),
+      proc(101, SERVER_PID, ['node', '/x/npx', '-y', '@agentclientprotocol/claude-agent-acp@0.100.0'], {
+        cwd: '/Users/me/proj',
+        startedAt: 1_000,
+      }),
+    ];
+    const harnessLeases = new Map([
+      [
+        101,
+        {
+          pid: 101,
+          startedAt: 1_000,
+          sessionId: 'sess-claude',
+          harness: 'claude',
+          label: 'claude',
+          title: 'Fix the parser',
+          state: 'session' as const,
+          cwd: '/Users/me/proj',
+        },
+      ],
+    ]);
+    const sampler = createSampler(deps(rows, { readHarnessLeases: () => harnessLeases }));
+    const snapshot = sampler.sample();
+    const group = snapshot.groups.find((entry) => entry.ownerPid === 101);
+    expect(group?.kind).toBe('session');
+    expect(group?.title).toBe('Fix the parser');
+  });
+
+  test('a lease whose spawn time does not match the pid is ignored', () => {
+    // A recycled pid: the lease names a chat that no longer exists, and the
+    // process is a stranger. Naming it after the chat is worse than leaving it
+    // inside Kabmo's group.
+    const rows: ProcessInfo[] = [
+      proc(SERVER_PID, 1, ['bun', '--kabmo-server']),
+      proc(101, SERVER_PID, ['node', '/x/npx', '-y', '@agentclientprotocol/claude-agent-acp@0.100.0'], {
+        startedAt: 9_000_000,
+      }),
+    ];
+    const harnessLeases = new Map([
+      [
+        101,
+        {
+          pid: 101,
+          startedAt: 1_000,
+          sessionId: 'sess-old',
+          harness: 'claude',
+          label: 'claude',
+          title: 'Old chat',
+          state: 'session' as const,
+          cwd: '/p',
+        },
+      ],
+    ]);
+    const sampler = createSampler(deps(rows, { readHarnessLeases: () => harnessLeases }));
+    const snapshot = sampler.sample();
+    expect(snapshot.rows.find((row) => row.pid === 101)?.groupKey).toBe('kabmo');
   });
 
   test('a group header is the OWNER label, not the first member encountered', () => {

@@ -29,7 +29,8 @@ import { resolveDefaultModel, modelProvider } from '@/shared/lib/harness/config'
 import { harnessProbeModels } from '@/server/lib/harness/probe-cache.server';
 import { claimHarness } from '@/server/lib/harness/registry';
 import { registerAcpSession } from '@/server/lib/harness/register.server';
-import { saveHarnessSession } from '@/server/lib/harness/session-store.server';
+import { loadHarnessSessionTitle, saveHarnessSession } from '@/server/lib/harness/session-store.server';
+import { noteHarnessLease, removeHarnessLease } from '@/server/lib/harness/session-lease.server';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
 import { harnessDescriptor, type HarnessId } from '@/shared/lib/harness/catalog';
 import type { HarnessConfig } from '@/shared/lib/harness/config';
@@ -134,6 +135,12 @@ export async function openAcpSession(
     },
     request.cwd,
   );
+  // The lease is written BEFORE the handshake: the Stats panel samples once a
+  // second, and a child that exists but has no lease is drawn as a bare `npx`
+  // row inside Kabmo's own group. `startedAt` is therefore the spawn time, not
+  // the (possibly 80 s) handshake's end.
+  const pid = session.pid;
+  if (pid) noteHarnessLease({ pid, harness: request.harness, cwd: request.cwd, state: 'starting' });
   let realSessionId: string;
   try {
     ({ sessionId: realSessionId } = await session.start(
@@ -145,12 +152,28 @@ export async function openAcpSession(
     // that cannot run) must not leave the child it just spawned running with
     // nobody holding it: measured on a resume of a chat the agent no longer
     // knew, the process stayed alive after the request answered an error.
+    if (pid) removeHarnessLease(pid);
     await session.destroyAndWait().catch(() => {});
     throw error;
   }
   if (!realSessionId) {
+    if (pid) removeHarnessLease(pid);
     await session.destroyAndWait().catch(() => {});
     throw new Error(`${request.harness} started a session without an id`);
+  }
+  if (pid) {
+    // A resumed chat already has a name in `harness_sessions`; the panel must
+    // show it on the first sample rather than `session <short>` until the next
+    // prompt. A new chat has no row yet, so the read answers ''.
+    const title = await loadHarnessSessionTitle(realSessionId).catch(() => '');
+    noteHarnessLease({
+      pid,
+      harness: request.harness,
+      cwd: request.cwd,
+      state: 'session',
+      sessionId: realSessionId,
+      title,
+    });
   }
   return { session, realSessionId };
 }
@@ -176,7 +199,11 @@ export async function startAcpSession(
   }
 
   claimHarness(session, request.harness);
-  registerAcpSession(session, request.sessionId);
+  // The lease is removed by the SAME destroy hook that unregisters the session:
+  // `onDestroy` is a single slot, so a second registration would silently
+  // replace the registry cleanup and leave a dead session answering for its id.
+  const pid = session.pid;
+  registerAcpSession(session, request.sessionId, pid ? () => removeHarnessLease(pid) : undefined);
   // Record the ownership BEFORE the first frame is forwarded: the sidebar reads
   // this table, not the live registry, so a row written late would draw the row
   // as `omp` until the next folder load. A failed write must not kill a live

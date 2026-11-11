@@ -19,9 +19,23 @@
 import { describe, expect, test } from 'bun:test';
 
 import { commandLabel, describeProcess, formatSpan, projectOf } from './labels';
+import type { SessionLease } from './harness-leases';
 import type { ProcessInfo } from './proc/types';
 
 const NOW = 1_700_000_000_000;
+
+/** A session lease as the sampler hands it to the labeller. */
+function lease(sessionId: string, overrides: Partial<SessionLease> = {}): SessionLease {
+  return {
+    sessionId,
+    harness: 'omp-rpc',
+    label: 'omp',
+    title: '',
+    state: 'session',
+    cwd: '/p',
+    ...overrides,
+  };
+}
 
 function proc(pid: number, argv: string[] | null, extra: Partial<ProcessInfo> = {}): ProcessInfo {
   return {
@@ -101,13 +115,52 @@ describe('describeProcess', () => {
     expect(asPrewarm.title).toBe('prewarm (idle host)');
     expect(asPrewarm.detail).toContain('no session');
 
-    const asSession = describeProcess(host, { now: NOW, lease: '01a13ceb-bb58-7351-baa5-30abb45cad14' });
+    const asSession = describeProcess(host, {
+      now: NOW,
+      lease: lease('01a13ceb-bb58-7351-baa5-30abb45cad14'),
+    });
     // Never the prewarm wording, and always a session identity: either the
     // title omp stored for that id (when this machine has the transcript) or
     // the short id as the fallback.
     expect(asSession.title).not.toBe('prewarm (idle host)');
     expect(asSession.detail).toContain('01a13ceb');
     expect(asSession.title.length).toBeGreaterThan(0);
+  });
+
+  test('an ACP chat is named by its lease, not by its launch line', () => {
+    // Measured against the real launch table: `npx … claude-agent-acp` names
+    // neither the chat nor the harness, so the lease is the only source.
+    const claude = proc(200, ['node', '/x/npx', '-y', '@agentclientprotocol/claude-agent-acp@0.100.0'], {
+      cwd: '/Users/me/proj',
+    });
+    const named = describeProcess(claude, {
+      now: NOW,
+      lease: lease('sess-claude', { harness: 'claude', label: 'claude', title: 'Fix the parser' }),
+    });
+    expect(named.title).toBe('Fix the parser');
+    expect(named.detail).toContain('sess-cla');
+    expect(named.detail).toContain('proj');
+
+    const unnamed = describeProcess(claude, {
+      now: NOW,
+      lease: lease('sess-claude', { harness: 'claude', label: 'claude' }),
+    });
+    expect(unnamed.title).toBe('session sess-cla');
+
+    const starting = describeProcess(claude, {
+      now: NOW,
+      lease: lease('', { harness: 'claude', label: 'claude', state: 'starting' }),
+    });
+    expect(starting.title).toBe('claude (ACP)');
+  });
+
+  test('an ACP prewarm names its harness and says it has no session', () => {
+    const label = describeProcess(
+      proc(200, ['node', '/x/npx', '-y', '@agentclientprotocol/claude-agent-acp@0.100.0'], { cwd: '/Users/me/proj' }),
+      { now: NOW, lease: lease('', { harness: 'claude', label: 'claude', state: 'prewarm' }) },
+    );
+    expect(label.title).toBe('claude prewarm');
+    expect(label.detail).toContain('no session');
   });
 
   test('an omp acp child is named as the ACP session, never a bare `omp`', () => {

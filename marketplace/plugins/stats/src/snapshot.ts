@@ -15,6 +15,7 @@
 
 import type { DaemonEntry } from './daemons';
 import type { GroupKind } from './groups';
+import type { HarnessLease } from './harness-leases';
 import type { ProcessInfo } from './proc/types';
 
 /** One process, as the panel renders its row. */
@@ -146,4 +147,9 @@ export interface SampleDeps {
    * arrange.
    */
   readLease?: (pid: number) => string | null;
+  /**
+   * Kabmo's per-pid leases for ACP children, injected so a test never reads the
+   * developer's own `~/.kabmo/run/harness-sessions`.
+   */
+  readHarnessLeases?: () => Map<number, HarnessLease>;
 }

@@ -62,9 +62,20 @@ screen. Refused, with the reason shown in the dialog: the Kabmo itself (that is
 stale, and a recycled pid belongs to something the user never looked at), and
 anything that is not an integer above 1.
 
-Categories are `Kabmo`, `omp`, `Terminal`, `Dictation`, `Tray`, and one group
-per omp daemon (`omp.browser.headless`, `omp.lsp.mux`, …). A process that cannot
-be attributed is still counted, as `Other`.
+Groups are the **owners**, not categories: Kabmo itself, one group per live
+session (omp over RPC, or any ACP harness — `claude`, `codex`, `opencode`, …),
+one per idle prewarm, one per PTY shell, and one per omp daemon
+(`omp.browser.headless`, `omp.lsp.mux`, …). A process that cannot be attributed
+is still counted, as `Other`.
+
+An ACP chat is named from the lease Kabmo writes for its child
+(`<data>/run/harness-sessions/<pid>.json`): the chat's title, its short session
+id and the harness. An ACP agent holds no omp session lease and its transcript
+lives behind the agent, so argv alone names neither the chat nor the harness —
+measured against the real launch table, 12 of the 13 ACP harnesses were drawn as
+a bare `npx` row inside Kabmo's own group before the lease existed. A lease
+whose spawn time does not match the process's own start time is ignored, so a
+recycled pid is never named after a chat that no longer exists.
 
 ## What counts as "the omp app"
 
@@ -72,8 +83,9 @@ The process set is a **union**, and the second half is the reason this plugin
 exists:
 
 1. the parent/child tree rooted at Kabmo's own pid — omp session children
-   and their LSP grandchildren, the utility children, prewarm entries, the PTY
-   shells and whatever they run, the STT worker, the tray host; **plus**
+   and their LSP grandchildren, the utility children, prewarm entries, every
+   ACP harness child (`claude`, `codex`, `opencode`, …) and whatever it spawns,
+   the PTY shells and whatever they run, the STT worker, the tray host; **plus**
 2. the subtree under every daemon in omp's registry (`~/.omp/run/daemons/*`).
 
 A daemon broker is spawned detached and `unref`ed by omp, so it outlives the omp

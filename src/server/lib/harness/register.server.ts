@@ -17,7 +17,11 @@
 import type { HarnessSession } from '@/server/lib/harness/session';
 
 /** Pulled from the omp registry module so there is one map, not two. */
-export function registerAcpSession(session: HarnessSession, requestedId: string): void {
+export function registerAcpSession(
+  session: HarnessSession,
+  requestedId: string,
+  onDestroy?: () => void,
+): void {
   // Imported lazily: `session-registry` imports the omp manager, which imports
   // this file's neighbours, and a top-level import would close that cycle.
   const registry = liveRegistry();
@@ -26,6 +30,9 @@ export function registerAcpSession(session: HarnessSession, requestedId: string)
   session.onDestroy(() => {
     if (registry.get(session.sessionId) === session) registry.delete(session.sessionId);
     if (registry.get(requestedId) === session) registry.delete(requestedId);
+    // The caller's cleanup rides the SAME hook: `onDestroy` holds one callback,
+    // so a second registration would replace this one rather than add to it.
+    onDestroy?.();
   });
 }
 

@@ -37,6 +37,7 @@ import { sessionLaunchCommand } from '@/server/lib/harness/launch';
 import { AcpProcess } from '@/server/lib/harness/acp/client';
 import { IDLE_REAP_MS } from '@/server/lib/omp/rpc/constants';
 import { withGatewayCompatibility } from '@/server/lib/harness/acp/gateway-env';
+import { noteHarnessLease, removeHarnessLease } from '@/server/lib/harness/session-lease.server';
 import type { HarnessId } from '@/shared/lib/harness/catalog';
 
 /** How long an unclaimed warm agent is kept. Long enough to write a prompt,
@@ -100,8 +101,19 @@ async function openProcess(harness: HarnessId, cwd: string): Promise<PrewarmedAc
     onNotification: () => {},
     onStderr: () => {},
   });
-  await process.initialize();
+  // A prewarm is a real process the Stats panel must be able to name: without
+  // this lease it is a bare `npx` row inside Kabmo's own group. The claim
+  // overwrites the record with the session's id and title, keeping `startedAt`.
+  const pid = process.pid;
+  if (pid) noteHarnessLease({ pid, harness, cwd, state: 'prewarm' });
+  try {
+    await process.initialize();
+  } catch (error) {
+    if (pid) removeHarnessLease(pid);
+    throw error;
+  }
   if (!process.isAlive) {
+    if (pid) removeHarnessLease(pid);
     await process.dispose(1_000).catch(() => {});
     throw new Error(`${harness} exited while warming`);
   }
@@ -118,6 +130,7 @@ async function discard(key: string): Promise<void> {
   entry.claimed = true;
   pool.delete(key);
   const warm = await entry.ready;
+  if (warm?.process.pid) removeHarnessLease(warm.process.pid);
   await warm?.process.dispose(1_000).catch(() => {});
 }
 
@@ -201,6 +214,7 @@ export async function claimPrewarmedAcpSession(
   pool.delete(key);
   const warm = await entry.ready;
   if (warm?.process.isAlive) return warm;
+  if (warm?.process.pid) removeHarnessLease(warm.process.pid);
   await warm?.process.dispose(1_000).catch(() => {});
   return null;
 }

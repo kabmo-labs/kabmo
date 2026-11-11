@@ -51,11 +51,23 @@
 import { type DaemonEntry, readDaemonRegistry } from './daemons';
 import { readMachine } from './machine';
 import { assignGroups, type GroupKind } from './groups';
+import { readHarnessLeases, type SessionLease } from './harness-leases';
 import { describeProcess } from './labels';
 import { leaseOfPid } from './proc/identity';
 import { procProbe } from './proc';
 import type { ProcessInfo } from './proc/types';
 import type { GroupSummary, ProcessRow, SampleDeps, StatsSnapshot } from './snapshot';
+
+/**
+ * How far a lease's spawn time may sit from the probe's own start time.
+ *
+ * The host writes the lease immediately after the spawn, so the two agree to
+ * within milliseconds; the window exists for a loaded machine and for a
+ * prewarm whose `initialize` ran before the write. A pid recycled outside it
+ * belongs to a process the user never looked at, and naming it after a chat is
+ * worse than leaving it unattributed.
+ */
+const LEASE_START_TOLERANCE_MS = 5_000;
 
 /** A previous reading, for the rate. */
 interface Baseline {
@@ -157,6 +169,7 @@ export function createSampler(deps: SampleDeps): Sampler {
   const probe = deps.probe ?? procProbe;
   const readDaemons = deps.readDaemons ?? readDaemonRegistry;
   const readLease = deps.readLease ?? leaseOfPid;
+  const readAcpLeases = deps.readHarnessLeases ?? readHarnessLeases;
   const includeDaemons = deps.includeDaemons ?? true;
   const historyPoints = deps.historyPoints ?? 60;
   const readFacts = deps.readMachine ?? readMachine;
@@ -180,13 +193,34 @@ export function createSampler(deps: SampleDeps): Sampler {
 
       // The lease is read BEFORE grouping, because it is what separates a live
       // session from an idle prewarm — argv cannot, since a host that adopted a
-      // prewarm keeps the prewarm's argv forever. Only an `omp` host can hold
-      // one, so the walk is paid for those alone. The flag test joins argv: the
-      // two tokens arrive separately (`--mode`, `rpc-ui`), never as one string.
-      const leases = new Map<number, string | null>();
+      // prewarm keeps the prewarm's argv forever. Two sources, one map: omp's
+      // `flock` lease (an RPC host) and Kabmo's per-pid file (an ACP child).
+      // The flag test joins argv: the two tokens arrive separately (`--mode`,
+      // `rpc-ui`), never as one string.
+      const acpLeases = readAcpLeases();
+      const leases = new Map<number, SessionLease>();
       for (const process of kept) {
         const line = (process.argv ?? []).join(' ');
-        if (line.includes('--mode rpc-ui')) leases.set(process.pid, readLease(process.pid));
+        if (line.includes('--mode rpc-ui')) {
+          const id = readLease(process.pid);
+          if (id) {
+            leases.set(process.pid, {
+              sessionId: id,
+              harness: 'omp-rpc',
+              label: 'omp',
+              title: '',
+              state: 'session',
+              cwd: '',
+            });
+          }
+        }
+        const acp = acpLeases.get(process.pid);
+        // A recycled pid is the one way a lease can name the wrong process.
+        // `startedAt === 0` means the probe could not report a start time, and
+        // the pid match is then the only signal there is.
+        if (acp && (process.startedAt === 0 || Math.abs(process.startedAt - acp.startedAt) <= LEASE_START_TOLERANCE_MS)) {
+          leases.set(process.pid, acp);
+        }
       }
 
       const previous = baseline;
