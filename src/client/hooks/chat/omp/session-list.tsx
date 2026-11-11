@@ -28,6 +28,7 @@ import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'p
 import { createContext } from 'preact/compat';
 import type { ReactNode } from 'preact/compat';
 import { useRealtimeTopic } from '@/client/hooks/ui/realtime';
+import { useSidebarFullReload } from '@/client/hooks/chat/omp/sidebar-reload';
 import { useInputRequiredAlert } from '@/client/hooks/ui/input-required-alert';
 import { useRunOutcomeAlert } from '@/client/hooks/ui/run-outcome-alert';
 
@@ -185,6 +186,10 @@ export function SidebarDataProvider({ children, initialFolders = [] }: { childre
     // were.
     realtimeClient.refresh(TOPIC_SIDEBAR_ACTIVITY);
   }, []);
+
+  // The list's own beat, so a row moved by another Kabmo instance, a CLI run or
+  // omp writing its session file late converges without a page reload.
+  useSidebarFullReload(refresh);
 
   // The spinner follows a user's click only: it is raised here and lowered when
   // the next structure snapshot arrives (the status snapshot may land first, and
