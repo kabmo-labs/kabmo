@@ -4,6 +4,24 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.27.0](https://github.com/kabmo-labs/kabmo/compare/v0.26.0...v0.27.0) — 2026-11-11
+
+### Added
+
+* **sidebar:** re-read every sidebar topic every 15 seconds ([bfc735f](https://github.com/kabmo-labs/kabmo/commit/bfc735fb1247eb9a2c67f8b5786fc92fbffe81a1)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **ui:** give every toast a tone-specific icon and add a warning tone ([ff80d55](https://github.com/kabmo-labs/kabmo/commit/ff80d550d8c2f39e00ffc36a1769bef31f19827c)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **usage:** split Claude balance and Antigravity families into sections ([f07f06b](https://github.com/kabmo-labs/kabmo/commit/f07f06b610a3c08e435e721950de64c8f63e551f)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Changed
+
+* **sidebar:** give the modern reveal row its own module ([50c8ab0](https://github.com/kabmo-labs/kabmo/commit/50c8ab02d3d3fe04827ab6208011f0d02f4cdceb)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **chat:** render the source history while composing and continuing a fork ([8abc10b](https://github.com/kabmo-labs/kabmo/commit/8abc10b5489897dfd7aca30eef4872aac5719828)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **terminal:** pad the panel gutter without narrowing the fitted grid ([abc866d](https://github.com/kabmo-labs/kabmo/commit/abc866d63dc3bb33dcbc7dbb82b48eb7c5ca65fc)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **terminal:** start a PTY when the panel opens, not when it mounts ([c118a86](https://github.com/kabmo-labs/kabmo/commit/c118a86ca2148e5fd43751dd5ea335ff88233ea1)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.26.0](https://github.com/kabmo-labs/kabmo/compare/v0.25.0...v0.26.0) — 2026-11-10
 
 ### Added
