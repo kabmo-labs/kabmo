@@ -75,14 +75,18 @@ interface EditorToolbarProps {
   onCopy: () => void;
   onDownload: () => void;
   /**
-   * Throw the buffer away and take the file from disk.
+   * Re-read the file from disk.
    *
-   * Destructive, so it is never pinned and never in the row: a mis-click on a
-   * toolbar of icon-only buttons must not be able to lose an edit.
+   * Destructive when the buffer has edits, so it is never pinned and never in the
+   * row: a mis-click on a toolbar of icon-only buttons must not be able to lose an
+   * edit. A clean buffer reloads without losing anything, which is why the control
+   * is offered for it too — it is the manual counterpart of the auto-refresh.
    */
-  onRevert: () => void;
-  /** Enabled only for a buffer with edits — reverting a clean one does nothing. */
-  canRevert: boolean;
+  onReload: () => void;
+  /** False when the tab names no file on disk (an attachment, a device file). */
+  canReload: boolean;
+  /** The buffer has edits, so Reload discards them — the title says so. */
+  reloadDiscardsEdits: boolean;
   /** Write the buffer to a NEW path; the original tab stays open. */
   onSaveAs: () => void;
   onToggleMaximize: () => void;
@@ -123,8 +127,9 @@ export function EditorToolbar({
   onZoomOut,
   onCopy,
   onDownload,
-  onRevert,
-  canRevert,
+  onReload,
+  canReload,
+  reloadDiscardsEdits,
   onSaveAs,
   onToggleMaximize,
 }: EditorToolbarProps) {
@@ -197,7 +202,8 @@ export function EditorToolbar({
     copied,
     isMaximized,
     saveDisabled,
-    canRevert,
+    canReload,
+    reloadDiscardsEdits,
     saveButton,
     maximizeButton,
     viewModeButtons: <EditorViewButtons size={14} />,
@@ -223,7 +229,7 @@ export function EditorToolbar({
     onZoomOut,
     onCopy,
     onDownload,
-    onRevert,
+    onReload,
     onSaveAs,
     onToggleMaximize,
     onSave,

@@ -48,8 +48,9 @@ function state(): ToolbarState {
     onZoomIn: noop,
     onZoomOut: noop,
     onSaveAs: noop,
-    canRevert: false,
-    onRevert: noop,
+    canReload: false,
+    reloadDiscardsEdits: false,
+    onReload: noop,
     copyLabel: 'Copy content',
     onCopy: noop,
     onDownload: noop,
@@ -68,7 +69,7 @@ describe('buildEditorClusters order', () => {
     const ids = buildEditorClusters(state()).map((cluster) => cluster.id);
     const saveAs = ids.indexOf('save-as');
     expect(saveAs).toBeGreaterThan(ids.indexOf('save'));
-    for (const aid of ['blame', 'zoom', 'copy', 'revert']) {
+    for (const aid of ['blame', 'zoom', 'copy', 'reload']) {
       expect(saveAs).toBeLessThan(ids.indexOf(aid));
     }
   });

@@ -13,6 +13,7 @@ import type { EditorCommand } from '@/shared/lib/code/editor/keymap';
 import { EDITOR_MAX_FONT_SIZE, EDITOR_MIN_FONT_SIZE } from '@/shared/lib/code/editor/typography';
 import { RENDERED_VIEWERS, type ViewerKind } from '@/shared/lib/fs/document-kind';
 import type { OpenedFile } from '@/shared/types/fs';
+import { isProbeableTab } from '@/client/hooks/workspace/missing-files';
 import type { EditorThemeState } from '@/client/hooks/editor/theme';
 
 interface FilePaneProps {
@@ -138,11 +139,15 @@ export function FilePane({
         onZoomOut={() => setZoomLevel((z) => Math.max(EDITOR_MIN_FONT_SIZE, z - 1))}
         onCopy={editor.copy}
         onDownload={editor.download}
-        onRevert={editor.revertToDisk}
+        onReload={editor.reloadFromDisk}
         onSaveAs={onSaveAs}
-        // Only a buffer with edits has anything to throw away; a clean one would
-        // re-read the same bytes and blank the screen for a moment.
-        canRevert={editor.isDirty && !editor.loadError && !editor.unsupported}
+        // Offered for a clean buffer too: the auto-refresh watcher compares the
+        // disk's hash, and this is the manual answer to "read it again". Only a
+        // tab that names no file on disk (an attachment, a device/handle launch)
+        // has nothing to reload, and the same predicate the tab strip uses decides
+        // that.
+        canReload={isProbeableTab(activeFile) && !editor.loadError && !editor.unsupported}
+        reloadDiscardsEdits={editor.isDirty}
         onToggleMaximize={() => setIsMaximized(!isMaximized)}
       />
 

@@ -26,6 +26,7 @@
 
 import type { LineEnding } from '@/shared/lib/code/line-endings';
 import { writeThroughHandle, type HandleWriteResult } from '@/client/lib/launch/file-handlers';
+import { contentHash } from '@/shared/lib/fs/content-hash';
 
 interface SavableFile {
   path?: string;
@@ -34,9 +35,23 @@ interface SavableFile {
   handleId?: string;
 }
 
+/**
+ * What the disk holds after a save landed.
+ *
+ * Both facts belong to the WRITTEN bytes, not to the buffer: the server rebuilt
+ * them from the buffer's LF text and the file's own ending, so it is the only
+ * place that can say what the disk now contains. The mtime is the next save's
+ * conflict base; the hash is the auto-refresh watcher's baseline, and without it
+ * the watcher would report the user's own save as an external change.
+ */
+export interface WrittenFile {
+  mtimeMs: number | null;
+  hash: string | null;
+}
+
 /** What a save attempt answers. */
 export type SaveOutcome =
-  | { status: 'written' }
+  | { status: 'written'; written: WrittenFile }
   /** The buffer is behind the disk copy: `diskMtimeMs` is what is there now. */
   | { status: 'conflict'; diskMtimeMs: number | null }
   /** The write was refused for a reason that is not a conflict (a 4xx/5xx, a drop). */
@@ -50,6 +65,8 @@ interface SaveResponse {
   error?: unknown;
   /** Present on a `409`: the mtime the file holds now. */
   mtimeMs?: unknown;
+  /** Present on success: the content hash of the bytes just written. */
+  hash?: unknown;
   conflict?: unknown;
 }
 
@@ -82,12 +99,14 @@ export async function saveEditorFile(
   options: { interactive: boolean; baseMtimeMs?: number | null },
 ): Promise<SaveOutcome> {
   if (file.handleId) {
-    const result: HandleWriteResult = await writeThroughHandle(
-      file.handleId,
-      eol === 'crlf' ? lfText.replace(/\n/g, '\r\n') : lfText,
-      { interactive: options.interactive },
-    );
-    if (result === 'written') return { status: 'written' };
+    const diskText = eol === 'crlf' ? lfText.replace(/\n/g, '\r\n') : lfText;
+    const result: HandleWriteResult = await writeThroughHandle(file.handleId, diskText, {
+      interactive: options.interactive,
+    });
+    // A handle write never reaches the server, so the digest is computed here from
+    // the exact bytes handed over — the same UTF-8 hash every other producer uses.
+    // No mtime: there is no server path to stat.
+    if (result === 'written') return { status: 'written', written: { mtimeMs: null, hash: await contentHash(diskText) } };
     if (result === 'needs-permission') return { status: 'needs-permission' };
     return { status: 'failed' };
   }
@@ -111,7 +130,15 @@ export async function saveEditorFile(
       const diskMtimeMs = typeof data?.mtimeMs === 'number' ? data.mtimeMs : null;
       return { status: 'conflict', diskMtimeMs };
     }
-    if (res.ok && data?.success) return { status: 'written' };
+    if (res.ok && data?.success) {
+      return {
+        status: 'written',
+        written: {
+          mtimeMs: typeof data.mtimeMs === 'number' ? data.mtimeMs : null,
+          hash: typeof data.hash === 'string' ? data.hash : null,
+        },
+      };
+    }
     return { status: 'failed' };
   } catch {
     return { status: 'failed' };

@@ -1,10 +1,10 @@
 import { useCallback, useRef, useState } from 'preact/hooks';
-import { CodeSurface, type CodeSurfaceHandle } from '@/client/components/common/code-surface';
+import type { CodeSurfaceHandle } from '@/client/components/common/code-surface';
 import { countConflicts } from '@/client/components/common/code-surface/conflict-markers';
-import { ImageViewer } from '@/client/components/common/image-viewer';
 import { EditorHeader } from '@/client/components/mobile/mobile-right-sidebar/Header';
-import { PreviewScroller } from '@/client/components/mobile/mobile-right-sidebar/PreviewScroller';
 import { SaveDeletedFileModal } from '@/client/components/workspace/editor/SaveDeletedFileModal';
+import { ExternalChangeStrip } from '@/client/components/workspace/editor/ExternalChangeStrip';
+import { MobileEditorSurface } from '@/client/components/mobile/mobile-right-sidebar/EditorSurface';
 import { MissingFileBanner } from '@/client/components/mobile/mobile-right-sidebar/MissingFileBanner';
 import { EditorStatusBar } from '@/client/components/mobile/mobile-right-sidebar/StatusBar';
 import { EditorDropOverlay } from '@/client/components/workspace/editor/EditorDropOverlay';
@@ -20,7 +20,6 @@ import { MobileOutlineButton } from '@/client/components/mobile/mobile-right-sid
 import { useOutlineView } from '@/client/hooks/editor/use-outline-view';
 import {
   EDITOR_DEFAULT_FONT_SIZE,
-  EDITOR_LINE_HEIGHT,
   EDITOR_MAX_FONT_SIZE,
   EDITOR_MIN_FONT_SIZE,
 } from '@/shared/lib/code/editor/typography';
@@ -30,7 +29,6 @@ import { indentUnitFor, useEditorIndent } from '@/client/hooks/editor/indent-set
 import { useEditorTyping } from '@/client/hooks/editor/typing-settings';
 import { useFileReviewMode } from '@/client/hooks/editor/use-file-review-mode';
 import { MOBILE_SCROLL_POSITIONS_KEY } from '@/shared/lib/workspace/scroll-positions';
-import { ViewerSurface, hasViewerSurface } from '@/client/components/workspace/editor/viewers/dispatch';
 import { BINARY_VIEWERS, RENDERED_VIEWERS, VIEWER_LABELS, viewerKindFor } from '@/shared/lib/fs/document-kind';
 import type { MobileFullEditorProps } from '@/client/components/mobile/mobile-right-sidebar/editor-props';
 
@@ -211,6 +209,17 @@ export function MobileFullEditor({ file, missing = false, onClose, onFileSaved, 
 
 {missing && <MissingFileBanner />}
 
+      {/* The same strip the desktop pane draws, from the same verdict: the disk
+          bytes differ from a buffer that has edits. A clean buffer never reaches
+          here — the watcher re-reads it, because there is nothing to lose. */}
+      {editor.diskChange && (
+        <ExternalChangeStrip
+          fileName={file.name}
+          onReload={editor.reloadFromDisk}
+          onKeepMine={editor.keepMineAgainstDisk}
+        />
+      )}
+
       {/* Find/replace, as a ROW under the header rather than a floating card: the
           desktop bar is 330px wide, and on a 390px screen a floating card would cover
           the very lines it is searching. `FindWidget` is absolutely positioned in its
@@ -221,87 +230,33 @@ export function MobileFullEditor({ file, missing = false, onClose, onFileSaved, 
         </div>
       )}
 
-      {/* Editor Content Area - Desktop styled: bg-paper text-ink. An image owns
-          its own pan/zoom, so it replaces the scrolling text container rather
-          than living inside it; the same is true of every other byte viewer and
-          of the rendered text views (a CSV grid, an SVG picture). */}
-      {editor.isImage && editor.imageUrl ? (
-        <ImageViewer src={editor.imageUrl} name={file.name} className="flex-1 min-h-0" />
-      ) : editor.isImage ? (
-        <ViewerSurface
-          kind="image"
-          path={file.path ?? file.name}
-          name={file.name}
-          source={editor.byteSource}
-          content={editor.content}
-          revision={editor.revision}
-        />
-      ) : hasViewerSurface(viewerKind) && (byteViewer || isPreview) ? (
-        <ViewerSurface
-          kind={viewerKind}
-          path={file.path ?? file.name}
-          name={file.name}
-          source={editor.byteSource}
-          content={editor.content}
-          revision={editor.revision}
-        />
-      ) : editor.isLoading || editor.unsupported || editor.loadError || (isMd && isPreview) ? (
-        // The states that draw their own scrolling content — and the markdown
-        // preview, which is a document, not an editor — share one scroller. The
-        // outline's table of contents finds its headings inside it, which is why
-        // the ref is the same one the scroll restore uses.
-        <PreviewScroller
-          fileName={file.name}
-          content={content}
-          path={file.path ?? file.name}
-          root={file.root}
-          repo={file.repo}
-          fontSize={fontSize}
-          scrollRef={previewRef}
-          onScroll={scroll.onScroll}
-          isLoading={editor.isLoading}
-          unsupported={editor.unsupported}
-          loadError={editor.loadError}
-          reviewActive={hasReview && review.active}
-          onExitReview={review.toggle}
-        />
-      ) : (
-        /* The code surface owns its own scroller (CodeMirror's), so it is NOT
-           wrapped in one: an outer `overflow-auto` resolves the editor's
-           `height: 100%` against an auto-height box, so the editor grew to the
-           document's full height and the panel had nothing to scroll. */
-        <CodeSurface
-          ref={surfaceRef}
-          value={content}
-          onValueChange={editor.onChange}
-          language={lang}
-          wordWrap={wordWrap}
-          documentKey={fileKey}
-          marks={revealMarks}
-          currentMark={currentMark}
-          onScroller={setCodeScroller}
-          scrollTestId="editor-scroller"
-          // No `bg-paper`: an explicit editor theme paints its own surface, and
-          // the panel's colour under it would be a border of the wrong shade.
-          // `select-text` is the desktop pane's rule, and it matters more here:
-          // the sheet's own root is `select-none` (it is a header-and-status
-          // layout), and the editor is now a `contenteditable` whose selection
-          // and caret are the BROWSER's business — an inherited `user-select:
-          // none` is the one thing that can take that away on a phone.
-          className="flex-1 min-h-0 text-ink select-text"
-          themeVars={editorTheme.vars}
-          themes={editorTheme.themes}
-          indentUnitText={indentUnitFor(editorIndent)}
-          typing={editorTyping}
-          padding={12}
-          placeholder="This file is empty"
-          style={{
-            fontFamily: editorFontFamily,
-            fontSize: `${fontSize}px`,
-            lineHeight: EDITOR_LINE_HEIGHT,
-          }}
-        />
-      )}
+      {/* Which surface draws this file — see `EditorSurface.tsx` for the dispatch
+          and why the code surface is never wrapped in a scroller. */}
+      <MobileEditorSurface
+        file={file}
+        editor={editor}
+        viewerKind={viewerKind}
+        byteViewer={byteViewer}
+        isPreview={isPreview}
+        isMd={isMd}
+        content={content}
+        language={lang}
+        wordWrap={wordWrap}
+        fileKey={fileKey}
+        revealMarks={revealMarks}
+        currentMark={currentMark}
+        surfaceRef={surfaceRef}
+        setCodeScroller={setCodeScroller}
+        previewRef={previewRef}
+        scroll={scroll}
+        fontSize={fontSize}
+        reviewActive={hasReview && review.active}
+        onExitReview={review.toggle}
+        editorTheme={editorTheme}
+        editorFontFamily={editorFontFamily}
+        indentUnitText={indentUnitFor(editorIndent)}
+        typing={editorTyping}
+      />
 
       {/* The outline is a floating control rather than a panel section: on a
           phone the drawer and this editor are separate screens, so a section

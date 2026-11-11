@@ -12,6 +12,7 @@ import { isSinglePathSegment } from '@/server/lib/fs/path-segment';
 import { checkWriteConflict, parseBaseMtime, stableMtime } from '@/server/lib/fs/write-conflict';
 import { transferRefusal } from '@/shared/lib/fs/clipboard';
 import { toDiskText } from '@/shared/lib/code/line-endings';
+import { contentHash } from '@/shared/lib/fs/content-hash';
 
 /** The two shapes a transfer action answers with, ready for `json`. */
 function transferResponse(outcome: { path?: string; error?: string; status?: number }) {
@@ -128,7 +129,14 @@ export async function action({ request }: ActionFunctionArgs) {
       await fs.promises.mkdir(path.dirname(fullPath), { recursive: true });
       await Bun.write(fullPath, content);
       const written = await Bun.file(fullPath).stat().catch(() => null);
-      return json({ success: true, mtimeMs: written ? stableMtime(written.mtimeMs) : null });
+      // The hash of the bytes just written travels back so the buffer adopts it as
+      // its own fingerprint. Without it the auto-refresh watcher would read the
+      // save as an EXTERNAL change and re-read the file the user just wrote.
+      return json({
+        success: true,
+        mtimeMs: written ? stableMtime(written.mtimeMs) : null,
+        hash: await contentHash(content),
+      });
     } else if (actionType === 'saveAs') {
       // Write the buffer to a NEW path. The destination is `path` (a directory) plus
       // `name` (ONE segment), both resolved against this route's own scope — a

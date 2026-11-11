@@ -24,7 +24,6 @@ import { retainDirtyTabs } from '@/client/lib/editor-dirty-tabs';
 import { EditorPane } from '@/client/components/workspace/editor/Pane';
 import { SplitColumn } from '@/client/components/workspace/editor/SplitColumn';
 import { useSplitEditor } from '@/client/hooks/editor/use-split-editor';
-import { useExternalChangeNotice } from '@/client/hooks/editor/use-external-change-notice';
 import { useEditorPanelKeys } from '@/client/hooks/editor/use-editor-panel-keys';
 import { useCloseGuard } from '@/client/hooks/editor/use-close-guard';
 import { useFileReviewMode } from '@/client/hooks/editor/use-file-review-mode';
@@ -102,14 +101,11 @@ export function Editor({
   // view, and the resolver is cheap when no plugin contributed one.
   const pluginFileView = usePluginFileView({ path: activeFile?.path ?? '', content: editor.content, language: editor.language });
 
-  // The disk-change strip and its answer; the rules live in the hook.
-  const { externalChange, keepMine: keepMineAgainstDisk } = useExternalChangeNotice({
-    file: activeFile,
-    baseMtimeMs: editor.baseMtimeMs,
-    dirty: editor.isDirty,
-    revision: refreshKey,
-    adoptDiskMtime: editor.adoptDiskMtime,
-  });
+  // The disk-change strip and its answer. The verdict is the editor's own: the
+  // watcher compares CONTENT hashes, so a file rewritten with the same bytes (a
+  // `touch`, a no-op formatter, a checkout of the revision already open) never
+  // raises a strip, and a real change does even when the mtime did not move.
+  const externalChange = editor.diskChange;
 
   // Built after the editor: the guard writes through `editor.saveNow`.
   const closeGuard = useCloseGuard({
@@ -319,7 +315,7 @@ export function Editor({
       externalChange={externalChange}
       conflict={editor.conflict}
       onReload={editor.resolveConflictByReload}
-      onKeepMine={keepMineAgainstDisk}
+      onKeepMine={editor.keepMineAgainstDisk}
       body={<EditorBody {...bodyProps} />}
       saveAsOpen={panelUi.saveAsOpen}
       onSaveAsClose={() => panelUi.setSaveAsOpen(false)}

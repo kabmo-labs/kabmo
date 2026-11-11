@@ -19,8 +19,9 @@
  * to a screen reader. **Pinning is not the visual order**: `pinned` marks what a
  * narrow panel must not bury, and the row is placed in the order a reader looks.
  *
- * **Revert is deliberately never pinned.** It is the only destructive control in
- * the row, and a `⋯` menu is exactly the friction a destructive action should have.
+ * **Reload is deliberately never pinned.** With a dirty buffer it is the only
+ * destructive control in the row, and a `⋯` menu is exactly the friction a
+ * destructive action should have; a clean buffer reloads without losing anything.
  */
 
 import type { ComponentChildren } from 'preact';
@@ -30,7 +31,7 @@ import {
   GitCommitVertical,
   Maximize,
   Minimize,
-  RotateCcw,
+  RefreshCw,
   Search,
   WrapText,
   ZoomIn,
@@ -61,7 +62,9 @@ export interface ToolbarState {
   copied: boolean;
   isMaximized: boolean;
   saveDisabled: boolean;
-  canRevert: boolean;
+  canReload: boolean;
+  /** The buffer has edits, so Reload discards them — the title says so. */
+  reloadDiscardsEdits: boolean;
   saveButton: ComponentChildren;
   previewLabel: string;
   findLabel: string;
@@ -77,7 +80,7 @@ export interface ToolbarState {
   onZoomOut: () => void;
   onCopy: () => void;
   onDownload: () => void;
-  onRevert: () => void;
+  onReload: () => void;
   onSaveAs: () => void;
   onToggleMaximize: () => void;
   onSave: () => void;
@@ -179,22 +182,28 @@ export function buildEditorClusters(state: ToolbarState): ToolbarCluster[] {
       ),
     });
     clusters.push({
-      id: 'revert',
-      // Never `pinned`: it is the one destructive control in the row, and a menu is
-      // exactly the friction it should have.
+      id: 'reload',
+      // Never `pinned`: with a dirty buffer it is the one destructive control in
+      // the row, and a menu is exactly the friction it should have.
       actions: [
-        { label: 'Revert file', icon: RotateCcw, onSelect: state.onRevert, disabled: !state.canRevert },
+        { label: 'Reload from disk', icon: RefreshCw, onSelect: state.onReload, disabled: !state.canReload },
       ],
       children: (
         <button
           type="button"
-          onClick={state.onRevert}
-          disabled={!state.canRevert}
+          onClick={state.onReload}
+          disabled={!state.canReload}
           className={`${ACTION_CLASS} hover:bg-ink/5 hover:text-ink`}
-          title={state.canRevert ? 'Discard my changes and reload from disk' : 'No unsaved changes to discard'}
-          aria-label="Revert file"
+          title={
+            !state.canReload
+              ? 'Nothing to reload — this tab has no file on disk'
+              : state.reloadDiscardsEdits
+                ? 'Discard my changes and reload from disk'
+                : 'Reload from disk'
+          }
+          aria-label="Reload from disk"
         >
-          <RotateCcw size={14} />
+          <RefreshCw size={14} />
         </button>
       ),
     });

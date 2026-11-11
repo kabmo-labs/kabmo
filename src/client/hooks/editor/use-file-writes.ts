@@ -28,7 +28,7 @@
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { fileHandleFor } from '@/client/lib/launch/file-handlers';
 import type { LineEnding } from '@/shared/lib/code/line-endings';
-import { saveEditorFile } from '@/client/hooks/editor/save-file';
+import { saveEditorFile, type WrittenFile } from '@/client/hooks/editor/save-file';
 import type { FileEditorTarget } from '@/client/hooks/editor/use-file-editor';
 
 /**
@@ -72,8 +72,8 @@ export interface FileWriteDeps {
   flushOnUnmount: boolean;
   /** A write started; the toolbar shows `saving`. */
   onSaveStart: () => void;
-  /** A write landed; the baseline moves and the workspace re-reads. */
-  onSaved: (fileKey: string, text: string) => void;
+  /** A write landed; the baseline, the conflict base and the digest all move. */
+  onSaved: (fileKey: string, text: string, written: WrittenFile) => void;
   /** A write was refused or dropped. */
   onSaveFailed: () => void;
   /**
@@ -161,7 +161,7 @@ export function useFileWrites({
         interactive: options.interactive === true,
         baseMtimeMs,
       });
-      if (outcome.status === 'written') onSaved(fileKey, text);
+      if (outcome.status === 'written') onSaved(fileKey, text, outcome.written);
       else if (outcome.status === 'needs-permission') onNeedsPermission();
       else if (outcome.status === 'conflict') onConflict(fileKey, outcome.diskMtimeMs);
       else onSaveFailed();

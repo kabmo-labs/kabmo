@@ -1,21 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { getLanguageFromPath } from '@/shared/lib/code/language';
 import { resolveViewer } from '@/client/hooks/editor/resolve-viewer';
-import { detectLineEnding, toDiskText, toLf, type LineEnding } from '@/shared/lib/code/line-endings';
-import { retainKeys } from '@/client/hooks/editor/save-file';
+import { toDiskText, toLf, type LineEnding } from '@/shared/lib/code/line-endings';
 import { deviceFileFor } from '@/client/lib/launch/device-files';
 import { fileHandleFor } from '@/client/lib/launch/file-handlers';
 import { useFileRead } from '@/client/hooks/editor/use-file-read';
 import { useFileTransfer } from '@/client/hooks/editor/use-file-transfer';
 import { useFileWrites } from '@/client/hooks/editor/use-file-writes';
 import { useWriteConflict } from '@/client/hooks/editor/use-write-conflict';
+import { useDiskSync } from '@/client/hooks/editor/use-disk-sync';
+import { useFileCache } from '@/client/hooks/editor/use-file-cache';
+import { editorTargetKey as targetKey } from '@/client/hooks/editor/target-key';
 import type { FileEditorSaveStatus, FileEditorTarget, UseFileEditorOptions, UseFileEditorResult } from '@/client/hooks/editor/file-editor-types';
 
 export type { FileEditorSaveStatus, FileEditorTarget, UseFileEditorOptions, UseFileEditorResult } from '@/client/hooks/editor/file-editor-types';
-
-function targetKey(target: FileEditorTarget): string {
-  return String(target.id ?? target.path ?? target.name);
-}
 
 /**
  * Owns the file-editing contract shared by the desktop editor and the phone's
@@ -52,6 +50,16 @@ export function useFileEditor(
    * inline attachment, a handle-backed file, or a read that failed.
    */
   const [mtimes, setMtimes] = useState<Record<string, number | null>>({});
+  /**
+   * The content hash of the bytes each cached file was read at (or last wrote).
+   *
+   * The auto-refresh watcher compares the disk against it, so a file rewritten
+   * with identical bytes — a checkout of the revision already open, a formatter
+   * that changes nothing, a `touch` — never replaces a buffer. `null` means "no
+   * fingerprint": an inline attachment, a failed read, a file too large for the
+   * digest, or a handle-backed write (nothing to hash against).
+   */
+  const [hashes, setHashes] = useState<Record<string, string | null>>({});
   const [saveStatus, setSaveStatus] = useState<FileEditorSaveStatus>('idle');
   /** Bumped by `reset()` to re-run the read effect for the active file. */
   const [revision, setRevision] = useState(0);
@@ -84,6 +92,8 @@ export function useFileEditor(
   // duplicate fetch while the first one is still in flight.
   const loadedRef = useRef<Set<string>>(new Set());
   const pendingRef = useRef<{ timer: number; file: FileEditorTarget; content: string } | null>(null);
+  /** Reads on their way — see `useFileRead`. */
+  const readingRef = useRef(0);
 
   // Live mirrors of the content maps: a read response resolves long after it
   // was requested, and it has to know whether the buffer it read is still the
@@ -98,17 +108,24 @@ export function useFileEditor(
   lineEndingsRef.current = lineEndings;
   const mtimesRef = useRef(mtimes);
   mtimesRef.current = mtimes;
+  const hashesRef = useRef(hashes);
+  hashesRef.current = hashes;
 
-  const remember = useCallback((fileKey: string, text: string, mtimeMs: number | null) => {
-    // The buffer holds LF only; the style the bytes arrived with is kept beside
-    // it so the write can put the file back the way it was found.
-    const ending = detectLineEnding(text);
-    const lf = toLf(text);
-    setContents((prev) => ({ ...prev, [fileKey]: lf }));
-    setBaselines((prev) => ({ ...prev, [fileKey]: lf }));
-    setLineEndings((prev) => ({ ...prev, [fileKey]: ending }));
-    setMtimes((prev) => ({ ...prev, [fileKey]: mtimeMs }));
-  }, []);
+  /**
+   * The cache's lifecycle (refresh everything, drop closed tabs, switch the saved
+   * ending) lives in its own hook — see `use-file-cache.ts` for why the five caches
+   * must move together.
+   */
+  const { remember, reset, retain, setEol } = useFileCache({
+    target,
+    loadedRef,
+    bumpRevision: () => setRevision((prev) => prev + 1),
+    setContents,
+    setBaselines,
+    setLineEndings,
+    setMtimes,
+    setHashes,
+  });
 
   /**
    * The read path lives in its own hook — see `use-file-read.ts` for the two
@@ -123,6 +140,7 @@ export function useFileEditor(
     contentsRef,
     baselinesRef,
     pendingRef,
+    readingRef,
     remember,
   });
 
@@ -145,9 +163,15 @@ export function useFileEditor(
     pendingRef,
     flushOnUnmount,
     onSaveStart: () => setSaveStatus('saving'),
-    onSaved: (fileKey, text) => {
+    onSaved: (fileKey, text, written) => {
       setSaveStatus('saved');
       setBaselines((prev) => ({ ...prev, [fileKey]: text }));
+      // Adopt what the server reported about the bytes it just wrote: the mtime
+      // is the next save's conflict base, and the hash is the auto-refresh
+      // baseline. Without them the watcher would read the user's own save as an
+      // external change, and the next save would be refused against its base.
+      if (written.mtimeMs !== null) setMtimes((prev) => ({ ...prev, [fileKey]: written.mtimeMs }));
+      if (written.hash !== null) setHashes((prev) => ({ ...prev, [fileKey]: written.hash }));
       onFileSaved?.();
     },
     onSaveFailed: () => setSaveStatus(reportSaveError ? 'error' : 'idle'),
@@ -184,6 +208,48 @@ export function useFileEditor(
     setBaselines,
     loadedRef,
     bumpRevision: () => setRevision((prev) => prev + 1),
+  });
+
+  /**
+   * Drop the debounced write for `fileKey`, if one is armed.
+   *
+   * A Reload throws the buffer away, so the write that buffer had queued must go
+   * with it — and the read path yields to a queued write, so leaving it armed
+   * would also make the reload land nowhere.
+   */
+  const discardPendingWrite = useCallback((fileKey: string) => {
+    const queued = pendingRef.current;
+    if (!queued || targetKey(queued.file) !== fileKey) return;
+    window.clearTimeout(queued.timer);
+    pendingRef.current = null;
+  }, []);
+
+  /**
+   * The disk watcher and the answers it produces — one cluster, in its own hook
+   * (see `use-disk-sync.ts`): a clean buffer follows the disk, a dirty one is
+   * never replaced, and a file that still hashes the same is not a change.
+   *
+   * The conflict machine is passed in rather than imported there so "adopt the
+   * mtime" and "discard and re-read" stay the SAME implementations the strips
+   * call; a second copy is how one of them refuses a save the other accepted.
+   */
+  const { diskChange, reloadFromDisk, keepMineAgainstDisk } = useDiskSync({
+    key,
+    target,
+    baseHash: hashes[key] ?? null,
+    revision,
+    hashesRef,
+    mtimesRef,
+    contentsRef,
+    baselinesRef,
+    pendingRef,
+    readingRef,
+    loadedRef,
+    bumpRevision: () => setRevision((prev) => prev + 1),
+    adoptDiskMtime: conflictState.adopt,
+    clearConflict: conflictState.clear,
+    reloadDiscardingEdits: conflictState.reload,
+    discardPendingWrite,
   });
 
   useEffect(() => {
@@ -225,35 +291,6 @@ export function useFileEditor(
     byteViewer: isBinaryViewer,
   });
 
-  const reset = useCallback(() => {
-    // Invalidate every key, then let the read effect refetch the active one.
-    // Content is deliberately NOT cleared: it stays on screen until the fresh
-    // bytes land, so a refresh can never blank the editor (or drop the file
-    // that is open) while the request is in flight.
-    loadedRef.current.clear();
-    setRevision((prev) => prev + 1);
-  }, []);
-
-  /**
-   * Switch the ending this buffer saves in.
-   *
-   * Only the ending moves: the BUFFER is LF-only either way, and the bytes are built
-   * at write time, so nothing on screen changes and no re-read is needed.
-   */
-  const setEol = useCallback((next: LineEnding) => {
-    if (!target) return;
-    setLineEndings((prev) => ({ ...prev, [targetKey(target)]: next }));
-  }, [target]);
-
-  const retain = useCallback((ids: Array<number | string>) => {
-    const keep = new Set(ids.map(String));
-    for (const loaded of Array.from(loadedRef.current)) {
-      if (!keep.has(loaded)) loadedRef.current.delete(loaded);
-    }
-    setContents((prev) => retainKeys(prev, keep));
-    setLineEndings((prev) => retainKeys(prev, keep));
-    setMtimes((prev) => retainKeys(prev, keep));
-  }, []);
 
   return {
     content,
@@ -293,12 +330,13 @@ export function useFileEditor(
     confirmSaveMissing: writes.confirmSaveMissing,
     cancelSaveMissing: writes.cancelSaveMissing,
     conflict: conflictState.conflict,
-    resolveConflictByReload: conflictState.reload,
+    resolveConflictByReload: () => {
+      if (key) discardPendingWrite(key);
+      conflictState.reload();
+    },
     resolveConflictByKeepingMine: conflictState.keepMine,
-    // Revert and Reload are the same operation: throw the buffer away and take the
-    // disk copy. Two names because the reason differs — a Revert is the user's own
-    // choice, a Reload is an answer to a conflict — and neither needs its own path.
-    revertToDisk: conflictState.reload,
-    adoptDiskMtime: conflictState.adopt,
+    reloadFromDisk,
+    diskChange,
+    keepMineAgainstDisk,
   };
 }

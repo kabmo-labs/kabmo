@@ -19,6 +19,7 @@ import {
   createEditorHarness,
   freshState,
   stubFetch,
+  stubHash,
 } from '@/test-support/file-editor.test-util';
 
 const editor = createEditorHarness();
@@ -115,6 +116,95 @@ describe('useFileEditor revalidation', () => {
 
     expect(state.body).toBe('const a = 1;\n');
     expect(state.sentEol).toBe('lf');
+  });
+});
+
+describe('useFileEditor auto-refresh', () => {
+  /**
+   * Ask the watcher now, the way coming back to the window does.
+   *
+   * The probe is a promise, so the whole turn runs inside `act` (`runAsync`): a
+   * verdict delivered outside it updates state without committing the effects,
+   * and the re-read under test is an effect.
+   */
+  async function focusWindow() {
+    await editor.runAsync(async () => {
+      window.dispatchEvent(new Event('focus'));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+  }
+
+  test('a file changed from outside replaces a CLEAN buffer', async () => {
+    const state = freshState();
+    stubFetch(state);
+    await editor.mount();
+    expect(editor.mounted?.content).toBe(DISK);
+
+    // Another process (an agent's tool call, `git checkout`) rewrote the file.
+    state.body = `${DISK}const c = 3;\n`;
+    await focusWindow();
+
+    expect(editor.mounted?.content).toBe(state.body);
+    expect(editor.mounted?.isDirty).toBe(false);
+  });
+
+  test('a file rewritten with the SAME bytes does not touch the buffer', async () => {
+    const state = freshState();
+    stubFetch(state);
+    await editor.mount();
+    const readsAfterMount = state.reads;
+
+    // A `touch`, a formatter that changed nothing, a checkout of the revision
+    // already open: the mtime moved, the bytes did not.
+    await focusWindow();
+
+    expect(state.reads).toBe(readsAfterMount);
+    expect(editor.mounted?.content).toBe(DISK);
+  });
+
+  test('a DIRTY buffer is never replaced — the panel is told instead', async () => {
+    const state = freshState();
+    stubFetch(state);
+    await editor.mount();
+
+    editor.mounted?.onChange('my own edit');
+    await editor.settle();
+
+    state.body = `${DISK}const c = 3;\n`;
+    await focusWindow();
+
+    expect(editor.mounted?.content).toBe('my own edit');
+    expect(editor.mounted?.isDirty).toBe(true);
+    // The panel is told, so the external-change strip can offer the two answers.
+    expect(editor.mounted?.diskChange?.hash).toBe(stubHash(state.body));
+  });
+
+  test('reloadFromDisk re-reads a clean buffer on demand', async () => {
+    const state = freshState();
+    stubFetch(state);
+    await editor.mount();
+    const readsAfterMount = state.reads;
+
+    state.body = `${DISK}const c = 3;\n`;
+    await editor.run(() => editor.mounted?.reloadFromDisk());
+    await editor.settle();
+
+    expect(state.reads).toBe(readsAfterMount + 1);
+    expect(editor.mounted?.content).toBe(state.body);
+  });
+
+  test('reloadFromDisk discards a dirty buffer', async () => {
+    const state = freshState();
+    stubFetch(state);
+    await editor.mount();
+
+    editor.mounted?.onChange('my own edit');
+    await editor.settle();
+    await editor.run(() => editor.mounted?.reloadFromDisk());
+    await editor.settle();
+
+    expect(editor.mounted?.content).toBe(DISK);
+    expect(editor.mounted?.isDirty).toBe(false);
   });
 });
 

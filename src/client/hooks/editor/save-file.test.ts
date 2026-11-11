@@ -94,7 +94,7 @@ describe('saveEditorFile — the request it builds', () => {
     const writes = stubWrite({ ok: true, body: { success: true } });
     const outcome = await saveEditorFile({ path: 'src/a.ts', root: '/repo' }, 'const a = 1;\n', 'lf', { interactive: false });
 
-    expect(outcome).toEqual({ status: 'written' });
+    expect(outcome).toEqual({ status: 'written', written: { mtimeMs: null, hash: null } });
     expect(writes.length).toBe(1);
     expect(writes[0].url).toBe('/api/fs/action');
     expect(writes[0].method).toBe('POST');

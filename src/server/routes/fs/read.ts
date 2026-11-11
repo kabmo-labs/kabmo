@@ -7,6 +7,7 @@ import { json, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { listDirectoryEntries } from '@/server/lib/fs/listing';
 import { errorResponse } from '@/server/lib/route-adapter';
 import { stableMtime } from '@/server/lib/fs/write-conflict';
+import { contentHash } from '@/shared/lib/fs/content-hash';
 import { homedir } from 'os';
 import { dirname, isAbsolute, join, resolve } from 'path';
 import fs from 'fs';
@@ -283,7 +284,11 @@ export async function readFile({ request }: LoaderFunctionArgs) {
     // `baseMtime`, and the server refuses a write whose base is no longer what is
     // on disk. A buffer with no base (a handle-backed file, an older client) still
     // writes unconditionally — see `save-file.ts`.
-    return json({ content, mtimeMs: stableMtime(stat.mtimeMs) });
+    //
+    // The content hash travels too, and it is the one the editor's auto-refresh
+    // compares against (`/api/fs/digest`): a file rewritten with the SAME bytes
+    // must not replace the buffer, and only a byte-level fingerprint can say so.
+    return json({ content, mtimeMs: stableMtime(stat.mtimeMs), hash: await contentHash(content) });
   } catch (error) {
     return errorResponse(error);
   }

@@ -17,6 +17,7 @@ export type FileEditorSaveStatus = 'idle' | 'saving' | 'saved' | 'error' | 'need
 import type { ViewerKind } from '@/shared/lib/fs/document-kind';
 import type { LineEnding } from '@/shared/lib/code/line-endings';
 import type { ByteSource } from '@/client/components/workspace/editor/viewers/bytes';
+import type { DiskDigest } from '@/client/hooks/editor/use-disk-digest';
 
 /** The single file a code surface is editing; `id` keys the in-memory cache. */
 export interface FileEditorTarget {
@@ -203,21 +204,29 @@ export interface UseFileEditorResult {
    */
   resolveConflictByKeepingMine: () => void;
   /**
-   * Throw the buffer away and take the file from disk.
+   * Re-read the active file from disk, discarding the buffer's edits.
    *
-   * The user-facing Revert. Distinct from `reset()` (a workspace refresh, which
-   * deliberately KEEPS a dirty buffer) and from `resolveConflictByReload` only in
-   * that it needs no conflict to exist — the reason to revert is usually that the
-   * user wants the disk copy back, not that anyone else wrote it.
+   * The user-facing Reload, offered even for a clean buffer: it is the manual
+   * counterpart of the automatic refresh, and it is the only way to force a read
+   * of a file whose digest the watcher has not compared yet. Distinct from
+   * `reset()` (a workspace refresh, which deliberately KEEPS a dirty buffer).
    */
-  revertToDisk: () => void;
+  reloadFromDisk: () => void;
   /**
-   * Adopt the disk's mtime as this buffer's base WITHOUT writing anything.
+   * The disk bytes differ from a buffer that HAS edits, or null.
    *
-   * The answer to an external-change notice when the user wants to keep editing:
-   * their next save must not be refused with a `409` over a change they have
-   * already been shown and accepted. Nothing is written here — the buffer stays
-   * dirty and the autosave owns the write.
+   * Nothing is replaced: the panel renders this as the external-change strip so
+   * the user chooses between the two copies. A clean buffer never reports here —
+   * it is re-read, because there is nothing of the user's to lose.
    */
-  adoptDiskMtime: (diskMtimeMs: number) => void;
+  diskChange: DiskDigest | null;
+  /**
+   * Answer an external-change notice with the user's buffer.
+   *
+   * Adopts the disk's mtime as the buffer's base WITHOUT writing anything — the
+   * buffer stays dirty and the autosave owns the write — and dismisses the notice,
+   * so the same change is not reported again. A later change is a new hash and
+   * asks again.
+   */
+  keepMineAgainstDisk: () => void;
 }

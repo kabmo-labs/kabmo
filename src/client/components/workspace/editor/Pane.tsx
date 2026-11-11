@@ -26,7 +26,7 @@ import type { ComponentChildren } from 'preact';
 import { EditorNotices } from '@/client/components/workspace/editor/Notices';
 import { SaveAsModal } from '@/client/components/workspace/editor/SaveAsModal';
 import { EditorDialogs } from '@/client/components/workspace/editor/Dialogs';
-import type { DiskChange } from '@/client/hooks/editor/use-external-change';
+import type { DiskDigest } from '@/client/hooks/editor/use-disk-digest';
 import type { CloseGuard } from '@/client/hooks/editor/use-close-guard';
 import type { UseFileEditorResult } from '@/client/hooks/editor/file-editor-types';
 import type { WriteConflict } from '@/client/hooks/editor/use-write-conflict';
@@ -42,7 +42,7 @@ interface EditorPaneProps {
   /** The active file and the buffer it is drawn from. */
   activeFile: OpenedFile | undefined;
   editor: UseFileEditorResult;
-  externalChange: DiskChange | null;
+  externalChange: DiskDigest | null;
   conflict: WriteConflict | null;
   onReload: () => void;
   onKeepMine: () => void;

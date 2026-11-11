@@ -23,14 +23,14 @@
 
 import { ExternalChangeStrip } from '@/client/components/workspace/editor/ExternalChangeStrip';
 import { ConflictStrip } from '@/client/components/workspace/editor/ConflictStrip';
-import type { DiskChange } from '@/client/hooks/editor/use-external-change';
+import type { DiskDigest } from '@/client/hooks/editor/use-disk-digest';
 import type { WriteConflict } from '@/client/hooks/editor/use-write-conflict';
 import type { OpenedFile } from '@/shared/types/fs';
 
 interface EditorNoticesProps {
   activeFile: OpenedFile | undefined;
   /** The disk moved under a dirty buffer, or null. */
-  externalChange: DiskChange | null;
+  externalChange: DiskDigest | null;
   /** A save was refused because the disk moved, or null. */
   conflict: WriteConflict | null;
   /** Take the disk copy and drop the buffer's edits. */

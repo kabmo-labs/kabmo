@@ -2,6 +2,7 @@ import { bindingsFor, type HandlerBinding } from '@/server/lib/route-adapter';
 import { browseDirectories, listDirectory, listFiles, readFile, readReferencedFile } from '@/server/routes/fs/read';
 import { resolveFileScope } from '@/server/routes/fs/scope';
 import { fileExists } from '@/server/routes/fs/exists';
+import { fileDigest } from '@/server/routes/fs/digest';
 import { serveRawFile } from '@/server/routes/fs/raw';
 import * as fsAction from '@/server/routes/fs/action';
 import * as fsGit from '@/server/routes/fs/git';
@@ -18,6 +19,7 @@ export const fsBindings: HandlerBinding[] = [
   ...bindingsFor(fsSearch, '/api/fs/search'),
   ...bindingsFor(fsValidate, '/api/fs/validate'),
   { method: 'GET', path: '/api/fs/browse', handler: browseDirectories },
+  { method: 'GET', path: '/api/fs/digest', handler: fileDigest },
   { method: 'GET', path: '/api/fs/dir', handler: listDirectory },
   { method: 'GET', path: '/api/fs/exists', handler: fileExists },
   { method: 'GET', path: '/api/fs/list', handler: listFiles },
