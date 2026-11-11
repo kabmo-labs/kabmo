@@ -1,5 +1,6 @@
 import type { UsageLimitWindow } from '@/shared/types';
 import { formatDateTime, formatFractionPercent, formatUsageAmount } from '@/client/components/settings/categories/usage-settings/format';
+import { groupProviderLimits } from '@/client/components/settings/categories/usage-settings/limit-groups';
 
 interface LimitRowProps {
   limit: UsageLimitWindow;
@@ -19,7 +20,14 @@ function LimitRow({ limit }: LimitRowProps) {
     <div className="bg-paper border border-ink/15 rounded-lg p-3 shadow-xs space-y-2">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="text-[11px] font-semibold text-ink truncate">{limit.label}</div>
+          <div className="text-[11px] font-semibold text-ink truncate">
+            {limit.label}
+            {limit.windowLabel && (
+              <span className="ml-1.5 rounded border border-ink/15 px-1 py-px font-mono text-[9px] font-normal text-ink/50">
+                {limit.windowLabel}
+              </span>
+            )}
+          </div>
           {scope && <div className="text-[10px] text-ink/50 truncate">{scope}</div>}
         </div>
         <span className="text-[10px] text-ink/50 flex-shrink-0 whitespace-nowrap">
@@ -70,6 +78,8 @@ function LimitRow({ limit }: LimitRowProps) {
 }
 
 interface LimitsSectionProps {
+  /** Provider slug, used to group Claude's balance and Antigravity's families. */
+  providerId: string;
   limits: UsageLimitWindow[];
   /** Whether omp ships a usage adapter for this provider. */
   tracked: boolean;
@@ -80,13 +90,11 @@ interface LimitsSectionProps {
 }
 
 /** Generic quota windows for any provider omp reports usage for. */
-export function LimitsSection({ limits, tracked, unavailable, notes }: LimitsSectionProps) {
+export function LimitsSection({ providerId, limits, tracked, unavailable, notes }: LimitsSectionProps) {
+  const groups = groupProviderLimits(providerId, limits);
+
   return (
     <div className="space-y-2">
-      <h4 className="text-[10px] font-mono font-semibold uppercase tracking-wider text-ink/40">
-        Quota windows
-      </h4>
-
       {notes && notes.length > 0 && (
         <ul className="text-[10px] text-ink/50 leading-relaxed space-y-0.5">
           {notes.map((note) => (
@@ -95,20 +103,32 @@ export function LimitsSection({ limits, tracked, unavailable, notes }: LimitsSec
         </ul>
       )}
 
-      {limits.length === 0 ? (
-        <p className="text-[11px] text-ink/50">
-          {!tracked
-            ? 'No quota source for this provider: omp ships no usage adapter for it and it exposes no balance endpoint Kabmo knows.'
-            : unavailable
-              ? 'omp tracks this provider but its usage endpoint returned no data — an invalid or expired credential, an unreachable endpoint, or a plan without quota windows.'
-              : 'No quota windows were reported for this provider.'}
-        </p>
+      {groups.length === 0 ? (
+        <>
+          <h4 className="text-[10px] font-mono font-semibold uppercase tracking-wider text-ink/40">
+            Quota windows
+          </h4>
+          <p className="text-[11px] text-ink/50">
+            {!tracked
+              ? 'No quota source for this provider: omp ships no usage adapter for it and it exposes no balance endpoint Kabmo knows.'
+              : unavailable
+                ? 'omp tracks this provider but its usage endpoint returned no data — an invalid or expired credential, an unreachable endpoint, or a plan without quota windows.'
+                : 'No quota windows were reported for this provider.'}
+          </p>
+        </>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-          {limits.map((limit) => (
-            <LimitRow key={limit.id} limit={limit} />
-          ))}
-        </div>
+        groups.map((group) => (
+          <div key={group.id} className="@container space-y-2">
+            <h4 className="text-[10px] font-mono font-semibold uppercase tracking-wider text-ink/40">
+              {group.title}
+            </h4>
+            <div className="grid grid-cols-1 @[520px]:grid-cols-2 gap-2.5">
+              {group.limits.map((limit) => (
+                <LimitRow key={limit.id} limit={limit} />
+              ))}
+            </div>
+          </div>
+        ))
       )}
     </div>
   );

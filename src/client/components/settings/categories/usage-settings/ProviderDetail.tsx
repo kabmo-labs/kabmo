@@ -37,6 +37,7 @@ export function ProviderDetail({ summary }: ProviderDetailProps) {
           says so — a second "no quota source" note would contradict it. */}
       {!hasRichReport && (summary.limits.length > 0 || !summary.error) && (
         <LimitsSection
+          providerId={summary.id}
           limits={summary.limits}
           tracked={summary.tracked}
           unavailable={summary.limitsUnavailable}
