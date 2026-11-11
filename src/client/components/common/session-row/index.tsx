@@ -80,6 +80,8 @@ export interface SessionRowProps {
   status?: 'stream' | 'finish' | 'abort';
   awaitingInput?: boolean;
   timeAgo?: string | null;
+  /** Full timestamp shown as the age's hover tooltip. */
+  timeTitle?: string | null;
   worktree?: SessionWorktreeInfo;
   /** The row's prompt is held until another session finishes. */
   waitingFor?: { title: string | null };
@@ -114,6 +116,7 @@ export function SessionRow({
   status,
   awaitingInput = false,
   timeAgo,
+  timeTitle,
   worktree,
   waitingFor,
   expandable = false,
@@ -231,6 +234,7 @@ export function SessionRow({
 
         <TrailingSlot
           timeAgo={timeAgo}
+          timeTitle={timeTitle}
           touch={touch}
           menuOpen={menu.anchor !== null}
           onOpenMenu={hasActions && !selectable ? menu.openBelow : undefined}

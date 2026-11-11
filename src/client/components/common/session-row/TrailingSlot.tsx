@@ -27,16 +27,18 @@ import { MoreHorizontal } from 'lucide-preact';
 
 export interface TrailingSlotProps {
   timeAgo?: string | null;
+  /** Full timestamp shown as the age's hover tooltip. */
+  timeTitle?: string | null;
   /** Null when the row has nothing to offer a menu. */
   onOpenMenu?: (event: TargetedMouseEvent<HTMLElement>) => void;
   menuOpen?: boolean;
   touch?: boolean;
 }
 
-export function TrailingSlot({ timeAgo, onOpenMenu, menuOpen = false, touch = false }: TrailingSlotProps) {
+export function TrailingSlot({ timeAgo, timeTitle, onOpenMenu, menuOpen = false, touch = false }: TrailingSlotProps) {
   if (!onOpenMenu) {
     return timeAgo
-      ? <span className="ml-2 shrink-0 font-mono text-[10px] text-ink/40">{timeAgo}</span>
+      ? <span className="ml-2 shrink-0 font-mono text-[10px] text-ink/40" title={timeTitle ?? undefined}>{timeAgo}</span>
       : null;
   }
 
@@ -61,7 +63,7 @@ export function TrailingSlot({ timeAgo, onOpenMenu, menuOpen = false, touch = fa
   if (touch) {
     return (
       <span className="ml-1 flex shrink-0 items-center gap-0.5">
-        {timeAgo && <span className="font-mono text-[10px] text-ink/40">{timeAgo}</span>}
+        {timeAgo && <span className="font-mono text-[10px] text-ink/40" title={timeTitle ?? undefined}>{timeAgo}</span>}
         {trigger}
       </span>
     );
@@ -70,7 +72,10 @@ export function TrailingSlot({ timeAgo, onOpenMenu, menuOpen = false, touch = fa
   return (
     <span className="relative ml-2 flex h-4 w-8 shrink-0 items-center justify-end">
       {timeAgo && (
-        <span className="absolute right-1 font-mono text-[10px] leading-none text-ink/40 transition-opacity group-hover/item:opacity-0 group-focus-within/item:opacity-0">
+        <span
+          className="absolute right-1 font-mono text-[10px] leading-none text-ink/40 transition-opacity group-hover/item:opacity-0 group-focus-within/item:opacity-0"
+          title={timeTitle ?? undefined}
+        >
           {timeAgo}
         </span>
       )}

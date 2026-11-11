@@ -34,6 +34,8 @@ export interface SessionItemProps {
   /** Relative age of the session, or null when no usable timestamp exists.
    *  Same column the phone's row carries, from the same helper. */
   timeAgo?: string | null;
+  /** Full timestamp shown as the age's hover tooltip. */
+  timeTitle?: string | null;
   onClick?: () => void;
   onArchive?: () => void;
   /** Omitted for a session that cannot be deleted yet (a pending `new-…` chat,
@@ -80,6 +82,7 @@ export function SessionItem({
   status,
   awaitingInput = false,
   timeAgo,
+  timeTitle,
   onClick,
   onArchive,
   onDelete,
@@ -284,7 +287,12 @@ export function SessionItem({
         {/* Same trailing column the phone draws, from the same helper — the
             row's age is what tells two identically-titled chats apart. */}
         {!isEditing && timeAgo && (
-          <span className="shrink-0 ml-2 font-mono text-[10px] text-ink/40">{timeAgo}</span>
+          <span
+            className="shrink-0 ml-2 font-mono text-[10px] text-ink/40"
+            title={timeTitle ?? undefined}
+          >
+            {timeAgo}
+          </span>
         )}
 
         {/* One trigger, whatever the row can do — the menu grows, so a row with

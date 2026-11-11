@@ -94,6 +94,12 @@ describe('mobile session row status slot', () => {
     const el = await mount({ isChild: true });
     expect(el.querySelector('[data-testid="child-indicator"] svg')).not.toBeNull();
   });
+
+  test('the age carries the full timestamp as its hover tooltip', async () => {
+    const el = await mount({ timeAgo: '3w', timeTitle: 'Wed, 12 Nov 2026, 02:30 PM' });
+    const age = el.querySelector('[title="Wed, 12 Nov 2026, 02:30 PM"]');
+    expect(age?.textContent).toBe('3w');
+  });
 });
 
 /**

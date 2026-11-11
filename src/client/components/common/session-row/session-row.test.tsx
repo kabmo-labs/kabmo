@@ -132,6 +132,12 @@ describe('modern session row', () => {
     expect(el.textContent).toContain('2m');
   });
 
+  test('the age carries the full timestamp as its hover tooltip', async () => {
+    const el = await mount({ timeAgo: '3w', timeTitle: 'Wed, 12 Nov 2026, 02:30 PM', onRename: () => {} });
+    const age = el.querySelector('[title="Wed, 12 Nov 2026, 02:30 PM"]');
+    expect(age?.textContent).toBe('3w');
+  });
+
   test('batch mode swaps the status slot for the checkbox', async () => {
     const el = await mount({ selectable: true, selected: true, status: 'stream' });
     expect(el.querySelector('input[type="checkbox"]')).not.toBeNull();

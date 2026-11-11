@@ -23,7 +23,7 @@ import {
   SIDEBAR_DATA_TTL_MS,
   STREAM_HEARTBEAT_MS,
 } from '@/shared/lib/workspace/refresh-cadence';
-import { relativeTimeAgo } from '@/shared/lib/workspace/relative-time';
+import { formatFullDate, relativeTimeAgo } from '@/shared/lib/workspace/relative-time';
 
 describe('refresh cadences', () => {
   test('the documented millisecond values', () => {
@@ -113,5 +113,29 @@ describe('relativeTimeAgo', () => {
   test('defaults `now` to the wall clock', () => {
     expect(relativeTimeAgo(Date.now(), Date.now())).toBe('now');
     expect(relativeTimeAgo(Date.now() - 5 * MINUTE)).toBe('5m');
+  });
+});
+
+describe('formatFullDate', () => {
+  test('missing or unparseable input yields null', () => {
+    expect(formatFullDate(null)).toBeNull();
+    expect(formatFullDate(undefined)).toBeNull();
+    expect(formatFullDate('')).toBeNull();
+    expect(formatFullDate('not a date')).toBeNull();
+  });
+
+  test('renders the full weekday, date and clock', () => {
+    // 2026-11-12T14:30:00Z — the exact local rendering depends on the test
+    // machine's zone, so assert the parts that do not.
+    const label = formatFullDate('2026-11-12T14:30:00.000Z');
+    expect(label).toContain('Nov');
+    expect(label).toContain('2026');
+    expect(label).toContain('12');
+    expect(label).toMatch(/\d{1,2}:\d{2}/);
+  });
+
+  test('parses an ISO string the same as its epoch millis', () => {
+    const iso = '2026-01-15T11:30:00.000Z';
+    expect(formatFullDate(iso)).toBe(formatFullDate(Date.parse(iso)));
   });
 });

@@ -13,7 +13,7 @@ import { SessionBranch, branchControlFor } from '@/client/components/common/sess
 import type { BranchControl } from '@/client/components/common/session-branch';
 import { buildSessionTree } from '@/client/lib/session-tree';
 import { useExpandedSessions } from '@/client/hooks/workspace/expanded-sessions';
-import { relativeTimeAgo } from '@/shared/lib/workspace/relative-time';
+import { formatFullDate, relativeTimeAgo } from '@/shared/lib/workspace/relative-time';
 import { isPendingSessionId } from '@/shared/lib/omp/session/default-title';
 import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
 import type { BatchBinding } from '@/client/components/common/batch-selection/types';
@@ -178,6 +178,7 @@ export function Category({
         awaitingInput={Boolean(session.awaitingInput)}
         worktree={session.worktree}
         timeAgo={relativeTimeAgo(session.updated_at ?? session.created_at)}
+        timeTitle={formatFullDate(session.updated_at ?? session.created_at)}
         onClick={() => onSelectSession(session.id)}
         onArchive={() => handleArchive(session)}
         // A pending `new-…` chat has no transcript anywhere yet — there is

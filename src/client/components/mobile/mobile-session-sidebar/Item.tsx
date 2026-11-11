@@ -13,7 +13,7 @@ import { useWorkspaceFolderActions } from '@/client/hooks/workspace/workspace-fo
 import { useSessionDelete } from '@/client/hooks/workspace/session-delete';
 import { SessionDeleteModal } from '@/client/components/common/session-delete-modal';
 import { getProjectIcon } from '@/shared/lib/workspace/project-icon';
-import { relativeTimeAgo } from '@/shared/lib/workspace/relative-time';
+import { formatFullDate, relativeTimeAgo } from '@/shared/lib/workspace/relative-time';
 import { isPendingSessionId } from '@/shared/lib/omp/session/default-title';
 import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
 import type { SessionItemData, WorkspaceFolderData } from '@/shared/types';
@@ -137,6 +137,7 @@ export function MobileSessionCategory({
         status={sessionStatus[sessionKey]}
         awaitingInput={Boolean(session.awaitingInput)}
         timeAgo={relativeTimeAgo(session.updated_at ?? session.created_at)}
+        timeTitle={formatFullDate(session.updated_at ?? session.created_at)}
         expandable={control.expandable} isChild={control.isChild}
         isExpanded={control.isExpanded}
         onToggleExpand={control.onToggleExpand}

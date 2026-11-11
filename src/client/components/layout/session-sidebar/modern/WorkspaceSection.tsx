@@ -43,7 +43,7 @@ import { NewWorktreeModal } from '@/client/components/workspace/worktree-modal/i
 import { WorkspaceHeader } from '@/client/components/layout/session-sidebar/modern/WorkspaceHeader';
 import { WorkspaceRevealRow } from '@/client/components/layout/session-sidebar/modern/RevealRow';
 import { folderBatchState } from '@/client/components/common/batch-selection/folder-state';
-import { relativeTimeAgo } from '@/shared/lib/workspace/relative-time';
+import { formatFullDate, relativeTimeAgo } from '@/shared/lib/workspace/relative-time';
 import { isPendingSessionId } from '@/shared/lib/omp/session/default-title';
 import type { BatchBinding } from '@/client/components/common/batch-selection/types';
 import type { SessionStatusMap } from '@/client/components/layout/session-sidebar/variant-props';
@@ -175,6 +175,7 @@ export function WorkspaceSection({
         status={sessionStatus[key]}
         awaitingInput={Boolean(session.awaitingInput)}
         timeAgo={relativeTimeAgo(session.updated_at ?? session.created_at)}
+        timeTitle={formatFullDate(session.updated_at ?? session.created_at)}
         worktree={session.worktree}
         waitingFor={session.waitingFor ? { title: session.waitingFor.title } : undefined}
         expandable={control.expandable} isChild={control.isChild}

@@ -29,6 +29,8 @@ export interface MobileSessionRowProps {
   awaitingInput?: boolean;
   /** Relative age of the session, or null when no usable timestamp exists. */
   timeAgo: string | null;
+  /** Full timestamp shown as the age's hover tooltip. */
+  timeTitle?: string | null;
   /** The session has a branch (child sessions and/or a subagent roster). */
   expandable?: boolean;
   isExpanded?: boolean;
@@ -66,6 +68,7 @@ export function MobileSessionRow({
   status,
   awaitingInput = false,
   timeAgo,
+  timeTitle,
   expandable = false,
   isExpanded = false,
   onToggleExpand,
@@ -221,7 +224,12 @@ export function MobileSessionRow({
             </span>
           </div>
 
-          <span className="text-[11px] text-ink/45 font-mono flex-shrink-0 ml-2">{timeAgo ?? ''}</span>
+          <span
+            className="text-[11px] text-ink/45 font-mono flex-shrink-0 ml-2"
+            title={timeTitle ?? undefined}
+          >
+            {timeAgo ?? ''}
+          </span>
         </button>
 
         {/* One trigger for rename / archive / delete, always visible: a touch

@@ -23,3 +23,19 @@ export function relativeTimeAgo(value: string | number | null | undefined, now: 
   const month = date.toLocaleString('en-US', { month: 'short' });
   return sameYear ? `${day} ${month}` : `${day} ${month} ${date.getFullYear()}`;
 }
+
+/** Full timestamp for a row's hover tooltip: `Wed, 12 Nov 2026, 02:30 PM`.
+ *  Returns null for a missing/unparseable timestamp, matching `relativeTimeAgo`. */
+export function formatFullDate(value: string | number | null | undefined): string | null {
+  if (value === null || value === undefined || value === '') return null;
+  const ms = typeof value === 'number' ? value : Date.parse(value);
+  if (Number.isNaN(ms)) return null;
+  return new Date(ms).toLocaleString('en-US', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
