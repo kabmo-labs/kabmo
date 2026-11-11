@@ -24,7 +24,8 @@ name: Gates
 # ruleset updated in the same change, or every pull request would wait forever
 # on a check that no longer reports. Nothing can prevent the rename — the
 # callee's job name is not configurable from the caller — so it is a fact to
-# plan around, not a bug.
+# plan around, not a bug. A matrix job renames it again (the shard suffix), so
+# a shard count is a check-name change too.
 #
 # Nothing here reads a secret, and nothing here writes to the repository: every
 # step is a read of the checked-out commit. That is what makes it safe to call
@@ -166,6 +167,18 @@ jobs:
   # A separate JOB rather than a matrix over `checks`: the two do not run the
   # same steps, and a matrix that expressed both would need a condition on
   # almost every step — which is a gate whose coverage depends on an `if:`.
+  #
+  # NOT sharded, and that is a measurement rather than an omission. `bun test
+  # --shard` splits by FILE, and this suite is not shard-safe: measured on
+  # 2026-11-12, `--shard=1/2` failed 6 cases in
+  # `src/server/lib/sessions/spawn.server.test.ts` with `UNIQUE constraint
+  # failed: workspace_folders.id` and `--shard=2/2` failed 3 more, while the
+  # unsharded run was 11259 pass / 0 fail. The cause is cross-file env leakage
+  # (`PI_CODING_AGENT_DIR` / `SYNC_WORKSPACE` left set by an earlier file, so
+  # `getDb()` seeds workspace folders into a database the next file expects to
+  # be empty) — a real bug, but a different one, and sharding would only hide
+  # it behind a different file order. It also buys nothing: the browser shards
+  # land at ~7 min, so this job is no longer the critical path.
   # ---------------------------------------------------------------------------
   windows:
     name: Checks (Windows)

@@ -21,12 +21,34 @@ name: E2E specs
 # `secrets`, `strategy`, `needs`, `if`, `concurrency`, `permissions` and
 # `cache-mode` — everything else belongs here.
 #
-# TWO jobs run the same suite on two operating systems, because Kabmo's
-# Windows-only code paths are otherwise never executed by a browser: the CLI's
-# path helpers, `stop`'s ownership guard and the `taskkill` tree kill. See the
+# TWO operating systems run the same suite, because Kabmo's Windows-only code
+# paths are otherwise never executed by a browser: the CLI's path helpers,
+# `stop`'s ownership guard and the `taskkill` tree kill. See the
 # `chromium-windows` job for what the harness had to change to make that
 # possible (it is not a portability nicety — `Bun.spawn` cannot start a shell
 # script on Windows at all) and for the two specs that skip themselves there.
+#
+# Each operating system is SHARDED across runners, and that is a measurement
+# rather than a preference. The suite is 163 tests at `workers: 1` (see
+# `tests/e2e/playwright.config.ts` for why one worker per machine), and on the
+# release run of 2026-11-11 it took 27.7 min on Windows and 13.9 min on Linux —
+# 87% of that run's 33 min wall clock, with every other job under 8 min. Raising
+# `workers` is NOT the fix: measured on this suite, `--workers=2` bought 12%
+# (1.7m -> 1.5m over 21 tests) and made two specs flake, because two servers and
+# two browsers contend for the same CPU and the assertions are timing-sensitive.
+# A shard is a separate MACHINE, so it keeps the one-worker-per-machine property
+# the config depends on and scales linearly.
+#
+# The split is 2 shards on Linux and 4 on Windows, chosen so the two legs finish
+# together: 89 + 74 tests at 5.1 s each is ~7 min on Linux, 41/48/36/38 at
+# 10.3 s each is ~7 min on Windows (both per-test costs measured on that run,
+# both splits verified with `--list`). `--shard` balances by TEST COUNT, not
+# duration, so the shards are not exactly equal — the timeouts below are ~3x the
+# expected shard, which is still a hang detector.
+#
+# `fail-fast: false` is load-bearing: a red shard must not cancel the others,
+# because the failure artifacts of every shard are what a reader needs to see
+# whether the failure is one spec or the whole leg.
 on:
   workflow_call:
     inputs:
@@ -42,9 +64,15 @@ permissions:
 
 jobs:
   chromium:
-    name: Chromium
+    name: Chromium (${{ matrix.shard }}/2)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # ~7 min expected per shard (see the header); 20 is a hang detector, not a
+    # budget.
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -77,18 +105,19 @@ jobs:
         run: bun run typecheck:e2e
 
       - name: Run the specs
-        run: bun run test:e2e --project=chromium
+        run: bun run test:e2e --project=chromium --shard=${{ matrix.shard }}/2
         env:
           CI: "true"
 
       # Traces, screenshots and the HTML report are the evidence a failing spec
       # owes the reader; a red run with no artifact is a red run nobody can act
-      # on. Uploaded only on failure, because the report is large.
+      # on. Uploaded only on failure, because the report is large. The shard
+      # number is in the name because every shard uploads its own.
       - name: Upload the failure artifacts
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.shard }}
           path: |
             playwright-report/
             test-results/
@@ -122,11 +151,16 @@ jobs:
   # this leg is for; the OS is the variable under test.
   # ---------------------------------------------------------------------------
   chromium-windows:
-    name: Chromium (Windows)
+    name: Chromium (Windows ${{ matrix.shard }}/4)
     runs-on: windows-latest
-    # The Windows runner is slower per spec than the Linux one, and a timeout
-    # that a slow runner trips reads as a failure of the change.
-    timeout-minutes: 45
+    # ~7 min expected per shard (see the header). The Windows runner is slower
+    # per spec than the Linux one, and a timeout that a slow runner trips reads
+    # as a failure of the change — 25 is ~3x the expected shard.
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -162,7 +196,7 @@ jobs:
         run: bun run typecheck:e2e
 
       - name: Run the specs
-        run: bun run test:e2e --project=chromium
+        run: bun run test:e2e --project=chromium --shard=${{ matrix.shard }}/4
         env:
           CI: "true"
 
@@ -170,7 +204,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report-windows
+          name: playwright-report-windows-${{ matrix.shard }}
           path: |
             playwright-report/
             test-results/

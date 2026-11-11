@@ -324,6 +324,30 @@ describe('the gate contract', () => {
     }
   });
 
+  test('every sharded job runs every shard, and the denominator matches the matrix', async () => {
+    // A shard count is stated TWICE — the matrix list and the `--shard=i/N`
+    // denominator — and a mismatch is silent in the worst direction: a matrix
+    // of `[1, 2]` with `--shard=1/3` runs two thirds of the suite and reports
+    // green, and a matrix of `[1, 2, 3]` with `--shard=i/2` runs shard 1 twice
+    // and never runs shard 2's tests at all. Neither shows up as a failure, so
+    // it is asserted here rather than left to review.
+    const doc = await load('e2e-specs.yml');
+    const sharded = Object.entries<any>(doc.jobs ?? {}).filter(([, job]) => job.strategy?.matrix?.shard);
+    expect(sharded.length, 'the browser suite is sharded; see the file header').toBeGreaterThan(0);
+    for (const [id, job] of sharded) {
+      const shards: number[] = job.strategy.matrix.shard;
+      const run = (job.steps as Array<{ run?: string }>).map((step) => String(step.run ?? '')).join('\n');
+      const denominator = run.match(/--shard=\$\{\{ matrix\.shard \}\}\/(\d+)/)?.[1];
+      expect(denominator, `${id} must pass --shard=<shard>/N`).toBeDefined();
+      expect(Number(denominator), `${id}: matrix has ${shards.length} shards, the command says /${denominator}`).toBe(
+        shards.length,
+      );
+      // Contiguous from 1: `--shard` is 1-based, and a matrix that starts at 0
+      // runs nothing for that row.
+      expect(shards, `${id}: shards must be 1..N`).toEqual(shards.map((_, index) => index + 1));
+    }
+  });
+
   test('the app release waits for the packages, the plugin bumps and the shell bumps', async () => {
     // The ordering is load-bearing and it is the one thing the transitive check
     // above cannot see: `app` could depend on the gates directly and still race
