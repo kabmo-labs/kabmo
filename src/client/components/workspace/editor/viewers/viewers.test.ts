@@ -32,12 +32,14 @@ import type { CsvGrid as CsvGridType } from '@/client/components/workspace/edito
 import type { SvgPreview as SvgPreviewType } from '@/client/components/workspace/editor/viewers/SvgPreview';
 import type { DocxView as DocxViewType } from '@/client/components/workspace/editor/viewers/DocxView';
 import type { SheetView as SheetViewType } from '@/client/components/workspace/editor/viewers/SheetView';
+import type { DrawioView as DrawioViewType } from '@/client/components/workspace/editor/viewers/DrawioView';
 import type { ViewerSurface as ViewerSurfaceType, hasViewerSurface as HasViewerSurfaceType } from '@/client/components/workspace/editor/viewers/dispatch';
 
 let CsvGrid: typeof CsvGridType;
 let SvgPreview: typeof SvgPreviewType;
 let DocxView: typeof DocxViewType;
 let SheetView: typeof SheetViewType;
+let DrawioView: typeof DrawioViewType;
 let ViewerSurface: typeof ViewerSurfaceType;
 let hasViewerSurface: typeof HasViewerSurfaceType;
 let container: HTMLElement;
@@ -49,6 +51,7 @@ beforeAll(async () => {
   ({ SvgPreview } = await import('@/client/components/workspace/editor/viewers/SvgPreview'));
   ({ DocxView } = await import('@/client/components/workspace/editor/viewers/DocxView'));
   ({ SheetView } = await import('@/client/components/workspace/editor/viewers/SheetView'));
+  ({ DrawioView } = await import('@/client/components/workspace/editor/viewers/DrawioView'));
   ({ ViewerSurface, hasViewerSurface } = await import('@/client/components/workspace/editor/viewers/dispatch'));
 });
 
@@ -225,7 +228,7 @@ describe('DocxView', () => {
 
 describe('hasViewerSurface', () => {
   test('the drawn kinds have a surface; text kinds do not', () => {
-    for (const kind of ['image', 'pdf', 'docx', 'spreadsheet', 'csv', 'svg'] as const) {
+    for (const kind of ['image', 'pdf', 'docx', 'spreadsheet', 'csv', 'svg', 'drawio'] as const) {
       expect(hasViewerSurface(kind)).toBe(true);
     }
     for (const kind of ['code', 'markdown'] as const) {
@@ -247,9 +250,51 @@ describe('ViewerSurface routing', () => {
     expect(container.textContent).toContain('b');
   });
 
+  // A drawio file reads the TEXT buffer, so the diagram renders with no byte
+  // source at all — proving the dispatch routed to DrawioView.
+  test('a drawio kind draws the diagram from the text buffer', async () => {
+    const content =
+      '<mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/>' +
+      '<mxCell id="a" value="Hello" vertex="1" parent="1"><mxGeometry x="0" y="0" width="80" height="40" as="geometry"/></mxCell>' +
+      '</root></mxGraphModel>';
+    await mount(
+      h(ViewerSurface, { kind: 'drawio', path: 'flow.drawio', name: 'flow.drawio', source: noSource, content, revision: 0 }),
+    );
+    // happy-dom drops inline SVG children set through `innerHTML`, so the
+    // drawing itself is pinned in `drawio-pages.test.ts`; here the claim is the
+    // dispatch — the drawio kind reached the diagram surface, not the code one.
+    expect(container.querySelector('.drawio-preview svg')).not.toBeNull();
+  });
+
   test('a kind with no surface here renders nothing', async () => {
     await mount(h(ViewerSurface, { kind: 'code', path: 'a.ts', name: 'a.ts', source: noSource, content: 'x', revision: 0 }));
     expect(container.textContent).toBe('');
+  });
+});
+
+describe('DrawioView', () => {
+  const page = (name: string, label: string) =>
+    `<diagram name="${name}"><mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/>` +
+    `<mxCell id="a" value="${label}" vertex="1" parent="1"><mxGeometry x="0" y="0" width="80" height="40" as="geometry"/></mxCell>` +
+    `</root></mxGraphModel></diagram>`;
+
+  // A five-page document must not silently show page one. (The drawing itself
+  // is pinned in `drawio-pages.test.ts`; happy-dom drops inline SVG children
+  // set through `innerHTML`, so this asserts the chrome.)
+  test('draws every page with its own caption', async () => {
+    await mount(h(DrawioView, { content: `<mxfile>${page('One', 'First')}${page('Two', 'Second')}</mxfile>`, name: 'flow.drawio' }));
+    expect(container.querySelectorAll('.drawio-preview svg')).toHaveLength(2);
+    expect(container.textContent).toContain('One');
+    expect(container.textContent).toContain('Two');
+  });
+
+  // A file that cannot be read is REPORTED with the parser's own sentence,
+  // never drawn as an empty page.
+  test('a file that is not drawio is reported, not drawn', async () => {
+    await mount(h(DrawioView, { content: '<html><body/></html>', name: 'broken.drawio' }));
+    expect(container.querySelector('.drawio-preview')).toBeNull();
+    expect(container.textContent).toContain('Could not show broken.drawio');
+    expect(container.textContent).toContain('not a draw.io file');
   });
 });
 

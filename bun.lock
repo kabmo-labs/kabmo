@@ -14,6 +14,7 @@
         "@codemirror/search": "6.7.2",
         "@codemirror/state": "6.7.6",
         "@codemirror/view": "6.43.15",
+        "@dskripchenko/drawio": "^0.1.0",
         "@fontsource/fira-code": "^5.3.0",
         "@kabmo-labs/kabmo-sdk": "workspace:*",
         "@kabmo-labs/kabmo-ui": "workspace:*",
@@ -132,6 +133,8 @@
     "@codemirror/view": ["@codemirror/view@6.43.15", "", { "dependencies": { "@codemirror/state": "^6.7.0", "crelt": "^1.0.6", "style-mod": "^4.1.0", "w3c-keyname": "^2.2.4" } }, "sha512-HHsfpqFeHyXLs983pSRe38Xajs0vFWZQ2BuX0m7Ki8w3jZ5iD8cuR3lBz2/5/X53Dhf32SBHKh6rtSTB6tKeGw=="],
 
     "@colors/colors": ["@colors/colors@1.5.0", "", {}, "sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ=="],
+
+    "@dskripchenko/drawio": ["@dskripchenko/drawio@0.1.0", "", {}, "sha512-QJ0rAPq6sItt/dy0oKAfI/2DGS+/kjgC2+h5kl+QyZlcqntkW6fHaK98MXEwSC5YDC9cvbRA2aoy8PeKWg4SFA=="],
 
     "@fontsource/fira-code": ["@fontsource/fira-code@5.3.0", "", {}, "sha512-EJL968RJRkakubAj/coU8pSUaeTE5UNoRjtzAr6kGiSZ3jWuN8/AKWHwym/PFUaQL1q7IL/H+EXs4358YhrTBQ=="],
 

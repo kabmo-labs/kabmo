@@ -42,6 +42,9 @@ const SvgPreview = lazy(() =>
 const ImageView = lazy(() =>
   import('@/client/components/workspace/editor/viewers/ImageView').then((m) => ({ default: m.ImageView })),
 );
+const DrawioView = lazy(() =>
+  import('@/client/components/workspace/editor/viewers/DrawioView').then((m) => ({ default: m.DrawioView })),
+);
 
 /** What a viewer is handed: the file's identity, its bytes and its text. */
 export interface ViewerProps {
@@ -71,7 +74,8 @@ export function hasViewerSurface(kind: ViewerKind): boolean {
     kind === 'docx' ||
     kind === 'spreadsheet' ||
     kind === 'csv' ||
-    kind === 'svg'
+    kind === 'svg' ||
+    kind === 'drawio'
   );
 }
 
@@ -145,6 +149,13 @@ export function ViewerSurface({
     return (
       <Suspense fallback={<Loading />}>
         <SvgPreview content={content} name={name} />
+      </Suspense>
+    );
+  }
+  if (kind === 'drawio') {
+    return (
+      <Suspense fallback={<Loading />}>
+        <DrawioView content={content} name={name} />
       </Suspense>
     );
   }

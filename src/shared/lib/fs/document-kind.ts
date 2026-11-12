@@ -36,7 +36,8 @@ export type ViewerKind =
   | 'image'
   | 'pdf'
   | 'docx'
-  | 'spreadsheet';
+  | 'spreadsheet'
+  | 'drawio';
 
 /** Word-processing documents mammoth reads. */
 const DOCX_EXTENSIONS: Record<string, true> = { docx: true };
@@ -55,6 +56,14 @@ const CSV_EXTENSIONS: Record<string, true> = { csv: true, tsv: true };
 const MARKDOWN_EXTENSIONS: Record<string, true> = { md: true, markdown: true, mdx: true };
 
 /**
+ * drawio diagrams. `.dio` is the same format under the older extension; the
+ * `.drawio.svg`/`.drawio.png` exports are NOT here — those are an SVG and a
+ * raster image with the model embedded, and the `svg`/`image` viewers already
+ * draw them.
+ */
+const DRAWIO_EXTENSIONS: Record<string, true> = { drawio: true, dio: true };
+
+/**
  * A viewer that draws BYTES rather than a text buffer.
  *
  * The editor keeps no buffer and offers no Save for these: the bytes are
@@ -71,6 +80,7 @@ export const BINARY_VIEWERS: Record<ViewerKind, true | undefined> = {
   markdown: undefined,
   svg: undefined,
   csv: undefined,
+  drawio: undefined,
 };
 
 /**
@@ -85,6 +95,7 @@ export const RENDERED_VIEWERS: Record<ViewerKind, true | undefined> = {
   markdown: true,
   svg: true,
   csv: true,
+  drawio: true,
   code: undefined,
   image: undefined,
   pdf: undefined,
@@ -110,6 +121,7 @@ export const VIEWER_LABELS: Record<ViewerKind, string> = {
   pdf: 'PDF',
   docx: 'Document',
   spreadsheet: 'Spreadsheet',
+  drawio: 'Diagram',
 };
 
 /**
@@ -125,6 +137,7 @@ export function viewerKindFor(filePath: string | undefined | null): ViewerKind {
   const ext = getFileExtension(filePath);
   if (!ext) return 'code';
   if (ext === 'svg') return 'svg';
+  if (DRAWIO_EXTENSIONS[ext]) return 'drawio';
   if (MARKDOWN_EXTENSIONS[ext]) return 'markdown';
   if (getImageMimeType(filePath)) return 'image';
   if (ext === 'pdf') return 'pdf';

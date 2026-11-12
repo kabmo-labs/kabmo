@@ -28,6 +28,8 @@ describe('viewerKindFor', () => {
     expect(viewerKindFor('a.xls')).toBe('spreadsheet');
     expect(viewerKindFor('a.xlsx')).toBe('spreadsheet');
     expect(viewerKindFor('a.xlsm')).toBe('spreadsheet');
+    expect(viewerKindFor('flow.drawio')).toBe('drawio');
+    expect(viewerKindFor('flow.dio')).toBe('drawio');
   });
 
   // SVG is a picture to the eye while its bytes are editable XML text, and
@@ -57,7 +59,7 @@ describe('viewerKindFor', () => {
   });
 
   test('every kind has a row in both lookup tables', () => {
-    const kinds: ViewerKind[] = ['code', 'markdown', 'svg', 'csv', 'image', 'pdf', 'docx', 'spreadsheet'];
+    const kinds: ViewerKind[] = ['code', 'markdown', 'svg', 'csv', 'image', 'pdf', 'docx', 'spreadsheet', 'drawio'];
     for (const kind of kinds) {
       expect(kind in BINARY_VIEWERS).toBe(true);
       expect(kind in RENDERED_VIEWERS).toBe(true);
@@ -72,6 +74,10 @@ describe('viewerKindFor', () => {
     expect(BINARY_VIEWERS.csv).toBeUndefined();
     expect(RENDERED_VIEWERS.csv).toBe(true);
     expect(RENDERED_VIEWERS.pdf).toBeUndefined();
+    // A drawio file is editable XML, so it has both a source and a rendered
+    // form — the eye toggle's pair — and no byte fetch.
+    expect(RENDERED_VIEWERS.drawio).toBe(true);
+    expect(BINARY_VIEWERS.drawio).toBeUndefined();
     // A byte viewer's label is its document kind, never the language badge the
     // empty buffer would otherwise produce.
     expect(VIEWER_LABELS.pdf).toBe('PDF');
