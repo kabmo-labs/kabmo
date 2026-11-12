@@ -16,6 +16,17 @@
  * timeline and the sidebar faded. Nothing about that is a per-component
  * decision, so nothing about it should be wired per component.
  *
+ * ## Painted on the INPUT, not on the scroll it causes
+ *
+ * The bar is painted by the `wheel`/`touch*` handler itself, on the nearest
+ * ancestor under the pointer that can overflow. Waiting for the `scroll` event
+ * means painting a frame late at best and not at all at worst — a browser
+ * dispatches `scroll` at its own frame boundary, and the gate below declines
+ * the scrolls it cannot attribute to a user. The `scroll` path is still wired,
+ * and it is the one that covers a scrollbar-thumb drag and the document's own
+ * scroll; the input path is what makes "the bar appears the moment you scroll"
+ * true without depending on either.
+ *
  * ## Why one document listener is enough
  *
  * `scroll` does not bubble, so a bubble-phase listener on `document` would only
@@ -80,6 +91,14 @@
  * on `documentElement`.
  */
 
+import {
+  belongsTo,
+  eventMoment,
+  isScrollKey,
+  nearestScroller,
+  scrolledElement,
+} from '@/client/lib/scrollbar-events';
+
 /** The attribute `tailwind.css` selects on. One name, two files. */
 export const SCROLLBAR_ACTIVE_ATTRIBUTE = 'data-scrollbar-active';
 
@@ -115,68 +134,6 @@ interface ScrollbarActivityHost {
  *  and Bun/Node typings disagree on what `setTimeout` returns. */
 type FadeTimer = ReturnType<typeof setTimeout>;
 
-/** The element whose scrollbar the event describes. */
-function scrolledElement(target: EventTarget | null): Element | null {
-  if (target === document || target === window || target === null) {
-    // The viewport's own scroll: the bar that is painted belongs to the root
-    // element, not to the document the event names.
-    return document.documentElement;
-  }
-  return target instanceof Element ? target : null;
-}
-
-/**
- * WHEN an event happened, on the one clock the arm is compared on.
- *
- * `Date.now()` read inside a handler is when the handler RAN, and the two are
- * not the same moment: scroll events are coalesced and delivered at the next
- * frame, so a main thread busy with a long task (a streamed markdown render, a
- * 36 000px transcript re-layout) can delay delivery by hundreds of milliseconds.
- * `Event.timeStamp` is stamped when the event is CREATED, which is what makes
- * the arm's expiry mean "this input is old" rather than "this handler is late".
- *
- * Engines disagree about the scroll stamp — Chrome stamps at creation, WebKit
- * at dispatch — so this clock cannot decide whether a scroll was the user's.
- * That is why the gate is an ARM (did any input happen since the last reveal?)
- * and not a gap: the arm only has to bound how stale an input may be, and both
- * engines answer that.
- *
- * The fallback covers synthetic events and engines that report a non-positive
- * stamp (`0` is what a hand-built `new Event('scroll')` carries). It answers
- * `performance.now()` and not `Date.now()`: `Event.timeStamp` is a
- * `DOMHighResTimeStamp`, so mixing in wall time would make the subtraction a
- * difference of two different clocks — measured as a negative gap, which would
- * make every programmatic scroll look armed.
- */
-function eventMoment(event: Event): number {
-  const stamp = event.timeStamp;
-  return Number.isFinite(stamp) && stamp > 0 ? stamp : performance.now();
-}
-
-/**
- * Whether an input happened INSIDE the container that scrolled.
- *
- * An arm is spent by the first scroll that follows it, which is what stops a
- * stream from pinning a bar — but "first scroll anywhere" was too loose: a
- * wheel that cannot move its container (already at the top) produces no scroll
- * event, so its arm stayed unspent for the rest of its life and the next
- * PROGRAMMATIC scroll in any other panel could spend it. Measured: wheel up at
- * `scrollTop = 0`, then `scrollTop = 500` 250ms later, and the bar lit for a
- * scroll nobody made.
- *
- * Binding the arm to the subtree the input happened in closes that without
- * adding a layout read: `contains` is a tree walk, not a `getComputedStyle`,
- * and the wheel's target is already the element under the pointer.
- *
- * An input that names the document or the window itself (a keydown with nothing
- * focused) is deliberately NOT bound — the scroller it drives is the focused
- * one, which no target reveals, so it keeps the unbound behaviour.
- */
-function belongsTo(element: Element, inputTarget: EventTarget | null): boolean {
-  if (inputTarget === null || inputTarget === document || inputTarget === window) return true;
-  if (inputTarget === element) return true;
-  return inputTarget instanceof Node ? element.contains(inputTarget) : false;
-}
 
 /**
  * Wire the reveal rule for one document. Idempotent per document.
@@ -225,6 +182,45 @@ export function installScrollbarActivity(
     armedAt = eventMoment(event);
     armedIn = event.target;
   };
+
+  /** Paint `element`'s bar and start its idle window over. */
+  const reveal = (element: Element) => {
+    element.setAttribute(SCROLLBAR_ACTIVE_ATTRIBUTE, '');
+    clearTimeout(timers.get(element));
+    timers.set(
+      element,
+      setTimeout(() => {
+        timers.delete(element);
+        element.removeAttribute(SCROLLBAR_ACTIVE_ATTRIBUTE);
+      }, idleMs),
+    );
+  };
+
+  /**
+   * Reveal the surface the user's input is aimed at, AT INPUT TIME.
+   *
+   * Waiting for the `scroll` event means the bar is painted on the frame after
+   * the input — and a scroll the gate declines (a programmatic follow, an
+   * engine that dispatches the scroll after the frame budget) paints nothing at
+   * all. Painting here makes "the bar appears the moment you scroll" true by
+   * construction, and it costs no layout: the walk stops at the first ancestor
+   * that can actually overflow.
+   *
+   * Only input paints, so a stream's auto-follow still cannot light a bar. Each
+   * wheel event of a gesture restarts the idle window, which is what makes the
+   * bar stay up for as long as the user keeps scrolling instead of for 5s after
+   * the first tick of the gesture.
+   */
+  const revealUnderPointer = (event: Event) => {
+    const element = nearestScroller(event.target);
+    if (element) reveal(element);
+  };
+
+  const noteScrollingInput = (event: Event) => {
+    noteInput(event);
+    revealUnderPointer(event);
+  };
+
   const pressPointer = (event: Event) => {
     heldPointer = true;
     noteInput(event);
@@ -238,9 +234,19 @@ export function installScrollbarActivity(
   // Every one of these is passive: none of them ever calls `preventDefault`,
   // and a non-passive wheel listener is a documented cause of scroll jank.
   const INPUT_OPTIONS = { capture: true, passive: true } as const;
-  for (const type of ['wheel', 'touchstart', 'touchmove', 'keydown'] as const) {
-    document.addEventListener(type, noteInput, INPUT_OPTIONS);
+  for (const type of ['wheel', 'touchstart', 'touchmove'] as const) {
+    document.addEventListener(type, noteScrollingInput, INPUT_OPTIONS);
   }
+  // Only the keys that scroll arm the gate. A keydown that types a character
+  // says nothing about scrolling, and arming on it let a stream's next
+  // auto-follow paint a bar while the reader was typing in the composer.
+  document.addEventListener(
+    'keydown',
+    (event) => {
+      if (isScrollKey(event as KeyboardEvent)) noteInput(event);
+    },
+    INPUT_OPTIONS,
+  );
   // `mousedown`/`mouseup` ride along with the pointer pair so an engine that
   // synthesizes no pointer events for a native scrollbar still counts the drag.
   document.addEventListener('pointerdown', pressPointer, INPUT_OPTIONS);
@@ -282,15 +288,7 @@ export function installScrollbarActivity(
         armedAt = null;
         armedIn = null;
       }
-      element.setAttribute(SCROLLBAR_ACTIVE_ATTRIBUTE, '');
-      clearTimeout(timers.get(element));
-      timers.set(
-        element,
-        setTimeout(() => {
-          timers.delete(element);
-          element.removeAttribute(SCROLLBAR_ACTIVE_ATTRIBUTE);
-        }, idleMs),
-      );
+      reveal(element);
     },
     // Passive for the same reason the input listeners are.
     { capture: true, passive: true },

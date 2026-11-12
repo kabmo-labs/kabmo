@@ -3,107 +3,40 @@
  * SPDX-License-Identifier: MIT
  */
 
-/**
- * The app-wide scrollbar reveal rule.
- *
- * What this file pins is the part that is easy to get wrong and impossible to
- * notice by hand: `scroll` does not bubble, so a document listener only sees
- * the reveal if it is registered in the CAPTURE phase with `event.target` read
- * as the scroller. Get that wrong and the code still runs, still adds no error
- * anywhere, and simply never reveals a bar on any container except the page
- * itself — which looks exactly like a CSS problem.
- *
- * The other half is the gate, and it is the reason this module exists in the
- * shape it does: a PROGRAMMATIC scroll is a real, trusted `scroll` event, so a
- * reveal keyed on the event alone pins the bar on screen for as long as
- * anything else moves the container — measured as a chat timeline whose bar
- * never faded during a stream, with nobody touching the page. Every case below
- * that asserts a reveal therefore produces INPUT first, and the cases that
- * assert no reveal are the ones with a bare scroll.
- *
- * Each case gets its OWN document and its own install, because the module is
- * idempotent per document and its input clock is per install: a shared document
- * would make every case inherit the previous one's wheel (and would make a
- * `useFakeTimers` clock that restarts at real time read as recent input).
- *
- * Mounted against happy-dom, the same way the other client tests are.
- */
-
 import { afterAll, afterEach, beforeAll, describe, expect, jest, test } from 'bun:test';
-import { Window } from 'happy-dom';
 
 import {
-  installScrollbarActivity,
   SCROLLBAR_ACTIVE_ATTRIBUTE,
   SCROLLBAR_IDLE_MS,
-  SCROLLBAR_INPUT_ARM_MS,
+  installScrollbarActivity,
 } from '@/client/lib/scrollbar-activity';
+import {
+  ARM_MS,
+  IDLE_MS,
+  freshPage,
+  inputAt,
+  restoreNativeGlobals,
+  saveNativeGlobals,
+  scrollAt,
+  scroller,
+} from '@/client/lib/scrollbar-probe.test-util';
 
-const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'Event', 'CustomEvent'] as const;
-/** The runner's own globals, restored on teardown so later files still see native Event/CustomEvent/window. */
-const nativeGlobals: Partial<Record<(typeof DOM_GLOBALS)[number], unknown>> = {};
-
-/** Short enough to drive in a test, long enough that the two windows do not overlap. */
-const IDLE_MS = 1_000;
-/** The production arm; its real value is what the gate is about. */
-const ARM_MS = SCROLLBAR_INPUT_ARM_MS;
-
-beforeAll(() => {
-  const target = globalThis as unknown as Record<string, unknown>;
-  for (const key of DOM_GLOBALS) {
-    if (!(key in nativeGlobals)) nativeGlobals[key] = target[key];
-  }
-});
-
+beforeAll(saveNativeGlobals);
+afterAll(restoreNativeGlobals);
 afterEach(() => {
   jest.useRealTimers();
 });
 
-afterAll(() => {
-  const target = globalThis as unknown as Record<string, unknown>;
-  for (const key of DOM_GLOBALS) {
-    if (nativeGlobals[key] === undefined) delete target[key];
-    else target[key] = nativeGlobals[key];
-  }
-});
-
 /**
- * A fresh document with the reveal rule installed on it.
+ * The reveal gate: which scrolls may paint a bar, and for how long.
  *
- * A new `Window` is a new `Document`, and the module keys its install guard on
- * the document — so this is the only way to get an install whose input clock
- * has never been touched.
+ * A `scroll` event alone is not proof of a user — a stream's auto-follow emits
+ * real, trusted scroll events — so the gate asks whether the user's input
+ * produced this scroll. Everything here is that question, its escape hatches
+ * (a held pointer, a delayed delivery) and the fade window.
  */
-function freshPage(): void {
-  const win = new Window({ url: 'http://localhost' });
-  const target = globalThis as unknown as Record<string, unknown>;
-  for (const key of DOM_GLOBALS) target[key] = (win as unknown as Record<string, unknown>)[key];
-  installScrollbarActivity(IDLE_MS, ARM_MS);
-}
 
-/** A scroll container in the live document. */
-function scroller(): HTMLElement {
-  const element = document.createElement('div');
-  document.body.appendChild(element);
-  return element;
-}
-
-/** The event a browser dispatches at a scroller — it does not bubble. */
-function scrollAt(element: Element): void {
-  element.dispatchEvent(new Event('scroll'));
-}
-
-/** The input a browser delivers before a scroll the USER caused.
- *
- * Dispatched ON the scroller, because that is what a wheel does: it is targeted
- * at the element under the pointer, and the arm is bound to that subtree so a
- * wheel that could not move its container cannot later vouch for a programmatic
- * scroll somewhere else. */
-function inputAt(element: Element = document.body): void {
-  element.dispatchEvent(new Event('wheel'));
-}
-
-describe('installScrollbarActivity', () => {
+describe('the scrollbar reveal gate', () => {
   test('a user-driven scroll on a nested container reveals ITS bar, not the page\'s', () => {
     jest.useFakeTimers();
     freshPage();
