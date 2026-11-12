@@ -74,9 +74,15 @@ export interface HarnessUpdateController {
   /** Start an update; resolves to a refusal, or null when the run was started
    *  (immediately or queued behind the one already installing). */
   start: (id: string) => Promise<string | null>;
+  /** Drop a settled record (the result is read and has nothing left to say);
+   *  resolves to the refusal, or null when the record was deleted. */
+  dismiss: (id: string) => Promise<string | null>;
 }
 
 type Settled = (message: string, ok: boolean) => void;
+
+/** One run's identity: a new update for the same harness replaces the record. */
+const runKey = (job: HarnessUpdateJob): string => `${job.harness}:${job.startedAt}`;
 
 export function useHarnessUpdate(
   onSettled: Settled,
@@ -91,6 +97,13 @@ export function useHarnessUpdate(
   const reported = useRef(new Set<string>());
   // Runs whose post-install probe answer has already been reflected in the rows.
   const probed = useRef(new Set<string>());
+  // The runs this card dismissed, keyed by `harness:startedAt`. A poll already
+  // in flight when the delete landed would otherwise paint the record back for
+  // one frame; the key, not the harness, stays out so a NEW run is shown.
+  const dismissed = useRef(new Set<string>());
+  // The jobs as last rendered, so `dismiss` can name the run it is dropping
+  // without waiting for a render.
+  const shown = useRef<HarnessUpdateJob[]>([]);
   // The callback is read through a ref so an inline arrow from the caller does
   // not restart the mount effect (and re-adopt the records) on every render.
   const settled = useRef(onSettled);
@@ -99,13 +112,12 @@ export function useHarnessUpdate(
   /** Fold one harness's record into the list, keeping the newer one. */
   const merge = useCallback((incoming: HarnessUpdateJob | null) => {
     if (!incoming) return;
-    setJobs((current) => {
-      const index = current.findIndex((job) => job.harness === incoming.harness);
-      if (index < 0) return [...current, incoming];
-      const next = current.slice();
-      next[index] = incoming;
-      return next;
-    });
+    const index = shown.current.findIndex((job) => job.harness === incoming.harness);
+    const next = index < 0
+      ? [...shown.current, incoming]
+      : shown.current.map((job) => (job.harness === incoming.harness ? incoming : job));
+    shown.current = next;
+    setJobs(next);
   }, []);
 
   /**
@@ -117,8 +129,12 @@ export function useHarnessUpdate(
    * are two separate moments, not one.
    */
   const observe = useCallback((incoming: HarnessUpdateJob[]) => {
-    setJobs(incoming);
-    for (const job of incoming) {
+    // A poll that was already in flight when a dismissal deleted the record
+    // still carries it; a dismissed run must not be painted back.
+    const visible = incoming.filter((job) => !dismissed.current.has(runKey(job)));
+    shown.current = visible;
+    setJobs(visible);
+    for (const job of visible) {
       if (jobUnfinished(job)) {
         watched.current.add(job.harness);
         reported.current.delete(job.harness);
@@ -246,5 +262,28 @@ export function useHarnessUpdate(
     return payload.error ?? 'Update failed';
   }, [follow, merge]);
 
-  return { jobs, start };
+  const dismiss = useCallback(async (id: string): Promise<string | null> => {
+    let response: Response;
+    try {
+      response = await fetch('/api/harness/update/status', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ harness: id }),
+      });
+    } catch (cause) {
+      return cause instanceof Error ? cause.message : 'Could not dismiss the update result';
+    }
+    const payload = (await response.json().catch(() => ({}))) as { error?: string };
+    if (!response.ok) return payload.error ?? `Could not dismiss the update result (HTTP ${response.status})`;
+    // Remember the RUN, not the harness: the record is gone on disk, and this
+    // keeps a poll that predates the delete from painting it back.
+    const target = shown.current.find((job) => job.harness === id);
+    if (target) dismissed.current.add(runKey(target));
+    const next = shown.current.filter((job) => job.harness !== id);
+    shown.current = next;
+    setJobs(next);
+    return null;
+  }, []);
+
+  return { jobs, start, dismiss };
 }

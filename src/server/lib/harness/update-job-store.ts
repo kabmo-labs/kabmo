@@ -51,6 +51,18 @@ export async function readUpdateJob(path: string): Promise<HarnessUpdateJob | nu
   }
 }
 
+/**
+ * Delete the record.
+ *
+ * A settled record is a result the reader has seen, and nothing else reads it:
+ * the queue only starts WAITING records, and a new press writes a fresh one. So
+ * dismissing it is a delete, not a flag — and the row stops carrying a message
+ * that has nothing left to say, across a reload included.
+ */
+export async function removeUpdateJob(path: string): Promise<void> {
+  await fs.promises.rm(path, { force: true });
+}
+
 /** Replace the record atomically. A reader sees the previous one or this one. */
 export async function writeUpdateJob(job: HarnessUpdateJob, path: string): Promise<void> {
   const target = path;

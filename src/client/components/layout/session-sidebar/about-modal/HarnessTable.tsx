@@ -62,11 +62,13 @@ interface HarnessTableProps {
    * a waiting run and an installing one at the same time; the row names its own.
    */
   onOpenLog?: (harness: string) => void;
+  /** Drops one harness's settled record; resolves to a refusal, or null. */
+  onDismiss?: (harness: string) => Promise<string | null>;
 }
 
 export function HarnessTable({
   harnesses, versions, loading = false, onOpenHarness, onUpdate, jobs = [],
-  onOpenLog,
+  onOpenLog, onDismiss,
 }: HarnessTableProps) {
   const [problem, setProblem] = useState<{ id: string; message: string } | null>(null);
 
@@ -82,6 +84,14 @@ export function HarnessTable({
 
   const runUpdate = async (id: string) => {
     const message = await onUpdate(id);
+    setProblem(message ? { id, message } : null);
+  };
+
+  // A refusal from a dismissal is shown under the same row, for the same reason
+  // a refused press is: the reader pressed something on THAT line.
+  const runDismiss = async (id: string) => {
+    if (!onDismiss) return;
+    const message = await onDismiss(id);
     setProblem(message ? { id, message } : null);
   };
 
@@ -137,6 +147,7 @@ export function HarnessTable({
               onOpenHarness={() => onOpenHarness(entry.id)}
               onUpdate={() => void runUpdate(entry.id)}
               onOpenLog={onOpenLog ? () => onOpenLog(entry.id) : undefined}
+              onDismiss={onDismiss ? () => void runDismiss(entry.id) : undefined}
             />
           ))}
         </div>

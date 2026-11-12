@@ -148,16 +148,21 @@ async function probeAfterUpdate(
     console.error(`[harness-update] probe after updating ${harness} failed:`, cause);
   }
   const path = getHarnessUpdateStatusPath(harness);
-  const current = await readUpdateJob(path);
-  // A NEW run for the same harness may have replaced the record while this
-  // probe ran; writing here would revert that run to the previous one.
-  if (!current || current.startedAt !== startedAt) return;
-  // The version is stated only when the agent itself answered it: a claim about
-  // a number nobody read is the fabrication this whole record exists to avoid.
-  const message = version && current.message && !current.message.includes(version)
-    ? `${current.message} — it now reports ${version}`
-    : current.message;
-  await writeUpdateJob({ ...current, probe: 'done', message }, path);
+  // The read and the write are one step against the queue's own passes: a
+  // dismissal deletes the record, and a write landing after that delete would
+  // resurrect the message the reader just dismissed.
+  await serializeUpdateWork(async () => {
+    const current = await readUpdateJob(path);
+    // A NEW run for the same harness may have replaced the record while this
+    // probe ran; writing here would revert that run to the previous one.
+    if (!current || current.startedAt !== startedAt) return;
+    // The version is stated only when the agent itself answered it: a claim about
+    // a number nobody read is the fabrication this whole record exists to avoid.
+    const message = version && current.message && !current.message.includes(version)
+      ? `${current.message} — it now reports ${version}`
+      : current.message;
+    await writeUpdateJob({ ...current, probe: 'done', message }, path);
+  });
 }
 
 /** Run the probe for a settled record, once per run, in the background. */

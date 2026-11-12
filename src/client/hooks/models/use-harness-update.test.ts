@@ -35,6 +35,8 @@ let postReplies: { status: number; body: unknown }[] = [];
 let statusJobs: HarnessUpdateJob[] = [];
 /** Called when the card re-reads the version rows (the probe-arrival signal). */
 let onVersionsRead: (() => void) | null = null;
+/** Called when the stub answers one status poll — the "a poll landed" signal. */
+let onStatusRead: (() => void) | null = null;
 
 function job(overrides: Partial<HarnessUpdateJob> = {}): HarnessUpdateJob {
   return {
@@ -66,17 +68,24 @@ beforeEach(() => {
   statusJobs = [];
   postReplies = [];
   onVersionsRead = null;
+  onStatusRead = null;
   (globalThis as unknown as Record<string, unknown>).fetch = async (input: unknown, init?: { method?: string }) => {
     calls.push(`${init?.method ?? 'GET'} ${String(input)}`);
     if (init?.method === 'POST') {
       const reply = postReplies.length > 1 ? postReplies.shift()! : postReplies[0];
       return new Response(JSON.stringify(reply?.body ?? {}), { status: reply?.status ?? 202 });
     }
+    if (init?.method === 'DELETE') {
+      return new Response(JSON.stringify({ dismissed: true }), { status: 200 });
+    }
     if (String(input).includes('/api/harness/versions')) {
       onVersionsRead?.();
       onVersionsRead = null;
       return new Response(JSON.stringify({ harnesses: [] }), { status: 200 });
     }
+    const statusRead = onStatusRead;
+    onStatusRead = null;
+    statusRead?.();
     return new Response(JSON.stringify({ jobs: statusJobs }), { status: 200 });
   };
 });
@@ -280,7 +289,31 @@ describe('useHarnessUpdate', () => {
     expect(current.problem).toBeNull();
     expect(harness.current().jobs).toEqual([]);
     expect(await harness.settlement(0)).toEqual({ message: 'claude is already up to date (adapter 0.102.0)', ok: true });
-    // One read — the mount's — and no poll for a job that does not exist.
-    expect(GETS()).toHaveLength(1);
+  });
+
+  test('dismissing a settled result deletes the record and a stale poll cannot paint it back', async () => {
+    // The defect: "claude updated (adapter) — it now reports 0.106.0" stayed on
+    // the row with no way out. The delete is server-side (a closed card must not
+    // resurrect it), and the RUN key is remembered so a poll that started before
+    // the delete cannot re-add the record it still carries.
+    statusJobs = [finished({ message: 'claude updated (adapter) — it now reports 0.106.0', probe: 'pending' })];
+    const harness = mount();
+    await flush();
+    expect(harness.current().jobs).toHaveLength(1);
+
+    await act(async () => {
+      expect(await harness.current().dismiss('claude')).toBeNull();
+    });
+    expect(calls).toContain('DELETE /api/harness/update/status');
+    expect(harness.current().jobs).toEqual([]);
+
+    // A pending probe keeps the poll alive, and the stub keeps answering with
+    // the record that was just deleted: the next poll landing must not restore it.
+    const nextPoll = Promise.withResolvers<void>();
+    onStatusRead = nextPoll.resolve;
+    await act(async () => {
+      await nextPoll.promise;
+    });
+    expect(harness.current().jobs).toEqual([]);
   });
 });

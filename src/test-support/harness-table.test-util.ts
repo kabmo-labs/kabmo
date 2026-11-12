@@ -91,6 +91,7 @@ export function mountHarnessTable(
   state?: {
     jobs?: HarnessUpdateJob[];
     onOpenLog?: (harness: string) => void;
+    onDismiss?: (harness: string) => Promise<string | null>;
   },
 ): HTMLElement {
   act(() =>
@@ -102,6 +103,7 @@ export function mountHarnessTable(
         onUpdate: onUpdate ?? (async () => null),
         jobs: state?.jobs ?? [],
         onOpenLog: state?.onOpenLog,
+        onDismiss: state?.onDismiss,
       }),
       container,
     ),

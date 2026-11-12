@@ -22,8 +22,8 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { action } from '@/server/routes/harness/update';
-import { loader as statusLoader } from '@/server/routes/harness/update-status';
-import { writeUpdateJob } from '@/server/lib/harness/update-job-store';
+import { action as statusAction, loader as statusLoader } from '@/server/routes/harness/update-status';
+import { readUpdateJob, writeUpdateJob } from '@/server/lib/harness/update-job-store';
 import { getHarnessUpdateStatusPath } from '@/server/lib/lifecycle/paths';
 import type { HarnessUpdateJob } from '@/shared/types/harness-update';
 
@@ -51,6 +51,17 @@ function post(harness: string): Parameters<typeof action>[0] {
     }),
     params: {},
   } as Parameters<typeof action>[0];
+}
+
+function dismiss(harness: string): Parameters<typeof statusAction>[0] {
+  return {
+    request: new Request('http://localhost/api/harness/update/status', {
+      method: 'DELETE',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ harness }),
+    }),
+    params: {},
+  } as Parameters<typeof statusAction>[0];
 }
 
 function job(overrides: Partial<HarnessUpdateJob> = {}): HarnessUpdateJob {
@@ -152,5 +163,48 @@ describe('GET /api/harness/update/status', () => {
     const codex = jobs.find((entry) => entry.harness === 'codex');
     expect(codex?.queuedAt).not.toBeNull();
     expect(codex?.pid).toBeNull();
+  });
+});
+
+describe('DELETE /api/harness/update/status', () => {
+  test('an unknown harness is refused', async () => {
+    const response = (await statusAction(dismiss('nope'))) as Response;
+    expect(response.status).toBe(400);
+    expect(((await response.json()) as { error: string }).error).toBe('Unknown harness');
+  });
+
+  test('a settled record is deleted, so the row stops quoting it', async () => {
+    // The reported defect: "claude updated (adapter) — it now reports 0.106.0"
+    // stayed in About after the update finished, with no way out. The dismissal
+    // removes the record itself, because a closed card reads it back from disk.
+    await writeUpdateJob(job({
+      pid: null,
+      finishedAt: Date.now(),
+      ok: true,
+      applied: true,
+      probe: 'done',
+      message: 'claude updated (adapter) — it now reports 0.106.0',
+    }), getHarnessUpdateStatusPath('claude'));
+
+    const response = (await statusAction(dismiss('claude'))) as Response;
+    expect(response.status).toBe(200);
+    expect(((await response.json()) as { dismissed: boolean }).dismissed).toBe(true);
+    expect(await readUpdateJob(getHarnessUpdateStatusPath('claude'))).toBeNull();
+
+    const list = (await statusLoader()) as Response;
+    expect(((await list.json()) as { jobs: unknown[] }).jobs).toEqual([]);
+  });
+
+  test('a run that is still installing or QUEUED is refused, and its record survives', async () => {
+    // Deleting a live record would hide the spinner and let a second install
+    // start over the same global prefix.
+    await writeUpdateJob(
+      job({ harness: 'codex', label: 'codex', pid: null, queuedAt: Date.now() }),
+      getHarnessUpdateStatusPath('codex'),
+    );
+    const response = (await statusAction(dismiss('codex'))) as Response;
+    expect(response.status).toBe(409);
+    expect(((await response.json()) as { error: string }).error).toContain('still queued');
+    expect(await readUpdateJob(getHarnessUpdateStatusPath('codex'))).not.toBeNull();
   });
 });

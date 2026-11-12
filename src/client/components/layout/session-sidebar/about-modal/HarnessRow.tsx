@@ -37,6 +37,8 @@ export interface HarnessRowProps {
   /** Starts this harness's update. */
   onUpdate: () => void;
   onOpenLog?: () => void;
+  /** Drops this row's settled record, once its result has been read. */
+  onDismiss?: () => void;
 }
 
 /** The state mark. Shape carries the state, so tone is reinforcement only. */
@@ -80,7 +82,7 @@ function StateMark({ state }: { state: HarnessState }) {
 const COLUMNS = 'grid grid-cols-[minmax(0,1fr)_7rem_1.75rem] items-start gap-x-2 md:grid-cols-[minmax(0,1fr)_9.5rem_1.75rem]';
 
 export function HarnessRow({
-  entry, version, job, problem, onOpenHarness, onUpdate, onOpenLog,
+  entry, version, job, problem, onOpenHarness, onUpdate, onOpenLog, onDismiss,
 }: HarnessRowProps) {
   const status = harnessStatus(entry);
   // Three states, three answers: a worker is installing this one, this one is
@@ -254,6 +256,7 @@ export function HarnessRow({
                       progress={progress}
                       message={job?.message ?? null}
                       onOpenLog={onOpenLog}
+                      onDismiss={onDismiss}
                     />
                   )}
                 </div>

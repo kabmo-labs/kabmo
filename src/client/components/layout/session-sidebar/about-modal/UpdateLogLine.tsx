@@ -19,9 +19,14 @@
  * for, because the queue is invisible otherwise.
  *
  * After the run settles the line stays, showing what happened and keeping
- * `View log` available: the failure case is exactly when the output matters, and
- * the record it lives in survives until that harness is updated again.
+ * `View log` available: the failure case is exactly when the output matters. A
+ * settled line also carries the dismiss control — the record is history, and
+ * without a way out "claude updated (adapter) — it now reports 0.106.0" stayed
+ * on the row forever. A running or queued line has no dismiss: deleting a live
+ * record would hide the spinner and let a second install start.
  */
+
+import { X } from 'lucide-preact';
 
 export interface UpdateLogLineProps {
   /** Is the worker still installing? */
@@ -33,9 +38,12 @@ export interface UpdateLogLineProps {
   /** The finished run's sentence, once it has one. */
   message: string | null;
   onOpenLog?: () => void;
+  /** Drops the settled record. Absent while the run is still moving. */
+  onDismiss?: () => void;
 }
 
-export function UpdateLogLine({ running, queued = false, progress, message, onOpenLog }: UpdateLogLineProps) {
+export function UpdateLogLine({ running, queued = false, progress, message, onOpenLog, onDismiss }: UpdateLogLineProps) {
+  const settled = !running && !queued;
   return (
     <span className="col-span-3 flex items-center gap-2 pb-1 text-[10px] text-ink/60">
       {running
@@ -51,6 +59,18 @@ export function UpdateLogLine({ running, queued = false, progress, message, onOp
       >
         View log
       </button>
+      {settled && onDismiss && (
+        <button
+          type="button"
+          data-update-dismiss
+          onClick={onDismiss}
+          aria-label="Dismiss update result"
+          title="Dismiss"
+          className="ml-auto shrink-0 cursor-pointer rounded p-0.5 text-ink/40 transition-colors hover:bg-ink/5 hover:text-ink"
+        >
+          <X size={10} className="stroke-[2.5]" />
+        </button>
+      )}
     </span>
   );
 }

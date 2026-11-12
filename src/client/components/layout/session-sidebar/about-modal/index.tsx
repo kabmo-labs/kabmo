@@ -180,6 +180,7 @@ export function AboutModal({ isOpen, onClose, updates, onToast }: AboutModalProp
                 onUpdate={update.start}
                 jobs={update.jobs}
                 onOpenLog={setLogHarness}
+                onDismiss={update.dismiss}
                 onOpenHarness={(id) => {
                   onClose();
                   // The settings modal is the frame that owns harness pages; the
