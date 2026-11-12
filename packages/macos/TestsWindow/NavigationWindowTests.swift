@@ -32,15 +32,6 @@ import WebKit
 
 import KabmoDesktop
 
-/// A page shaped like the console: a frame for the user browser panel, and the
-/// links the console really draws.
-let navigationPage = """
-<!doctype html><html><body>
-<iframe id="panel" src="about:blank" width="300" height="200"></iframe>
-<a id="blank" href="https://example.test/release" target="_blank">release notes</a>
-</body></html>
-"""
-
 /// Where one navigation goes, recorded so the cases compare URLs rather than
 /// trust a side effect.
 struct NavigationProbe {
@@ -48,24 +39,26 @@ struct NavigationProbe {
   var decisions: [String] = []
 }
 
-/// The page the suite was built with, restored after this case, which replaces it.
+/// The navigation rule, driven against the SUITE's own page.
 ///
-/// `view` is the SUITE's web view on purpose: a second `WKWebView` in the same
-/// process never left `estimatedProgress = 0.1` here (measured — its delegate was
-/// asked nothing), so the view that already rendered a page is the only one that
-/// answers. That means this case must give the page back, or every later case
-/// (`#composer`, the drop recorder, the upload field) looks up elements that no
-/// longer exist.
+/// `view` is the suite's web view and the page is the one already on screen: it
+/// carries `#panel` (the user browser panel's frame) and `#blank` (a
+/// `target="_blank"` link), and it was loaded at top level with an http origin.
+///
+/// This case used to load a page of its own. That load never finished on the
+/// x64 release runner — measured, `estimatedProgress` stayed at 0.1 with
+/// `isLoading = true` for the whole 30 s budget, while the identical load at top
+/// level commits in 0.3 s — so five checks failed on a working web view. The
+/// same measurement is why `DroppedPathsWindowTests` drives the page that is
+/// already there instead of a second view.
 @MainActor
 func navigationWindowCases(
   view: WKWebView,
   window: NSWindow,
-  suitePage: String,
   check: @escaping (String, Bool) -> Void,
   pump: @escaping (TimeInterval) -> Void
 ) {
-  /// Read one expression from THIS case's web view. Its own helper rather than the
-  /// suite's, which is bound to the runner's view.
+  /// Read one expression from the suite's web view.
   func evaluate(_ view: WKWebView, _ script: String) -> Any? {
     var answer: Any?
     var done = false
@@ -82,16 +75,9 @@ func navigationWindowCases(
 
   /// Run the run loop until `ready` answers true, or give up at the deadline.
   ///
-  /// A FIXED `pump` is a guess about how long WebKit needs to commit a page, and
-  /// it is the wrong guess on a loaded runner: measured on the x64 macOS Release
-  /// leg, `pump(1.2)` returned before `loadHTMLString` had committed, so
-  /// `getElementById('panel')` was null, the subframe never navigated, and five
-  /// cases in this section failed — while the arm64 leg passed with the same
-  /// code. Waiting on the page's own state removes the race instead of widening
-  /// the window it lives in.
-  ///
-  /// The budget is generous on purpose: this is not a performance assertion, and
-  /// the slowest runner only makes it wait longer.
+  /// A FIXED `pump` is a guess about how long WebKit needs to report a decision,
+  /// and it is the wrong guess on a loaded runner. Waiting on the probe's own
+  /// state removes the race instead of widening the window it lives in.
   func waitUntil(_ deadlineSeconds: TimeInterval = 10, _ ready: () -> Bool) -> Bool {
     let deadline = Date().addingTimeInterval(deadlineSeconds)
     while Date() < deadline {
@@ -119,19 +105,14 @@ func navigationWindowCases(
   delegate.panels = panels
   webView.navigationDelegate = delegate
   webView.uiDelegate = panels
-  webView.loadHTMLString(navigationPage, baseURL: URL(string: "http://console.test/")!)
-  // The page must be COMMITTED before its elements are addressable, and the
-  // budget is 30 s because this is a page LOAD on a shared runner, not a
-  // performance claim: measured on the macOS x64 leg, a 10 s window expired
-  // before the commit, so `getElementById('panel')` was still null, the subframe
-  // never navigated, and the two cases below failed on a working web view.
-  let committed = waitUntil(30) { ((evaluate(webView, "document.getElementById('panel') !== null") as? Bool) ?? false) }
-  // Say WHAT the view was doing when it never committed: this runner has failed
-  // the section below five times with nothing to read, and the difference
-  // between "still loading", "stuck" and "loaded a different document" decides
-  // which fix is right.
-  if !committed {
-    print("  [nav] the page never committed: url=\(webView.url?.absoluteString ?? "nil") "
+
+  // The page is already on screen, so its elements are addressable now. Assert
+  // that rather than assume it: a page that never committed would make every
+  // check below fail for a reason that has nothing to do with navigation.
+  let present = ((evaluate(webView, "document.getElementById('panel') !== null") as? Bool) ?? false)
+  check("the suite's page carries the panel's frame", present)
+  if !present {
+    print("  [nav] the page is not the suite's: url=\(webView.url?.absoluteString ?? "nil") "
       + "progress=\(webView.estimatedProgress) loading=\(webView.isLoading) "
       + "title=\(webView.title ?? "nil")")
   }
@@ -168,20 +149,6 @@ func navigationWindowCases(
   // 3. And the console itself is still on screen: a popup must never replace it.
   let alive = (evaluate(webView, "document.getElementById('panel') !== null") as? Bool) ?? false
   check("the console is still on screen after the popup", alive)
-
-  // Give the suite's page back, and WAIT for it: the cases after this one address
-  // `#composer`, the upload field and the drop recorder by id, and a load that has
-  // not committed yet answers nil to every one of them.
-  webView.loadHTMLString(suitePage, baseURL: nil)
-  let deadline = Date().addingTimeInterval(6)
-  var ready = false
-  while !ready && Date() < deadline {
-    pump(0.05)
-    ready = ((evaluate(webView, "document.getElementById('composer') !== null") as? Bool) ?? false)
-  }
-  check("the suite's page is back for the later cases", ready)
-
-
 }
 
 /// What the probe reported, in the order WebKit reported it.

@@ -52,6 +52,11 @@ let settingsRecorderScript = """
 /// `height - 200`, so a field anywhere in the middle would make "a press on the
 /// body is NOT a drag" also be a press on a text field — a different case wearing
 /// the same name.
+///
+/// `#panel` and `#blank` are the navigation case's subjects, and they are placed
+/// clear of every probe point: the frame sits in the RIGHT half above the body
+/// point, and the link above the upload fields. Moving either into the middle
+/// would turn a press case into a press on that element.
 let page = """
 <!doctype html><html><body style="margin:0;font:14px system-ui">
 <div data-drag-region style="height:40px;background:#e8e8e8;display:flex;align-items:center;padding-left:12px">
@@ -62,9 +67,27 @@ let page = """
 <textarea id="composer" style="position:absolute;left:8px;bottom:8px;width:220px;height:40px"></textarea>
 <input id="icon-upload" type="file" accept="image/png,image/jpeg,image/svg+xml" style="position:absolute;left:8px;top:200px;width:220px;height:24px">
 <input id="attach-upload" type="file" multiple style="position:absolute;left:8px;top:260px;width:220px;height:24px">
+<a id="blank" href="https://example.test/release" target="_blank" style="position:absolute;left:8px;top:120px">release notes</a>
+<iframe id="panel" src="about:blank" style="position:absolute;right:8px;top:200px;width:300px;height:200px;border:0"></iframe>
 """ + dropRecorderScript + settingsRecorderScript + """
 </body></html>
 """
+
+/// The origin the suite's page is served from.
+///
+/// The page is loaded ONCE, at top level, and every case drives that document.
+/// A load started from inside `runCases` never finishes on the x64 release
+/// runner — measured, it sits in `didStartProvisionalNavigation` at
+/// `estimatedProgress = 0.1` for the whole budget while the identical load at
+/// top level commits in 0.3 s (the same measurement `DroppedPathsWindowTests`
+/// records for a second web view). The navigation case used to load a page of
+/// its own and failed there five times; it now drives the elements in `page`.
+///
+/// The origin is http, not `about:blank`, because the navigation rule under test
+/// compares origins: a page with no origin would answer `.inside` for a
+/// cross-origin subframe even with the delegate that ignores `targetFrame`, and
+/// the case would pass while the bug was back.
+let suiteOrigin = URL(string: "http://console.test/")!
 
 /// A point on the header strip that belongs to the page: past the strip macOS
 /// reserves for its traffic lights (`trafficLightInset`), which the buttons own.
@@ -182,7 +205,22 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
       self?.window.passedThrough = !claimed
     }
 
-    webView.loadHTMLString(page, baseURL: nil)
+    // A SIMULATED response, not `loadHTMLString(_:baseURL:)`: the page needs a
+    // real http origin (see `suiteOrigin`), and this is the API that gives one
+    // without a network fetch — the document is a normal navigation, so
+    // `didFinish` below is the same signal the app's own `load(URLRequest)`
+    // produces.
+    let response = HTTPURLResponse(
+      url: suiteOrigin,
+      statusCode: 200,
+      httpVersion: "HTTP/1.1",
+      headerFields: ["Content-Type": "text/html; charset=utf-8"]
+    )!
+    webView.loadSimulatedRequest(
+      URLRequest(url: suiteOrigin),
+      response: response,
+      responseData: Data(page.utf8)
+    )
     window.makeKeyAndOrderFront(nil)
     // The editing cases below need a KEY window: AppKit's key-equivalent pass
     // runs on the key window's responder chain, and an accessory app that was
@@ -574,7 +612,6 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
     runMenuCases()
     runSettingsMenuCases()
     runEditingCases()
-    proveClickCloses()
     runSplashCases()
     runSplashFillCases()
     // The upload cases come BEFORE the drop cases for the same measured reason:
@@ -590,15 +627,13 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
 
     uploadPanelSheetCases(window: window, check: check, pump: pump)
 
-    // HERE, before the drop cases: this case loads a page of its own (the upload
-    // and drop pages are other cases' subjects), and the drop cases end by
-    // releasing a drag that leaves the view with no document at all — after them
-    // `evaluateJavaScript` answers nil and this case would fail for a reason that
-    // has nothing to do with navigation (measured, twice).
+    // HERE, before the drop cases: the drop cases end by releasing a drag that
+    // leaves the view with no document at all — after them `evaluateJavaScript`
+    // answers nil and this case would fail for a reason that has nothing to do
+    // with navigation (measured, twice).
     navigationWindowCases(
       view: webView,
       window: window,
-      suitePage: page,
       check: check,
       pump: pump
     )
@@ -609,6 +644,13 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
     // reported "the recorder installs" as a failure for that reason alone.
     openPathsWindowCases(view: webView, check: check, pump: pump, evaluate: evaluateSync)
     dropPathCases(view: webView, check: check, pump: pump, evaluate: evaluateSync)
+
+    // LAST, because it CLOSES the window. Every case above drives the page, and
+    // a web view whose window is closed is a web view WebKit may suspend — the
+    // navigation case needs a subframe navigation to be processed, which is not
+    // something to gamble on a runner that is already slow. The case itself only
+    // needs the window to be visible when it starts, which it still is.
+    proveClickCloses()
     runQuitCases()
     finish()
   }
