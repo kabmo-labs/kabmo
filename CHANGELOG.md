@@ -4,6 +4,12 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.30.1](https://github.com/kabmo-labs/kabmo/compare/v0.30.0...v0.30.1) — 2026-11-12
+
+### Fixed
+
+* **terminal:** fill the cell with the bundled powerline separators ([ef69694](https://github.com/kabmo-labs/kabmo/commit/ef69694382307818891a0fe86014dcc67a6aff43)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.30.0](https://github.com/kabmo-labs/kabmo/compare/v0.29.0...v0.30.0) — 2026-11-12
 
 No code changed in this release. `0.29.0` was already on npm when the release
