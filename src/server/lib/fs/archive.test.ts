@@ -164,7 +164,11 @@ describe('compressEntries / extractArchive', () => {
   test.skipIf(!hasTar || !hasBzip2)('a .tar.bz2 names its decompressor', async () => {
     write('src/a.ts', 'A');
     const archive = path.join(dir, 'src.tar.bz2');
-    const packed = await runShell(`tar -cjf ${JSON.stringify(archive)} -C ${JSON.stringify(dir)} ./src`);
+    // Relative names with the temp dir as the cwd: GNU tar reads a `C:\…`
+    // argument as a REMOTE `host:path` and dies with "Cannot connect to C:",
+    // which is the same trap `extractArchive` avoids by feeding the archive on
+    // stdin. Measured on the Windows gate.
+    const packed = await runShell('tar -cjf src.tar.bz2 ./src', { cwd: dir });
     expect(packed.exitCode).toBe(0);
 
     const out = path.join(dir, 'unpacked-bz2');
@@ -176,7 +180,7 @@ describe('compressEntries / extractArchive', () => {
   test.skipIf(!hasTar || !hasXz)('a .tar.xz names its decompressor', async () => {
     write('src/a.ts', 'A');
     const archive = path.join(dir, 'src.tar.xz');
-    const packed = await runShell(`tar -cJf ${JSON.stringify(archive)} -C ${JSON.stringify(dir)} ./src`);
+    const packed = await runShell('tar -cJf src.tar.xz ./src', { cwd: dir });
     expect(packed.exitCode).toBe(0);
 
     const out = path.join(dir, 'unpacked-xz');
