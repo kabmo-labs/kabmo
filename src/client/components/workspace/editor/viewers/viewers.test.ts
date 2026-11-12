@@ -90,7 +90,7 @@ describe('CsvGrid', () => {
   // grid: a quoted comma must stay inside one cell.
   test('a quoted cell keeps its comma, so the row is not split', async () => {
     await mount(h(CsvGrid, { content: 'a,b\n"x,y",z', path: 'data.csv' }));
-    const cells = Array.from(container.querySelectorAll('tbody tr:first-child td')).map((td) => td.textContent);
+    const cells = Array.from(container.querySelectorAll('tbody tr:first-child > *')).map((cell) => cell.textContent);
     // The first cell is the row number; then the two data cells.
     expect(cells).toEqual(['1', 'x,y', 'z']);
   });
