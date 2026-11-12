@@ -18,6 +18,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { compressEntries, compressFormats, extractArchive, findTool } from '@/server/lib/fs/archive';
+import { runShell } from '@/server/lib/fs/shell';
 
 let dir: string;
 
@@ -39,6 +40,8 @@ function write(rel: string, content: string): string {
 const hasZip = Bun.which('zip') !== null && Bun.which('unzip') !== null;
 const hasTar = Bun.which('tar') !== null;
 const hasGzip = Bun.which('gzip') !== null;
+const hasBzip2 = Bun.which('bzip2') !== null;
+const hasXz = Bun.which('xz') !== null;
 
 describe('compressFormats', () => {
   test('names the tool each format needs and whether it is installed', () => {
@@ -151,6 +154,35 @@ describe('compressEntries / extractArchive', () => {
       expect(outcome.status).toBe(409);
       expect(outcome.error).toContain('already exists');
     }
+  });
+
+  // The birth of the regression this pins: `tar -xf -` opened a `.tar.gz` that
+  // `tar -xzf -` opened, on one machine, and refused it on another with "Archive
+  // is compressed. Use -z option". A compressed stream cannot be sniffed the way
+  // a named file can, so the decompressor is named per kind — and each kind is
+  // checked against the tool that produces it rather than assumed.
+  test.skipIf(!hasTar || !hasBzip2)('a .tar.bz2 names its decompressor', async () => {
+    write('src/a.ts', 'A');
+    const archive = path.join(dir, 'src.tar.bz2');
+    const packed = await runShell(`tar -cjf ${JSON.stringify(archive)} -C ${JSON.stringify(dir)} ./src`);
+    expect(packed.exitCode).toBe(0);
+
+    const out = path.join(dir, 'unpacked-bz2');
+    const extracted = await extractArchive({ archivePath: archive, destinationDir: out });
+    expect(extracted.ok, extracted.ok ? '' : extracted.error).toBe(true);
+    expect(fs.readFileSync(path.join(out, 'src/a.ts'), 'utf8')).toBe('A');
+  });
+
+  test.skipIf(!hasTar || !hasXz)('a .tar.xz names its decompressor', async () => {
+    write('src/a.ts', 'A');
+    const archive = path.join(dir, 'src.tar.xz');
+    const packed = await runShell(`tar -cJf ${JSON.stringify(archive)} -C ${JSON.stringify(dir)} ./src`);
+    expect(packed.exitCode).toBe(0);
+
+    const out = path.join(dir, 'unpacked-xz');
+    const extracted = await extractArchive({ archivePath: archive, destinationDir: out });
+    expect(extracted.ok, extracted.ok ? '' : extracted.error).toBe(true);
+    expect(fs.readFileSync(path.join(out, 'src/a.ts'), 'utf8')).toBe('A');
   });
 
   test('refuses a file that is not an archive', async () => {
