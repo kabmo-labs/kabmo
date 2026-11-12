@@ -128,14 +128,6 @@ export type ArchiveOutcome = { ok: true; path: string } | { ok: false; error: st
  */
 export async function compressEntries(options: CompressOptions): Promise<ArchiveOutcome> {
   const { destinationDir, name, format, sources } = options;
-  const binary = compressToolFor(format);
-  if (!binary) {
-    return {
-      ok: false,
-      status: 501,
-      error: `${toolLabelFor(format)} is not installed on this machine`,
-    };
-  }
   if (sources.length === 0) return { ok: false, status: 400, error: 'Nothing to compress' };
 
   const destination = path.join(destinationDir, name);
@@ -154,6 +146,19 @@ export async function compressEntries(options: CompressOptions): Promise<Archive
       };
     }
     relative.push(rel);
+  }
+
+  // The tool is looked up LAST: a request that is invalid whatever is installed
+  // must answer 400/409, not "install zip". Measured on the Windows gate, which
+  // has no `zip`: both refusal cases reported the missing tool instead of the
+  // refusal they assert.
+  const binary = compressToolFor(format);
+  if (!binary) {
+    return {
+      ok: false,
+      status: 501,
+      error: `${toolLabelFor(format)} is not installed on this machine`,
+    };
   }
 
   const args = relative.map((rel) => `./${rel}`).join(' ');

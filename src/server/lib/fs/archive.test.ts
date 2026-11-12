@@ -84,11 +84,11 @@ describe('compressEntries / extractArchive', () => {
       format: 'tar.gz',
       sources: [path.join(dir, 'src')],
     });
-    expect(compressed.ok).toBe(true);
+    expect(compressed.ok, compressed.ok ? '' : compressed.error).toBe(true);
 
     const out = path.join(dir, 'unpacked');
     const extracted = await extractArchive({ archivePath: path.join(dir, 'src.tar.gz'), destinationDir: out });
-    expect(extracted.ok).toBe(true);
+    expect(extracted.ok, extracted.ok ? '' : extracted.error).toBe(true);
     expect(fs.readFileSync(path.join(out, 'src/a.ts'), 'utf8')).toBe('A');
   });
 
@@ -128,6 +128,29 @@ describe('compressEntries / extractArchive', () => {
 
     expect(outcome.ok).toBe(false);
     if (!outcome.ok) expect(outcome.error).toContain('contains every selected item');
+  });
+
+  // The refusal is a property of the REQUEST, so it must not depend on which
+  // tools this machine happens to have: the Windows gate has no `zip`, and both
+  // refusal cases above answered "zip is not installed" there instead of the
+  // 409/400 they assert. `rar` is the format least likely to be installed, so
+  // this case fails on the ordering wherever it runs.
+  test('an invalid request is refused before the tool is looked up', async () => {
+    const source = write('src/a.ts', 'A');
+    write('src/bundle.rar', 'not really a rar');
+
+    const outcome = await compressEntries({
+      destinationDir: path.join(dir, 'src'),
+      name: 'bundle.rar',
+      format: 'rar',
+      sources: [source],
+    });
+
+    expect(outcome.ok).toBe(false);
+    if (!outcome.ok) {
+      expect(outcome.status).toBe(409);
+      expect(outcome.error).toContain('already exists');
+    }
   });
 
   test('refuses a file that is not an archive', async () => {
