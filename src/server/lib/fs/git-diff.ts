@@ -25,6 +25,18 @@ async function gitOut(args: string[], cwd: string, timeout: number, maxBuffer: n
 }
 
 /**
+ * One `git show <rev>` read, or `null` when the rev does not resolve.
+ *
+ * Distinct from `gitOut` because `''` is a real answer here: a file that is
+ * empty in the index or at HEAD must not be confused with a path that is
+ * absent from that tree — the pair below is chosen from which side exists.
+ */
+async function gitShow(rev: string, cwd: string): Promise<string | null> {
+  const result = await runGit(['show', rev], { cwd, timeout: 5000 });
+  return result.error === undefined && result.exitCode === 0 ? result.stdout : null;
+}
+
+/**
  * Fetch git diff for a specific file in the working directory or index.
  *
  * `fullContext` asks git for the entire file rather than the surrounding hunks,
@@ -68,16 +80,34 @@ export async function fetchWorkingFileDiff(
       status = statusLine.slice(0, 2).trim() || status;
     }
 
-    // Try reading current new content from disk if it exists
+    // The two SIDES depend on which view was asked for, and reading them off
+    // the wrong trees is what made a file's staged and unstaged views
+    // identical: a staged read compares HEAD with the index, an unstaged read
+    // compares the index with the working file. Reading HEAD vs the working
+    // file for both is a different diff from either.
+    const headContent = await gitShow(`HEAD:${cleanFile}`, targetDir);
+    const indexContent = await gitShow(`:0:${cleanFile}`, targetDir);
+    let workingContent = '';
     try {
-      newContent = await Bun.file(fullPath).text();
+      workingContent = await Bun.file(fullPath).text();
     } catch {
-      newContent = '';
+      workingContent = '';
     }
-
-    // Read old content from index or HEAD
-    oldContent = await gitOut(['show', `HEAD:${cleanFile}`], targetDir, 5000)
-      || await gitOut(['show', `:0:${cleanFile}`], targetDir, 5000);
+    if (staged) {
+      oldContent = headContent ?? '';
+      // `null` means the path is not in the index. For a staged deletion that
+      // is the empty side of the pair, not a reason to fall back to the file;
+      // an untracked path has no index entry either, and its "would be added"
+      // side is the file on disk.
+      newContent = indexContent ?? (status === '??' ? workingContent : '');
+    } else {
+      // An untracked or unmerged path has no stage-0 entry; its "before" side is
+      // HEAD for the unmerged case and empty otherwise. A path deleted from the
+      // index (`git rm --cached`) is the exception: its index side is empty, so
+      // HEAD would claim a change the working tree does not have.
+      oldContent = indexContent ?? (status.startsWith('D') ? '' : headContent ?? '');
+      newContent = workingContent;
+    }
 
     // `-U<n>` on every probe: the full-code mode asks for the whole file, and
     // the diff-only mode keeps git's own default by passing no flag at all.
@@ -91,21 +121,19 @@ export async function fetchWorkingFileDiff(
       ? Math.max(1024 * 1024 * 16, (oldContent.length + newContent.length) * 2 + 1024 * 1024)
       : 1024 * 1024 * 2;
 
+    // No fallbacks between the two views. `git diff --cached` is the staged
+    // view and `git diff` is the unstaged one; substituting the other when the
+    // asked-for diff is empty is how a file listed under "Changes" showed its
+    // staged patch.
     if (staged) {
-      // 1. Try staged diff (index vs HEAD), 2. HEAD diff, 3. unstaged diff
-      diff = await gitOut(['diff', ...ctx, '--cached', '--', cleanFile], targetDir, 10000, buf)
-        || await gitOut(['diff', ...ctx, 'HEAD', '--', cleanFile], targetDir, 10000, buf)
-        || await gitOut(['diff', ...ctx, '--', cleanFile], targetDir, 10000, buf);
+      diff = await gitOut(['diff', ...ctx, '--cached', '--', cleanFile], targetDir, 10000, buf);
     } else if (status === '??' || status === 'U' || status === '?') {
       // Untracked file: `--no-index` exits 1 when it produced a diff, so read
       // stdout directly instead of relying on the exit code.
       const untracked = await runGit(['diff', ...ctx, '--no-index', '/dev/null', cleanFile], { cwd: targetDir, timeout: 10000, maxBuffer: buf });
       diff = untracked.stdout.trim() ? untracked.stdout : '';
     } else {
-      // 1. Working tree diff, 2. cached diff, 3. HEAD diff
-      diff = await gitOut(['diff', ...ctx, '--', cleanFile], targetDir, 10000, buf)
-        || await gitOut(['diff', ...ctx, '--cached', '--', cleanFile], targetDir, 10000, buf)
-        || await gitOut(['diff', ...ctx, 'HEAD', '--', cleanFile], targetDir, 10000, buf);
+      diff = await gitOut(['diff', ...ctx, '--', cleanFile], targetDir, 10000, buf);
     }
 
     // 4. If git diff is still empty but new content exists:

@@ -51,6 +51,7 @@ beforeAll(() => {
   git('config', 'user.name', 'Test');
   write('mod.txt', EIGHT_LINES);
   write('staged.txt', 's1\n');
+  write('both.txt', 'b1\nb2\nb3\n');
   write('clean.txt', 'c1\n');
   write('deleted.txt', 'd1\nd2\n');
   write('sub dir/f.txt', 'sub1\n');
@@ -73,6 +74,11 @@ beforeAll(() => {
   write('mod.txt', 'l1\nl2\nCHANGED\nl4\nl5\nl6\nl7\nl8\n');
   write('staged.txt', 's1\ns2\n');
   git('add', 'staged.txt');
+  // One file with BOTH a staged edit and a further unstaged edit: the two
+  // views must not answer with the same pair.
+  write('both.txt', 'b1\nSTAGED\nb3\n');
+  git('add', 'both.txt');
+  write('both.txt', 'b1\nSTAGED\nWORKTREE\n');
   write('untracked.txt', 'u1\nu2\n');
   git('rm', '-q', 'deleted.txt');
   write('sub dir/f.txt', 'sub1\nsub2\n');
@@ -124,8 +130,27 @@ describe('tracked changes', () => {
     expect(result.diff).toContain('+s2');
   });
 
+  // A file can be in both lists at once. The staged view is HEAD -> index and
+  // the unstaged view is index -> working file; reading HEAD vs the working
+  // file for both made the two tabs show the same patch.
+  test('a file with staged and unstaged edits reports a different pair per view', async () => {
+    const staged = await fetchWorkingFileDiff(repo, 'both.txt', true);
+    expect(staged.oldContent).toBe('b1\nb2\nb3\n');
+    expect(staged.newContent).toBe('b1\nSTAGED\nb3\n');
+    expect(staged.diff).toContain('+STAGED');
+    expect(staged.diff).not.toContain('WORKTREE');
+
+    const unstaged = await fetchWorkingFileDiff(repo, 'both.txt', false);
+    expect(unstaged.oldContent).toBe('b1\nSTAGED\nb3\n');
+    expect(unstaged.newContent).toBe('b1\nSTAGED\nWORKTREE\n');
+    expect(unstaged.diff).toContain('+WORKTREE');
+    expect(unstaged.diff).not.toContain('+STAGED');
+  });
+
   test('a deletion is counted as deletions, not additions', async () => {
-    const result = await fetchWorkingFileDiff(repo, 'deleted.txt');
+    // `git rm` stages the deletion, so the staged view is the one that carries
+    // it; the unstaged view of the same file has nothing left to compare.
+    const result = await fetchWorkingFileDiff(repo, 'deleted.txt', true);
     expect(result.status).toBe('D');
     expect(result.additions).toBe(0);
     expect(result.deletions).toBe(2);

@@ -111,16 +111,22 @@ export function useFileDiff({ filePath, status, isStaged, repo, root }: UseFileD
     }
   }, [filePath, repo, root]);
 
+  /**
+   * The read is keyed on the pair the caller asked for, not only on the path.
+   *
+   * One file can be open twice — its staged diff and its unstaged diff — and
+   * the two tabs share one mounted panel with only the props changing. Keying
+   * the fetch on `fetchDiff` alone (path/repo/root) left the previous read on
+   * screen, so the second tab showed the first tab's patch. The refs are
+   * seeded first: `fetchDiff` reads them, and the state copies lag a render.
+   */
   useEffect(() => {
-    setCurrentStatus(status);
-    setCurrentStaged(isStaged);
     stagedRef.current = isStaged;
     statusRef.current = status;
-  }, [status, isStaged, filePath]);
-
-  useEffect(() => {
+    setCurrentStatus(status);
+    setCurrentStaged(isStaged);
     void fetchDiff();
-  }, [fetchDiff]);
+  }, [fetchDiff, isStaged, status]);
 
   const adoptState = useCallback((next: { staged?: boolean; status?: string }) => {
     if (typeof next.staged === 'boolean') {
