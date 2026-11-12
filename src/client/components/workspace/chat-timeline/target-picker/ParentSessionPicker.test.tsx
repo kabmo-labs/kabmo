@@ -29,6 +29,11 @@ const folders = [
     name: 'kabmo',
     sessions: [{ id: 'a', folder_id: 1, title: 'Alpha' }],
   },
+  {
+    id: 2,
+    name: 'notes',
+    sessions: [{ id: 'b', folder_id: 2, title: 'Build pipeline' }],
+  },
 ] as unknown as WorkspaceFolderData[];
 
 const mounted: HTMLElement[] = [];
@@ -67,6 +72,29 @@ describe('ParentSessionPicker', () => {
     const trigger = host.querySelector('[data-testid="parent-session-picker"]');
     expect(trigger?.querySelector('.lucide-git-fork')).not.toBeNull();
     expect(trigger?.querySelector('.lucide-git-branch')).toBeNull();
+  });
+
+  test('the search row narrows the sessions on title and folder name', async () => {
+    const host = await mount(
+      h(ParentSessionPicker, { folders, sessionId: null, value: null, onChange: () => {} }),
+    );
+
+    await act(async () => {
+      (host.querySelector('[data-testid="parent-session-picker"]') as HTMLButtonElement).click();
+    });
+    const input = host.querySelector('input[aria-label="Search parent session"]') as HTMLInputElement;
+    expect(input).not.toBeNull();
+    await act(async () => {
+      input.value = 'pipeline';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+
+    const ids = [...host.querySelectorAll('[data-testid="parent-candidate"]')].map((row) =>
+      row.getAttribute('data-session-id'),
+    );
+    expect(ids).toEqual(['b']);
+    // "No parent" is an action, not a search result: it survives the filter.
+    expect(host.querySelector('[data-testid="parent-candidate-none"]')).not.toBeNull();
   });
 
   test('choosing a session reports it, and "No parent" clears the pick', async () => {

@@ -21,9 +21,11 @@
  * immediately.
  */
 
-import { useCallback, useRef, useState } from 'preact/hooks';
+import { useCallback, useMemo, useRef, useState } from 'preact/hooks';
 import { Hourglass, ChevronDown, Check, X } from 'lucide-preact';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
+import { PickerSearch } from '@/client/components/common/picker-search';
+import { matchesPickerQuery } from '@/shared/lib/ui/picker-filter';
 import type { WorkspaceFolderData } from '@/shared/types';
 
 export interface WaitingCandidate {
@@ -87,13 +89,21 @@ export function WaitingDependencyPicker({
   compactLabel = false,
 }: WaitingDependencyPickerProps) {
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
   const ref = useRef<HTMLDivElement>(null);
   // A stable handler: the hook re-registers its document listeners whenever the
   // callback identity changes, and an inline arrow would do that on every
   // render — including every stream-status frame.
-  const close = useCallback(() => setOpen(false), []);
+  const close = useCallback(() => {
+    setOpen(false);
+    setQuery('');
+  }, []);
   useOnClickOutside(ref, close);
   const unavailable = candidates.length === 0;
+  const visible = useMemo(
+    () => candidates.filter((candidate) => matchesPickerQuery(`${candidate.title} ${candidate.folderName}`, query)),
+    [candidates, query],
+  );
 
   return (
     <div className="relative shrink-0" ref={ref}>
@@ -120,7 +130,7 @@ export function WaitingDependencyPicker({
       </button>
 
       {open && (
-        <div className="glass-popover absolute bottom-full left-0 mb-1.5 w-72 bg-paper border border-ink/10 rounded-lg shadow-lg z-50 flex flex-col overflow-hidden text-xs py-1">
+        <div className="glass-popover absolute bottom-full left-0 mb-1.5 w-max min-w-[16rem] max-w-[calc(100vw-5rem)] bg-paper border border-ink/10 rounded-lg shadow-lg z-50 flex flex-col overflow-hidden text-xs py-1">
           <div className="flex items-center justify-between px-3 py-1.5 border-b border-ink/5">
             <span className="text-[10px] uppercase tracking-wider text-ink/40 font-semibold">Wait for session</span>
             {value && (
@@ -128,7 +138,7 @@ export function WaitingDependencyPicker({
                 type="button"
                 onClick={() => {
                   onChange(null);
-                  setOpen(false);
+                  close();
                 }}
                 title="Send without waiting"
                 aria-label="Send without waiting"
@@ -138,11 +148,16 @@ export function WaitingDependencyPicker({
               </button>
             )}
           </div>
+          {!unavailable && (
+            <PickerSearch value={query} onChange={setQuery} ariaLabel="Search running sessions" placeholder="Search sessions…" />
+          )}
           <div className="max-h-56 scrollbar-overlay-container py-1">
             {unavailable ? (
               <div className="px-3 py-2 text-ink/40 italic">No session is running right now</div>
+            ) : visible.length === 0 ? (
+              <div className="px-3 py-2 text-ink/40 italic">No match for “{query.trim()}”</div>
             ) : (
-              candidates.map((candidate) => {
+              visible.map((candidate) => {
                 const selected = value?.id === candidate.id;
                 return (
                   <button
@@ -152,20 +167,32 @@ export function WaitingDependencyPicker({
                     data-session-id={candidate.id}
                     onClick={() => {
                       onChange(selected ? null : candidate);
-                      setOpen(false);
+                      close();
                     }}
-                    className={`w-full text-left px-3 py-1.5 flex items-center justify-between transition-colors cursor-pointer ${
+                    className={`w-full text-left px-3 py-1.5 flex items-center gap-2 transition-colors cursor-pointer ${
                       selected ? 'bg-ink/10 text-ink font-semibold' : 'text-muted hover:bg-ink/5 hover:text-ink'
                     }`}
                   >
-                    <span className="flex items-center gap-2 truncate pr-2">
-                      <Hourglass size={12} className={selected ? 'text-ink flex-shrink-0' : 'text-ink/50 flex-shrink-0'} />
-                      <span className="truncate font-medium">{candidate.title}</span>
-                      {candidate.folderName && (
-                        <span className="truncate text-[10px] text-ink/40">{candidate.folderName}</span>
-                      )}
-                    </span>
-                    {selected && <Check size={12} className="text-ink flex-shrink-0" />}
+                    <Hourglass size={12} className={selected ? 'text-ink shrink-0' : 'text-ink/50 shrink-0'} />
+                    <span className="min-w-0 max-w-[15rem] flex-1 truncate font-medium">{candidate.title}</span>
+                    {candidate.folderName && (
+                      // The folder is the DISAMBIGUATOR between two sessions
+                      // with the same title, so it is pinned to the row's RIGHT
+                      // edge where the column can be scanned, and the popover is
+                      // sized to it (`w-max`) so the title is the item that
+                      // yields. It only ellipsises once the panel hits its
+                      // viewport cap, where truncation beats overflowing.
+                      <span
+                        title={candidate.folderName}
+                        className="ml-auto min-w-0 truncate text-[10px] text-ink/40"
+                      >
+                        {candidate.folderName}
+                      </span>
+                    )}
+                    {/* A fixed slot, not a conditional glyph: a selected row
+                        would otherwise shift every folder label 20px left of
+                        the column the other rows sit in. */}
+                    <span className="w-3 shrink-0">{selected && <Check size={12} className="text-ink" />}</span>
                   </button>
                 );
               })

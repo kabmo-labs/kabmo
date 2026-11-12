@@ -31,6 +31,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { Check, ChevronDown, Search } from 'lucide-preact';
 import { AnchoredMenu } from '@/client/components/common/anchored-menu';
 import { anchorRectOf, type AnchorRect } from '@/shared/lib/ui/menu-anchor';
+import { matchesPickerQuery } from '@/shared/lib/ui/picker-filter';
 
 /** One option: the value stored, and what a reader sees. */
 export interface SearchSelectOption {
@@ -60,12 +61,6 @@ interface SearchSelectProps {
 const TRIGGER_CLASS =
   'flex w-full min-w-0 items-center justify-between gap-2 rounded-md border border-ink/20 bg-paper px-2 py-1.5 text-left font-mono text-[11px] text-ink transition-colors hover:border-ink/40 focus:border-ink/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50';
 
-/** Case- and separator-insensitive match, so "claude sonnet" finds `claude-sonnet-5`. */
-function matches(haystack: string, needle: string): boolean {
-  const fold = (text: string) => text.toLowerCase().replace(/[^a-z0-9]+/g, '');
-  return fold(haystack).includes(fold(needle));
-}
-
 export function SearchSelect({
   value,
   options,
@@ -90,7 +85,7 @@ export function SearchSelect({
   const filtered = useMemo(() => {
     const needle = query.trim();
     if (!needle) return options;
-    return options.filter((option) => matches(`${option.label} ${option.value} ${option.hint ?? ''}`, needle));
+    return options.filter((option) => matchesPickerQuery(`${option.label} ${option.value} ${option.hint ?? ''}`, needle));
   }, [options, query]);
 
   /** Rows grouped by `group`, in the order the groups first appear. */

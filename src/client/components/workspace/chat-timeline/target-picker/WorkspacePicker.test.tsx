@@ -24,7 +24,7 @@ import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-gl
 import { WorkspacePicker, workspaceLabel } from '@/client/components/workspace/chat-timeline/target-picker/WorkspacePicker';
 import type { WorkspaceFolderData } from '@/shared/types';
 
-const folder = (id: number, name: string): WorkspaceFolderData => ({
+const folder = (id: number, name: string, icon?: string): WorkspaceFolderData => ({
   id,
   name,
   project_path: `/repo/${name}`,
@@ -32,6 +32,7 @@ const folder = (id: number, name: string): WorkspaceFolderData => ({
   hasMore: false,
   totalSessions: 0,
   sessions: [],
+  ...(icon ? { icon } : {}),
 });
 
 const mounted: HTMLElement[] = [];
@@ -97,6 +98,51 @@ describe('WorkspacePicker', () => {
     expect(text).not.toContain('Quick worktree');
     expect(text).not.toContain('New worktree');
     expect(text).not.toContain('Worktrees');
+  });
+
+  test('the search row narrows the list to the matching workspace', async () => {
+    const host = await mount(
+      h(WorkspacePicker, {
+        folders: [folder(1, 'kabmo'), folder(2, 'notes')],
+        selectedFolderId: 1,
+        setSelectedFolderId: () => {},
+      }),
+    );
+
+    await act(async () => {
+      (host.querySelector('button') as HTMLButtonElement).click();
+    });
+    const input = host.querySelector('input[aria-label="Search workspaces"]') as HTMLInputElement;
+    expect(input).not.toBeNull();
+    await act(async () => {
+      input.value = 'note';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+
+    const rows = [...host.querySelectorAll('[role="menuitemradio"]')] as HTMLButtonElement[];
+    expect(rows.map((row) => row.textContent?.trim())).toEqual(['notes']);
+  });
+
+  test('the trigger and the rows carry the project icon, not a generic folder', async () => {
+    const host = await mount(
+      h(WorkspacePicker, {
+        folders: [folder(1, 'kabmo', 'code'), folder(2, 'notes')],
+        selectedFolderId: 1,
+        setSelectedFolderId: () => {},
+      }),
+    );
+
+    const trigger = host.querySelector('button[aria-label^="Workspace:"]') as HTMLButtonElement;
+    expect(trigger.querySelector('.lucide-code-2')).not.toBeNull();
+    expect(trigger.querySelector('.lucide-folder')).toBeNull();
+
+    await act(async () => {
+      trigger.click();
+    });
+    const rows = [...host.querySelectorAll('[role="menuitemradio"]')] as HTMLButtonElement[];
+    expect(rows[0]?.querySelector('.lucide-code-2')).not.toBeNull();
+    // A workspace with no icon keeps the default folder mark.
+    expect(rows[1]?.querySelector('.lucide-folder')).not.toBeNull();
   });
 
   test('choosing a folder clears the worktree pick', async () => {

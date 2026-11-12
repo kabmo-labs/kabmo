@@ -18,6 +18,8 @@
 import { useCallback, useMemo, useRef, useState } from 'preact/hooks';
 import { Check, ChevronDown, GitFork, X } from 'lucide-preact';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
+import { PickerSearch } from '@/client/components/common/picker-search';
+import { matchesPickerQuery } from '@/shared/lib/ui/picker-filter';
 import type { WorkspaceFolderData } from '@/shared/types';
 
 export interface ParentSessionOption {
@@ -72,10 +74,18 @@ export function ParentSessionPicker({
   allowNone = true,
 }: ParentSessionPickerProps) {
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
   const ref = useRef<HTMLDivElement>(null);
-  const close = useCallback(() => setOpen(false), []);
+  const close = useCallback(() => {
+    setOpen(false);
+    setQuery('');
+  }, []);
   useOnClickOutside(ref, close);
   const options = useMemo(() => parentSessionOptions(folders, sessionId), [folders, sessionId]);
+  const visible = useMemo(
+    () => options.filter((option) => matchesPickerQuery(`${option.title} ${option.folderName}`, query)),
+    [options, query],
+  );
   const selected = value ? options.find((option) => option.id === value) : undefined;
   const triggerLabel = selected ? selected.title : value ? value : `${label}: none`;
 
@@ -101,7 +111,7 @@ export function ParentSessionPicker({
       </button>
 
       {open && (
-        <div className="glass-popover absolute bottom-full left-0 mb-1.5 w-80 bg-paper border border-ink/10 rounded-lg shadow-lg z-50 flex flex-col overflow-hidden text-xs py-1">
+        <div className="glass-popover absolute bottom-full left-0 mb-1.5 w-max min-w-[16rem] max-w-[calc(100vw-5rem)] bg-paper border border-ink/10 rounded-lg shadow-lg z-50 flex flex-col overflow-hidden text-xs py-1">
           <div className="flex items-center justify-between px-3 py-1.5 border-b border-ink/5">
             <span className="text-[10px] uppercase tracking-wider text-ink/40 font-semibold">
               {label}
@@ -111,7 +121,7 @@ export function ParentSessionPicker({
                 type="button"
                 onClick={() => {
                   onChange(null);
-                  setOpen(false);
+                  close();
                 }}
                 title="Start a top-level chat"
                 aria-label="Clear parent session"
@@ -121,6 +131,7 @@ export function ParentSessionPicker({
               </button>
             )}
           </div>
+          <PickerSearch value={query} onChange={setQuery} ariaLabel={`Search ${label.toLowerCase()}`} placeholder="Search sessions…" />
           <div className="max-h-64 scrollbar-overlay-container py-1">
             {allowNone && (
               <button
@@ -128,7 +139,7 @@ export function ParentSessionPicker({
                 data-testid="parent-candidate-none"
                 onClick={() => {
                   onChange(null);
-                  setOpen(false);
+                  close();
                 }}
                 className={`w-full flex items-center gap-2 px-3 py-1.5 text-left transition-colors cursor-pointer hover:bg-ink/5 ${
                   value ? 'text-ink/70' : 'text-ink font-medium'
@@ -138,7 +149,7 @@ export function ParentSessionPicker({
                 <span className="min-w-0 flex-1 truncate">No parent (top-level chat)</span>
               </button>
             )}
-            {options.map((option) => {
+            {visible.map((option) => {
               const active = option.id === value;
               return (
                 <button
@@ -148,23 +159,30 @@ export function ParentSessionPicker({
                   data-session-id={option.id}
                   onClick={() => {
                     onChange(option.id);
-                    setOpen(false);
+                    close();
                   }}
                   className={`w-full flex items-center gap-2 px-3 py-1.5 text-left transition-colors cursor-pointer hover:bg-ink/5 ${
                     active ? 'text-ink font-medium' : 'text-ink/70'
                   }`}
                 >
                   <span className="w-3 shrink-0">{active && <Check size={11} />}</span>
-                  <span className="min-w-0 flex-1 truncate">{option.title}</span>
-                  <span className="shrink-0 max-w-[7rem] truncate text-[10px] text-ink/40">
+                  <span className="max-w-[18rem] min-w-0 flex-1 truncate">{option.title}</span>
+                  {/* Same rule as the wait picker: the folder is the
+                      disambiguator between two sessions called "Fix build", so
+                      it is pinned to the row's RIGHT edge and the panel is
+                      sized to it. Truncation is the fallback at the viewport
+                      cap, where the title has already yielded. */}
+                  <span title={option.folderName} className="ml-auto min-w-0 truncate text-[10px] text-ink/40">
                     {option.folderName}
                   </span>
                 </button>
               );
             })}
-            {options.length === 0 && (
+            {options.length === 0 ? (
               <div className="px-3 py-2 text-ink/40 italic">No sessions to parent under yet</div>
-            )}
+            ) : visible.length === 0 ? (
+              <div className="px-3 py-2 text-ink/40 italic">No match for “{query.trim()}”</div>
+            ) : null}
           </div>
         </div>
       )}
