@@ -235,7 +235,13 @@ export async function extractArchive(options: ExtractOptions): Promise<ArchiveOu
     case 'tar.bz2':
     case 'tar.xz': {
       const tar = findTool(TOOLS.tar!);
-      if (tar) return outcome(await run(`${tar} -xf ${archive} -C ${dest}`), archivePath);
+      // The archive arrives on STDIN, not as `-f <path>`: GNU tar reads a
+      // `C:\…` argument as a REMOTE `host:path` and dies with "Cannot connect
+      // to C: resolve failed" — measured on the Windows gate, where `tar` is
+      // Git's GNU tar. A redirect is the shell's business, so the path never
+      // reaches tar's file-spec parser, and bsdtar (which has no such syntax)
+      // reads the same stream.
+      if (tar) return outcome(await run(`${tar} -xf - -C ${dest} < ${archive}`), archivePath);
       if (bsdtar) return outcome(await run(`${bsdtar} -xf ${archive} -C ${dest}`), archivePath);
       return missingTool('tar');
     }
