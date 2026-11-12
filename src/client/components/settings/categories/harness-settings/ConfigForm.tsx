@@ -66,7 +66,7 @@ export function HarnessConfigForm({ summary, config, onSave }: HarnessConfigForm
   const models = summary.probe?.models ?? [];
   const plan = configFieldPlan(summary.id as never, summary.probe ?? undefined, {
     ...(draft.provider ? { provider: draft.provider } : {}),
-    ...(summary.install ? { launchCommand: summary.install } : {}),
+    ...(summary.command ? { launchCommand: summary.command } : {}),
   });
   const providers = providerChoices(models);
   // The model list narrows to the chosen provider, which is what makes the two
@@ -121,14 +121,11 @@ export function HarnessConfigForm({ summary, config, onSave }: HarnessConfigForm
       )}
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field
-          label="Launch command"
-          hint={`Empty uses the built-in line (${summary.install ?? 'this build’s table'}). Quoted paths survive: /Users/me/bin/agy acp`}
-        >
+        <Field label="Launch command" hint={plan.launchHint}>
           <input
             type="text"
             value={draft.command}
-            placeholder="agy acp"
+            placeholder={plan.launchPlaceholder}
             onInput={(event) => set({ command: event.currentTarget.value })}
             className={INPUT_CLASS}
           />

@@ -60,6 +60,8 @@ export interface HarnessSummary {
   /** The letter the UI draws when there is no vendor mark. */
   initial: string;
   install?: string;
+  /** The built-in launch line, as the config form should show it. */
+  command?: string;
   note?: string;
   probe: HarnessProbe | null;
   /** Why it cannot run, without probing: the launch command is missing. */
@@ -102,6 +104,9 @@ export async function listHarnesses(): Promise<HarnessSummary[]> {
       ...(descriptor?.builtIn ? { builtIn: true as const } : {}),
       ...(isBuiltinHarness(id) ? {} : { custom: true as const }),
       ...(launch?.install ? { install: launch.install } : {}),
+      // The line a spawn actually runs when the config's command is empty —
+      // what the settings card's placeholder must name.
+      ...(launch?.command.length ? { command: launch.command.join(' ') } : {}),
       ...(launch?.note ? { note: launch.note } : {}),
       probe: fresh,
       ...(available ? {} : {

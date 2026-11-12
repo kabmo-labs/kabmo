@@ -137,3 +137,28 @@ describe('the env box speaks the agent’s own vocabulary', () => {
     }
   });
 });
+
+describe('the launch box names this harness’s own line', () => {
+  test('omp’s card does not advertise Antigravity', () => {
+    const plan = configFieldPlan('omp-acp', undefined, { launchCommand: 'omp acp' });
+    expect(plan.launchPlaceholder).toBe('omp acp');
+    expect(plan.launchHint).toContain('omp acp');
+    // The quoting example carries the args and this agent's binary.
+    expect(plan.launchHint).toContain('/Users/me/bin/omp acp');
+    expect(plan.launchHint).not.toContain('agy');
+  });
+
+  test('Claude’s line keeps its package spec in the quoting example', () => {
+    const line = 'npx -y @agentclientprotocol/claude-agent-acp@0.100.0';
+    const plan = configFieldPlan('claude', undefined, { launchCommand: line });
+    expect(plan.launchPlaceholder).toBe(line);
+    expect(plan.launchHint).toContain(`/Users/me/bin/${line}`);
+    expect(plan.launchHint).not.toContain('agy');
+  });
+
+  test('no known line means the box says so instead of inventing one', () => {
+    const plan = configFieldPlan('a-user-harness', undefined);
+    expect(plan.launchPlaceholder).toBe('the agent’s own command');
+    expect(plan.launchHint).not.toContain('agy');
+  });
+});

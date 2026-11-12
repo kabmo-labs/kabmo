@@ -55,6 +55,9 @@ export interface ConfigFieldPlan {
   envPlaceholder: string;
   /** What to type in the launch box when empty, from the build's own table. */
   launchPlaceholder: string;
+  /** What leaving the box empty falls back to, plus the quoting example, both
+   *  naming THIS harness's line. */
+  launchHint: string;
   /** Per-harness guidance the generic form cannot know. */
   notes: string[];
 }
@@ -129,11 +132,36 @@ function environmentFacts(id: HarnessId): { hint: string; placeholder: string; n
 }
 
 /**
+ * The launch box, described by the harness's OWN line.
+ *
+ * The hint used to quote the INSTALL command as "the built-in line" and pin its
+ * quoting example to `/Users/me/bin/agy acp` — Antigravity's line, printed on
+ * every card, including omp's and Claude's, whose binaries are `omp` and `npx`.
+ * Both facts now come from the line this build would actually spawn.
+ */
+function launchFacts(command: string | undefined): { placeholder: string; hint: string } {
+  const line = command?.trim() ?? '';
+  if (!line) {
+    return {
+      placeholder: 'the agent’s own command',
+      hint: 'Empty runs the launch line this build’s table gives the agent.',
+    };
+  }
+  const [binary, ...args] = line.split(/\s+/);
+  const name = binary.split('/').pop() || binary;
+  return {
+    placeholder: line,
+    hint: `Empty runs the built-in line (${line}). Quoted paths survive: ${[`/Users/me/bin/${name}`, ...args].join(' ')}`,
+  };
+}
+
+/**
  * The plan for one harness.
  *
  * `provider` is the CURRENT config value: a provider already stored stays
  * editable even when the probe has not run, because hiding a stored value is how
- * a form silently rewrites what it cannot show.
+ * a form silently rewrites what it cannot show. `launchCommand` is the line the
+ * build would spawn, so the box can name it.
  */
 export function configFieldPlan(
   id: HarnessId,
@@ -148,6 +176,7 @@ export function configFieldPlan(
   // that does not exist left the field permanently empty.
   const modelsAreSelectors = providers.length > 0;
   const storedProvider = Boolean(options.provider?.trim());
+  const launch = launchFacts(options.launchCommand);
 
   return {
     showProvider: modelsAreSelectors || storedProvider,
@@ -157,7 +186,8 @@ export function configFieldPlan(
     modelsAreSelectors,
     envHint: env.hint,
     envPlaceholder: env.placeholder,
-    launchPlaceholder: options.launchCommand ?? 'the agent’s own command',
+    launchPlaceholder: launch.placeholder,
+    launchHint: launch.hint,
     notes: env.notes,
   };
 }

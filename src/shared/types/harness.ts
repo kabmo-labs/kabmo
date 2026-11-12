@@ -61,6 +61,10 @@ export interface HarnessSummary {
   /** The letter the UI draws when there is no vendor mark. */
   initial?: string;
   install?: string;
+  /** The launch line this build ships for the agent, as typeable text. The
+   *  config form's placeholder and hint must name THIS harness's line: the box
+   *  used to advertise `agy acp` on the omp and Claude cards alike. */
+  command?: string;
   note?: string;
   /** False when the user switched this harness off: it then leaves the settings
    *  menu and the composer's picker, so a roster of twelve becomes the agents
