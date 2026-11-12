@@ -200,7 +200,9 @@ describe('closeDb', () => {
     // slot while `getDb()` was still opening, so the continuation assigned
     // `resolved` on the DROPPED slot object. Nothing could reach that handle
     // again, and on Windows its temp directory stayed locked — `EBUSY … a
-    // handle outlived its test`, reported against the two PRECEDING cases.
+    // handle outlived its test`, reported against the two PRECEDING cases. A
+    // retirement in this window never reaches `createDb`; the `disposed` check
+    // after it still closes a handle retired DURING initialisation.
     const savedSlot = globalThis.__kabmoDb;
     try {
       Bun.env.KABMO_DB_PATH = path.join(tempRoot(), 'in-flight', 'db.sqlite');
@@ -239,6 +241,53 @@ describe('closeDb', () => {
       expect(globalThis.__kabmoDb ?? null).toBeNull();
       // A closed handle refuses further work rather than silently succeeding.
       expect(() => db.raw.exec('SELECT 1')).toThrow();
+    } finally {
+      globalThis.__kabmoDb = savedSlot;
+    }
+  });
+
+  test('an open uses the path configured when it was requested', async () => {
+    // A fire-and-forget `getDb()` can still be resolving while its suite tears
+    // down and deletes `KABMO_DB_PATH`. Re-reading the environment at resolution
+    // time then opens the DEFAULT path — the developer's real database — so the
+    // path is snapshotted when the open is requested.
+    const savedSlot = globalThis.__kabmoDb;
+    try {
+      const requested = path.join(tempRoot(), 'snapshot', 'db.sqlite');
+      Bun.env.KABMO_DB_PATH = requested;
+      globalThis.__kabmoDb = undefined;
+
+      const pending = getDb();
+      // The teardown that used to redirect this open.
+      delete Bun.env.KABMO_DB_PATH;
+
+      const db = await pending;
+      expect(existsSync(requested)).toBe(true);
+      await closeDb();
+      expect(db).toBeDefined();
+    } finally {
+      globalThis.__kabmoDb = savedSlot;
+    }
+  });
+
+  test('a retired open never creates the file it would have opened', async () => {
+    // The leak this pins: an open still resolving its path while the slot is
+    // retired used to reach `createDb` and leave a database file behind, then
+    // close it and reject. A fire-and-forget caller whose suite had already
+    // restored its environment resolved the DEFAULT path, so the file it
+    // created was the developer's real `~/.kabmo/db.sqlite` (measured on a full
+    // `bun test`, from an ACP child-outcome write finishing after teardown).
+    const savedSlot = globalThis.__kabmoDb;
+    try {
+      const dbPath = path.join(tempRoot(), 'never-opened', 'db.sqlite');
+      Bun.env.KABMO_DB_PATH = dbPath;
+      globalThis.__kabmoDb = undefined;
+
+      const pending = getDb();
+      await closeDb();
+
+      await expect(pending).rejects.toThrow(/retired/);
+      expect(existsSync(dbPath)).toBe(false);
     } finally {
       globalThis.__kabmoDb = savedSlot;
     }

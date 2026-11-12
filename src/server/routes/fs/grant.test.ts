@@ -20,21 +20,24 @@ import path from 'path';
 import { action } from '@/server/routes/fs/grant';
 import { resolveFileScope } from '@/server/routes/fs/scope';
 import { clearExternalRoots, externalRoots, isExternalRoot } from '@/server/lib/fs/external-roots';
+import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 
 /** A file OUTSIDE the app root and outside every workspace. */
 let outside: string;
 let outsideFile: string;
 
-beforeEach(() => {
+beforeEach(async () => {
+  await isolateDb();
   clearExternalRoots();
   outside = fs.mkdtempSync(path.join(os.tmpdir(), 'kabmo-grant-'));
   outsideFile = path.join(outside, 'report.md');
   fs.writeFileSync(outsideFile, '# report\n');
 });
 
-afterEach(() => {
+afterEach(async () => {
   clearExternalRoots();
   fs.rmSync(outside, { recursive: true, force: true });
+  await releaseDb();
 });
 
 function grantRequest(body: unknown, headers: Record<string, string> = {}): Request {

@@ -28,6 +28,7 @@ import { join } from 'node:path';
 
 import { discoverPanelPlugins, getMarketplaceCatalogPath, invalidatePanelScan } from '@/server/lib/panels/registry.server';
 import { removePanelPlugin } from '@/server/lib/panels/install.server';
+import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 
 let root = '';
 
@@ -46,16 +47,18 @@ function writeCatalog(catalog: unknown): void {
   fs.writeFileSync(getMarketplaceCatalogPath(), JSON.stringify(catalog));
 }
 
-beforeEach(() => {
+beforeEach(async () => {
+  await isolateDb();
   root = fs.mkdtempSync(join(tmpdir(), 'kabmo-remove-'));
   process.env.KABMO_MARKETPLACE_DIR = root;
   invalidatePanelScan();
 });
 
-afterEach(() => {
+afterEach(async () => {
   delete process.env.KABMO_MARKETPLACE_DIR;
   invalidatePanelScan();
   fs.rmSync(root, { recursive: true, force: true });
+  await releaseDb();
 });
 
 describe('removePanelPlugin', () => {

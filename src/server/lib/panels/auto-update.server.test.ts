@@ -26,6 +26,7 @@ import { runPanelAutoUpdatePass } from '@/server/lib/panels/auto-update.server';
 import { installPanelPluginFromGit } from '@/server/lib/panels/install.server';
 import { readGitStatus } from '@/server/lib/panels/git-status.server';
 import { invalidatePanelScan } from '@/server/lib/panels/registry.server';
+import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 
 const hasGit = Boolean(Bun.which('git'));
 
@@ -64,7 +65,8 @@ function advance(repo: string, version: string): void {
   run(['commit', '-q', '-m', `v${version}`]);
 }
 
-beforeEach(() => {
+beforeEach(async () => {
+  await isolateDb();
   root = fs.mkdtempSync(join(tmpdir(), 'omp-autoupd-'));
   work = fs.mkdtempSync(join(tmpdir(), 'omp-autoupd-repos-'));
   process.env.KABMO_MARKETPLACE_DIR = root;
@@ -72,12 +74,13 @@ beforeEach(() => {
   invalidatePanelScan();
 });
 
-afterEach(() => {
+afterEach(async () => {
   delete process.env.KABMO_MARKETPLACE_DIR;
   globalThis.__kabmoPanelGitStatus = undefined;
   invalidatePanelScan();
   fs.rmSync(root, { recursive: true, force: true });
   fs.rmSync(work, { recursive: true, force: true });
+  await releaseDb();
 });
 
 describe('runPanelAutoUpdatePass', () => {

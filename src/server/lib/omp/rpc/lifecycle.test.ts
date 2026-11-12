@@ -13,6 +13,10 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'bun:test';
 
 import { AgentSessionWrapper, WebRpcError } from '@/server/lib/omp/rpc/manager';
 import { RpcCommandTimeoutError, type RpcProcess } from '@/server/lib/omp/rpc/process';
+import { isolateDb, releaseDb } from '@/test-support/isolated-db';
+
+beforeEach(isolateDb);
+afterEach(releaseDb);
 
 /** Commands whose ack is fabricated as timed out; everything else resolves, so
  *  only the timeout policy is under test. */

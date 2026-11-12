@@ -21,6 +21,10 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import fs from 'fs';
 import path from 'path';
 import { deleteSession } from '@/server/routes/sessions/delete';
+import { isolateDb, releaseDb } from '@/test-support/isolated-db';
+
+beforeAll(isolateDb);
+afterAll(releaseDb);
 
 /**
  * The 404 branch resolves the id by scanning the sessions directory, so the

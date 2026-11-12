@@ -25,6 +25,7 @@ import { join } from 'node:path';
 import { discoverPanelPlugins, getMarketplaceCatalogPath, invalidatePanelScan } from '@/server/lib/panels/registry.server';
 import { installPanelPluginFromGit } from '@/server/lib/panels/install.server';
 import { seedDefaultMarketplace } from '@/server/lib/panels/seed.server';
+import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 
 let root = '';
 let work = '';
@@ -85,18 +86,20 @@ function makeBundledStore(manifest: unknown = VALID): string {
   return bundled;
 }
 
-beforeEach(() => {
+beforeEach(async () => {
+  await isolateDb();
   root = fs.mkdtempSync(join(tmpdir(), 'kabmo-seed-'));
   work = fs.mkdtempSync(join(tmpdir(), 'kabmo-repos-'));
   process.env.KABMO_MARKETPLACE_DIR = root;
   invalidatePanelScan();
 });
 
-afterEach(() => {
+afterEach(async () => {
   delete process.env.KABMO_MARKETPLACE_DIR;
   invalidatePanelScan();
   fs.rmSync(root, { recursive: true, force: true });
   fs.rmSync(work, { recursive: true, force: true });
+  await releaseDb();
 });
 
 describe('seedDefaultMarketplace', () => {

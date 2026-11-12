@@ -23,11 +23,15 @@
  * per-file ceiling.
  */
 
-import { describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
 import { foldSessionFrame } from '@/server/lib/omp/rpc/frame-fold';
 import { makeHost } from '@/server/lib/omp/rpc/frame-fold-host.test-util';
 import { onRealtimeSignal } from '@/server/lib/realtime/signals.server';
+import { isolateDb, releaseDb } from '@/test-support/isolated-db';
+
+beforeEach(isolateDb);
+afterEach(releaseDb);
 
 /**
  * The `tool_execution_end` frame is what moves a running session's sidebar row

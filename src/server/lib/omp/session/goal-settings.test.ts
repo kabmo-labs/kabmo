@@ -13,9 +13,13 @@
  * loop's own guard.
  */
 
-import { describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { normalizeGoalBudget } from '@/shared/lib/omp/mode/budget';
 import { readGoalSettings } from '@/server/lib/omp/session/goal-settings.server';
+import { isolateDb, releaseDb } from '@/test-support/isolated-db';
+
+beforeEach(isolateDb);
+afterEach(releaseDb);
 
 describe('normalizeGoalBudget', () => {
   test('a positive integer is a budget, whatever shape it arrived in', () => {

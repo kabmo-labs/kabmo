@@ -113,6 +113,26 @@ function noop(): void {
 }
 
 export async function getDatabasePath(): Promise<string> {
+  return resolveDatabasePath(configuredDbOverride(), isMockMode());
+}
+
+/**
+ * The raw override, read at the instant `getDb()` is CALLED.
+ *
+ * Reading it later is a real leak: a fire-and-forget write (`void
+ * clearStreamStatus(...)`, a debounced discovery-root reconcile) can still be
+ * resuming when its suite tears down and deletes `KABMO_DB_PATH`, so the path
+ * that was configured for that work is gone by the time it is resolved and the
+ * DEFAULT `~/.kabmo/db.sqlite` is opened instead. Measured on a full `bun test`
+ * with a tracer around `createDb`: two opens of the developer's database, one
+ * from `roots-watch`'s reconcile, one from an ACP child-outcome write, both
+ * from an open requested before the suite removed its environment.
+ */
+function configuredDbOverride(): string | undefined {
+  return Bun.env.KABMO_DB_PATH || Bun.env.OMPCHAMBER_DB_PATH || Bun.env.DB_PATH;
+}
+
+async function resolveDatabasePath(customPath: string | undefined, mock: boolean): Promise<string> {
   // An explicit override wins over BOTH defaults, mock included. It has to come
   // first: the mock default is cwd-relative, so a `MOCK=true` server started
   // from a checkout wrote the repository's own `workspace.db` no matter what
@@ -120,7 +140,6 @@ export async function getDatabasePath(): Promise<string> {
   // instance needs the variable for. Verified before the fix: a mock boot with
   // `KABMO_DB_PATH` set to a temp file still answered the repo path on
   // this line.
-  const customPath = Bun.env.KABMO_DB_PATH || Bun.env.OMPCHAMBER_DB_PATH || Bun.env.DB_PATH;
   if (customPath) {
     const resolvedPath = customPath.startsWith('~')
       ? path.join(os.homedir(), customPath.slice(1))
@@ -132,7 +151,7 @@ export async function getDatabasePath(): Promise<string> {
     return resolvedPath;
   }
 
-  if (isMockMode()) {
+  if (mock) {
     return path.join(process.cwd(), 'workspace.db');
   }
 
@@ -163,7 +182,21 @@ export function getDb(): Promise<DbClient> {
   if (state.resolved) return Promise.resolve(state.resolved);
 
   const opening = (async () => {
-    const dbPath = await getDatabasePath();
+    // Snapshot the configuration HERE, when the open is requested. Resolving it
+    // later re-reads an environment a suite may already have restored, which is
+    // how a fire-and-forget write opened the developer's `~/.kabmo/db.sqlite`.
+    const dbPath = await resolveDatabasePath(configuredDbOverride(), isMockMode());
+
+    // The slot can be retired WHILE the path is being resolved, and opening a
+    // file for it is the leak this check prevents: the handle would be cached
+    // on an object nothing reaches (closed again below, only after the file and
+    // its schema exist). Measured on a full `bun test`: a fire-and-forget
+    // `void clearStreamStatus(...)` outlived its suite's `releaseDb`, so
+    // `getDatabasePath` resolved AFTER `KABMO_DB_PATH` was deleted and created
+    // the developer's real `~/.kabmo/db.sqlite`. A retired slot must open
+    // NOTHING, at any path.
+    if (state.disposed) throw new Error('database open was retired before it finished');
+
     const db = createDb(dbPath);
 
     await initSchema(db);

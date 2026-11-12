@@ -15,7 +15,7 @@
  * or read session files (same reason `runScheduledTask` takes its deps).
  */
 
-import { describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import {
   driveGoalAfterTurn,
   lastAssistantText,
@@ -25,6 +25,10 @@ import {
 } from '@/server/lib/omp/session/goal-driver.server';
 import type { GoalAuditAnswers } from '@/server/lib/omp/session/goal-auditor.server';
 import type { GoalRecord } from '@/shared/lib/omp/mode/types';
+import { isolateDb, releaseDb } from '@/test-support/isolated-db';
+
+beforeEach(isolateDb);
+afterEach(releaseDb);
 
 const goal: GoalRecord = {
   id: 'g1',

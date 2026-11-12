@@ -17,12 +17,16 @@
  * observable proof that the branch was reached.
  */
 
-import { describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
 import { foldSessionFrame } from '@/server/lib/omp/rpc/frame-fold';
 import type { SessionFrameHost } from '@/server/lib/omp/rpc/frame-fold-contract';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
 import { makeHost } from '@/server/lib/omp/rpc/frame-fold-host.test-util';
+import { isolateDb, releaseDb } from '@/test-support/isolated-db';
+
+beforeEach(isolateDb);
+afterEach(releaseDb);
 
 /** Fold one frame and report the flags the trigger leaves behind. */
 function fold(host: SessionFrameHost, event: AgentEvent): void {

@@ -10,6 +10,12 @@
 [serve.static]
 plugins = ["./src/server/lib/bundler/css.ts"]
 
+# The run-wide DB fallback: `releaseDb` deletes `KABMO_DB_PATH`, and a
+# fire-and-forget write still in flight would otherwise resolve the developer's
+# real `~/.kabmo/db.sqlite`. See `src/test-support/preload.ts`.
+[test]
+preload = ["./src/test-support/preload.ts"]
+
 # A freshly published version of a dependency is the window a compromised
 # maintainer account is exploited in, and this project's dependencies run inside
 # the server process (`bun:sqlite`, `elysia`, the bundler). Three days is long

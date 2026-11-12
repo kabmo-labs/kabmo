@@ -26,6 +26,7 @@ import { probeGitUpdate, updateGitPlugin } from '@/server/lib/panels/git-update.
 import { readGitOrigin } from '@/server/lib/panels/git-clone.server';
 import { discoverPanelPlugins, invalidatePanelScan } from '@/server/lib/panels/registry.server';
 import { removeDir } from '@/test-support/remove-dir';
+import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 
 const hasGit = Boolean(Bun.which('git'));
 
@@ -81,18 +82,20 @@ function advance(repo: string, version: string): void {
   git(repo, ['commit', '-q', '-m', `v${version}`]);
 }
 
-beforeEach(() => {
+beforeEach(async () => {
+  await isolateDb();
   root = fs.mkdtempSync(join(tmpdir(), 'omp-panels-git-'));
   work = fs.mkdtempSync(join(tmpdir(), 'omp-panels-repos-'));
   process.env.KABMO_MARKETPLACE_DIR = root;
   invalidatePanelScan();
 });
 
-afterEach(() => {
+afterEach(async () => {
   delete process.env.KABMO_MARKETPLACE_DIR;
   invalidatePanelScan();
   removeDir(root);
   removeDir(work);
+  await releaseDb();
 });
 
 describe('readGitOrigin', () => {
