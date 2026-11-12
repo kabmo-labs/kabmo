@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { getLanguageFromPath } from '@/shared/lib/code/language';
 import { resolveViewer } from '@/client/hooks/editor/resolve-viewer';
 import { toDiskText, toLf, type LineEnding } from '@/shared/lib/code/line-endings';
@@ -10,6 +10,7 @@ import { useFileWrites } from '@/client/hooks/editor/use-file-writes';
 import { useWriteConflict } from '@/client/hooks/editor/use-write-conflict';
 import { useDiskSync } from '@/client/hooks/editor/use-disk-sync';
 import { useFileCache } from '@/client/hooks/editor/use-file-cache';
+import { useDirtyTracking } from '@/client/hooks/editor/use-dirty-tracking';
 import { editorTargetKey as targetKey } from '@/client/hooks/editor/target-key';
 import type { FileEditorSaveStatus, FileEditorTarget, UseFileEditorOptions, UseFileEditorResult } from '@/client/hooks/editor/file-editor-types';
 
@@ -61,14 +62,6 @@ export function useFileEditor(
    */
   const [hashes, setHashes] = useState<Record<string, string | null>>({});
   const [saveStatus, setSaveStatus] = useState<FileEditorSaveStatus>('idle');
-  /**
-   * Files whose BINARY document (a workbook) holds unsaved edits.
-   *
-   * Kept beside the text caches rather than inside them because the value is a
-   * flag, not a buffer: the edited workbook itself lives in the viewer's draft
-   * store, and this set is what the tab strip and the close guard read.
-   */
-  const [binaryDirtyKeys, setBinaryDirtyKeys] = useState<ReadonlySet<string>>(() => new Set());
   /** Bumped by `reset()` to re-run the read effect for the active file. */
   const [revision, setRevision] = useState(0);
 
@@ -77,20 +70,6 @@ export function useFileEditor(
   // feeds is LF-only — normalizing here keeps `isDirty` comparing like with like.
   const content = target ? (contents[key] ?? (target.content !== undefined ? toLf(target.content) : '')) : '';
   const textDirty = content !== (baselines[key] ?? content);
-  const isDirty = textDirty || binaryDirtyKeys.has(key);
-  /**
-   * The dirty set, derived from the two caches rather than tracked separately:
-   * a second copy would be a second thing to keep in step, and the comparison is
-   * a string identity check per open buffer.
-   */
-  const dirtyKeys = useMemo(() => {
-    const next = new Set<string>(binaryDirtyKeys);
-    for (const [bufferKey, text] of Object.entries(contents)) {
-      const baseline = baselines[bufferKey];
-      if (baseline !== undefined && text !== baseline) next.add(bufferKey);
-    }
-    return next;
-  }, [contents, baselines, binaryDirtyKeys]);
 
   // The viewer, its bytes and the image URL — see `resolve-viewer.ts` for the
   // three rules this derivation encodes (the kind comes from the path; a
@@ -134,6 +113,19 @@ export function useFileEditor(
     setLineEndings,
     setMtimes,
     setHashes,
+  });
+
+  /**
+   * The dirty set (text buffers plus binary flags) lives in its own hook — see
+   * `use-dirty-tracking.ts` for why it is derived rather than tracked.
+   */
+  const { isDirty, dirtyKeys, setBinaryDirty, retain: retainAll } = useDirtyTracking({
+    target,
+    key,
+    textDirty,
+    contents,
+    baselines,
+    retain,
   });
 
   /**
@@ -273,43 +265,6 @@ export function useFileEditor(
   useEffect(() => {
     setSaveStatus('idle');
   }, [key]);
-
-  const setBinaryDirty = useCallback(
-    (dirty: boolean) => {
-      if (!target) return;
-      const fileKey = targetKey(target);
-      setBinaryDirtyKeys((previous) => {
-        if (previous.has(fileKey) === dirty) return previous;
-        const next = new Set(previous);
-        if (dirty) next.add(fileKey);
-        else next.delete(fileKey);
-        return next;
-      });
-    },
-    [target],
-  );
-
-  /**
-   * `retain` also drops the binary flags of tabs that are no longer open: a
-   * closed tab's flag would otherwise keep the close guard armed for a file
-   * that is not on screen.
-   */
-  const retainAll = useCallback(
-    (ids: Array<number | string>) => {
-      retain(ids);
-      const keep = new Set(ids.map(String));
-      setBinaryDirtyKeys((previous) => {
-        let changed = false;
-        const next = new Set<string>();
-        for (const fileKey of previous) {
-          if (keep.has(fileKey)) next.add(fileKey);
-          else changed = true;
-        }
-        return changed ? next : previous;
-      });
-    },
-    [retain],
-  );
 
   const onChange = useCallback(
     (next: string) => {
