@@ -145,7 +145,7 @@ export type HandleWriteResult = 'written' | 'needs-permission' | 'failed';
  */
 export async function writeThroughHandle(
   handleId: string,
-  text: string,
+  data: string | Uint8Array,
   options: { interactive: boolean },
 ): Promise<HandleWriteResult> {
   const handle = handles.get(handleId);
@@ -162,7 +162,7 @@ export async function writeThroughHandle(
       }
     }
     const writable = await handle.createWritable();
-    await writable.write(text);
+    await writable.write(data);
     await writable.close();
     return 'written';
   } catch {

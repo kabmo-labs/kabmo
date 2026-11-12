@@ -140,16 +140,11 @@ describe('getDocumentMimeType', () => {
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     );
     expect(getDocumentMimeType('a.xlsm')).toBe('application/vnd.ms-excel.sheet.macroEnabled.12');
+    expect(getDocumentMimeType('a.xls')).toBe('application/vnd.ms-excel');
   });
 
   test('the table covers exactly the extensions above', () => {
-    expect(Object.keys(DOCUMENT_MIME_BY_EXT).sort()).toEqual(['docx', 'pdf', 'xlsm', 'xlsx']);
-  });
-
-  // `.xls` is the legacy OLE2 binary the reader refuses; naming it as a
-  // spreadsheet type would advertise a viewer that cannot open it.
-  test('legacy .xls has no MIME entry', () => {
-    expect(getDocumentMimeType('legacy.xls')).toBeNull();
+    expect(Object.keys(DOCUMENT_MIME_BY_EXT).sort()).toEqual(['docx', 'pdf', 'xls', 'xlsm', 'xlsx']);
   });
 
   test('images and unknown extensions are null', () => {

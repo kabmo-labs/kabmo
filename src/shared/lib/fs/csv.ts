@@ -157,3 +157,43 @@ function padRow(row: string[], width: number): string[] {
   while (next.length < width) next.push('');
   return next;
 }
+
+/**
+ * Write a table back as delimited text.
+ *
+ * The inverse of `parseCsv`, and it exists because the grid is now editable:
+ * a cell edit has to become the file's text again, and a naive `join(',')`
+ * would corrupt the first cell that holds a comma, a quote or a newline — the
+ * same failure the parser exists to prevent, in the other direction.
+ *
+ * Two normalizations are deliberate and are the price of editing a file through
+ * a parsed model:
+ *
+ * - **Quoting is minimal.** A field is quoted only when it must be (it holds
+ *   the delimiter, a quote, CR or LF), so a file that quoted every field comes
+ *   back with the quotes it needs and no more.
+ * - **Trailing empty fields are dropped.** `parseCsv` pads every row to the
+ *   header's width so the grid's columns line up; writing that padding back
+ *   would add delimiters the file never had. A row keeps at least one field.
+ *
+ * The line ending is LF because the editor's buffer is LF-only; the save path
+ * restores the file's own ending from `eol`. `trailingNewline` is the caller's
+ * observation of the original text, so a file that ended with a newline still
+ * does.
+ */
+export function serializeCsv(
+  header: readonly string[],
+  rows: readonly (readonly string[])[],
+  delimiter: ',' | '\t',
+  trailingNewline = false,
+): string {
+  const field = (value: string) =>
+    value.includes(delimiter) || /["\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+  const line = (cells: readonly string[]) => {
+    let end = cells.length;
+    while (end > 1 && cells[end - 1] === '') end -= 1;
+    return cells.slice(0, end).map(field).join(delimiter);
+  };
+  const text = [header, ...rows].map(line).join('\n');
+  return trailingNewline ? `${text}\n` : text;
+}

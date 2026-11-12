@@ -42,12 +42,11 @@ export type ViewerKind =
 const DOCX_EXTENSIONS: Record<string, true> = { docx: true };
 
 /**
- * Workbooks `read-excel-file` reads. `.xls` is deliberately absent: it is the
- * legacy OLE2 binary format, the reader refuses it outright with
- * `XLS_FILE_NOT_SUPPORTED`, and offering the viewer would produce a parse error
- * where the honest answer is "not text, cannot be shown here".
+ * Workbooks the sheet viewer reads. `.xls` is the legacy OLE2/BIFF format and
+ * `.xlsx`/`.xlsm` are the ZIP-based OOXML ones; SheetJS reads all three, which
+ * is why the viewer claims the legacy extension too.
  */
-const SHEET_EXTENSIONS: Record<string, true> = { xlsx: true, xlsm: true };
+const SHEET_EXTENSIONS: Record<string, true> = { xls: true, xlsx: true, xlsm: true };
 
 /** Delimited text rendered as a grid. */
 const CSV_EXTENSIONS: Record<string, true> = { csv: true, tsv: true };

@@ -37,6 +37,7 @@ object FileChooserSpec {
     private val extensionMimeTypes: Map<String, String> = mapOf(
         "pdf" to "application/pdf",
         "docx" to "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "xls" to "application/vnd.ms-excel",
         "xlsx" to "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         "xlsm" to "application/vnd.ms-excel.sheet.macroenabled.12",
         "md" to "text/markdown",

@@ -25,6 +25,7 @@
  */
 
 import type { RefObject } from 'preact';
+import { useCallback } from 'preact/hooks';
 import { CodeSurface, type CodeSurfaceHandle } from '@/client/components/common/code-surface';
 import { ImageViewer } from '@/client/components/common/image-viewer';
 import { PreviewScroller } from '@/client/components/mobile/mobile-right-sidebar/PreviewScroller';
@@ -36,6 +37,7 @@ import type { EditorTypingOptions } from '@/client/components/common/code-surfac
 import type { EditorThemeState } from '@/client/hooks/editor/theme';
 import { EDITOR_LINE_HEIGHT } from '@/shared/lib/code/editor/typography';
 import type { ViewerKind } from '@/shared/lib/fs/document-kind';
+import { saveFileBytes } from '@/client/hooks/editor/save-bytes';
 
 interface MobileEditorSurfaceProps {
   file: MobileEditorFile;
@@ -90,6 +92,26 @@ export function MobileEditorSurface({
   indentUnitText,
   typing,
 }: MobileEditorSurfaceProps) {
+  // The workbook grid's write path, the same one the desktop pane builds: a
+  // device-backed tab has nowhere to write, so it is not offered.
+  const saveBytes = useCallback(
+    async (bytes: Uint8Array) => {
+      const outcome = await saveFileBytes(file, bytes, {
+        interactive: true,
+        baseMtimeMs: editor.baseMtimeMs,
+      });
+      if (outcome.status === 'written') return { ok: true };
+      if (outcome.status === 'conflict') {
+        return { ok: false, error: 'This file changed on disk since it was opened.' };
+      }
+      if (outcome.status === 'needs-permission') {
+        return { ok: false, error: 'Tap Save again to grant write access.' };
+      }
+      return { ok: false, error: outcome.error };
+    },
+    [file, editor.baseMtimeMs],
+  );
+
   if (editor.isImage && editor.imageUrl) {
     return <ImageViewer src={editor.imageUrl} name={file.name} className="flex-1 min-h-0" />;
   }
@@ -102,6 +124,9 @@ export function MobileEditorSurface({
         source={editor.byteSource}
         content={editor.content}
         revision={editor.revision}
+        onContentChange={editor.onChange}
+        onSaveBytes={editor.deviceBacked ? undefined : saveBytes}
+        onDirtyChange={editor.setBinaryDirty}
       />
     );
   }

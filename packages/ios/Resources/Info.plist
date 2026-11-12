@@ -129,6 +129,19 @@
       </array>
     </dict>
     <dict>
+      <key>CFBundleTypeName</key><string>Excel 97-2003 Workbook</string>
+      <key>CFBundleTypeRole</key><string>Viewer</string>
+      <key>LSHandlerRank</key><string>Alternate</string>
+      <key>LSItemContentTypes</key>
+      <array>
+        <string>com.microsoft.excel.xls</string>
+      </array>
+      <key>CFBundleTypeExtensions</key>
+      <array>
+        <string>xls</string>
+      </array>
+    </dict>
+    <dict>
       <key>CFBundleTypeName</key><string>Excel Workbook</string>
       <key>CFBundleTypeRole</key><string>Viewer</string>
       <key>LSHandlerRank</key><string>Alternate</string>

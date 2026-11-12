@@ -152,7 +152,13 @@ export function FileIcon({ name, isFolder, isOpen, size = 14, className = '' }: 
   // which made them the only icons in the app that ignored BOTH modes. Their
   // hue is now a role in `shared/lib/icons/tint.ts`, so the palette decides it
   // and `monochrome` finally reaches them.
-  if (lowerName.endsWith('.csv') || lowerName.endsWith('.tsv') || lowerName.endsWith('.xlsx') || lowerName.endsWith('.xlsm')) {
+  if (
+    lowerName.endsWith('.csv') ||
+    lowerName.endsWith('.tsv') ||
+    lowerName.endsWith('.xls') ||
+    lowerName.endsWith('.xlsx') ||
+    lowerName.endsWith('.xlsm')
+  ) {
     return <FileSpreadsheet size={size} className={className} />;
   }
   if (lowerName.endsWith('.pdf') || lowerName.endsWith('.docx')) {

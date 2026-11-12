@@ -67,6 +67,7 @@ public enum DeviceFiles {
     switch mimeType.trimmingCharacters(in: .whitespaces).lowercased() {
     case "application/pdf": return "pdf"
     case "application/vnd.openxmlformats-officedocument.wordprocessingml.document": return "docx"
+    case "application/vnd.ms-excel": return "xls"
     case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": return "xlsx"
     case "application/vnd.ms-excel.sheet.macroenabled.12": return "xlsm"
     case "text/markdown", "text/x-markdown": return "md"
@@ -92,6 +93,7 @@ public enum DeviceFiles {
     switch ext.lowercased() {
     case "pdf": return "application/pdf"
     case "docx": return "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    case "xls": return "application/vnd.ms-excel"
     case "xlsx": return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     case "xlsm": return "application/vnd.ms-excel.sheet.macroEnabled.12"
     case "md", "markdown", "mdx": return "text/markdown"

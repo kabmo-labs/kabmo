@@ -81,6 +81,15 @@ export interface UseFileEditorResult {
   copied: boolean;
   isDirty: boolean;
   /**
+   * Report unsaved edits in a BINARY document (a workbook the grid edited).
+   *
+   * The text buffer's dirty flag cannot describe them: a workbook has no text
+   * buffer, and its edits live in the viewer's draft. Without this the tab
+   * looked clean while a workbook held unsaved cells, so closing it discarded
+   * them without a word.
+   */
+  setBinaryDirty: (dirty: boolean) => void;
+  /**
    * The ACTIVE buffer's own line ending, which the next save restores.
    *
    * Detected from the bytes on read, never from a setting: a CRLF file must stay

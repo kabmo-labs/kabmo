@@ -56,6 +56,7 @@ export function getFileExtension(filePath: string | undefined | null): string {
 export const DOCUMENT_MIME_BY_EXT: Record<string, string> = {
   pdf: 'application/pdf',
   docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  xls: 'application/vnd.ms-excel',
   xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   xlsm: 'application/vnd.ms-excel.sheet.macroEnabled.12',
 };
@@ -184,7 +185,7 @@ export const EDITOR_MAX_FILE_BYTES = 32 * 1024 * 1024;
 /**
  * The largest Word document or workbook the editor opens.
  *
- * `mammoth` and `read-excel-file` parse the fetched `ArrayBuffer` in the page,
+ * `mammoth` and SheetJS parse the fetched `ArrayBuffer` in the page,
  * so the file does sit in memory — but it is unzipped and converted once and
  * then released, where a text buffer is held for as long as the tab is open and
  * re-posted on every save. That is why these get a ceiling of their own rather
@@ -234,6 +235,7 @@ export const PDF_MAX_FILE_BYTES = 30 * 1024 * 1024;
 export const EDITOR_MAX_BYTES_BY_EXT: Record<string, number> = {
   pdf: PDF_MAX_FILE_BYTES,
   docx: DOCUMENT_MAX_FILE_BYTES,
+  xls: DOCUMENT_MAX_FILE_BYTES,
   xlsx: DOCUMENT_MAX_FILE_BYTES,
   xlsm: DOCUMENT_MAX_FILE_BYTES,
 };
@@ -262,7 +264,7 @@ export type EditorFileKind = 'image' | 'document' | 'text' | 'binary' | 'too-lar
  * viewer is an `<iframe>` on `/api/fs/raw`, so the bytes are streamed to
  * Chrome's own plugin and never held in the page.
  *
- * A DOCX and an XLSX are the middle case: `mammoth` and `read-excel-file` parse
+ * A DOCX and a workbook are the middle case: `mammoth` and SheetJS parse
  * the fetched `ArrayBuffer` in the page, so the file IS held — but only for the
  * conversion, not for the life of the tab, which is what buys them
  * `DOCUMENT_MAX_FILE_BYTES` (20 MiB) instead of the text ceiling.

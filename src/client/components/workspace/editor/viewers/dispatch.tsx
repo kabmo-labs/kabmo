@@ -13,11 +13,10 @@
  * the same bytes the code surface already has, and the eye toggle switches
  * between them with no second fetch.
  *
- * Every viewer is `lazy()` at MODULE scope, so its library (mammoth,
- * read-excel-file) stays in its own chunk and a session that never opens a
- * document never downloads one. Module scope matters: a `lazy()` created in a
- * render body is a new component type on every render, which remounts the
- * viewer — and the parse — each time.
+ * Every viewer is `lazy()` at MODULE scope, so its library (mammoth, SheetJS)
+ * is only evaluated when a viewer mounts. Module scope matters: a `lazy()`
+ * created in a render body is a new component type on every render, which
+ * remounts the viewer — and the parse — each time.
  */
 
 import { Suspense, lazy } from 'preact/compat';
@@ -56,6 +55,12 @@ export interface ViewerProps {
   content: string;
   /** Bumped to force a re-parse (a workspace refresh). */
   revision: number;
+  /** Write an edited TEXT buffer back (the CSV grid's cells are text). */
+  onContentChange?: (next: string) => void;
+  /** Write edited BYTES back (the workbook grid has no text buffer). */
+  onSaveBytes?: (bytes: Uint8Array) => Promise<{ ok: boolean; error?: string | null }>;
+  /** Report unsaved binary edits so the tab can warn before closing. */
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 /** Whether a file's kind is drawn by a viewer here rather than by the pane. */
@@ -83,7 +88,17 @@ function Loading() {
  * The viewer for `kind`, or null when the kind has no rendered surface here
  * (code, markdown and image are each drawn by the pane itself).
  */
-export function ViewerSurface({ kind, path, name, source, content, revision }: ViewerProps) {
+export function ViewerSurface({
+  kind,
+  path,
+  name,
+  source,
+  content,
+  revision,
+  onContentChange,
+  onSaveBytes,
+  onDirtyChange,
+}: ViewerProps) {
   if (kind === 'image') {
     return (
       <Suspense fallback={<Loading />}>
@@ -108,14 +123,21 @@ export function ViewerSurface({ kind, path, name, source, content, revision }: V
   if (kind === 'spreadsheet') {
     return (
       <Suspense fallback={<Loading />}>
-        <SheetView source={source} name={name} revision={revision} />
+        <SheetView
+          source={source}
+          name={name}
+          path={path}
+          revision={revision}
+          onSaveBytes={onSaveBytes}
+          onDirtyChange={onDirtyChange}
+        />
       </Suspense>
     );
   }
   if (kind === 'csv') {
     return (
       <Suspense fallback={<Loading />}>
-        <CsvGrid content={content} path={path} />
+        <CsvGrid content={content} path={path} onChange={onContentChange} />
       </Suspense>
     );
   }

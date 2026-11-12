@@ -54,6 +54,12 @@ export const HANDLED_DOCUMENTS = [
     extensions: ['docx'],
   },
   {
+    name: 'Excel 97-2003 Workbook',
+    uti: 'com.microsoft.excel.xls',
+    mime: 'application/vnd.ms-excel',
+    extensions: ['xls'],
+  },
+  {
     name: 'Excel Workbook',
     uti: 'org.openxmlformats.spreadsheetml.sheet',
     mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

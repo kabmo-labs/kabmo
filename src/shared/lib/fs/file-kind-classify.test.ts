@@ -63,6 +63,9 @@ describe('classifyEditorFile', () => {
     expect(classifyEditorFile({ path: 'doc.docx', size: 4096, head: bytes(0x50, 0x4b, 0x03, 0x04, 0x00) })).toBe('document');
     expect(classifyEditorFile({ path: 'sheet.xlsx', size: 4096, head: bytes(0x50, 0x4b, 0x03, 0x04, 0x00) })).toBe('document');
     expect(classifyEditorFile({ path: 'sheet.xlsm', size: 4096 })).toBe('document');
+    // The legacy OLE2 workbook is a container too: its header carries NULs, so
+    // the sniff would refuse the file the sheet viewer exists for.
+    expect(classifyEditorFile({ path: 'legacy.xls', size: 4096, head: bytes(0xd0, 0xcf, 0x11, 0xe0, 0x00) })).toBe('document');
   });
 
   // A PDF is the exception: its viewer is an `<iframe>` on `/api/fs/raw`, so the
@@ -87,6 +90,7 @@ describe('classifyEditorFile', () => {
     expect(classifyEditorFile({ path: 'big.docx', size: 6 * 1024 * 1024 })).toBe('document');
     expect(classifyEditorFile({ path: 'big.xlsx', size: 19 * 1024 * 1024 })).toBe('document');
     expect(classifyEditorFile({ path: 'big.xlsm', size: DOCUMENT_MAX_FILE_BYTES })).toBe('document');
+    expect(classifyEditorFile({ path: 'big.xls', size: DOCUMENT_MAX_FILE_BYTES })).toBe('document');
   });
 
   test('a DOCX and an XLSX past the document ceiling are refused for size', () => {

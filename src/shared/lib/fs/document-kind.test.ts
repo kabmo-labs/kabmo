@@ -25,6 +25,7 @@ describe('viewerKindFor', () => {
     expect(viewerKindFor('a.png')).toBe('image');
     expect(viewerKindFor('a.pdf')).toBe('pdf');
     expect(viewerKindFor('a.docx')).toBe('docx');
+    expect(viewerKindFor('a.xls')).toBe('spreadsheet');
     expect(viewerKindFor('a.xlsx')).toBe('spreadsheet');
     expect(viewerKindFor('a.xlsm')).toBe('spreadsheet');
   });
@@ -43,11 +44,11 @@ describe('viewerKindFor', () => {
     expect(viewerKindFor(undefined)).toBe('code');
   });
 
-  // `.xls` is the legacy OLE2 binary the reader refuses outright. Routing it to
-  // the sheet viewer would show a parse error; the honest answer is the code
-  // path's "not text" refusal.
-  test('legacy .xls is not claimed by the sheet viewer', () => {
-    expect(viewerKindFor('legacy.xls')).toBe('code');
+  // `.xls` is the legacy OLE2/BIFF format, which SheetJS reads — the same
+  // viewer draws it. Before the reader change it landed on the code path and
+  // was refused as binary, which is what "the xls file will not open" was.
+  test('legacy .xls is claimed by the sheet viewer', () => {
+    expect(viewerKindFor('legacy.xls')).toBe('spreadsheet');
   });
 
   test('the uppercase extension is recognised', () => {

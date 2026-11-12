@@ -1,4 +1,5 @@
 import type { RefObject } from 'preact';
+import { useCallback } from 'preact/hooks';
 import { AlertTriangle, FileX, Loader2 } from 'lucide-preact';
 import { ConflictStrip } from '@/client/components/workspace/editor/ConflictStrip';
 import { EditorToolbar } from '@/client/components/workspace/editor/Toolbar';
@@ -14,6 +15,7 @@ import { EDITOR_MAX_FONT_SIZE, EDITOR_MIN_FONT_SIZE } from '@/shared/lib/code/ed
 import { RENDERED_VIEWERS, type ViewerKind } from '@/shared/lib/fs/document-kind';
 import type { OpenedFile } from '@/shared/types/fs';
 import { isProbeableTab } from '@/client/hooks/workspace/missing-files';
+import { saveFileBytes } from '@/client/hooks/editor/save-bytes';
 import type { EditorThemeState } from '@/client/hooks/editor/theme';
 
 interface FilePaneProps {
@@ -109,6 +111,32 @@ export function FilePane({
   const byteViewer = viewerKind === 'image' || viewerKind === 'pdf' || viewerKind === 'docx' || viewerKind === 'spreadsheet';
   // The rendered text views are the ones the eye toggle switches.
   const hasPreview = RENDERED_VIEWERS[viewerKind] === true;
+
+  /**
+   * The workbook grid's write path.
+   *
+   * A device-backed tab has no path and no handle, so it is not offered at all
+   * — the viewer would show an editor whose Save could only fail. A
+   * handle-backed tab writes through its live handle, which is the same rule
+   * the text save path follows.
+   */
+  const saveBytes = useCallback(
+    async (bytes: Uint8Array) => {
+      const outcome = await saveFileBytes(activeFile, bytes, {
+        interactive: true,
+        baseMtimeMs: editor.baseMtimeMs,
+      });
+      if (outcome.status === 'written') return { ok: true };
+      if (outcome.status === 'conflict') {
+        return { ok: false, error: 'This file changed on disk since it was opened.' };
+      }
+      if (outcome.status === 'needs-permission') {
+        return { ok: false, error: 'Click Save again to grant write access.' };
+      }
+      return { ok: false, error: outcome.error };
+    },
+    [activeFile, editor.baseMtimeMs],
+  );
 
   return (
     <>
@@ -276,6 +304,9 @@ export function FilePane({
           source={editor.byteSource}
           content={editor.content}
           revision={editor.revision}
+          onContentChange={editor.onChange}
+          onSaveBytes={editor.deviceBacked ? undefined : saveBytes}
+          onDirtyChange={editor.setBinaryDirty}
         />
       ) : (
         <FileDocument
