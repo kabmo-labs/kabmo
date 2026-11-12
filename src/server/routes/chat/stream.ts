@@ -4,6 +4,7 @@ import { handleSimulatedStreaming } from '@/shared/lib/chat/stream-service';
 import { createSseStream } from '@/server/lib/sse';
 import { markStreamStatus } from '@/shared/lib/omp/session/stream-state.server';
 import { localRuns } from '@/server/lib/omp/session/local-runs.server';
+import { recordPrompt } from '@/server/lib/chat/prompt-history.server';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   return handleStreamingRequest(request);
@@ -41,6 +42,10 @@ async function handleStreamingRequest(request: Request) {
       headers: { 'Content-Type': 'application/json' },
     });
   }
+
+  // The simulated path is a real send from the operator's point of view, so it
+  // feeds the composer's ArrowUp recall like the agent routes do.
+  await recordPrompt(sessionId, prompt);
 
   const stream = createSseStream({
     headers: { 'Cache-Control': 'no-cache, no-transform', 'X-Accel-Buffering': 'no' },

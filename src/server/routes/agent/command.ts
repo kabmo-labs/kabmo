@@ -17,6 +17,8 @@ import { forwardToPeer, isPeerRelayed, peerOriginForSession } from '@/server/lib
 import { applyHarnessMode, resumeRecordedHarnessSession } from '@/server/routes/agent/harness-command';
 import { asHarnessSession } from '@/server/lib/harness/registry';
 import { asOmpSession, getLiveSession } from '@/server/lib/omp/rpc/session-registry';
+import { recordPrompt } from '@/server/lib/chat/prompt-history.server';
+import { RECALLABLE_COMMAND_TYPES } from '@/shared/lib/chat/composer/history';
 
 /** How long after an accepted Resume Kabmo nudges the loop. The
  *  extension answers the mode command first; this only coalesces the nudge
@@ -77,6 +79,15 @@ export async function sendCommand({ params, request }: ActionFunctionArgs) {
     // One translation, used by both dispatch paths below: a mode command is a
     // local extension command inside the child, never an RPC verb.
     const forwarded = modeRequest ? { type: 'prompt', message: modeCommandPrompt(modeRequest) } : body;
+
+    // The composer's ArrowUp recall. Recorded here, where the operator's own
+    // words enter, and never for a mode request: that is Kabmo's control
+    // channel, not something anyone typed. A refused send is recorded too —
+    // the client queues it and the delivery replays the same text, which the
+    // store's consecutive-duplicate guard collapses.
+    if (!modeRequest && RECALLABLE_COMMAND_TYPES[body.type]) {
+      await recordPrompt(sessionId, typeof body.message === 'string' ? body.message : '');
+    }
 
     // Fast path: already-running session — whichever harness runs it. An ACP
     // session answers the same command vocabulary, so the transport is invisible

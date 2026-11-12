@@ -1,6 +1,7 @@
 import { useRef } from 'preact/hooks';
 import type { ClipboardEvent, KeyboardEvent, ReactElement, RefObject } from 'preact/compat';
 import { useComposerTrigger } from '@/client/hooks/chat/composer';
+import { useComposerHistory } from '@/client/hooks/chat/composer/history';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 import { ComposerPicker, type ComposerPickerPlacement } from '@/client/components/common/ComposerPicker';
 import { resolveComposerKeybindings, type ComposerKeybinding } from '@/shared/lib/chat/composer/keybindings';
@@ -99,12 +100,17 @@ export function ComposerTextarea({
     onReady?.(node);
   };
   const composer = useComposerTrigger({ value, setValue: onChange, textareaRef, disabled, rootPath, sessionId, harness, enabled: enablePicker });
+  const history = useComposerHistory({ value, onChange, sessionId: sessionId ?? null, textareaRef });
 
   useOnClickOutside(wrapperRef, composer.close);
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     // The autocomplete owns Arrow/Enter/Tab/Escape while it is open.
     if (composer.handleKeyDown(e)) return;
+    // ArrowUp / ArrowDown recall a previous prompt when the caret is at the
+    // list's edge of the draft (see the hook). Checked before Enter so a
+    // recalled prompt can be sent with the composer's normal binding.
+    if (history.handleKey(e)) return;
     if (e.key !== 'Enter') return;
 
     const { send: sendBinding, newLine: newLineBinding, steering: steeringBinding } =

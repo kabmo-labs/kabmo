@@ -65,6 +65,7 @@ const SESSION_ROW_DELETES: readonly (readonly [string, string])[] = [
   ['session_ui_state', 'session_id'],
   ['session_stream_state', 'session_id'],
   ['queued_messages', 'session_id'],
+  ['prompt_history', 'session_id'],
   ['chat_sessions', 'session_id'],
   ['files', 'session_id'],
   // An ACP chat has no transcript for the scan to lose: `harness_sessions` IS

@@ -30,6 +30,7 @@ import { localRuns } from '@/server/lib/omp/session/local-runs.server';
 import { onRealtimeSignal } from '@/server/lib/realtime/signals.server';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { action } from '@/server/routes/chat/stream';
+import { listPrompts } from '@/server/lib/chat/prompt-history.server';
 
 const savedMock = Bun.env.MOCK;
 
@@ -99,4 +100,24 @@ describe('simulated stream status', () => {
     const response = await action({ request, params: {} });
     expect(response.status).toBe(400);
   });
+
+  test('a simulated send feeds the composer\'s prompt recall', async () => {
+    const abort = new AbortController();
+    const request = new Request('http://localhost/api/chat/stream', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: 'sim-recall', prompt: 'recall me' }),
+      signal: abort.signal,
+    });
+    const response = await action({ request, params: {} });
+    expect(response.status).toBe(200);
+    // Recorded before the first frame, so a recall during the run sees it.
+    expect(await listPrompts('sim-recall')).toEqual(['recall me']);
+    abort.abort();
+    const reader = response.body!.getReader();
+    for (;;) {
+      const { done } = await reader.read();
+      if (done) break;
+    }
+  }, 20_000);
 });

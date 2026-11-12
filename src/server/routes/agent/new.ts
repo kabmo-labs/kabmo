@@ -12,6 +12,7 @@ import { harnessDescriptor, type HarnessId } from '@/shared/lib/harness/catalog'
 import { startAcpSession } from '@/server/lib/harness/spawn.server';
 import { mintAgentEnvironment, rememberAgentToken } from '@/server/lib/sessions/agent-token.server';
 import { isMockMode } from '@/server/mock.server';
+import { recordPrompt } from '@/server/lib/chat/prompt-history.server';
 
 /** The model-dropdown persists its selection here (actionType 'selectModel');
  *  a spawn that arrives without an explicit provider/modelId falls back to it. */
@@ -135,6 +136,9 @@ export async function action({ request }: ActionFunctionArgs) {
         message: message ?? '',
         ...(images?.length ? { images } : {}),
       });
+      // A brand-new chat's first prompt belongs in the recall list too, under
+      // the id the child just reported.
+      await recordPrompt(realSessionId, message ?? '');
       return json({ success: true, sessionId: realSessionId, data: ack });
     }
 
@@ -196,6 +200,7 @@ async function startAcpChat({ harness, cwd, body, model, accessMode }: {
       message: typeof body.message === 'string' ? body.message : '',
       ...(Array.isArray(body.images) && body.images.length > 0 ? { images: body.images } : {}),
     });
+    await recordPrompt(realSessionId, typeof body.message === 'string' ? body.message : '');
     return json({ success: true, sessionId: realSessionId, data: ack, harness });
   }
   return json({ error: `Unsupported command: ${type}` }, { status: 400 });

@@ -24,6 +24,7 @@ import { ensureWorktreeSchema } from '@/server/lib/db/worktree-registry.server';
 import { ensureReviewSchema } from '@/server/lib/review/schema.server';
 import { ensureHarnessSchema } from '@/server/lib/harness/schema.server';
 import { ensureSessionRelationsSchema } from '@/server/lib/sessions/schema.server';
+import { ensurePromptHistorySchema } from '@/server/lib/chat/schema.server';
 import { migrateWorkspaceFolderColumns } from '@/shared/lib/workspace/schema-migrations';
 import { migrateSessionStreamStateColumns } from '@/shared/lib/omp/session/schema-migrations';
 
@@ -146,6 +147,8 @@ export async function initSchema(db: DbClient): Promise<void> {
   // Session trees: parent, cleanup ownership and fork origin. Keyed by the id
   // the sidebar and the URL use, so it works for omp files and ACP sessions.
   await ensureSessionRelationsSchema(db);
+  // The composer's ArrowUp recall: one row per prompt the operator sent.
+  await ensurePromptHistorySchema(db);
   await db.exec(`
     CREATE TABLE IF NOT EXISTS files (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
