@@ -288,6 +288,43 @@ describe('glass dialog material', () => {
 });
 
 /**
+ * A backdrop root costs a buffer the size of the surface, and the two surfaces
+ * that are the size of the WINDOW were paying for a blur nobody could see.
+ *
+ * Measured on this machine (Chromium, 1280x860 @2x, one page, filters toggled):
+ * the full-window plane alone added **+211 MB** to the GPU process, a 1280x810
+ * dialog alone **+209 MB**, a 400x300 popover **+48 MB**, and the whole set
+ * +325 MB. The plane's only backdrop is the static aura, and the dialog tier is
+ * 96% tint — 4% of a blur. The popover is the one surface where the blur is the
+ * material, so it is the one that keeps the filter.
+ */
+describe('glass backdrop cost', () => {
+  test('the plane and a dialog paint without a backdrop root; a popover keeps one', async () => {
+    const glass = await read('./glass.css');
+
+    expect(ruleBody(glass, '[data-surface="glass"] .app-window::before')).not.toContain('backdrop-filter');
+
+    const sharedStart = glass.indexOf('[data-surface="glass"] .glass-overlay,');
+    expect(sharedStart).toBeGreaterThan(-1);
+    const shared = glass.slice(sharedStart, glass.indexOf('\n}', sharedStart));
+    expect(shared).not.toContain('backdrop-filter');
+
+    // The popover's own rule, not the shared selector list it also appears in.
+    expect(glass).toContain(
+      '[data-surface="glass"] .glass-popover {\n  backdrop-filter: var(--glass-overlay-filter);',
+    );
+  });
+
+  test('the plane filter tokens are gone, not merely unused', async () => {
+    const glass = await read('./glass.css');
+    // A token nobody reads is the next edit's invitation to re-add the filter.
+    for (const token of ['--glass-filter:', '--glass-blur:', '--glass-sat:', '--glass-bright:']) {
+      expect({ token, present: glass.includes(token) }).toEqual({ token, present: false });
+    }
+  });
+});
+
+/**
  * The material has to hold on EVERY palette in the catalog, not on the eighteen
  * it was tuned against.
  *

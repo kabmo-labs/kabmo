@@ -41,11 +41,7 @@
   /* The shared material. Every value here is what the composer's `glass` style
    * shipped alone; with `data-surface="classic"` (no attribute) it is still the
    * only consumer, so nothing about the classic look moves. */
-  --glass-blur: 16px;
-  --glass-sat: 115%;
-  --glass-bright: 100%;
   --glass-tint: 58%;
-  --glass-filter: blur(var(--glass-blur)) saturate(var(--glass-sat)) brightness(var(--glass-bright));
   /* A CARD's own frost, deliberately NOT the plane's: a 30px blur behind a card
    * floating over a static transcript is a pass nobody can see. One token so the
    * composer and any later card agree on the number — the composer's `glass`
@@ -183,9 +179,6 @@
  * bright rim on a dark palette reads as a glow.
  */
 [data-surface="glass"] {
-  --glass-blur: 30px;
-  --glass-sat: 185%;
-  --glass-bright: 103%;
   --glass-tint: 50%;
   --glass-glow:
     radial-gradient(
@@ -323,9 +316,6 @@
 }
 
 [data-surface="glass"][data-theme-variant="dark"] {
-  --glass-blur: 34px;
-  --glass-sat: 170%;
-  --glass-bright: 100%;
   --glass-tint: 62%;
   --glass-glow:
     radial-gradient(
@@ -372,6 +362,21 @@
   box-shadow: var(--glass-shadow);
 }
 
+/*
+ * The plane paints, it does NOT filter.
+ *
+ * It used to carry `backdrop-filter: blur(30px) saturate(185%) brightness(103%)`
+ * over `inset: 0` — a backdrop root the size of the whole window, re-snapshotted
+ * on every repaint. Measured on this machine (Chromium, 1280x860 @2x, the same
+ * page with and without the filter): the plane alone cost **+211 MB** in the GPU
+ * process, and the full glass set cost +325 MB against the same page with the
+ * filters off. The plane's only backdrop is the aura below it — three static
+ * radial gradients — so the blur was softening a gradient that is already
+ * smooth, at the price of a window-sized buffer.
+ *
+ * The aura's own stops carry the softness now (see `.app-window-aura > i`), and
+ * the tint, the glow and the rim are unchanged: this is a paint, not a material.
+ */
 [data-surface="glass"] .app-window::before {
   content: '';
   position: absolute;
@@ -381,8 +386,6 @@
   background-color: var(--glass-panel);
   background-image: var(--glass-glow);
   box-shadow: var(--glass-edge);
-  backdrop-filter: var(--glass-filter);
-  -webkit-backdrop-filter: var(--glass-filter);
 }
 
 /* The specular sheen. Its own element in the reference (`i.gxd-sheen`); a second
@@ -436,11 +439,15 @@
   display: block;
   border-radius: 50%;
   opacity: var(--glass-aura, 0.5);
+  /* The falloff is drawn, not blurred: the plane no longer runs a
+   * `backdrop-filter` over these blobs (see `.app-window::before`), so the
+   * softness the blur used to add lives in the stops — a wider mid band and a
+   * longer tail to transparent. */
   background: radial-gradient(
     closest-side,
     color-mix(in srgb, var(--aura) 55%, transparent),
-    color-mix(in srgb, var(--aura) 18%, transparent) 60%,
-    transparent
+    color-mix(in srgb, var(--aura) 18%, transparent) 45%,
+    transparent 88%
   );
 }
 
@@ -642,6 +649,24 @@
   );
   box-shadow: var(--glass-edge), var(--glass-shadow);
   border-color: var(--glass-hairline);
+}
+
+/*
+ * Only the POPOVER filters. A dialog does not.
+ *
+ * The dialog tier is 96% tint, so the frost behind it contributes 4% — the file
+ * already recorded that as "a uniform fill and nothing else" when the material
+ * was tuned. What it costs is a backdrop root the size of the panel: measured
+ * on this machine (Chromium, 1280x860 @2x) a 1280x810 dialog alone added
+ * **+209 MB** to the GPU process, and the same page with the dialog's filter
+ * removed came back to the popover-only figure. The tint, the sheen, the rim and
+ * the dialog's own bloom are untouched, so the panel still reads as glass at its
+ * edges — which is where a pane is legible anyway.
+ *
+ * A popover is the opposite case: it is small, it sits over live content, and
+ * the blur is the material. It keeps the filter (+48 MB measured).
+ */
+[data-surface="glass"] .glass-popover {
   backdrop-filter: var(--glass-overlay-filter);
   -webkit-backdrop-filter: var(--glass-overlay-filter);
 }
