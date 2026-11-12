@@ -372,7 +372,36 @@ fi
 # split, `omp gc --strip` retention, the jq 1.8.2 shell, Hacker News/Sofya
 # search engines, launch-service persistence and the browser/relay fixes are
 # host-side or settings-neutral.
-OMP_VERSION="${OMP_VERSION:-18.18.9}"
+#
+# 18.19.0 (2026-11-12): the schema's `source` line moves to 612 settings and the
+# panel gains FOUR rows while losing ONE (net +3): `browser.webkit` and
+# `browser.webkitPath` (tools / Grep & Browser) add omp's own headless WebKit
+# engine, and `task.autoParallel` plus `task.steps` (tasks / Subagents) add
+# judge-split top-level prompts and sequential subagent steps. `task.file` is
+# removed with the `taskFile` argument it gated. No new `ui.condition` arrives,
+# so `isConditionMet` needs no arm, and the six description-only updates
+# (`ask.timeout`, `browser.cdpUrl`, `browser.enabled`, `browser.freezeOnTurnEnd`,
+# `browser.headless`, `browser.tern`) reach the panel through the committed
+# schema. The RPC wire keeps its 74 commands and 299 definitions — 0 added, 0
+# removed, 5 changed — and `builtin-names.ts` gains only a `toolWireName`
+# helper, while `MODEL_ROLES` and the slash registry (names, aliases and
+# handlers) are unchanged.
+#
+# One upstream change DOES reach a Kabmo surface, adopted here: the `blocked`
+# todo status is gone. omp deletes the `block`/`unblock` ops, the `blocker`
+# note, the `[!]` marker and the `, N blocked` sentence, and reads a snapshot
+# saved with blocked tasks back as `pending`. Kabmo's parser keeps the status
+# because it reads tool text, and sessions recorded before this pin still carry
+# it; new sessions simply cannot produce it.
+#
+# Not adopted, deliberately: `browser.webkit` / `browser.webkitPath` (engine
+# choice for a tool Kabmo never calls), `task.autoParallel` (a judge-driven
+# split of the model's own turns), `task.steps` (the card never drew a single
+# spawn's instructions, and the default is off), the browser `app` keyword
+# grammar and WebKit viewer, the `xd://read/sources` / `xd://read/urls` doc
+# topics, `promptReference` on internal-URL schemes, the gh-run-watch step
+# snapshots, and the OAuth-gated model modifiers — host-side or model-facing.
+OMP_VERSION="${OMP_VERSION:-18.19.0}"
 PACKAGE="@oh-my-pi/pi-coding-agent"
 WANTED="omp/${OMP_VERSION}"
 

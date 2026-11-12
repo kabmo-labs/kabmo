@@ -16,10 +16,12 @@
  *
  * Two shapes the summary can carry are handled here rather than in the card:
  *
- *   - The status vocabulary is omp's own FIVE, not the three the card used to
- *     know. `blocked` and `abandoned` are real (measured in the author's
- *     sessions: 21 results mention a dropped task, 2 a blocked one), and a
- *     parser that only understood three drew both as plain pending.
+ *   - The status vocabulary is omp's own, not the three the card used to know.
+ *     `abandoned` is real (measured in the author's sessions: 21 results
+ *     mention a dropped task), and `blocked` was too until omp 18.19.0 removed
+ *     it — the parser keeps both because it reads tool text, and sessions
+ *     recorded before that pin still carry `(blocked: …)` lines. A parser that
+ *     only understood three drew them as plain pending.
  *   - A task whose content is an init-list entry rather than prose is recorded
  *     that way by omp itself (see `./nested-phase`), so it is labelled by the
  *     phase it names instead of being rendered as a JSON blob.

@@ -18,7 +18,9 @@
  * timeline never rendered before: `blocked` (waiting on something, with an
  * optional note) and `abandoned` (deliberately dropped). Both are settled-but-
  * not-done, which is why `isClosedTodo` — not `status === 'completed'` — is
- * what any progress counter must use.
+ * what any progress counter must use. omp 18.19.0 removed `blocked` (and the
+ * `block` / `unblock` ops below); the type keeps them because snapshots saved
+ * before that pin still carry the status, and omp reads them back as `pending`.
  */
 
 /** Lifecycle state of one todo item (omp's `TodoStatus`). */

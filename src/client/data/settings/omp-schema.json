@@ -1,5 +1,5 @@
 {
-  "source": "@oh-my-pi/pi-coding-agent 10 tabs / 608 settings",
+  "source": "@oh-my-pi/pi-coding-agent 10 tabs / 612 settings",
   "tabs": [
     {
       "id": "appearance",
@@ -1624,7 +1624,7 @@
         "tab": "interaction",
         "group": "Notifications",
         "label": "Ask Timeout",
-        "description": "Auto-select the recommended ask option after this many seconds (0 disables). Also bounds cfg:// approval prompts; an unanswered approval denies the write instead of auto-selecting",
+        "description": "Submit an ask form's current values (your preselected answers) after this many seconds (0 disables). Also bounds cfg:// approval prompts; an unanswered approval denies the write instead of auto-submitting",
         "options": [
           {
             "value": "0",
@@ -7585,6 +7585,38 @@
         ]
       }
     },
+    "task.autoParallel": {
+      "type": "enum",
+      "default": "off",
+      "values": [
+        "off",
+        "suggest",
+        "on"
+      ],
+      "ui": {
+        "tab": "tasks",
+        "group": "Subagents",
+        "label": "Auto Parallel",
+        "description": "Ask the native judge resolved through the 'judge' role which parts of each new top-level prompt can run concurrently. Needs a native judge and the task tool; without them nothing is judged.",
+        "options": [
+          {
+            "value": "off",
+            "label": "Off",
+            "description": "Never split prompts"
+          },
+          {
+            "value": "suggest",
+            "label": "Suggest",
+            "description": "Judge each prompt and report the split without acting on it"
+          },
+          {
+            "value": "on",
+            "label": "On",
+            "description": "When a prompt splits into independent subtasks, tell the agent to delegate them in parallel"
+          }
+        ]
+      }
+    },
     "task.batch": {
       "type": "boolean",
       "default": true,
@@ -7595,14 +7627,14 @@
         "description": "Switch the task tool to its batch shape: one call carries { context, tasks[] } — one subagent per item, with an optional per-item agent (defaulting to the session spawn-policy agent), per-item isolation, and a required shared context prepended to every assignment. With async.enabled=true, each spawn runs as an independent background agent with the normal idle/parked lifecycle; otherwise the call blocks for merged results. Disable to restore the flat single-spawn schema."
       }
     },
-    "task.file": {
+    "task.steps": {
       "type": "boolean",
       "default": false,
       "ui": {
         "tab": "tasks",
         "group": "Subagents",
-        "label": "Task Instructions from Files",
-        "description": "Let the task tool read subagent instructions from a file (taskFile), recording its path and SHA-256."
+        "label": "Sequential Task Steps",
+        "description": "Spawns take ordered `steps` instead of one `task`: the subagent gets the first step, then each next one once it finishes the previous; past 4 steps, earlier messages carry two or more. The last step's result is the task's result."
       }
     },
     "task.structured": {
@@ -8271,7 +8303,7 @@
         "tab": "tools",
         "group": "Available Tools",
         "label": "Browser",
-        "description": "Enable the browser eval prelude for scripted Chromium automation (Puppeteer)"
+        "description": "Enable the browser eval prelude for scripted browser automation"
       }
     },
     "browser.cdpUrl": {
@@ -8280,7 +8312,7 @@
         "tab": "tools",
         "group": "Grep & Browser",
         "label": "Browser CDP URL",
-        "description": "Default HTTP CDP discovery endpoint (for example http://127.0.0.1:9222) to attach to instead of launching a browser. Explicit app.cdp_url or app.path on the tool call take precedence."
+        "description": "Default HTTP CDP discovery endpoint (for example http://127.0.0.1:9222) to attach to instead of launching a browser. An explicit app on the tool call takes precedence."
       }
     },
     "browser.relay": {
@@ -8309,7 +8341,7 @@
         "tab": "tools",
         "group": "Grep & Browser",
         "label": "Headless Browser",
-        "description": "Launch browser in headless mode (disable to show browser UI)"
+        "description": "Run the browser without a window (disable to show it). omp's WebKit tabs gain or lose their windows at once where the engine ships its viewer (macOS); elsewhere a visible browser is Chromium, launched in the new mode by the next open."
       }
     },
     "browser.cmux": {
@@ -8329,7 +8361,26 @@
         "tab": "tools",
         "group": "Grep & Browser",
         "label": "Tern Browser",
-        "description": "Inside a Tern pane, open browser tabs as picture-in-pictures over omp's pane (native web view) instead of headless Chromium; falls back to Chromium when no Tern window can host them. Explicit app options, the relay and Browser CDP URL take precedence; app.tern:false opts one open out. Set PI_BROWSER_TERN=0 or PI_BROWSER_TERN=1 to override."
+        "description": "Inside a Tern pane, open browser tabs as picture-in-pictures over omp's pane (native web view) instead of omp's own headless browser; falls back to that browser when no Tern window can host them. An explicit app, the relay and Browser CDP URL take precedence; app \"own\" opts one open out. Set PI_BROWSER_TERN=0 or PI_BROWSER_TERN=1 to override."
+      }
+    },
+    "browser.webkit": {
+      "type": "boolean",
+      "default": true,
+      "ui": {
+        "tab": "tools",
+        "group": "Grep & Browser",
+        "label": "WebKit Browser",
+        "description": "Open browser tabs in omp's own headless WebKit engine instead of managed Chromium when the engine is installed (omp downloads it to ~/.o2/lib/abkit before Chrome for Testing when no browser is installed; see Browser WebKit Path). Chromium still opens a visible browser where the engine ships no viewer, and tabs the engine fails to start; an explicit app, the relay, Browser CDP URL, Tern and cmux take precedence; app \"chromium\" opts one open out. Set PI_BROWSER_WEBKIT=0 or PI_BROWSER_WEBKIT=1 to override."
+      }
+    },
+    "browser.webkitPath": {
+      "type": "string",
+      "ui": {
+        "tab": "tools",
+        "group": "Grep & Browser",
+        "label": "Browser WebKit Path",
+        "description": "omp's WebKit engine: its host executable, or an ABKit engine directory (which holds it as ABHost; ABHost.exe on Windows). If unset, omp runs the installed engine, ~/.o2/lib/abkit/ABHost (ABHost.exe on Windows). Supports ~. PI_BROWSER_WEBKIT_PATH overrides it."
       }
     },
     "browser.freezeOnTurnEnd": {
@@ -8339,7 +8390,7 @@
         "tab": "tools",
         "group": "Grep & Browser",
         "label": "Freeze Browser Tabs On Turn End",
-        "description": "Freeze OMP-owned headless browser tabs when a turn settles so animated pages stop burning CPU/GPU while idle. Tabs unfreeze automatically on next use; pass persist:true on open to opt a tab out."
+        "description": "Freeze OMP-owned headless Chromium tabs when a turn settles so animated pages stop burning CPU/GPU while idle (WebKit tabs draw nothing unless asked). Tabs unfreeze automatically on next use; pass persist:true on open to opt a tab out."
       }
     },
     "browser.idleCloseSec": {

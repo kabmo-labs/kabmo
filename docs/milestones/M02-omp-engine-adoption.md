@@ -5,7 +5,7 @@ the installed binary was **18.8.3** (2026-10-07); the pin now matches (F9). This
 of everything between the two versions that Kabmo either gets wrong or
 does not use, and the phased plan to close it.
 
-Status: **done** — every phase closed; P4b–d and P5 were measured and deliberately not adopted, and the pin has since moved on to 18.18.9 (2026-11-11).
+Status: **done** — every phase closed; P4b–d and P5 were measured and deliberately not adopted, and the pin has since moved on to 18.19.0 (2026-11-12).
 
 **Re-audited at 18.9.2 (2026-10-12)** — the pin moved on again and the schema had
 drifted 9 rows; see [the re-audit section](#omp-1892-re-audit-2026-10-12) at the
@@ -1878,3 +1878,70 @@ parses.
 | R72 | wait no longer carries received messages | `irc-notice.ts` maps `details` in both paths; `IrcNotice` card; wait docs note the old shape | mapper + messages-map + IrcNotice tests; existing wait-card `waited` tests still pin pre-18.18.9 sessions |
 | R73 | ask option notes | none needed | RPC host has no `formDialog`; `AskToolDetails.answers` unchanged |
 | R74 | host/catalog/shell fixes | none needed | 74 commands / 299 definitions byte-identical; names, roles and slash registry identical |
+
+# omp 18.19.0 adoption (2026-11-12)
+
+The pin moved **18.18.9 → 18.19.0**. The RPC wire keeps its 74 commands and
+299 definitions; the reachable change is the removal of the `blocked` todo
+status, plus four new settings rows and one removed.
+
+## Method
+
+- `bun add @oh-my-pi/pi-coding-agent@18.18.9` and `@18.19.0` (plus the matching
+  `pi-tui`) into temp trees, then `diff -rq` over `src/` — 151 entries differ.
+- `rpc-wire.schema.json` compared whole: **74 commands, 299 definitions**, 0
+  added, 0 removed, 5 changed (`TodoStatus`, `TodoItem`, and the doc comments of
+  `AskUiRequest` / `AskAnswer` / `CancelUiResponse`). Every notification, event
+  and frame variant is byte-identical.
+- The schema generator run against 18.19.0 produces **10 tabs / 612 settings /
+  456 rows**, from a clean temp tree and in place. The diff is the four added
+  keys, the removed `task.file`, and six description-only updates.
+- `MODEL_ROLES` is byte-identical and the slash registry differs only in
+  `builtin-collaboration.ts`'s browser-mode implementation (no name, alias or
+  handler moved). `builtin-names.ts` gains only a `toolWireName` helper.
+
+## Findings
+
+### R75 — the `blocked` todo status is removed (adopted)
+
+18.19.0 deletes `blocked` from `TodoStatus`, the `blocker` field from
+`TodoItem`, the `block` / `unblock` ops from `TodoOp`, the `[!]` marker and the
+`, N blocked` sentence from the summary, and the blocked-only goal and
+auto-complete paths in the RPC host. A snapshot saved before the removal reads
+back with those tasks `pending` (`withoutBlocked`).
+
+Kabmo's parser reads the tool text, so it keeps the status: sessions recorded
+on 18.17.0–18.18.9 still carry `(blocked: …)` / `[!]` lines and the summary
+sentence, and the panel must keep drawing them. New sessions cannot produce
+the status, so nothing else changes. No Kabmo code sends `block` / `unblock`.
+
+### R76 — four settings rows added, `task.file` removed (schema only)
+
+`browser.webkit` and `browser.webkitPath` (tools / Grep & Browser) select
+omp's own headless WebKit engine; `task.autoParallel` (off / suggest / on) and
+`task.steps` (tasks / Subagents) let a judge split a top-level prompt and let a
+spawn take ordered steps. `task.file` and the `taskFile` argument it gated are
+gone. None carries a `ui.condition`, so `isConditionMet` needs no arm, and the
+panel is schema-driven. Six descriptions change (`ask.timeout`, `browser.cdpUrl`,
+`browser.enabled`, `browser.freezeOnTurnEnd`, `browser.headless`,
+`browser.tern`).
+
+### R77 — browser `app` grammar, doc topics, host fixes (no action)
+
+The browser tool's `app` argument becomes a keyword (`relay`, `tern`, `webkit`,
+`chromium`, `own`, `auto`), a CDP URL or an executable path, and WebKit tabs
+gain a viewer on macOS. `read` gains `xd://read/sources` / `xd://read/urls` doc
+topics and internal-URL schemes gain `promptReference`; `write` and `eval`
+inline those topics when `read` is inactive. `gh-run-watch` normalizes GitHub
+timestamps and adds step snapshots, `bash` advertises `builtins` instead of
+`hasShellBuiltins`, and model modifiers now run only for a provider holding
+OAuth credentials. None changes an RPC verb, event payload or tool-result field
+Kabmo parses.
+
+## 18.19.0 outcomes
+
+| # | Finding | Action | Verification |
+|---|---|---|---|
+| R75 | `blocked` todo status removed | parser and types keep the status for pre-18.19.0 sessions; comments record why | parser/progress tests still pin blocked; wire diff shows the enum narrowed |
+| R76 | four rows added, `task.file` removed | schema regenerated; no code names the old key | 612 settings / 456 rows; `omp:schema:check` passes |
+| R77 | browser/doc-topic/host changes | none needed | 74 commands / 299 definitions, 0 added/removed; roles and slash names identical |
