@@ -14,11 +14,15 @@
  *
  * `HARNESSES` is its own group rather than a member of `OMP`: omp's pages are one
  * engine's own config (engine state, providers, agents, behavior, commands,
- * MCP), while that group holds OTHER agents entirely — a different transport, a
- * different config file, and per-agent sections. Filing them together made the
- * sidebar read as "omp settings" followed by seven pages that are not omp.
+ * MCP, plugins, skills), while that group holds OTHER agents entirely — a
+ * different transport, a different config file, and per-agent sections. Filing
+ * them together made the sidebar read as "omp settings" followed by seven pages
+ * that are not omp.
+ *
+ * There is no `LIBRARY` group: plugins, skills and the skills catalog are omp's
+ * own extension surface, so they file under `OMP` with the rest of its config.
  */
 
-export const SETTINGS_SECTIONS = ['KABMO', 'WORKSPACE', 'OMP', 'HARNESSES', 'LIBRARY'] as const;
+export const SETTINGS_SECTIONS = ['KABMO', 'WORKSPACE', 'OMP', 'HARNESSES'] as const;
 
 export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];

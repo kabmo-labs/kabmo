@@ -57,9 +57,9 @@ describe('settings groups', () => {
   test('Harnesses is its own group, not a member of OMP', () => {
     const harnesses = SETTINGS_CATEGORIES.find((category) => category.id === 'harness-index');
     expect(harnesses?.section).toBe('HARNESSES');
-    // And the group sits after OMP, before LIBRARY: the order the sidebar reads.
+    // And the group is the last one the sidebar draws.
     expect(SETTINGS_SECTIONS.indexOf('HARNESSES')).toBeGreaterThan(SETTINGS_SECTIONS.indexOf('OMP'));
-    expect(SETTINGS_SECTIONS.indexOf('HARNESSES')).toBeLessThan(SETTINGS_SECTIONS.indexOf('LIBRARY'));
+    expect(SETTINGS_SECTIONS.at(-1)).toBe('HARNESSES');
   });
 
   test('the drawer renders one heading per non-empty group, in order', () => {

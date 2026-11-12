@@ -3,8 +3,8 @@ import { PanelPluginsSection } from '@/client/components/settings/categories/pan
 /**
  * The Plugins Kabmo settings category.
  *
- * Its own category rather than a segment of LIBRARY → Plugins, because the two
- * are different nouns that only share the word "plugin": LIBRARY holds **omp's**
+ * Its own category rather than a segment of OMP → Plugins, because the two are
+ * different nouns that only share the word "plugin": OMP holds **omp's**
  * plugins (installed through `omp plugin`, with features, settings and
  * enablement), while this holds **Kabmo's** panel plugins — marketplaces
  * of sandboxed views, which omp has no concept of. Filing them together meant a

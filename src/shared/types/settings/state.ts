@@ -16,7 +16,7 @@ export type SettingsCategoryId =
   | 'usage'
   | 'token-usage'
   /** Panel plugins — Kabmo's own extension surface (marketplaces of
-   *  sandboxed panel views). Deliberately NOT under LIBRARY, which holds omp's
+   *  sandboxed panel views). Deliberately NOT under OMP → Plugins, which holds
    *  plugins: these are Kabmo surfaces omp has no concept of. */
   | 'panel-plugins'
   // WORKSPACE
@@ -28,6 +28,10 @@ export type SettingsCategoryId =
   | 'behavior'
   | 'commands'
   | 'mcp'
+  // omp's extension surface: plugins, skills and the skills catalog.
+  | 'plugins'
+  | 'skills'
+  | 'skills-catalog'
   // HARNESSES — the agents Kabmo can drive, one PAGE each. Their own group in
   // the sidebar: a different transport and a different config file from omp.
   // The single-harness pages carry a dynamic id (`harness:claude`, from
@@ -35,11 +39,7 @@ export type SettingsCategoryId =
   // what decides which agents exist, and a build-time union entry per harness
   // would have to be edited for every adapter added at runtime.
   | 'harness-index'
-  | `harness:${string}`
-  // LIBRARY
-  | 'plugins'
-  | 'skills'
-  | 'skills-catalog';
+  | `harness:${string}`;
 
 export interface SettingsCategoryItem {
   id: SettingsCategoryId;

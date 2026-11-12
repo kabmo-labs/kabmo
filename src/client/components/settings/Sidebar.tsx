@@ -36,6 +36,9 @@ export const SETTINGS_CATEGORIES: CategoryDef[] = [
   { id: 'behavior', label: 'Behavior', icon: Sliders, section: 'OMP', description: 'Native AGENTS.md and RULES.md: global instructions, permission gates, and safety filters.' },
   { id: 'commands', label: 'Commands', icon: Terminal, section: 'OMP', description: 'Slash command macros and terminal shortcuts.' },
   { id: 'mcp', label: 'MCP', icon: Boxes, section: 'OMP', description: 'Model Context Protocol servers and dynamic tools.' },
+  { id: 'plugins', label: 'Plugins', icon: Plug, section: 'OMP', description: 'Installed omp plugins, marketplaces, features, and plugin settings.' },
+  { id: 'skills', label: 'Skills', icon: Library, section: 'OMP', description: 'Manage downloaded skills and scripts.' },
+  { id: 'skills-catalog', label: 'Skills Catalog', icon: BookOpen, section: 'OMP', description: 'Browse and install new skills.' },
   // HARNESSES
   // HARNESSES — one page per agent, derived from the catalog. `harnessMenuEntries`
   // returns the overview first, then each non-built-in harness in catalog order.
@@ -49,10 +52,6 @@ export const SETTINGS_CATEGORIES: CategoryDef[] = [
     ...(entry.harness ? { harness: entry.harness } : {}),
     description: entry.description,
   })),
-  // LIBRARY
-  { id: 'plugins', label: 'Plugins', icon: Plug, section: 'LIBRARY', description: 'Installed omp plugins, marketplaces, features, and plugin settings.' },
-  { id: 'skills', label: 'Skills', icon: Library, section: 'LIBRARY', description: 'Manage downloaded skills and scripts.' },
-  { id: 'skills-catalog', label: 'Skills Catalog', icon: BookOpen, section: 'LIBRARY', description: 'Browse and install new skills.' },
 ];
 
 /**
@@ -60,8 +59,8 @@ export const SETTINGS_CATEGORIES: CategoryDef[] = [
  *
  * `SETTINGS_CATEGORIES` is the build's own list; a user-added harness is not in
  * it, so the HARNESSES section is rebuilt from the ids the catalog answered.
- * The rest of the list keeps its order, which is why the harness block is
- * spliced back in front of LIBRARY rather than appended.
+ * The rest of the list keeps its order; the harness block is appended because
+ * HARNESSES is the last group.
  */
 export function settingsCategoriesFor(harnessIds?: readonly string[]): CategoryDef[] {
   // Before the catalog answers, the build's own list is the honest one: an
@@ -75,8 +74,7 @@ export function settingsCategoriesFor(harnessIds?: readonly string[]): CategoryD
     description: entry.description,
   }));
   const rest = SETTINGS_CATEGORIES.filter((category) => category.section !== 'HARNESSES');
-  const library = rest.findIndex((category) => category.section === 'LIBRARY');
-  return [...rest.slice(0, library), ...harnessEntries, ...rest.slice(library)];
+  return [...rest, ...harnessEntries];
 }
 
 interface SettingsSidebarProps {
