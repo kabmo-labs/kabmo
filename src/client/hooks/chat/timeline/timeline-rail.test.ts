@@ -138,11 +138,43 @@ describe('useUserTurns', () => {
    * entry pointed at a DOM id the reconciliation had already replaced. This is
    * the duplicate a user sees right after sending a prompt.
    */
-  test('the same turn under its optimistic and echoed ids is listed once', async () => {
+  test('the same turn under its optimistic and echoed ids is listed once, under the mounted id', async () => {
     const text = 'send this once';
     committed = { turns: [{ id: 'omp-echo-id', index: 7, preview: text }] };
     await open('s1', [userMessage('msg-1791000000000-user', text)]);
-    expect(rail?.turns.map((turn) => turn.id)).toEqual(['omp-echo-id']);
+    // The DOM row is still the optimistic bubble, so the tick has to name THAT
+    // id: the committed index names a node the timeline does not render until
+    // omp echoes the turn, and a jump to a missing id reveals nothing.
+    expect(rail?.turns.map((turn) => turn.id)).toEqual(['msg-1791000000000-user']);
+    expect(rail?.turns[0].index).toBe(7);
+  });
+
+  test('a jump on the paired entry reaches the mounted row instead of paging to a missing id', async () => {
+    const text = 'send this once';
+    committed = { turns: [{ id: 'prev-turn', index: 3, preview: 'earlier' }, { id: 'omp-echo-id', index: 7, preview: text }] };
+    await open('s1', [userMessage('prev-turn', 'earlier'), userMessage('msg-1791000000000-user', text)]);
+    let reached = false;
+    await act(async () => {
+      reached = await rail!.jumpToTurn(rail!.turns[1].id, rail!.turns[1].index);
+    });
+    expect(reached).toBe(true);
+    expect(revealed).toEqual(['msg-1791000000000-user']);
+  });
+
+  test('an older committed turn is not re-pointed at a newer live row with the same text', async () => {
+    const text = 'same text';
+    committed = {
+      turns: [
+        { id: 'older-turn', index: 2, preview: text },
+        { id: 'previous-turn', index: 8, preview: 'another prompt' },
+      ],
+    };
+    await open('s1', [userMessage('previous-turn', 'another prompt'), userMessage('msg-1791000000000-user', text)]);
+    expect(rail?.turns.map((turn) => [turn.id, turn.index])).toEqual([
+      ['older-turn', 2],
+      ['previous-turn', 8],
+      ['msg-1791000000000-user', -1],
+    ]);
   });
 
   test('a genuinely new turn is still appended even when another shares a prefix', async () => {

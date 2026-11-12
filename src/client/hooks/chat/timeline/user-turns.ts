@@ -140,17 +140,46 @@ export function useUserTurns(deps: UseUserTurnsDeps): UserTurnsState {
     // `TURN_PREVIEW_CHARS`, so a real match is byte-identical, while a prefix
     // test would swallow a genuine short prompt that opens with an earlier
     // turn's words.
+    //
+    // The pair is also NEWER than every committed turn the client still has
+    // mounted. That is what makes the match the same turn rather than two
+    // prompts that happen to read alike: the entry this live row stands for was
+    // committed after everything on screen, so an older tick can never be
+    // re-pointed at it (which would strand the older turn).
+    const newestMountedCommitted = indexed.reduce(
+      (newest, turn) => (mountedIds.has(turn.id) ? Math.max(newest, turn.index) : newest),
+      -1,
+    );
     const paired = new Set<string>();
+    // Committed entry id → the id its row is mounted under RIGHT NOW.
+    //
+    // The committed index names the id omp recorded, and the mounted row does
+    // not carry it yet: omp echoes the user turn LATE (after the assistant
+    // segment), and until that echo the bubble the composer mounted keeps its
+    // optimistic `msg-…-user` id. Listing the committed id named a DOM node
+    // that does not exist, so a rail click on the newest turn paged nowhere and
+    // then waited out the reveal's deadline — the reported "cannot jump to the
+    // message I just sent until I reload". The listing therefore takes the
+    // DOM id from the row it is already drawing, and keeps the entry's own
+    // index (the paging cursor). Once the echo reconciles, the ids agree and
+    // this map is empty.
+    const rowIdFor = new Map<string, string>();
     const extra = mountedTurns.filter((turn) => {
       if (knownIds.has(turn.id)) return false;
       const match = orphanedCommitted.find(
-        (entry) => !paired.has(entry.id) && entry.preview === turn.preview,
+        (entry) => entry.index > newestMountedCommitted && !paired.has(entry.id) && entry.preview === turn.preview,
       );
       if (!match) return true;
       paired.add(match.id);
+      rowIdFor.set(match.id, turn.id);
       return false;
     });
-    return extra.length > 0 ? [...indexed, ...extra] : indexed;
+    const listed = extra.length > 0 ? [...indexed, ...extra] : indexed;
+    if (rowIdFor.size === 0) return listed;
+    return listed.map((turn) => {
+      const rowId = rowIdFor.get(turn.id);
+      return rowId ? { ...turn, id: rowId } : turn;
+    });
   }, [indexed, mountedTurns]);
 
   const jump = async (id: string, index: number): Promise<boolean> => {
