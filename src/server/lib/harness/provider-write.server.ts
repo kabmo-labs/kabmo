@@ -29,7 +29,8 @@
 import { writeFileAtomic } from '@/server/lib/fs/atomic-write';
 import { parseDocument, providerMap, serialise } from '@/server/lib/harness/provider-file.server';
 import { withConfigLock } from '@/server/lib/fs/config-lock';
-import { providerFacts, type ProviderRegistryKind } from '@/shared/lib/harness/provider-facts';
+import type { ProviderRegistryKind } from '@/shared/lib/harness/provider-contracts';
+import { providerFacts } from '@/shared/lib/harness/provider-lookup';
 import {
   adaptBaseUrl,
   dialectFor,

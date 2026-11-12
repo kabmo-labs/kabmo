@@ -67,6 +67,28 @@ describe('harness catalog after the Gemini retirement', () => {
     expect(command).not.toEqual(['zcode', 'acp']);
   });
 
+  test('jcode is listed and launches its own `acp` subcommand', () => {
+    // jcode ships the ACP server itself (`src/cli/acp.rs`), backed by its
+    // daemon; the vendor installer is the only install path.
+    const descriptor = harnessDescriptor('jcode');
+    expect(descriptor?.transport).toBe('acp');
+    expect(descriptor?.glyph).toBe('jcode');
+    expect(HARNESS_LAUNCH.jcode?.command).toEqual(['jcode', 'acp']);
+    expect(HARNESS_LAUNCH.jcode?.install).toContain('https://jcode.sh/install');
+  });
+
+  test('grok is listed and launches its own ACP server, approvals left on', () => {
+    // Grok Build ships `grok agent stdio` itself. `--always-approve` must NOT be
+    // in the launch line: it would silence `session/request_permission`, making
+    // the composer's access tiers inert.
+    const descriptor = harnessDescriptor('grok');
+    expect(descriptor?.transport).toBe('acp');
+    expect(descriptor?.glyph).toBe('grok');
+    expect(HARNESS_LAUNCH.grok?.command).toEqual(['grok', 'agent', 'stdio']);
+    expect(HARNESS_LAUNCH.grok?.command).not.toContain('--always-approve');
+    expect(HARNESS_LAUNCH.grok?.install).toContain('https://x.ai/cli/install.sh');
+  });
+
   test('every catalog entry has a launch line or is the built-in transport', () => {
     // The built-in transport has no agent to launch by definition; everything
     // else without a line would probe to "no launch command is configured",

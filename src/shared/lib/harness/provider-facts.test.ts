@@ -35,7 +35,8 @@ import {
   registryLabel,
   supportsProviderEditor,
 } from '@/shared/lib/harness/providers';
-import { HARNESS_PROVIDER_FACTS, managesProviders, providerFacts } from '@/shared/lib/harness/provider-facts';
+import { HARNESS_PROVIDER_FACTS } from '@/shared/lib/harness/provider-facts';
+import { managesProviders, providerFacts } from '@/shared/lib/harness/provider-lookup';
 import { HARNESS_IDS } from '@/shared/lib/harness/catalog';
 
 /** Harnesses whose registry Kabmo may WRITE, with the format it writes. */

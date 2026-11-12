@@ -45,6 +45,11 @@ const HARNESS_BASES: Readonly<Record<string, string>> = {
   zcode: '#000000',
   // A multi-stop mark; the blue stop is the one its own dominant uses carry.
   antigravity: '#3186FF',
+  // jcode publishes a near-monochrome ring (`#111`), so it paints in the theme's
+  // ink like the other wordmark-style marks.
+  jcode: '#111111',
+  // xAI publishes a one-colour mark.
+  grok: '#000000',
 };
 
 /**

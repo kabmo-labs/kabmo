@@ -30,7 +30,7 @@
  */
 
 import type { HarnessId } from '@/shared/lib/harness/catalog';
-import { providerFacts } from '@/shared/lib/harness/provider-facts';
+import { providerFacts } from '@/shared/lib/harness/provider-lookup';
 
 /** The probe fields this plan reads. Absent means "never probed". */
 export interface ConfigProbeFacts {

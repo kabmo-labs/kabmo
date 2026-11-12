@@ -43,101 +43,7 @@
  */
 
 import type { HarnessId } from '@/shared/lib/harness/catalog';
-import type { CanonicalProtocol } from '@/shared/lib/harness/dialects';
-
-/** How a harness stores providers. */
-export type ProviderRegistryKind =
-  /** A YAML document with a `providers` map (omp). */
-  | 'yaml-providers'
-  /** A JSON document with a `provider` map (opencode). */
-  | 'json-provider'
-  /** A TOML document with a `model_providers` table (codex). */
-  | 'toml-model-providers'
-  /** A JSON document with a `providers` map (pi). */
-  | 'json-providers'
-  /** A TOML document with a `providers` table (kimi). */
-  | 'toml-providers'
-  /** A JSON settings document with `modelProviders` (qwen). */
-  | 'json-model-providers'
-  /** ZCode's personal-provider rules: arrays under `config.providerConfigRules`
-   *  and `config.modelConfigRules` (3.12+). */
-  | 'zcode-provider-rules'
-  /** No provider registry this build writes; an env contract instead. */
-  | 'env'
-  /** A registry that exists but belongs to the agent's own writer. */
-  | 'agent-managed'
-  /** Nothing to offer. */
-  | 'none';
-
-export interface ProviderRegistry {
-  kind: ProviderRegistryKind;
-  /** Path relative to the user's home, or null when there is no file. */
-  file: string | null;
-  /** Dot-path the providers live under, for the editors and the reader. */
-  pointer: string;
-  /** False when Kabmo may read the entries but must not write them. */
-  writable: boolean;
-  /** The base-URL field's name in THIS format, so a writer does not guess. */
-  baseUrlField: string | null;
-  /** The API-key field's name in this format. */
-  apiKeyField: string | null;
-  /** The dialect/SDK field's name, when the format has one. */
-  dialectField?: string;
-  /** How this format spells a model entry, for the model list. */
-  modelsField: string | null;
-  /**
-   * Provider ids this registry ships itself. An entry under one of these is the
-   * VENDOR's provider with an endpoint override — not a custom provider — and an
-   * import must never offer or write one: copying `anthropic` out of omp into
-   * codex would replace the vendor entry instead of adding a gateway.
-   */
-  bundledIds?: readonly string[];
-  /**
-   * False when this registry writes a MODEL TABLE beside the provider (kimi's
-   * `[models.<alias>]`, codex's `model`), so a provider alone serves nothing.
-   * The writer then emits the model rows too instead of leaving a husk.
-   */
-  modelsAreRows?: boolean;
-}
-
-/**
- * One picker alias a vendor SDK resolves from the environment. Claude Code's
- * `opus`/`sonnet`/`haiku`/`fable` aliases resolve to ids the VENDOR ships
- * unless `ANTHROPIC_DEFAULT_<FAMILY>_MODEL` pins them; a gateway that lists
- * only its own ids answers the vendor ids with `400 model not found`.
- */
-export interface EnvModelAlias {
-  family: string;
-  env: string;
-}
-
-/** The env names an `environment` harness reads, in the order its docs list. */
-export interface EnvProviderContract {
-  baseUrl: string;
-  apiKey: string;
-  model?: string;
-  modelAliases?: readonly EnvModelAlias[];
-}
-
-export interface HarnessProviderFacts {
-  registry: ProviderRegistry;
-  /** Present only for an `env` harness. */
-  env?: EnvProviderContract;
-  /**
-   * The single wire protocol an `environment` harness's SDK speaks. Claude Code
-   * is Anthropic Messages and Antigravity is Google GenAI — an endpoint that
-   * speaks neither cannot be carried there, and an import has to say so instead
-   * of writing a URL the agent will fail every request against.
-   */
-  envProtocol?: CanonicalProtocol;
-  /** True when adding a provider ADDS a choice; false when it replaces the
-   *  agent's own endpoint (Claude Code, Antigravity). */
-  createsChoice: boolean;
-  /** Harnesses whose entries this one can import, because the fields line up. */
-  importFrom: readonly HarnessId[];
-  /** One sentence for the settings card, in the vendor's own vocabulary. */
-  summary: string;
-}
+import type { HarnessProviderFacts } from '@/shared/lib/harness/provider-contracts';
 
 /**
  * The table. A harness missing here is `none` — and `providerFacts` says so
@@ -249,6 +155,29 @@ export const HARNESS_PROVIDER_FACTS: Readonly<Partial<Record<HarnessId, HarnessP
     importFrom: [],
     summary: 'MiniMax stores BYOK providers itself; add one with `mcode`, and Kabmo will see the models it publishes.',
   },
+  jcode: {
+    registry: {
+      // jcode's own wizard/settings write this file, so Kabmo only reads it.
+      kind: 'agent-managed', file: '.jcode/config.toml', pointer: 'providers',
+      writable: false, baseUrlField: null, apiKeyField: null, modelsField: null,
+    },
+    createsChoice: true,
+    importFrom: [],
+    summary: 'jcode keeps providers in ~/.jcode/config.toml, written by its setup wizard and settings menu; Kabmo shows the models it publishes but does not edit that file.',
+  },
+  grok: {
+    registry: {
+      // MEASURED on 1.0.77: GROK_MODELS_BASE_URL + XAI_API_KEY alone still hit
+      // "Not signed in"; a `[model.<name>]` table with its own `api_key` runs
+      // without any xAI login (headless prompt answered). That TOML layout has
+      // no writer in Kabmo, so the file is read-only here.
+      kind: 'agent-managed', file: '.grok/config.toml', pointer: 'model',
+      writable: false, baseUrlField: null, apiKeyField: null, modelsField: null,
+    },
+    createsChoice: true,
+    importFrom: [],
+    summary: 'Grok takes custom models as [model.<name>] tables in ~/.grok/config.toml (model, base_url, api_key or env_key, context_window). Kabmo does not write that file; xAI models still need `grok login`.',
+  },
   claude: {
     registry: {
       kind: 'env', file: null, pointer: 'environment',
@@ -327,23 +256,3 @@ export const HARNESS_PROVIDER_FACTS: Readonly<Partial<Record<HarnessId, HarnessP
     summary: 'ZCode keeps user-added providers in ~/.zcode/v2/provider_config.json (3.12+), as provider rules plus one model rule per id. Kabmo merges one provider into that file and leaves the app’s legacy config.json untouched. Chats still need a ZCode runtime: the desktop app, or `zcode-app-cli` on PATH (`ZCODE_BIN` for a custom install).',
   },
 };
-
-/** The facts for a harness, or the honest "nothing to offer" record. */
-export function providerFacts(id: string | null | undefined): HarnessProviderFacts {
-  const entry = id ? (HARNESS_PROVIDER_FACTS as Record<string, HarnessProviderFacts | undefined>)[id] : undefined;
-  return entry ?? {
-    registry: {
-      kind: 'none', file: null, pointer: '—',
-      writable: false, baseUrlField: null, apiKeyField: null, modelsField: null,
-    },
-    createsChoice: false,
-    importFrom: [],
-    summary: 'This build knows nothing about providers for that harness.',
-  };
-}
-
-/** True when the settings page should draw a registry editor. */
-export function managesProviders(id: string | null | undefined): boolean {
-  const registry = providerFacts(id).registry;
-  return registry.writable && registry.kind !== 'env' && registry.kind !== 'none';
-}

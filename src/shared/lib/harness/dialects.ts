@@ -30,7 +30,7 @@
  * pick a target's field value, and both must agree.
  */
 
-import type { ProviderRegistryKind } from '@/shared/lib/harness/provider-facts';
+import type { ProviderRegistryKind } from '@/shared/lib/harness/provider-contracts';
 
 export type CanonicalProtocol =
   | 'openai-chat'

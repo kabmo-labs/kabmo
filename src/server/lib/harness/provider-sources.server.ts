@@ -37,7 +37,8 @@ import { join } from 'path';
 import YAML from 'yaml';
 import { parse as parseToml } from 'smol-toml';
 
-import { providerFacts, type ProviderRegistryKind } from '@/shared/lib/harness/provider-facts';
+import type { ProviderRegistryKind } from '@/shared/lib/harness/provider-contracts';
+import { providerFacts } from '@/shared/lib/harness/provider-lookup';
 import { protocolOfSourceDialect, type CanonicalProtocol } from '@/shared/lib/harness/dialects';
 import { isVendorProviderId } from '@/shared/lib/models/provider/vendors';
 import { HARNESS_IDS, type HarnessId } from '@/shared/lib/harness/catalog';

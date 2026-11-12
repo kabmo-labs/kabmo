@@ -28,7 +28,7 @@
  *    value has to be injected into `env` or all imported models answer 401.
  */
 
-import type { ProviderRegistryKind } from '@/shared/lib/harness/provider-facts';
+import type { ProviderRegistryKind } from '@/shared/lib/harness/provider-contracts';
 import type { CanonicalProtocol } from '@/shared/lib/harness/dialects';
 import { dialectFor, wireApiFor } from '@/shared/lib/harness/dialects';
 import { ProviderWriteError } from '@/server/lib/harness/provider-write-error';

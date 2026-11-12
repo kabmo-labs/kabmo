@@ -13,7 +13,8 @@
  *    `minimax`, `cursor`, `qwen`, `antigravity`, `pi`).
  * 2. The vendor's own logo with its plate and gradient dropped — omp's
  *    `favicon.svg`, whose gradient `url(#g)` and dark background rect were
- *    removed so the mark paints in `currentColor` like every other one.
+ *    removed so the mark paints in `currentColor` like every other one; the
+ *    same treatment for jcode (`jcode.sh/favicon.svg`, stroke → ring path).
  *
  * `body` is inner markup only: the caller owns the `<svg>`, so a mark inherits
  * the surrounding ink and never carries a hardcoded colour. That is also why
@@ -62,4 +63,9 @@ antigravity: { ink: [0, 1, 24, 22.11], body: "<path d=\"M21.751 22.607c1.34 1.00
 pi: { ink: [1, 1, 22, 22], body: "<path clip-rule=\"evenodd\" d=\"M1 1h16.5v11H12v5.5H6.5V23H1V1zm5.5 5.5V12H12V6.5H6.5z\"></path><path d=\"M17.5 12H23v11h-5.5V12z\"></path>" },
 // Z.ai's own mark (ZCode is that vendor's agent), monochrome variant.
 zcode: { ink: [0, 2, 24, 20], body: "<path d=\"M12.105 2L9.927 4.953H.653L2.83 2h9.276zM23.254 19.048L21.078 22h-9.242l2.174-2.952h9.244zM24 2L9.264 22H0L14.736 2H24z\"></path>" },
+// jcode.sh's mark: a ring (circle r=152, stroke 104 in a 512 box), converted to
+// one even-odd path so it paints as ink like every other glyph.
+jcode: { ink: [52, 52, 408, 408], body: "<path fill-rule=\"evenodd\" d=\"M256 52a204 204 0 1 0 0 408a204 204 0 1 0 0-408zM256 156a100 100 0 1 0 0 200a100 100 0 1 0 0-200z\"></path>" },
+// Grok's own mark from @lobehub/icons-static-svg (monochrome variant).
+grok: { ink: [0, 0, 24, 24], body: "<path d=\"M9.27 15.29l7.978-5.897c.391-.29.95-.177 1.137.272.98 2.369.542 5.215-1.41 7.169-1.951 1.954-4.667 2.382-7.149 1.406l-2.711 1.257c3.889 2.661 8.611 2.003 11.562-.953 2.341-2.344 3.066-5.539 2.388-8.42l.006.007c-.983-4.232.242-5.924 2.75-9.383.06-.082.12-.164.179-.248l-3.301 3.305v-.01L9.267 15.292M7.623 16.723c-2.792-2.67-2.31-6.801.071-9.184 1.761-1.763 4.647-2.483 7.166-1.425l2.705-1.25a7.808 7.808 0 00-1.829-1A8.975 8.975 0 005.984 5.83c-2.533 2.536-3.33 6.436-1.962 9.764 1.022 2.487-.653 4.246-2.34 6.022-.599.63-1.199 1.259-1.682 1.925l7.62-6.815\"></path>" },
 };

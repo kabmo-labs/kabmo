@@ -15,7 +15,7 @@
 import type { HarnessCapabilities } from '@/server/lib/harness/capabilities';
 import type { HarnessConfig } from '@/shared/lib/harness/config';
 import type { CanonicalProtocol } from '@/shared/lib/harness/dialects';
-import type { EnvProviderContract } from '@/shared/lib/harness/provider-facts';
+import type { EnvProviderContract } from '@/shared/lib/harness/provider-contracts';
 
 export type { HarnessConfig };
 

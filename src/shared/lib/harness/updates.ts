@@ -145,6 +145,16 @@ export const HARNESS_UPDATE_FACTS: Readonly<Partial<Record<HarnessId, HarnessUpd
     cli: { bin: 'zcode', name: 'ZCode' },
     note: 'The row reports the ACP bridge; the ZCode CLI it drives installs with the desktop app.',
   },
+  jcode: {
+    kind: 'self',
+    command: 'jcode update',
+    note: 'The CLI updates itself (and checks on launch); Kabmo runs its own subcommand rather than replacing the install.',
+  },
+  grok: {
+    kind: 'self',
+    command: 'grok update',
+    note: 'The CLI updates itself (`grok update`, plus `[cli] auto_update`); Kabmo runs its own subcommand.',
+  },
 };
 
 /** The facts for a harness, or "Kabmo knows nothing about updating it". */

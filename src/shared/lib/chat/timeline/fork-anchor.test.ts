@@ -32,6 +32,8 @@ describe('forkCapability', () => {
     expect(forkCapability('qwen')).toBe('none');
     expect(forkCapability('dsh')).toBe('none');
     expect(forkCapability('antigravity')).toBe('none');
+    expect(forkCapability('jcode')).toBe('none');
+    expect(forkCapability('grok')).toBe('none');
   });
 });
 

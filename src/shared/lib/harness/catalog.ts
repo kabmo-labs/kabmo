@@ -46,7 +46,12 @@ export type BuiltinHarnessId =
    *  `zcode app-server`. The CLI ships no native ACP server (measured against
    *  the 3.17.x source: no `acp` subcommand), so the launch line names that
    *  bridge and the bridge finds the CLI by itself. */
-  | 'zcode';
+  | 'zcode'
+  /** The Rust agent from jcode.sh. Its own ACP adapter (`jcode acp`) is backed
+   *  by the Jcode daemon. */
+  | 'jcode'
+  /** xAI's Grok Build CLI, over its own ACP server (`grok agent stdio`). */
+  | 'grok';
 
 /**
  * A harness id: one this build ships, or one the user added.
@@ -75,6 +80,8 @@ export const HARNESS_IDS: readonly BuiltinHarnessId[] = [
   'kimi',
   'cursor',
   'zcode',
+  'jcode',
+  'grok',
 ];
 
 export interface HarnessDescriptor {
@@ -127,6 +134,8 @@ export type HarnessGlyph =
   | 'cursor'
   | 'antigravity'
   | 'zcode'
+  | 'jcode'
+  | 'grok'
   /** A user-added ACP harness: no vendor mark, drawn as its initial. */
   | 'custom';
 
@@ -151,6 +160,8 @@ export const HARNESS_CATALOG: Readonly<Record<BuiltinHarnessId, HarnessDescripto
   kimi: { id: 'kimi', label: 'kimi', initial: 'K', transport: 'acp', glyph: 'kimi' },
   cursor: { id: 'cursor', label: 'cursor', initial: '⌖', transport: 'acp', glyph: 'cursor' },
   zcode: { id: 'zcode', label: 'zcode', initial: 'Z', transport: 'acp', glyph: 'zcode' },
+  jcode: { id: 'jcode', label: 'jcode', initial: 'J', transport: 'acp', glyph: 'jcode' },
+  grok: { id: 'grok', label: 'grok', initial: 'G', transport: 'acp', glyph: 'grok' },
 };
 
 /**

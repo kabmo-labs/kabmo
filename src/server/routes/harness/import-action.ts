@@ -26,7 +26,7 @@
 import { json } from '@/server/lib/remix-compat';
 import { isBuiltinHarness, type HarnessId } from '@/shared/lib/harness/catalog';
 import { adaptBaseUrl, planProtocol, supportedProtocols, type CanonicalProtocol } from '@/shared/lib/harness/dialects';
-import { providerFacts } from '@/shared/lib/harness/provider-facts';
+import { providerFacts } from '@/shared/lib/harness/provider-lookup';
 import { providerEnv, providerLevel, registryLabel } from '@/shared/lib/harness/providers';
 import { providerIdProblem, providerSlugFrom } from '@/shared/lib/harness/provider-slug';
 import { withEnvValues } from '@/shared/lib/harness/config';

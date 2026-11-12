@@ -192,4 +192,23 @@ export const HARNESS_LAUNCH: Readonly<Partial<Record<HarnessId, HarnessLaunch>>>
     install: 'npm i -g zcode-acp-server zcode-app-cli   # the app-server runtime (or install the ZCode desktop app)',
     note: 'bridges `zcode app-server --stdio`; measured 1 model · 3 thought levels · 5 modes, list/resume/fork + steering; needs a ZCode runtime — the desktop app, or `zcode-app-cli` on PATH (`ZCODE_BIN` for a custom install). Custom providers go in ~/.zcode/v2/provider_config.json; the bridge lists only selectable ones',
   },
+  // jcode's OWN ACP adapter: `jcode acp` runs the stdio server backed by the
+  // Jcode daemon (measured against 1jehuang/jcode's `src/cli/acp.rs`). The
+  // binary is installed by the vendor's script, so there is no npm package to
+  // pin here.
+  jcode: {
+    id: 'jcode',
+    command: ['jcode', 'acp'],
+    install: 'curl -fsSL https://jcode.sh/install | bash',
+    note: 'ACP adapter backed by the Jcode daemon; configure a provider once in ~/.jcode/config.toml (`jcode provider add …`, or the first `jcode` setup wizard)',
+  },
+  // Grok Build ships its OWN ACP server; `--always-approve` is deliberately not
+  // passed, so tool calls arrive as `session/request_permission` and Kabmo's
+  // access tiers decide. Models and reasoning show up as config options.
+  grok: {
+    id: 'grok',
+    command: ['grok', 'agent', 'stdio'],
+    install: 'curl -fsSL https://x.ai/cli/install.sh | bash',
+    note: 'native ACP (`grok agent stdio`); xAI models need `grok login` once. A custom model as a [model.<name>] table in ~/.grok/config.toml (base_url + api_key) runs WITHOUT an xAI login — measured on 1.0.77. Sessions advertise model + reasoning_effort options',
+  },
 };

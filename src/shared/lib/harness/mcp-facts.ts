@@ -51,6 +51,10 @@ export const HARNESS_MCP_FACTS: Record<BuiltinHarnessId, HarnessMcpFacts> = {
   kimi: { delivery: 'acp', note: 'Injected on session/new, so every new chat sees the current list.' },
   cursor: { delivery: 'acp', note: 'Injected on session/new, so every new chat sees the current list.' },
   zcode: { delivery: 'acp', note: 'Injected on session/new, so every new chat sees the current list.' },
+  jcode: { delivery: 'acp', note: 'Injected on session/new, so every new chat sees the current list.' },
+  // Measured on 1.0.77: `mcpCapabilities` advertises stdio, http AND sse, and
+  // the agent also loads config.toml / ~/.claude.json / .mcp.json on its own.
+  grok: { delivery: 'acp', note: 'Injected on session/new and advertised for stdio, http and sse (measured 1.0.77); grok also loads MCP servers from config.toml, ~/.claude.json and the project .mcp.json.' },
 };
 
 /**

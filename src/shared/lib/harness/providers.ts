@@ -21,7 +21,8 @@
  */
 
 import type { HarnessId } from '@/shared/lib/harness/catalog';
-import { providerFacts, type ProviderRegistryKind } from '@/shared/lib/harness/provider-facts';
+import type { ProviderRegistryKind } from '@/shared/lib/harness/provider-contracts';
+import { providerFacts } from '@/shared/lib/harness/provider-lookup';
 
 /** The level a settings panel is drawn at. */
 export type ProviderSupportLevel = 'full' | 'environment' | 'configurable' | 'none';

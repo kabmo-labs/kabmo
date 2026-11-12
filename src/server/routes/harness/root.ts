@@ -35,7 +35,7 @@ import {
   providerLevel,
   registryLabel,
 } from '@/shared/lib/harness/providers';
-import { providerFacts } from '@/shared/lib/harness/provider-facts';
+import { providerFacts } from '@/shared/lib/harness/provider-lookup';
 import type { HarnessProviderSupport } from '@/shared/types/harness';
 import { parseHarnessConfig, type HarnessConfig } from '@/shared/lib/harness/config';
 
