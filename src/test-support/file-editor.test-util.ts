@@ -21,6 +21,7 @@ import type { h as PreactH, render as PreactRender } from 'preact';
 import type { act as PreactAct } from 'preact/test-utils';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
 import type {
+  FileEditorTarget,
   UseFileEditorOptions,
   UseFileEditorResult,
   useFileEditor as UseFileEditorHook,
@@ -143,7 +144,7 @@ export interface EditorHarness {
   /** Latest render's result — re-read after every settle, never held across one. */
   readonly mounted: UseFileEditorResult | null;
   settle(): Promise<void>;
-  mount(target?: typeof TARGET, options?: UseFileEditorOptions): Promise<void>;
+  mount(target?: FileEditorTarget, options?: UseFileEditorOptions): Promise<void>;
   /** Run a state update inside Preact's `act`, then settle. */
   run(update: () => void): Promise<void>;
   /**
@@ -177,7 +178,7 @@ export function createEditorHarness(): EditorHarness {
     });
   }
 
-  async function mount(target: typeof TARGET = TARGET, options: UseFileEditorOptions = {}) {
+  async function mount(target: FileEditorTarget = TARGET, options: UseFileEditorOptions = {}) {
     const Probe = () => {
       mounted = useFileEditor(target, options);
       return null;
