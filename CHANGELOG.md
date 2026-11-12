@@ -4,6 +4,37 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.29.0](https://github.com/kabmo-labs/kabmo/compare/v0.28.0...v0.29.0) — 2026-11-12
+
+### Added
+
+* **composer:** recall previous prompts with ArrowUp/ArrowDown ([0f8bb69](https://github.com/kabmo-labs/kabmo/commit/0f8bb69a782130e6957d1557cd6d26a0fd1b615d)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **composer:** searchable workspace, fork and wait-for-session pickers ([67205fb](https://github.com/kabmo-labs/kabmo/commit/67205fb10e045ebdee1f2646d7c6c083aeb7f8ce)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **editor:** edit spreadsheet cells and save workbooks ([5a9d426](https://github.com/kabmo-labs/kabmo/commit/5a9d42677e4bc57bfc501644c40bb6ff5e18a4a9)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **editor:** render .drawio files as diagrams ([1c3f4f3](https://github.com/kabmo-labs/kabmo/commit/1c3f4f32a99bdad2fe742cf91b485119e3ed5665)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **files:** add multi-select and archive extract/compress ([a9eb7da](https://github.com/kabmo-labs/kabmo/commit/a9eb7da88d67736df593e2337ca604799bc5c61d)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** add the jcode and grok ACP agents ([91c724e](https://github.com/kabmo-labs/kabmo/commit/91c724ebaafdf8679b1a19191db2de420b866ea0))
+* **harness:** dismiss a settled update result from the About row ([e4da754](https://github.com/kabmo-labs/kabmo/commit/e4da754439d19e9cc5c8e8ec5026958c2c9996cb)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **omp:** bump the pin to 18.18.9 and deliver peer messages as turns ([b1085e0](https://github.com/kabmo-labs/kabmo/commit/b1085e04623d7aee72a7272f708df34f746c7b45)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **omp:** bump the pin to 18.19.0 and keep the blocked todo status readable ([191ab5b](https://github.com/kabmo-labs/kabmo/commit/191ab5b39160bec5840897207bf9fe87ae265745)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Changed
+
+* **glass:** drop the window-sized backdrop roots ([2c74273](https://github.com/kabmo-labs/kabmo/commit/2c74273da54cc289737332f18702cf519efe0824)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **settings:** file plugins and skills under the OMP group ([e6e0b83](https://github.com/kabmo-labs/kabmo/commit/e6e0b8358104d64182082889462e2ed2dbb6726d)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **chat:** jump to a just-sent turn before omp echoes it ([81c3935](https://github.com/kabmo-labs/kabmo/commit/81c39355d73639813012d3f2535a74bd47a8ba02)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **chat:** keep an ask dialog on its card when the form parser drifts ([090ce99](https://github.com/kabmo-labs/kabmo/commit/090ce992958270eff6083121da90f4b01dd95535)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **composer:** paint the action pair in ink under monochrome ([b38ebdc](https://github.com/kabmo-labs/kabmo/commit/b38ebdcec56f26b907a7d97116e4445e92328a73)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **diagram-viewer:** measure a mermaid diagram from its viewBox, not parseFloat(width) ([48ea7a0](https://github.com/kabmo-labs/kabmo/commit/48ea7a0e1a69eb075a8bf5585890b81a00a4340e)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **git:** show the staged and unstaged diff of one file separately ([9496d36](https://github.com/kabmo-labs/kabmo/commit/9496d363835c7651bfbca2ca30abde8a5c39e1c2)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** name each agent's own launch line in the config form ([cd49638](https://github.com/kabmo-labs/kabmo/commit/cd496380a5f67388cdd831c90b2db2d0ef9e57a4)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **scrollbars:** paint the bar on the input, not on the scroll it causes ([62e7ca2](https://github.com/kabmo-labs/kabmo/commit/62e7ca212511a4ab5fa7950d92e0562281fa707e)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **test:** stop `bun test` from opening the developer's real database ([1ee9bf6](https://github.com/kabmo-labs/kabmo/commit/1ee9bf64a553892d0e30ce055c5f1a63c58bbb7e)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **ui:** spin every refresh icon while its refresh is in flight ([ae2cf71](https://github.com/kabmo-labs/kabmo/commit/ae2cf7157262da3bc243680c596c325e8dafe61d)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.28.0](https://github.com/kabmo-labs/kabmo/compare/v0.27.0...v0.28.0) — 2026-11-11
 
 ### Added
