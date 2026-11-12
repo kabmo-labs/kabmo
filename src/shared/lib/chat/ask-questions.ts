@@ -100,6 +100,37 @@ export function isAskToolCall(tool: ToolCallData): boolean {
 }
 
 /**
+ * Index of the question a dialog's OPTION LIST names, when its title does not.
+ *
+ * omp titles a per-field dialog with the question it derived, and Kabmo derives
+ * that text from the same form — but the two parsers can disagree on a shape
+ * neither was written for, and a title that matches nothing used to hand the
+ * frame to the modal. The offered rows are the same list either way, so they
+ * are the fallback key: the question's own options (minus the synthetic
+ * "Other" row) must be exactly the rows the dialog offers (minus omp's "Other"
+ * and multi-select "Done" rows), and there must be at least two of them.
+ */
+export function askQuestionForOptions(questions: AskQuestion[], options: unknown): number {
+  if (!Array.isArray(options)) return -1;
+  const offered = new Set(
+    options
+      .filter((option): option is string => typeof option === 'string')
+      .map(normalizeAskText)
+      .filter((label) => label && !isOtherOption(label) && !/done selecting$/.test(label)),
+  );
+  if (offered.size < 2) return -1;
+  let best = -1;
+  for (let index = 0; index < questions.length; index += 1) {
+    const labels = questions[index].options
+      .map((option) => normalizeAskText(option.label))
+      .filter((label) => label && !isOtherOption(label));
+    if (labels.length < 2 || labels.length !== offered.size) continue;
+    if (labels.every((label) => offered.has(label))) best = index;
+  }
+  return best;
+}
+
+/**
  * True for an ask omp has given up on — its dialog was withdrawn (a validation
  * failure, an abort), so no live frame can belong to it and its card renders no
  * control. Deliberately NOT `success`: a session reloaded mid-ask reads its

@@ -157,10 +157,19 @@ export function textOf(tokens: Token[], start: number, end: number): string {
       continue;
     }
     if (SKIPPED[tag]) {
-      index = matchingClose(tokens, index, tag);
+      index = Math.min(matchingClose(tokens, index, tag), end);
       continue;
     }
-    if (tag === 'input' || tag === 'select' || tag === 'textarea') continue;
+    // A control's CONTENT is not text: `<select>`'s options and a `<textarea>`'s
+    // value are answers, not the label around them. Skipping only the opening
+    // tag leaked every option label into a wrapping `<label>`'s text, so the
+    // question read "Akun … prod Akun client … tidak yakin" while omp's dialog
+    // title was "Akun … prod" — and the frame could not be claimed.
+    if (tag === 'input') continue;
+    if (tag === 'select' || tag === 'textarea') {
+      index = Math.min(matchingClose(tokens, index, tag), end);
+      continue;
+    }
     if (tag === 'br') parts.push('\n');
     else if (tag === 'img') parts.push(token.attrs.alt ?? '');
     else if (BLOCK[tag] || HEADING[tag]) parts.push(' ');

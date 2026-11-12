@@ -42,7 +42,7 @@
 import { createContext, useContext } from 'preact/compat';
 import type { ChatMessageData } from '@/shared/types';
 import type { ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
-import { askQuestionForTitle, groupAskFrames, isAskSettled, isAskToolCall, normalizeAskText, parseAskQuestions } from '@/shared/lib/chat/ask-questions';
+import { askQuestionForOptions, askQuestionForTitle, groupAskFrames, isAskSettled, isAskToolCall, normalizeAskText, parseAskQuestions } from '@/shared/lib/chat/ask-questions';
 import { parseAskResult } from '@/shared/lib/chat/ask-results';
 import type { AskQuestion } from '@/shared/lib/chat/ask-form/types';
 import { isApprovalGateFrame } from '@/shared/lib/chat/omp/approval-gate';
@@ -110,6 +110,8 @@ export function splitAskFrames(
 
   const owned = new Map<string, ExtensionUiDialogRequest[]>();
   const claimed = new Set<ExtensionUiDialogRequest>();
+  /** Frames claimed by their option rows, with the question index they name. */
+  const optionPlacements = new Map<ExtensionUiDialogRequest, number>();
   const orphanAsks: ExtensionUiDialogRequest[] = [];
   let lastOwner: string | null = null;
 
@@ -190,6 +192,25 @@ export function splitAskFrames(
     // "Approve"/"Deny" rendered as the ANSWERS to an unrelated question and
     // the answer went to the wrong tool call. A gate is excluded from the
     // fallback exactly like a `confirm`, and reaches the modal instead.
+    //
+    // A `select` whose title matches nothing is still the ask's when its ROWS
+    // are the question's rows: the two parsers can disagree on a form shape
+    // neither was written for, and the title is the only key that drifts. The
+    // option list is the same list either way, so it is the fallback key — and
+    // an exact set match of two or more labels cannot steal an extension
+    // picker or a gate.
+    if (!owner && request.method === 'select' && !isApprovalGateFrame(request)) {
+      for (let index = openAsks.length - 1; index >= 0; index -= 1) {
+        const candidate = openAsks[index];
+        const matched = askQuestionForOptions(candidate.questions, request.options);
+        if (matched === -1) continue;
+        owner = candidate.toolId;
+        // The title walk already placed it in `groupAskFrames`; a frame claimed
+        // by its rows has no title to place by, so its row is recorded here.
+        optionPlacements.set(request, matched);
+        break;
+      }
+    }
     if (!owner && request.method !== 'confirm' && !isApprovalGateFrame(request)) owner = lastOwner;
     if (!owner) continue;
     claimed.add(request);
@@ -210,6 +231,13 @@ export function splitAskFrames(
           if (index >= 0) placed[index].push(frame);
           else loose.push(frame);
         }
+        continue;
+      }
+      // A frame claimed by its rows already knows the question it belongs to.
+      const byOptions = optionPlacements.get(frame);
+      if (byOptions !== undefined) {
+        if (placed[byOptions]) placed[byOptions].push(frame);
+        else loose.push(frame);
         continue;
       }
       loose.push(frame);

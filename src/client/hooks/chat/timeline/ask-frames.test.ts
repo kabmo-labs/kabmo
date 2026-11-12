@@ -181,4 +181,58 @@ describe('splitAskFrames', () => {
     expect(split.framesByTool.size).toBe(0);
     expect(split.modalRequest).toBe(gate);
   });
+
+  test('a select whose title matches no question is claimed by its option rows', () => {
+    // The parser-drift safety net: the two derivations of a form's question text
+    // can disagree on a shape neither was written for, and the title is the only
+    // key that drifts. The offered rows are the same list either way.
+    const frame: ExtensionUiDialogRequest = {
+      type: 'extension_ui_request',
+      id: 'f1',
+      method: 'select',
+      title: 'Which language? And more',
+      options: ['A', 'B', 'Other (type your own)'],
+    };
+
+    const split = splitAskFrames(askHistory(['Which language?']), [frame], true);
+
+    expect(split.framesByTool.get('call_ask')?.[0]?.map((held) => held.id)).toEqual(['f1']);
+    expect(split.modalRequest).toBeNull();
+  });
+
+  test('an approval gate is never claimed by an ask, even when its rows match', () => {
+    // The gate check runs before the row match: a gate whose choices happen to
+    // equal a question's options must still reach the modal, or "Approve" would
+    // be posted as that question's answer.
+    const [history] = askHistory(['Which language?']);
+    history.toolCalls![0].input = {
+      questions: [{ question: 'Which language?', options: [{ label: 'Approve' }, { label: 'Deny' }] }],
+    };
+    const gate: ExtensionUiDialogRequest = {
+      type: 'extension_ui_request',
+      id: 'g1',
+      method: 'select',
+      title: 'Allow tool: read\nReason: Restricted folder: /tmp/secret',
+      options: ['Approve', 'Deny'],
+    };
+    const split = splitAskFrames([history], [gate], true);
+
+    expect(split.framesByTool.size).toBe(0);
+    expect(split.modalRequest).toBe(gate);
+  });
+
+  test('a picker with unrelated rows keeps the modal', () => {
+    const picker: ExtensionUiDialogRequest = {
+      type: 'extension_ui_request',
+      id: 'p1',
+      method: 'select',
+      title: 'Choose a branch',
+      options: ['main', 'release/1.0'],
+    };
+
+    const split = splitAskFrames(askHistory(['Which language?']), [picker], true);
+
+    expect(split.framesByTool.size).toBe(0);
+    expect(split.modalRequest).toBe(picker);
+  });
 });

@@ -22,6 +22,7 @@
 
 import type { AskQuestion } from '@/shared/lib/chat/ask-form/types';
 import { toQuestions, type DraftField, type DraftOption } from '@/shared/lib/chat/ask-form/fields';
+import { IGNORED_INPUTS, readLabelTargets } from '@/shared/lib/chat/ask-form/labels';
 import {
   BLOCK,
   findChild,
@@ -35,34 +36,6 @@ import {
   tokenize,
   type Token,
 } from '@/shared/lib/chat/ask-form/tokens';
-
-const IGNORED_INPUTS: Record<string, true> = {
-  button: true,
-  file: true,
-  image: true,
-  reset: true,
-  submit: true,
-  hidden: true,
-};
-
-/** Pre-pass: ids of controls, and the `<label for>` text that names them. */
-function readLabelTargets(tokens: Token[]): Map<string, string> {
-  const ids = new Set<string>();
-  for (const token of tokens) {
-    if (token.kind !== 'open') continue;
-    if (token.tag !== 'input' && token.tag !== 'select' && token.tag !== 'textarea') continue;
-    if (token.attrs.id) ids.add(token.attrs.id);
-  }
-  const labels = new Map<string, string>();
-  for (let index = 0; index < tokens.length; index += 1) {
-    const token = tokens[index];
-    if (token.kind !== 'open' || token.tag !== 'label' || token.selfClosing) continue;
-    const target = token.attrs.for;
-    if (!target || !ids.has(target) || labels.has(target)) continue;
-    labels.set(target, textOf(tokens, index + 1, matchingClose(tokens, index, 'label')));
-  }
-  return labels;
-}
 
 /** Fields of one form, in document order, with the question text omp derives. */
 export function parseAskForm(html: string): AskQuestion[] {
@@ -84,7 +57,12 @@ export function parseAskForm(html: string): AskQuestion[] {
   };
 
   const addField = (field: DraftField) => {
+    // The text block immediately before a control is its caption (omp's
+    // `fieldQuestions`), so the pending inline run must be flushed BEFORE the
+    // field is built — flushing after left `<span>Which?</span><select>` with
+    // the control's own name as its question.
     flush();
+    field.caption = caption;
     fields.push(field);
     caption = '';
   };
@@ -104,7 +82,10 @@ export function parseAskForm(html: string): AskQuestion[] {
       const value = attrs.value ?? 'on';
       const option: DraftOption = {
         value,
-        label: controlLabel(attrs, wrapping) || value || name,
+        // omp's fallback is the RAW `value` attribute, else the name — not the
+        // `on` default a valueless checkbox submits. Using `on` made a lone
+        // checkbox's question "on" while omp's dialog title was its name.
+        label: controlLabel(attrs, wrapping) || attrs.value || name,
         checked: 'checked' in attrs,
         disabled: 'disabled' in attrs,
       };
@@ -212,7 +193,12 @@ export function parseAskForm(html: string): AskQuestion[] {
         else if (tag === 'input') addInput(token.attrs, wrapping);
         continue;
       }
-      const close = matchingClose(tokens, index, tag);
+      // An unclosed tag (`<span class="truncate">` written literally inside a
+      // code span) has no `</span>`; `matchingClose` then answers the end of the
+      // document, and walking to it re-walked every field after the enclosing
+      // block — the same question appeared twice and the frame could not be
+      // placed. Clamp to the range this walk owns.
+      const close = Math.min(matchingClose(tokens, index, tag), end);
       if (SKIPPED[tag]) {
         index = close;
         continue;
@@ -267,7 +253,20 @@ export function parseAskForm(html: string): AskQuestion[] {
         index = close;
         continue;
       }
-      if (tag === 'ul' || tag === 'ol' || tag === 'pre' || tag === 'table') {
+      // A `<table>` of controls (a decision matrix) is LAYOUT: omp walks it, so
+      // the row's text captions the control and the field survives. Treating
+      // every table as prose dropped the fields entirely, and a tool call whose
+      // questions never parsed cannot claim its dialogs — the whole ask fell to
+      // the modal.
+      if (tag === 'table') {
+        settle();
+        if (hasControl(tokens, index + 1, close)) walk(index + 1, close, wrapping, depth, quiet);
+        else if (!quiet) caption = '';
+        settle();
+        index = close;
+        continue;
+      }
+      if (tag === 'ul' || tag === 'ol' || tag === 'pre') {
         settle();
         // A list of controls is layout; any other list is a block, which clears
         // the caption the next field would otherwise borrow.
@@ -276,6 +275,15 @@ export function parseAskForm(html: string): AskQuestion[] {
         } else if (!quiet) {
           caption = '';
         }
+        settle();
+        index = close;
+        continue;
+      }
+      // Cell boundaries separate one cell's text from the next; without them
+      // every cell in a row ran together into one caption.
+      if (tag === 'td' || tag === 'th' || tag === 'tr') {
+        settle();
+        walk(index + 1, close, wrapping, depth, quiet);
         settle();
         index = close;
         continue;

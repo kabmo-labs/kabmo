@@ -134,4 +134,61 @@ describe('parseAskForm', () => {
     const questions = parseAskForm(`<form><label>Yes <input type="radio" name="ok" value="yes"></label></form>`);
     expect(questions[0].question).toBe('Yes');
   });
+
+  // The question text is the key `splitAskFrames` matches a live dialog's title
+  // against. Every case below was measured against omp's own `fieldQuestions`
+  // (pi-tui `html-form/data.ts`) on a real session form; a divergence here is a
+  // dialog that cannot be claimed and falls to the modal.
+  test('a <label> wrapping a <select> names the question without the option text', () => {
+    const questions = parseAskForm(`<form>
+      <label>Akun yang dipakai di mobilebroadcast prod
+        <select name="account">
+          <option value="client">Akun client (punya client_id)</option>
+          <option value="internal">Akun Jatis / internal</option>
+        </select>
+      </label>
+    </form>`);
+
+    expect(questions[0].question).toBe('Akun yang dipakai di mobilebroadcast prod');
+    expect(questions[0].options.map((option) => option.label)).toEqual([
+      'Akun client (punya client_id)',
+      'Akun Jatis / internal',
+    ]);
+  });
+
+  test('inline text before a control captions it, with or without a <br>', () => {
+    const span = parseAskForm(`<form><span>Which database?</span><select name="db"><option>a</option><option>b</option></select></form>`);
+    const br = parseAskForm(`<form>Which one?<br><select name="pick"><option>a</option><option>b</option></select></form>`);
+
+    expect(span[0].question).toBe('Which database?');
+    expect(br[0].question).toBe('Which one?');
+  });
+
+  test('a table of controls is layout: its cell text captions the field', () => {
+    const questions = parseAskForm(`<form>
+      <table><tr><td>Pick one</td><td><select name="pick"><option>a</option><option>b</option></select></td></tr></table>
+    </form>`);
+
+    expect(questions).toHaveLength(1);
+    expect(questions[0]).toMatchObject({ id: 'pick', question: 'Pick one' });
+  });
+
+  test('an unclosed inline tag does not re-walk the rest of the form', () => {
+    // A model wrote `<span class="truncate">` literally inside a code span, so
+    // it never closes. Walking to the end of the document duplicated every
+    // field after it, and the duplicated question could not be placed.
+    const questions = parseAskForm(`<form>
+      <p>a \`<span class="truncate">\` b</p>
+      <fieldset><legend>Lokasi</legend><label><input type="radio" name="lokasi" value="a" checked> A</label></fieldset>
+      <label>D <input type="text" name="d"></label>
+    </form>`);
+
+    expect(questions.map((question) => question.id)).toEqual(['lokasi', 'd']);
+    expect(questions[0].options.map((option) => option.label)).toEqual(['A']);
+  });
+
+  test('a lone checkbox with no value asks its name, not the submitted "on"', () => {
+    const questions = parseAskForm(`<form><input type="checkbox" name="ok"> I agree</form>`);
+    expect(questions[0].question).toBe('ok');
+  });
 });
