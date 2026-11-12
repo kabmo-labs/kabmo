@@ -90,8 +90,6 @@ export function PanelPluginsSection() {
   const actions = usePanelPluginActions();
   const dock = useLeftDock();
 
-  const refresh = () => void refreshPanelRegistry();
-
   const available = catalog.filter((entry) => !entry.installed);
   const failureMap = new Map(failures.map((failure) => [failure.pluginId, failure.reason]));
   // An installed plugin's icon and README, for the card. Both come from the
@@ -123,7 +121,7 @@ export function PanelPluginsSection() {
         onSetAutoUpdate={actions.setAutoUpdate}
         onCheckUpdates={actions.checkUpdates}
         onUpdateAll={actions.updateAll}
-        onRefresh={refresh}
+        onRefresh={refreshPanelRegistry}
       />
 
       {actions.error ? (

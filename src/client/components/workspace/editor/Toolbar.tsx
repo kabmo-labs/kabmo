@@ -85,6 +85,8 @@ interface EditorToolbarProps {
   onReload: () => void;
   /** False when the tab names no file on disk (an attachment, a device file). */
   canReload: boolean;
+  /** A re-read is in flight, so the reload glyph spins while it lands. */
+  refreshing?: boolean;
   /** The buffer has edits, so Reload discards them — the title says so. */
   reloadDiscardsEdits: boolean;
   /** Write the buffer to a NEW path; the original tab stays open. */
@@ -129,6 +131,7 @@ export function EditorToolbar({
   onDownload,
   onReload,
   canReload,
+  refreshing = false,
   reloadDiscardsEdits,
   onSaveAs,
   onToggleMaximize,
@@ -203,6 +206,7 @@ export function EditorToolbar({
     isMaximized,
     saveDisabled,
     canReload,
+    refreshing,
     reloadDiscardsEdits,
     saveButton,
     maximizeButton,

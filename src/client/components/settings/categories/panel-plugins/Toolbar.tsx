@@ -16,6 +16,7 @@
  * a write. It is the latter, and the sentence says so.
  */
 
+import { useState } from 'preact/hooks';
 import { ArrowDownToLine, CheckSquare, Loader2, RefreshCw, Square } from 'lucide-preact';
 
 interface PluginToolbarProps {
@@ -28,7 +29,8 @@ interface PluginToolbarProps {
   onSetAutoUpdate: (enabled: boolean) => Promise<boolean>;
   onCheckUpdates: () => Promise<boolean>;
   onUpdateAll: () => Promise<boolean>;
-  onRefresh: () => void;
+  /** Re-read the registry; the promise is what spins the button. */
+  onRefresh: () => void | Promise<void>;
 }
 
 export function PluginToolbar({
@@ -43,6 +45,17 @@ export function PluginToolbar({
 }: PluginToolbarProps) {
   const checking = busy === 'check_updates';
   const updatingAll = busy === 'update_all';
+  // The registry re-read is the one action here that has no entry in `busy`
+  // (it is not a mutation), so its own in-flight flag lives here.
+  const [refreshing, setRefreshing] = useState(false);
+  const reloadRegistry = async () => {
+    setRefreshing(true);
+    try {
+      await onRefresh();
+    } finally {
+      setRefreshing(false);
+    }
+  };
   return (
     <div className="flex flex-wrap items-center gap-2">
       <button
@@ -98,12 +111,13 @@ export function PluginToolbar({
 
       <button
         type="button"
-        onClick={onRefresh}
-        disabled={busy !== null}
+        onClick={() => void reloadRegistry()}
+        disabled={busy !== null || refreshing}
+        aria-busy={refreshing}
         className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded border border-ink/15 hover:bg-ink/5 disabled:opacity-50"
         title="Re-read the marketplace from disk"
       >
-        <RefreshCw size={13} />
+        <RefreshCw size={13} className={refreshing ? 'animate-spin' : undefined} />
         Refresh
       </button>
 

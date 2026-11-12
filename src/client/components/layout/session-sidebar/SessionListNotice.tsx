@@ -25,9 +25,11 @@ interface SessionListNoticeProps {
   touch?: boolean;
   /** The user's own retry — the same `refreshNow` the toolbar's button calls. */
   onRetry: () => void;
+  /** That retry is in flight, so the glyph spins instead of looking inert. */
+  refreshing?: boolean;
 }
 
-export function SessionListNotice({ touch = false, onRetry }: SessionListNoticeProps) {
+export function SessionListNotice({ touch = false, onRetry, refreshing = false }: SessionListNoticeProps) {
   return (
     <div
       role="alert"
@@ -44,11 +46,13 @@ export function SessionListNotice({ touch = false, onRetry }: SessionListNoticeP
       <button
         type="button"
         onClick={onRetry}
-        className={`mt-1 inline-flex items-center gap-1.5 rounded-md border border-ink/20 bg-paper px-2.5 font-medium text-ink transition-colors hover:bg-ink/5 ${
+        disabled={refreshing}
+        aria-busy={refreshing}
+        className={`mt-1 inline-flex items-center gap-1.5 rounded-md border border-ink/20 bg-paper px-2.5 font-medium text-ink transition-colors hover:bg-ink/5 disabled:opacity-60 ${
           touch ? 'h-11 text-sm' : 'h-7 text-xs'
         }`}
       >
-        <RefreshCw size={13} aria-hidden="true" />
+        <RefreshCw size={13} className={refreshing ? 'animate-spin' : undefined} aria-hidden="true" />
         Try again
       </button>
     </div>

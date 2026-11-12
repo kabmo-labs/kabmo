@@ -68,6 +68,20 @@ describe('ReloadPageButton', () => {
     expect(reloads).toBe(1);
   });
 
+  test('spins its glyph for the reload it asked for', () => {
+    const el = mount(h(ReloadPageButton, { className: 'p-1.5' }));
+    const button = el.querySelector('button');
+    const icon = () => button?.querySelector('svg')?.getAttribute('class') ?? '';
+    expect(icon()).not.toContain('animate-spin');
+    act(() => {
+      button?.dispatchEvent(new Event('click', { bubbles: true }));
+    });
+    // A control that looks identical after the click reads as dead while the
+    // browser is still tearing the page down.
+    expect(icon()).toContain('animate-spin');
+    expect(button?.getAttribute('aria-busy')).toBe('true');
+  });
+
   test('sizes its icon per surface while keeping the caller class', () => {
     const el = mount(h(ReloadPageButton, { size: 18, className: 'w-8 h-8' }));
     const button = el.querySelector('button');

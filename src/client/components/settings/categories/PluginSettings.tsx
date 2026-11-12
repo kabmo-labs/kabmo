@@ -81,7 +81,7 @@ export function PluginSettings() {
             onInstall={(spec) => {
               void data.run(`Installing ${spec}`, { type: 'install', spec, ...scopeArgs(workspace) });
             }}
-            onRefresh={() => void data.refresh()}
+            onRefresh={() => data.refresh()}
           />
         }
         detail={

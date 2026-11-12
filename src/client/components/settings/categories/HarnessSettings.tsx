@@ -130,9 +130,11 @@ export function HarnessSettings({ only }: HarnessSettingsProps = {}) {
         <button
           type="button"
           onClick={reload}
-          className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-ink/20 px-2.5 py-1.5 text-[11px] text-ink/70 transition-colors hover:border-ink/40 hover:text-ink"
+          disabled={isLoading}
+          aria-busy={isLoading}
+          className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-ink/20 px-2.5 py-1.5 text-[11px] text-ink/70 transition-colors hover:border-ink/40 hover:text-ink disabled:opacity-50"
         >
-          <RefreshCw size={12} /> Reload catalog
+          <RefreshCw size={12} className={isLoading ? 'animate-spin' : undefined} /> Reload catalog
         </button>
       </header>
 

@@ -89,6 +89,17 @@ export interface UseFileReadOptions {
 
 export interface FileReadState {
   isLoading: boolean;
+  /**
+   * A read is in flight over content that is already on screen — the manual
+   * "Reload from disk" (or a workspace refresh), never the first load.
+   *
+   * `isLoading` deliberately stays `false` for those reads (a spinner over live
+   * content is the bug it prevents), so the toolbar's reload glyph had no state
+   * to spin for. This is that state, and it is false during a first load so the
+   * glyph does not spin while the opening read is what the overlay already
+   * reports.
+   */
+  isReading: boolean;
   loadError: string | null;
   /** Set only for a refusal about the file's kind; see the module note. */
   unsupported: string | null;
@@ -112,12 +123,14 @@ export function useFileRead({
   remember,
 }: UseFileReadOptions): FileReadState {
   const [isLoading, setIsLoading] = useState(false);
+  const [reading, setReading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [unsupported, setUnsupported] = useState<string | null>(null);
 
   // Read the active file once per key. A cancelled guard keeps a late response
   // from a previous file from overwriting the one now on screen.
   useEffect(() => {
+    setReading(false);
     if (!target) return;
     const fileKey = targetKey(target);
     if (loadedRef.current.has(fileKey)) return;
@@ -162,6 +175,7 @@ export function useFileRead({
     if (target.root) params.set('root', target.root);
     if (target.repo && target.repo !== '.') params.set('repo', target.repo);
     readingRef.current += 1;
+    setReading(true);
     fetch(`/api/fs/read?${params.toString()}`)
       .then(async (res) => {
         const data = (await res.json().catch(() => null)) as
@@ -207,7 +221,10 @@ export function useFileRead({
       })
       .finally(() => {
         readingRef.current -= 1;
-        if (!cancelled) setIsLoading(false);
+        if (!cancelled) {
+          setIsLoading(false);
+          setReading(false);
+        }
       });
 
     return () => {
@@ -215,5 +232,7 @@ export function useFileRead({
     };
   }, [key, target, remember, revision, isBinaryViewer, loadedRef, contentsRef, baselinesRef, pendingRef, readingRef]);
 
-  return { isLoading, loadError, unsupported };
+  // A first load keeps `isLoading` true for the same read, so the reload glyph
+  // must not also claim it: this flag is about re-reads only.
+  return { isLoading, isReading: reading && !isLoading, loadError, unsupported };
 }

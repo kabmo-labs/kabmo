@@ -1,3 +1,4 @@
+import { useState } from 'preact/hooks';
 import { RefreshCw } from 'lucide-preact';
 
 interface ReloadPageButtonProps {
@@ -16,15 +17,23 @@ interface ReloadPageButtonProps {
  * "Refresh" while the other says "Reload".
  */
 export function ReloadPageButton({ size = 16, className }: ReloadPageButtonProps) {
+  // The navigation tears this tree down, but the request itself can take a
+  // visible moment; the glyph spins for it rather than looking like a dead
+  // control. Nothing else reads the flag, so it is never cleared.
+  const [reloading, setReloading] = useState(false);
   return (
     <button
       type="button"
-      onClick={() => window.location.reload()}
+      onClick={() => {
+        setReloading(true);
+        window.location.reload();
+      }}
       className={className}
       title="Reload page"
       aria-label="Reload page"
+      aria-busy={reloading}
     >
-      <RefreshCw size={size} />
+      <RefreshCw size={size} className={reloading ? 'animate-spin' : undefined} />
     </button>
   );
 }

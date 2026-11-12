@@ -175,6 +175,7 @@ export function FilePane({
         // has nothing to reload, and the same predicate the tab strip uses decides
         // that.
         canReload={isProbeableTab(activeFile) && !editor.loadError && !editor.unsupported}
+        refreshing={editor.isReading}
         reloadDiscardsEdits={editor.isDirty}
         onToggleMaximize={() => setIsMaximized(!isMaximized)}
       />

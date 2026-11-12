@@ -22,7 +22,8 @@ interface PluginSidebarListProps {
   error: string | null;
   onClearError: () => void;
   onInstall: (spec: string) => void;
-  onRefresh: () => void;
+  /** Re-read omp's registries; the promise is what spins the glyph. */
+  onRefresh: () => void | Promise<void>;
 }
 
 /**
@@ -53,6 +54,7 @@ export function PluginSidebarList({
   onRefresh,
 }: PluginSidebarListProps) {
   const [spec, setSpec] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
   const installedCount = plugins.filter((plugin) => plugin.enabled).length;
 
   return (
@@ -97,11 +99,20 @@ export function PluginSidebarList({
         </span>
         <button
           type="button"
-          onClick={onRefresh}
+          disabled={refreshing}
+          aria-busy={refreshing}
+          onClick={async () => {
+            setRefreshing(true);
+            try {
+              await onRefresh();
+            } finally {
+              setRefreshing(false);
+            }
+          }}
           title="Re-read omp's plugin registries"
-          className="p-1 rounded-md text-ink/60 hover:text-ink hover:bg-ink/5 transition-colors cursor-pointer"
+          className="p-1 rounded-md text-ink/60 hover:text-ink hover:bg-ink/5 transition-colors cursor-pointer disabled:opacity-50"
         >
-          <RefreshCw size={14} className={busy ? 'animate-spin' : undefined} />
+          <RefreshCw size={14} className={busy || refreshing ? 'animate-spin' : undefined} />
         </button>
       </div>
 

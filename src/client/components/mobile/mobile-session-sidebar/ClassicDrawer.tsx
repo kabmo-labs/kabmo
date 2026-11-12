@@ -122,7 +122,7 @@ export function ClassicDrawer({
       />
 
       {failed ? (
-        <SessionListNotice touch onRetry={onRefresh} />
+        <SessionListNotice touch onRetry={onRefresh} refreshing={refreshing} />
       ) : initializing ? (
         <MobileSessionListSkeleton />
       ) : (

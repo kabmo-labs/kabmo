@@ -21,9 +21,8 @@ import {
   Clock,
   Loader2,
   Pause,
+  Pencil,
   Play,
-  RefreshCw,
-  RotateCw,
   Trash2,
 } from 'lucide-preact';
 import { describeSchedule, formatDuration } from '@/shared/lib/schedule/parse';
@@ -163,7 +162,10 @@ export function TaskList({
                   onClick={() => onToggleEnabled(task)}
                   className="p-1.5 rounded hover:bg-ink/5 text-ink/60 hover:text-ink transition-colors disabled:opacity-40"
                 >
-                  <RefreshCw size={13} />
+                  {/* A pause/resume toggle, so it draws the transport glyph it
+                      means — a `RefreshCw` here read as "refresh this task", a
+                      different action from the one the button performs. */}
+                  {task.enabled ? <Pause size={13} /> : <Play size={13} />}
                 </button>
                 <button
                   type="button"
@@ -173,7 +175,7 @@ export function TaskList({
                   onClick={() => onEdit(task)}
                   className="p-1.5 rounded hover:bg-ink/5 text-ink/60 hover:text-ink transition-colors disabled:opacity-40"
                 >
-                  <RotateCw size={13} />
+                  <Pencil size={13} />
                 </button>
                 <button
                   type="button"

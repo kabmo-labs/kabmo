@@ -105,6 +105,14 @@ describe('SessionListNotice', () => {
     expect(retried).toBe(1);
   });
 
+  test('the retry spins while the list is being re-read', () => {
+    render(h(SessionListNotice, { onRetry: () => {}, refreshing: true }), container);
+    const button = container.querySelector('button')!;
+    expect(button.querySelector('svg')?.getAttribute('class')).toContain('animate-spin');
+    // A second press while the first read is in flight would race it.
+    expect(button.hasAttribute('disabled')).toBe(true);
+  });
+
   test('the phone variant keeps a 44px target', () => {
     render(h(SessionListNotice, { touch: true, onRetry: () => {} }), container);
     expect(container.querySelector('button')!.className).toContain('h-11');

@@ -49,6 +49,7 @@ function state(): ToolbarState {
     onZoomOut: noop,
     onSaveAs: noop,
     canReload: false,
+    refreshing: false,
     reloadDiscardsEdits: false,
     onReload: noop,
     copyLabel: 'Copy content',

@@ -63,6 +63,12 @@ export interface UseFileEditorResult {
   onChange: (next: string) => void;
   isLoading: boolean;
   /**
+   * A re-read of a file already on screen is in flight — the manual
+   * "Reload from disk" or a workspace refresh. False for the first load, whose
+   * read `isLoading` already reports.
+   */
+  isReading: boolean;
+  /**
    * The current file's bytes have arrived (or it is an image / carries inline
    * content). Distinguishes "the buffer is empty" from "the buffer is not read
    * yet" — `isLoading` cannot, because it starts `false` on the first render and

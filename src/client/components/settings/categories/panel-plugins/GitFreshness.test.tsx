@@ -218,6 +218,42 @@ describe('PluginToolbar', () => {
   });
 });
 
+describe('PluginToolbar registry refresh', () => {
+  test('the Refresh glyph spins until the registry read lands', async () => {
+    let release: () => void = () => {};
+    const pending = new Promise<void>((resolve) => { release = resolve; });
+    const el = mount(
+      h(PluginToolbar, {
+        autoUpdate: false,
+        busy: null,
+        gitCount: 0,
+        updateCount: 0,
+        onSetAutoUpdate: async () => true,
+        onCheckUpdates: async () => true,
+        onUpdateAll: async () => true,
+        onRefresh: () => pending,
+      }),
+    );
+    const button = Array.from(el.querySelectorAll('button')).find(
+      (candidate) => candidate.textContent?.trim() === 'Refresh',
+    )!;
+    const iconClass = () => button.querySelector('svg')?.getAttribute('class') ?? '';
+    expect(iconClass()).not.toContain('animate-spin');
+
+    act(() => { button.click(); });
+    // The one action here with no `busy` label still says it is working.
+    expect(iconClass()).toContain('animate-spin');
+    expect(button.hasAttribute('disabled')).toBe(true);
+
+    await act(async () => {
+      release();
+      await pending;
+    });
+    expect(iconClass()).not.toContain('animate-spin');
+    expect(button.hasAttribute('disabled')).toBe(false);
+  });
+});
+
 describe('SyncBlockedNotice', () => {
   test('renders nothing when no plugin is blocked', () => {
     const el = mount(h(SyncBlockedNotice, { blocked: {}, busy: null, onForceSync: async () => true }));

@@ -74,6 +74,9 @@ describe('useFileEditor revalidation', () => {
 
     await editor.mount();
     expect(editor.mounted?.isLoading).toBe(true);
+    // The reload glyph is about RE-reads; the opening read is already reported
+    // by `isLoading`, so both must not spin it.
+    expect(editor.mounted?.isReading).toBe(false);
     expect(editor.mounted?.loaded).toBe(false);
 
     release();
@@ -81,6 +84,33 @@ describe('useFileEditor revalidation', () => {
 
     expect(editor.mounted?.loaded).toBe(true);
     expect(editor.mounted?.content).toBe(DISK);
+  });
+
+  // The manual "Reload from disk" re-reads content that is already on screen,
+  // where `isLoading` deliberately stays false (a spinner over live content is
+  // the bug it prevents) — so the toolbar's reload glyph had nothing to spin
+  // for. `isReading` is that signal, and only for a re-read.
+  test('a re-read reports isReading and never isLoading', async () => {
+    const state = freshState();
+    stubFetch(state);
+    await editor.mount();
+    expect(editor.mounted?.isReading).toBe(false);
+
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+      await gate;
+      return realFetch(input, init);
+    }) as typeof fetch;
+
+    await editor.run(() => editor.mounted?.reset());
+    expect(editor.mounted?.isReading).toBe(true);
+    expect(editor.mounted?.isLoading).toBe(false);
+
+    release();
+    await editor.settle();
+    expect(editor.mounted?.isReading).toBe(false);
   });
 
   // A textarea's API value drops every CR, so a CRLF file reaches the buffer as

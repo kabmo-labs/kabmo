@@ -101,7 +101,7 @@ export function ClassicSidebarView({
       />
 
       {failed ? (
-        <SessionListNotice onRetry={onRefresh} />
+        <SessionListNotice onRetry={onRefresh} refreshing={refreshing} />
       ) : initializing ? (
         <SessionListSkeleton />
       ) : (

@@ -112,7 +112,7 @@ export function ModernSidebarView({
 
       <div className="mt-1 flex-1 scrollbar-overlay-container px-2 pb-3">
         {failed ? (
-          <SessionListNotice touch={touch} onRetry={onRefresh} />
+          <SessionListNotice touch={touch} onRetry={onRefresh} refreshing={refreshing} />
         ) : initializing ? (
           <ModernSidebarSkeleton touch={touch} />
         ) : visible.length === 0 ? (

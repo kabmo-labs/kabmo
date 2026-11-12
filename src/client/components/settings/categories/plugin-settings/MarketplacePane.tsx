@@ -116,75 +116,78 @@ export function PluginMarketplacePane({
           </p>
         ) : (
           <div className="rounded-lg border border-ink/10 divide-y divide-ink/5">
-            {marketplaces.map((marketplace) => (
-              <div key={marketplace.name} className="flex items-center gap-3 px-3 py-2.5">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-medium text-ink truncate">{marketplace.name}</span>
-                    <span className="text-[10px] font-mono uppercase text-ink/45">{marketplace.sourceType}</span>
+            {marketplaces.map((marketplace) => {
+              const updating = busy === `Updating ${marketplace.name}`;
+              return (
+                <div key={marketplace.name} className="flex items-center gap-3 px-3 py-2.5">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-medium text-ink truncate">{marketplace.name}</span>
+                      <span className="text-[10px] font-mono uppercase text-ink/45">{marketplace.sourceType}</span>
+                    </div>
+                    <p className="text-[11px] font-mono text-ink/50 truncate">{marketplace.sourceUri}</p>
+                    <p className="text-[10px] text-ink/45">
+                      {marketplace.error ? (
+                        <span className="text-error">{marketplace.error}</span>
+                      ) : (
+                        `${marketplace.pluginCount ?? 0} plugins · updated ${formatDate(marketplace.updatedAt)}`
+                      )}
+                    </p>
                   </div>
-                  <p className="text-[11px] font-mono text-ink/50 truncate">{marketplace.sourceUri}</p>
-                  <p className="text-[10px] text-ink/45">
-                    {marketplace.error ? (
-                      <span className="text-error">{marketplace.error}</span>
-                    ) : (
-                      `${marketplace.pluginCount ?? 0} plugins · updated ${formatDate(marketplace.updatedAt)}`
-                    )}
-                  </p>
-                </div>
-                <div className="flex items-center gap-1.5 flex-shrink-0">
-                  <button
-                    type="button"
-                    disabled={isBusy}
-                    onClick={() =>
-                      void run(`Updating ${marketplace.name}`, {
-                        type: 'update_marketplace',
-                        name: marketplace.name,
-                      })
-                    }
-                    title="Re-fetch this catalog"
-                    className="p-1.5 rounded-lg border border-ink/20 text-ink/60 hover:text-ink hover:border-ink/40 transition-colors cursor-pointer disabled:opacity-40"
-                  >
-                    <RefreshCw size={13} />
-                  </button>
-                  {confirmingRemove === marketplace.name ? (
-                    <>
-                      <button
-                        type="button"
-                        disabled={isBusy}
-                        onClick={() => {
-                          void run(`Removing ${marketplace.name}`, {
-                            type: 'remove_marketplace',
-                            name: marketplace.name,
-                          });
-                          setConfirmingRemove(null);
-                        }}
-                        className="px-2 py-1 rounded-lg border border-error text-error text-[11px] font-medium hover:bg-error/5 transition-colors cursor-pointer disabled:opacity-40"
-                      >
-                        Confirm
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setConfirmingRemove(null)}
-                        className="px-1.5 py-1 rounded-lg text-[11px] text-ink/60 hover:text-ink cursor-pointer"
-                      >
-                        Cancel
-                      </button>
-                    </>
-                  ) : (
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
                     <button
                       type="button"
                       disabled={isBusy}
-                      onClick={() => setConfirmingRemove(marketplace.name)}
-                      title="Remove this marketplace (installed plugins stay)"
-                      className="p-1.5 rounded-lg border border-ink/20 text-ink/60 hover:border-error hover:text-error transition-colors cursor-pointer disabled:opacity-40"
+                      onClick={() =>
+                        void run(`Updating ${marketplace.name}`, {
+                          type: 'update_marketplace',
+                          name: marketplace.name,
+                        })
+                      }
+                      title="Re-fetch this catalog"
+                      className="p-1.5 rounded-lg border border-ink/20 text-ink/60 hover:text-ink hover:border-ink/40 transition-colors cursor-pointer disabled:opacity-40"
                     >
-                      <Trash2 size={13} />
+                      <RefreshCw size={13} className={updating ? 'animate-spin' : undefined} aria-hidden="true" />
                     </button>
-                  )}
+                    {confirmingRemove === marketplace.name ? (
+                      <>
+                        <button
+                          type="button"
+                          disabled={isBusy}
+                          onClick={() => {
+                            void run(`Removing ${marketplace.name}`, {
+                              type: 'remove_marketplace',
+                              name: marketplace.name,
+                            });
+                            setConfirmingRemove(null);
+                          }}
+                          className="px-2 py-1 rounded-lg border border-error text-error text-[11px] font-medium hover:bg-error/5 transition-colors cursor-pointer disabled:opacity-40"
+                        >
+                          Confirm
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmingRemove(null)}
+                          className="px-1.5 py-1 rounded-lg text-[11px] text-ink/60 hover:text-ink cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={isBusy}
+                        onClick={() => setConfirmingRemove(marketplace.name)}
+                        title="Remove this marketplace (installed plugins stay)"
+                        className="p-1.5 rounded-lg border border-ink/20 text-ink/60 hover:border-error hover:text-error transition-colors cursor-pointer disabled:opacity-40"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>

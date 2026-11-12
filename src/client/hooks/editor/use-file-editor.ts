@@ -140,7 +140,7 @@ export function useFileEditor(
    * The read path lives in its own hook — see `use-file-read.ts` for the two
    * flags it reports and why the kind refusal is separate from a failed read.
    */
-  const { isLoading, loadError, unsupported } = useFileRead({
+  const { isLoading, isReading, loadError, unsupported } = useFileRead({
     target,
     key,
     isBinaryViewer,
@@ -342,6 +342,7 @@ export function useFileEditor(
     content,
     onChange,
     isLoading,
+    isReading,
     // A byte viewer has no buffer to wait for, and inline content is already in
     // hand; otherwise the key's entry exists only once the read resolved.
     loaded: target ? isBinaryViewer || target.content !== undefined || contents[key] !== undefined : false,

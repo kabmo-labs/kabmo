@@ -63,6 +63,8 @@ export interface ToolbarState {
   isMaximized: boolean;
   saveDisabled: boolean;
   canReload: boolean;
+  /** A re-read is in flight, so the Reload glyph spins while it lands. */
+  refreshing: boolean;
   /** The buffer has edits, so Reload discards them — the title says so. */
   reloadDiscardsEdits: boolean;
   saveButton: ComponentChildren;
@@ -192,7 +194,8 @@ export function buildEditorClusters(state: ToolbarState): ToolbarCluster[] {
         <button
           type="button"
           onClick={state.onReload}
-          disabled={!state.canReload}
+          disabled={!state.canReload || state.refreshing}
+          aria-busy={state.refreshing}
           className={`${ACTION_CLASS} hover:bg-ink/5 hover:text-ink`}
           title={
             !state.canReload
@@ -203,7 +206,7 @@ export function buildEditorClusters(state: ToolbarState): ToolbarCluster[] {
           }
           aria-label="Reload from disk"
         >
-          <RefreshCw size={14} />
+          <RefreshCw size={14} className={state.refreshing ? 'animate-spin' : undefined} />
         </button>
       ),
     });
