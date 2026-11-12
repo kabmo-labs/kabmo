@@ -25,14 +25,55 @@
  * ranges `nerd-symbols.css` declares in its `unicode-range`, and the script
  * fails if the built font does not actually cover them — a subset that silently
  * dropped a range would render tofu with no error anywhere.
+ *
+ * The powerline separators (U+E0B0-E0B7) are then stretched to the terminal's
+ * CELL BOX. Upstream draws them one em tall, but the terminal's cell is 15 px
+ * at a 12 px font (the text face's ink plus the block padding in
+ * `terminal-panel/fonts.ts`), so a separator ended 1.5 px above and below the
+ * coloured run it terminates — the rounded end of a prompt segment read as a
+ * small semicircle floating inside a taller rectangle. A real Nerd Font
+ * installed on the machine draws them to its own line box (~1.2 em) and looks
+ * right, which is why this only showed on a phone, where the bundled face is
+ * the one that renders. The transform maps each glyph's ink to the cell box
+ * measured from the same constants the renderer uses; `nerd-symbols.test.ts`
+ * pins the result.
  */
 
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const target = join(root, 'src/shared/lib/fonts/symbols-nerd-font-mono.woff2');
+const subsetTarget = `${target}.subset.woff2`;
+
+/**
+ * The cell box the separators must fill, in CSS px.
+ *
+ * These are the numbers `measureTerminalCell` produces for the bundled text
+ * face at `TERMINAL_FONT_SIZE` (12 px Fira Code): ink ascent 8.26 + descent
+ * 2.54 + 2.5 px above + 1 px below = 15 px, baseline `round(8.26 + 2.5)` = 11.
+ * They are stated here because this script runs outside the browser and cannot
+ * measure the text face; the test asserts the font against the same box.
+ */
+const FONT_SIZE_PX = 12;
+const CELL_HEIGHT_PX = 15;
+const BASELINE_PX = 11;
+const CELL_WIDTH_PX = 8;
+
+/**
+ * The cell the Nerd Fonts separators are DRAWN for: the base font's advance,
+ * 0.6 em (Fira Code). Upstream keeps a 1 em advance in the Mono variant but
+ * draws the outline inside the first 0.6 em, so a right-aligned glyph (a
+ * segment's start cap) sits at 0.4-1.0 em — past the terminal's 0.667 em cell,
+ * where it is clipped to a sliver. Mapping the design cell onto the real cell
+ * fixes the position; the width is left at the design ratio, which is what a
+ * real Nerd Font does in the same cell.
+ */
+const DESIGN_CELL_EM = 0.6;
+
+/** The powerline separators and half-circles, which must fill the cell. */
+const POWERLINE_RANGE = 'U+E0B0-E0B7';
 
 /** Ranges the stylesheet declares; the build must cover every one. */
 const RANGES = [
@@ -68,12 +109,75 @@ const subset = Bun.spawnSync([
   '--layout-features=',
   '--no-hinting',
   '--desubroutinize',
-  `--output-file=${target}`,
+  `--output-file=${subsetTarget}`,
 ]);
 
 if (subset.exitCode !== 0) {
   console.error(subset.stderr.toString().trim() || `pyftsubset exited ${subset.exitCode}`);
   console.error('\nIs fonttools installed?  python3 -m pip install fonttools brotli');
+  process.exit(1);
+}
+
+// Stretch the powerline separators to the cell box. The transform reads each
+// glyph's own ink bounds and maps them onto the box, so an upstream redraw of
+// the separators still lands on the cell instead of on a hard-coded scale.
+const scale = Bun.spawnSync([
+  'python3',
+  '-c',
+  `
+import sys
+from fontTools.ttLib import TTFont
+from fontTools.pens.boundsPen import BoundsPen
+from fontTools.pens.transformPen import TransformPen
+from fontTools.pens.ttGlyphPen import TTGlyphPen
+
+src, dst = sys.argv[1], sys.argv[2]
+font_size_px = ${FONT_SIZE_PX}
+cell_height_px = ${CELL_HEIGHT_PX}
+cell_width_px = ${CELL_WIDTH_PX}
+baseline_px = ${BASELINE_PX}
+design_cell_em = ${DESIGN_CELL_EM}
+start, _, end = ${JSON.stringify(POWERLINE_RANGE)}.removeprefix('U+').partition('-')
+powerline = range(int(start, 16), int(end, 16) + 1)
+
+font = TTFont(src)
+upm = font['head'].unitsPerEm
+units_per_px = upm / font_size_px
+top = baseline_px * units_per_px
+bottom = (baseline_px - cell_height_px) * units_per_px
+design_cell = design_cell_em * upm
+cell_width = cell_width_px * units_per_px
+scale_x = cell_width / design_cell
+# A right-aligned glyph (a segment's start cap) is drawn at 0.4-1.0 em in the
+# 1 em advance; move it onto the design cell before scaling.
+right_shift = -(upm - design_cell)
+glyf = font['glyf']
+cmap = font.getBestCmap()
+for cp in powerline:
+    name = cmap.get(cp)
+    if name is None:
+        continue
+    pen = BoundsPen(None)
+    glyf[name].draw(pen, glyf)
+    if pen.bounds is None:
+        continue
+    x0, y0, x1, y1 = pen.bounds
+    shift_x = right_shift if x1 > 0.9 * upm else 0.0
+    scale_y = (top - bottom) / (y1 - y0)
+    shift_y = bottom - y0 * scale_y
+    out = TTGlyphPen(glyf)
+    glyf[name].draw(TransformPen(out, (scale_x, 0, 0, scale_y, shift_x * scale_x, shift_y)), glyf)
+    glyf[name] = out.glyph()
+font.save(dst)
+`,
+  subsetTarget,
+  target,
+]);
+
+rmSync(subsetTarget, { force: true });
+
+if (scale.exitCode !== 0) {
+  console.error(scale.stderr.toString().trim() || `powerline scale exited ${scale.exitCode}`);
   process.exit(1);
 }
 

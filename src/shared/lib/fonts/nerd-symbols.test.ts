@@ -145,6 +145,92 @@ print(json.dumps({ "codepoints": len(cmap), "uncovered": uncovered, "missing": [
   });
 
   /**
+   * The powerline separators must fill the terminal's CELL BOX, not one em.
+   *
+   * Upstream draws them one em tall, but the cell is 15 px at a 12 px font
+   * (the text face's ink plus the block padding in `terminal-panel/fonts.ts`),
+   * so a separator ended 1.5 px above and below the coloured run it terminates:
+   * the rounded end of a prompt segment read as a small semicircle floating
+   * inside a taller rectangle. A machine with a real Nerd Font never saw it —
+   * that face draws to its own ~1.2 em line box — so the defect only appeared
+   * on a phone, where the bundled face is the one that renders.
+   *
+   * The box is stated here rather than imported: `measureTerminalCell` needs a
+   * canvas, and this test runs in Bun. The numbers are the ones that function
+   * produces for 12 px Fira Code, and `scripts/nerd-symbols-font.mjs` maps the
+   * glyphs onto the same box.
+   */
+  test('the powerline separators fill the terminal cell box', () => {
+    const available = Bun.spawnSync({
+      cmd: ['python3', '-c', 'import fontTools, brotli'],
+      timeout: 5_000,
+    });
+    if (available.exitCode !== 0) {
+      console.warn('skipping powerline cell-box check: python3 fonttools/brotli unavailable');
+      return;
+    }
+
+    const probe = Bun.spawnSync([
+      'python3',
+      '-c',
+      `
+import json
+from fontTools.ttLib import TTFont
+from fontTools.pens.boundsPen import BoundsPen
+
+font = TTFont(${JSON.stringify(WOFF2)})
+upm = font['head'].unitsPerEm
+units_per_px = upm / 12.0
+top = 11 * units_per_px
+bottom = (11 - 15) * units_per_px
+cell_width = 8 * units_per_px
+glyf = font['glyf']
+cmap = font.getBestCmap()
+bounds = {}
+for cp in range(0xE0B0, 0xE0B8):
+    name = cmap.get(cp)
+    if name is None:
+        continue
+    pen = BoundsPen(None)
+    glyf[name].draw(pen, glyf)
+    bounds[hex(cp)] = pen.bounds
+print(json.dumps({ 'top': top, 'bottom': bottom, 'cellWidth': cell_width, 'upm': upm, 'bounds': bounds }))
+`,
+    ]);
+
+    expect(probe.stderr.toString()).toBe('');
+    const result = JSON.parse(probe.stdout.toString()) as {
+      top: number;
+      bottom: number;
+      cellWidth: number;
+      upm: number;
+      bounds: Record<string, [number, number, number, number]>;
+    };
+    // Every separator is present, and each one's ink spans the cell box.
+    expect(Object.keys(result.bounds).length).toBe(8);
+    const em = result.upm;
+    for (const [codepoint, bounds] of Object.entries(result.bounds)) {
+      expect({ codepoint, bottom: Math.round(bounds[1]) }).toEqual({
+        codepoint,
+        bottom: Math.round(result.bottom),
+      });
+      expect({ codepoint, top: Math.round(bounds[3]) }).toEqual({
+        codepoint,
+        top: Math.round(result.top),
+      });
+      // Horizontal: the ink must sit AT the cell's left edge, not 0.4 em into
+      // it. A right-aligned glyph left at its design position was clipped to a
+      // sliver on a phone — the front cap of the prompt line.
+      expect({ codepoint, left: bounds[0] < 0.15 * em }).toEqual({ codepoint, left: true });
+      expect({ codepoint, right: bounds[2] > 0.5 * em }).toEqual({ codepoint, right: true });
+      expect({ codepoint, right: bounds[2] < result.cellWidth + 0.15 * em }).toEqual({
+        codepoint,
+        right: true,
+      });
+    }
+  }, 20_000);
+
+  /**
    * The UI stack is the SECOND consumer of this face, and it was missing one.
    * omp heads a session title with a card icon — a PUA glyph
    * (`title.icons: nf+emoji`) that no Latin face contains — so a stack without
