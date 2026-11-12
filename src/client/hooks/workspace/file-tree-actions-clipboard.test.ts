@@ -32,7 +32,7 @@ describe('useFileActions clipboard', () => {
 
     await harness.step(() => harness.actions()?.handleAction('cut'));
     expect(harness.clipboard()?.calls).toEqual([
-      { action: 'cut', target: { path: 'src/a.ts', name: 'a.ts', kind: 'file' } },
+      { action: 'cut', targets: [{ path: 'src/a.ts', name: 'a.ts', kind: 'file' }] },
     ]);
 
     await harness.step(() => harness.actions()?.handleAction('copy'));
@@ -53,7 +53,7 @@ describe('useFileActions clipboard', () => {
     // so the two entry points — a row's menu and the background's — cannot
     // drift on what a duplicate does.
     expect(harness.clipboard()?.calls).toEqual([
-      { action: 'duplicate', target: { path: 'src/a.ts', name: 'a.ts', kind: 'file' } },
+      { action: 'duplicate', targets: [{ path: 'src/a.ts', name: 'a.ts', kind: 'file' }] },
     ]);
     expect(srv.requests).toEqual([]);
   });
@@ -68,7 +68,7 @@ describe('useFileActions clipboard', () => {
     // The row delegates: the panel's hook is what knows the clipboard's source
     // path, and sending the row's own path would move a file onto itself.
     expect(harness.clipboard()?.calls).toEqual([
-      { action: 'paste', target: { path: 'dest', name: 'dest', kind: 'folder' } },
+      { action: 'paste', targets: [{ path: 'dest', name: 'dest', kind: 'folder' }] },
     ]);
     expect(srv.requests).toEqual([]);
   });
@@ -82,7 +82,7 @@ describe('useFileActions clipboard', () => {
     await harness.step(() => harness.actions()?.handleAction('copy'));
     expect(harness.actions()?.pasteLabel).toBeNull();
 
-    const clip = { scope: '/root\u0000.', path: 'a.ts', name: 'a.ts', kind: 'file' as const, mode: 'copy' as const };
+    const clip = { scope: '/root\u0000.', entries: [{ path: 'a.ts', name: 'a.ts', kind: 'file' as const }], mode: 'copy' as const };
     await harness.mount({ path: 'dest', name: 'dest' }, { clipboard: { clip } });
     expect(harness.actions()?.pasteLabel).toBe('Paste a.ts');
 
@@ -100,7 +100,7 @@ describe('useFileActions clipboard', () => {
     await harness.step(() => harness.actions()?.handleAction('cut'));
 
     expect(harness.clipboard()?.calls).toEqual([
-      { action: 'cut', target: { path: 'src', name: 'src', kind: 'folder' } },
+      { action: 'cut', targets: [{ path: 'src', name: 'src', kind: 'folder' }] },
     ]);
   });
 });

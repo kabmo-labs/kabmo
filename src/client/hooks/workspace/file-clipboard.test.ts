@@ -165,7 +165,7 @@ describe('useFileClipboard', () => {
     await mountHook();
 
     await act(async () => {
-      mounted?.cut({ path: 'src/a.ts', name: 'a.ts', kind: 'file' });
+      mounted?.cut([{ path: 'src/a.ts', name: 'a.ts', kind: 'file' }]);
     });
     expect(mounted?.clip?.mode).toBe('cut');
 
@@ -182,7 +182,7 @@ describe('useFileClipboard', () => {
     await mountHook();
 
     await act(async () => {
-      mounted?.copy({ path: 'src/a.ts', name: 'a.ts', kind: 'file' });
+      mounted?.copy([{ path: 'src/a.ts', name: 'a.ts', kind: 'file' }]);
     });
     await act(async () => {
       mounted?.paste({ path: 'dest', name: 'dest', kind: 'folder' });
@@ -194,13 +194,13 @@ describe('useFileClipboard', () => {
     await settle();
 
     expect(requests.map((request) => request.mode)).toEqual(['copy', 'copy']);
-    expect(mounted?.clip?.path).toBe('src/a.ts');
+    expect(mounted?.clip?.entries[0]?.path).toBe('src/a.ts');
   });
 
   test('a paste of an entry from another listing is refused with the reason', async () => {
     await mountHook();
     await act(async () => {
-      mounted?.copy({ path: 'src/a.ts', name: 'a.ts', kind: 'file' });
+      mounted?.copy([{ path: 'src/a.ts', name: 'a.ts', kind: 'file' }]);
     });
     // The scope is part of the entry: the same relative path in another
     // workspace names a different file.

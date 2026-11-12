@@ -21,6 +21,7 @@ import type { h as PreactH, render as PreactRender } from 'preact';
 import type { act as PreactAct } from 'preact/test-utils';
 import type { FileActions, useFileActions as UseFileActionsHook } from '@/client/hooks/workspace/file-tree-actions';
 import { createStubClipboard, type StubClipboard, type StubClipboardOptions } from '@/test-support/file-clipboard.test-util';
+import { createStubArchive } from '@/test-support/file-archive.test-util';
 
 /** What the stubbed endpoint was asked, and what it answers. */
 export interface FileActionsServer {
@@ -140,6 +141,9 @@ export function createFileActionsHarness(): FileActionsHarness {
           onOpenFile: (target) => opened.push({ path: target.path, name: target.name }),
           onActionComplete: () => refreshes++,
           clipboard,
+          selection: [],
+          selected: false,
+          archive: createStubArchive(),
           isFolder: file.path === file.name,
         });
         return null;

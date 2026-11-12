@@ -113,6 +113,32 @@ describe('fs paste', () => {
     expect(fs.readFileSync(path.join(DIR, 'a.ts'), 'utf8')).toBe('A');
   });
 
+  test('a multi-entry cut moves every source in one request', async () => {
+    reset({
+      'tmp-fs-transfer-probe/a.ts': 'A',
+      'tmp-fs-transfer-probe/b.ts': 'B',
+      'tmp-fs-transfer-probe/dest/.keep': '',
+    });
+
+    const form = new FormData();
+    for (const [key, value] of Object.entries({
+      root: process.cwd(),
+      actionType: 'paste',
+      mode: 'cut',
+      targetPath: 'tmp-fs-transfer-probe/dest',
+      targetKind: 'folder',
+    })) form.append(key, value);
+    form.append('sourcePath', 'tmp-fs-transfer-probe/a.ts');
+    form.append('sourcePath', 'tmp-fs-transfer-probe/b.ts');
+    const res = await action({ request: new Request('http://localhost/api/fs/action', { method: 'POST', body: form }) } as never);
+    const body = (await res.json()) as { success?: boolean; paths?: string[]; failures?: unknown[] };
+
+    expect(res.status).toBe(200);
+    expect(body.paths?.sort()).toEqual(['tmp-fs-transfer-probe/dest/a.ts', 'tmp-fs-transfer-probe/dest/b.ts']);
+    expect(fs.existsSync(path.join(DIR, 'a.ts'))).toBe(false);
+    expect(fs.readFileSync(path.join(DIR, 'dest/b.ts'), 'utf8')).toBe('B');
+  });
+
   test('refuses a folder pasted into its own subtree', async () => {
     reset({ 'tmp-fs-transfer-probe/src/a.ts': 'A', 'tmp-fs-transfer-probe/src/deep/.keep': '' });
 

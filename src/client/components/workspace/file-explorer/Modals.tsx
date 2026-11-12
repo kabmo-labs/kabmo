@@ -85,17 +85,22 @@ interface DeleteModalProps {
   /** The row's label, when it differs from the path (a collapsed chain). */
   displayName?: string;
   isFolder: boolean;
+  /** How many entries the confirmation removes; 1 for the row's own dialog. */
+  count?: number;
   isLoading: boolean;
   onCancel: () => void;
   onConfirm: () => void;
 }
 
-export function FileDeleteModal({ fileName, displayName, isFolder, isLoading, onCancel, onConfirm }: DeleteModalProps) {
+export function FileDeleteModal({ fileName, displayName, isFolder, count = 1, isLoading, onCancel, onConfirm }: DeleteModalProps) {
+  const multiple = count > 1;
   return createPortal(
     <div className="fixed inset-0 modal-scrim z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
       <div className="glass-overlay bg-paper rounded shadow-xl p-4 w-full max-w-sm border border-ink/10 font-sans">
-        <h3 className="font-semibold text-ink mb-2 text-sm">Delete {isFolder ? 'Folder' : 'File'}</h3>
-        <p className="text-xs text-ink/70 mb-4">Are you sure you want to delete <span className="font-mono bg-canvas px-1 rounded">{fileName}</span>? This action cannot be undone.</p>
+        <h3 className="font-semibold text-ink mb-2 text-sm">Delete {multiple ? `${count} Items` : isFolder ? 'Folder' : 'File'}</h3>
+        <p className="text-xs text-ink/70 mb-4">
+          Are you sure you want to delete {multiple ? <>the {count} selected entries</> : <span className="font-mono bg-canvas px-1 rounded">{fileName}</span>}? This action cannot be undone.
+        </p>
         {/* A collapsed chain row is LABELLED `com/java/app/package` but its path
             is the deepest directory, and that is what gets deleted. Naming only
             the label would promise a removal of four directories and perform

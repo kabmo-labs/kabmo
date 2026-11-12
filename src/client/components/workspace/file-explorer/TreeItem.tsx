@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { TreeRowLabel } from '@/client/components/workspace/file-explorer/RowLabel';
 import { FileContextMenu } from '@/client/components/workspace/file-explorer/ContextMenu';
-import { FileCreateModal, FileDeleteModal, FileHistoryModal, FileRenameModal } from '@/client/components/workspace/file-explorer/Modals';
+import { TreeItemModals } from '@/client/components/workspace/file-explorer/TreeItemModals';
 import { getGitStatusInfo, type FolderGitStatusInfo } from '@/shared/lib/fs/git-status';
 import { isChainRow } from '@/shared/lib/fs/folder-chain';
 import { useFileActions } from '@/client/hooks/workspace/file-tree-actions';
@@ -9,6 +9,8 @@ import { useFileRowDrag } from '@/client/hooks/workspace/file-row-drag';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 import { useLongPress } from '@/client/hooks/ui/long-press';
 import type { FileClipboard, ClipboardTarget } from '@/client/hooks/workspace/file-clipboard';
+import type { FileArchive } from '@/client/hooks/workspace/file-archive';
+import type { FileSelection } from '@/client/hooks/workspace/file-selection';
 import type { FileTreeDragProps } from '@/client/components/workspace/file-explorer/drag-props';
 import type { GitChange } from '@/shared/types/git';
 
@@ -32,6 +34,12 @@ interface FileTreeItemProps extends FileTreeDragProps {
   gitFolderMap?: Map<string, FolderGitStatusInfo>;
   /** The panel's clipboard — one instance for the whole tree, passed down. */
   clipboard: FileClipboard;
+  /** The panel's archive dialogs — one instance for the whole tree. */
+  archive: FileArchive;
+  /** The panel's selection state: which rows are marked, and what a click means. */
+  selection: FileSelection;
+  /** Every marked row, as a target a batch verb can act on. */
+  selectionTargets: readonly ClipboardTarget[];
   /**
    * True on a device typed into with a finger. A row is a drag SOURCE, and on
    * touch a long press starts a native drag of the whole panel — the reported
@@ -78,6 +86,9 @@ export function FileTreeItem({
   gitFileMap,
   gitFolderMap,
   clipboard,
+  archive,
+  selection,
+  selectionTargets,
   dragging,
   onDragStart,
   onDragEnd,
@@ -139,8 +150,12 @@ export function FileTreeItem({
     kind: isFolder ? 'folder' : 'file',
   };
 
+  const isSelected = selection.selected.has(file.path);
   const actions = useFileActions({
     file: { path: file.path, name: file.name, basePath, rootPath, repo },
+    selection: selectionTargets,
+    selected: isSelected,
+    archive,
     diff: { staged: gitChange?.staged || (gitChange?.status ? gitChange.status[0] !== ' ' && gitChange.status[0] !== '?' : false), status: gitStatusInfo?.charStatus },
     onOpenFile,
     onActionComplete,
@@ -168,6 +183,16 @@ export function FileTreeItem({
   const handleToggle = (e: globalThis.MouseEvent) => {
     e.stopPropagation();
     if (longPress.consume()) return;
+    // A modified click is a SELECTION gesture, never an open: shift extends a
+    // range from the anchor and meta/ctrl toggles one row. A plain click marks
+    // the row AND does the row's own job, because this panel opens files — the
+    // mark is what makes Cut/Copy/Compress act on more than the clicked row.
+    const gesture = selection.gestureOf(e);
+    if (gesture !== 'plain') {
+      selection.applyGesture(gesture, file.path);
+      return;
+    }
+    selection.applyGesture('plain', file.path);
     if (isFolder) {
       const next = !actualIsOpen;
       setIsOpen(next);
@@ -199,6 +224,10 @@ export function FileTreeItem({
   const handleContextMenu = (e: globalThis.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    // A right-click inside a marked set keeps that set: the menu is where a
+    // batch verb is reached, and marking must not be lost by asking for it. A
+    // right-click elsewhere selects just that row.
+    selection.ensureForContext(file.path);
     actions.openContextMenu(e.clientX, e.clientY);
   };
 
@@ -207,9 +236,9 @@ export function FileTreeItem({
   return (
     <div>
       <div
-        className={`flex items-center space-x-1.5 py-1 px-2 hover:bg-ink/5 cursor-pointer rounded group select-none ${
+        className={`flex items-center space-x-1.5 py-1 px-2 cursor-pointer rounded group select-none ${
           drag.isDragging ? 'opacity-40' : ''
-        } ${drag.isDropHovered ? 'bg-info/10 ring-1 ring-info/40 ring-inset' : ''}`}
+        } ${drag.isDropHovered ? 'bg-info/10 ring-1 ring-info/40 ring-inset' : isSelected ? 'bg-ink/[0.08] ring-1 ring-ink/20 ring-inset' : 'hover:bg-ink/5'}`}
         draggable={!touch}
         onClick={handleToggle}
         onContextMenu={handleContextMenu}
@@ -229,6 +258,7 @@ export function FileTreeItem({
           isFolder={isFolder}
           isOpen={actualIsOpen}
           ignored={isIgnored}
+          selected={isSelected}
           gitStatus={gitStatusInfo}
           folderStatus={folderStatus}
         />
@@ -257,6 +287,9 @@ export function FileTreeItem({
               gitFileMap={gitFileMap}
               gitFolderMap={gitFolderMap}
               clipboard={clipboard}
+              archive={archive}
+              selection={selection}
+              selectionTargets={selectionTargets}
               dragging={dragging}
               onDragStart={onDragStart}
               onDragEnd={onDragEnd}
@@ -280,56 +313,13 @@ export function FileTreeItem({
           chainLabel={actions.chainLabel}
           foldable={actions.foldable}
           busy={actions.busy}
+          selectionCount={actions.selectionCount}
+          isArchive={actions.isArchive}
           onAction={actions.handleAction}
         />
       )}
 
-      {mounted && actions.showCreateModal && (
-        <FileCreateModal
-          folderPath={file.path}
-          kind={actions.createKind}
-          value={actions.createName}
-          error={actions.createError}
-          isLoading={actions.busy}
-          onChange={actions.setCreateName}
-          onCancel={actions.closeCreate}
-          onSubmit={actions.submitCreate}
-        />
-      )}
-
-      {mounted && actions.showDeleteModal && (
-        <FileDeleteModal
-          fileName={file.path}
-          displayName={file.name}
-          isFolder={isFolder}
-          isLoading={actions.busy}
-          onCancel={actions.closeDelete}
-          onConfirm={actions.submitDelete}
-        />
-      )}
-
-      {mounted && actions.showRenameModal && (
-        <FileRenameModal
-          isFolder={isFolder}
-          renameValue={actions.renameValue}
-          originalPath={file.path}
-          displayName={isChainRow({ type: isFolder ? 'folder' : 'file', name: file.name }) ? file.name : undefined}
-          error={actions.renameError}
-          isLoading={actions.busy}
-          onChange={actions.setRenameValue}
-          onCancel={actions.closeRename}
-          onSubmit={actions.submitRename}
-        />
-      )}
-
-      {mounted && actions.showHistoryModal && (
-        <FileHistoryModal
-          filePath={file.path}
-          fetcherState={actions.fetcherState}
-          fetcherData={actions.fetcherData}
-          onClose={actions.closeHistory}
-        />
-      )}
+      {mounted && <TreeItemModals actions={actions} file={file} isFolder={isFolder} chainLabel={isChainRow({ type: isFolder ? 'folder' : 'file', name: file.name }) ? file.name : undefined} />}
     </div>
   );
 }

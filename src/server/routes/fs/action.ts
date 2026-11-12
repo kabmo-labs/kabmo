@@ -7,12 +7,14 @@ import { getDefaultFsRoot, isWithinRoot, resolveRoot, resolveWithinRoot } from '
 import { runShell } from '@/server/lib/fs/shell';
 import { revealInFileManager } from '@/server/lib/fs/reveal';
 import { duplicateEntry, nextDuplicateName, pasteEntry, toRelPath } from '@/server/lib/fs/transfer';
+import { runArchiveAction, runBatchDeleteAction } from '@/server/routes/fs/action-bulk';
 import { normalizeRelativePath } from '@/server/lib/fs/relative-path';
 import { isSinglePathSegment } from '@/server/lib/fs/path-segment';
 import { checkWriteConflict, parseBaseMtime, stableMtime } from '@/server/lib/fs/write-conflict';
 import { transferRefusal } from '@/shared/lib/fs/clipboard';
 import { toDiskText } from '@/shared/lib/code/line-endings';
 import { contentHash } from '@/shared/lib/fs/content-hash';
+import { DOCUMENT_MAX_FILE_BYTES } from '@/shared/lib/fs/file-kind';
 
 /** The two shapes a transfer action answers with, ready for `json`. */
 function transferResponse(outcome: { path?: string; error?: string; status?: number }) {
@@ -51,22 +53,54 @@ async function runDuplicateAction(options: { filePath: string; scopedRoot: strin
 async function runPasteAction(options: { formData: FormData; scopedRoot: string }) {
   const { formData, scopedRoot } = options;
   const mode = formData.get('mode') === 'cut' ? 'cut' : 'copy';
-  const sourceRel = ((formData.get('sourcePath') as string) ?? '').trim();
-  const sourcePath = resolveWithinRoot(scopedRoot, sourceRel);
-  if (!sourcePath) return json({ error: 'Invalid path' }, { status: 403 });
-  const sourceStat = await Bun.file(sourcePath).stat().catch(() => null);
-  if (!sourceStat) return json({ error: 'The entry on the clipboard no longer exists' }, { status: 404 });
+  // Repeated fields carry a whole selection; a single `sourcePath` from an older
+  // client is the same list of one.
+  const sourceRels = formData.getAll('sourcePath').map((value) => String(value).trim()).filter(Boolean);
+  if (sourceRels.length === 0) return json({ error: 'Nothing to paste' }, { status: 400 });
   const rawTarget = ((formData.get('targetPath') as string) ?? '').trim() || '.';
   const rawTargetKind = formData.get('targetKind') === 'folder' ? 'folder' : 'file';
   const targetDir = rawTargetKind === 'folder' ? rawTarget : path.dirname(rawTarget);
-  const refusal = transferRefusal(
-    { path: sourceRel, kind: sourceStat.isDirectory() ? 'folder' : 'file' },
-    targetDir,
-  );
-  if (refusal) return json({ error: refusal }, { status: 409 });
   const fullDir = resolveWithinRoot(scopedRoot, targetDir);
   if (!fullDir) return json({ error: 'Invalid path' }, { status: 403 });
-  return transferResponse(await pasteEntry({ scopedRoot, sourcePath, destinationDir: fullDir, mode }));
+
+  // VALIDATE the whole batch before moving anything: a refusal on the third
+  // entry must leave the first two where they were, or the answer says "no"
+  // while the tree has already changed.
+  const sources: { rel: string; full: string }[] = [];
+  const failures: { path: string; error: string }[] = [];
+  for (const sourceRel of sourceRels) {
+    const sourcePath = resolveWithinRoot(scopedRoot, sourceRel);
+    if (!sourcePath) return json({ error: 'Invalid path' }, { status: 403 });
+    const sourceStat = await Bun.file(sourcePath).stat().catch(() => null);
+    if (!sourceStat) {
+      failures.push({ path: sourceRel, error: 'The entry on the clipboard no longer exists' });
+      continue;
+    }
+    const refusal = transferRefusal(
+      { path: sourceRel, kind: sourceStat.isDirectory() ? 'folder' : 'file' },
+      targetDir,
+    );
+    if (refusal) return json({ error: refusal }, { status: 409 });
+    sources.push({ rel: sourceRel, full: sourcePath });
+  }
+
+  const paths: string[] = [];
+  for (const source of sources) {
+    const outcome = await pasteEntry({ scopedRoot, sourcePath: source.full, destinationDir: fullDir, mode });
+    if (outcome.error) failures.push({ path: source.rel, error: outcome.error });
+    else if (outcome.path) paths.push(outcome.path);
+  }
+
+  if (paths.length === 0 && failures.length > 0) {
+    // The single-entry answer keeps the status it always had, so a stale tab
+    // still reads "that entry is gone" rather than a generic 400.
+    const missing = failures.every((failure) => failure.error.includes('no longer exists'));
+    return json({ error: failures[0]!.error }, { status: missing ? 404 : 400 });
+  }
+  // One source answers the shape the panel has always read; a batch names the
+  // whole list so the reload after it can reveal what moved.
+  if (sourceRels.length === 1) return json({ success: true, path: paths[0] });
+  return json(failures.length > 0 ? { success: true, paths, failures } : { success: true, paths });
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -87,6 +121,16 @@ export async function action({ request }: ActionFunctionArgs) {
     }
     if (actionType === 'paste') {
       return await runPasteAction({ formData, scopedRoot });
+    }
+
+    // The archive verbs name their own paths (`path`/`paths`), so they are
+    // dispatched BEFORE the single-`path` resolution: a compress request has no
+    // `path` field at all, and resolving `undefined` is a crash, not a refusal.
+    if (actionType === 'extract' || actionType === 'compress') {
+      return await runArchiveAction({ actionType, formData, scopedRoot });
+    }
+    if (actionType === 'delete' && typeof formData.get('paths') === 'string') {
+      return await runBatchDeleteAction({ formData, scopedRoot });
     }
 
     const fullPath = resolveWithinRoot(scopedRoot, filePath);
@@ -137,6 +181,42 @@ export async function action({ request }: ActionFunctionArgs) {
         mtimeMs: written ? stableMtime(written.mtimeMs) : null,
         hash: await contentHash(content),
       });
+    } else if (actionType === 'saveBytes') {
+      // A workbook the grid edited: the bytes are the file, so they travel as a
+      // Blob rather than as a text field. `content` cannot carry them — a
+      // multipart text field is UTF-8 and normalizes line endings, which would
+      // corrupt a ZIP container.
+      const blob = formData.get('bytes');
+      if (!(blob instanceof Blob)) {
+        return json({ error: 'No file bytes' }, { status: 400 });
+      }
+      if (blob.size > DOCUMENT_MAX_FILE_BYTES) {
+        return json({ error: 'The edited file is larger than the editor writes.' }, { status: 413 });
+      }
+      const verdict = await checkWriteConflict(
+        fullPath,
+        parseBaseMtime(formData.get('baseMtime')),
+        async (target) => {
+          const stat = await Bun.file(target).stat().catch(() => null);
+          return stat && !stat.isDirectory() ? { mtimeMs: stat.mtimeMs } : null;
+        },
+      );
+      if (!verdict.write) {
+        return json(
+          {
+            error: 'This file changed on disk since it was opened.',
+            conflict: true,
+            mtimeMs: verdict.diskMtimeMs,
+          },
+          { status: 409 },
+        );
+      }
+      await fs.promises.mkdir(path.dirname(fullPath), { recursive: true });
+      await Bun.write(fullPath, blob);
+      const written = await Bun.file(fullPath).stat().catch(() => null);
+      // No content hash: the digest route hashes TEXT, and a workbook is not
+      // text. The mtime is what the next save's conflict base needs.
+      return json({ success: true, mtimeMs: written ? stableMtime(written.mtimeMs) : null, hash: null });
     } else if (actionType === 'saveAs') {
       // Write the buffer to a NEW path. The destination is `path` (a directory) plus
       // `name` (ONE segment), both resolved against this route's own scope — a

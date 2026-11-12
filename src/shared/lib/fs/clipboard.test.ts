@@ -15,6 +15,7 @@
 
 import { describe, expect, test } from 'bun:test';
 import {
+  clipboardLabel,
   dropRefusal,
   duplicateName,
   fsClipboardScope,
@@ -29,9 +30,7 @@ import {
 
 const clip = (over: Partial<FsClipboard> = {}): FsClipboard => ({
   scope: 'ws\u0000.',
-  path: 'src/a.ts',
-  name: 'a.ts',
-  kind: 'file',
+  entries: [{ path: 'src/a.ts', name: 'a.ts', kind: 'file' }],
   mode: 'copy',
   ...over,
 });
@@ -140,15 +139,26 @@ describe('pasteRefusal', () => {
 
   test('allows a paste of this listing’s entry and applies the folder rule', () => {
     expect(pasteRefusal(clip(), 'ws\u0000.', 'other')).toBeNull();
-    expect(pasteRefusal(clip({ path: 'src', kind: 'folder' }), 'ws\u0000.', 'src/sub')).toContain('itself');
+    expect(pasteRefusal(clip({ entries: [{ path: 'src', name: 'src', kind: 'folder' }] }), 'ws\u0000.', 'src/sub')).toContain('itself');
   });
 
   test('a CUT into its own folder is refused; a COPY into it is how a copy is made', () => {
     // The two modes differ here on purpose: copying a file into the directory
     // it already lives in is how `a copy.ts` is produced, while a cut there
     // would have nothing to do.
-    expect(pasteRefusal(clip({ path: 'src/a.ts', mode: 'cut' }), 'ws\u0000.', 'src')).toBe('Already in this folder');
-    expect(pasteRefusal(clip({ path: 'src/a.ts', mode: 'copy' }), 'ws\u0000.', 'src')).toBeNull();
+    expect(pasteRefusal(clip({ mode: 'cut' }), 'ws\u0000.', 'src')).toBe('Already in this folder');
+    expect(pasteRefusal(clip({ mode: 'copy' }), 'ws\u0000.', 'src')).toBeNull();
+  });
+});
+
+describe('clipboardLabel', () => {
+  test('names the one entry, or counts a selection', () => {
+    expect(clipboardLabel(null)).toBeNull();
+    expect(clipboardLabel(clip())).toBe('a.ts');
+    expect(clipboardLabel(clip({ entries: [
+      { path: 'a.ts', name: 'a.ts', kind: 'file' },
+      { path: 'b.ts', name: 'b.ts', kind: 'file' },
+    ] }))).toBe('2 items');
   });
 });
 
@@ -165,10 +175,23 @@ describe('readFsClipboard', () => {
     expect(readFsClipboard(clip())).toEqual(clip());
   });
 
+  test('accepts a multi-entry selection', () => {
+    const multi = clip({ entries: [
+      { path: 'src/a.ts', name: 'a.ts', kind: 'file' },
+      { path: 'src/deep', name: 'deep', kind: 'folder' },
+    ] });
+    expect(readFsClipboard(multi)).toEqual(multi);
+  });
+
+  test('migrates the single-entry shape an older tab wrote', () => {
+    const legacy = { scope: 'ws\u0000.', path: 'src/a.ts', name: 'a.ts', kind: 'file', mode: 'copy' };
+    expect(readFsClipboard(legacy)).toEqual(clip());
+  });
+
   test('rejects a path that names no child of the listing root', () => {
     // Every one of these would resolve outside the folder the entry claims.
     for (const path of ['.', '', '..', 'a/../b', '/etc/passwd', 'a//b']) {
-      expect(readFsClipboard(clip({ path }))).toBeNull();
+      expect(readFsClipboard(clip({ entries: [{ path, name: 'x', kind: 'file' }] }))).toBeNull();
     }
   });
 
@@ -178,5 +201,7 @@ describe('readFsClipboard', () => {
     expect(readFsClipboard({ path: 'a.ts', name: 'a.ts', scope: 's', kind: 'file' })).toBeNull();
     expect(readFsClipboard({ path: 'a.ts', name: 'a.ts', scope: 's', mode: 'copy' })).toBeNull();
     expect(readFsClipboard({ path: 'a.ts', name: 'a.ts', scope: 's', kind: 'file', mode: 'move' })).toBeNull();
+    expect(readFsClipboard({ scope: 's', entries: [], mode: 'copy' })).toBeNull();
+    expect(readFsClipboard({ scope: 's', entries: [{ path: 'a.ts', name: 'a.ts', kind: 'link' }], mode: 'copy' })).toBeNull();
   });
 });

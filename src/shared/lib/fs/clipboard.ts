@@ -20,15 +20,28 @@
  * user copied somewhere else.
  */
 
-/** What a Cut or a Copy put on the clipboard. */
-export interface FsClipboard {
-  /** The `\0`-joined `root\0repo` the path is relative to. */
-  scope: string;
+/** One entry a Cut or a Copy put on the clipboard. */
+export interface FsClipboardEntry {
   /** Path relative to the listed root; never `.` — the root itself cannot be moved. */
   path: string;
   name: string;
   kind: 'file' | 'folder';
+}
+
+/** What a Cut or a Copy put on the clipboard: one entry, or a whole selection. */
+export interface FsClipboard {
+  /** The `\0`-joined `root\0repo` the paths are relative to. */
+  scope: string;
+  /** The entries in the order they were selected; never empty. */
+  entries: FsClipboardEntry[];
   mode: 'copy' | 'cut';
+}
+
+/** The label a Paste row shows for a multi-entry clipboard. */
+export function clipboardLabel(clip: FsClipboard | null): string | null {
+  if (!clip) return null;
+  if (clip.entries.length === 1) return clip.entries[0]!.name;
+  return `${clip.entries.length} items`;
 }
 
 /** The scope key a panel's listing uses: `${rootPath}\0${repo}`. */
@@ -112,13 +125,21 @@ export function dropRefusal(
  * route holds the resolved directory.
  */
 export function pasteRefusal(clip: FsClipboard | null, scope: string, targetDir: string): string | null {
-  if (!clip) return 'Nothing to paste';
+  if (!clip || clip.entries.length === 0) return 'Nothing to paste';
   if (clip.scope !== scope) return 'The clipboard holds an entry from another workspace';
   // A cut has nothing to do in the folder it is already in — the entry would be
   // renamed to a `copy` name, which is the opposite of what a cut means. The
-  // route refuses the same case in the same words.
-  if (clip.mode === 'cut' && targetDir === parentOf(clip.path)) return 'Already in this folder';
-  return transferRefusal(clip, targetDir);
+  // route refuses the same case in the same words. A multi-entry cut refuses
+  // whole if ANY entry already sits there: pasting the rest while silently
+  // dropping one is not the operation the user asked for.
+  if (clip.mode === 'cut' && clip.entries.some((entry) => targetDir === parentOf(entry.path))) {
+    return 'Already in this folder';
+  }
+  for (const entry of clip.entries) {
+    const refusal = transferRefusal(entry, targetDir);
+    if (refusal) return refusal;
+  }
+  return null;
 }
 
 /**
@@ -167,16 +188,40 @@ export function duplicateName(name: string, kind: 'file' | 'folder', taken: (can
  * whose shape is not what Cut/Copy wrote is dropped rather than trusted. The
  * path check is the one that matters: a `.`, a `..` segment or an absolute
  * spelling would name a directory other than the one the entry claims.
+ *
+ * The single-entry shape from before multi-selection is migrated rather than
+ * dropped: a clipboard taken in an older tab must still paste after an update,
+ * and the two shapes differ only in nesting.
  */
 export function readFsClipboard(value: unknown): FsClipboard | null {
   if (typeof value !== 'object' || value === null) return null;
-  const clip = value as Partial<FsClipboard>;
-  if (typeof clip.scope !== 'string' || typeof clip.path !== 'string' || typeof clip.name !== 'string') return null;
-  if (clip.kind !== 'file' && clip.kind !== 'folder') return null;
+  const clip = value as { scope?: unknown; mode?: unknown; entries?: unknown; path?: unknown; name?: unknown; kind?: unknown };
+  if (typeof clip.scope !== 'string') return null;
   if (clip.mode !== 'copy' && clip.mode !== 'cut') return null;
-  const segments = clip.path.split('/');
-  if (clip.path === '' || clip.path.startsWith('/') || segments.some((segment) => segment === '' || segment === '.' || segment === '..')) {
+  const rawEntries = Array.isArray(clip.entries)
+    ? clip.entries
+    : typeof clip.path === 'string'
+      ? [{ path: clip.path, name: clip.name, kind: clip.kind }]
+      : [];
+  const entries: FsClipboardEntry[] = [];
+  for (const raw of rawEntries) {
+    const entry = readEntry(raw);
+    if (!entry) return null;
+    entries.push(entry);
+  }
+  if (entries.length === 0) return null;
+  return { scope: clip.scope, entries, mode: clip.mode };
+}
+
+/** One clipboard entry, or null when its shape or path is not trustworthy. */
+function readEntry(value: unknown): FsClipboardEntry | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const entry = value as Partial<FsClipboardEntry>;
+  if (typeof entry.path !== 'string' || typeof entry.name !== 'string') return null;
+  if (entry.kind !== 'file' && entry.kind !== 'folder') return null;
+  const segments = entry.path.split('/');
+  if (entry.path === '' || entry.path.startsWith('/') || segments.some((segment) => segment === '' || segment === '.' || segment === '..')) {
     return null;
   }
-  return { scope: clip.scope, path: clip.path, name: clip.name, kind: clip.kind, mode: clip.mode };
+  return { path: entry.path, name: entry.name, kind: entry.kind };
 }

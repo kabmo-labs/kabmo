@@ -2,14 +2,16 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import type { FsNode } from '@/shared/types';
 import { FileExplorerToolbar } from '@/client/components/workspace/file-explorer/Toolbar';
 import { FileTreeItem } from '@/client/components/workspace/file-explorer/TreeItem';
-import { RootContextMenu } from '@/client/components/workspace/file-explorer/RootMenu';
-import { FileCreateModal } from '@/client/components/workspace/file-explorer/Modals';
+import { RootOverlays } from '@/client/components/workspace/file-explorer/RootOverlays';
+import { ArchiveOverlays } from '@/client/components/workspace/file-explorer/ArchiveModals';
 import { OutlineSection } from '@/client/components/workspace/file-explorer/OutlineSection';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
 import { useGitStatus } from '@/client/hooks/workspace/git-status';
 import { useFileListing } from '@/client/hooks/workspace/file-listing';
 import { useFileCreate } from '@/client/hooks/workspace/file-create';
 import { useFileClipboard, type ClipboardTarget } from '@/client/hooks/workspace/file-clipboard';
+import { useFileArchive } from '@/client/hooks/workspace/file-archive';
+import { useFileSelection, visibleEntriesOf } from '@/client/hooks/workspace/file-selection';
 import { useFileTreeEdits } from '@/client/hooks/workspace/file-tree-edits';
 import { useUnfoldedChains } from '@/client/hooks/workspace/unfolded-chains';
 import { filterFileTree } from '@/client/components/workspace/file-explorer/filter';
@@ -19,6 +21,7 @@ import { useToasts } from '@/client/hooks/ui/toasts';
 import { useTouchDevice } from '@/client/hooks/ui/touch-device';
 import { fsTopic } from '@/shared/lib/realtime/protocol';
 import { unfoldChains } from '@/shared/lib/fs/folder-chain';
+import { clipboardLabel } from '@/shared/lib/fs/clipboard';
 import { useRootDropTarget } from '@/client/hooks/workspace/root-drop-target';
 
 export function FileExplorer({ className = '', enabled = true, active = true, rootPath, onOpenFile, refreshKey = 0, onRefresh }: { className?: string, enabled?: boolean, active?: boolean, rootPath?: string, onOpenFile?: (file: any) => void, refreshKey?: number, onRefresh?: () => void }) {
@@ -96,6 +99,27 @@ export function FileExplorer({ className = '', enabled = true, active = true, ro
     setStoredExpandedPaths(Array.from(next));
   };
 
+  // A collapsed chain row is ONE row standing for several directories, so the
+  // levels inside its label have no row to drop on (a drop lands in the deepest
+  // directory) and no row to rename. Unfolding — on a hovering drag, or from the
+  // row's own menu — turns each level back into a row.
+  const { unfolded, unfold, fold, rekey: rekeyUnfold } = useUnfoldedChains({ scope: listing.scope, setExpandedPaths, setStoredExpandedPaths });
+
+  const tree = listing.files;
+  const projected = unfoldChains(tree, unfolded);
+  const files = filterFileTree(projected.nodes, searchQuery);
+
+  // The rows the tree is DRAWN as, in order: a shift-range selects exactly what
+  // the user can see, and the marked set is what Cut/Copy/Compress act on.
+  // Computing it above the `!enabled` return keeps the hooks unconditional.
+  const selectionOrder = visibleEntriesOf(files, (node) =>
+    node.forceExpanded !== undefined ? node.forceExpanded : expandedPaths.has(node.path),
+  );
+  const selection = useFileSelection(selectionOrder.map((entry) => entry.path));
+  const selectedTargets: ClipboardTarget[] = selectionOrder
+    .filter((entry) => selection.selected.has(entry.path))
+    .map(({ path, name, kind }) => ({ path, name, kind }));
+
   const handleSelectRepo = (repo: string) => {
     if (repo === activeRepo) return;
     // The expansion set holds paths relative to the repo that was listed, so a
@@ -105,6 +129,7 @@ export function FileExplorer({ className = '', enabled = true, active = true, ro
     listing.reset();
     setExpandedPaths(new Set());
     setStoredExpandedPaths([]);
+    selection.clear();
     setActiveRepo(repo);
   };
 
@@ -128,12 +153,6 @@ export function FileExplorer({ className = '', enabled = true, active = true, ro
     onMoved: (fromPath, toPath) => rekeyUnfold(fromPath, toPath),
   });
 
-  // A collapsed chain row is ONE row standing for several directories, so the
-  // levels inside its label have no row to drop on (a drop lands in the deepest
-  // directory) and no row to rename. Unfolding — on a hovering drag, or from the
-  // row's own menu — turns each level back into a row.
-  const { unfolded, unfold, fold, rekey: rekeyUnfold } = useUnfoldedChains({ scope: listing.scope, setExpandedPaths, setStoredExpandedPaths });
-
   // One clipboard for the whole tree, owned here and passed down: a
   // subscription per row would be hundreds of listeners for a value that
   // changes on a right-click.
@@ -147,6 +166,9 @@ export function FileExplorer({ className = '', enabled = true, active = true, ro
     onComplete: refresh,
     onError: (message) => pushToast(message, 'error'),
   });
+  // One archive flow for the whole tree: the dialogs are single instances in
+  // the panel, not one per row.
+  const archive = useFileArchive({ rootPath, repo: activeRepo, onComplete: refresh });
   /**
    * The background's Paste label, or null when a paste cannot land at the root.
    *
@@ -157,7 +179,7 @@ export function FileExplorer({ className = '', enabled = true, active = true, ro
    */
   const rootTarget = { path: '.', name: '.', kind: 'folder' as const };
   const rootPasteLabel = clipboard.clip && !clipboard.refusalFor(rootTarget)
-    ? `Paste ${clipboard.clip.name}`
+    ? `Paste ${clipboardLabel(clipboard.clip) ?? 'item'}`
     : null;
 
   /**
@@ -187,6 +209,20 @@ export function FileExplorer({ className = '', enabled = true, active = true, ro
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
+  // Escape drops the marked set. It rides the window rather than the tree
+  // because focus sits wherever the last click left it, and a selection that
+  // could only be cleared by clicking exactly the right row is a trap.
+  const selectionCount = selection.count;
+  const clearSelection = selection.clear;
+  useEffect(() => {
+    if (!active) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && selectionCount > 0) clearSelection();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [active, selectionCount, clearSelection]);
+
   if (!enabled) {
     return (
       <div className={`flex flex-col h-full bg-paper items-center justify-center text-ink/40 ${className}`}>
@@ -195,10 +231,6 @@ export function FileExplorer({ className = '', enabled = true, active = true, ro
     );
   }
 
-  const tree = listing.files;
-
-  const projected = unfoldChains(tree, unfolded);
-  const files = filterFileTree(projected.nodes, searchQuery);
   // The button spins for this panel's own read OR a topic push: the server
   // republishes `fs:` on every tool call, so the tree moved with nothing on
   // screen saying so otherwise.
@@ -261,6 +293,9 @@ export function FileExplorer({ className = '', enabled = true, active = true, ro
               gitFileMap={gitFileMap}
               gitFolderMap={gitFolderMap}
               clipboard={clipboard}
+              archive={archive}
+              selection={selection}
+              selectionTargets={selectedTargets}
               dragging={dragging}
               onDragStart={setDragging}
               onDragEnd={() => setDragging(null)}
@@ -282,13 +317,13 @@ export function FileExplorer({ className = '', enabled = true, active = true, ro
           the reader would have to chase — the git panel's stash section rule. */}
       <OutlineSection />
 
-      {mounted && rootMenu && (
-        <RootContextMenu
-          x={rootMenu.x}
-          y={rootMenu.y}
+      {mounted && (
+        <RootOverlays
+          menu={rootMenu}
           menuRef={rootMenuRef}
           pasteLabel={rootPasteLabel}
           busy={clipboard.busy}
+          create={rootCreate}
           onAction={(action) => {
             setRootMenu(null);
             if (action === 'new_file') rootCreate.openDialog('file');
@@ -298,18 +333,7 @@ export function FileExplorer({ className = '', enabled = true, active = true, ro
         />
       )}
 
-      {mounted && rootCreate.open && (
-        <FileCreateModal
-          folderPath="."
-          kind={rootCreate.kind}
-          value={rootCreate.name}
-          error={rootCreate.error}
-          isLoading={rootCreate.busy}
-          onChange={rootCreate.setName}
-          onCancel={rootCreate.closeDialog}
-          onSubmit={rootCreate.submit}
-        />
-      )}
+      {mounted && <ArchiveOverlays archive={archive} />}
 
     </div>
   );

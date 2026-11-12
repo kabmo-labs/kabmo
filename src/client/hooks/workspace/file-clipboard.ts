@@ -39,6 +39,10 @@ import {
 interface TransferResponse {
   success?: boolean;
   path?: string;
+  /** One entry per pasted source, when a selection was moved. */
+  paths?: string[];
+  /** Entries that could not land, after the rest of the selection did. */
+  failures?: { path: string; error: string }[];
   error?: string;
 }
 
@@ -54,8 +58,9 @@ export interface FileClipboard {
   busy: boolean;
   /** The reason a paste onto this target would be refused, or null when legal. */
   refusalFor: (target: ClipboardTarget) => string | null;
-  copy: (target: ClipboardTarget) => void;
-  cut: (target: ClipboardTarget) => void;
+  /** Put one row, or a whole selection, on the clipboard. */
+  copy: (targets: readonly ClipboardTarget[]) => void;
+  cut: (targets: readonly ClipboardTarget[]) => void;
   duplicate: (target: ClipboardTarget) => void;
   paste: (target: ClipboardTarget) => void;
   /**
@@ -109,6 +114,12 @@ export function useFileClipboard({ rootPath, repo, onComplete, onError }: FileCl
     clearsClipRef.current = false;
     if (data.success) {
       if (clearClip) setStoredClip(null);
+      // A selection can land partly: the entries that did must be reported as
+      // done while the ones that did not are named, or the tree re-read looks
+      // like it silently dropped a file.
+      if (data.failures?.length) {
+        onError(`${data.failures.length} item(s) could not be moved: ${data.failures[0]!.error}`);
+      }
       onComplete();
     } else {
       onError(data.error || 'The transfer did not complete');
@@ -136,16 +147,34 @@ export function useFileClipboard({ rootPath, repo, onComplete, onError }: FileCl
     [],
   );
 
+  /** Post a paste of `sources`, as repeated form fields the route reads back. */
+  const postPaste = useCallback((sources: readonly ClipboardTarget[], target: ClipboardTarget, mode: 'copy' | 'cut', clearsClip: boolean) => {
+    const formData = new FormData();
+    formData.append('actionType', 'paste');
+    formData.append('mode', mode);
+    formData.append('targetPath', target.path);
+    formData.append('targetKind', target.kind);
+    // The route stats each source for its kind; a `sourceKind` field would be
+    // a second, unchecked answer to the same question.
+    for (const source of sources) formData.append('sourcePath', source.path);
+    if (repo && repo !== '.') formData.append('repo', repo);
+    if (rootPath) formData.append('root', rootPath);
+    clearsClipRef.current = clearsClip;
+    void fetcher.submit(formData, { method: 'post', action: '/api/fs/action' });
+  }, [fetcher, repo, rootPath]);
+
   return {
     clip,
     busy: fetcher.state !== 'idle',
     refusalFor,
     moveRefusalFor,
-    copy: (target) => {
-      setStoredClip({ scope, path: target.path, name: target.name, kind: target.kind, mode: 'copy' });
+    copy: (targets) => {
+      if (targets.length === 0) return;
+      setStoredClip({ scope, entries: targets.map(({ path, name, kind }) => ({ path, name, kind })), mode: 'copy' });
     },
-    cut: (target) => {
-      setStoredClip({ scope, path: target.path, name: target.name, kind: target.kind, mode: 'cut' });
+    cut: (targets) => {
+      if (targets.length === 0) return;
+      setStoredClip({ scope, entries: targets.map(({ path, name, kind }) => ({ path, name, kind })), mode: 'cut' });
     },
     duplicate: (target) => {
       post({ actionType: 'duplicate', path: target.path }, false);
@@ -159,16 +188,7 @@ export function useFileClipboard({ rootPath, repo, onComplete, onError }: FileCl
       // The same `paste` request a Cut's paste posts: a drag IS a cut, so the
       // two must not diverge on what moving an entry does. It clears the
       // clipboard only when the entry it holds was the one moved.
-      post(
-        {
-          actionType: 'paste',
-          sourcePath: source.path,
-          mode: 'cut',
-          targetPath: target.path,
-          targetKind: target.kind,
-        },
-        clip?.path === source.path && clip?.mode === 'cut',
-      );
+      postPaste([source], target, 'cut', Boolean(clip?.mode === 'cut' && clip.entries.some((entry) => entry.path === source.path)));
     },
     paste: (target) => {
       if (!clip) return;
@@ -177,16 +197,7 @@ export function useFileClipboard({ rootPath, repo, onComplete, onError }: FileCl
         onError(refusal);
         return;
       }
-      post(
-        {
-          actionType: 'paste',
-          sourcePath: clip.path,
-          mode: clip.mode,
-          targetPath: target.path,
-          targetKind: target.kind,
-        },
-        clip.mode === 'cut',
-      );
+      postPaste(clip.entries.map(({ path, name, kind }) => ({ path, name, kind })), target, clip.mode, clip.mode === 'cut');
     },
   };
 }

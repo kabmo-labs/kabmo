@@ -28,14 +28,17 @@ export interface StubClipboardOptions {
 
 export interface StubClipboard extends FileClipboard {
   /** Every call the row made, in order. */
-  calls: Array<{ action: string; target: ClipboardTarget }>;
+  calls: Array<{ action: string; targets: ClipboardTarget[] }>;
 }
 
 export function createStubClipboard(options: StubClipboardOptions = {}): StubClipboard {
   const calls: StubClipboard['calls'] = [];
   const clip = options.clip ?? null;
-  const record = (action: string) => (target: ClipboardTarget) => {
-    calls.push({ action, target });
+  const record = (action: string) => (targets: readonly ClipboardTarget[]) => {
+    calls.push({ action, targets: [...targets] });
+  };
+  const single = (action: string) => (target: ClipboardTarget) => {
+    calls.push({ action, targets: [target] });
   };
   return {
     clip,
@@ -45,8 +48,8 @@ export function createStubClipboard(options: StubClipboardOptions = {}): StubCli
     moveRefusalFor: () => options.moveRefusal ?? options.refusal ?? null,
     copy: record('copy'),
     cut: record('cut'),
-    duplicate: record('duplicate'),
-    paste: record('paste'),
-    move: record('move'),
+    duplicate: single('duplicate'),
+    paste: single('paste'),
+    move: single('move'),
   };
 }

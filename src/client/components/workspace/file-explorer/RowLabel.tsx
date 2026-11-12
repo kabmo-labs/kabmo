@@ -24,14 +24,18 @@ interface TreeRowLabelProps {
   isOpen: boolean;
   /** Git-ignored entries render faded rather than being hidden. */
   ignored: boolean;
+  /** The row is part of the panel's marked set. */
+  selected?: boolean;
   /** This file's own change, when it has one. */
   gitStatus: { colorClass: string; label: string; charStatus: string } | null;
   /** The roll-up a folder wears instead: one dot, its tone from the changes. */
   folderStatus: FolderGitStatusInfo | null | undefined;
 }
 
-export function TreeRowLabel({ name, path, isFolder, isOpen, ignored, gitStatus, folderStatus }: TreeRowLabelProps) {
-  const tone = gitStatus ? gitStatus.colorClass : folderStatus ? folderStatus.colorClass : ignored ? 'text-ink/40' : '';
+export function TreeRowLabel({ name, path, isFolder, isOpen, ignored, selected, gitStatus, folderStatus }: TreeRowLabelProps) {
+  const tone = selected
+    ? 'text-ink font-semibold'
+    : gitStatus ? gitStatus.colorClass : folderStatus ? folderStatus.colorClass : ignored ? 'text-ink/40' : '';
   return (
     <>
       {isFolder ? (

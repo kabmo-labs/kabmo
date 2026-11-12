@@ -23,7 +23,10 @@ import { useFetcher } from '@/client/lib/router/fetcher';
 import { toAbsolutePath } from '@/shared/lib/fs/paths';
 import { copyToClipboard } from '@/client/hooks/ui/clipboard';
 import { useFileCreate, type CreatedEntry } from '@/client/hooks/workspace/file-create';
-import type { FileClipboard } from '@/client/hooks/workspace/file-clipboard';
+import type { FileClipboard, ClipboardTarget } from '@/client/hooks/workspace/file-clipboard';
+import type { FileArchive } from '@/client/hooks/workspace/file-archive';
+import { clipboardLabel } from '@/shared/lib/fs/clipboard';
+import { isArchiveName } from '@/shared/lib/fs/archive';
 import type { FsActionResponse } from '@/shared/types';
 
 export interface FileActionTarget {
@@ -65,6 +68,16 @@ export interface FileActionDeps {
   clipboard: FileClipboard;
   /** Whether this row is a folder — what Cut/Copy/Paste need to name their target. */
   isFolder: boolean;
+  /**
+   * The rows the panel has MARKED. When this row is one of several, every batch
+   * verb acts on the whole selection; the row that was right-clicked only
+   * supplies the menu.
+   */
+  selection: readonly ClipboardTarget[];
+  /** True when this row is part of the marked set. */
+  selected: boolean;
+  /** The panel's archive dialogs. */
+  archive: FileArchive;
 }
 
 export interface FileActions {
@@ -90,6 +103,10 @@ export interface FileActions {
   busy: boolean;
   /** Label of the row's Paste action, or null when a paste cannot land here. */
   pasteLabel: string | null;
+  /** How many rows the batch verbs act on — one, or the panel's selection. */
+  selectionCount: number;
+  /** True when the row itself is an archive the Extract flow understands. */
+  isArchive: boolean;
   /**
    * True when the row's label names more than one directory — a collapsed
    * chain, whose inner levels are not rows and therefore not renameable until
@@ -111,7 +128,7 @@ export interface FileActions {
   closeHistory: () => void;
 }
 
-export function useFileActions({ file, diff, onOpenFile, onActionComplete, onCreated, onRenamed, onUnfold, onFold, clipboard, isFolder }: FileActionDeps): FileActions {
+export function useFileActions({ file, diff, onOpenFile, onActionComplete, onCreated, onRenamed, onUnfold, onFold, clipboard, isFolder, selection, selected, archive }: FileActionDeps): FileActions {
   const actionFetcher = useFetcher<FsActionResponse>();
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
@@ -183,7 +200,11 @@ export function useFileActions({ file, diff, onOpenFile, onActionComplete, onCre
     onOpenFile?.({ path: file.path, name: file.name, root: rootPath, repo: repo || '.' });
   };
 
-  const clipboardTarget = { path: file.path, name: file.name, kind: isFolder ? 'folder' as const : 'file' as const };
+  const clipboardTarget: ClipboardTarget = { path: file.path, name: file.name, kind: isFolder ? 'folder' : 'file' };
+  // The menu's verbs act on the marked rows when this row is one of them; a
+  // right-click on an unmarked row never gets here — the panel selects it first.
+  const targets = selected && selection.length > 1 ? selection : [clipboardTarget];
+  const archiveTarget = isArchiveName(file.name);
   /**
    * The row's Paste label, or null when a paste cannot land here.
    *
@@ -194,7 +215,7 @@ export function useFileActions({ file, diff, onOpenFile, onActionComplete, onCre
    * background menu, which cannot know which rows are illegal.
    */
   const pasteLabel = clipboard.clip && !clipboard.refusalFor(clipboardTarget)
-    ? `Paste ${clipboard.clip.name}`
+    ? `Paste ${clipboardLabel(clipboard.clip) ?? 'item'}`
     : null;
 
   const handleAction = (actionType: string) => {
@@ -241,9 +262,13 @@ export function useFileActions({ file, diff, onOpenFile, onActionComplete, onCre
     } else if (actionType === 'delete') {
       setShowDeleteModal(true);
     } else if (actionType === 'cut') {
-      clipboard.cut(clipboardTarget);
+      clipboard.cut(targets);
     } else if (actionType === 'copy') {
-      clipboard.copy(clipboardTarget);
+      clipboard.copy(targets);
+    } else if (actionType === 'compress') {
+      archive.openCompress(targets);
+    } else if (actionType === 'extract') {
+      archive.openExtract(clipboardTarget);
     } else if (actionType === 'duplicate') {
       clipboard.duplicate(clipboardTarget);
     } else if (actionType === 'paste') {
@@ -264,7 +289,8 @@ export function useFileActions({ file, diff, onOpenFile, onActionComplete, onCre
   const submitDelete = () => {
     const fd = new FormData();
     fd.append('actionType', 'delete');
-    fd.append('path', file.path);
+    if (targets.length > 1) fd.append('paths', JSON.stringify(targets.map((target) => target.path)));
+    else fd.append('path', file.path);
     submitAction(fd);
   };
 
@@ -284,8 +310,10 @@ export function useFileActions({ file, diff, onOpenFile, onActionComplete, onCre
     renameValue,
     setRenameValue,
     renameError,
-    busy: actionFetcher.state !== 'idle' || create.busy || clipboard.busy,
+    busy: actionFetcher.state !== 'idle' || create.busy || clipboard.busy || archive.busy,
     pasteLabel,
+    selectionCount: targets.length,
+    isArchive: archiveTarget,
     chainLabel: onUnfold !== undefined,
     foldable: onFold !== undefined,
     fetcherState: actionFetcher.state,

@@ -29,7 +29,7 @@
 
 import { createPortal } from 'preact/compat';
 import type { ReactNode, RefObject } from 'preact/compat';
-import { ChevronDown, ChevronRight, ClipboardPaste, Copy, CopyPlus, Edit2, ExternalLink, Eye, FilePlus, FolderPlus, GitCompare, History, Scissors, Trash2 } from 'lucide-preact';
+import { Archive, ChevronDown, ChevronRight, ClipboardPaste, Copy, CopyPlus, Edit2, ExternalLink, Eye, FilePlus, FolderPlus, GitCompare, History, PackageOpen, Scissors, Trash2 } from 'lucide-preact';
 
 interface ContextMenuProps {
   x: number;
@@ -44,6 +44,10 @@ interface ContextMenuProps {
   foldable?: boolean;
   /** True while a transfer is in flight; the acting rows disable on it. */
   busy: boolean;
+  /** How many rows the transfer and archive verbs act on. */
+  selectionCount: number;
+  /** True when the target row is an archive the Extract flow understands. */
+  isArchive: boolean;
   onAction: (actionType: string) => void;
   menuRef?: RefObject<HTMLDivElement>;
 }
@@ -59,9 +63,25 @@ const SEPARATOR_PX = 9;
 const PADDING_PX = 8;
 
 /** The rows this target offers, in order — the menu's single source of truth. */
-function buildRows(options: { isFolder: boolean; hasGitStatus?: boolean; pasteLabel: string | null; busy: boolean; chainLabel?: boolean; foldable?: boolean }): MenuEntry[] {
-  const { isFolder, hasGitStatus, pasteLabel, busy, chainLabel, foldable } = options;
+function buildRows(options: { isFolder: boolean; hasGitStatus?: boolean; pasteLabel: string | null; busy: boolean; chainLabel?: boolean; foldable?: boolean; selectionCount: number; isArchive: boolean }): MenuEntry[] {
+  const { isFolder, hasGitStatus, pasteLabel, busy, chainLabel, foldable, selectionCount, isArchive } = options;
   const entries: MenuEntry[] = [];
+  const many = selectionCount > 1;
+  const count = selectionCount === 1 ? '' : ` ${selectionCount} items`;
+
+  // A multi-selection is a different object from a row: View, Rename,
+  // Duplicate and History all name ONE entry, and offering them for five rows
+  // would silently act on the row that was right-clicked. The menu says what
+  // the selection can actually do.
+  if (many) {
+    entries.push({ kind: 'item', id: 'cut', label: `Cut${count}`, icon: <Scissors size={13} className="text-ink/60" />, disabled: busy });
+    entries.push({ kind: 'item', id: 'copy', label: `Copy${count}`, icon: <Copy size={13} className="text-ink/60" />, disabled: busy });
+    entries.push({ kind: 'separator' });
+    entries.push({ kind: 'item', id: 'compress', label: `Compress${count} to…`, icon: <Archive size={13} className="text-ink/60" />, disabled: busy });
+    entries.push({ kind: 'separator' });
+    entries.push({ kind: 'item', id: 'delete', label: `Delete${count}`, icon: <Trash2 size={13} className="text-error" />, tone: 'text-error' });
+    return entries;
+  }
 
   if (isFolder) {
     entries.push({ kind: 'item', id: 'new_file', label: 'New File', icon: <FilePlus size={13} className="text-ink/60" /> });
@@ -78,6 +98,9 @@ function buildRows(options: { isFolder: boolean; hasGitStatus?: boolean; pasteLa
     entries.push({ kind: 'separator' });
   } else {
     entries.push({ kind: 'item', id: 'view', label: 'View', icon: <Eye size={13} className="text-ink/60" /> });
+    if (isArchive) {
+      entries.push({ kind: 'item', id: 'extract', label: 'Extract…', icon: <PackageOpen size={13} className="text-ink/60" />, disabled: busy });
+    }
     if (hasGitStatus) {
       entries.push({ kind: 'item', id: 'diff', label: 'Open in Diff Panel', icon: <GitCompare size={13} className="text-warning" />, tone: 'font-medium' });
     }
@@ -86,6 +109,7 @@ function buildRows(options: { isFolder: boolean; hasGitStatus?: boolean; pasteLa
 
   entries.push({ kind: 'item', id: 'cut', label: 'Cut', icon: <Scissors size={13} className="text-ink/60" />, disabled: busy });
   entries.push({ kind: 'item', id: 'copy', label: 'Copy', icon: <Copy size={13} className="text-ink/60" />, disabled: busy });
+  entries.push({ kind: 'item', id: 'compress', label: 'Compress to…', icon: <Archive size={13} className="text-ink/60" />, disabled: busy });
   entries.push({ kind: 'item', id: 'duplicate', label: 'Duplicate', icon: <CopyPlus size={13} className="text-ink/60" />, disabled: busy });
   if (pasteLabel) {
     entries.push({ kind: 'item', id: 'paste', label: pasteLabel, icon: <ClipboardPaste size={13} className="text-ink/60" />, disabled: busy });
@@ -113,9 +137,9 @@ function menuHeightOf(entries: MenuEntry[]): number {
   return items * ROW_PX + separators * SEPARATOR_PX + PADDING_PX;
 }
 
-export function FileContextMenu({ x, y, isFolder, hasGitStatus, pasteLabel, chainLabel, foldable, busy, onAction, menuRef }: ContextMenuProps) {
-  const menuWidth = 190;
-  const entries = buildRows({ isFolder, hasGitStatus, pasteLabel, busy, chainLabel, foldable });
+export function FileContextMenu({ x, y, isFolder, hasGitStatus, pasteLabel, chainLabel, foldable, busy, selectionCount, isArchive, onAction, menuRef }: ContextMenuProps) {
+  const menuWidth = 210;
+  const entries = buildRows({ isFolder, hasGitStatus, pasteLabel, busy, chainLabel, foldable, selectionCount, isArchive });
   const menuHeight = menuHeightOf(entries);
 
   const posX = typeof window !== 'undefined' ? Math.max(10, Math.min(x, window.innerWidth - menuWidth - 12)) : x;
