@@ -92,6 +92,7 @@ export function useFileCache({
         if (!keep.has(loaded)) loadedRef.current.delete(loaded);
       }
       setContents((previous) => retainKeys(previous, keep));
+      setBaselines((previous) => retainKeys(previous, keep));
       setLineEndings((previous) => retainKeys(previous, keep));
       setMtimes((previous) => retainKeys(previous, keep));
       setHashes((previous) => retainKeys(previous, keep));
