@@ -343,7 +343,36 @@ fi
 # result, not the server); and the session-file id repairs, `gc --strip`
 # retention, MCP command-backed headers and the Tern/browser fixes are
 # host-side with no RPC surface Kabmo reads.
-OMP_VERSION="${OMP_VERSION:-18.18.6}"
+#
+# 18.18.9 (2026-11-11), carrying 18.18.7 and 18.18.8: the schema's `source`
+# line moves to 608 settings and the panel gains FIVE keys while losing TWO
+# (net +3 rows): the saved-reset auto-redeem switch is split per window.
+# `codexResets.autoRedeem` becomes
+# `autoRedeem5h` + `autoRedeemWeekly`, and `claudeResets.autoRedeem` becomes
+# `autoRedeem5h` + `autoRedeemWeekly` + a new `autoRedeemFable`; omp migrates
+# the legacy key into the two window keys on read, so no Kabmo code is coupled
+# to either name. The RPC wire is byte-identical — 74 commands, 299
+# definitions, 0 added/removed/changed — and `builtin-names.ts`, `MODEL_ROLES`
+# and the slash registry are identical too (`/mcp smithery-*` was removed
+# upstream but Kabmo never carried or forwarded those subcommands).
+#
+# One upstream change DOES reach a Kabmo surface, adopted here: a message that
+# ends a `wait` no longer rides in the result. omp hands it to the recipient
+# session, which injects it as its own `customType: "irc:incoming"` turn, and
+# the wait answers `Wait interrupted by message.` with `interrupted: true` and
+# no `details.waited`. Kabmo's wait card therefore loses the message block on
+# new sessions (the old shape stays readable for sessions recorded before this
+# pin), and the injected turn is drawn by `IrcNotice` from `details.from` /
+# `details.message` instead of rendering the `<irc>` prompt envelope as a
+# system notice.
+#
+# Not adopted, deliberately: `ask` notes (18.18.8) are typed into omp's own
+# form dialog; the RPC host has no `formDialog` and walks the form field by
+# field, so `details.notes` can never arrive here. The `/context` category
+# split, `omp gc --strip` retention, the jq 1.8.2 shell, Hacker News/Sofya
+# search engines, launch-service persistence and the browser/relay fixes are
+# host-side or settings-neutral.
+OMP_VERSION="${OMP_VERSION:-18.18.9}"
 PACKAGE="@oh-my-pi/pi-coding-agent"
 WANTED="omp/${OMP_VERSION}"
 

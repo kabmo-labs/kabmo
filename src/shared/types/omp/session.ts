@@ -154,3 +154,21 @@ export interface OmpSidebarData {
   /** ISO timestamp of the read (client can use it as a refresh cursor). */
   generatedAt: string;
 }
+
+/** A peer (IRC) message omp injected into a session.
+ *
+ *  Since omp 18.18.9 a message that ends a `wait` is delivered as its own
+ *  `customType: "irc:incoming"` turn instead of riding in the wait result
+ *  (`details.waited`). The turn's `details` is the only idle copy of the sender
+ *  and the raw body — the rendered content is the model's `<irc>` prompt
+ *  envelope — so both transcript mappers lift this shape out and the timeline
+ *  draws a message card rather than a raw system notice. */
+export interface IrcMessageData {
+  id?: string;
+  from: string;
+  /** The sender's own text, without omp's prompt envelope. */
+  message: string;
+  replyTo?: string;
+  progress?: boolean;
+  broadcast?: boolean;
+}

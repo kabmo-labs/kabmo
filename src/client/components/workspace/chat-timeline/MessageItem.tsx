@@ -8,6 +8,7 @@ import { toAttachmentList } from '@/shared/lib/chat/attachments';
 import { ThinkingSection } from '@/client/components/workspace/chat-timeline/ThinkingSection';
 import { ToolCallingSection } from '@/client/components/workspace/chat-timeline/ToolCallingSection';
 import { SystemNotice } from '@/client/components/workspace/chat-timeline/SystemNotice';
+import { IrcNotice } from '@/client/components/workspace/chat-timeline/IrcNotice';
 import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
 import { AttachmentChips } from '@/client/components/workspace/chat-timeline/AttachmentChips';
 import { CopyButton } from '@/client/components/common/CopyButton';
@@ -229,7 +230,9 @@ export const ChatMessageItem = memo(function ChatMessageItem({
       <div className="w-full space-y-2.5 font-sans leading-relaxed">
         
         {/* System Notice Alert (a notice carrying the answer renders as content below) */}
-        {isNotice && <SystemNotice notice={msg.notice} source={msg.noticeSource} isMobile={isMobile} />}
+        {isNotice && (msg.irc
+          ? <IrcNotice irc={msg.irc} isMobile={isMobile} />
+          : <SystemNotice notice={msg.notice} source={msg.noticeSource} isMobile={isMobile} />)}
 
         {/* Thinking / Reasoning Accordion */}
         {thinkingData && (

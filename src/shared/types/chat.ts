@@ -1,5 +1,6 @@
 import type { ReactNode } from 'preact/compat';
 import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
+import type { IrcMessageData } from '@/shared/types/omp/session';
 
 /** One image a tool result returned (a `read` of a picture, an `eval` that
  *  painted one). Exactly one payload field is set: omp externalizes anything
@@ -178,6 +179,9 @@ export interface ChatMessageData {
    * renderer that draws a specific card for one kind reads it from here.
    */
   noticeSource?: string;
+  /** Set on an `irc:incoming` turn — a peer agent's message, drawn as its own
+   *  card instead of a raw `<irc>` system notice. */
+  irc?: IrcMessageData;
   toolCalls?: ToolCallData[];
   actions?: (AgentActionData | ToolCallData)[];
   systemNote?: string;

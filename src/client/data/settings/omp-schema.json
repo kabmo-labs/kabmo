@@ -1,5 +1,5 @@
 {
-  "source": "@oh-my-pi/pi-coding-agent 10 tabs / 604 settings",
+  "source": "@oh-my-pi/pi-coding-agent 10 tabs / 608 settings",
   "tabs": [
     {
       "id": "appearance",
@@ -3912,7 +3912,7 @@
         ]
       }
     },
-    "codexResets.autoRedeem": {
+    "codexResets.autoRedeem5h": {
       "type": "enum",
       "default": "unset",
       "values": [
@@ -3923,23 +3923,55 @@
       "ui": {
         "tab": "providers",
         "group": "Services",
-        "label": "Codex Auto-Redeem Saved Resets",
-        "description": "Spend saved Codex rate-limit resets automatically: restore an account blocked by an exhausted 5h or weekly window when a turn is stuck and no other account can take over, and salvage credits that are about to expire. unset asks before the first spend (with no prompt UI, it spends only a reset expiring within 5 minutes), yes spends without prompting, and no disables both checks.",
+        "label": "Codex Auto-Redeem Saved Resets (5h)",
+        "description": "Spend saved Codex resets on 5-hour-only blocks and on expiring credits whose fullest chat window is 5h. unset asks before spending and never spends without a prompt; yes spends without asking; no never spends.",
         "options": [
           {
             "value": "unset",
             "label": "Unset",
-            "description": "Check eligibility, then ask before spending the first saved reset. With no prompt UI, spend only a reset expiring within 5 minutes."
+            "description": "Ask before spending; never spend without a prompt."
           },
           {
             "value": "yes",
             "label": "Yes",
-            "description": "Spend eligible saved resets without prompting."
+            "description": "Spend eligible saved resets without asking."
           },
           {
             "value": "no",
             "label": "No",
-            "description": "Do not run the saved-reset auto-redeem check."
+            "description": "Never spend saved resets for this window."
+          }
+        ]
+      }
+    },
+    "codexResets.autoRedeemWeekly": {
+      "type": "enum",
+      "default": "unset",
+      "values": [
+        "unset",
+        "yes",
+        "no"
+      ],
+      "ui": {
+        "tab": "providers",
+        "group": "Services",
+        "label": "Codex Auto-Redeem Saved Resets (Weekly)",
+        "description": "Spend saved Codex resets on weekly blocks and on expiring credits whose fullest chat window is weekly. A block known only from a short 429 wait needs both Codex windows. unset asks before spending and never spends without a prompt; yes spends without asking; no never spends.",
+        "options": [
+          {
+            "value": "unset",
+            "label": "Unset",
+            "description": "Ask before spending; never spend without a prompt."
+          },
+          {
+            "value": "yes",
+            "label": "Yes",
+            "description": "Spend eligible saved resets without asking."
+          },
+          {
+            "value": "no",
+            "label": "No",
+            "description": "Never spend saved resets for this window."
           }
         ]
       }
@@ -3974,7 +4006,7 @@
         "description": "With auto-redeem enabled, spend a saved Codex reset within this many hours of expiry when either chat window has meaningful usage. 0 disables early salvage; credits expiring within 5 minutes are still attempted regardless of usage."
       }
     },
-    "claudeResets.autoRedeem": {
+    "claudeResets.autoRedeem5h": {
       "type": "enum",
       "default": "unset",
       "values": [
@@ -3985,23 +4017,87 @@
       "ui": {
         "tab": "providers",
         "group": "Services",
-        "label": "Claude Auto-Redeem Resets",
-        "description": "Spend eligible Claude Cedar or Juniper resets automatically. Cedar is spent only for covered limits; Juniper can only recover a sole 5-hour block. unset asks before the first spend (with no prompt UI, it spends only a reset expiring within 5 minutes), yes spends without prompting, and no disables blocked recovery and expiry salvage.",
+        "label": "Claude Auto-Redeem Saved Resets (5h)",
+        "description": "Spend Claude Cedar or Juniper resets on 5-hour-only blocks and on expiring grants whose fullest covered limit is 5h. unset asks before spending and never spends without a prompt; yes spends without asking; no never spends.",
         "options": [
           {
             "value": "unset",
             "label": "Unset",
-            "description": "Check live eligibility, then ask before spending the first Claude reset. With no prompt UI, spend only a reset expiring within 5 minutes."
+            "description": "Ask before spending; never spend without a prompt."
           },
           {
             "value": "yes",
             "label": "Yes",
-            "description": "Spend eligible Claude resets without prompting."
+            "description": "Spend eligible saved resets without asking."
           },
           {
             "value": "no",
             "label": "No",
-            "description": "Do not run Claude reset auto-redeem checks."
+            "description": "Never spend saved resets for this window."
+          }
+        ]
+      }
+    },
+    "claudeResets.autoRedeemWeekly": {
+      "type": "enum",
+      "default": "unset",
+      "values": [
+        "unset",
+        "yes",
+        "no"
+      ],
+      "ui": {
+        "tab": "providers",
+        "group": "Services",
+        "label": "Claude Auto-Redeem Saved Resets (Weekly)",
+        "description": "Spend Claude Cedar resets on weekly or model-scoped blocks and on expiring grants whose fullest covered limit is weekly. unset asks before spending and never spends without a prompt; yes spends without asking; no never spends.",
+        "options": [
+          {
+            "value": "unset",
+            "label": "Unset",
+            "description": "Ask before spending; never spend without a prompt."
+          },
+          {
+            "value": "yes",
+            "label": "Yes",
+            "description": "Spend eligible saved resets without asking."
+          },
+          {
+            "value": "no",
+            "label": "No",
+            "description": "Never spend saved resets for this window."
+          }
+        ]
+      }
+    },
+    "claudeResets.autoRedeemFable": {
+      "type": "enum",
+      "default": "unset",
+      "values": [
+        "unset",
+        "yes",
+        "no"
+      ],
+      "ui": {
+        "tab": "providers",
+        "group": "Services",
+        "label": "Claude Auto-Redeem Fable Resets",
+        "description": "Spend Claude Fable launch resets, which restore Fable weekly usage plus the 5h window. Only this setting governs them. unset asks before spending and never spends without a prompt; yes spends without asking; no never spends.",
+        "options": [
+          {
+            "value": "unset",
+            "label": "Unset",
+            "description": "Ask before spending; never spend without a prompt."
+          },
+          {
+            "value": "yes",
+            "label": "Yes",
+            "description": "Spend eligible saved resets without asking."
+          },
+          {
+            "value": "no",
+            "label": "No",
+            "description": "Never spend saved resets for this window."
           }
         ]
       }

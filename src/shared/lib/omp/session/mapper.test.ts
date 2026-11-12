@@ -63,6 +63,37 @@ describe('toChatMessage — custom frames', () => {
     expect(toChatMessage({ role: 'custom', customType: 'x', content: [] })).toBeNull();
     expect(toChatMessage({ role: 'custom', customType: 'x', content: '   ' })).toBeNull();
   });
+
+  test('reads an injected peer message from details, not the prompt envelope', () => {
+    // omp 18.18.9: a message that ends a wait arrives as its own turn; the
+    // content is the `<irc>` envelope, so the raw body must come from details.
+    const msg = toChatMessage({
+      role: 'custom',
+      id: 'irc-1',
+      customType: 'irc:incoming',
+      content: '<irc>\nIncoming IRC message from agent `Sleeper`:\n\ndone\n\nIf response expected, reply via `write`.</irc>',
+      details: { id: '159edc11', from: 'Sleeper', message: 'done', replyTo: 'main', progress: true },
+    });
+    expect(msg).toEqual({
+      id: 'irc-1',
+      role: 'ai',
+      content: '',
+      notice: 'done',
+      noticeSource: 'irc:incoming',
+      irc: { id: '159edc11', from: 'Sleeper', message: 'done', replyTo: 'main', progress: true },
+    });
+    expect(msg?.content).not.toContain('<irc>');
+  });
+
+  test('falls back to the envelope notice when an irc frame carries no details', () => {
+    const msg = toChatMessage({
+      role: 'custom',
+      customType: 'irc:incoming',
+      content: '<irc>from `Sleeper`: done</irc>',
+    });
+    expect(msg?.irc).toBeUndefined();
+    expect(msg?.notice).toBe('<irc>from `Sleeper`: done</irc>');
+  });
 });
 
 describe('toChatMessage — notice roles and reminder envelopes', () => {

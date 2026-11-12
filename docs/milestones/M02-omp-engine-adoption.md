@@ -5,7 +5,7 @@ the installed binary was **18.8.3** (2026-10-07); the pin now matches (F9). This
 of everything between the two versions that Kabmo either gets wrong or
 does not use, and the phased plan to close it.
 
-Status: **done** — every phase closed; P4b–d and P5 were measured and deliberately not adopted, and the pin has since moved on to 18.18.6 (2026-11-10).
+Status: **done** — every phase closed; P4b–d and P5 were measured and deliberately not adopted, and the pin has since moved on to 18.18.9 (2026-11-11).
 
 **Re-audited at 18.9.2 (2026-10-12)** — the pin moved on again and the schema had
 drifted 9 rows; see [the re-audit section](#omp-1892-re-audit-2026-10-12) at the
@@ -1797,3 +1797,84 @@ event payload, a settings row or a tool-result field Kabmo reads.
 | R68 | delivery lines + `settledAtMs` additive | none needed | wire unchanged; field read in upstream `async/job-control.ts`, absent from any Kabmo parser |
 | R69 | `todo append` defaults its phase | none needed | parser reads tool text only; upstream `tools/todo.ts` |
 | R70 | catalog/SDK/host fixes | none needed | 74 commands / 299 definitions byte-identical; names, roles and slash registry identical; 604 settings / 450 rows |
+
+# omp 18.18.9 adoption (2026-11-11)
+
+The pin moved **18.18.6 → 18.18.9**, carrying 18.18.7 and 18.18.8. The RPC
+wire is unchanged; the reachable change is how a message that ends a `wait` is
+delivered, plus a settings split for saved-reset auto-redeem.
+
+## Method
+
+- `bun add @oh-my-pi/pi-coding-agent@18.18.6` and `@18.18.9` (plus the matching
+  `pi-tui`) into temp trees, then `diff -rq` over `src/` — 128 files differ.
+- `rpc-wire.schema.json` compared whole: **74 commands, 299 definitions**, and
+  every notification/event variant byte-identical in both trees.
+- The schema generator run against 18.18.9 produces **10 tabs / 608 settings /
+  453 rows**, from a clean temp tree and in place. The diff is only the reset
+  keys below plus `source`.
+- `builtin-names.ts`, `MODEL_ROLES` and the slash registry are byte-identical.
+  The three `smithery-*` MCP subcommands removed upstream had no Kabmo copy and
+  no guard row (they are `/mcp` subcommands, not slash names).
+
+## Findings
+
+### R71 — saved-reset auto-redeem is per window (schema only)
+
+`codexResets.autoRedeem` becomes `codexResets.autoRedeem5h` +
+`codexResets.autoRedeemWeekly`; `claudeResets.autoRedeem` becomes
+`claudeResets.autoRedeem5h` + `autoRedeemWeekly` + a new `autoRedeemFable`.
+omp's settings migration folds the legacy boolean/tri-state into both window
+keys on read, so no stored Kabmo value needs rewriting. The panel is
+schema-driven and carries the new rows; nothing outside the committed schema
+names the old key.
+
+### R72 — a message that ends a `wait` is its own turn (adopted)
+
+18.18.9 deletes `messageResult` / `drainPendingInbox` and `waited` from
+`CoordinationDetails`. `handOffMail` gives the message to the recipient
+session, which injects a `customType: "irc:incoming"` turn and runs it as a
+user turn; the wait answers `Wait interrupted by message.` with
+`{ op: "wait", jobs: [], interrupted: true }`.
+
+Kabmo's wait card read `details.waited`, so after the bump every message that
+ended a wait disappeared from it. The wait card now shows `interrupted`, and
+the injected turn is mapped from `details.from` / `details.message` (the row's
+content is omp's `<irc>` prompt envelope, which must never be shown). Both
+transcript paths get the same row: live (`mapper.ts`) and JSONL reload
+(`noticeFromCustomMessage`). The timeline draws it with the new `IrcNotice`
+card; the wait card's message block stays for sessions recorded on 18.17.0
+through 18.18.6, whose JSONL still carries `waited`.
+
+Measured on a real persisted entry: the JSONL `details` is
+`{ id, from, message }`, and `content` is the full `<irc>` envelope with the
+reply instructions.
+
+### R73 — `ask` option notes (no action)
+
+18.18.8 lets a TUI form attach a note to a selected option and returns
+`details.notes[]` (`{ name, question, option, value, text }`). The RPC host has
+no `formDialog` and answers the form field by field through
+`select`/`input`/`editor`, so it cannot produce a note. Kabmo's ask card reads
+`details.answers`, whose shape is unchanged.
+
+### R74 — context split, shell, browser, catalog (no action)
+
+18.18.7–9 add instruction-file and skill categories to `/context` and
+`instructionFilesTokens` to session statistics (TUI/overlay and an additive
+stats field Kabmo does not read), make the shell's built-in `jq` behave like
+jq 1.8.2, add Hacker News/Sofya search engines and the Smithery removal
+(catalog, read through `omp models --json`), persist launch services for
+non-interactive sessions, and fix browser relay/`tab.*` handling, `/tan`
+completion wording, async-job delivery text and AppContainer/Windows shell
+paths. None changes an RPC verb, event payload or tool-result field Kabmo
+parses.
+
+## 18.18.9 outcomes
+
+| # | Finding | Action | Verification |
+|---|---|---|---|
+| R71 | auto-redeem split per window | schema regenerated; no code names the old key | 608 settings / 453 rows; five new keys, two removed (net +3 rows); panel tests pass |
+| R72 | wait no longer carries received messages | `irc-notice.ts` maps `details` in both paths; `IrcNotice` card; wait docs note the old shape | mapper + messages-map + IrcNotice tests; existing wait-card `waited` tests still pin pre-18.18.9 sessions |
+| R73 | ask option notes | none needed | RPC host has no `formDialog`; `AskToolDetails.answers` unchanged |
+| R74 | host/catalog/shell fixes | none needed | 74 commands / 299 definitions byte-identical; names, roles and slash registry identical |

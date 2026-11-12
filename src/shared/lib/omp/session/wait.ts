@@ -15,8 +15,13 @@
  *            resolvedModel?,resolvedThinkingLevel?,resultText?,errorText?,
  *            agentUrlId?}] }
  *   { op:'wait', jobs:[], interrupted:true }            // cut short by a message
- *   { op:'wait', from:<sender>, waited:[{from,to,body,ts}] }  // peer messages woke it
+ *   { op:'wait', from:<sender>, waited:[{from,to,body,ts}] }  // omp ≤18.18.6 only
  *   { op:'cancel', jobs:[...], cancelled:[{id,status}] }
+ *
+ * omp 18.18.9 removed `waited`: a message that ends the wait is handed to the
+ * session, which injects it as its own `irc:incoming` turn, and the wait answers
+ * with `interrupted:true` and the prose "Wait interrupted by message." The field
+ * is still read because a session recorded on an older omp keeps it in its JSONL.
  *
  * While the call is still blocking omp re-emits the SAME snapshot every 500 ms
  * (`PROGRESS_INTERVAL_MS`) with a fresh `durationMs`, so the elapsed clock is
@@ -180,6 +185,10 @@ function messageOf(value: unknown): WaitMessage | undefined {
  * on 18.16.0 keeps it in its JSONL. Reading only the array dropped the message
  * block and the `message received` chip on every new wait, silently: `isRecord`
  * refuses an array, so the old code answered `undefined` rather than failing.
+ *
+ * omp 18.18.9 stopped producing the field altogether (see the module header).
+ * These rows survive for sessions recorded before that, where the message has
+ * no independent transcript turn to render instead.
  */
 function messagesOf(value: unknown): WaitMessage[] {
   const rows = Array.isArray(value) ? value : [value];

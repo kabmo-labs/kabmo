@@ -228,8 +228,9 @@ export function Wait({ tool }: { tool: ToolCallData }) {
         </div>
       </div>
 
-      {/* The messages that ended the wait — the reason it returned early. omp
-          returns EVERY message queued by the wake (18.17.0), oldest first. */}
+      {/* The messages that ended the wait, oldest first — omp 18.17.0–18.18.6
+          results only. Since 18.18.9 the message is its own `irc:incoming`
+          turn (`IrcNotice`), and the wait carries `interrupted` instead. */}
       {view.waited.length > 0 && (
         <div className="overflow-hidden rounded-lg border border-ink/8 bg-paper px-3 py-2">
           <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink/40">

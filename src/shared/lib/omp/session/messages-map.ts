@@ -10,6 +10,7 @@ import { isRecord } from '@/shared/lib/util/guards';
 import { withoutShellTrace } from '@/shared/lib/omp/session/shell-trace';
 import { normalizeNoticeText } from '@/shared/lib/chat/notice-text';
 import { developerTurnNotice, reminderPartIndex } from '@/shared/lib/chat/notice-row';
+import { IRC_INCOMING_CUSTOM_TYPE, ircMessageFromDetails } from '@/shared/lib/chat/irc-notice';
 import { deriveTurnError } from '@/shared/lib/omp/session/turn-error';
 import { toEpochMs } from '@/shared/lib/omp/session/timestamps';
 import { CHAMBER_GOAL_STATE_ENTRY, CHAMBER_PLAN_STATE_ENTRY, KABMO_GOAL_STATE_ENTRY, KABMO_PLAN_STATE_ENTRY } from '@/shared/lib/omp/mode/types';
@@ -281,6 +282,22 @@ export function noticeFromCustomMessage(record: Record<string, unknown>): ChatMe
   const id = typeof record.id === 'string' ? record.id : `notice-${Date.now()}`;
 
   if (customType === 'session_exit') return null;
+  // A peer agent's message: omp 18.18.9 injects it as this custom turn, and its
+  // `details` holds the sender and the raw body behind the `<irc>` envelope.
+  if (customType === IRC_INCOMING_CUSTOM_TYPE) {
+    const irc = ircMessageFromDetails(record.details);
+    if (irc) {
+      return {
+        id,
+        role: 'ai',
+        content: '',
+        notice: irc.message,
+        noticeSource: IRC_INCOMING_CUSTOM_TYPE,
+        irc,
+        date,
+      };
+    }
+  }
   // The Kabmo's own mode bookkeeping. These entries carry no prose — they are
   // a transition log the console reads for the composer's toggles (see
   // `server/lib/omp/session/modes.ts`) — and rendering them would put a raw

@@ -15,6 +15,7 @@
 import type { ChatMessageData, ToolCallData } from '@/shared/types';
 import { extractInlinedTextAttachments, extractText, extractUserImageAttachments, parseMessageBlocks, stripInlinedTextAttachments, toToolCallData } from '@/shared/lib/omp/session/parse-message-blocks';
 import { developerTurnNotice, reminderPartIndex } from '@/shared/lib/chat/notice-row';
+import { IRC_INCOMING_CUSTOM_TYPE, ircMessageFromDetails } from '@/shared/lib/chat/irc-notice';
 import { deriveTurnError } from '@/shared/lib/omp/session/turn-error';
 import { formatClock } from '@/shared/lib/format/time';
 import { toEpochMs } from '@/shared/lib/omp/session/timestamps';
@@ -42,6 +43,22 @@ export function toolResultText(value: unknown): string {
 export function toChatMessage(raw: Record<string, unknown>, streaming = true): ChatMessageData | null {
   if (raw.role === 'custom') {
     if (raw.customType === 'session_exit') return null; // runtime plumbing, not user-visible
+    // A peer agent's message is a real turn, not a runtime notice: omp 18.18.9
+    // delivers it here instead of inside a `wait` result. Its content is the
+    // `<irc>` prompt envelope, so the row is built from `details`.
+    if (raw.customType === IRC_INCOMING_CUSTOM_TYPE) {
+      const irc = ircMessageFromDetails(raw.details);
+      if (irc) {
+        return {
+          id: typeof raw.id === 'string' ? raw.id : `irc-${Date.now()}`,
+          role: 'ai',
+          content: '',
+          notice: irc.message,
+          noticeSource: IRC_INCOMING_CUSTOM_TYPE,
+          irc,
+        };
+      }
+    }
     const content = raw.content;
     const text = typeof content === 'string'
       ? content
