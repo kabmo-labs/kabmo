@@ -214,6 +214,25 @@ describe('composer toolbar action pair', () => {
     expect(stop.className).not.toContain('border-');
     expect(submit.className).not.toContain('bg-ink');
   });
+
+  test('paints the pair in the palette ink under monochrome', async () => {
+    const el = await mount({ isGenerating: true, onStop: () => {} });
+    const stop = el.querySelector(stops) as HTMLButtonElement;
+    const submit = el.querySelector(send) as HTMLButtonElement;
+    // The signal fills above are the COLOUR mode's statement. Monochrome is the
+    // default and it removes chroma, so the stylesheet overrides both fills for
+    // this marker class; without it the window keeps two saturated buttons.
+    expect(stop.className.split(/\s+/)).toContain('composer-action');
+    expect(submit.className.split(/\s+/)).toContain('composer-action');
+
+    const css = await Bun.file(new URL('../../../../tailwind.css', import.meta.url)).text();
+    const start = css.indexOf(':root:not([data-icon-style="color"]) .composer-action {');
+    expect(start).toBeGreaterThan(-1);
+    const block = css.slice(start, css.indexOf(':root:not([data-icon-style="color"]) .composer-action:hover', start));
+    expect(block).toContain('background-color: var(--theme-ink);');
+    // A disabled Send must not re-state the colour fill on hover.
+    expect(css).toContain(':root:not([data-icon-style="color"]) .composer-action:hover:not(:disabled) {');
+  });
 });
 
 /**

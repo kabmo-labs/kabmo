@@ -270,6 +270,10 @@ export function ComposerToolbar({
             the pair then read as one primary and one ghost when the two do
             different things.
 
+            Monochrome has no hue to say that with, so `.composer-action` paints
+            BOTH controls in the palette ink there and the glyph carries the
+            difference (see tailwind.css). The colour mode is unchanged.
+
             The fill is `bg-error-text`, NOT `bg-error`: the `-text` token is
             the palette's own red solved until it clears 4.5:1 against paper
             and canvas, so the button is a visible shape on all 63 palettes
@@ -287,7 +291,7 @@ export function ComposerToolbar({
           <button
             type="button"
             onClick={onStop}
-            className={`${ACTION_BASE} ${actionSize} bg-error-text text-canvas shadow-xs hover:bg-error-text-hover`}
+            className={`${ACTION_BASE} ${actionSize} composer-action bg-error-text text-canvas shadow-xs hover:bg-error-text-hover`}
             title="Stop generation"
             aria-label="Stop generation"
           >
@@ -298,7 +302,8 @@ export function ComposerToolbar({
         {/* Send is the BLUE half of the pair, and the one that must stay
             findable at rest: a run is started from here and stopped from the
             red control beside it, so the two states are told apart by hue
-            before the glyph is read.
+            before the glyph is read — in the colour mode. Monochrome paints
+            both in ink (`.composer-action`, tailwind.css).
 
             `bg-info-text` for the same reason Stop uses `bg-error-text`: it is
             the palette's blue solved to 4.5:1 against paper and canvas, so the
@@ -313,7 +318,7 @@ export function ComposerToolbar({
           type="button"
           onClick={onSend}
           disabled={sendDisabled}
-          className={`${ACTION_BASE} ${actionSize} bg-info-text text-canvas shadow-xs hover:bg-info-text-hover hover:shadow-sm disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none disabled:hover:bg-info-text`}
+          className={`${ACTION_BASE} ${actionSize} composer-action bg-info-text text-canvas shadow-xs hover:bg-info-text-hover hover:shadow-sm disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none disabled:hover:bg-info-text`}
           title={chatInFlight ? 'Queue follow-up message' : 'Send message'}
           aria-label={chatInFlight ? 'Queue follow-up message' : 'Send message'}
         >
