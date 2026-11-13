@@ -70,10 +70,14 @@ export function TrailingSlot({ timeAgo, timeTitle, onOpenMenu, menuOpen = false,
   }
 
   return (
-    <span className="relative ml-2 flex h-4 w-8 shrink-0 items-center justify-end">
+    // The box is as wide as the age, never a fixed 32px: `12 Sep` is 36px at
+    // 10px mono, and a fixed box wrapped it into two lines (`12` / `Sep`).
+    // `min-w-8` keeps the 22px trigger's box inside the column, and the age
+    // stays in flow so the title truncates before it instead of under it.
+    <span className="relative ml-2 flex h-4 min-w-8 shrink-0 items-center justify-end pr-1">
       {timeAgo && (
         <span
-          className="absolute right-1 font-mono text-[10px] leading-none text-ink/40 transition-opacity group-hover/item:opacity-0 group-focus-within/item:opacity-0"
+          className="whitespace-nowrap font-mono text-[10px] leading-none text-ink/40 transition-opacity group-hover/item:opacity-0 group-focus-within/item:opacity-0"
           title={timeTitle ?? undefined}
         >
           {timeAgo}

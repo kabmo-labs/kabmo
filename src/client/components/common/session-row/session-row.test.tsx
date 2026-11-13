@@ -138,6 +138,19 @@ describe('modern session row', () => {
     expect(age?.textContent).toBe('3w');
   });
 
+  test('a dated age stays on one line and the column grows to fit it', async () => {
+    // `12 Sep` is 36px at 10px mono. The old fixed `w-8` box (32px) wrapped it
+    // into `12` / `Sep`; the age must never wrap, and the box must be able to
+    // grow past the trigger's 22px while still reserving it.
+    const el = await mount({ timeAgo: '12 Sep', onRename: () => {} });
+    const age = el.querySelector('span.font-mono');
+    expect(age?.textContent).toBe('12 Sep');
+    expect(age?.className ?? '').toContain('whitespace-nowrap');
+    const box = age?.parentElement;
+    expect(box?.className ?? '').toContain('min-w-8');
+    expect(box?.className.split(/\s+/)).not.toContain('w-8');
+  });
+
   test('batch mode swaps the status slot for the checkbox', async () => {
     const el = await mount({ selectable: true, selected: true, status: 'stream' });
     expect(el.querySelector('input[type="checkbox"]')).not.toBeNull();
