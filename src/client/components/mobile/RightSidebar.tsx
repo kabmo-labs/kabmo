@@ -8,6 +8,7 @@ import { useSharedSessionState } from '@/client/hooks/workspace/session-state';
 import { useLeftDock } from '@/client/hooks/workspace/left-dock';
 import { SESSIONS_VIEW_ID } from '@/shared/lib/workspace/left-dock';
 import { phoneRightPanels } from '@/shared/lib/workspace/mobile-dock';
+import { DEFAULT_RIGHT_PANEL_TYPE } from '@/shared/lib/workspace/right-panels';
 import { PanelChips } from '@/client/components/mobile/panel-chips';
 import { titlebarPaddingLeft, titlebarPaddingRight } from '@/shared/lib/ui/titlebar';
 import { dragRegionProps, titlebarInsetLeft } from '@/client/lib/desktop/titlebar';
@@ -46,7 +47,7 @@ export function MobileRightSidebar({
   // back on the Search view re-ran a query that can hold thousands of hits, and
   // the user never asked for a search. Restoring the tab they left also keeps
   // the phone and the desktop on the same view.
-  const [activeTab, setActiveTab] = useSharedSessionState<string>('layout.mobileRightPanel', 'files');
+  const [activeTab, setActiveTab] = useSharedSessionState<string>('layout.mobileRightPanel', DEFAULT_RIGHT_PANEL_TYPE);
   // ONE catalog, the same one the desktop bars read, and deliberately `all`:
   // a phone has ONE drawer, so a plugin panel the user placed on the left must
   // stay reachable here — reading only the right column would make placing a

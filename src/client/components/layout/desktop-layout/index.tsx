@@ -17,6 +17,7 @@ import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
 import { MIN_LEFT_PANEL_WIDTH } from '@/shared/lib/workspace/sidebar-width';
 import { MIN_LEFT_DOCK_PLUGIN_WIDTH } from '@/shared/lib/workspace/left-dock-width';
 import { SESSIONS_VIEW_ID } from '@/shared/lib/workspace/left-dock';
+import { DEFAULT_RIGHT_PANEL_TYPE } from '@/shared/lib/workspace/right-panels';
 import { useOpenPanelRequest } from '@/client/hooks/workspace/open-panel';
 import { useLeftDock, useLeftDockWidth } from '@/client/hooks/workspace/left-dock';
 import { useEditorViewLayout } from '@/client/hooks/workspace/editor-view';
@@ -40,7 +41,10 @@ interface DesktopLayoutProps {
 export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }: DesktopLayoutProps) {
   const { folders, isMock } = useSidebarData();
   const [showRightPanel, setShowRightPanel] = useSessionState<boolean>('layout.showRightPanel', appSettings.showRightPanel ?? true);
-  const [activeRightPanel, setActiveRightPanel] = useSessionState<string>('layout.activeRightPanel', (appSettings.activeRightPanel as string) ?? 'files');
+  // A new session opens Files. Deliberately NOT `appSettings.activeRightPanel`:
+  // pre-per-session builds stored that key globally, so reading it back made
+  // every new chat open whichever panel was last picked in any other session.
+  const [activeRightPanel, setActiveRightPanel] = useSessionState<string>('layout.activeRightPanel', DEFAULT_RIGHT_PANEL_TYPE);
   const [showLeftPanel, setShowLeftPanel] = useSessionState<boolean>('layout.showLeftPanel', appSettings.showLeftPanel ?? true);
   const [activeLeftView, setActiveLeftView] = useSessionState<string>('layout.activeLeftPanel', SESSIONS_VIEW_ID);
   // Which plugin panel, if any, owns the editor column. Per session, like every

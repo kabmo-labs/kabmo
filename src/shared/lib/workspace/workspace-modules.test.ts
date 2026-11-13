@@ -23,7 +23,7 @@ import { afterAll, afterEach, describe, expect, test } from 'bun:test';
 import { activeProjectForSession, composerRootFor, effectiveRootFor } from '@/shared/lib/workspace/active-project';
 import { diffTabId, diffTabName, fileTabId } from '@/shared/lib/workspace/file-tab-id';
 import {
-  DEFAULT_RIGHT_PANEL_FRACTION,
+  DEFAULT_RIGHT_PANEL_FRACTION, DEFAULT_RIGHT_PANEL_TYPE,
   DEFAULT_RIGHT_PANEL_WIDTHS,
   MIN_RIGHT_PANEL_WIDTHS,
   RIGHT_PANEL_TYPES,
@@ -90,6 +90,8 @@ describe('right-panels catalog', () => {
     expect(DEFAULT_RIGHT_PANEL_WIDTHS.terminal).toBe(640);
     expect(MIN_RIGHT_PANEL_WIDTHS.files).toBe(200);
     expect(MIN_RIGHT_PANEL_WIDTHS.terminal).toBe(320);
+    // A new session opens Files, never the stale global `activeRightPanel` row.
+    expect(DEFAULT_RIGHT_PANEL_TYPE).toBe('files');
   });
 
   test('isRightPanelType accepts only catalog members', () => {

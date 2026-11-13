@@ -56,6 +56,19 @@ export const PANEL_MARK_SIZE = 16;
 export const DEFAULT_RIGHT_PANEL_FRACTION = 0.3;
 
 /**
+ * The view a session that has never picked one opens on.
+ *
+ * Not read from `app_settings`. Builds that carried a GLOBAL `activeRightPanel`
+ * row (the pre-per-session layout wrote that key on every rail click) still have
+ * it in `app_settings`, and seeding the per-session slot from it made every NEW
+ * chat open whatever panel was last selected anywhere — measured on this
+ * machine's database, `activeRightPanel = browser`, so a fresh session drew the
+ * Browser Agent instead of Files. A new session starts from this constant; the
+ * per-session slot then remembers what the user picks.
+ */
+export const DEFAULT_RIGHT_PANEL_TYPE: RightPanelType = 'files';
+
+/**
  * Width (px) a view opens at before the group's area has been measured. Kept at
  * the values these views shipped with, so the first paint is unchanged and a
  * window that never reports an area still opens sensibly.
