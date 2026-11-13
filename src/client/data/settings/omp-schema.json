@@ -1,5 +1,5 @@
 {
-  "source": "@oh-my-pi/pi-coding-agent 10 tabs / 612 settings",
+  "source": "@oh-my-pi/pi-coding-agent 10 tabs / 615 settings",
   "tabs": [
     {
       "id": "appearance",
@@ -90,6 +90,7 @@
         "Available Tools",
         "Todos",
         "Grep & Browser",
+        "Find",
         "Computer",
         "Execution",
         "GitHub",
@@ -2028,7 +2029,7 @@
         "tab": "model",
         "group": "Thinking",
         "label": "Tool-Call Loop Exempt Tools",
-        "description": "Tool names that may repeat consecutively without triggering the cross-turn loop guard"
+        "description": "Tool names, or xd:// device names of write dispatches (for example mcp__peers_wait), that may repeat consecutively without triggering the cross-turn loop guard"
       }
     },
     "inlineToolDescriptors": {
@@ -2081,6 +2082,16 @@
         "group": "Prompt",
         "label": "Include Workspace Tree",
         "description": "Render the workspace directory tree in the system prompt. WARNING: This can bust prompt caching across sessions when files are modified."
+      }
+    },
+    "encourageEdits": {
+      "type": "boolean",
+      "default": true,
+      "ui": {
+        "tab": "model",
+        "group": "Prompt",
+        "label": "Encourage Edits",
+        "description": "Require the edit tool for file edits and forbid sed/perl/python edits"
       }
     },
     "skillful": {
@@ -6504,6 +6515,15 @@
         "group": "Available Tools",
         "label": "AST Edit",
         "description": "Enable the ast_edit tool for structural AST rewrites"
+      }
+    },
+    "find.verifyModel": {
+      "type": "string",
+      "ui": {
+        "tab": "tools",
+        "group": "Find",
+        "label": "Find Verification Model",
+        "description": "Model selector (e.g. openrouter/liquid/d1-ultra) tried first for find's passage verification, before the judge role; filename and sketch ranking stay on the judge role. Unset: the judge role verifies too"
       }
     },
     "find.enabled": {

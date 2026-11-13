@@ -5,7 +5,7 @@ the installed binary was **18.8.3** (2026-10-07); the pin now matches (F9). This
 of everything between the two versions that Kabmo either gets wrong or
 does not use, and the phased plan to close it.
 
-Status: **done** — every phase closed; P4b–d and P5 were measured and deliberately not adopted, and the pin has since moved on to 18.19.0 (2026-11-12).
+Status: **done** — every phase closed; P4b–d and P5 were measured and deliberately not adopted, and the pin has since moved on to 18.20.0 (2026-11-13).
 
 **Re-audited at 18.9.2 (2026-10-12)** — the pin moved on again and the schema had
 drifted 9 rows; see [the re-audit section](#omp-1892-re-audit-2026-10-12) at the
@@ -1945,3 +1945,75 @@ Kabmo parses.
 | R75 | `blocked` todo status removed | parser and types keep the status for pre-18.19.0 sessions; comments record why | parser/progress tests still pin blocked; wire diff shows the enum narrowed |
 | R76 | four rows added, `task.file` removed | schema regenerated; no code names the old key | 612 settings / 456 rows; `omp:schema:check` passes |
 | R77 | browser/doc-topic/host changes | none needed | 74 commands / 299 definitions, 0 added/removed; roles and slash names identical |
+
+# omp 18.20.0 adoption (2026-11-13)
+
+The pin moved **18.19.0 → 18.20.0**. The RPC wire keeps its 74 commands and
+299 definitions; the reachable change is two new schema rows (one under a new
+`Find` group) and four additive fields on the `select` UI request.
+
+## Method
+
+- `bun add @oh-my-pi/pi-coding-agent@18.19.0` and `@18.20.0` into temp trees,
+  then `diff -rq` over `src/` — 129 entries differ.
+- `rpc-wire.schema.json` compared whole: **74 commands, 299 definitions**, 0
+  added, 0 removed, 1 changed (`SelectUiRequest`). Every notification, event
+  and frame variant is byte-identical.
+- The schema generator run against 18.20.0 produces **10 tabs / 615 settings /
+  458 entries** (was 612 / 456). The diff is two added rows, one new tab group,
+  and one description-only update; a third new setting, `find.hitThreshold`, is
+  registered with no `ui` and therefore has no row, exactly as the generator
+  treats every no-UI setting.
+- `MODEL_ROLES` and the slash registry are byte-identical; `BUILTIN_TOOL_NAMES`
+  is the same 30 names (`builtin-names.ts` gains a `BUILTIN_TOOL_HELP` table).
+
+## Findings
+
+### R78 — `select` requests carry marker hints (no action)
+
+`SelectUiRequest` gains `initialIndex`, `selectionMarker` (`radio` / `checkbox`),
+`checkedIndices` and `markableCount`. They are presentation hints: the answer
+is still the single `{ value }` label (`parseValueDialogResponse` is unchanged),
+and a checkbox dialog is a loop of `select` calls where the host returns the
+toggled row. The fields are emitted by `requestRpcSelect` whenever its caller
+passes them — the interactive TUI, a collab guest's ask fallback, and any
+extension that calls `ui.select` with a marker. Kabmo's own `ask` opts into the
+grouped form dialog (`set_ask_dialog`), so it never takes the field-by-field
+fallback that supplies `initialIndex`; the dialog keeps answering correctly
+without them. Rendering the markers would be new UI for a path the product does
+not run.
+
+### R79 — two rows added, one new group (schema only)
+
+`encourageEdits` (boolean, default on, model / Prompt) makes omp's system prompt
+carry a critical rule requiring `edit` for file edits. `find.verifyModel`
+(string, tools / new `Find` group) names a model tried first for `find`'s
+passage verification. Neither carries a `ui.condition`, so `isConditionMet`
+needs no arm, and the panel is schema-driven; the description update is
+`model.toolCallLoopGuard.exemptTools` widening its wording to `xd://` write
+devices.
+
+### R80 — read/grep/write/proc/host changes (no action)
+
+- `read` re-shapes a `;`/`,` path list as blocks of one call. `ReadToolDetails`
+  keeps every field Kabmo reads (`displayContent`, `contentType`, `notes`,
+  `displayReadTargets`), the list notice and part text are unchanged, and the
+  card reads text plus images the same way.
+- `grep` adds `binaryMatches` to its details and a corresponding note, and
+  sanitizes control characters in matched lines. The card draws
+  `details.files`/`count` and the result text; an extra warning line is prose it
+  already renders.
+- `write` sets a shebang file's execute bits before LSP diagnostics run;
+  `proc` device results gain `touchesNoFiles`. Neither is drawn.
+- Host-side and additive: the `ssh-config` discovery provider and `ssh://`
+  reads, LSP `workspace/didChangeWatchedFiles` forwarding, the computer
+  secure-input prompt and its option errors, `--allow-escape-sequences` with an
+  old-`gh` fallback in `gh-run-watch`, and `resolveToolWireName` extraction.
+
+## 18.20.0 outcomes
+
+| # | Finding | Action | Verification |
+|---|---|---|---|
+| R78 | `select` request gains marker hints | none needed | 74 commands / 299 definitions, 0 added/removed; answer still one `{value}` label |
+| R79 | two rows added, one no-UI setting | schema regenerated; no code names a new key | 615 settings / 458 entries; `omp:schema:check` passes |
+| R80 | read/grep/write/proc/host changes | none needed | `ReadToolDetails` identical; `bun test` 11465 pass; `bun run lint` clean |

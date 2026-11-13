@@ -401,7 +401,34 @@ fi
 # grammar and WebKit viewer, the `xd://read/sources` / `xd://read/urls` doc
 # topics, `promptReference` on internal-URL schemes, the gh-run-watch step
 # snapshots, and the OAuth-gated model modifiers — host-side or model-facing.
-OMP_VERSION="${OMP_VERSION:-18.19.0}"
+#
+# 18.20.0 (2026-11-13): the schema's `source` line moves to 615 settings and the
+# panel gains TWO rows (`encourageEdits` under model / Prompt, and
+# `find.verifyModel` under tools / a new `Find` group), net +2; `find.hitThreshold`
+# is registered with no `ui`, so omp's own panel has no row for it and the
+# generator skips it the same way. One description changes
+# (`model.toolCallLoopGuard.exemptTools` now also names `xd://` write devices).
+# The RPC wire keeps its 74 commands and 299 definitions — 0 added, 0 removed,
+# 1 changed: `SelectUiRequest` gains `initialIndex`, `selectionMarker`,
+# `checkedIndices` and `markableCount`. `MODEL_ROLES`, the slash registry and
+# the 30 `BUILTIN_TOOL_NAMES` are identical (`builtin-names.ts` gains a help
+# table only).
+#
+# Not adopted, deliberately: the four `select` hint fields. They tell a host
+# which row to focus and which rows are checked — the answer is still the one
+# `{ value }` label (`parseValueDialogResponse` is unchanged), so Kabmo's
+# dialog submits the same request and a valid label. They are supplied only by
+# `ui.select` callers that want a marker (the TUI itself, and collab guests);
+# Kabmo's own `ask` takes grouped form dialogs, so the fallback select path that
+# would carry them is not the one it runs. Also not adopted: the read tool's
+# list re-shaping (same `ReadToolDetails` fields and the same note text), grep's
+# new `binaryMatches` detail plus its note and control-character sanitizing
+# (the card draws `details.files` and the text), write's shebang executable bit
+# moving before diagnostics, `touchesNoFiles` on `proc` device results, the
+# `ssh-config` discovery provider and `ssh://` reads, LSP watched-file
+# forwarding, the computer secure-input prompt and the `--allow-escape-sequences`
+# fallback in gh-run-watch — host-side or additive fields Kabmo does not read.
+OMP_VERSION="${OMP_VERSION:-18.20.0}"
 PACKAGE="@oh-my-pi/pi-coding-agent"
 WANTED="omp/${OMP_VERSION}"
 
