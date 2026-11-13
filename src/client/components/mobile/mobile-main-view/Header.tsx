@@ -1,6 +1,6 @@
-import { useMemo, useRef, useState } from 'preact/hooks';
+import { useMemo, useState } from 'preact/hooks';
+import type { TargetedMouseEvent } from 'preact';
 import { Check, ChevronDown, Loader2, Menu, Plus } from 'lucide-preact';
-import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 import { getLastOpenedAt } from '@/shared/lib/workspace/session-state/store';
 import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
 import { useAgentStreamStatus } from '@/client/hooks/chat/omp/status';
@@ -8,8 +8,9 @@ import { useSessionRenaming } from '@/client/hooks/workspace/renaming-sessions';
 import { StreamStatusDot } from '@/client/components/common/StreamStatusDot';
 import { BrandWordmark } from '@/client/components/common/brand-wordmark';
 import { HeaderControls } from '@/client/components/common/header-controls';
+import { AnchoredMenu } from '@/client/components/common/anchored-menu';
+import { anchorRectOf, type AnchorRect } from '@/shared/lib/ui/menu-anchor';
 import { titlebarPaddingLeft, titlebarPaddingRight } from '@/shared/lib/ui/titlebar';
-import { mobileOverlayStyle } from '@/shared/lib/ui/mobile-overlay';
 import { dragRegionProps, titlebarInsetLeft } from '@/client/lib/desktop/titlebar';
 import { CONTROL_CLUSTER_GAP } from '@/client/lib/ui/control-plate';
 
@@ -49,10 +50,7 @@ export function MobileHeader({
   // The drawer's row spins from the same store, so the two surfaces cannot
   // disagree about whether a rename is running.
   const renaming = useSessionRenaming(activeSessionId);
-  const [showSessionPicker, setShowSessionPicker] = useState(false);
-
-  const sessionPickerRef = useRef<HTMLDivElement>(null);
-  useOnClickOutside(sessionPickerRef, () => setShowSessionPicker(false));
+  const [pickerAnchor, setPickerAnchor] = useState<AnchorRect | null>(null);
 
   // Recent sessions: archived rows are hidden. A session the user actually
   // opened in this tab within the last 10 minutes ranks by that open time
@@ -147,16 +145,16 @@ export function MobileHeader({
 
         <span className="text-ink/25 font-light text-xs flex-shrink-0 select-none">/</span>
 
-        <div
-          className="relative min-w-0 flex-1 max-w-[150px]"
-          ref={sessionPickerRef}
-          data-testid="session-picker"
-        >
+        <div className="relative min-w-0 flex-1 max-w-[150px]" data-testid="session-picker">
           <button
             type="button"
-            onClick={() => setShowSessionPicker(!showSessionPicker)}
+            onClick={(event: TargetedMouseEvent<HTMLButtonElement>) => {
+              setPickerAnchor((was) => (was ? null : anchorRectOf(event.currentTarget)));
+            }}
             className="tap-chip flex w-full items-center space-x-1 text-xs font-semibold text-ink hover:text-ink/80 transition-colors py-1 min-w-0"
             title={displayTitle}
+            aria-haspopup="menu"
+            aria-expanded={pickerAnchor !== null}
           >
             <span className="truncate">{displayTitle}</span>
             {/* The phone's drawer row spins too, but the drawer is closed while
@@ -174,20 +172,21 @@ export function MobileHeader({
             <ChevronDown size={13} className="text-ink/50 flex-shrink-0" />
           </button>
 
-          {/* Pinned to the viewport, not to the trigger: the trigger sits
-              ~155px from the left edge, so a 288px panel anchored at its
-              `left-0` ran off the right edge of a phone screen. The six numbers
-              that keep it inside the safe area at any width live in
-              `mobileOverlayStyle`, shared with the server panel — the two used
-              to state them separately and drifted. */}
-          {showSessionPicker && (
-            <div
-              className="glass-popover fixed z-50 bg-paper border border-ink/15 rounded-xl shadow-lg p-2 text-xs"
-              style={mobileOverlayStyle()}
+          {/* Hangs under the title it belongs to, from the rectangle captured at
+              the click. The panel used to be pinned to the title bar's inset,
+              which put it at the screen's left edge instead of under this
+              button; `placeMenu` also keeps a 288px panel inside a 320px phone
+              by sliding it left rather than letting it run off the right edge. */}
+          {pickerAnchor && (
+            <AnchoredMenu
+              anchor={pickerAnchor}
+              align="start"
+              className="w-72 bg-paper border border-ink/15 rounded-xl shadow-lg p-2 text-xs"
+              onClose={() => setPickerAnchor(null)}
             >
               <button
                 type="button"
-                onClick={() => { onNewSession(); setShowSessionPicker(false); }}
+                onClick={() => { setPickerAnchor(null); onNewSession(); }}
                 className="w-full text-left px-3 py-2 rounded-lg bg-ink text-canvas flex items-center space-x-2 font-medium mb-1.5 active:scale-98"
               >
                 <Plus size={14} />
@@ -203,7 +202,7 @@ export function MobileHeader({
                     <button
                       key={s.id}
                       type="button"
-                      onClick={() => { onSelectSession(s.id); setShowSessionPicker(false); }}
+                      onClick={() => { setPickerAnchor(null); onSelectSession(s.id); }}
                       className={`w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between space-x-2 transition-colors ${
                         String(activeSessionId) === String(s.id)
                           ? 'bg-ink/10 font-semibold text-ink'
@@ -221,7 +220,7 @@ export function MobileHeader({
                   ))
                 )}
               </div>
-            </div>
+            </AnchoredMenu>
           )}
         </div>
       </div>

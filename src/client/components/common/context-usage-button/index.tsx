@@ -14,9 +14,11 @@
  * provider/model split below is the kind of detail one copy gets and the other
  * forgets.
  *
- * The popover is pinned to the viewport on the phone and anchored under the
- * trigger on the desktop; that is the only difference between the two, and it is
- * a prop rather than two components.
+ * The popover hangs under the trigger on both layouts, from the rectangle
+ * captured where the click happened; `layout` decides only the trigger's box.
+ * The phone used to pin the panel to the title bar's inset instead, which put it
+ * over the header and at the far side of the screen from the ring that opened
+ * it.
  *
  * The panel is drawn by `common/anchored-menu/` — portalled into `document.body`
  * at `z-[70]`. It used to be a `fixed z-50` child of the header, and BOTH headers
@@ -28,11 +30,10 @@
  * remedy, as `common/server-control/Panel.tsx`.
  */
 
-import { useCallback, useMemo, useRef, useState } from 'preact/hooks';
+import { useCallback, useMemo, useState } from 'preact/hooks';
 import type { TargetedMouseEvent } from 'preact';
 import { AnchoredMenu } from '@/client/components/common/anchored-menu';
-import { anchorRectOf } from '@/shared/lib/ui/menu-anchor';
-import { mobileOverlayStyle } from '@/shared/lib/ui/mobile-overlay';
+import { anchorRectOf, type AnchorRect } from '@/shared/lib/ui/menu-anchor';
 import { useSessionContextTelemetry } from '@/client/hooks/chat/context/telemetry';
 import { useModelNames } from '@/client/hooks/models/use-model-names';
 import { useProviderNames } from '@/client/hooks/models/use-provider-names';
@@ -45,17 +46,22 @@ import { CONTROL_BOX } from '@/client/lib/ui/control-plate';
 
 interface ContextUsageButtonProps {
   sessionId: string | null;
-  /** `mobile` pins the popover to the phone's header geometry. */
+  /** `mobile` changes only the trigger's box; the panel hangs off it either way. */
   layout?: 'desktop' | 'mobile';
 }
 
 export function ContextUsageButton({ sessionId, layout = 'desktop' }: ContextUsageButtonProps) {
   const { telemetry, percent } = useSessionContextTelemetry(sessionId);
   const [open, setOpen] = useState(false);
-  // The desktop panel hangs off the trigger's measured rectangle; the phone's is
-  // pinned to the viewport by `mobileOverlayStyle`, so it passes no anchor.
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const close = useCallback(() => setOpen(false), []);
+  // Captured at the click, from the button that was pressed: the panel hangs
+  // under it on both layouts. The phone used to pin it to the title bar's
+  // inset, which put it over the header and at the far side of the screen from
+  // the ring the user had just tapped.
+  const [anchor, setAnchor] = useState<AnchorRect | null>(null);
+  const close = useCallback(() => {
+    setOpen(false);
+    setAnchor(null);
+  }, []);
 
   // The telemetry reports the model as `provider/modelId` (omp's own selector).
   // Split once here so the popover prints the provider and the model on separate
@@ -83,11 +89,15 @@ export function ContextUsageButton({ sessionId, layout = 'desktop' }: ContextUsa
   return (
     <>
       <button
-        ref={triggerRef}
         type="button"
-        onClick={(event: TargetedMouseEvent<HTMLElement>) => {
+        onClick={(event: TargetedMouseEvent<HTMLButtonElement>) => {
           event.stopPropagation();
-          setOpen((previous) => !previous);
+          if (open) {
+            close();
+            return;
+          }
+          setAnchor(anchorRectOf(event.currentTarget));
+          setOpen(true);
         }}
         className={triggerClass}
         title={started ? `Context usage: ${percent.toFixed(0)}% of the window` : 'Context usage: session not started'}
@@ -102,11 +112,10 @@ export function ContextUsageButton({ sessionId, layout = 'desktop' }: ContextUsa
 
       {open && (
         <AnchoredMenu
-          anchor={layout === 'desktop' && triggerRef.current ? anchorRectOf(triggerRef.current) : null}
-          viewportStyle={layout === 'mobile' ? mobileOverlayStyle() : undefined}
+          anchor={anchor}
           role="dialog"
           ariaLabel="Context usage"
-          className={`bg-paper border border-ink/20 rounded-xl shadow-xl p-3 text-xs font-mono ${layout === 'desktop' ? 'w-72' : ''}`}
+          className="w-72 bg-paper border border-ink/20 rounded-xl shadow-xl p-3 text-xs font-mono"
           onClose={close}
         >
           <div className="font-semibold text-ink font-sans pb-1.5 border-b border-ink/10 flex items-center justify-between">

@@ -104,3 +104,29 @@ describe('session menu fork chat', () => {
     expect(pendingEntryFor(pendingId)?.forkAnchorEntryId).toBeUndefined();
   });
 });
+
+describe('session menu placement', () => {
+  test('the panel hangs below the trigger it was opened from', async () => {
+    // A trailing `⋯` in the middle of a phone drawer: below it is where the
+    // menu belongs, and the menu's own arithmetic used to flip it above when
+    // its natural height exceeded the space under the row.
+    stubHarnesses([]);
+    render(null, container);
+    await act(async () => {
+      render(
+        h(SessionActionsMenu, {
+          anchor: { top: 300, right: 380, bottom: 322, left: 356, align: 'end' as const },
+          sessionId: 's1',
+          harness: 'claude',
+          folderId: 1,
+          onClose: () => {},
+        }),
+        container,
+      );
+    });
+    const menu = document.body.querySelector('[role="menu"][aria-label="Session actions"]') as HTMLElement;
+    expect(menu.style.visibility).toBe('visible');
+    expect(menu.style.top).toBe('326px');
+    expect(Number.parseFloat(menu.style.maxHeight)).toBeGreaterThan(0);
+  });
+});

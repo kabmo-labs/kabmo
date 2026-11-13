@@ -85,8 +85,8 @@ describe('AnchoredMenu', () => {
     // asserts is that the placement is applied HERE rather than by the caller's
     // CSS, which is what lets it escape the ancestor's clipping.
     expect(menu?.className).toContain('fixed');
-    expect(menu?.style.top).not.toBe('');
-    expect(menu?.style.left).not.toBe('');
+    expect(menu?.style.top).toBe('126px');
+    expect(menu?.style.left).toBe('300px');
     expect(menu?.style.maxHeight).not.toBe('');
     // Not the pre-measure placeholder, which is hidden until the layout effect
     // has run.
@@ -117,7 +117,7 @@ describe('AnchoredMenu', () => {
     expect(closed).toBe(1);
   });
 
-  test('no anchor and no viewport style renders nothing', () => {
+  test('without an anchor it renders nothing', () => {
     closed = 0;
     win.document.body.innerHTML = '';
     const bare = win.document.createElement('div');

@@ -47,6 +47,20 @@ const MARGIN = 8;
 /** Room between the trigger and the menu that hangs off it. */
 const GAP = 4;
 
+/**
+ * The smallest slice of space below a trigger that is still worth hanging a
+ * menu into.
+ *
+ * A menu that does not fit is SCROLLABLE (`maxHeight`), so "does not fit" is not
+ * a reason to flip. Flipping is what a phone does to every row in the lower half
+ * of its drawer — its action menu is ~300px tall and the space below a row near
+ * the bottom is smaller than that even though it can show several rows — so the
+ * menu opened ABOVE the button the user just pressed. Below is where a menu is
+ * expected; only when the strip below is too short to show two rows is above
+ * the better answer.
+ */
+const MIN_BELOW = 120;
+
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(value, max));
 }
@@ -54,11 +68,12 @@ function clamp(value: number, min: number, max: number): number {
 /**
  * Place a menu of `size` against `anchor`, inside `viewport`.
  *
- * Below the trigger first, because that is where a menu is expected; above it
- * when the space below cannot hold it and the space above can. When neither
- * fits, it pins to the top margin and `maxHeight` makes the panel scroll — a
- * menu taller than the window is readable, one pushed past the bottom edge is
- * not.
+ * Below the trigger first, because that is where a menu is expected. When its
+ * natural size does not fit below, it still hangs below and `maxHeight` makes it
+ * scroll, as long as at least `MIN_BELOW` pixels remain; only a trigger that
+ * close to the bottom edge flips the menu above. When neither side fits, it
+ * pins to the top margin and scrolls — a menu taller than the window is
+ * readable, one pushed past the bottom edge is not.
  */
 export function placeMenu(
   anchor: AnchorRect,
@@ -68,9 +83,11 @@ export function placeMenu(
 ): MenuPlacement {
   const below = anchor.bottom + GAP;
   const above = anchor.top - GAP;
+  const belowSpace = viewport.height - below - MARGIN;
 
   let top: number;
   if (below + size.height + MARGIN <= viewport.height) top = below;
+  else if (belowSpace >= MIN_BELOW) top = below;
   else if (above - size.height >= MARGIN) top = above - size.height;
   else top = MARGIN;
 

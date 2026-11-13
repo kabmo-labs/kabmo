@@ -31,9 +31,10 @@
  * also what makes the grid behind it inert: a click outside closes the menu,
  * and the wheel cannot scroll the list out from under it.
  *
- * The phone's server sheet passes `viewportStyle` instead of `anchor`: it is
- * pinned below the title bar rather than to a trigger sitting near the edge
- * (`shared/lib/ui/mobile-overlay` owns those insets).
+ * The phone's menus use it too, with the same anchor: a popover belongs under
+ * the control that opened it, at every width. Pinning it to the title bar's
+ * inset instead put the context-usage panel over the header and at the far side
+ * of the screen from the ring that was pressed.
  */
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
@@ -41,14 +42,11 @@ import type { ComponentChildren } from 'preact';
 import type { CSSProperties } from 'preact/compat';
 import { createPortal } from 'preact/compat';
 import { placeMenu, type AnchorRect, type MenuAlign, type MenuPlacement } from '@/shared/lib/ui/menu-anchor';
-import type { MobileOverlayStyle } from '@/shared/lib/ui/mobile-overlay';
 
 export interface AnchoredMenuProps {
   /** The trigger's viewport rectangle, or null while the menu is closed. */
   anchor: AnchorRect | null;
   align?: MenuAlign;
-  /** Pin to the viewport (a phone sheet) instead of hanging off the anchor. */
-  viewportStyle?: MobileOverlayStyle;
   /**
    * `dialog` for the server sheet — a panel with headings and an Add form.
    * Omitted for the folder menus: their rows are plain buttons (as they were
@@ -68,7 +66,6 @@ export interface AnchoredMenuProps {
 export function AnchoredMenu({
   anchor,
   align = 'end',
-  viewportStyle,
   role,
   ariaLabel,
   className,
@@ -84,7 +81,6 @@ export function AnchoredMenu({
   // edge. The state is only written when a number actually moved, so this
   // settles in one extra render instead of looping.
   useLayoutEffect(() => {
-    if (viewportStyle) return;
     if (!anchor || !panelRef.current) return;
     const box = panelRef.current.getBoundingClientRect();
     const next = placeMenu(
@@ -108,15 +104,13 @@ export function AnchoredMenu({
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [onClose]);
 
-  if (!anchor && !viewportStyle) return null;
+  if (!anchor) return null;
 
-  const style: CSSProperties = viewportStyle
-    ? { ...viewportStyle }
-    : placement
-      ? { top: `${placement.top}px`, left: `${placement.left}px`, maxHeight: `${placement.maxHeight}px` }
-      : // The single pre-measure render. Hidden rather than drawn at 0,0, so a
-        // menu never flashes in the corner before the layout effect settles it.
-        { top: '0px', left: '0px', visibility: 'hidden' };
+  const style: CSSProperties = placement
+    ? { top: `${placement.top}px`, left: `${placement.left}px`, maxHeight: `${placement.maxHeight}px` }
+    : // The single pre-measure render. Hidden rather than drawn at 0,0, so a
+      // menu never flashes in the corner before the layout effect settles it.
+      { top: '0px', left: '0px', visibility: 'hidden' };
 
   return createPortal(
     <div

@@ -28,6 +28,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { TargetedMouseEvent } from 'preact';
 import { createPortal } from 'preact/compat';
+import { placeMenu, type MenuPlacement } from '@/shared/lib/ui/menu-anchor';
 import { Archive, ArchiveRestore, GitBranch, GitFork, Hourglass, Pencil, Trash2, WandSparkles } from 'lucide-preact';
 import { useSearchParams } from '@/client/lib/router/search-params';
 import { startPendingSession } from '@/client/hooks/chat/omp/pending-sessions';
@@ -128,7 +129,7 @@ export function SessionActionsMenu({
   onClose,
 }: SessionActionsMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const [pos, setPos] = useState<MenuPlacement | null>(null);
   const [, setSearchParams] = useSearchParams();
   const { harnesses } = useHarnesses();
   const canSpawnChild =
@@ -191,19 +192,21 @@ export function SessionActionsMenu({
   useLayoutEffect(() => {
     const el = menuRef.current;
     if (!el) return;
-    const { width, height } = el.getBoundingClientRect();
-    const margin = 8;
-    const below = anchor.bottom + 4;
-    // Flip above the trigger rather than overflowing the bottom edge.
-    const top = below + height + margin <= window.innerHeight
-      ? below
-      : Math.max(margin, anchor.top - height - 4);
-    const desiredLeft = anchor.align === 'end' ? anchor.right - width : anchor.left;
-    setPos({
-      top,
-      left: Math.max(margin, Math.min(desiredLeft, window.innerWidth - width - margin)),
-    });
-  }, [anchor]);
+    const box = el.getBoundingClientRect();
+    // The same arithmetic as every other anchored panel (`menu-anchor`): below
+    // the trigger, scrollable when it does not fit, and above only when the
+    // trigger sits too close to the bottom edge. A phone's drawer puts the row's
+    // `⋯` near the bottom, so this menu used to open above the button pressed.
+    const next = placeMenu(
+      anchor,
+      { width: box.width, height: box.height },
+      { width: window.innerWidth, height: window.innerHeight },
+      anchor.align,
+    );
+    setPos((prev) =>
+      prev && prev.top === next.top && prev.left === next.left && prev.maxHeight === next.maxHeight ? prev : next,
+    );
+  });
 
   useEffect(() => {
     const onKeyDown = (e: globalThis.KeyboardEvent) => {
@@ -239,11 +242,12 @@ export function SessionActionsMenu({
         style={{
           top: pos?.top ?? anchor.bottom + 4,
           left: pos?.left ?? anchor.left,
+          ...(pos ? { maxHeight: `${pos.maxHeight}px` } : {}),
           // Hidden for the single pre-measure render; `useLayoutEffect` settles
           // the position before the browser paints, so this never flashes.
           visibility: pos ? 'visible' : 'hidden',
         }}
-        className="glass-popover fixed z-[70] w-44 bg-paper border border-ink/15 rounded-lg shadow-xl py-1 text-xs text-ink font-sans"
+        className="glass-popover fixed z-[70] w-44 overflow-y-auto overscroll-contain bg-paper border border-ink/15 rounded-lg shadow-xl py-1 text-xs text-ink font-sans"
         onClick={(e) => e.stopPropagation()}
       >
         {canSpawnChild && (

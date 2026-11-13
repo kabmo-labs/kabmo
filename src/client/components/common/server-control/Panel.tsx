@@ -20,17 +20,16 @@ import { AnchoredMenu } from '@/client/components/common/anchored-menu';
 import { anchorRectOf } from '@/shared/lib/ui/menu-anchor';
 import type { ShellServersStore } from '@/client/hooks/shell/servers';
 import type { ShellServer } from '@/client/lib/shell/servers';
-import { mobileOverlayStyle } from '@/shared/lib/ui/mobile-overlay';
 
 export type ServerControlVariant = 'nav' | 'chip';
 
 interface ServerPanelProps {
   open: boolean;
   onClose: () => void;
-  /** `nav` hangs under a desktop navbar button; `chip` is a phone sheet. */
+  /** `nav` is the desktop navbar button; `chip` is the phone header's. */
   variant: ServerControlVariant;
   store: ShellServersStore;
-  /** The button this panel hangs from; the nav variant is measured off it. */
+  /** The button this panel hangs from, measured when it opens. */
   triggerRef: { current: HTMLButtonElement | null };
 }
 
@@ -148,9 +147,10 @@ function Row({
  * workspace headers beneath it.
  *
  * So the body is drawn by `common/anchored-menu/`: `fixed`, in `document.body`,
- * at the layer above every panel and modal. The nav variant measures the
- * trigger it hangs from; the chip variant keeps `mobileOverlayStyle`'s insets,
- * which are a property of the device rather than of the button.
+ * at the layer above every panel and modal, and placed under the trigger that
+ * opened it in both variants. The phone's chip used to be pinned to the title
+ * bar's inset instead, which put the sheet over the header rather than under
+ * the button that opened it.
  */
 export function ServerPanel({ open, onClose, variant, store, triggerRef }: ServerPanelProps) {
   const [label, setLabel] = useState('');
@@ -178,13 +178,12 @@ export function ServerPanel({ open, onClose, variant, store, triggerRef }: Serve
   // The panel's own chrome. `overflow-hidden` is gone: the rows scroll inside
   // the body below, and a clipping root would cut the Add form's focus ring.
   const panelClass = variant === 'chip'
-    ? 'rounded-xl border border-ink/15 bg-paper shadow-xl'
+    ? 'w-72 rounded-xl border border-ink/15 bg-paper shadow-xl'
     : 'w-[340px] rounded-xl border border-ink/15 bg-paper shadow-xl';
 
   return (
     <AnchoredMenu
-      anchor={variant === 'nav' && triggerRef.current ? anchorRectOf(triggerRef.current) : null}
-      viewportStyle={variant === 'chip' ? mobileOverlayStyle() : undefined}
+      anchor={triggerRef.current ? anchorRectOf(triggerRef.current) : null}
       role="dialog"
       ariaLabel="Servers"
       className={panelClass}

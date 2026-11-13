@@ -32,17 +32,29 @@ describe('placeMenu', () => {
     expect(placement.left).toBe(222 - 176);
   });
 
-  test('it flips above when the space below cannot hold it', () => {
+  test('it flips above only when the strip below is too short to show', () => {
     const placement = placeMenu(anchorAt(200, 740), { width: 176, height: 94 }, VIEWPORT);
-    // Above the trigger rather than past the bottom edge.
+    // Above the trigger rather than past the bottom edge: a 92px strip is left
+    // below, under the two-row minimum.
     expect(placement.top).toBe(740 - 4 - 94);
     expect(placement.top + 94).toBeLessThanOrEqual(VIEWPORT.height);
   });
 
-  test('a menu taller than the window pins to the margin and becomes scrollable', () => {
+  test('a menu taller than the space below still hangs below and scrolls', () => {
+    // The phone case: the drawer row's `⋯` is halfway down a short window and
+    // the menu is taller than the strip under it. Flipping it above the button
+    // was the reported defect, so the menu stays below at a capped height.
+    const phone = { width: 390, height: 700 };
+    const placement = placeMenu(anchorAt(200, 400), { width: 176, height: 300 }, phone);
+    expect(placement.top).toBe(400 + 22 + 4);
+    expect(placement.maxHeight).toBe(700 - placement.top - 8);
+    expect(placement.maxHeight).toBeLessThan(300);
+  });
+
+  test('a menu taller than the window hangs below and becomes scrollable', () => {
     const placement = placeMenu(anchorAt(200, 300), { width: 176, height: 2000 }, VIEWPORT);
-    expect(placement.top).toBe(8);
-    expect(placement.maxHeight).toBe(VIEWPORT.height - 8 - 8);
+    expect(placement.top).toBe(326);
+    expect(placement.maxHeight).toBe(VIEWPORT.height - 326 - 8);
   });
 
   test('a trailing menu cannot run past the right edge', () => {
