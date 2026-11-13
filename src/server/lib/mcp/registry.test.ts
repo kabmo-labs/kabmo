@@ -56,9 +56,10 @@ function item(overrides: Partial<McpServerItem> = {}): McpServerItem {
     name: 'custom',
     scope: 'every-project',
     enabled: true,
-    reachType: 'command',
+    transport: 'stdio',
     commandArgs: ['npx', '-y', 'custom-mcp'],
     envVars: [],
+    headers: [],
     ...overrides,
   };
 }
@@ -83,6 +84,22 @@ describe('definitionFromNative', () => {
     });
   });
 
+  test('an sse entry keeps its transport, and timeout/cwd survive', () => {
+    expect(definitionFromNative('legacy', { type: 'sse', url: 'https://x/sse', timeout: 5000 })).toEqual({
+      name: 'legacy',
+      transport: 'sse',
+      url: 'https://x/sse',
+      timeout: 5000,
+    });
+    expect(definitionFromNative('local', { command: 'x', cwd: '/tmp/w', timeout: 0 })).toEqual({
+      name: 'local',
+      transport: 'stdio',
+      command: 'x',
+      cwd: '/tmp/w',
+      timeout: 0,
+    });
+  });
+
   test('an entry naming neither is dropped, not guessed at', () => {
     expect(definitionFromNative('broken', {})).toBeNull();
   });
@@ -100,25 +117,53 @@ describe('definitionFromItem', () => {
     expect(definition?.env).toEqual({ MODE: 'fast' });
   });
 
-  test('a link row becomes an http server', () => {
-    expect(definitionFromItem(item({ reachType: 'link', linkUrl: 'https://mcp.example' }))).toEqual({
+  test('a link row becomes an http server with its headers', () => {
+    expect(
+      definitionFromItem(
+        item({
+          transport: 'http',
+          linkUrl: 'https://mcp.example',
+          headers: [{ id: 'h1', key: 'Authorization', value: 'Bearer x' }],
+          timeout: 1000,
+        }),
+      ),
+    ).toEqual({
       name: 'custom',
       transport: 'http',
       url: 'https://mcp.example',
+      headers: { Authorization: 'Bearer x' },
+      timeout: 1000,
+    });
+  });
+
+  test('an sse row keeps the sse transport', () => {
+    expect(definitionFromItem(item({ transport: 'sse', linkUrl: 'https://x/sse' }))).toMatchObject({
+      transport: 'sse',
+      url: 'https://x/sse',
+    });
+  });
+
+  test('a stdio row carries cwd and timeout', () => {
+    expect(definitionFromItem(item({ cwd: '/tmp/w', timeout: 0 }))).toMatchObject({
+      transport: 'stdio',
+      cwd: '/tmp/w',
+      timeout: 0,
     });
   });
 });
 
 describe('toAcpMcpServers', () => {
-  test('maps both transports to the wire shape', () => {
+  test('maps all transports to the wire shape', () => {
     expect(
       toAcpMcpServers([
         { name: 'a', transport: 'stdio', command: 'npx', args: ['x'], env: { K: 'V' } },
         { name: 'b', transport: 'http', url: 'https://x', headers: { H: '1' } },
+        { name: 'c', transport: 'sse', url: 'https://y/sse' },
       ]),
     ).toEqual([
       { name: 'a', command: 'npx', args: ['x'], env: [{ name: 'K', value: 'V' }] },
       { type: 'http', name: 'b', url: 'https://x', headers: [{ name: 'H', value: '1' }] },
+      { type: 'sse', name: 'c', url: 'https://y/sse', headers: [] },
     ]);
   });
 });
@@ -165,5 +210,32 @@ describe('mcpServersFor', () => {
     await mkdir(elsewhere, { recursive: true });
     expect((await mcpServersFor(project)).some((server) => server.name === 'scoped')).toBe(true);
     expect((await mcpServersFor(elsewhere)).some((server) => server.name === 'scoped')).toBe(false);
+  });
+
+  test('a server disabled in the file or in the denylist never reaches a session', async () => {
+    await writeFile(
+      join(agentDir, 'mcp.json'),
+      JSON.stringify({
+        mcpServers: {
+          off: { command: 'off-command', enabled: false },
+          denied: { command: 'denied-command' },
+          allowed: { command: 'allowed-command', enabled: false },
+        },
+        disabledServers: ['denied'],
+        enabledServers: ['allowed'],
+      }),
+    );
+    await writeCustomMcpServers(await getDb(), []);
+    expect((await mcpServersFor('')).map((server) => server.name)).toEqual(['allowed']);
+  });
+
+  test('mcp.enableProjectConfig=false hides the project file from a session', async () => {
+    await writeFile(join(agentDir, 'config.yml'), 'mcp:\n  enableProjectConfig: false\n');
+    try {
+      expect((await mcpServersFor(project)).some((server) => server.name === 'project')).toBe(false);
+    } finally {
+      await rm(join(agentDir, 'config.yml'), { force: true });
+    }
+    expect((await mcpServersFor(project)).some((server) => server.name === 'project')).toBe(true);
   });
 });

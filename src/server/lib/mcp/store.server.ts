@@ -15,6 +15,7 @@
 import { DEFAULT_MCP_SERVERS } from '@/client/data/settings/mcp';
 import { createSettingsListStore } from '@/server/lib/db/settings-store';
 import { isMockMode } from '@/server/mock.server';
+import { normalizeMcpItem } from '@/shared/lib/mcp/item';
 import type { DbClient } from '@/server/lib/db/client';
 import type { McpServerItem } from '@/shared/types';
 
@@ -30,7 +31,11 @@ export const mcpStore = createSettingsListStore<McpServerItem>({
 
 /** The app-local rows, with the mock default only in mock mode. */
 export async function readCustomMcpServers(db: DbClient): Promise<McpServerItem[]> {
-  return mcpStore.readStored(db, { absent: isMockMode() ? DEFAULT_MCP_SERVERS : [] });
+  const stored = await mcpStore.readStored(db, { absent: isMockMode() ? DEFAULT_MCP_SERVERS : [] });
+  return stored.flatMap((row) => {
+    const item = normalizeMcpItem(row);
+    return item ? [item] : [];
+  });
 }
 
 export async function writeCustomMcpServers(db: DbClient, servers: McpServerItem[]): Promise<void> {

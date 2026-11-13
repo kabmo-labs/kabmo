@@ -246,7 +246,7 @@ export interface PluginBackgroundApi {
 }
 
 /** How a plugin's MCP server is reached. */
-export type PluginMcpTransport = 'stdio' | 'http';
+export type PluginMcpTransport = 'stdio' | 'http' | 'sse';
 
 /**
  * One MCP server a plugin contributes.
@@ -269,9 +269,9 @@ export interface PluginMcpServer {
   args?: string[];
   /** `stdio` only: environment for the child. */
   env?: Record<string, string>;
-  /** `http` only: the endpoint. */
+  /** `http`/`sse` only: the endpoint. */
   url?: string;
-  /** `http` only: request headers (a credential, a tenant id). */
+  /** `http`/`sse` only: request headers (a credential, a tenant id). */
   headers?: Record<string, string>;
 }
 

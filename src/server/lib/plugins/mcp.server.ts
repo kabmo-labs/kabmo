@@ -49,8 +49,8 @@ function isStringRecord(value: unknown): value is Record<string, string> {
 function validate(pluginId: string, server: PluginMcpServer): RegisteredPluginMcpServer {
   if (!server || typeof server !== 'object') throw new Error('mcp.register expects a server object');
   if (typeof server.id !== 'string' || !server.id.trim()) throw new Error('mcp.register: "id" is required');
-  if (server.transport !== 'stdio' && server.transport !== 'http') {
-    throw new Error(`mcp.register "${server.id}": transport must be "stdio" or "http"`);
+  if (server.transport !== 'stdio' && server.transport !== 'http' && server.transport !== 'sse') {
+    throw new Error(`mcp.register "${server.id}": transport must be "stdio", "http" or "sse"`);
   }
   if (server.transport === 'stdio') {
     if (typeof server.command !== 'string' || !server.command.trim()) {

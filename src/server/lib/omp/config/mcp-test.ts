@@ -19,60 +19,20 @@ import { readLines } from '@/server/lib/omp/rpc/lines';
 import { isMockMode } from '@/server/mock.server';
 import type { McpServerItem } from '@/shared/types';
 import { isRecord } from '@/shared/lib/util/guards';
-
-export type McpTransport = 'command' | 'link';
-
-export interface McpTestResult {
-  ok: boolean;
-  transport: McpTransport;
-  protocolVersion?: string;
-  serverInfo?: { name?: string; version?: string };
-  toolCount?: number;
-  durationMs: number;
-  error?: string;
-}
+import { REDACTED_SENTINEL, rowsToRecord } from '@/shared/lib/mcp/key-value';
+import { runLinkTest, runSseTest } from '@/server/lib/omp/config/mcp-test-remote';
+import {
+  describeError,
+  initializeRequest,
+  parseServerInfo,
+  PROTOCOL_VERSION,
+  type HandshakeOutcome,
+  type McpTestResult,
+} from '@/server/lib/omp/config/mcp-test-protocol';
 
 const HANDSHAKE_TIMEOUT_MS = 15_000;
-const LINK_TIMEOUT_MS = 10_000;
-const PROTOCOL_VERSION = '2025-06-18';
-const REDACTED_SENTINEL = '••••••••';
 const STDERR_TAIL_LIMIT = 8 * 1024;
 const GRACE_PERIOD_MS = 2_000;
-
-const CLIENT_INFO = { name: 'kabmo', version: '0.0.1' };
-
-interface HandshakeOutcome {
-  protocolVersion?: string;
-  serverInfo?: { name?: string; version?: string };
-  toolCount?: number;
-}
-
-function parseServerInfo(value: unknown): { name?: string; version?: string } | undefined {
-  if (!isRecord(value)) return undefined;
-  const info: { name?: string; version?: string } = {};
-  if (typeof value.name === 'string') info.name = value.name;
-  if (typeof value.version === 'string') info.version = value.version;
-  return info.name !== undefined || info.version !== undefined ? info : undefined;
-}
-
-function describeError(value: unknown): string {
-  if (typeof value === 'string' && value.length > 0) return value;
-  if (isRecord(value) && typeof value.message === 'string') return value.message;
-  try {
-    return JSON.stringify(value);
-  } catch {
-    return 'Unknown error';
-  }
-}
-
-function initializeRequest(): Record<string, unknown> {
-  return {
-    jsonrpc: '2.0',
-    id: 1,
-    method: 'initialize',
-    params: { protocolVersion: PROTOCOL_VERSION, capabilities: {}, clientInfo: CLIENT_INFO },
-  };
-}
 
 /** Merge configured env vars over the sanitized env, skipping empty values and
  * the redaction sentinel so masked credentials are never replayed. */
@@ -209,12 +169,12 @@ async function runCommandTest(server: McpServerItem, cwd: string | undefined): P
   const commandArgs = (server.commandArgs ?? []).map((arg) => arg.trim()).filter((arg) => arg.length > 0);
   const startedAt = Date.now();
   if (commandArgs.length === 0) {
-    return { ok: false, transport: 'command', durationMs: 0, error: 'No command configured' };
+    return { ok: false, transport: 'stdio', durationMs: 0, error: 'No command configured' };
   }
 
   const child: Subprocess<"pipe", "pipe", "pipe"> = Bun.spawn({
     cmd: commandArgs,
-    cwd: cwd || process.cwd(),
+    cwd: server.cwd?.trim() || cwd || process.cwd(),
     env: mergeEnvVars(server),
     stdin: 'pipe',
     stdout: 'pipe',
@@ -231,12 +191,12 @@ async function runCommandTest(server: McpServerItem, cwd: string | undefined): P
   try {
     const outcome = await runHandshake(child, () => stderrTail);
     return {
-      ok: true, transport: 'command', protocolVersion: outcome.protocolVersion,
+      ok: true, transport: 'stdio', protocolVersion: outcome.protocolVersion,
       serverInfo: outcome.serverInfo, toolCount: outcome.toolCount, durationMs: Date.now() - startedAt,
     };
   } catch (error) {
     return {
-      ok: false, transport: 'command', durationMs: Date.now() - startedAt,
+      ok: false, transport: 'stdio', durationMs: Date.now() - startedAt,
       error: error instanceof Error ? error.message : 'MCP handshake failed',
     };
   } finally {
@@ -244,79 +204,16 @@ async function runCommandTest(server: McpServerItem, cwd: string | undefined): P
   }
 }
 
-function extractSseData(text: string): unknown {
-  for (const rawLine of text.split(/\r?\n/)) {
-    const line = rawLine.trim();
-    if (!line.startsWith('data:')) continue;
-    const data = line.slice(5).trim();
-    if (!data || data === '[DONE]') continue;
-    try {
-      return JSON.parse(data);
-    } catch {
-      // skip malformed frames; keep scanning for the first parseable data line
-    }
-  }
-  return undefined;
-}
-
-function extractInitializeOutcome(payload: unknown): HandshakeOutcome {
-  const result = isRecord(payload) && isRecord(payload.result) ? payload.result : payload;
-  if (!isRecord(result)) return {};
-  return {
-    protocolVersion: typeof result.protocolVersion === 'string' ? result.protocolVersion : undefined,
-    serverInfo: parseServerInfo(result.serverInfo),
-  };
-}
-
-async function runLinkTest(url: string): Promise<McpTestResult> {
-  const startedAt = Date.now();
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' },
-      body: JSON.stringify(initializeRequest()),
-      signal: AbortSignal.timeout(LINK_TIMEOUT_MS),
-    });
-    if (!response.ok) {
-      return {
-        ok: false,
-        transport: 'link',
-        durationMs: Date.now() - startedAt,
-        error: `HTTP ${response.status}${response.statusText ? ` ${response.statusText}` : ''}`,
-      };
-    }
-    const contentType = (response.headers.get('content-type') ?? '').toLowerCase();
-    const payload = contentType.includes('text/event-stream')
-      ? extractSseData(await response.text())
-      : await response.json();
-    const outcome = extractInitializeOutcome(payload);
-    return {
-      ok: true,
-      transport: 'link',
-      protocolVersion: outcome.protocolVersion,
-      serverInfo: outcome.serverInfo,
-      durationMs: Date.now() - startedAt,
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      transport: 'link',
-      durationMs: Date.now() - startedAt,
-      error: error instanceof Error ? error.message : 'Connection failed',
-    };
-  }
-}
-
 function mockTestResult(server: McpServerItem): McpTestResult {
-  const valid = server.reachType === 'command'
+  const valid = server.transport === 'stdio'
     ? (server.commandArgs ?? []).some((arg) => arg.trim().length > 0)
     : typeof server.linkUrl === 'string' && /^https?:\/\//i.test(server.linkUrl);
   if (!valid) {
-    return { ok: false, transport: server.reachType, durationMs: 12, error: 'Invalid server configuration' };
+    return { ok: false, transport: server.transport, durationMs: 12, error: 'Invalid server configuration' };
   }
   return {
     ok: true,
-    transport: server.reachType,
+    transport: server.transport,
     protocolVersion: PROTOCOL_VERSION,
     serverInfo: { name: server.name || undefined, version: '1.0.0' },
     toolCount: 3,
@@ -334,12 +231,13 @@ export async function testMcpServer(input: { server: McpServerItem; cwd?: string
     return mockTestResult(server);
   }
 
-  if (server.reachType === 'link') {
+  if (server.transport !== 'stdio') {
     const url = (server.linkUrl ?? '').trim();
     if (!/^https?:\/\//i.test(url)) {
-      return { ok: false, transport: 'link', durationMs: 0, error: 'Link URL must be a valid http(s) endpoint' };
+      return { ok: false, transport: server.transport, durationMs: 0, error: 'Link URL must be a valid http(s) endpoint' };
     }
-    return runLinkTest(url);
+    const headers = rowsToRecord(server.headers) ?? {};
+    return server.transport === 'sse' ? runSseTest(url, headers) : runLinkTest(url, headers);
   }
 
   return runCommandTest(server, cwd);

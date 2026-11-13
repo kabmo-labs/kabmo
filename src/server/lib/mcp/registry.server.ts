@@ -16,24 +16,39 @@
  * config, then the app-local rows, then plugin contributions. That is the same
  * rule the settings pane merges with, so the list a user sees and the list a
  * session receives cannot disagree about which entry is live.
+ *
+ * Enablement is omp's own: the user-level `disabledServers` denylist wins, then
+ * the entry's `enabled: false`, then the `enabledServers` allowlist. A server
+ * disabled in `mcp.json` must not reach a session just because Kabmo read the
+ * file itself.
  */
 
 import { getDb } from '@/server/db.server';
-import { readProjectMcpConfig, readUserMcpConfig, type McpServer } from '@/server/lib/omp/config/mcp';
+import {
+  isProjectMcpConfigEnabled,
+  isServerEnabled,
+  readProjectMcpConfig,
+  readUserMcpConfig,
+} from '@/server/lib/omp/config/mcp';
+import type { McpServer } from '@/server/lib/omp/config/mcp-shared';
 import { readCustomMcpServers } from '@/server/lib/mcp/store.server';
 import { pluginMcpServers } from '@/server/lib/plugins/mcp.server';
-import type { McpServerItem } from '@/shared/types';
+import type { McpServerItem, McpTransport } from '@/shared/types';
+import { rowsToRecord } from '@/shared/lib/mcp/key-value';
 import type { AcpMcpServer } from '@/server/lib/harness/acp/protocol';
 
 /** One server, in the transport-neutral shape both deliveries read. */
 export interface McpServerDefinition {
   name: string;
-  transport: 'stdio' | 'http';
+  transport: McpTransport;
   command?: string;
   args?: string[];
   env?: Record<string, string>;
+  cwd?: string;
   url?: string;
   headers?: Record<string, string>;
+  /** Per-request timeout in milliseconds; 0 disables client-side timeouts. */
+  timeout?: number;
 }
 
 function stringRecord(value: unknown): Record<string, string> | undefined {
@@ -44,9 +59,17 @@ function stringRecord(value: unknown): Record<string, string> | undefined {
 
 /** A native `mcp.json` entry, or null when it names neither a command nor a URL. */
 export function definitionFromNative(name: string, config: McpServer): McpServerDefinition | null {
+  const timeout = typeof config.timeout === 'number' ? config.timeout : undefined;
   if (typeof config.url === 'string' && config.url.trim()) {
     const headers = stringRecord(config.headers);
-    return { name, transport: 'http', url: config.url.trim(), ...(headers ? { headers } : {}) };
+    const transport: McpTransport = config.type === 'sse' ? 'sse' : 'http';
+    return {
+      name,
+      transport,
+      url: config.url.trim(),
+      ...(headers ? { headers } : {}),
+      ...(timeout !== undefined ? { timeout } : {}),
+    };
   }
   if (typeof config.command === 'string' && config.command.trim()) {
     const args = Array.isArray(config.args) ? config.args.filter((arg): arg is string => typeof arg === 'string') : [];
@@ -57,6 +80,8 @@ export function definitionFromNative(name: string, config: McpServer): McpServer
       command: config.command.trim(),
       ...(args.length > 0 ? { args } : {}),
       ...(env ? { env } : {}),
+      ...(typeof config.cwd === 'string' && config.cwd.trim() ? { cwd: config.cwd.trim() } : {}),
+      ...(timeout !== undefined ? { timeout } : {}),
     };
   }
   return null;
@@ -65,24 +90,31 @@ export function definitionFromNative(name: string, config: McpServer): McpServer
 /** An app-local settings row, or null when it is disabled or malformed. */
 export function definitionFromItem(item: McpServerItem): McpServerDefinition | null {
   if (!item.enabled) return null;
-  if (item.reachType === 'link' || item.linkUrl) {
+  const transport: McpTransport = item.transport ?? (item.linkUrl ? 'http' : 'stdio');
+  const timeout = typeof item.timeout === 'number' ? item.timeout : undefined;
+  if (transport !== 'stdio') {
     const url = (item.linkUrl ?? item.commandArgs[0] ?? '').trim();
-    return url ? { name: item.name, transport: 'http', url } : null;
+    if (!url) return null;
+    const headers = rowsToRecord(item.headers);
+    return {
+      name: item.name,
+      transport,
+      url,
+      ...(headers ? { headers } : {}),
+      ...(timeout !== undefined ? { timeout } : {}),
+    };
   }
   const [command, ...args] = item.commandArgs;
   if (!command?.trim()) return null;
-  const env: Record<string, string> = {};
-  for (const entry of item.envVars ?? []) {
-    // A masked value is a display placeholder, never a credential: injecting it
-    // would hand the agent the literal dots.
-    if (entry?.key && entry.value && entry.value !== '••••••••') env[entry.key] = entry.value;
-  }
+  const env = rowsToRecord(item.envVars);
   return {
     name: item.name,
     transport: 'stdio',
     command: command.trim(),
     ...(args.length > 0 ? { args } : {}),
-    ...(Object.keys(env).length > 0 ? { env } : {}),
+    ...(env ? { env } : {}),
+    ...(item.cwd?.trim() ? { cwd: item.cwd.trim() } : {}),
+    ...(timeout !== undefined ? { timeout } : {}),
   };
 }
 
@@ -107,15 +139,15 @@ export async function mcpServersFor(cwd: string): Promise<McpServerDefinition[]>
   const user = await readUserMcpConfig();
   if (user.error) console.error(`[mcp] user config skipped: ${user.error}`);
   for (const entry of user.servers) {
-    if (user.disabledServers.includes(entry.name)) continue;
+    if (!isServerEnabled(entry.name, entry.config, user.disabledServers, user.enabledServers)) continue;
     add(definitionFromNative(entry.name, entry.config));
   }
 
-  if (cwd) {
+  if (cwd && (await isProjectMcpConfigEnabled())) {
     const project = await readProjectMcpConfig(cwd);
     if (project.error) console.error(`[mcp] project config skipped: ${project.error}`);
     for (const entry of project.servers) {
-      if (project.disabledServers.includes(entry.name)) continue;
+      if (!isServerEnabled(entry.name, entry.config, user.disabledServers, user.enabledServers)) continue;
       add(definitionFromNative(entry.name, entry.config));
     }
   }
@@ -135,21 +167,21 @@ export async function mcpServersFor(cwd: string): Promise<McpServerDefinition[]>
   return definitions;
 }
 
-/** The ACP wire shape: stdio is the baseline, `http` is the typed variant. */
+/** The ACP wire shape: stdio is the baseline, `http`/`sse` are the typed variants. */
 export function toAcpMcpServers(definitions: readonly McpServerDefinition[]): AcpMcpServer[] {
   return definitions.map((definition) =>
-    definition.transport === 'http'
+    definition.transport === 'stdio'
       ? {
-          type: 'http' as const,
-          name: definition.name,
-          url: definition.url ?? '',
-          headers: Object.entries(definition.headers ?? {}).map(([name, value]) => ({ name, value })),
-        }
-      : {
           name: definition.name,
           command: definition.command ?? '',
           args: definition.args ?? [],
           env: Object.entries(definition.env ?? {}).map(([name, value]) => ({ name, value })),
+        }
+      : {
+          type: definition.transport,
+          name: definition.name,
+          url: definition.url ?? '',
+          headers: Object.entries(definition.headers ?? {}).map(([name, value]) => ({ name, value })),
         },
   );
 }

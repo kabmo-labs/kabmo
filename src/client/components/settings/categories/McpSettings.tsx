@@ -64,16 +64,23 @@ export const McpSettings: FunctionComponent<McpSettingsProps> = () => {
       },
     });
 
-  const handleImportServer = (imported: McpServerItem): Promise<WriteOutcome> => save(imported);
+  const handleImportServers = async (imported: McpServerItem[]): Promise<WriteOutcome> => {
+    for (const server of imported) {
+      const outcome = await save(server);
+      if (!outcome.ok) return outcome;
+    }
+    return { ok: true };
+  };
 
   const emptyServerTemplate: McpServerItem = {
     id: `new-${Date.now()}`,
     name: 'new-mcp-server',
     scope: 'every-project',
     enabled: true,
-    reachType: 'command',
+    transport: 'stdio',
     commandArgs: ['bunx', '@modelcontextprotocol/server-everything'],
     envVars: [],
+    headers: [],
     status: 'active',
   };
 
@@ -135,7 +142,7 @@ export const McpSettings: FunctionComponent<McpSettingsProps> = () => {
       <McpImportModal
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
-        onImport={handleImportServer}
+        onImport={handleImportServers}
       />
     </div>
   );

@@ -88,7 +88,7 @@ export const McpSidebarList: FunctionComponent<McpSidebarListProps> = ({
           <div className="space-y-0.5">
             {servers.map((server) => {
               const isSelected = server.id === selectedServerId;
-              const isCommand = server.reachType === 'command';
+              const isCommand = server.transport === 'stdio';
               const summary = isCommand
                 ? server.commandArgs.join(' ')
                 : server.linkUrl || 'No URL configured';

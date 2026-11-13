@@ -6,35 +6,35 @@
 /**
  * Native OMP MCP config access — faithful adaptation of omp-web/lib/omp/mcp-config.ts.
  *
- * Reads and writes the native configs the omp agent actually loads:
- * - user scope:    ~/.omp/agent/mcp.json
- * - project scope: <projectRoot>/.omp/mcp.json (first existing of the
- *   MCP_FILENAMES candidates, else `.omp/mcp.json`)
+ * The file is omp's own `mcp.json` (user: `~/.omp/agent/mcp.json`, project:
+ * `.omp/mcp.json` and its candidates). Every field the schema defines is
+ * carried through: transport (`type`), `command`/`args`/`env`/`cwd` for stdio,
+ * `url`/`headers` for http and sse, plus `timeout`, `requestIdFormat`,
+ * `instructions`, `auth` and `oauth`.
  *
- * Every read-modify-write runs under a cross-process lockfile so concurrent
- * writers cannot lose each other's mutations. Credentials (env/headers) are
- * never exposed to the browser and are preserved when an edit omits them.
+ * Enablement is omp's own model, not a Kabmo invention:
+ *  - `disabledServers` (user file) is the highest-precedence denylist;
+ *  - `enabledServers` (user file) overrides a source's `enabled: false`;
+ *  - a server entry's own `enabled: false` disables it.
+ * The writer (`mcp-write.ts`) records all three; this module only reads them.
  */
 
-import { join, resolve } from 'path';
-import { getAgentDir, pathExists } from '@/server/lib/omp/core/paths';
-import { writeFileAtomic } from '@/server/lib/fs/atomic-write';
-import { withConfigLock } from '@/server/lib/fs/config-lock';
+import { dirname, join, resolve } from 'path';
+import { pathExists } from '@/server/lib/omp/core/paths';
+import { getOmpConfigPath } from '@/server/lib/omp/config/yaml';
+import type { McpAuthConfig, McpOAuthConfig, McpServerItem, McpTransport } from '@/shared/types';
 import { isRecord } from '@/shared/lib/util/guards';
-
-const MAX_MCP_CONFIG_BYTES = 512 * 1024;
-const SERVER_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+import { REDACTED_SENTINEL, recordToRows } from '@/shared/lib/mcp/key-value';
+import { MAX_MCP_CONFIG_BYTES, stringsIn, userMcpConfigPath, type McpFile, type McpServer } from '@/server/lib/omp/config/mcp-shared';
 
 /** Project-level config candidates, in omp preference order. */
 export const MCP_FILENAMES = [join('.omp', 'mcp.json'), join('.omp', '.mcp.json'), 'mcp.json', '.mcp.json'];
-
-export type McpServer = Record<string, unknown>;
-export type McpFile = Record<string, unknown> & { mcpServers?: Record<string, McpServer> };
 
 export interface McpUserConfig {
   path: string;
   servers: Array<{ name: string; config: McpServer }>;
   disabledServers: string[];
+  enabledServers: string[];
   error?: string;
 }
 
@@ -45,7 +45,9 @@ function serverEntries(config: McpFile): Array<{ name: string; config: McpServer
 }
 
 async function readMcpFile(path: string): Promise<McpUserConfig> {
-  if (!(await Bun.file(path).exists())) return { path, servers: [], disabledServers: [] };
+  if (!(await Bun.file(path).exists())) {
+    return { path, servers: [], disabledServers: [], enabledServers: [] };
+  }
   try {
     const file = Bun.file(path);
     if ((await file.stat()).size > MAX_MCP_CONFIG_BYTES) throw new Error('configuration is too large to inspect');
@@ -55,18 +57,42 @@ async function readMcpFile(path: string): Promise<McpUserConfig> {
     return {
       path,
       servers: serverEntries(parsed as McpFile),
-      disabledServers: Array.isArray(parsed.disabledServers)
-        ? parsed.disabledServers.filter((name): name is string => typeof name === 'string')
-        : [],
+      disabledServers: stringsIn(parsed.disabledServers),
+      enabledServers: stringsIn(parsed.enabledServers),
     };
   } catch (error) {
-    return { path, servers: [], disabledServers: [], error: error instanceof Error ? error.message : String(error) };
+    return {
+      path,
+      servers: [],
+      disabledServers: [],
+      enabledServers: [],
+      error: error instanceof Error ? error.message : String(error),
+    };
   }
 }
 
-/** Read ~/.omp/agent/mcp.json (user scope) without throwing. */
-export async function readUserMcpConfig(path = join(getAgentDir(), 'mcp.json')): Promise<McpUserConfig> {
-  return readMcpFile(path);
+/**
+ * Read the user scope. omp discovers BOTH `~/.omp/agent/mcp.json` and
+ * `~/.omp/agent/.mcp.json`, so a server declared only in the dot-file is live
+ * for a session and must be visible here too; `mcp.json` wins on a name clash,
+ * and the two enablement lists are unioned. A malformed file is reported on the
+ * result rather than hiding the other file's servers.
+ */
+export async function readUserMcpConfig(path = userMcpConfigPath()): Promise<McpUserConfig> {
+  const primary = await readMcpFile(path);
+  const secondaryPath = join(dirname(path), '.mcp.json');
+  if (secondaryPath === path || !(await Bun.file(secondaryPath).exists())) return primary;
+  const secondary = await readMcpFile(secondaryPath);
+  const names = new Set(primary.servers.map((entry) => entry.name));
+  return {
+    path,
+    servers: [...primary.servers, ...secondary.servers.filter((entry) => !names.has(entry.name))].sort((a, b) =>
+      a.name.localeCompare(b.name),
+    ),
+    disabledServers: [...new Set([...primary.disabledServers, ...secondary.disabledServers])],
+    enabledServers: [...new Set([...primary.enabledServers, ...secondary.enabledServers])],
+    ...(primary.error ?? secondary.error ? { error: primary.error ?? secondary.error } : {}),
+  };
 }
 
 /** Resolve a project's config file: first existing candidate, else `.omp/mcp.json`.
@@ -81,89 +107,60 @@ export async function resolveProjectMcpConfig(projectRoot: string): Promise<{ ro
   return { root, path: join(root, MCP_FILENAMES[0]) };
 }
 
-/** Read <projectRoot>/.omp/mcp.json (project scope) without throwing. */
+/**
+ * Read the project scope as omp does: every candidate that exists, in
+ * preference order, first name wins. `resolveProjectMcpConfig` stays the WRITE
+ * target (the first existing candidate), because a write has to pick one file.
+ */
 export async function readProjectMcpConfig(projectRoot: string): Promise<McpUserConfig> {
-  return readMcpFile((await resolveProjectMcpConfig(projectRoot)).path);
+  const { root, path } = await resolveProjectMcpConfig(projectRoot);
+  const merged = await readMcpFile(path);
+  const names = new Set(merged.servers.map((entry) => entry.name));
+  for (const filename of MCP_FILENAMES.slice(1)) {
+    const candidate = join(root, filename);
+    if (candidate === path || !(await pathExists(candidate))) continue;
+    const extra = await readMcpFile(candidate);
+    for (const entry of extra.servers) {
+      if (names.has(entry.name)) continue;
+      names.add(entry.name);
+      merged.servers.push(entry);
+    }
+    merged.disabledServers.push(...extra.disabledServers);
+    merged.enabledServers.push(...extra.enabledServers);
+    if (!merged.error && extra.error) merged.error = extra.error;
+  }
+  merged.servers.sort((a, b) => a.name.localeCompare(b.name));
+  return merged;
 }
 
-async function readConfigFile(path: string): Promise<McpFile> {
-  if (!(await Bun.file(path).exists())) return { mcpServers: {} };
-  const parsed: unknown = JSON.parse(await Bun.file(path).text());
-  if (!isRecord(parsed)) throw new Error(`${path} must contain a JSON object`);
-  if (parsed.mcpServers !== undefined && !isRecord(parsed.mcpServers)) throw new Error('mcpServers must be an object');
-  return parsed as McpFile;
+/**
+ * omp's `mcp.enableProjectConfig` (default true) — the switch that decides
+ * whether a project's `mcp.json` is discovered at all. Read from
+ * `~/.omp/agent/config.yml`; an unreadable file keeps the default rather than
+ * silently dropping every project server.
+ */
+export async function isProjectMcpConfigEnabled(): Promise<boolean> {
+  try {
+    const file = Bun.file(getOmpConfigPath());
+    if (!(await file.exists())) return true;
+    const parsed: unknown = Bun.YAML.parse(await file.text());
+    if (!isRecord(parsed) || !isRecord(parsed.mcp)) return true;
+    return parsed.mcp.enableProjectConfig !== false;
+  } catch {
+    return true;
+  }
 }
 
-async function writeConfigFile(path: string, config: McpFile): Promise<void> {
-  await writeFileAtomic(path, `${JSON.stringify(config, null, 2)}\n`);
-}
-
-async function writeServerAt(path: string, name: string, server: McpServer, previousName?: string): Promise<{ path: string }> {
-  return withConfigLock(path, async () => {
-    const config = await readConfigFile(path);
-    const servers = { ...(config.mcpServers ?? {}) };
-    // Capture the old entry before any rename: a rename must retain
-    // credentials the browser intentionally redacts from its payload.
-    const previous = servers[previousName ?? name];
-    if (previousName && previousName !== name) delete servers[previousName];
-    // The browser never receives existing credentials. Preserve them when an
-    // edited server omits those fields, rather than deleting them on save.
-    servers[name] = {
-      ...server,
-      ...(previous?.env !== undefined && server.env === undefined ? { env: previous.env } : {}),
-      ...(previous?.headers !== undefined && server.headers === undefined ? { headers: previous.headers } : {}),
-    };
-    await writeConfigFile(path, { ...config, mcpServers: servers });
-    return { path };
-  });
-}
-
-async function deleteServerAt(path: string, name: string): Promise<{ path: string }> {
-  if (!(await Bun.file(path).exists())) throw new Error('MCP server was not found');
-  return withConfigLock(path, async () => {
-    const config = await readConfigFile(path);
-    const servers = { ...(config.mcpServers ?? {}) };
-    if (!(name in servers)) throw new Error('MCP server was not found');
-    delete servers[name];
-    await writeConfigFile(path, { ...config, mcpServers: servers });
-    return { path };
-  });
-}
-
-/** Atomic read-modify-write of one server entry in the user mcp.json. */
-export async function writeUserMcpServer(
+/** omp's enablement precedence: denylist, then the entry's own flag, then the allowlist. */
+export function isServerEnabled(
   name: string,
-  server: McpServer,
-  path = join(getAgentDir(), 'mcp.json'),
-  previousName?: string,
-): Promise<{ path: string }> {
-  if (!SERVER_NAME.test(name)) throw new Error('Invalid server name');
-  if (!isRecord(server)) throw new Error('Server configuration must be an object');
-  return writeServerAt(path, name, server, previousName);
-}
-
-/** Atomic removal of one server entry from the user mcp.json. */
-export async function deleteUserMcpServer(name: string, path = join(getAgentDir(), 'mcp.json')): Promise<{ path: string }> {
-  if (!SERVER_NAME.test(name)) throw new Error('Invalid server name');
-  return deleteServerAt(path, name);
-}
-
-/** Atomic read-modify-write of one server entry in a project's mcp.json. */
-export async function writeProjectMcpServer(
-  projectRoot: string,
-  name: string,
-  server: McpServer,
-  previousName?: string,
-): Promise<{ path: string }> {
-  if (!SERVER_NAME.test(name)) throw new Error('Invalid server name');
-  if (!isRecord(server)) throw new Error('Server configuration must be an object');
-  return writeServerAt((await resolveProjectMcpConfig(projectRoot)).path, name, server, previousName);
-}
-
-/** Atomic removal of one server entry from a project's mcp.json. */
-export async function deleteProjectMcpServer(projectRoot: string, name: string): Promise<{ path: string }> {
-  if (!SERVER_NAME.test(name)) throw new Error('Invalid server name');
-  return deleteServerAt((await resolveProjectMcpConfig(projectRoot)).path, name);
+  config: McpServer,
+  disabledServers: readonly string[],
+  enabledServers: readonly string[],
+): boolean {
+  if (disabledServers.includes(name)) return false;
+  if (config.enabled === false) return enabledServers.includes(name);
+  return true;
 }
 
 /** Convert a native omp server config into Kabmo McpServerItem shape.
@@ -174,32 +171,55 @@ export function nativeToServerItem(
   index: number,
   enabled: boolean,
   project?: { path: string },
-) {
-  const isHttp = typeof config.url === 'string';
-  const envRecord = isRecord(config.env) ? (config.env as Record<string, unknown>) : {};
-  return {
+): McpServerItem {
+  const transport: McpTransport = config.type === 'sse'
+    ? 'sse'
+    : typeof config.url === 'string'
+      ? 'http'
+      : 'stdio';
+  const isLink = transport !== 'stdio';
+  const args = Array.isArray(config.args) ? config.args.map(String) : [];
+  const item: McpServerItem = {
     id: `${project ? 'omp-project' : 'omp-user'}-${name}`,
     name,
-    scope: project ? ('this-project' as const) : ('every-project' as const),
+    scope: project ? 'this-project' : 'every-project',
     ...(project ? { projectPath: project.path } : {}),
     enabled,
-    reachType: isHttp ? ('link' as const) : ('command' as const),
-    commandArgs: isHttp
+    transport,
+    commandArgs: isLink
       ? [String(config.url)]
-      : [String(config.command ?? ''), ...(Array.isArray(config.args) ? config.args.map(String) : [])].filter(Boolean),
-    linkUrl: isHttp ? String(config.url) : undefined,
-    envVars: Object.entries(envRecord).map(([key, value], i) => ({
-      id: `env-${index}-${i}`,
-      key,
-      value: typeof value === 'string' ? value : String(value),
-    })),
+      : [String(config.command ?? ''), ...args].filter(Boolean),
+    linkUrl: isLink ? String(config.url) : undefined,
+    envVars: recordToRows(isRecord(config.env) ? config.env : {}, `env-${index}`),
+    headers: recordToRows(isRecord(config.headers) ? config.headers : {}, `header-${index}`),
     status: undefined,
   };
+  if (typeof config.cwd === 'string') item.cwd = config.cwd;
+  if (typeof config.timeout === 'number') item.timeout = config.timeout;
+  if (config.requestIdFormat === 'string' || config.requestIdFormat === 'number') {
+    item.requestIdFormat = config.requestIdFormat;
+  }
+  if (typeof config.instructions === 'boolean') item.instructions = config.instructions;
+  if (isRecord(config.auth)) item.auth = config.auth as unknown as McpAuthConfig;
+  if (isRecord(config.oauth)) item.oauth = config.oauth as unknown as McpOAuthConfig;
+  return item;
 }
 
-const SENSITIVE_KEY = /(key|token|secret|password|credential)/i;
+const SENSITIVE_KEY = /(key|token|secret|password|credential|auth|cookie)/i;
 
 /** Redact env var values for display — the browser never sees raw credentials. */
 export function redactEnvVars<T extends { key: string; value: string }>(envVars: T[]): T[] {
-  return envVars.map((item) => (SENSITIVE_KEY.test(item.key) ? { ...item, value: '••••••••' } : item));
+  return envVars.map((item) => (SENSITIVE_KEY.test(item.key) ? { ...item, value: REDACTED_SENTINEL } : item));
+}
+
+/** Redact every credential-bearing field of a server row before it leaves the server. */
+export function redactServerItem(item: McpServerItem): McpServerItem {
+  const redacted: McpServerItem = {
+    ...item,
+    envVars: redactEnvVars(item.envVars ?? []),
+    headers: redactEnvVars(item.headers ?? []),
+  };
+  if (item.auth?.clientSecret) redacted.auth = { ...item.auth, clientSecret: REDACTED_SENTINEL };
+  if (item.oauth?.clientSecret) redacted.oauth = { ...item.oauth, clientSecret: REDACTED_SENTINEL };
+  return redacted;
 }

@@ -76,9 +76,10 @@ function server(name: string): McpServerItem {
     name,
     scope: 'every-project',
     enabled: true,
-    reachType: 'command',
+    transport: 'stdio',
     commandArgs: ['bunx', '@modelcontextprotocol/server-everything'],
     envVars: [],
+    headers: [],
   };
 }
 
@@ -131,5 +132,45 @@ describe('MCP route write answers', () => {
     const body = await (await call(mcpLoader, new Request(`${API}/mcp`))).json();
     expect(body.servers.map((item: McpServerItem) => item.name)).toEqual(['after']);
     expect(Object.keys(JSON.parse(fs.readFileSync(MCP_JSON, 'utf8')).mcpServers)).toEqual(['after']);
+  });
+
+  test('a remote server writes type, url and headers — never env', async () => {
+    const res = await call(mcpAction, send('POST', {
+      server: {
+        ...server('remote'),
+        transport: 'sse',
+        commandArgs: [],
+        linkUrl: 'https://x/sse',
+        headers: [{ id: 'h1', key: 'Authorization', value: 'Bearer t' }],
+        envVars: [{ id: 'e1', key: 'LEFTOVER', value: 'x' }],
+        timeout: 2500,
+      },
+    }));
+    expect(res.status).toBe(200);
+    expect(JSON.parse(fs.readFileSync(MCP_JSON, 'utf8')).mcpServers.remote).toEqual({
+      type: 'sse',
+      url: 'https://x/sse',
+      headers: { Authorization: 'Bearer t' },
+      timeout: 2500,
+    });
+  });
+
+  test('disabling a native server writes enabled:false and the denylist, and re-enabling clears both', async () => {
+    await call(mcpAction, send('POST', { server: server('toggle') }));
+
+    const off = await call(mcpAction, send('POST', { server: { ...server('toggle'), id: 'omp-user-toggle', enabled: false } }));
+    expect(off.status).toBe(200);
+    const written = JSON.parse(fs.readFileSync(MCP_JSON, 'utf8'));
+    expect(written.mcpServers.toggle.enabled).toBe(false);
+    expect(written.disabledServers).toEqual(['toggle']);
+
+    // The list the pane receives reflects the toggle instead of flipping back.
+    const listed = await (await call(mcpLoader, new Request(`${API}/mcp`))).json();
+    expect(listed.servers.find((item: McpServerItem) => item.name === 'toggle').enabled).toBe(false);
+
+    await call(mcpAction, send('POST', { server: { ...server('toggle'), id: 'omp-user-toggle', enabled: true } }));
+    const after = JSON.parse(fs.readFileSync(MCP_JSON, 'utf8'));
+    expect(after.mcpServers.toggle.enabled).toBeUndefined();
+    expect(after.disabledServers).toBeUndefined();
   });
 });

@@ -1,14 +1,21 @@
 import { CHECKBOX_CLASS } from '@/client/components/common/checkbox/style';
 import { useEffect, useState } from 'preact/hooks';
 import type { FormEvent, FunctionComponent } from 'preact/compat';
-import { AlertCircle, Check, Code, Globe, Loader2, Save, Terminal, Trash2 } from 'lucide-preact';
-import type { McpEnvVar, McpScope, McpServerItem, WriteOutcome } from '@/shared/types';
+import { AlertCircle, Check, Code, Loader2, Save, Trash2 } from 'lucide-preact';
+import type { McpKeyValue, McpScope, McpServerItem, WriteOutcome } from '@/shared/types';
 import { ConnectionTest } from '@/client/components/settings/categories/mcp-settings/ConnectionTest';
-import { McpEnvVarsSection } from '@/client/components/settings/categories/mcp-settings/EnvVarsSection';
+import { McpKeyValueSection } from '@/client/components/settings/categories/mcp-settings/KeyValueSection';
+import { McpTransportSection } from '@/client/components/settings/categories/mcp-settings/TransportSection';
+import { McpAdvancedSection } from '@/client/components/settings/categories/mcp-settings/AdvancedSection';
 import { useWriteFeedback } from '@/client/hooks/settings/write-feedback';
 
 function parseCommandArgs(text: string): string[] {
   return text.split('\n').map((s) => s.trim()).filter(Boolean);
+}
+
+/** Append a blank row; the id only has to be unique within this form. */
+function withRow(rows: McpKeyValue[], prefix: string): McpKeyValue[] {
+  return [...rows, { id: `${prefix}-${Date.now()}-${rows.length}`, key: '', value: '' }];
 }
 
 interface McpDetailPaneProps {
@@ -44,10 +51,10 @@ export const McpDetailPane: FunctionComponent<McpDetailPaneProps> = ({
    */
   const validationError = (() => {
     if (!formData.name.trim()) return 'A server needs a name — omp keys its config by it.';
-    if (formData.reachType === 'command' && parseCommandArgs(commandText).length === 0) {
+    if (formData.transport === 'stdio' && parseCommandArgs(commandText).length === 0) {
       return 'Paste the command that starts the server, one argument per line.';
     }
-    if (formData.reachType === 'link' && !(formData.linkUrl ?? '').trim()) {
+    if (formData.transport !== 'stdio' && !(formData.linkUrl ?? '').trim()) {
       return 'Paste the server’s MCP endpoint URL.';
     }
     return null;
@@ -73,30 +80,15 @@ export const McpDetailPane: FunctionComponent<McpDetailPaneProps> = ({
     });
   };
 
-  const handleAddEnvVar = () => {
-    const newEnv: McpEnvVar = {
-      id: `env-${Date.now()}`,
-      key: '',
-      value: '',
-    };
+  const updateRow = (field: 'envVars' | 'headers', id: string, key: string, value: string) => {
     setFormData((prev) => ({
       ...prev,
-      envVars: [...prev.envVars, newEnv],
+      [field]: prev[field].map((row) => (row.id === id ? { ...row, key, value } : row)),
     }));
   };
 
-  const handleUpdateEnvVar = (id: string, key: string, value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      envVars: prev.envVars.map((ev) => (ev.id === id ? { ...ev, key, value } : ev)),
-    }));
-  };
-
-  const handleRemoveEnvVar = (id: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      envVars: prev.envVars.filter((ev) => ev.id !== id),
-    }));
+  const removeRow = (field: 'envVars' | 'headers', id: string) => {
+    setFormData((prev) => ({ ...prev, [field]: prev[field].filter((row) => row.id !== id) }));
   };
 
   const serverForTest: McpServerItem = {
@@ -173,82 +165,48 @@ export const McpDetailPane: FunctionComponent<McpDetailPaneProps> = ({
 
       <div className="border-t border-ink/10" />
 
-      {/* SECTION: How to reach it */}
-      <div className="space-y-3">
-        <div>
-          <h3 className="text-xs font-bold uppercase tracking-wider text-ink">
-            How to reach it
-          </h3>
-          <p className="text-[11px] text-ink/60 mt-0.5">
-            Paste the command that starts it, or the link to a hosted server.
-          </p>
-        </div>
-
-        {/* Segmented Reach Type Buttons */}
-        <div className="inline-flex rounded-lg border border-ink/20 p-0.5 bg-ink/5">
-          <button
-            type="button"
-            onClick={() => setFormData({ ...formData, reachType: 'command' })}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors cursor-pointer ${
-              formData.reachType === 'command'
-                ? 'bg-paper text-ink shadow-2xs font-semibold'
-                : 'text-ink/60 hover:text-ink'
-            }`}
-          >
-            <Terminal className="w-3.5 h-3.5" />
-            Command
-          </button>
-          <button
-            type="button"
-            onClick={() => setFormData({ ...formData, reachType: 'link' })}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors cursor-pointer ${
-              formData.reachType === 'link'
-                ? 'bg-paper text-ink shadow-2xs font-semibold'
-                : 'text-ink/60 hover:text-ink'
-            }`}
-          >
-            <Globe className="w-3.5 h-3.5" />
-            Link
-          </button>
-        </div>
-
-        {formData.reachType === 'command' ? (
-          <div>
-            <textarea
-              value={commandText}
-              onChange={(e) => setCommandText(e.currentTarget.value)}
-              rows={4}
-              placeholder={`bunx\n@modelcontextprotocol/server-postgres\npostgresql://user:pass@host/db`}
-              className="w-full text-xs font-mono p-3 rounded-lg border border-ink/20 hover:border-ink/40 bg-ink/5 focus:outline-none focus:border-ink resize-none leading-relaxed text-ink transition-colors"
-            />
-            <p className="text-[11px] text-ink/50 mt-1">
-              Runs on this machine. Paste a whole command and it is split into one argument per line.
-            </p>
-          </div>
-        ) : (
-          <div>
-            <input
-              type="url"
-              value={formData.linkUrl || ''}
-              onChange={(e) => setFormData({ ...formData, linkUrl: e.currentTarget.value })}
-              placeholder="https://needmcp.com/mcp"
-              className="w-full text-xs font-mono px-3 py-2 rounded-lg border border-ink/20 hover:border-ink/40 bg-ink/5 focus:outline-none focus:border-ink text-ink transition-colors"
-            />
-            <p className="text-[11px] text-ink/50 mt-1">
-              Connect to a hosted MCP SSE or HTTP endpoint.
-            </p>
-          </div>
-        )}
-      </div>
+      <McpTransportSection
+        transport={formData.transport}
+        onTransportChange={(transport) => setFormData({ ...formData, transport })}
+        commandText={commandText}
+        onCommandTextChange={setCommandText}
+        linkUrl={formData.linkUrl ?? ''}
+        onLinkUrlChange={(linkUrl) => setFormData({ ...formData, linkUrl })}
+      />
 
       <div className="border-t border-ink/10" />
 
-      {/* SECTION: Environment Variables */}
-      <McpEnvVarsSection
-        envVars={formData.envVars}
-        onAdd={handleAddEnvVar}
-        onUpdate={handleUpdateEnvVar}
-        onRemove={handleRemoveEnvVar}
+      {formData.transport === 'stdio' ? (
+        <McpKeyValueSection
+          title="Environment Variables"
+          description="Values the server needs, such as an API key."
+          addLabel="Add variable"
+          emptyLabel="No environment variables configured."
+          keyPlaceholder="KEY"
+          valuePlaceholder="VALUE"
+          rows={formData.envVars}
+          onAdd={() => setFormData((prev) => ({ ...prev, envVars: withRow(prev.envVars, 'env') }))}
+          onUpdate={(id, key, value) => updateRow('envVars', id, key, value)}
+          onRemove={(id) => removeRow('envVars', id)}
+        />
+      ) : (
+        <McpKeyValueSection
+          title="Request Headers"
+          description="Sent with every request — an Authorization header, for example."
+          addLabel="Add header"
+          emptyLabel="No request headers configured."
+          keyPlaceholder="Authorization"
+          valuePlaceholder="Bearer …"
+          rows={formData.headers}
+          onAdd={() => setFormData((prev) => ({ ...prev, headers: withRow(prev.headers, 'header') }))}
+          onUpdate={(id, key, value) => updateRow('headers', id, key, value)}
+          onRemove={(id) => removeRow('headers', id)}
+        />
+      )}
+
+      <McpAdvancedSection
+        server={formData}
+        onChange={(patch) => setFormData((prev) => ({ ...prev, ...patch }))}
       />
 
       {validationError && (

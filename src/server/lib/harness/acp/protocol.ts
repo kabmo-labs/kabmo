@@ -159,7 +159,15 @@ export interface AcpMcpServerHttp {
   headers: Array<{ name: string; value: string }>;
 }
 
-export type AcpMcpServer = AcpMcpServerStdio | AcpMcpServerHttp;
+/** Legacy SSE transport; ACP carries it as its own typed variant. */
+export interface AcpMcpServerSse {
+  type: 'sse';
+  name: string;
+  url: string;
+  headers: Array<{ name: string; value: string }>;
+}
+
+export type AcpMcpServer = AcpMcpServerStdio | AcpMcpServerHttp | AcpMcpServerSse;
 
 export interface AcpSessionNewResult {
   sessionId: string;

@@ -1,11 +1,11 @@
 import { useState } from 'preact/hooks';
 import { Activity, AlertCircle, Check } from 'lucide-preact';
-import type { McpServerItem } from '@/shared/types';
+import type { McpServerItem, McpTransport } from '@/shared/types';
 
 /** Shape of the response returned by POST /api/settings/mcp-test. */
 interface McpTestResult {
   ok: boolean;
-  transport: 'command' | 'link';
+  transport: McpTransport;
   protocolVersion?: string;
   serverInfo?: { name?: string; version?: string };
   toolCount?: number;
@@ -37,7 +37,7 @@ export function ConnectionTest({ server }: ConnectionTestProps) {
     } catch (error) {
       setResult({
         ok: false,
-        transport: server.reachType,
+        transport: server.transport,
         durationMs: 0,
         error: error instanceof Error ? error.message : 'Request failed',
       });

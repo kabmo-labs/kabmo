@@ -1,13 +1,14 @@
 import { useState } from 'preact/hooks';
 import type { FunctionComponent } from 'preact/compat';
 import { AlertCircle, Code, Loader2, X } from 'lucide-preact';
-import type { McpEnvVar, McpServerItem, WriteOutcome } from '@/shared/types';
+import type { McpServerItem, WriteOutcome } from '@/shared/types';
+import { parseMcpImport } from '@/shared/lib/mcp/import';
 
 interface McpImportModalProps {
   isOpen: boolean;
   onClose: () => void;
   /** Resolves with the save's outcome; a refusal keeps this dialog open. */
-  onImport: (server: McpServerItem) => Promise<WriteOutcome>;
+  onImport: (servers: McpServerItem[]) => Promise<WriteOutcome>;
 }
 
 const SAMPLE_JSON = `{
@@ -35,73 +36,19 @@ export const McpImportModal: FunctionComponent<McpImportModalProps> = ({
 
   const handleParseAndImport = async () => {
     setError(null);
+    let servers: McpServerItem[];
     try {
-      const parsed = JSON.parse(jsonText);
-
-      // Handle {"mcpServers": { "name": { ... } }} format
-      if (parsed.mcpServers && typeof parsed.mcpServers === 'object') {
-        const serverKeys = Object.keys(parsed.mcpServers);
-        if (serverKeys.length === 0) {
-          throw new Error('No servers found inside "mcpServers" object.');
-        }
-        const firstKey = serverKeys[0];
-        const serverConfig = parsed.mcpServers[firstKey];
-        await importConfig(firstKey, serverConfig);
-        return;
-      }
-
-      // Handle direct config: { name, command, args, env } or { command, args }
-      const name = parsed.name || 'imported-mcp-server';
-      await importConfig(name, parsed);
+      servers = parseMcpImport(jsonText);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Invalid JSON format';
-      setError(message);
+      setError(err instanceof Error ? err.message : 'Invalid JSON format');
+      return;
     }
-  };
-
-  const importConfig = async (serverName: string, cfg: Record<string, unknown>) => {
-    const isUrl = typeof cfg.url === 'string' && cfg.url.length > 0;
-    const reachType = isUrl ? 'link' : 'command';
-
-    let commandArgs: string[] = [];
-    if (!isUrl) {
-      const cmd = typeof cfg.command === 'string' ? [cfg.command] : [];
-      const args = Array.isArray(cfg.args) ? cfg.args.map(String) : [];
-      commandArgs = [...cmd, ...args];
-      if (commandArgs.length === 0) {
-        commandArgs = ['bunx', '@modelcontextprotocol/server-everything'];
-      }
-    }
-
-    const envVars: McpEnvVar[] = [];
-    if (cfg.env && typeof cfg.env === 'object') {
-      Object.entries(cfg.env).forEach(([k, v], idx) => {
-        envVars.push({
-          id: `env-${Date.now()}-${idx}`,
-          key: k,
-          value: String(v),
-        });
-      });
-    }
-
-    const resolvedUrl = typeof cfg.url === 'string' ? cfg.url : undefined;
-    const newServer: McpServerItem = {
-      id: `mcp-${Date.now()}`,
-      name: serverName,
-      scope: 'every-project',
-      enabled: true,
-      reachType,
-      commandArgs,
-      ...(resolvedUrl ? { linkUrl: resolvedUrl } : {}),
-      envVars,
-      status: 'active',
-    };
 
     // The dialog closes on the SAVE's answer, not on the click: a refused
     // write has to be readable against the JSON that produced it.
     setImporting(true);
     try {
-      const outcome = await onImport(newServer);
+      const outcome = await onImport(servers);
       if (outcome.ok) onClose();
       else setError(outcome.error ?? 'The server refused the import.');
     } finally {
@@ -116,7 +63,7 @@ export const McpImportModal: FunctionComponent<McpImportModalProps> = ({
           <div className="flex items-center gap-2">
             <Code className="w-4 h-4 text-ink/70" />
             <h2 className="text-xs font-bold uppercase tracking-wider text-ink">
-              Import MCP Server from JSON
+              Import MCP Servers from JSON
             </h2>
           </div>
           <button
@@ -129,7 +76,8 @@ export const McpImportModal: FunctionComponent<McpImportModalProps> = ({
         </div>
 
         <p className="text-xs text-ink/70 leading-relaxed">
-          Paste a configuration block from Claude Desktop, VS Code, or Cursor settings.
+          Paste a configuration block from omp, Claude, VS Code, Cursor, Gemini, or OpenCode.
+          Every server in the snippet is imported.
         </p>
 
         <textarea
@@ -165,7 +113,7 @@ export const McpImportModal: FunctionComponent<McpImportModalProps> = ({
             className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-ink text-paper text-xs font-medium hover:bg-ink/90 transition-colors shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-progress"
           >
             {importing && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-            {importing ? 'Importing…' : 'Import Server'}
+            {importing ? 'Importing…' : 'Import Servers'}
           </button>
         </div>
       </div>

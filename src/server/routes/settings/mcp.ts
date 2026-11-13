@@ -7,7 +7,22 @@ import { isMockMode } from '@/server/mock.server';
 import { mcpStore, readCustomMcpServers, writeCustomMcpServers } from '@/server/lib/mcp/store.server';
 import { resolveRoot } from '@/server/lib/fs/root';
 import type { McpServerItem } from '@/shared/types';
-import { deleteProjectMcpServer, deleteUserMcpServer, nativeToServerItem, readProjectMcpConfig, readUserMcpConfig, redactEnvVars, writeProjectMcpServer, writeUserMcpServer } from '@/server/lib/omp/config/mcp';
+import { isRecord } from '@/shared/lib/util/guards';
+import { rowsToRecord, REDACTED_SENTINEL } from '@/shared/lib/mcp/key-value';
+import {
+  isProjectMcpConfigEnabled,
+  isServerEnabled,
+  nativeToServerItem,
+  readProjectMcpConfig,
+  readUserMcpConfig,
+  redactServerItem,
+} from '@/server/lib/omp/config/mcp';
+import {
+  deleteProjectMcpServer,
+  deleteUserMcpServer,
+  writeProjectMcpServer,
+  writeUserMcpServer,
+} from '@/server/lib/omp/config/mcp-write';
 
 const NATIVE_USER_PREFIX = 'omp-user-';
 const NATIVE_PROJECT_PREFIX = 'omp-project-';
@@ -38,17 +53,28 @@ function customForProject(custom: McpServerItem[], projectPath?: string): McpSer
 async function mergeServers(custom: McpServerItem[], projectPath?: string): Promise<McpServerItem[]> {
   const user = await readUserMcpConfig();
   const userItems: McpServerItem[] = user.servers.map((entry, index) =>
-    nativeToServerItem(entry.name, entry.config, index, !user.disabledServers.includes(entry.name)),
+    nativeToServerItem(
+      entry.name,
+      entry.config,
+      index,
+      isServerEnabled(entry.name, entry.config, user.disabledServers, user.enabledServers),
+    ),
   );
-  const project = projectPath ? await readProjectMcpConfig(projectPath) : undefined;
+  const project = projectPath && (await isProjectMcpConfigEnabled())
+    ? await readProjectMcpConfig(projectPath)
+    : undefined;
   const projectItems: McpServerItem[] = projectPath && project
     ? project.servers.map((entry, index) =>
-        nativeToServerItem(entry.name, entry.config, index, !project.disabledServers.includes(entry.name), {
-          path: projectPath,
-        }),
+        nativeToServerItem(
+          entry.name,
+          entry.config,
+          index,
+          isServerEnabled(entry.name, entry.config, user.disabledServers, user.enabledServers),
+          { path: projectPath },
+        ),
       )
     : [];
-  const natives = [...userItems, ...projectItems].map((item) => ({ ...item, envVars: redactEnvVars(item.envVars) }));
+  const natives = [...userItems, ...projectItems].map(redactServerItem);
   const nativeNames = new Set(natives.map((item) => item.name.toLowerCase()));
   return [
     ...natives,
@@ -56,29 +82,58 @@ async function mergeServers(custom: McpServerItem[], projectPath?: string): Prom
   ];
 }
 
+/** The browser payload for one server; every field is untrusted. */
 interface McpNativePayloadSource {
-  reachType?: unknown;
+  transport?: unknown;
   linkUrl?: unknown;
   commandArgs?: unknown;
   envVars?: unknown;
+  headers?: unknown;
+  cwd?: unknown;
+  timeout?: unknown;
+  requestIdFormat?: unknown;
+  instructions?: unknown;
+  auth?: unknown;
+  oauth?: unknown;
+  enabled?: unknown;
+}
+
+/** A credential block without the form's blanks and redaction placeholders. */
+function credentialBlock(value: unknown): Record<string, unknown> | undefined {
+  if (!isRecord(value)) return undefined;
+  const entries = Object.entries(value).filter(
+    ([, entry]) => entry !== undefined && entry !== null && entry !== '' && entry !== REDACTED_SENTINEL,
+  );
+  return entries.length > 0 ? Object.fromEntries(entries) : undefined;
 }
 
 /** Convert a browser McpServerItem payload into native omp mcp.json shape. */
 function toNativeServer(ui: McpNativePayloadSource): Record<string, unknown> {
   const commandArgs = Array.isArray(ui.commandArgs) ? ui.commandArgs.map(String) : [];
-  const isLink = ui.reachType === 'link' || typeof ui.linkUrl === 'string';
-  const nativeServer: Record<string, unknown> = isLink
-    ? { url: String(ui.linkUrl ?? commandArgs[0] ?? '') }
-    : { command: commandArgs[0] ?? '', ...(commandArgs.length > 1 ? { args: commandArgs.slice(1) } : {}) };
-  if (Array.isArray(ui.envVars) && ui.envVars.length > 0) {
-    const env: Record<string, string> = {};
-    for (const item of ui.envVars) {
-      if (item && typeof item.key === 'string' && typeof item.value === 'string' && item.value !== '••••••••') {
-        env[item.key] = item.value;
-      }
-    }
-    if (Object.keys(env).length > 0) nativeServer.env = env;
+  const transport = ui.transport === 'sse' ? 'sse' : ui.transport === 'http' || typeof ui.linkUrl === 'string' ? 'http' : 'stdio';
+  const nativeServer: Record<string, unknown> = {};
+  if (transport === 'stdio') {
+    nativeServer.command = commandArgs[0] ?? '';
+    if (commandArgs.length > 1) nativeServer.args = commandArgs.slice(1);
+    const env = rowsToRecord(Array.isArray(ui.envVars) ? (ui.envVars as McpServerItem['envVars']) : []);
+    if (env) nativeServer.env = env;
+    if (typeof ui.cwd === 'string' && ui.cwd.trim()) nativeServer.cwd = ui.cwd.trim();
+  } else {
+    // `type` is required by omp's schema for both remote transports; omitting it
+    // makes an SSE endpoint silently load as streamable HTTP.
+    nativeServer.type = transport;
+    nativeServer.url = String(ui.linkUrl ?? commandArgs[0] ?? '');
+    const headers = rowsToRecord(Array.isArray(ui.headers) ? (ui.headers as McpServerItem['headers']) : []);
+    if (headers) nativeServer.headers = headers;
   }
+  if (typeof ui.timeout === 'number' && Number.isFinite(ui.timeout) && ui.timeout >= 0) nativeServer.timeout = ui.timeout;
+  if (ui.requestIdFormat === 'string' || ui.requestIdFormat === 'number') nativeServer.requestIdFormat = ui.requestIdFormat;
+  if (typeof ui.instructions === 'boolean') nativeServer.instructions = ui.instructions;
+  const auth = credentialBlock(ui.auth);
+  if (auth) nativeServer.auth = auth;
+  const oauth = credentialBlock(ui.oauth);
+  if (oauth) nativeServer.oauth = oauth;
+  if (ui.enabled === false) nativeServer.enabled = false;
   return nativeServer;
 }
 
@@ -121,9 +176,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
       nativePath: includeNative ? (await readUserMcpConfig()).path : undefined,
       projectPath: projectPath ?? undefined,
     });
-  } catch (error: any) {
+  } catch (error) {
     const mock = isMockMode();
-    return json({ error: error.message, servers: mock ? DEFAULT_MCP_SERVERS : [], isMock: mock }, { status: 500 });
+    const message = error instanceof Error ? error.message : String(error);
+    return json({ error: message, servers: mock ? DEFAULT_MCP_SERVERS : [], isMock: mock }, { status: 500 });
   }
 }
 
@@ -246,7 +302,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
     }
 
     return methodNotAllowed({ request, params });
-  } catch (error: any) {
-    return json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }
