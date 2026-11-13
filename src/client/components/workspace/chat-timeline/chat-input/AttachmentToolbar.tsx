@@ -4,6 +4,7 @@ import { File as FileIcon, Maximize2, Minimize2, Paperclip, X } from 'lucide-pre
 import type { Attachment } from '@/shared/types';
 import { attachmentName } from '@/shared/lib/chat/attachments';
 import { ModeToggles } from '@/client/components/workspace/chat-timeline/chat-input/ModeToggles';
+import { WaitingDependencyPicker, type WaitingCandidate } from '@/client/components/workspace/chat-timeline/chat-input/WaitingDependencyPicker';
 import type { ComposerModes } from '@/client/components/workspace/chat-timeline/chat-input/modes-props';
 
 interface AttachmentToolbarProps {
@@ -32,10 +33,26 @@ interface AttachmentToolbarProps {
    */
   compact?: boolean;
   onExpandComposer?: () => void;
+  /**
+   * "Wait for session" for the NEXT prompt, at the row's trailing edge just
+   * before the stretch control — the same control the draft row shows on a chat
+   * that has not started. Hidden while there is nothing to wait for and no pick
+   * already made: an always-drawn chip would promise a session that does not
+   * exist.
+   */
+  waiting?: {
+    value: WaitingCandidate | null;
+    candidates: WaitingCandidate[];
+    onChange: (candidate: WaitingCandidate | null) => void;
+  };
 }
 
-export function AttachmentToolbar({ attachments, onFilesSelected, onRemove, modes, onOpenGoal, expanded, onToggleExpand, compact = false, onExpandComposer }: AttachmentToolbarProps) {
+export function AttachmentToolbar({ attachments, onFilesSelected, onRemove, modes, onOpenGoal, expanded, onToggleExpand, compact = false, onExpandComposer, waiting }: AttachmentToolbarProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const showWaiting = Boolean(waiting && (waiting.value || waiting.candidates.length > 0));
+  // The mode toggles take the row's trailing edge when they are here; otherwise
+  // the wait pick (or, with neither, the stretch control) does.
+  const modesTrailing = Boolean(modes && onOpenGoal);
 
   const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.currentTarget.files && e.currentTarget.files.length > 0) {
@@ -117,9 +134,24 @@ export function AttachmentToolbar({ attachments, onFilesSelected, onRemove, mode
           </div>
         )}
 
-        {/* The stretch control, always last on the row. `ml-auto` unless the
-            mode toggles already took it, so the two trailing groups stay apart
-            from the paperclip and the attachment chips. */}
+        {/* The NEXT prompt's wait pick, immediately before the stretch control
+            on BOTH layouts. It opens DOWNWARD: this row is the card's top edge,
+            so an upward list would be drawn outside the card. */}
+        {showWaiting && waiting && (
+          <div className={`${modesTrailing ? '' : 'ml-auto '}flex-shrink-0`}>
+            <WaitingDependencyPicker
+              candidates={waiting.candidates}
+              value={waiting.value}
+              onChange={waiting.onChange}
+              compactLabel
+              placement="down"
+            />
+          </div>
+        )}
+
+        {/* The stretch control, always last on the row. `ml-auto` unless a
+            trailing group already took it, so the groups stay apart from the
+            paperclip and the attachment chips. */}
         {onToggleExpand && (
           <button
             type="button"
@@ -131,7 +163,7 @@ export function AttachmentToolbar({ attachments, onFilesSelected, onRemove, mode
             // as a tool card whose title is "composer".
             aria-label={expanded ? 'Restore composer' : 'Maximize composer'}
             title={expanded ? 'Restore composer' : 'Maximize composer'}
-            className={`tap-target ${modes && onOpenGoal ? '' : 'ml-auto '}flex items-center justify-center p-1 rounded transition-colors shrink-0 ${
+            className={`tap-target ${modesTrailing || showWaiting ? '' : 'ml-auto '}flex items-center justify-center p-1 rounded transition-colors shrink-0 ${
               expanded ? 'bg-ink/10 text-ink' : 'text-ink/60 hover:bg-ink/5 hover:text-ink'
             }`}
           >

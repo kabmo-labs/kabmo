@@ -8,7 +8,7 @@
  *
  * Two facts have to agree: the candidates are the sessions with a run in flight
  * (never this chat), and the held banner belongs to whichever chat the row
- * names. Keeping them in one hook is what stops the toolbar picker and the
+ * names. Keeping them in one hook is what stops the header picker and the
  * banner from reading two different lists — and it keeps `ChatTimeline` under
  * the per-file ceiling.
  */
@@ -33,7 +33,7 @@ export interface ComposerWaitOptions {
 }
 
 export interface ComposerWait {
-  /** Props for the composer toolbar's picker. */
+  /** Props for the composer header's picker. */
   waiting: {
     value: WaitingCandidate | null;
     candidates: WaitingCandidate[];

@@ -131,9 +131,9 @@ export interface ChatInputProps {
    *
    * The pick defers the NEXT prompt of THIS chat. It reaches the composer in
    * two places — a chat that has not started shows it in its draft row, and
-   * every chat with a session shows it at the far right of the toolbar — so a
-   * composer that does not own a chat turn (the New Chat modal, the side-question
-   * form) omits it.
+   * every chat with a session shows it in the header row, immediately before
+   * the stretch control — so a composer that does not own a chat turn (the New
+   * Chat modal, the side-question form) omits it.
    */
   waiting?: {
     value: WaitingCandidate | null;

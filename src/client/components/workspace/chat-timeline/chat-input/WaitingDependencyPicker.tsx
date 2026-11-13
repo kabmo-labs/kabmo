@@ -7,7 +7,8 @@
  * "Wait for session" — the composer's dependency pick.
  *
  * Two mounts, one control: the draft row above a chat that has not started, and
- * the toolbar of a chat that already has a session (the NEXT prompt). Only
+ * the composer header of a chat that already has a session (the NEXT prompt).
+ * Only
  * sessions with a run in flight are offered, and that is a rule rather than a
  * filter for convenience: a prompt held on an idle session would be released
  * by the very next sweep, so the dropdown would be promising a wait that cannot
@@ -41,6 +42,14 @@ export interface WaitingDependencyPickerProps {
   onChange: (candidate: WaitingCandidate | null) => void;
   /** Toolbar mount: the label collapses on a narrow composer. */
   compactLabel?: boolean;
+  /**
+   * Which way the popup opens. `up` (the default) is the draft row's placement:
+   * the row sits above the composer, so the list grows into that space. `down`
+   * is the composer header's: the row is the card's top edge, so an upward list
+   * would be drawn outside the card (and off the viewport on a stretched
+   * phone composer). The list is right-aligned there because the trigger is.
+   */
+  placement?: 'up' | 'down';
 }
 
 /**
@@ -87,6 +96,7 @@ export function WaitingDependencyPicker({
   value,
   onChange,
   compactLabel = false,
+  placement = 'up',
 }: WaitingDependencyPickerProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -130,7 +140,7 @@ export function WaitingDependencyPicker({
       </button>
 
       {open && (
-        <div className="glass-popover absolute bottom-full left-0 mb-1.5 w-max min-w-[16rem] max-w-[calc(100vw-5rem)] bg-paper border border-ink/10 rounded-lg shadow-lg z-50 flex flex-col overflow-hidden text-xs py-1">
+        <div className={`glass-popover absolute ${placement === 'down' ? 'top-full right-0 mt-1.5' : 'bottom-full left-0 mb-1.5'} w-max min-w-[16rem] max-w-[calc(100vw-5rem)] bg-paper border border-ink/10 rounded-lg shadow-lg z-50 flex flex-col overflow-hidden text-xs py-1`}>
           <div className="flex items-center justify-between px-3 py-1.5 border-b border-ink/5">
             <span className="text-[10px] uppercase tracking-wider text-ink/40 font-semibold">Wait for session</span>
             {value && (

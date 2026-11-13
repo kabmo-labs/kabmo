@@ -5,7 +5,6 @@ import { ThinkingLevelDropdown } from '@/client/components/workspace/chat-timeli
 import { AccessDropdown } from '@/client/components/workspace/chat-timeline/chat-input/AccessDropdown';
 import { ModeToggles } from '@/client/components/workspace/chat-timeline/chat-input/ModeToggles';
 import { PluginComposerActions } from '@/client/components/workspace/chat-timeline/chat-input/PluginComposerSlots';
-import { WaitingDependencyPicker, type WaitingCandidate } from '@/client/components/workspace/chat-timeline/chat-input/WaitingDependencyPicker';
 import type { ComposerModes } from '@/client/components/workspace/chat-timeline/chat-input/modes-props';
 import { DEFAULT_APPROVAL_MODE, type ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 
@@ -54,16 +53,6 @@ export interface ComposerToolbarProps {
   onVoiceToggle?: () => void;
   /** The draft, handed to a plugin `composerAction` at render time. */
   text?: string;
-  /**
-   * "Wait for session" for the NEXT prompt: the pick, the sessions it may name,
-   * and the setter. Mounted at the FAR RIGHT of this row, before the action
-   * pair — the same control the draft row shows on a chat that has not started.
-   */
-  waiting?: {
-    value: WaitingCandidate | null;
-    candidates: WaitingCandidate[];
-    onChange: (candidate: WaitingCandidate | null) => void;
-  };
   /** Which harness runs this chat, and whether the tab strip may change it. */
   harness?: string;
   harnessEditable?: boolean;
@@ -136,7 +125,6 @@ export function ComposerToolbar({
   voiceBusy,
   onVoiceToggle,
   text = '',
-  waiting,
   harness,
   harnessEditable = true,
   onSelectHarness,
@@ -219,18 +207,6 @@ export function ComposerToolbar({
         {/* Plugin contributions sit before the built-in controls, in store
             order. An empty slot renders nothing, so this row is unchanged. */}
         <PluginComposerActions text={text} isSubmitting={chatInFlight} />
-        {/* The NEXT prompt's wait pick, at the far right of the row beside the
-            action pair. Hidden while there is nothing to wait for and no pick
-            already made — an always-drawn chip would promise a session that
-            does not exist. */}
-        {waiting && (waiting.value || waiting.candidates.length > 0) && (
-          <WaitingDependencyPicker
-            candidates={waiting.candidates}
-            value={waiting.value}
-            onChange={waiting.onChange}
-            compactLabel
-          />
-        )}
         {/* Voice input — only when the browser can capture audio. Idle ▸ mic,
             recording ▸ pulsing red mic-off, transcribing ▸ spinner. It shares
             the action pair's geometry: it is the third control of one cluster,

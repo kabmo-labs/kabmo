@@ -120,6 +120,7 @@ export function composerRows({
         onToggleExpand={input.onToggleExpand}
         compact={input.compact}
         onExpandComposer={input.onExpandComposer}
+        {...(input.waiting ? { waiting: input.waiting } : {})}
       />
     ),
 
@@ -187,7 +188,6 @@ export function composerRows({
         voiceBusy={input.voiceBusy}
         onVoiceToggle={input.onVoiceToggle}
         text={input.value}
-        {...(input.waiting ? { waiting: input.waiting } : {})}
         harness={input.harness}
         harnessEditable={input.harnessEditable}
         onSelectHarness={input.onSelectHarness}
