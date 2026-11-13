@@ -17,11 +17,22 @@
  * The popover is pinned to the viewport on the phone and anchored under the
  * trigger on the desktop; that is the only difference between the two, and it is
  * a prop rather than two components.
+ *
+ * The panel is drawn by `common/anchored-menu/` — portalled into `document.body`
+ * at `z-[70]`. It used to be a `fixed z-50` child of the header, and BOTH headers
+ * are flex items at `z-20`: a `z-50` inside that stacking context is still
+ * `z-20` against its siblings, so the phone's floating "jump to your message"
+ * button (a `z-20` later in the DOM, sitting exactly where this panel opens)
+ * painted over the panel's header and first rows. Raising the panel's own number
+ * cannot help; the number that decides is the ANCESTOR's. Same defect, same
+ * remedy, as `common/server-control/Panel.tsx`.
  */
 
-import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { useCallback, useMemo, useRef, useState } from 'preact/hooks';
 import type { TargetedMouseEvent } from 'preact';
-import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
+import { AnchoredMenu } from '@/client/components/common/anchored-menu';
+import { anchorRectOf } from '@/shared/lib/ui/menu-anchor';
+import { mobileOverlayStyle } from '@/shared/lib/ui/mobile-overlay';
 import { useSessionContextTelemetry } from '@/client/hooks/chat/context/telemetry';
 import { useModelNames } from '@/client/hooks/models/use-model-names';
 import { useProviderNames } from '@/client/hooks/models/use-provider-names';
@@ -29,6 +40,7 @@ import { providerLabel } from '@/shared/lib/models/provider/label';
 import { formatCompactTokens } from '@/shared/lib/format/number';
 import { CONTEXT_BAND_TONES, contextUsageBand } from '@/shared/lib/chat/context/usage';
 import { ContextRing } from '@/client/components/common/context-usage-button/Ring';
+import { McpSection } from '@/client/components/common/context-usage-button/McpSection';
 import { CONTROL_BOX } from '@/client/lib/ui/control-plate';
 
 interface ContextUsageButtonProps {
@@ -40,19 +52,10 @@ interface ContextUsageButtonProps {
 export function ContextUsageButton({ sessionId, layout = 'desktop' }: ContextUsageButtonProps) {
   const { telemetry, percent } = useSessionContextTelemetry(sessionId);
   const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  useOnClickOutside(containerRef, () => setOpen(false));
-
-  // Escape closes the popover whether or not the pointer is over it; a panel
-  // that can only be dismissed by clicking elsewhere is a trap on a keyboard.
-  useEffect(() => {
-    if (!open) return;
-    const onKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
-    };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [open]);
+  // The desktop panel hangs off the trigger's measured rectangle; the phone's is
+  // pinned to the viewport by `mobileOverlayStyle`, so it passes no anchor.
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const close = useCallback(() => setOpen(false), []);
 
   // The telemetry reports the model as `provider/modelId` (omp's own selector).
   // Split once here so the popover prints the provider and the model on separate
@@ -78,8 +81,9 @@ export function ContextUsageButton({ sessionId, layout = 'desktop' }: ContextUsa
     : `${CONTROL_BOX.desktop} hover:bg-ink/10 transition-colors cursor-pointer`;
 
   return (
-    <div className="relative flex items-center" ref={containerRef}>
+    <>
       <button
+        ref={triggerRef}
         type="button"
         onClick={(event: TargetedMouseEvent<HTMLElement>) => {
           event.stopPropagation();
@@ -97,23 +101,13 @@ export function ContextUsageButton({ sessionId, layout = 'desktop' }: ContextUsa
       </button>
 
       {open && (
-        <div
+        <AnchoredMenu
+          anchor={layout === 'desktop' && triggerRef.current ? anchorRectOf(triggerRef.current) : null}
+          viewportStyle={layout === 'mobile' ? mobileOverlayStyle() : undefined}
           role="dialog"
-          aria-label="Context usage"
-          className={
-            layout === 'mobile'
-              ? 'glass-popover fixed z-50 bg-paper border border-ink/20 rounded-xl shadow-xl p-3 text-xs font-mono'
-              : 'glass-popover absolute right-0 top-full z-50 mt-2 w-56 bg-paper border border-ink/20 rounded-xl shadow-xl p-3 text-xs font-mono'
-          }
-          style={
-            layout === 'mobile'
-              ? {
-                  top: 'calc(3.5rem + env(safe-area-inset-top, 0px) + 0.375rem)',
-                  right: 'max(0.75rem, env(safe-area-inset-right, 0px))',
-                  width: '14rem',
-                }
-              : undefined
-          }
+          ariaLabel="Context usage"
+          className={`bg-paper border border-ink/20 rounded-xl shadow-xl p-3 text-xs font-mono ${layout === 'desktop' ? 'w-72' : ''}`}
+          onClose={close}
         >
           <div className="font-semibold text-ink font-sans pb-1.5 border-b border-ink/10 flex items-center justify-between">
             <span>Context</span>
@@ -155,8 +149,12 @@ export function ContextUsageButton({ sessionId, layout = 'desktop' }: ContextUsa
               )}
             </div>
           )}
-        </div>
+          {/* The session's MCP servers, below the context numbers: one popover
+              for "what this chat is running with", and the switch is per
+              session because the list is a spawn property. */}
+          <McpSection sessionId={sessionId} />
+        </AnchoredMenu>
       )}
-    </div>
+    </>
   );
 }

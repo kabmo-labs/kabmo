@@ -94,6 +94,15 @@ function trigger(): HTMLElement {
   return container.querySelector('button[aria-label="Context usage"]') as HTMLElement;
 }
 
+/**
+ * The popover, which lives in `document.body` — `AnchoredMenu` portals it there
+ * so the header's `z-20` stacking context cannot trap it under the timeline's
+ * floating controls. Querying `container` would find nothing.
+ */
+function dialog(): HTMLElement | null {
+  return document.querySelector('[role="dialog"][aria-label="Context usage"]');
+}
+
 async function mount(snapshot: SessionContextTelemetry): Promise<void> {
   telemetry = snapshot;
   // `/api/models` is cached for 60s in MODULE state, shared by every suite in
@@ -184,22 +193,22 @@ describe('ContextUsageButton', () => {
 
   test('the popover prints the session numbers, and Escape closes it', async () => {
     await mount(telemetryAt(42));
-    expect(container.querySelector('[role="dialog"]')).toBeNull();
+    expect(dialog()).toBeNull();
 
     await act(async () => {
       trigger().click();
     });
-    const dialog = container.querySelector('[role="dialog"]');
-    expect(dialog).not.toBeNull();
-    expect(dialog?.textContent).toContain('Kenari');
-    expect(dialog?.textContent).toContain('DeepSeek V4-1-Flash');
-    expect(dialog?.textContent).toContain('42%');
-    expect(dialog?.textContent).toContain('$0.02');
+    const panel = dialog();
+    expect(panel).not.toBeNull();
+    expect(panel?.textContent).toContain('Kenari');
+    expect(panel?.textContent).toContain('DeepSeek V4-1-Flash');
+    expect(panel?.textContent).toContain('42%');
+    expect(panel?.textContent).toContain('$0.02');
 
     await act(async () => {
       document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape' }));
     });
-    expect(container.querySelector('[role="dialog"]')).toBeNull();
+    expect(dialog()).toBeNull();
   });
 
   test('a session with no turn says so instead of printing zeros', async () => {
@@ -208,8 +217,8 @@ describe('ContextUsageButton', () => {
     await act(async () => {
       trigger().click();
     });
-    const dialog = container.querySelector('[role="dialog"]');
-    expect(dialog?.textContent).toContain('Session not started');
-    expect(dialog?.textContent).not.toContain('Cost:');
+    const panel = dialog();
+    expect(panel?.textContent).toContain('Session not started');
+    expect(panel?.textContent).not.toContain('Cost:');
   });
 });
