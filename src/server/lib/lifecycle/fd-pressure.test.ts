@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import fs from 'node:fs';
 import {
   SPAWN_CLIFF,
+  cachedOpenFileDescriptors,
   countOpenFileDescriptors,
   describeFdPressure,
   describeSpawnFailure,
@@ -52,6 +53,48 @@ describe('countOpenFileDescriptors', () => {
       expect(during!.highest).toBeGreaterThanOrEqual(Math.max(...opened));
     } finally {
       for (const fd of opened) fs.closeSync(fd);
+    }
+  });
+});
+
+describe('cachedOpenFileDescriptors', () => {
+  // The sweep is 5.03 ms on a 61,440-entry table and blocks the event loop, so
+  // `/api/health` — polled at 250-500 ms while a boot or restart is watched —
+  // must reuse it. The cache is process-wide, so each case clears the slot.
+  const reset = (): void => {
+    (globalThis as unknown as Record<string, unknown>).__kabmoFdSweep = undefined;
+  };
+
+  test('reuses one sweep inside the window', () => {
+    reset();
+    const first = cachedOpenFileDescriptors(60_000);
+    const second = cachedOpenFileDescriptors(60_000);
+    expect(second).toBe(first);
+    reset();
+  });
+
+  test('sweeps again once the window has passed', () => {
+    reset();
+    const first = cachedOpenFileDescriptors(0);
+    const second = cachedOpenFileDescriptors(0);
+    // A zero window means every call is fresh; the values are equal objects
+    // only if the host cannot answer at all.
+    if (first === null) expect(second).toBeNull();
+    else expect(second).not.toBe(first);
+    reset();
+  });
+
+  test('sees a descriptor opened after the window', () => {
+    reset();
+    const before = cachedOpenFileDescriptors(0);
+    if (!before) return; // Host cannot answer; nothing to assert.
+    const fd = fs.openSync('/dev/null', 'r');
+    try {
+      const after = cachedOpenFileDescriptors(0);
+      expect(after!.open).toBeGreaterThanOrEqual(before.open + 1);
+    } finally {
+      fs.closeSync(fd);
+      reset();
     }
   });
 });

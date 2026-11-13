@@ -173,6 +173,44 @@ export function countOpenFileDescriptors(): FdPressure | null {
 }
 
 /**
+ * The last sweep, and when it ran.
+ *
+ * Anchored on `globalThis` for the reason the database handle is: `bun --hot`
+ * re-evaluates this module while the process lives on.
+ */
+interface FdSweepCache {
+  at: number;
+  value: FdPressure | null;
+}
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __kabmoFdSweep: FdSweepCache | undefined;
+}
+
+/**
+ * The descriptor count, reused for `maxAgeMs`.
+ *
+ * The sweep is 5.03 ms on a 61,440-entry table (measured, macOS) and it blocks
+ * the event loop, so a caller that polls — `GET /api/health` is polled at 250 ms
+ * while a plugin pass runs and at 500 ms while a restart is watched — must not
+ * pay it per request. One second is short enough that a leak still shows up
+ * within a poll or two and long enough that a burst of probes costs one sweep.
+ *
+ * `countOpenFileDescriptors` stays the fresh answer for the paths that decide
+ * whether a spawn may be attempted: a stale count there would refuse work the
+ * table can hold, or attempt work it cannot.
+ */
+export function cachedOpenFileDescriptors(maxAgeMs = 1_000): FdPressure | null {
+  const now = Date.now();
+  const cache = (globalThis.__kabmoFdSweep ??= { at: 0, value: null });
+  if (now - cache.at < maxAgeMs) return cache.value;
+  cache.value = countOpenFileDescriptors();
+  cache.at = now;
+  return cache.value;
+}
+
+/**
  * What descriptor exhaustion looks like in Bun's own words. macOS names the
  * failing syscall (`EBADF … posix_spawn '/bin/sh'`), Linux the errno
  * (`EMFILE: too many open files, socketpair`) — measured on both.

@@ -1,7 +1,7 @@
 import { json, NO_STORE_HEADERS } from '@/server/lib/remix-compat';
 import pkg from '@/../package.json';
 import { isAuthEnabled } from '@/server/lib/auth/guard';
-import { countOpenFileDescriptors } from '@/server/lib/lifecycle/fd-pressure';
+import { cachedOpenFileDescriptors } from '@/server/lib/lifecycle/fd-pressure';
 import { snapshot as memorySnapshot } from '@/server/lib/lifecycle/memory';
 import { resolveLaunchMode } from '@/server/lib/lifecycle/launch-mode';
 import { isTrayEnabledByArgv } from '@/server/lib/lifecycle/argv-flags';
@@ -16,12 +16,11 @@ const STARTED_ISO = new Date(STARTED_AT).toISOString();
  * GET /api/health — lightweight readiness probe for the `kabmo status` CLI.
  * Dependency-light by design: never touches the database and never throws.
  *
- * It does sweep the descriptor table (`countOpenFileDescriptors`, ~12 ms over
- * the real 61440-entry table; ~2 ms when capped at the old constant): a dev
- * server walks toward the descriptor ceiling where every `Bun.spawn` in the
- * process fails, and the sweep is the only way to say so *before* the terminal
- * panel, the omp child and git all break at once. Null where the host cannot
- * answer.
+ * It does sweep the descriptor table (`cachedOpenFileDescriptors`, 5.03 ms over
+ * the real 61,440-entry table on macOS, reused for a second): a dev server walks
+ * toward the descriptor ceiling where every `Bun.spawn` in the process fails,
+ * and the sweep is the only way to say so *before* the terminal panel, the omp
+ * child and git all break at once. Null where the host cannot answer.
  */
 export async function loader() {
   return json(
@@ -60,7 +59,7 @@ export async function loader() {
       // into a replacement's argv: a restart is spawned by a different process,
       // and the flag is not recoverable from the running server any other way.
       tray: isTrayEnabledByArgv(),
-      fds: countOpenFileDescriptors(),
+      fds: cachedOpenFileDescriptors(),
       // What the memory sweep reacts to, reported here so the condition is
       // visible from `kabmo status` instead of only from a process monitor.
       memory: memorySnapshot(),
