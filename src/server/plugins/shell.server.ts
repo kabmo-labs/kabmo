@@ -4,28 +4,31 @@
  */
 
 /**
- * The HTML shell, rendered by Bun's own HTML pipeline.
+ * The HTML shell: a Bun HTML route in development, a built file in production.
  *
- * The shell used to be a file the bundler wrote and the server read back
- * (`dist/client/index.html`). It is now a route Bun bundles and renders: the
- * `index.html` import carries a manifest of hashed assets, and fetching the
- * shell route returns that markup with the correct script and stylesheet tags
- * for the current build — which is also what keeps the dev HMR client injected.
+ * Development imports `index.html` and lets Bun bundle and render it, which is
+ * what injects the HMR client; the markup is obtained by asking the listener
+ * for `/_shell`, because Bun renders an HTML route only while serving it and
+ * there is no in-process API for an `HTMLBundle` (`new Response(bundle)` yields
+ * "[object HTMLBundle]", `app.handle('/_shell')` answers 404 — verified on Bun
+ * 1.4.2).
  *
- * The round-trip through the local listener is deliberate. Bun renders an HTML
- * route only when serving it, and there is no API to render an `HTMLBundle` in
- * process: `new Response(bundle)` yields the string "[object HTMLBundle]" and
- * `app.handle('/_shell')` answers 404, because the route lives in `Bun.serve`'s
- * own routing table rather than Elysia's (verified against Bun 1.4.2). Fetching
- * our own listener is the supported way to obtain the markup.
+ * Production reads `dist/client/index.html`, the file the client build wrote.
+ * The server bundle does NOT carry the client: the two are built separately so
+ * the client can be code-split, and the HTML import is external to the server
+ * build. That also removes a loopback HTTP request and a full HTML transfer
+ * from every navigation.
  *
  * The listener reference is shared with the dev asset proxy, which needs the
  * same URL to reach the routes Bun's own table owns — see `lifecycle/listener`.
  */
 
+import { resolve } from 'path';
+
 import { describeShellBuildFailure } from '@/server/lib/bundler/build-errors.server';
 import { countOpenFileDescriptors, describeFdPressure, hasDescriptorHeadroom, type FdPressure } from '@/server/lib/lifecycle/fd-pressure';
 import { DEV_ASSETS_ENABLED } from '@/server/lib/assets/dev-assets.server';
+import { packageDir } from '@/server/lib/fs/package-root';
 import { SHELL_ROUTE } from '@/server/lib/lifecycle/shell-route';
 import { listenerFetchOptions, listenerUrl } from '@/server/lib/lifecycle/listener';
 
@@ -58,12 +61,28 @@ const DEV_BUNDLE_DESCRIPTOR_COST = 3_600;
  * serve — and `Bun.serve` caches the HTML route's output there anyway.
  */
 export function shellBundleRefusal(pressure: FdPressure | null): string | null {
-  if (!DEV_ASSETS_ENABLED) return null;
   if (hasDescriptorHeadroom(pressure, DEV_BUNDLE_DESCRIPTOR_COST)) return null;
   const detail = describeFdPressure(pressure) ?? 'The descriptor table is nearly full.';
   return `${detail} The page was NOT rebuilt, because a client bundle needs about `
     + `${DEV_BUNDLE_DESCRIPTOR_COST} descriptors and attempting it at this point fails partway — `
     + `which is what leaves the browser reloading a bundle that cannot run.`;
+}
+
+/**
+ * The refusal for THIS process, or null.
+ *
+ * The dev gate lives here rather than in `shellBundleRefusal` so the sweep is
+ * never paid in production: the count is 5.03 ms on a 61,440-entry table
+ * (measured, macOS), and production has no bundle to refuse — it reads the
+ * built shell from disk. `renderShell` used to call the sweep unconditionally
+ * and throw the answer away, which was 5 of the 6.19 ms a document request
+ * cost.
+ */
+export function currentShellBundleRefusal(
+  pressure: () => FdPressure | null = countOpenFileDescriptors,
+): string | null {
+  if (!DEV_ASSETS_ENABLED) return null;
+  return shellBundleRefusal(pressure());
 }
 
 /**
@@ -102,11 +121,13 @@ export function composeShellFailureReason(input: {
   }
   // Markup that is not the shell while the bundle builds cleanly means the
   // route is serving a CACHED failure: Bun caches the HTML route's output once
-  // in production and never rebuilds it, so the empty body a failed first
-  // request left behind outlives the fix. There is nothing to point at in the
-  // source, and no amount of reloading helps — only a restart does.
+  // it has rendered, so the empty body a failed first request left behind
+  // outlives the fix. There is nothing to point at in the source, and no amount
+  // of reloading helps — only a restart does. (Development only: production
+  // reads `dist/client/index.html`, and a missing or stale build is reported by
+  // `readBuiltShell` instead.)
   return 'The shell route answered with markup that is not the shell, and the client bundle builds cleanly.\n\n'
-    + 'In production Bun caches the HTML route\'s output, so a build failure on the first request is cached as an empty page. Restart the server to rebuild it.';
+    + 'Bun caches the HTML route\'s output once it has rendered, so a build failure on the first request is cached as an empty page. Restart the server to rebuild it.';
 }
 
 /**
@@ -138,19 +159,59 @@ async function shellFailureReason(status: number, markupInvalid = false): Promis
 export const SHELL_MARKER = '<!--app-bootstrap-->';
 
 /**
+ * The shell the client build wrote, read once.
+ *
+ * `dist/client/index.html` is a build artifact: its script and stylesheet tags
+ * carry content hashes, so a copy that outlives its build points at files the
+ * build no longer emits. That is why the cache is per PROCESS and not per
+ * request — a rebuild is only visible after a restart, exactly as it was when
+ * Bun cached the HTML route's output.
+ */
+let builtShell: string | null = null;
+
+async function readBuiltShell(): Promise<ShellRender> {
+  if (builtShell !== null) return { ok: true, html: builtShell };
+  const file = resolve(packageDir(), 'dist', 'client', 'index.html');
+  try {
+    const html = await Bun.file(file).text();
+    if (!html.includes(SHELL_MARKER)) {
+      return {
+        ok: false,
+        reason: `${file} is not the shell (no ${SHELL_MARKER} marker). Run \`bun run build\` and restart.`,
+      };
+    }
+    builtShell = html;
+    return { ok: true, html };
+  } catch {
+    return {
+      ok: false,
+      reason: `No production build at ${file}. Run \`bun run build\` (or \`kabmo serve\`, which builds on demand).`,
+    };
+  }
+}
+
+/**
  * The current shell markup, or a reason it could not be produced.
  *
- * Never cached: Bun re-renders the route per request in development, and in
- * production the manifest is already in memory — a cache here would be the one
- * thing that could serve markup pointing at a previous build's asset hashes.
+ * Two shapes, one per mode:
+ *
+ * - **Development** asks the listener for `/_shell`, because Bun renders an
+ *   HTML route only while serving it and that render is what injects the HMR
+ *   client. Never cached: a rebuild changes the asset hashes.
+ * - **Production** reads `dist/client/index.html`, the file the client build
+ *   wrote. It is cached for the life of the process, which is correct because
+ *   the build is fixed until a restart — the same lifetime Bun's own cached
+ *   HTML route had. This also removes the self-fetch (a loopback HTTP request
+ *   plus a full HTML transfer) from every navigation.
  */
 export async function renderShell(): Promise<ShellRender> {
+  if (!DEV_ASSETS_ENABLED) return readBuiltShell();
   const base = listenerUrl();
   if (!base) return { ok: false, reason: 'The HTTP listener is not up yet.' };
   // Checked BEFORE the fetch, because the fetch is what makes Bun bundle the
   // page: past this point the damage is already done, and the browser has been
-  // handed a bundle it will reload forever. See `shellBundleRefusal`.
-  const refusal = shellBundleRefusal(countOpenFileDescriptors());
+  // handed a bundle it will reload forever. See `currentShellBundleRefusal`.
+  const refusal = currentShellBundleRefusal();
   if (refusal) return { ok: false, reason: refusal };
   try {
     // `listenerFetchOptions()` carries the TLS bypass under `--tls`: this is the

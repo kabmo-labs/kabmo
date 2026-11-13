@@ -18,13 +18,11 @@ import { bodyBytes } from '@/shared/lib/util/bytes';
  * - `kabmo serve` (and `bun run start` after `bun run build`) runs the AOT
  *   bundle from `dist/client/index.js`, whose assets are `/static/*` FILES — the
  *   `/static/` branch below serves them, with the compression and validators
- *   this module adds.
- * - Running `src/server/index.ts` with `NODE_ENV=production` makes Bun bundle
- *   the HTML route itself and answer `/chunk-*` from its own routing table,
- *   before a request reaches Elysia. Those responses cannot be compressed from
- *   here: Bun's table wins for the paths it declares, and `Bun.serve` has no
- *   compression option (verified — `compression: 'gzip'` left a 650 KB body
- *   untouched). This is the source-run shape, not the installed product.
+ *   this module adds. The client is code-split, so those files are the boot
+ *   chunk plus one chunk per lazily imported grammar, theme and viewer.
+ * - Running `src/server/index.ts` with `NODE_ENV=production` serves the same
+ *   files: the shell is read from `dist/client/index.html`, so there is no
+ *   runtime HTML bundle and no `/chunk-*` route of Bun's own.
  * - In development the same table serves `/_bun/asset/*` and `/_bun/client/*`,
  *   and the shell points at `/_dev-assets/*` so
  *   `lib/assets/dev-assets.server.ts` can fetch the bytes back from the

@@ -5,7 +5,7 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { composeShellFailureReason, shellBundleRefusal } from '@/server/plugins/shell.server';
+import { composeShellFailureReason, currentShellBundleRefusal } from '@/server/plugins/shell.server';
 import { SPAWN_CLIFF, hasDescriptorHeadroom } from '@/server/lib/lifecycle/fd-pressure';
 
 const FULL_TABLE = { open: 10_240, highest: 10_239, limit: SPAWN_CLIFF, nearCliff: true };
@@ -75,12 +75,12 @@ describe('hasDescriptorHeadroom', () => {
   });
 });
 
-describe('shellBundleRefusal', () => {
+describe('currentShellBundleRefusal', () => {
   test('refuses a dev bundle once the table cannot hold one', () => {
     // 61440-entry table with 60000 open: a 3600-descriptor bundle plus the
     // spawn reserve no longer fits, so the build must not be attempted.
     const tight = { open: 60_000, highest: 60_000, limit: 61_440, nearCliff: true };
-    const refusal = shellBundleRefusal(tight);
+    const refusal = currentShellBundleRefusal(() => tight);
 
     if (Bun.env.NODE_ENV === 'production') {
       // Production builds ahead of time and holds no graph, so the count is not
@@ -93,6 +93,6 @@ describe('shellBundleRefusal', () => {
   });
 
   test('allows the bundle on a healthy table', () => {
-    expect(shellBundleRefusal({ open: 3354, highest: 3354, limit: 61_440, nearCliff: false })).toBeNull();
+    expect(currentShellBundleRefusal(() => ({ open: 3354, highest: 3354, limit: 61_440, nearCliff: false }))).toBeNull();
   });
 });

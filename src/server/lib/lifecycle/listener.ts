@@ -6,10 +6,10 @@
 /**
  * The HTTP listener this process is serving on, plus how to talk to it.
  *
- * Two consumers need it and neither can import it: the shell renderer, which
- * asks the listener for its own `/_shell` route (Bun renders an HTML route only
- * while serving), and the dev asset proxy, which asks it for the assets Bun's
- * own routing table owns. The reference is injected rather than imported because
+ * Two consumers need it and neither can import it: the shell renderer, which in
+ * DEVELOPMENT asks the listener for its own `/_shell` route (Bun renders an HTML
+ * route only while serving; production reads the built file instead), and the
+ * dev asset proxy, which asks it for the assets Bun's own routing table owns. The reference is injected rather than imported because
  * `index.ts` owns the listener and imports both of them — a direct import would
  * be a cycle.
  *

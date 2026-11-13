@@ -4,42 +4,44 @@
  */
 
 /**
- * Production build for the client bundle.
+ * Production build: the client bundle and the server bundle, separately.
  *
- * The server bundles HTML routes itself in production (`development: false`
- * caches the result in memory), so this script exists for the two things that
- * need a build up front: the published tarball, which must carry the assets
- * `serve --prod` serves, and CI, which should fail on a bundle error rather
- * than at a user's first request.
+ * **Two builds, not one, and the reason is code splitting.** The client is a
+ * single ~13.4 MB entry when the two are built together, because a build that
+ * also carries the server cannot split without publishing server chunks into
+ * `dist/client/static/` — a path `plugins/static.ts` serves to anyone. Measured:
+ * `splitting: true` on that combined build emitted 325 chunks, 67-98 of which
+ * were the server's own.
  *
- * `Bun.build` rather than `bun build` on purpose. The CLI does NOT read
- * `bunfig.toml`'s `[serve.static]` plugins (verified: `bun build --target=bun
- * --production` emitted Tailwind's `@theme` verbatim and a stylesheet with zero
- * utility classes), so the plugin has to be passed explicitly — and the JS API
- * is the only place that is possible.
+ * So the client is built from `index.html` with `splitting: true` (1.84 MB boot
+ * chunk, 586 KB gzip, versus 13.4 MB / 3.26 MB gzip), and the server is built
+ * from `src/server/index.ts` with `splitting: false` and `*.html` external —
+ * production reads the built shell from disk instead of importing the HTML
+ * bundle (`lib/lifecycle/shell-entry.server.ts`).
  *
- * The entrypoints are the SERVER, not `index.html`: the server is what imports
- * the HTML, and bundling it is what makes Bun emit the HTML plus its hashed JS,
- * CSS and assets into `outdir`. `naming` is set because the generated server
- * resolves its asset paths relative to the process cwd — with the default
- * naming the bundle looks for `./chunk-*.js` beside the executable, which only
- * holds if it is run from `outdir`.
+ * **`Bun.build`, not `bun build`.** The CLI does NOT read `bunfig.toml`'s
+ * `[serve.static]` plugins (verified: `bun build --target=bun --production`
+ * emitted Tailwind's `@theme` verbatim and a stylesheet with zero utility
+ * classes), so the CSS plugin has to be passed explicitly — and the JS API is
+ * the only place that is possible.
+ *
+ * **The outdir is the package root, not a subdirectory**: the generated server
+ * resolves its asset paths against the cwd, and `serve --prod` runs from the
+ * root (the SQLite file, the workspace roots, `public/`). Naming is set
+ * explicitly because the default would look for `./chunk-*.js` beside the
+ * executable.
  */
 
-import { rm } from 'fs/promises';
-import { join } from 'path';
+import { rm } from 'node:fs/promises';
+import { join } from 'node:path';
 
 import cssPlugin from '@/server/lib/bundler/css';
 
 const ROOT = join(import.meta.dir, '..');
-// Built INTO the package root, not into a subdirectory, so the generated
-// server resolves its assets while the process runs from the root — the cwd
-// every other part of the app depends on (the SQLite file, the workspace
-// roots, `public/`). Bun resolves an HTML bundle's asset paths against the cwd,
-// so an outdir of `dist/client` would force `serve --prod` to run from there
-// and silently relocate the database to `dist/client/workspace.db`.
 const OUTDIR = ROOT;
 const PREFIX = 'dist/client';
+/** Source bytes below which a split chunk is folded into a shared one. */
+const MIN_CHUNK_SIZE = 16_384;
 
 process.chdir(ROOT);
 
@@ -48,32 +50,57 @@ const started = performance.now();
 // not merged, so a chunk this build no longer emits cannot survive in it.
 await rm(join(ROOT, PREFIX), { recursive: true, force: true });
 
-const result = await Bun.build({
-  entrypoints: [join(ROOT, 'src', 'server', 'index.ts')],
-  outdir: OUTDIR,
-  target: 'bun',
-  minify: true,
-  plugins: [cssPlugin],
-  naming: {
-    entry: `${PREFIX}/[name].[ext]`,
-    chunk: `${PREFIX}/static/js/[name]-[hash].[ext]`,
-    asset: `${PREFIX}/static/[name]-[hash].[ext]`,
-  },
-});
+async function run(name: string, options: Parameters<typeof Bun.build>[0]): Promise<void> {
+  const at = performance.now();
+  const result = await Bun.build({ ...options, outdir: OUTDIR, target: 'bun' });
+  for (const log of result.logs) console.log(`[build:${name}] ${log.level}: ${log.message}`);
+  if (!result.success) throw new Error(`the ${name} bundle failed`);
+  const bytes = await Promise.all(result.outputs.map(async (output) => (await output.arrayBuffer()).byteLength));
+  const total = bytes.reduce((sum, size) => sum + size, 0);
+  console.log(
+    `[build:${name}] ${result.outputs.length} files, ${(total / 1048576).toFixed(2)} MB`
+    + ` in ${((performance.now() - at) / 1000).toFixed(2)}s`,
+  );
+}
 
-for (const log of result.logs) console.log(`[build] ${log.level}: ${log.message}`);
+try {
+  // 1. The client: `index.html` is the entrypoint, so every lazily imported
+  //    grammar, theme and viewer becomes a chunk fetched when it is first used.
+  await run('client', {
+    entrypoints: [join(ROOT, 'index.html')],
+    minify: true,
+    splitting: true,
+    minChunkSize: MIN_CHUNK_SIZE,
+    plugins: [cssPlugin],
+    naming: {
+      entry: `${PREFIX}/[name].[ext]`,
+      chunk: `${PREFIX}/static/js/[name]-[hash].[ext]`,
+      asset: `${PREFIX}/static/[name]-[hash].[ext]`,
+    },
+  });
 
-if (!result.success) {
+  // 2. The server: one file. It is what `script/build.js` and the CLI run from
+  //    `dist/client/index.js`, and it reads the shell the first build wrote.
+  //    `*.html` stays external — the dev-only branch that imports it resolves
+  //    through Bun at runtime, and production never takes it.
+  await run('server', {
+    entrypoints: [join(ROOT, 'src', 'server', 'index.ts')],
+    minify: true,
+    splitting: false,
+    external: ['*.html'],
+    naming: {
+      entry: `${PREFIX}/[name].[ext]`,
+      chunk: `${PREFIX}/[name]-[hash].[ext]`,
+      asset: `${PREFIX}/[name]-[hash].[ext]`,
+    },
+  });
+} catch (error) {
   console.error(`[build] failed in ${((performance.now() - started) / 1000).toFixed(2)}s`);
+  console.error(error instanceof Error ? error.message : String(error));
   process.exit(1);
 }
 
-const bytes = await Promise.all(result.outputs.map(async (output) => (await output.arrayBuffer()).byteLength));
-const total = bytes.reduce((sum, size) => sum + size, 0);
-console.log(
-  `[build] ${result.outputs.length} files, ${(total / 1048576).toFixed(2)} MB`
-  + ` in ${((performance.now() - started) / 1000).toFixed(2)}s -> ${PREFIX}`,
-);
+console.log(`[build] done in ${((performance.now() - started) / 1000).toFixed(2)}s -> ${PREFIX}`);
 // The `@font-face` blocks are NOT part of the bundle and no artifact is written
 // for them: the plugin strips them out and the server re-declares them on
 // `/fonts.css` from the source stylesheets under `src/`, per request. Nothing to

@@ -1,6 +1,6 @@
 import { Elysia } from 'elysia';
 import pkg from '@/../package.json';
-import shell from '@/../index.html';
+import { shellBundle } from '@/server/lib/lifecycle/shell-entry.server';
 import { apiRoutes } from '@/server/routes';
 import { initRealtimeTopics } from '@/server/lib/realtime/topics.server';
 import { startSessionsWatch } from '@/server/lib/omp/session/sessions-watch.server';
@@ -105,13 +105,17 @@ if (!lock) {
   process.exit(1);
 }
 
-// `serve.routes` is where the HTML shell lives. Elysia merges its own static
-// routes into that same table (its Bun adapter passes `serve` straight to
-// `Bun.serve`), and Bun's table wins for the paths it declares — so `/_shell`
-// renders the bundle while every other path falls through to `fetch`. The
-// WebSocket routes keep working: Elysia composes its `websocket` handler
-// alongside this object.
-const app = new Elysia({ serve: { routes: { [SHELL_ROUTE]: shell } } })
+// `serve.routes` is where the HTML shell lives, in DEVELOPMENT only. Elysia
+// merges its own static routes into that same table (its Bun adapter passes
+// `serve` straight to `Bun.serve`), and Bun's table wins for the paths it
+// declares — so `/_shell` renders the bundle while every other path falls
+// through to `fetch`. The WebSocket routes keep working: Elysia composes its
+// `websocket` handler alongside this object.
+//
+// Production has no HTML route: the client is built ahead of time and
+// `renderShell` reads `dist/client/index.html`. See `shell-entry.server.ts` for
+// why the import cannot be static.
+const app = new Elysia({ serve: shellBundle ? { routes: { [SHELL_ROUTE]: shellBundle } } : {} })
   .onBeforeHandle((context) => {
     // The socket address is read INLINE, and that is not a style choice.
     // Passing this Elysia context to a helper function — however simple, even
