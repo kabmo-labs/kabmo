@@ -119,6 +119,9 @@
     "semantic-release": "^25.0.9",
     "typescript": "~5.8.2"
   },
+  "overrides": {
+    "katex": "^0.18.7"
+  },
   "workspaces": [
     "packages/*"
   ]
