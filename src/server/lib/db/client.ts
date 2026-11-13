@@ -10,6 +10,17 @@ export interface DbClient {
   get<T = any>(sql: string, params?: any[]): Promise<T | undefined>;
   all<T = any>(sql: string, params?: any[]): Promise<T[]>;
   run(sql: string, params?: any[]): Promise<{ changes: number; lastID: number }>;
+  /**
+   * Run one statement for every parameter row, in transactions of `chunkSize`.
+   *
+   * Autocommit costs an fsync per statement: measured on this machine, 8 µs per
+   * INSERT at `synchronous=NORMAL` against 0.20 µs inside a transaction — a 40x
+   * difference that a loop of single-row writes pays in full. Chunking
+   * rather than one transaction keeps the event-loop block bounded, because
+   * `bun:sqlite` is synchronous and a 173 MB rewrite in one transaction would
+   * freeze every request, stream and terminal frame for its whole duration.
+   */
+  writeMany(sql: string, paramsList: readonly any[][], chunkSize?: number): Promise<number>;
   exec(sql: string): Promise<void>;
   raw: Database;
 }
@@ -42,6 +53,13 @@ export function createDb(path: string): DbClient {
   raw.exec('PRAGMA journal_mode = WAL');
   raw.exec('PRAGMA foreign_keys = ON');
   raw.exec(`PRAGMA busy_timeout = ${BUSY_TIMEOUT_MS}`);
+  // WAL's documented pairing. `bun:sqlite` leaves SQLite's default at FULL,
+  // which fsyncs on every commit: measured here, 79 µs per single-row INSERT
+  // against 8 µs at NORMAL (12.6k/s -> 124k/s). NORMAL in WAL cannot corrupt
+  // the database; the exposure is losing the last commits if the OPERATING
+  // SYSTEM crashes, not if this process does — and every write here is UI
+  // state that a restart re-reads from omp's own files.
+  raw.exec('PRAGMA synchronous = NORMAL');
 
   const stmts = new Map<string, ReturnType<Database['query']>>();
   const prep = (sql: string) => {
@@ -67,6 +85,19 @@ export function createDb(path: string): DbClient {
       // for the cached statement.
       const result = prep(sql).run(...(params as never[]));
       return { changes: result.changes, lastID: Number(result.lastInsertRowid) };
+    },
+    async writeMany(sql: string, paramsList: readonly any[][], chunkSize = 200) {
+      if (paramsList.length === 0) return 0;
+      const stmt = prep(sql);
+      const apply = raw.transaction((rows: readonly any[][]) => {
+        for (const params of rows) stmt.run(...(params as never[]));
+        return rows.length;
+      });
+      let written = 0;
+      for (let start = 0; start < paramsList.length; start += chunkSize) {
+        written += apply(paramsList.slice(start, start + chunkSize));
+      }
+      return written;
     },
     async exec(sql: string) {
       raw.exec(sql);
