@@ -4,6 +4,31 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.31.0](https://github.com/kabmo-labs/kabmo/compare/v0.30.1...v0.31.0) — 2026-11-13
+
+### Added
+
+* **browser-panel:** explain WebKit sessions and offer a Chromium switch ([46f1839](https://github.com/kabmo-labs/kabmo/commit/46f1839a89c75d61bf84d81bb5b558d9ed1682fb)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **mcp:** cover every mcp.json transport and field in the settings pane ([4501eb1](https://github.com/kabmo-labs/kabmo/commit/4501eb1cbb4cb214176b4083f403d6e8f3faae7f)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **mcp:** switch a session's MCP servers per session, from the navbar ([322bf5e](https://github.com/kabmo-labs/kabmo/commit/322bf5ec3ab32f4ba85e97b4e855656d6471e6b7)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **settings:** adopt omp 18.20.0's two settings rows and bump the pin ([3edf4c6](https://github.com/kabmo-labs/kabmo/commit/3edf4c6b90c1de0e839363015ba88b3a048f5b75)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Changed
+
+* **readme:** refresh the media and describe the multi-harness console ([6d070dc](https://github.com/kabmo-labs/kabmo/commit/6d070dc6ca1800050d58971dda96f641b5ff63df)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **composer:** remember the access tier per harness and word it for the transport ([6b9ee3f](https://github.com/kabmo-labs/kabmo/commit/6b9ee3f4511a3789dd676d6a3d7130f2c07ff718)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **context-ring:** lighten the filled track so the green arc reads in light mode ([fed07d9](https://github.com/kabmo-labs/kabmo/commit/fed07d9d2d219292c1d2820e96743d97e2b06395)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **context-usage:** portal the popover so the phone's jump button cannot cover it ([1f3b2ec](https://github.com/kabmo-labs/kabmo/commit/1f3b2ec69a575996c2fd86880b7dd6c0c53524d7)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** resolve launch binaries on the toolchain PATH at login ([54ea802](https://github.com/kabmo-labs/kabmo/commit/54ea802c3af5236cf64048ee0d4d84ea6695fe95)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **highlight:** store block and per-line markup separately, so a 7-line block stays 7 rows ([0734155](https://github.com/kabmo-labs/kabmo/commit/0734155ca5d95a3a01cfcc1116a23d2aa5fce8de)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **layout:** open a new session on Files, not a stale global panel pick ([cdc15c9](https://github.com/kabmo-labs/kabmo/commit/cdc15c9380197b141895aff947d7883810b1f86d)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **sidebar:** keep the session age on one line in the modern row ([442db21](https://github.com/kabmo-labs/kabmo/commit/442db2198352bc3daeb40f09397444b7a4504778)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **tests:** restore the DOM globals a suite installs, and retire a stale catalog read ([a067f0f](https://github.com/kabmo-labs/kabmo/commit/a067f0f977aa70b5248ff185cae79c01be7c492a)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **workspace:** read the mock default root on every workspace read path ([97077e4](https://github.com/kabmo-labs/kabmo/commit/97077e40989395128f91f4ccb9d53609e3e2728e)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.30.1](https://github.com/kabmo-labs/kabmo/compare/v0.30.0...v0.30.1) — 2026-11-12
 
 ### Fixed
