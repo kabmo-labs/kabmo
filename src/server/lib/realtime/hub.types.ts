@@ -36,7 +36,15 @@ export interface RealtimeConnection {
   readonly topics: Set<string>;
   /** Topics whose snapshot this connection has already received. */
   readonly snapshotted: Set<string>;
-  send: (frame: RealtimeServerFrame) => void;
+  /**
+   * A frame, or its already-encoded JSON.
+   *
+   * Fan-out paths encode ONCE and hand the string to every subscriber: the
+   * transport used to `JSON.stringify` the same payload per socket, so N open
+   * tabs cost N encodes of a session list. A per-connection frame (a snapshot
+   * with its own sequence) still goes in as an object.
+   */
+  send: (frame: RealtimeServerFrame | string) => void;
   closed: boolean;
 }
 

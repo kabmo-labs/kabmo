@@ -35,7 +35,8 @@ function connect(): FakeConnection {
     closed: false,
     frames: [],
     send: (frame) => {
-      connection.frames.push(frame);
+      // Fan-out frames arrive already encoded; the assertions read frames.
+      connection.frames.push(typeof frame === 'string' ? (JSON.parse(frame) as RealtimeServerFrame) : frame);
     },
   };
   return connection;

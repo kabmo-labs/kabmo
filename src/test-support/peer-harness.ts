@@ -59,11 +59,13 @@ export function recordingConnection(): RecordingConnection {
       return promise;
     },
     send: (frame) => {
-      frames.push(frame);
+      // Fan-out frames arrive already encoded; the harness reads frames.
+      const decoded = typeof frame === 'string' ? (JSON.parse(frame) as RealtimeServerFrame) : frame;
+      frames.push(decoded);
       const pending = waiter;
-      if (pending?.match(frame)) {
+      if (pending?.match(decoded)) {
         waiter = null;
-        pending.resolve(frame);
+        pending.resolve(decoded);
       }
     },
   };

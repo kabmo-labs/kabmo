@@ -34,6 +34,8 @@ function descriptors(resolvers: Record<string, () => Promise<unknown>>): Map<str
 
 interface FakeConnection extends RealtimeConnection {
   frames: RealtimeServerFrame[];
+  /** Exactly what `send` was handed: a frame object, or a shared encoded string. */
+  raw: (RealtimeServerFrame | string)[];
   topicList: string[];
 }
 
@@ -43,9 +45,12 @@ function connect(): FakeConnection {
     snapshotted: new Set<string>(),
     closed: false,
     frames: [],
+    raw: [],
     topicList: [],
     send(frame) {
-      connection.frames.push(frame);
+      connection.raw.push(frame);
+      // Fan-out frames arrive already encoded; the assertions read frames.
+      connection.frames.push(typeof frame === 'string' ? (JSON.parse(frame) as RealtimeServerFrame) : frame);
     },
   };
   return connection;
@@ -95,6 +100,27 @@ describe('realtime hub', () => {
 
     expect(framesFor(connection, 't').map((frame) => frame.t)).toEqual(['snapshot', 'delta', 'delta']);
     expect(framesFor(connection, 't').map(seqOf)).toEqual([0, 1, 2]);
+  });
+
+  test('a fan-out frame is encoded once and shared by every subscriber', async () => {
+    resetRealtimeHub();
+    const hub = createHub();
+    registerTopics(descriptors({ t: async () => 'snapshot' }));
+
+    const first = connect();
+    const second = connect();
+    hub.subscribe(first, 't');
+    hub.subscribe(second, 't');
+    await settle();
+
+    hub.publish('t', { n: 1 });
+
+    const firstDelta = first.raw.at(-1);
+    const secondDelta = second.raw.at(-1);
+    // The same string instance: one `JSON.stringify` for the whole fan-out.
+    expect(typeof firstDelta).toBe('string');
+    expect(firstDelta).toBe(secondDelta);
+    expect(JSON.parse(firstDelta as string)).toEqual({ t: 'delta', topic: 't', seq: 1, payload: { n: 1 } });
   });
 
   test('a subscriber to one topic never receives another topic frames', async () => {

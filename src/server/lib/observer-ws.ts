@@ -117,7 +117,8 @@ export function attachObserverStream(state: ObserverConnectionState, ws: Observe
   state.coalescer = createEventCoalescer({
     send: (_event, data) => {
       try {
-        ws.send(JSON.stringify(data));
+        // A string is already-encoded JSON from a fan-out that encoded once.
+        ws.send(typeof data === 'string' ? data : JSON.stringify(data));
       } catch {
         teardown();
       }

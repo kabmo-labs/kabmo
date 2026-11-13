@@ -235,10 +235,12 @@ export function createHub(): RealtimeHub {
       // awaiting connections are about to be given this baseline.
       entry.buffer = [];
       entry.overflowed = false;
+      // Encoded once: every subscriber gets the same bytes.
+      const encoded = JSON.stringify({ t: 'snapshot', topic, seq, payload });
       for (const connection of entry.subscribers) {
         if (connection.closed) continue;
         connection.snapshotted.add(topic);
-        connection.send({ t: 'snapshot', topic, seq, payload });
+        connection.send(encoded);
       }
     },
 
@@ -285,9 +287,11 @@ export function createHub(): RealtimeHub {
         }
       }
 
+      // Encoded once for the whole fan-out; see `RealtimeConnection.send`.
+      const encoded = JSON.stringify({ t: 'delta', topic, seq, payload });
       for (const connection of entry.subscribers) {
         if (connection.closed || !connection.snapshotted.has(topic)) continue;
-        connection.send({ t: 'delta', topic, seq, payload });
+        connection.send(encoded);
       }
     },
 
