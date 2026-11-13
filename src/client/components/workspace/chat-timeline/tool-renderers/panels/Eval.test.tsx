@@ -133,14 +133,20 @@ describe('Eval — gutter aligns with the code', () => {
     // The pretty-printed result draws its own gutter, and it had the same
     // mismatch (plus a `py-2` against the code's `p-2.5`).
     const root = mount(evalTool({ output: '{"a": 1, "b": [2, 3]}', status: 'success' }));
-    const gutters = root.querySelectorAll('div[aria-hidden="true"]');
-    const jsonGutter = gutters[1];
-    expect(jsonGutter).toBeDefined();
-    const code = jsonGutter.nextElementSibling as Element;
-    expect(code).not.toBeNull();
-    expect(boxOf(jsonGutter)).toEqual(boxOf(code));
+    // Located by CONTENT, not by index: `querySelectorAll(...)[1]` compared two
+    // unrelated columns on the Ubuntu gate, where the card drew one more
+    // `aria-hidden` decoration than this file assumed — and a comparison of the
+    // SCRIPT's box against the RESULT's number fails for a reason that has
+    // nothing to do with alignment.
+    const code = [...root.querySelectorAll('div.shiki')].find((el) =>
+      (el.textContent ?? '').includes('"b"'),
+    );
+    expect(code).toBeDefined();
+    const jsonGutter = code!.previousElementSibling as Element;
+    expect(jsonGutter?.getAttribute('aria-hidden')).toBe('true');
+    expect(boxOf(jsonGutter)).toEqual(boxOf(code!));
     // `{"a": 1, "b": [2, 3]}` pretty-prints to 7 lines.
     expect(jsonGutter.children).toHaveLength(7);
-    expect(code.children).toHaveLength(7);
+    expect(code!.children).toHaveLength(7);
   });
 });

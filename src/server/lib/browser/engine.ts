@@ -37,11 +37,19 @@ export interface BrowserEngineDeps {
   platform?: NodeJS.Platform;
 }
 
-/** `~` and `~/…` against the given home, so a test never reads the real one. */
-function expandHome(value: string, home: string): string {
+/**
+ * `~` and `~/…` against the given home, so a test never reads the real one.
+ *
+ * Joined with the TARGET platform's rules, not the host's: this module answers
+ * for the machine the browser runs on, and the Windows gate caught the host
+ * version of it — `path.join` turned a POSIX `~/engines/abkit` into
+ * `\home\tester\engines\abkit` while the caller had asked for `darwin`.
+ */
+function expandHome(value: string, home: string, platform: NodeJS.Platform): string {
   if (value === '~') return home;
-  if (value.startsWith('~/') || value.startsWith('~\\')) return path.join(home, value.slice(2));
-  return value;
+  if (!value.startsWith('~/') && !value.startsWith('~\\')) return value;
+  const join = platform === 'win32' ? path.win32.join : path.posix.join;
+  return join(home, value.slice(2));
 }
 
 /**
@@ -59,7 +67,7 @@ export function webkitHostCandidates(
   const join = platform === 'win32' ? path.win32.join : path.posix.join;
   const exe = platform === 'win32' ? 'ABHost.exe' : 'ABHost';
   if (typeof configured === 'string' && configured.trim()) {
-    const expanded = expandHome(configured.trim(), home);
+    const expanded = expandHome(configured.trim(), home, platform);
     return [expanded, join(expanded, exe)];
   }
   return [join(home, ...DEFAULT_ENGINE_DIR, exe)];

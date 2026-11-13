@@ -29,28 +29,38 @@ fs.mkdirSync(bunBin, { recursive: true });
 const fakeTool = join(bunBin, 'kabmo-fake-tool');
 fs.writeFileSync(fakeTool, '#!/bin/sh\nexit 0\n', { mode: 0o755 });
 
+/**
+ * A POSIX home for the string-shape cases.
+ *
+ * They ask for a `linux` PATH, so the home they hand in has to be a POSIX one:
+ * `os.tmpdir()` is `C:\Users\…` on the Windows gate, and comparing the answer
+ * against a host-joined expectation there measured the runner's separators
+ * rather than the repair.
+ */
+const POSIX_HOME = '/home/tester';
+
 afterAll(() => {
   fs.rmSync(home, { recursive: true, force: true });
 });
 
 describe('toolchainPath', () => {
   test('keeps the inherited order and appends what a GUI launch never had', () => {
-    const path = toolchainPath({ PATH: '/usr/bin:/bin', HOME: home }, 'linux');
+    const path = toolchainPath({ PATH: '/usr/bin:/bin', HOME: POSIX_HOME }, 'linux');
     const entries = path.split(':');
     expect(entries.slice(0, 2)).toEqual(['/usr/bin', '/bin']);
-    expect(entries).toContain(join(home, '.bun', 'bin'));
+    expect(entries).toContain('/home/tester/.bun/bin');
     expect(entries).toContain('/opt/homebrew/bin');
     expect(entries).toContain('/usr/local/bin');
   });
 
   test('does not append an entry the inherited PATH already names', () => {
-    const path = toolchainPath({ PATH: '/opt/homebrew/bin:/usr/bin', HOME: home }, 'linux');
+    const path = toolchainPath({ PATH: '/opt/homebrew/bin:/usr/bin', HOME: POSIX_HOME }, 'linux');
     expect(path.split(':').filter((entry) => entry === '/opt/homebrew/bin')).toHaveLength(1);
   });
 
   test('a missing PATH becomes the fallback list, not an empty search path', () => {
-    const path = toolchainPath({ HOME: home }, 'linux');
-    expect(path.split(':')).toContain(join(home, '.bun', 'bin'));
+    const path = toolchainPath({ HOME: POSIX_HOME }, 'linux');
+    expect(path.split(':')).toContain('/home/tester/.bun/bin');
     expect(path.split(':')).toContain('/usr/bin');
   });
 

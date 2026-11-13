@@ -189,6 +189,37 @@ describe('notifyModelsUpdated', () => {
     await fetchModelsData();
     expect(reads).toBe(1);
   });
+
+  test('an invalidation also retires a read that is still in flight', async () => {
+    // `inFlight` is module state shared by every consumer: a slot reserved by a
+    // read against the PREVIOUS catalog was handed to a caller that invalidated
+    // on purpose, and a read that never settled (an abandoned request, a socket
+    // that died mid-flight) then owned the slot forever — measured on the Ubuntu
+    // gate as picker suites timing out at 5 s with a healthy stub installed and
+    // never consulted.
+    const hung = Promise.withResolvers<Response>();
+    let reads = 0;
+    // A cache left by the case above would answer this read without a fetch.
+    notifyModelsUpdated();
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      if (url.includes('/api/models')) reads += 1;
+      return hung.promise;
+    }) as typeof fetch;
+
+    void fetchModelsData().catch(() => null);
+    await Promise.resolve();
+    expect(reads).toBe(1);
+
+    notifyModelsUpdated();
+    globalThis.fetch = (async () => jsonResponse({ models: {}, providers: {} })) as unknown as typeof fetch;
+    expect(await fetchModelsData()).toMatchObject({ models: {}, providers: {} });
+
+    // The abandoned read answering late must not overwrite the fresh answer.
+    hung.resolve(jsonResponse({ models: { stale: 'Stale' }, providers: {} }));
+    await Promise.resolve();
+    expect(await fetchModelsData()).toMatchObject({ models: {}, providers: {} });
+  });
 });
 
 describe('addProviderModel', () => {

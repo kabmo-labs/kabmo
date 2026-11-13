@@ -59,6 +59,18 @@ describe('webkitHostCandidates', () => {
       `${HOME}/engines/abkit/ABHost`,
     ]);
   });
+
+  test('~ expands with the TARGET platform separators, not the host’s', () => {
+    // Measured on the Windows gate: the expansion used the host's `path.join`,
+    // so a `darwin` request answered `\home\tester\engines\abkit` — a path that
+    // exists on no Mac. The assertion is host-independent precisely because the
+    // function takes the platform it is answering for.
+    expect(webkitHostCandidates('~/engines/abkit', HOME, 'darwin')[0]).toBe('/home/tester/engines/abkit');
+    expect(webkitHostCandidates('~/engines/abkit', 'C:\\Users\\t', 'win32')).toEqual([
+      'C:\\Users\\t\\engines\\abkit',
+      'C:\\Users\\t\\engines\\abkit\\ABHost.exe',
+    ]);
+  });
 });
 
 describe('readBrowserEngineState', () => {

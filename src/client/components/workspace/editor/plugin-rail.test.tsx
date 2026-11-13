@@ -25,7 +25,7 @@ import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { EditorPluginRail } from '@/client/components/workspace/editor/PluginRail';
 import type { ResolvedPluginPanel } from '@/client/components/workspace/plugin-panel/resolve';
-import { installDomGlobals } from '@/test-support/pristine-globals';
+import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
 
 let container: HTMLElement | null = null;
 
@@ -77,6 +77,11 @@ afterEach(() => {
     container.remove();
     container = null;
   }
+  // The window installed for THIS case is put back with it. Left in place, a
+  // happy-dom `Event` reached the next file that dispatched an event at a
+  // native `EventTarget` and threw `Argument 1 ('event') … must be an instance
+  // of Event` in a suite that names neither this file nor this component.
+  restoreDomGlobals();
 });
 
 describe('editor plugin rail', () => {

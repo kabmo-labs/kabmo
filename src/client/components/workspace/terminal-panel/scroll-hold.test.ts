@@ -22,6 +22,21 @@ import {
   watchPointerPress,
   type HoldableViewport,
 } from '@/client/components/workspace/terminal-panel/scroll-hold';
+import { pristineDomGlobals } from '@/test-support/pristine-globals';
+
+/**
+ * The runner's own `Event`/`EventTarget`, as a PAIR.
+ *
+ * This file dispatches synthetic events at a target it creates itself, so both
+ * have to come from one realm. Reading the globals at call time made the suite
+ * fail before it asserted anything whenever an earlier file had left a
+ * happy-dom window installed: `new Event(…)` was happy-dom's constructor and
+ * `new EventTarget()` the runner's, and `dispatchEvent` refused the event. The
+ * captured values are the runner's own (see `pristine-globals.ts`), with the
+ * live globals as the fallback for a run where no suite installed a window yet.
+ */
+const EventCtor = (pristineDomGlobals.Event ?? globalThis.Event) as typeof Event;
+const EventTargetCtor = (pristineDomGlobals.EventTarget ?? globalThis.EventTarget) as typeof EventTarget;
 
 /** A viewport whose scrollback grows by `appended` lines on every write. */
 function fakeViewport(options: { scrollback: number; viewportY: number; appended: number; hasSelection?: boolean }) {
@@ -126,15 +141,15 @@ describe('holdAcrossWrite', () => {
 
 describe('watchPointerPress', () => {
   /** A container that is an event target but not a DOM element — all the watcher touches. */
-  const container = () => new EventTarget() as unknown as HTMLElement;
+  const container = () => new EventTargetCtor() as unknown as HTMLElement;
 
   test('holds from the press and lets go on release', () => {
     const element = container();
     const watch = watchPointerPress(element);
     expect(watch.pointerHeld).toBe(false);
-    element.dispatchEvent(new Event('pointerdown'));
+    element.dispatchEvent(new EventCtor('pointerdown'));
     expect(watch.pointerHeld).toBe(true);
-    globalThis.dispatchEvent(new Event('pointerup'));
+    globalThis.dispatchEvent(new EventCtor('pointerup'));
     expect(watch.pointerHeld).toBe(false);
     watch.stop();
   });
@@ -142,8 +157,8 @@ describe('watchPointerPress', () => {
   test('a cancelled gesture ends the hold, not a stuck viewport', () => {
     const element = container();
     const watch = watchPointerPress(element);
-    element.dispatchEvent(new Event('pointerdown'));
-    globalThis.dispatchEvent(new Event('pointercancel'));
+    element.dispatchEvent(new EventCtor('pointerdown'));
+    globalThis.dispatchEvent(new EventCtor('pointercancel'));
     expect(watch.pointerHeld).toBe(false);
     watch.stop();
   });

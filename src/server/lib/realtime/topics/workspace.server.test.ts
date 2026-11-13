@@ -14,6 +14,7 @@
  */
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
+import { basename } from 'node:path';
 
 import { workspaceDescriptor } from '@/server/lib/realtime/topics/workspace.server';
 
@@ -35,7 +36,9 @@ describe('workspace fs topic', () => {
       files: { name: string }[];
     };
 
-    expect(payload.root.endsWith('/examples')).toBe(true);
+    // `basename`, not `endsWith('/examples')`: the root is a host path, and the
+    // Windows gate answers `…\examples`.
+    expect(basename(payload.root)).toBe('examples');
     expect(payload.files.map((file) => file.name)).toContain('index.js');
   });
 });

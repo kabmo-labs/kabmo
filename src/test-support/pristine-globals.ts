@@ -29,7 +29,12 @@ export const pristineWebSocket = globalThis.WebSocket;
  */
 export const DOM_TEST_GLOBALS = [
   'window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement',
-  'Event', 'CustomEvent', 'WebSocket', 'EventSource',
+  // `EventTarget` travels WITH `Event`: the two are a single realm, and a
+  // suite that installed only the constructor made `target.dispatchEvent(new
+  // Event(...))` throw `Argument 1 ('event') … must be an instance of Event`
+  // for every later file that used a native target — measured on the Ubuntu
+  // gate, in a suite that names neither the installer nor the component.
+  'Event', 'EventTarget', 'CustomEvent', 'WebSocket', 'EventSource',
   // The frame callbacks a component reads off `globalThis`, not off `window`.
   // `Toast` schedules its fade-in through a bare `requestAnimationFrame`, which
   // is the browser's own global — Bun defines neither, so a suite that mounts a

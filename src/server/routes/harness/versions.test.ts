@@ -51,6 +51,11 @@ describe('harness version rows', () => {
     const claude = await row('claude');
     // `false` here would claim "up to date" about an unknown version.
     expect(claude.agent.updateAvailable).toBe(false);
+    // "Not probed yet" is about an AGENT that exists and has not been asked —
+    // a clean Windows runner has no `claude`, and its row honestly says it is
+    // not installed. Guarded like every other case here, because the runner's
+    // toolchain is not the fact under test.
+    if (!claude.installed) return;
     expect(claude.note).toContain('Not probed');
   });
 

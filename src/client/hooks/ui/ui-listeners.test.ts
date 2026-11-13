@@ -25,7 +25,7 @@
  * which is the only reason the hook subscribes at all.
  */
 
-import { afterEach, beforeAll, describe, expect, test } from 'bun:test';
+import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
@@ -33,13 +33,7 @@ import { act } from 'preact/test-utils';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 import { useTouchDevice } from '@/client/hooks/ui/touch-device';
 import { useWindowEvent } from '@/client/hooks/ui/window-event';
-
-const NativeEvent = globalThis.Event;
-const NativeCustomEvent = globalThis.CustomEvent;
-
-const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'Event', 'CustomEvent'] as const;
-/** The runner's own globals, restored on teardown (see the matching afterAll at the end of this file) so later files still see native Event/CustomEvent/window. */
-const nativeGlobals: Partial<Record<(typeof DOM_GLOBALS)[number], unknown>> = {};
+import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
 
 let win: Window;
 let container: HTMLElement;
@@ -50,11 +44,10 @@ const queryListeners = new Map<string, Set<() => void>>();
 
 beforeAll(() => {
   win = new Window({ url: 'http://localhost' });
-  const target = globalThis as unknown as Record<string, unknown>;
-  for (const key of DOM_GLOBALS) {
-    if (!(key in nativeGlobals)) nativeGlobals[key] = target[key];
-    target[key] = (win as unknown as Record<string, unknown>)[key];
-  }
+  // The shared helper, not a local save-and-restore loop: a loop that captures
+  // the runner's globals on first use captures whatever the PREVIOUS file left
+  // behind when that file leaked, and then faithfully restores the leak.
+  installDomGlobals(win);
   win.matchMedia = ((query: string) => {
     const listeners = queryListeners.get(query) ?? new Set<() => void>();
     queryListeners.set(query, listeners);
@@ -76,14 +69,16 @@ beforeAll(() => {
 afterEach(() => {
   if (container) render(null, container);
   container?.remove();
-  // The native target below rejects a foreign event: never leave a
-  // happy-dom constructor behind for the files that run after this one.
-  // (Bun's own constructors are captured at import, before any beforeAll.)
-  globalThis.Event = NativeEvent;
-  globalThis.CustomEvent = NativeCustomEvent;
   queryMatches.clear();
   for (const listeners of queryListeners.values()) listeners.clear();
   Object.defineProperty(win.navigator, 'maxTouchPoints', { configurable: true, value: 0 });
+});
+
+// The window installed above is a REAL happy-dom one, and its `Event` is not
+// the runner's: leaving it behind is what made a later suite dispatch a foreign
+// event at a native `EventTarget` and throw before it asserted anything.
+afterAll(() => {
+  restoreDomGlobals();
 });
 
 /** The event the DOM nodes under test accept: the global `Event` and
