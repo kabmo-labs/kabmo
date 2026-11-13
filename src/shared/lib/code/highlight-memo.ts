@@ -35,20 +35,46 @@
 import { isLanguageReady } from '@/shared/lib/code/highlighter-lazy';
 import { highlightCode, highlightLines, type HighlightLinesOptions } from '@/shared/lib/code/syntax-highlight';
 
+/**
+ * One `(language, code)` entry, holding whichever SHAPES have been asked for.
+ *
+ * The two callers want different markup for the same code: `highlightCode`
+ * answers ONE inline string (`structure: 'inline'`, no newlines), while
+ * `highlightLines` answers one fragment per source line. Storing them in one
+ * slot made the second reader split the first reader's string — a 7-line JSON
+ * block that had already been drawn as a block came back from the line path as
+ * a SINGLE row, so `NumberedCode` drew seven numbers beside one line of code.
+ * Measured on the Ubuntu gate as `Expected length: 7, Received length: 1` in
+ * `Eval.test.tsx`, and it is a real card: the same JSON is drawn by
+ * `JsonCodeBlock` (block) and by the eval result (lines).
+ */
+interface MemoEntry {
+  /** `highlightCode`'s markup: one string, inline structure. */
+  block?: string;
+  /** `highlightLines`' markup: one fragment per source line. */
+  lines?: string[];
+}
+
 /** Per language: a transcript page's worth of distinct blocks. */
 const MAX_BLOCKS_PER_LANGUAGE = 24;
 /** Across every language, so a long session cannot grow without bound. */
 const MAX_CACHED_CHARS = 512 * 1024;
 
-const blocks = new Map<string, Map<string, string>>();
+const blocks = new Map<string, Map<string, MemoEntry>>();
 let cachedChars = 0;
 
-function bucket(language: string): Map<string, string> {
+function bucket(language: string): Map<string, MemoEntry> {
   const existing = blocks.get(language);
   if (existing) return existing;
-  const created = new Map<string, string>();
+  const created = new Map<string, MemoEntry>();
   blocks.set(language, created);
   return created;
+}
+
+/** What one entry costs against the character budget. */
+function entrySize(entry: MemoEntry | undefined): number {
+  if (!entry) return 0;
+  return (entry.block?.length ?? 0) + (entry.lines ? entry.lines.join('\n').length : 0);
 }
 
 /** Drop the oldest entry of the first language that has one. */
@@ -56,37 +82,36 @@ function evictOne(): boolean {
   for (const entries of blocks.values()) {
     const oldest = entries.keys().next();
     if (oldest.done) continue;
-    const value = entries.get(oldest.value) ?? '';
+    cachedChars -= entrySize(entries.get(oldest.value));
     entries.delete(oldest.value);
-    cachedChars -= value.length;
     return true;
   }
   return false;
 }
 
-function remember(language: string, code: string, html: string): void {
+function remember(language: string, code: string, patch: MemoEntry): void {
   const entries = bucket(language);
   const previous = entries.get(code);
   if (previous !== undefined) {
     entries.delete(code);
-    cachedChars -= previous.length;
+    cachedChars -= entrySize(previous);
   }
-  entries.set(code, html);
-  cachedChars += html.length;
+  const merged: MemoEntry = { ...previous, ...patch };
+  entries.set(code, merged);
+  cachedChars += entrySize(merged);
   while (entries.size > MAX_BLOCKS_PER_LANGUAGE) {
     const oldest = entries.keys().next();
     if (oldest.done) break;
-    const value = entries.get(oldest.value) ?? '';
+    cachedChars -= entrySize(entries.get(oldest.value));
     entries.delete(oldest.value);
-    cachedChars -= value.length;
   }
   while (cachedChars > MAX_CACHED_CHARS && evictOne()) {
     // Keep dropping until the budget holds or nothing is left to drop.
   }
 }
 
-/** The cached markup for `(language, code)`, or `undefined`. */
-export function cachedHighlightBlock(code: string, language: string): string | undefined {
+/** The cached entry for `(language, code)`, moved to the most-recently-used end. */
+function touch(code: string, language: string): MemoEntry | undefined {
   const entries = blocks.get(language);
   if (!entries) return undefined;
   const hit = entries.get(code);
@@ -97,10 +122,14 @@ export function cachedHighlightBlock(code: string, language: string): string | u
   return hit;
 }
 
+/** The cached block markup for `(language, code)`, or `undefined`. */
+export function cachedHighlightBlock(code: string, language: string): string | undefined {
+  return touch(code, language)?.block;
+}
+
 /** The cached per-line markup, or `undefined`. */
 export function cachedHighlightBlockLines(code: string, language: string): string[] | undefined {
-  const hit = cachedHighlightBlock(code, language);
-  return hit === undefined ? undefined : hit.split('\n');
+  return touch(code, language)?.lines;
 }
 
 function cacheable(language: string, options: HighlightLinesOptions): boolean {
@@ -116,7 +145,7 @@ export function highlightBlock(code: string, language: string, options: Highligh
   const cached = options.marks?.length ? undefined : cachedHighlightBlock(code, language);
   if (cached !== undefined) return cached;
   const html = highlightCode(code, language, options);
-  if (cacheable(language, options)) remember(language, code, html);
+  if (cacheable(language, options)) remember(language, code, { block: html });
   return html;
 }
 
@@ -130,7 +159,7 @@ export function highlightBlockLines(
   const cached = options.marks?.length ? undefined : cachedHighlightBlockLines(code, language);
   if (cached !== undefined) return cached;
   const lines = highlightLines(code, language, options);
-  if (cacheable(language, options)) remember(language, code, lines.join('\n'));
+  if (cacheable(language, options)) remember(language, code, { lines });
   return lines;
 }
 

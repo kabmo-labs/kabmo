@@ -100,4 +100,22 @@ describe('highlightBlockLines', () => {
     const again = highlightBlockLines('const a = 1;\nconst b = 2;', 'typescript');
     expect(again).toEqual(lines);
   });
+
+  test('a block cached first does not shorten the line path', () => {
+    // The two shapes share a key but not a shape: `highlightCode` answers ONE
+    // inline string, `highlightLines` one fragment per line. Splitting the
+    // block's string gave the line path a single row for a 7-line block, so
+    // `NumberedCode` drew seven numbers beside one line — measured on the
+    // Ubuntu gate as `Expected length: 7, Received length: 1` in the eval
+    // card, whose JSON is drawn by both paths.
+    const code = '{\n  "a": 1,\n  "b": [\n    2,\n    3\n  ]\n}';
+    const block = highlightBlock(code, 'json');
+    expect(block).not.toContain('\n');
+
+    const lines = highlightBlockLines(code, 'json');
+    expect(lines).toHaveLength(7);
+    // And the block path still answers its own shape from the same entry.
+    expect(highlightBlock(code, 'json')).toBe(block);
+    expect(highlightMemoSize()).toBe(1);
+  });
 });
