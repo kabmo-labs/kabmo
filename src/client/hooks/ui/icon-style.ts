@@ -24,6 +24,7 @@ import {
   ICON_PAINT_STYLE_ELEMENT_ID,
   iconPaintStyleSheet,
 } from '@/shared/lib/icons/icon-paint-css';
+import { THEME_CSS_LINK_ATTRIBUTE } from '@/shared/lib/theme/css';
 import { ICON_PAPER_ATTRIBUTE } from '@/shared/lib/icons/tint';
 import { paperBucketOf } from '@/shared/lib/icons/icon-tone';
 import { resolveTheme } from '@/shared/lib/theme/catalog';
@@ -71,13 +72,17 @@ export function applyIconStyle(style: unknown): void {
  * Apply the stored style before the first render, and make sure the generated
  * icon-paint stylesheet is in the document.
  *
- * The stylesheet is written by the server shell (it is generated from a TS
- * table, so the bundler cannot carry it — the same split `themeStyleSheet` uses).
- * This only repairs a document served by a build that predates it; without the
- * repair, `color` mode would set the attribute and paint nothing.
+ * The stylesheet is served by the server shell as part of a content-hashed
+ * `<link>` (it is generated from a TS table, so the bundler cannot carry it —
+ * the same split `themeStyleSheet` uses). This only repairs a document served by
+ * a build that predates that link; without the repair, `color` mode would set
+ * the attribute and paint nothing.
  */
 export function initIconStyle(): void {
-  if (typeof document !== 'undefined' && !document.getElementById(ICON_PAINT_STYLE_ELEMENT_ID)) {
+  // The shell serves this sheet as part of a linked, content-hashed stylesheet;
+  // the inline copy is only the repair for a document that predates the link.
+  const linked = typeof document !== 'undefined' && document.querySelector(`link[${THEME_CSS_LINK_ATTRIBUTE}]`) !== null;
+  if (typeof document !== 'undefined' && !linked && !document.getElementById(ICON_PAINT_STYLE_ELEMENT_ID)) {
     const style = document.createElement('style');
     style.id = ICON_PAINT_STYLE_ELEMENT_ID;
     style.textContent = iconPaintStyleSheet();

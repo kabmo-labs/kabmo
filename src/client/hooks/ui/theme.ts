@@ -22,7 +22,7 @@ import { useKabmoSettingsWriter } from '@/client/hooks/settings/use-kabmo-settin
 import { applyWindowChrome } from '@/client/hooks/ui/window-chrome';
 import { applyIconPaper } from '@/client/hooks/ui/icon-style';
 import { DEFAULT_THEME_ID, resolveTheme } from '@/shared/lib/theme/catalog';
-import { THEME_STYLE_ELEMENT_ID, themeStyleSheet } from '@/shared/lib/theme/css';
+import { THEME_CSS_LINK_ATTRIBUTE, THEME_STYLE_ELEMENT_ID, themeStyleSheet } from '@/shared/lib/theme/css';
 import { FIRST_FRAME_STYLE_ELEMENT_ID, firstFrameStyle } from '@/shared/lib/theme/first-frame';
 
 /** Broadcast on every theme write. Detail is the new theme id. */
@@ -37,9 +37,9 @@ export function currentThemeId(): string {
 /**
  * Put the catalog on the document before the first render.
  *
- * The SSR shell already inlines the stylesheet and both attributes; this is the
- * guard for a document that predates them — a cached page, or markup rendered
- * before the server restarted. Without it the page keeps `:root`'s default
+ * The SSR shell already links the stylesheet and writes both attributes; this is
+ * the guard for a document that predates them — a cached page, or markup
+ * rendered before the server restarted. Without it the page keeps `:root`'s default
  * palette and no variant attribute,
  * which is a wrong palette, not merely a stale one.
  *
@@ -49,7 +49,11 @@ export function currentThemeId(): string {
  */
 export function initDocumentTheme(): void {
   if (typeof document === 'undefined') return;
-  if (!document.getElementById(THEME_STYLE_ELEMENT_ID)) {
+  // The shell LINKS the sheet now; the inline copy is only the repair for a
+  // document served before that link existed. Without the `link` half of this
+  // test, a current document would get a second 68 KB copy injected.
+  const linked = document.querySelector(`link[${THEME_CSS_LINK_ATTRIBUTE}]`) !== null;
+  if (!linked && !document.getElementById(THEME_STYLE_ELEMENT_ID)) {
     const style = document.createElement('style');
     style.id = THEME_STYLE_ELEMENT_ID;
     style.textContent = themeStyleSheet();

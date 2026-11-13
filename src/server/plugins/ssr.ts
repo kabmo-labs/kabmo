@@ -26,11 +26,8 @@ import { applyShellDocumentFacts } from '@/server/lib/assets/shell-attributes.se
 import { SURFACE_STYLE_SETTING_KEY } from '@/shared/lib/theme/surface-style';
 import { ICON_STYLE_SETTING_KEY } from '@/shared/lib/theme/icon-style';
 import { windowChromeColor } from '@/shared/lib/theme/chrome';
-import { THEME_STYLE_ELEMENT_ID, themeStyleSheet } from '@/shared/lib/theme/css';
-import {
-  ICON_PAINT_STYLE_ELEMENT_ID,
-  iconPaintStyleSheet,
-} from '@/shared/lib/icons/icon-paint-css';
+import { THEME_CSS_ROUTE, serveThemeCss } from '@/server/lib/assets/theme-css.server';
+import { THEME_CSS_LINK_ATTRIBUTE } from '@/shared/lib/theme/css';
 import { isAndroidDevice, shellVersion } from '@/shared/lib/updates/shell-ua';
 
 /** HTML-escape a string for interpolation into the failure page's `<pre>`. */
@@ -178,6 +175,10 @@ export const ssrRoutes = new Elysia({ name: 'ssr' }).get('*', async ({ request }
     });
   }
 
+  // The generated palette + icon-paint sheet. Content-hashed and immutable, so
+  // it is fetched once per build instead of riding in every document.
+  if (pathname === THEME_CSS_ROUTE) return serveThemeCss(request);
+
   const asset = await tryServeStatic(pathname, request);
   if (asset) return asset;
   // An unauthenticated visitor still gets the shell — it IS the login screen —
@@ -224,11 +225,12 @@ export const ssrRoutes = new Elysia({ name: 'ssr' }).get('*', async ({ request }
   // The template's own `<meta name="theme-color">` is REWRITTEN, not joined by
   // a second tag: with both present Chrome reads the first one, so an appended
   // tag would leave a dark theme painting light browser chrome.
-  const themeStyle = `<style id="${THEME_STYLE_ELEMENT_ID}">${themeStyleSheet()}</style>`;
-  // The brand colours are generated from a TS table too, for the same reason:
-  // the bundler cannot carry a stylesheet derived from data, and a hand-written
-  // copy in `tailwind.css` would be 35 pairs that drift from the table.
-  const brandStyle = `<style id="${ICON_PAINT_STYLE_ELEMENT_ID}">${iconPaintStyleSheet()}</style>`;
+  // The palette and icon-paint sheets are generated from TS tables, so the
+  // bundler cannot carry them — but they are fixed for the life of a build, so
+  // they are a content-hashed, immutable stylesheet rather than 182 KB of
+  // inline `<style>` in every `no-store` document. `data-theme-css` is what the
+  // client's repair path looks for before injecting its own copy.
+  const themeLink = `<link rel="stylesheet" href="${THEME_CSS_ROUTE}" ${THEME_CSS_LINK_ATTRIBUTE}>`;
   // The frame the browser paints BEFORE the bundle's stylesheet lands: the UA's
   // own canvas is white, and on a dark install that is a measured white flash
   // for the length of the CSS request. The palette's ground is the only correct
@@ -265,7 +267,7 @@ export const ssrRoutes = new Elysia({ name: 'ssr' }).get('*', async ({ request }
         iconStyle: readSettingsBlob(settings)[ICON_STYLE_SETTING_KEY],
         chromeColor: chrome,
       })
-        .replace('<!--app-head-->', firstFrame + themeStyle + brandStyle + fontLink)
+        .replace('<!--app-head-->', firstFrame + themeLink + fontLink)
         .replace(SHELL_MARKER, `<script>window.__OMP_BOOTSTRAP__=${bootstrap}</script>`),
       { headers: HTML_HEADERS },
     ),

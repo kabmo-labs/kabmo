@@ -17,7 +17,8 @@
  * - `/_shell` lives in `Bun.serve`'s own routing table rather than Elysia's, so
  *   no hook sees it. It is left reachable deliberately: it serves the page
  *   skeleton and, measured, carries no bootstrap payload — the settings map is
- *   injected by the SSR route, which is gated.
+ *   injected by the SSR route, which is gated. The route exists in development
+ *   only; production reads the built shell from disk.
  * - Static assets are exempt by necessity: the login page is the app shell, so
  *   its bundle, stylesheet and fonts must load before any credential exists.
  *
@@ -84,6 +85,10 @@ const PUBLIC_PREFIXES = [
   '/icon-',
   '/apple-touch-icon.',
   '/apple-touch-icon-',
+  // The generated palette + icon-paint sheet, content-hashed (`/theme-<hash>.css`).
+  // It is the login screen's own styling, so it has to load before a credential
+  // exists — the same reason `/static/` is here.
+  '/theme-',
 ];
 
 /** True when `pathname` is reachable without a session. */

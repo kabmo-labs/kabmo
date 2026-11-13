@@ -40,6 +40,17 @@ import {
 export const THEME_STYLE_ELEMENT_ID = 'omp-theme-palettes';
 
 /**
+ * The attribute the shell puts on the `<link>` that carries BOTH generated
+ * sheets (`themeStyleSheet` and `iconPaintStyleSheet`).
+ *
+ * The pair is served as one content-hashed, immutable stylesheet instead of
+ * 182 KB of inline `<style>` per document. The client's repair path checks it
+ * first: a document that already links the sheet must not inject an inline copy
+ * of the same 182 KB.
+ */
+export const THEME_CSS_LINK_ATTRIBUTE = 'data-theme-css';
+
+/**
  * A hover shade of a signal color, mixed toward the theme's own ink so the
  * direction follows the palette: darker on a light theme, lighter on a dark one.
  * `--theme-info-hover` / `--theme-warning-hover` used to be fixed hex values in
