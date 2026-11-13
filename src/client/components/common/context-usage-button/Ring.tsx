@@ -43,11 +43,17 @@
  * and the green arc is too narrow for one value to clear 3:1 against both.
  *
  * So the weight follows the arc. While an arc is drawn the track steps back to
- * `/35`, the rung that maximises the WORSE of its two contrasts (`/35` and
- * `/40` are the only candidates whose separation from the arc stays above 1.5
- * everywhere; `/35` keeps more of it — 1.86:1 worst case, and 2.20-3.55:1 on
- * the two shipped themes). The arc is the information then, and it clears
- * 4.50:1 on every palette by construction.
+ * `/25`. The objective is the ARC's contrast, not the track's: the arc is the
+ * information, the track is the ground it is read against, so the rung is the
+ * lightest one that still reads as a ring. `/35` — the previous value — was
+ * chosen to maximise the WORSE of (track vs paper, track vs arc), which kept
+ * the track visible but left the arc at **2.31:1** on `paper`: the same
+ * "terlalu gelap, hijau ndak kelihatan" report, one rung later. `/25` lifts the
+ * arc to **2.98:1** on `paper` (worst light 2.58:1 on `flexoki-light`, worst
+ * dark 2.21:1 on `fields-of-the-shire-dark`) while the track still reads as a
+ * ring — 1.73:1 on `paper`, 1.38:1 worst case on `solarized-light`. `/20` buys
+ * the arc another 0.37:1 but drops the track under 1.5:1 on 25 of the 63
+ * palettes, which is a ring that looks like a floating arc.
  */
 
 import { CONTEXT_BAND_TONES, contextRingGeometry, contextUsageBand } from '@/shared/lib/chat/context/usage';
@@ -56,7 +62,7 @@ import { CONTEXT_BAND_TONES, contextRingGeometry, contextUsageBand } from '@/sha
 const EMPTY_TRACK = 'text-ink/75';
 
 /** The track under an arc: quiet enough that the band colour stays the signal. */
-const FILLED_TRACK = 'text-ink/35';
+const FILLED_TRACK = 'text-ink/25';
 
 interface ContextRingProps {
   percent: number;

@@ -169,7 +169,9 @@ describe('ContextUsageButton', () => {
     // dark mode (1.39:1 on the glass chrome), so it takes `/75` — the first rung
     // clearing 3:1 on all 63 palettes. At `/75` a FILLED ring's track sat on the
     // arc's own luminance (1.04:1 worst case on light), which is "warna hijau
-    // ndak kelihatan", so it steps back to `/35` once there is an arc to read.
+    // ndak kelihatan", so it steps back to `/25` once there is an arc to read:
+    // the arc is the information, and `/25` is the lightest rung that still
+    // reads as a ring (2.98:1 arc on `paper`, 1.73:1 track on `paper`).
     await mount(telemetryAt(0));
     expect(container.querySelectorAll('svg circle')[0].getAttribute('class')).toBe('text-ink/75');
 
@@ -177,7 +179,7 @@ describe('ContextUsageButton', () => {
     resetRealtimeClient();
     server.stop();
     await mount(telemetryAt(42));
-    expect(container.querySelectorAll('svg circle')[0].getAttribute('class')).toBe('text-ink/35');
+    expect(container.querySelectorAll('svg circle')[0].getAttribute('class')).toBe('text-ink/25');
   });
 
   test('the popover prints the session numbers, and Escape closes it', async () => {
