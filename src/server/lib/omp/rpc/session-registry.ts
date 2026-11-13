@@ -22,6 +22,7 @@ import { registerSpawnedSession } from '@/server/lib/omp/rpc/session-registratio
 import { resolveSessionOwnership, SessionOwnedElsewhereError } from '@/server/lib/omp/session/ownership.server';
 import { claimPrewarmedSession } from '@/server/lib/omp/rpc/prewarm-pool';
 import { mintAgentEnvironment, rememberAgentToken } from '@/server/lib/sessions/agent-token.server';
+import { sessionMcpSpawn } from '@/server/lib/omp/rpc/spawn-mcp';
 import { isUnrestorableModelFailure, resolveResumableModel } from '@/server/lib/omp/session/resumable-model.server';
 import { DEFAULT_APPROVAL_MODE, type ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 import type { SelectedModel } from '@/shared/types/models';
@@ -240,13 +241,16 @@ async function spawnOnce(
 ): Promise<{ session: AgentSessionWrapper; realSessionId: string }> {
   const registry = getRegistry();
   const holder: { wrapper?: AgentSessionWrapper } = {};
+  // MCP is a SPAWN property for omp: it reads `mcp.json` once (see `spawn-mcp.ts`).
+  const mcp = await sessionMcpSpawn(sessionId, cwd, modeEnv);
   const proc = new RpcProcess({
     cwd,
-    extraArgs: buildSessionSpawnArgs(sessionFile, approvalMode, resumeModel),
-    env: modeEnv,
+    extraArgs: [...buildSessionSpawnArgs(sessionFile, approvalMode, resumeModel), ...mcp.extraArgs],
+    env: mcp.env,
     onExit: ({ stderrTail }) => holder.wrapper?.handleProcessExit(stderrTail),
   });
   const created = new AgentSessionWrapper(proc, cwd, recordedCwd);
+  created.mcpOverlay = mcp.overlay;
   recordSpawnProvenance(created, approvalMode, modeEnv);
   holder.wrapper = created;
   created.start();

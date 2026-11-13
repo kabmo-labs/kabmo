@@ -54,3 +54,38 @@ export interface McpServerItem {
   oauth?: McpOAuthConfig;
   status?: 'active' | 'inactive' | 'error';
 }
+
+/** Where a session's server was declared. */
+export type McpServerSource = 'user' | 'project' | 'custom' | 'plugin';
+
+/** The answer of a real MCP handshake, cached for a minute server-side. */
+export interface McpProbeResult {
+  ok: boolean;
+  error?: string;
+  toolCount: number;
+  durationMs: number;
+  /** Epoch ms of the handshake, so the UI can say how old the answer is. */
+  checkedAt: number;
+}
+
+/** One server as a SESSION sees it, with that session's override applied. */
+export interface SessionMcpServer {
+  name: string;
+  transport: McpTransport;
+  source: McpServerSource;
+  enabled: boolean;
+  /** The last handshake, or null when this server was never probed. */
+  probe: McpProbeResult | null;
+}
+
+/** `GET /api/sessions/:sessionId/mcp` — the list and the switch behind it. */
+export interface SessionMcpPayload {
+  sessionId: string;
+  harness: string | null;
+  /** How this harness receives MCP: a handshake argument or omp's config file. */
+  delivery: 'acp' | 'omp-config' | null;
+  live: boolean;
+  servers: SessionMcpServer[];
+  /** Only the names that differ from the configured state. */
+  overrides: Record<string, boolean>;
+}

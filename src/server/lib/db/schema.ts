@@ -25,6 +25,7 @@ import { ensureReviewSchema } from '@/server/lib/review/schema.server';
 import { ensureHarnessSchema } from '@/server/lib/harness/schema.server';
 import { ensureSessionRelationsSchema } from '@/server/lib/sessions/schema.server';
 import { ensurePromptHistorySchema } from '@/server/lib/chat/schema.server';
+import { ensureSessionMcpSchema } from '@/server/lib/mcp/schema.server';
 import { migrateWorkspaceFolderColumns } from '@/shared/lib/workspace/schema-migrations';
 import { migrateSessionStreamStateColumns } from '@/shared/lib/omp/session/schema-migrations';
 
@@ -149,6 +150,9 @@ export async function initSchema(db: DbClient): Promise<void> {
   await ensureSessionRelationsSchema(db);
   // The composer's ArrowUp recall: one row per prompt the operator sent.
   await ensurePromptHistorySchema(db);
+  // Per-session MCP enablement: read by the spawn path, so it cannot live in
+  // the client-owned `session_ui_state` blob.
+  await ensureSessionMcpSchema(db);
   await db.exec(`
     CREATE TABLE IF NOT EXISTS files (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

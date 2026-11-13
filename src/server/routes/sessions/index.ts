@@ -20,6 +20,7 @@ import { spawnSession } from '@/server/routes/sessions/spawn';
 import { getSessionRelations, updateSessionParent } from '@/server/routes/sessions/relations';
 import { forkSessionRoute } from '@/server/routes/sessions/fork';
 import { getSessionAnswer } from '@/server/routes/sessions/answer';
+import { getSessionMcp, probeSessionMcp, setSessionMcp } from '@/server/routes/sessions/mcp';
 
 export const sessionsBindings: HandlerBinding[] = [
   ...bindingsFor(sessionsList, '/api/sessions/list'),
@@ -41,6 +42,12 @@ export const sessionsBindings: HandlerBinding[] = [
   { method: 'POST', path: '/api/sessions/:sessionId/parent', handler: updateSessionParent },
   { method: 'POST', path: '/api/sessions/:sessionId/fork', handler: forkSessionRoute },
   { method: 'GET', path: '/api/sessions/:sessionId/answer', handler: getSessionAnswer },
+  // The MCP list this session has, and the per-session switch. A static suffix
+  // under the same `:sessionId` position, so the parameter name must stay
+  // `sessionId` (Elysia requires one name per position).
+  { method: 'GET', path: '/api/sessions/:sessionId/mcp', handler: getSessionMcp },
+  { method: 'POST', path: '/api/sessions/:sessionId/mcp', handler: setSessionMcp },
+  { method: 'POST', path: '/api/sessions/:sessionId/mcp/probe', handler: probeSessionMcp },
   // DELETE-only on the same path the folder loader answers GET on: mounting it
   // through `actionBindings` would register a 405 GET fallback that Elysia
   // applies after the loader, replacing the workspace listing with it.

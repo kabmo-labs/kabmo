@@ -42,6 +42,7 @@ import { failWaitingOn } from '@/server/lib/waiting/store.server';
 import { siblingDirForSession } from '@/server/lib/omp/subagent/history/paths';
 import { isSinglePathSegment } from '@/server/lib/fs/path-segment';
 import { deleteSessionRelations } from '@/server/lib/sessions/relations.server';
+import { removeSessionMcpOverlay } from '@/server/lib/mcp/session-overlay.server';
 
 export interface SessionPurgeResult {
   /** Something keyed to this id existed — a transcript, a mock session row, or
@@ -76,6 +77,9 @@ const SESSION_ROW_DELETES: readonly (readonly [string, string])[] = [
   ['harness_sessions', 'session_id'],
   ['harness_goal_state', 'session_id'],
   ['harness_usage_state', 'session_id'],
+  // The per-session MCP overrides and the agent-dir overlay they build. The
+  // row is keyed to the id; the directory is removed below.
+  ['session_mcp_state', 'session_id'],
 ];
 
 async function purgeKabmoRows(db: DbClient, sessionId: string): Promise<number> {
@@ -140,6 +144,9 @@ export async function purgeSessionData(sessionId: string): Promise<SessionPurgeR
 
   const db = await getDb();
   const rowChanges = await purgeKabmoRows(db, sessionId);
+  // The overlay is a temp directory, not a row: a deleted session must not
+  // leave one behind for a future id to inherit.
+  await removeSessionMcpOverlay(sessionId);
 
   // A prompt waiting on this session will never be released: the dependency is
   // gone. Fail it BY NAME rather than letting it wait for a session that no

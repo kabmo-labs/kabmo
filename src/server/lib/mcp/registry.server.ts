@@ -32,7 +32,8 @@ import {
 } from '@/server/lib/omp/config/mcp';
 import type { McpServer } from '@/server/lib/omp/config/mcp-shared';
 import { readCustomMcpServers } from '@/server/lib/mcp/store.server';
-import { pluginMcpServers } from '@/server/lib/plugins/mcp.server';
+import { pluginMcpServers, type RegisteredPluginMcpServer } from '@/server/lib/plugins/mcp.server';
+import type { SessionMcpOverrides } from '@/server/lib/mcp/session-state.server';
 import type { McpServerItem, McpTransport } from '@/shared/types';
 import { rowsToRecord } from '@/shared/lib/mcp/key-value';
 import type { AcpMcpServer } from '@/server/lib/harness/acp/protocol';
@@ -118,53 +119,169 @@ export function definitionFromItem(item: McpServerItem): McpServerDefinition | n
   };
 }
 
+/** Where a server was declared. The settings pane and the session list both
+ *  need it, and a second derivation would drift from this one. */
+export type McpServerSource = 'user' | 'project' | 'custom' | 'plugin';
+
 /**
- * Every enabled server a session in `cwd` should receive.
- *
- * A read that fails is reported and skipped: one unreadable config must not
- * stop a chat from starting, and the settings pane is where the user can see
- * the reason.
+ * One server as the session sees it: the native `mcp.json` shape (so a
+ * per-session overlay can write it back verbatim, credentials included), the
+ * transport for display, and the enablement AFTER the session's overrides.
  */
-export async function mcpServersFor(cwd: string): Promise<McpServerDefinition[]> {
-  const definitions: McpServerDefinition[] = [];
+export interface McpServerEntry {
+  name: string;
+  config: McpServer;
+  transport: McpTransport;
+  source: McpServerSource;
+  enabled: boolean;
+}
+
+/** The transport a native entry names, by the same rule `definitionFromNative` uses. */
+function transportOf(config: McpServer): McpTransport {
+  if (typeof config.url === 'string' && config.url.trim()) return config.type === 'sse' ? 'sse' : 'http';
+  return 'stdio';
+}
+
+/** An app-local row in omp's native shape. Redacted credentials are dropped,
+ *  exactly as `definitionFromItem` drops them — the sentinel is a display
+ *  placeholder and must never be written to a config file. */
+function nativeFromItem(item: McpServerItem): McpServer | null {
+  const transport: McpTransport = item.transport ?? (item.linkUrl ? 'http' : 'stdio');
+  const timeout = typeof item.timeout === 'number' ? item.timeout : undefined;
+  if (transport !== 'stdio') {
+    const url = (item.linkUrl ?? item.commandArgs[0] ?? '').trim();
+    if (!url) return null;
+    const headers = rowsToRecord(item.headers);
+    return {
+      type: transport,
+      url,
+      ...(headers ? { headers } : {}),
+      ...(timeout !== undefined ? { timeout } : {}),
+    };
+  }
+  const [command, ...args] = item.commandArgs;
+  if (!command?.trim()) return null;
+  const env = rowsToRecord(item.envVars);
+  return {
+    command: command.trim(),
+    ...(args.length > 0 ? { args } : {}),
+    ...(env ? { env } : {}),
+    ...(item.cwd?.trim() ? { cwd: item.cwd.trim() } : {}),
+    ...(timeout !== undefined ? { timeout } : {}),
+  };
+}
+
+/** A plugin contribution in omp's native shape. */
+function nativeFromPlugin(server: RegisteredPluginMcpServer['server']): McpServer {
+  if (server.transport === 'stdio') {
+    return {
+      command: server.command ?? '',
+      ...(server.args?.length ? { args: server.args } : {}),
+      ...(server.env ? { env: server.env } : {}),
+    };
+  }
+  return {
+    type: server.transport,
+    url: server.url ?? '',
+    ...(server.headers ? { headers: server.headers } : {}),
+  };
+}
+
+/**
+ * Every server a session in `cwd` can see, enabled or not, with the session's
+ * overrides applied.
+ *
+ * This is the ONE merge: the settings pane, the ACP injection, the omp-rpc
+ * overlay and the navbar list all read it, so they cannot disagree about which
+ * entry is live. Precedence is by NAME, first wins: user, project, app-local,
+ * plugin.
+ *
+ * `overrides` is the per-session map (`true` = enabled, `false` = disabled).
+ * A name absent from it keeps the configured state, which is what lets a
+ * settings edit reach a session that never touched that server.
+ */
+export async function mcpServerEntriesFor(
+  cwd: string,
+  options: { overrides?: SessionMcpOverrides; sources?: readonly McpServerSource[] } = {},
+): Promise<McpServerEntry[]> {
+  const overrides = options.overrides ?? {};
+  const wanted = options.sources ? new Set(options.sources) : null;
+  const entries: McpServerEntry[] = [];
   const seen = new Set<string>();
-  const add = (definition: McpServerDefinition | null) => {
-    if (!definition) return;
-    const key = definition.name.toLowerCase();
+  const add = (entry: McpServerEntry | null) => {
+    if (!entry) return;
+    if (wanted && !wanted.has(entry.source)) return;
+    const key = entry.name.toLowerCase();
     if (seen.has(key)) return;
     seen.add(key);
-    definitions.push(definition);
+    const override = overrides[entry.name];
+    entries.push({ ...entry, enabled: override === undefined ? entry.enabled : override });
   };
 
   const user = await readUserMcpConfig();
   if (user.error) console.error(`[mcp] user config skipped: ${user.error}`);
   for (const entry of user.servers) {
-    if (!isServerEnabled(entry.name, entry.config, user.disabledServers, user.enabledServers)) continue;
-    add(definitionFromNative(entry.name, entry.config));
+    add({
+      name: entry.name,
+      config: entry.config,
+      transport: transportOf(entry.config),
+      source: 'user',
+      enabled: isServerEnabled(entry.name, entry.config, user.disabledServers, user.enabledServers),
+    });
   }
 
   if (cwd && (await isProjectMcpConfigEnabled())) {
     const project = await readProjectMcpConfig(cwd);
     if (project.error) console.error(`[mcp] project config skipped: ${project.error}`);
     for (const entry of project.servers) {
-      if (!isServerEnabled(entry.name, entry.config, user.disabledServers, user.enabledServers)) continue;
-      add(definitionFromNative(entry.name, entry.config));
+      add({
+        name: entry.name,
+        config: entry.config,
+        transport: transportOf(entry.config),
+        source: 'project',
+        enabled: isServerEnabled(entry.name, entry.config, user.disabledServers, user.enabledServers),
+      });
     }
   }
 
-  const custom = await readCustomMcpServers(await getDb());
-  for (const item of custom) {
-    if (item.scope === 'this-project' && item.projectPath !== cwd) continue;
-    add(definitionFromItem(item));
+  if (!wanted || wanted.has('custom')) {
+    const custom = await readCustomMcpServers(await getDb());
+    for (const item of custom) {
+      if (item.scope === 'this-project' && item.projectPath !== cwd) continue;
+      const config = nativeFromItem(item);
+      if (!config) continue;
+      add({ name: item.name, config, transport: transportOf(config), source: 'custom', enabled: item.enabled });
+    }
   }
 
-  for (const entry of pluginMcpServers()) {
-    // `id` is the plugin's own key, not part of the transport-neutral shape.
-    const { id: _id, name: _name, ...server } = entry.server;
-    add({ ...server, name: entry.name });
+  if (!wanted || wanted.has('plugin')) {
+    for (const entry of pluginMcpServers()) {
+      const config = nativeFromPlugin(entry.server);
+      add({ name: entry.name, config, transport: transportOf(config), source: 'plugin', enabled: true });
+    }
   }
 
-  return definitions;
+  return entries;
+}
+
+/**
+ * Every ENABLED server a session in `cwd` should receive, in the
+ * transport-neutral shape the ACP handshake and the settings pane consume.
+ *
+ * A read that fails is reported and skipped: one unreadable config must not
+ * stop a chat from starting, and the settings pane is where the user can see
+ * the reason.
+ */
+export async function mcpServersFor(
+  cwd: string,
+  options: { overrides?: SessionMcpOverrides } = {},
+): Promise<McpServerDefinition[]> {
+  const entries = await mcpServerEntriesFor(cwd, options);
+  return entries.flatMap((entry) => {
+    if (!entry.enabled) return [];
+    const definition = definitionFromNative(entry.name, entry.config);
+    return definition ? [definition] : [];
+  });
 }
 
 /** The ACP wire shape: stdio is the baseline, `http`/`sse` are the typed variants. */

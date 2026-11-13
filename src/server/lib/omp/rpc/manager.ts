@@ -4,15 +4,12 @@
  */
 
 /**
- * Session RPC manager for Kabmo — the analog of omp-web's
- * lib/rpc-manager.ts. Wraps one spawned `omp --mode rpc-ui` process per
- * session with the command surface Kabmo chat needs: prompt, abort,
- * abort_and_prompt, set_model, set_thinking_level, get_state, and the
- * passthrough set. Event frames (agent_start/agent_end/message_update/...)
- * are forwarded to SSE subscribers via onEvent.
+ * Session RPC manager for Kabmo — the analog of omp-web's lib/rpc-manager.ts.
+ * Wraps one spawned `omp --mode rpc-ui` process per session with the command
+ * surface Kabmo chat needs, and forwards event frames to subscribers.
  *
- * Scoped down from omp-web: host tools, URI schemes, extension widgets, MCP
- * list, and branch/fork are omitted (Kabmo does not surface them yet).
+ * Scoped down from omp-web: host tools, URI schemes, extension widgets and
+ * branch/fork are omitted.
  */
 
 import { RpcProcess, type RpcFrame } from '@/server/lib/omp/rpc/process';
@@ -40,8 +37,7 @@ export type {
 } from '@/server/lib/omp/rpc/constants';
 export { WebRpcError, resolveSpawnCwd } from '@/server/lib/omp/rpc/constants';
 
-/** Overrides for the wrapper's own timers. Production always uses the
- *  constant; tests shrink the window so the lifecycle rules stay fast. */
+/** Overrides for the wrapper's own timers; tests shrink the idle window. */
 export interface AgentSessionWrapperOptions {
   /** Idle window before an unused process is reclaimed. */
   idleDestroyMs?: number;
@@ -111,6 +107,8 @@ export class AgentSessionWrapper {
   proc: RpcProcess;
   readonly cwd: string;
   private readonly recordedCwd: string | null;
+  /** The per-session agent dir this child was spawned with, when it has MCP overrides. */
+  mcpOverlay?: { dir: string; configPath: string };
 
   constructor(proc: RpcProcess, cwd: string, recordedCwd?: string | null, options: AgentSessionWrapperOptions = {}) {
     this.proc = proc;
@@ -210,17 +208,14 @@ export class AgentSessionWrapper {
   }
 
   private applyIdentity(state: RpcSessionState): void {
-    this._sessionId = state.sessionId;
-    this._sessionFile = state.sessionFile ?? '';
+    this.adoptSessionIdentity(state);
     this.streaming = state.isStreaming;
     this.compacting = state.isCompacting;
     this.fastModeEnabled = state.fastModeEnabled ?? state.fastMode ?? this.fastModeEnabled;
-    if (state.model) this.runModel = { provider: state.model.provider, modelId: state.model.id };
     // omp reports the messages it restored, so a child spawned for an EXISTING
-    // conversation (a `--resume` after the idle reclaim, or a session opened
-    // from the sidebar) already has a first turn behind it — it must never be
-    // titled from whatever the operator asks next. Only a conversation with no
-    // messages at all is eligible, which is exactly the fresh-spawn case.
+    // conversation already has a first turn behind it — it must never be titled
+    // from whatever the operator asks next. Only a conversation with no messages
+    // at all is eligible, which is exactly the fresh-spawn case.
     this.autoTitlePending = state.messageCount === 0;
   }
 

@@ -35,6 +35,7 @@ import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
 import { harnessDescriptor, type HarnessId } from '@/shared/lib/harness/catalog';
 import { mcpDelivery } from '@/shared/lib/harness/mcp-facts';
 import { mcpServersFor, toAcpMcpServers } from '@/server/lib/mcp/registry.server';
+import { readSessionMcpOverrides } from '@/server/lib/mcp/session-state.server';
 import { ensureCustomHarnesses } from '@/server/lib/harness/custom.server';
 import type { HarnessConfig } from '@/shared/lib/harness/config';
 import type { AcpProcess } from '@/server/lib/harness/acp/client';
@@ -130,8 +131,11 @@ export async function openAcpSession(
   // The MCP list is read per SPAWN, not cached: a server added in Settings must
   // reach the next chat without a restart. A harness whose delivery is a file
   // (omp's RPC mode) is not an ACP session, so this branch is the ACP contract.
+  // The session's own overrides are applied here, which is what makes a toggle
+  // per-session: the list is an argument to `session/new|load`, not a file.
+  const overrides = await readSessionMcpOverrides(request.sessionId);
   const mcpServers = mcpDelivery(request.harness) === 'acp'
-    ? toAcpMcpServers(await mcpServersFor(request.cwd))
+    ? toAcpMcpServers(await mcpServersFor(request.cwd, { overrides }))
     : [];
   // Built here rather than behind a factory in the session module: this is the
   // only place a session is constructed, and the handshake it runs (load vs
