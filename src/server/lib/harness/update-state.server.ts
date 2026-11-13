@@ -23,6 +23,7 @@
  */
 
 import { commandAvailable } from '@/server/lib/harness/auto-probe.server';
+import { whichOnToolchainPath } from '@/server/lib/fs/toolchain-path';
 import { loadHarnessConfig } from '@/server/lib/harness/config.server';
 import { fetchNpmLatest } from '@/server/lib/updates/npm';
 import type { HarnessId } from '@/shared/lib/harness/catalog';
@@ -99,8 +100,11 @@ export async function cliVersion(bin: string): Promise<string | null> {
   if (cached && Date.now() - cached.at < CLI_VERSION_TTL_MS) return cached.version;
   let version: string | null = null;
   try {
-    if (Bun.which(bin)) {
-      const proc = Bun.spawn({ cmd: [bin, '--version'], stdout: 'pipe', stderr: 'pipe', timeout: 5000 });
+    // Resolved, then executed by its absolute path: a login-entry launch has a
+    // minimal PATH, so a bare name passes this check and fails the spawn.
+    const resolved = whichOnToolchainPath(bin);
+    if (resolved) {
+      const proc = Bun.spawn({ cmd: [resolved, '--version'], stdout: 'pipe', stderr: 'pipe', timeout: 5000 });
       const text = (await new Response(proc.stdout).text()) + (await new Response(proc.stderr).text());
       await proc.exited;
       // The first version-shaped token: `2.1.318 (Claude Code)`, `codex-cli 0.166.0`.

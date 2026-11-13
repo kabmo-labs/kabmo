@@ -14,6 +14,7 @@
 
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
+import { whichOnToolchainPath } from '@/server/lib/fs/toolchain-path';
 import type { HarnessId } from '@/shared/lib/harness/catalog';
 
 /** One harness's launch configuration. */
@@ -54,7 +55,7 @@ function resolvable(value: string): boolean {
   if (trimmed.includes('/') || trimmed.includes('\\')) {
     return existsSync(trimmed.replace(/^~(?=[/\\])/, homedir()));
   }
-  return Boolean(Bun.which(trimmed));
+  return Boolean(whichOnToolchainPath(trimmed));
 }
 
 /**
@@ -76,7 +77,7 @@ export function harnessRequirementMet(
     ? (env?.[requirement.env] ?? Bun.env[requirement.env] ?? '').trim()
     : '';
   if (explicit) return resolvable(explicit);
-  if (Bun.which(requirement.binary)) return true;
+  if (whichOnToolchainPath(requirement.binary)) return true;
   return (requirement.bundled ?? []).some(resolvable);
 }
 

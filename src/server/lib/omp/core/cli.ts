@@ -13,8 +13,7 @@
  */
 
 import { existsSync } from 'fs';
-import { homedir } from 'os';
-import { delimiter, join } from 'path';
+import { whichOnToolchainPath } from '@/server/lib/fs/toolchain-path';
 
 let cachedBin: string | null = null;
 let binMissAt = 0;
@@ -41,18 +40,9 @@ function probeOmpBin(): string | null {
   const override = Bun.env.KABMO_OMP_BIN ?? Bun.env.OMPCHAMBER_OMP_BIN;
   if (override) return existsSync(override) ? override : null;
 
-  const onPath = Bun.which(BIN_NAME);
-  if (onPath) return onPath;
-
-  // GUI-launched processes often miss homebrew/bun dirs in PATH; probe the
-  // usual install locations before giving up.
-  const fallbackPath = [
-    '/opt/homebrew/bin',
-    '/usr/local/bin',
-    join(homedir(), '.bun', 'bin'),
-    join(homedir(), '.local', 'bin'),
-  ].join(delimiter);
-  return Bun.which(BIN_NAME, { PATH: fallbackPath });
+  // The inherited PATH, repaired: a login-entry launch (launchd, XDG autostart)
+  // never had homebrew or `~/.bun/bin`, which is where omp actually lives.
+  return whichOnToolchainPath(BIN_NAME);
 }
 
 /** Resolve the omp binary: KABMO_OMP_BIN override, then PATH lookup. Returns

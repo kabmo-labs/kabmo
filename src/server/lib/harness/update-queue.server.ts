@@ -28,6 +28,7 @@
  */
 
 import { probeWithConfig } from '@/server/lib/harness/auto-probe.server';
+import { whichOnToolchainPath } from '@/server/lib/fs/toolchain-path';
 import { forgetProbe, rememberProbe } from '@/server/lib/harness/probe-cache.server';
 import { forgetCliVersion } from '@/server/lib/harness/update-state.server';
 import { loadHarnessConfig, saveHarnessConfig } from '@/server/lib/harness/config.server';
@@ -95,7 +96,7 @@ async function pointAtInstalledAdapter(
     facts,
     steps,
     config.command,
-    facts.agentBin ? Boolean(Bun.which(facts.agentBin)) : false,
+    facts.agentBin ? Boolean(whichOnToolchainPath(facts.agentBin)) : false,
   );
   if (!bin) return null;
   await saveHarnessConfig(harness, { ...config, command: bin });

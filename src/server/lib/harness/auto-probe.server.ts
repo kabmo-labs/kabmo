@@ -45,6 +45,7 @@ import { blockedProbe, probeHarness } from '@/server/lib/harness/launch';
 import { HARNESS_LAUNCH, harnessRequirementMet, type HarnessLaunch } from '@/server/lib/harness/launch-table';
 import { customLaunch } from '@/server/lib/harness/custom.server';
 import { resolveOmpBin } from '@/server/lib/omp/core/cli';
+import { whichOnToolchainPath } from '@/server/lib/fs/toolchain-path';
 import { rememberProbe } from '@/server/lib/harness/probe-cache.server';
 import { harnessDescriptor, harnessIds, type HarnessId } from '@/shared/lib/harness/catalog';
 import { harnessEnabled } from '@/shared/lib/harness/enabled';
@@ -80,8 +81,8 @@ export function commandAvailable(id: HarnessId, config?: HarnessConfig): boolean
   // An adapter can need a binary it SPAWNS rather than execs: the zcode bridge
   // starts `zcode app-server --stdio`, so `npx` being present says nothing.
   if (!harnessRequirementMet(launch?.requires, launch?.env)) return false;
-  if (binary === 'npx') return Boolean(Bun.which('npx') ?? Bun.which('node'));
-  return Boolean(Bun.which(binary));
+  if (binary === 'npx') return Boolean(whichOnToolchainPath('npx') ?? whichOnToolchainPath('node'));
+  return Boolean(whichOnToolchainPath(binary));
 }
 
 /**
