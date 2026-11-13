@@ -22,6 +22,17 @@ export async function settle(page: Page): Promise<void> {
 }
 
 /**
+ * The demo session every capture opens.
+ *
+ * The URL scope is the only thing that opens a chat: `/` renders the shell with
+ * no session, so a capture that never names one photographs an empty timeline
+ * and every session-scoped panel answers "No session selected". `1` is the
+ * seed's 38-tool-types sample (`server/lib/db/seed.ts`), the richest transcript
+ * the demo data has.
+ */
+const CAPTURE_SESSION_ID = '1';
+
+/**
  * Open the app with the startup overlay dismissed.
  *
  * MOCK answers "an update is available" on every boot, so the Update dialog
@@ -35,7 +46,9 @@ export async function openApp(page: Page, url: string): Promise<void> {
   await page.addLocatorHandler(page.getByRole('button', { name: 'Later', exact: true }), async (button) => {
     await button.click();
   });
-  await page.goto(url, { waitUntil: 'domcontentloaded' });
+  const target = new URL(url);
+  if (!target.searchParams.has('sessionId')) target.searchParams.set('sessionId', CAPTURE_SESSION_ID);
+  await page.goto(target.toString(), { waitUntil: 'domcontentloaded' });
   await page.locator('[data-testid="app-root"]').waitFor({ state: 'visible', timeout: 60_000 });
   await settle(page);
 }
@@ -135,9 +148,14 @@ export async function applyCaptureLook(page: Page): Promise<void> {
 /**
  * The right-panel view's own button, addressed by the title the catalog
  * declares (`panels/builtin.tsx`), which is also its accessible name.
+ *
+ * The rail button is a TOGGLE (`aria-pressed`), so clicking the view that is
+ * already showing closes the column — the first capture of the run would
+ * photograph an empty right side. Only a view that is not showing is clicked.
  */
 export async function openPanel(page: Page, title: string): Promise<void> {
-  await page.getByRole('button', { name: title, exact: true }).first().click();
+  const button = page.getByRole('button', { name: title, exact: true }).first();
+  if ((await button.getAttribute('aria-pressed')) !== 'true') await button.click();
   await new Promise((done) => setTimeout(done, 600));
 }
 

@@ -81,11 +81,25 @@ export async function captureShots(browser: Browser, baseURL: string, assetsDir:
   await setTheme(page, 'aura-dark');
   for (const [file, title] of PANELS) {
     await openPanel(page, title);
+    // A panel that opens on an empty state photographs as a broken feature.
+    // Search needs a query, and the plan panel needs a document selected; both
+    // name demo data (`server.ts`'s project, the mock plan list).
+    if (file === 'search') {
+      await page.getByPlaceholder('Search', { exact: true }).fill('format');
+      await new Promise((done) => setTimeout(done, 1200));
+    }
+    if (file === 'plan') {
+      await page.getByText('plan-panel', { exact: true }).first().click();
+      await new Promise((done) => setTimeout(done, 800));
+    }
     await shot(page, assetsDir, `panel-${file}`);
   }
 
-  // The diff view: Source Control beside the editor column.
+  // The diff view: Source Control beside the editor column, with the demo
+  // project's modified file open as a diff.
   await openPanel(page, 'Source Control');
+  await page.getByText('format.ts', { exact: true }).first().click();
+  await new Promise((done) => setTimeout(done, 1000));
   await shot(page, assetsDir, 'panel-diff');
 
   // Settings pages. The modal has no role, so a category is addressed by the

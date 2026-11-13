@@ -3,7 +3,8 @@
 </p>
 
 <p align="center">
-  Web console and diagnostic workbench for <a href="https://github.com/can1357/oh-my-pi">Oh-My-Pi</a> (<code>omp</code>) agent sessions.<br>
+  Web console and diagnostic workbench for AI coding agents.<br>
+  <a href="https://github.com/can1357/oh-my-pi">Oh-My-Pi</a> (<code>omp</code>) by default, with Claude Code, Codex, OpenCode and any ACP agent beside it.<br>
   Watch, steer and audit autonomous coding sessions from one paper-flat dashboard.
 </p>
 
@@ -29,9 +30,9 @@
 
 ## What it is
 
-The web app over a live `omp` install. It is not a terminal wrapper: Kabmo reads omp's own
-session JSONL, project registry, config and subagent transcripts, folds them into one live view, and
-writes back through omp's RPC mode.
+The web app over a live agent install. It is not a terminal wrapper: Kabmo reads the agent's own
+session data — omp's JSONL store, project registry, config and subagent transcripts, or an ACP
+agent's own protocol — folds it into one live view, and writes back through the same channel.
 
 ```bash
 kabmo serve                # production server + prebuilt client on :3000
@@ -41,12 +42,17 @@ bun run dev                # source checkout: one process, HMR, no build step
 - **One process.** Elysia serves the API and the client bundle, and the agent event stream is a
   first-class WebSocket route on that same listener (SSE as fallback) — no second server, no proxy,
   no separate client watcher.
+- **Many harnesses, one console.** `omp` over RPC is the default; fifteen ACP agents sit beside it
+  — omp's own ACP surface, Claude Code, Codex, OpenCode, Command Code, deepseek-harness,
+  Antigravity, MiniMax, pi, qwen, kimi, Cursor, ZCode, JCode and Grok — plus a user-added ACP
+  agent. The composer's model dropdown picks the harness per chat; tabs, marks, capabilities and
+  settings follow that choice.
 - **Two data modes.** `MOCK=false` (the default, also when unset) runs on the real SQLite database
   and your real workspace; `MOCK=true` swaps in bundled demo datasets. Every screenshot and
   recording on this page was captured in `MOCK=true`, in the **glass** surface style with
   **full-colour** icons.
 - **Bun only.** The server imports `bun:sqlite` and `Bun.YAML`, the client is bundled by `Bun.build`,
-  and sessions, config and updates shell out to the `omp` binary.
+  and sessions, config and updates shell out to the agent's own CLI.
 
 ## Feature tour
 
@@ -65,27 +71,40 @@ bun run dev                # source checkout: one process, HMR, no build step
 | ![Panel plugins](docs/assets/settings-panel-plugins.png)<br>**Panel plugins** — every view is a plugin, the eleven built-in ones included | ![Providers](docs/assets/settings-providers.png)<br>**Providers** — dialects, discovery, hand-added models, credential removal |
 | ![Mobile view](docs/assets/mobile.png)<br>**Mobile view** — the same session on a phone: chat, sessions drawer, and the panel drawer | ![Light theme](docs/assets/hero-light.png)<br>**Any palette** — 63 light and dark themes, applied to the whole console |
 
-- **Chat timeline** — streaming thinking blocks (omp's narrated prose promoted to answer text), a
+- **Chat timeline** — streaming thinking blocks (narrated prose promoted to answer text), a
   structured renderer per tool (bash, LSP, AST edit, `proc://` services, `wait` with a clock and
   progress, zoomable mermaid), usage footers, a persistent follow-up queue, a jump rail, drag-and-drop
-  attachments, one-shot auto-titling and in-place undo that rewinds a session.
+  attachments, one-shot auto-titling, prompt recall on ArrowUp/ArrowDown and in-place undo that
+  rewinds a session.
 - **Steering, not cancelling** — a mid-run prompt is delivered INTO the running turn, so the answer
   you were watching survives. A subagent can be steered or stopped on its own.
+- **Forks, child sessions and orchestration** — fork at any message or at the chat's tip, start child
+  sessions from the composer, and hand work to another agent with an `@harness` mention; the sidebar
+  draws parents and subagents as one branch, and every child's outcome returns as a turn in the
+  parent.
 - **Side questions** (`/btw [question]`) — answer from a private copy of the session file, without
   writing the parent transcript; a topic can be promoted into a session of its own.
-- **Workspace sidebar** — folder → session tree off omp's project registry, with search, sort,
-  archive, per-session stream status, subagent rows, scheduled tasks, and a New Workspace dialog that
-  registers a directory or clones a repository.
+- **Workspace sidebar** — folder → session tree off the project registry, with search, sort,
+  archive, per-session stream status and harness mark, subagent rows, scheduled tasks, worktree
+  sessions, and a New Workspace dialog that registers a directory or clones a repository.
+- **Schedules, held prompts and notifications** — timezone-aware background tasks with their own
+  harness and model, a chat's next prompt held until you release it (drafts restored on cancel), and
+  desktop/mobile banners when a run finishes, waits for input or fails.
 - **Eleven right-panel views, each a plugin** — context & telemetry, files, search, source control,
   wiki, terminal, your browser, the agent browser, usage, todos and plan; each remembers its own width
-  per session. A plugin can ship a Preact view, a server half, storage, RPC methods, a realtime topic
-  and settings; four are bundled (`Runner`, `Stats`, `Session Info`, `Forge`).
-- **The whole omp settings surface** — engine config generated from omp's own schema, providers,
-  agents, `AGENTS.md` / `RULES.md`, slash commands, MCP servers with live connection tests, skills,
-  token usage, notifications and dictation.
+  per session. A plugin can ship a Preact view, a server half, storage, RPC methods, a realtime topic,
+  a fenced-block renderer and settings; four are bundled (`command-runner`, `stats`, `session-info`,
+  `git-forge`).
+- **Files and editor** — multi-select with archive extract/compress, and a CodeMirror 6 editor with
+  a symbol outline, fold guides, split view and Save As; spreadsheets edit in a cell grid, `.drawio`
+  files render as diagrams, and an open tab follows disk changes by content hash.
+- **The whole agent settings surface** — engine config generated from omp's own schema, providers,
+  harnesses (launch line, env, models, modes), agents, `AGENTS.md` / `RULES.md`, slash commands, MCP
+  servers with live connection tests, skills, token usage, notifications and dictation.
 - **Self-update, opt-in auth, tray and dictation** — `kabmo update` and **About → Updates** restart
-  into the new build; a password and HTTPS are opt-in; `serve --tray` puts the icon in the menu bar;
-  the composer's mic runs omp's own local speech-to-text.
+  into the new build (harness updates run as a background job with a readable log); a password and
+  HTTPS are opt-in; `serve --tray` puts the icon in the menu bar; the composer's mic runs omp's own
+  local speech-to-text.
 
 ## Themes
 
@@ -126,10 +145,30 @@ opaque.
 
 ![Classic and glass surfaces, monochrome and full-colour icons, same palette](docs/assets/theme-styles.png)
 
+## Harnesses
+
+A chat's **harness** is the agent behind it, and it is a first-class idea: a tab in the composer's
+model dropdown, a mark beside the session in the sidebar, and a section in Settings.
+
+| Harness | Transport | Notes |
+|---|---|---|
+| `omp` | RPC (`--mode rpc-ui`) | the default; the only path that reports todos, subagents, host tools, stats and compaction |
+| `omp-acp` | ACP (`omp acp`) | the same agent over the adapter, with a slimmer surface |
+| Claude Code, Codex, OpenCode, Command Code, deepseek-harness, Antigravity, MiniMax, pi, qwen, kimi, Cursor, ZCode, JCode, Grok | ACP over stdio | each launches its own CLI; models, modes, thought levels and MCP servers are probed from the agent, not hardcoded |
+| your own | ACP over stdio | add a launch line in Settings → Harnesses |
+
+Capabilities are probed, not assumed: the fork control appears only where the agent advertises
+`session/fork` (at a message on omp, Claude Code and Codex; at the tip on OpenCode, MiniMax and
+ZCode; nowhere else), and a harness that cannot fork says so instead of silently returning the tip.
+The full measured matrix — every agent's transport, fork point, transcript store and known limits —
+is in the **[Harnesses wiki page](https://github.com/kabmo-labs/kabmo/wiki/Harnesses)**.
+
 ## Install
 
 Kabmo is published to npm and runs on **Bun 1.4+**, not Node. Live capabilities need the `omp`
-binary on `PATH` (or `KABMO_OMP_BIN`); `MOCK=true` is the only mode that runs without one.
+binary on `PATH` (or `KABMO_OMP_BIN`) — the server refuses to boot without it — and any ACP harness
+you want to use needs its own CLI installed and signed in. `MOCK=true` is the only mode that runs
+without either.
 
 ```bash
 bun install -g @oh-my-pi/pi-coding-agent   # omp is a prerequisite, never installed by Kabmo
@@ -151,6 +190,25 @@ bun run start                  # or: bun link, then `kabmo status`
 
 Updating, the full CLI reference, the tray and login entry, and multi-instance ports:
 **[Installation →](https://github.com/kabmo-labs/kabmo/wiki/Installation)**
+
+## Shells
+
+The server is the product; a shell is a window on one. Every shell is thin — the client is
+same-origin relative, so a system webview on the real `http://host:port` URL runs the unmodified
+page — and every shell decides which server it is on, starts and stops a local one, and owns the
+window chrome.
+
+| Shell | Stack | Notes |
+|---|---|---|
+| macOS | Swift 6 + AppKit + WKWebView | 660 KB app, ~40 MB RSS; no runtime in the bundle |
+| Windows | .NET 8 + WPF + WebView2 | `WindowChrome` owns the resize border |
+| Linux | Rust + GTK 3 + WebKitGTK 4.1 | a port of the macOS shell, same contract |
+| Android | Kotlin + platform WebView | viewer only; the server runs elsewhere |
+| iOS | Swift 6 + UIKit + WebKit | viewer only; the Android shell is the reference |
+
+The three desktop shells share the server list, the ownership rule and the bridge contract
+(`src/client/lib/desktop/`); the two mobile shells are viewers because Kabmo's server needs `omp`,
+a POSIX PTY, `git` and `rg` on the host. Each has its own release job.
 
 ## Configuration
 
@@ -182,11 +240,11 @@ Bind to loopback and reach it over SSH, a VPN or a tunnel — full detail in
 ```text
 src/
 ├─ client/    Preact UI — zero React packages
-├─ server/    Bun-only — Elysia routes, SQLite, omp RPC bridge, fs/git/terminal
+├─ server/    Bun-only — Elysia routes, SQLite, omp RPC and ACP bridges, fs/git/terminal
 ├─ shared/    Imported by both — types, chat timeline folding, pure helpers
 └─ cli/       kabmo command (plain ESM, runs under Bun)
-packages/     kabmo-sdk (plugin contract) · kabmo-ui (Preact kit)
-marketplace/  command-runner · stats · session-info
+packages/     kabmo-sdk (plugin contract) · kabmo-ui (Preact kit) · macos · windows · linux · android · ios
+marketplace/  command-runner · stats · session-info · git-forge
 ```
 
 [`AGENTS.md`](AGENTS.md) is the short binding contract for contributors and agents. The detail —
