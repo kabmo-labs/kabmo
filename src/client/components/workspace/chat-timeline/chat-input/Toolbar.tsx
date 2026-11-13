@@ -187,7 +187,9 @@ export function ComposerToolbar({
 
         {(showModel || showThinking) && showAccess && <div className="w-[1px] h-3 bg-ink/10" />}
 
-        {showAccess && onSelectAccess && <AccessDropdown value={accessMode} onSelect={onSelectAccess} />}
+        {showAccess && onSelectAccess && (
+          <AccessDropdown value={accessMode} onSelect={onSelectAccess} harness={harness} />
+        )}
 
         {/* On a phone the mode toggles live in the row above (the attachment
             row), because this one is a single line already filled by the

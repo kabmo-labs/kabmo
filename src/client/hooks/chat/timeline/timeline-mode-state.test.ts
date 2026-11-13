@@ -228,8 +228,8 @@ describe('useModeMarkers', () => {
 });
 
 describe('useChatTimelineAccessMode', () => {
-  function AccessProbe({ appSettings }: { appSettings: Record<string, any> }) {
-    const { accessMode, accessModeRef, setAccessMode } = useChatTimelineAccessMode(appSettings);
+  function AccessProbe({ appSettings, harness }: { appSettings: Record<string, any>; harness?: string }) {
+    const { accessMode, accessModeRef, setAccessMode } = useChatTimelineAccessMode(appSettings, harness);
     return h(
       'div',
       null,
@@ -239,9 +239,9 @@ describe('useChatTimelineAccessMode', () => {
     );
   }
 
-  function paint(appSettings: Record<string, any>): HTMLElement {
+  function paint(appSettings: Record<string, any>, harness?: string): HTMLElement {
     container ??= document.body.appendChild(document.createElement('div'));
-    render(h(AccessProbe, { appSettings }), container as HTMLElement);
+    render(h(AccessProbe, { appSettings, ...(harness ? { harness } : {}) }), container as HTMLElement);
     return container;
   }
 
@@ -271,6 +271,35 @@ describe('useChatTimelineAccessMode', () => {
     await act(async () => { (el.querySelector('#yolo') as HTMLButtonElement).click(); });
     await drain();
     expect(settingsPosts).toContain(JSON.stringify({ omp_access_mode: 'yolo' }));
+  });
+
+  test("another harness does not inherit omp's pick", () => {
+    // Measured shape of the defect: `Full bypass` picked on omp followed the
+    // operator to `claude`, whose auto-answered approvals were a grant nobody
+    // made for that agent.
+    expect(paint({ omp_access_mode: 'yolo' }, 'claude').querySelector('#mode')?.textContent).toBe('always-ask');
+  });
+
+  test("a pick on another harness is stored for that harness alone", async () => {
+    const el = paint({ omp_access_mode: 'always-ask' }, 'claude');
+    await act(async () => { (el.querySelector('#yolo') as HTMLButtonElement).click(); });
+    await drain();
+    expect(settingsPosts).toContain(JSON.stringify({ harness_access_modes: { claude: 'yolo' } }));
+    // omp's global key is the SERVER's spawn default and must not move here.
+    expect(settingsPosts.some((body) => body.includes('omp_access_mode'))).toBe(false);
+  });
+
+  test('switching the harness tab swaps in that harness’s own pick', async () => {
+    const el = paint({ harness_access_modes: { claude: 'write' }, omp_access_mode: 'yolo' }, 'omp-rpc');
+    expect(el.querySelector('#mode')?.textContent).toBe('yolo');
+    await act(async () => {
+      render(
+        h(AccessProbe, { appSettings: { harness_access_modes: { claude: 'write' }, omp_access_mode: 'yolo' }, harness: 'claude' }),
+        el,
+      );
+    });
+    expect(el.querySelector('#mode')?.textContent).toBe('write');
+    expect(el.querySelector('#ref')?.textContent).toBe('write');
   });
 });
 

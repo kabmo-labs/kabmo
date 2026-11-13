@@ -138,9 +138,6 @@ export function useChatTimeline({
   const { pendingComposerModelRef, pendingThinkingLevelRef, composerModelRef, deferredComposerPickRef, pendingHarnessRef } =
     useComposerRefs(sessionId);
 
-  // Access control is a GLOBAL persisted preference, unlike per-session picks.
-  const { accessMode, accessModeRef, setAccessMode: handleAccessModeChange } = useChatTimelineAccessMode(appSettings);
-
   // "Wait for session": the pick (first prompt or a NEXT one) and the ref the
   // send reads. It is per-session UI state, so each chat keeps its own.
   const waitingDependency = useWaitingDependencyChoice();
@@ -206,6 +203,13 @@ export function useChatTimeline({
     [folders, sessionId, harnessPick],
   );
   const { modes, planReview } = useComposerModes(sessionId, chatHarness);
+
+  // Access control, remembered PER HARNESS: omp's transports carry omp's own
+  // approval gate, while another agent only receives Kabmo's tier as the answer
+  // policy for the approvals it raises — so a pick made for one agent must not
+  // follow the operator onto another.
+  const { accessMode, accessModeRef, setAccessMode: handleAccessModeChange } =
+    useChatTimelineAccessMode(appSettings, chatHarness);
 
   const { steerOmpAgent, executeSend } = useChatTimelineSend({
     folders,
