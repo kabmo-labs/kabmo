@@ -273,6 +273,28 @@ public actor ServerStore {
     persist()
   }
 
+  /**
+   Connect this window to `raw`, remembering it under the same rules as the panel.
+
+   The splash's server settings need "type an address and go", which is two
+   operations the panel performs separately — add, then activate. Doing it here
+   keeps the ORDER and the duplicate case in one place: an address already in the
+   list is not an error, it is a row to select, and the address that was typed is
+   the one that must answer (the store's `activate` refuses a remote that does
+   not).
+
+   `activate` persists the selection, so the next cold start opens this server
+   rather than the one that failed.
+   */
+  public func connectRemote(_ raw: String) async throws -> String {
+    let normalised = try normaliseUrl(raw)
+    if let existing = state.entries.first(where: { $0.url == normalised }) {
+      return try await activate(existing.id)
+    }
+    try addRemote(label: "", url: normalised)
+    return try await activate(serverId(kind: .remote, value: normalised))
+  }
+
   public func remove(_ id: String) throws {
     let before = state.entries.count
     state.entries.removeAll { $0.id == id }

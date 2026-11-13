@@ -275,6 +275,103 @@ func storeCases() async {
   }
 }
 
+// ------------------------------------------------- the splash's server settings
+
+/**
+ The splash's "Server settings": the values the sheet draws, and the action it
+ offers.
+
+ Two kinds of failure this covers, neither of which throws in the app:
+ the sheet prefilled with an address nobody typed (submitting the wrong server),
+ and Connect refusing an address the user is trying to CORRECT — the failing one
+ is in the list, so "already remembered" must not be an error.
+ */
+func serverSettingsCases() async {
+  group("ServerSettingsForm")
+
+  let state = ServersState(
+    entries: [
+      ServerEntry(id: "remote:http://nas:8443", label: "NAS", url: "http://nas:8443",
+                  kind: .remote, running: false, owned: false, source: "stored"),
+      ServerEntry(id: "local:3001", label: "Local :3001", url: "http://127.0.0.1:3001",
+                  kind: .managed, port: 3001, running: true, owned: true, source: "stored"),
+    ],
+    detected: [
+      ServerEntry(id: "local:7920", label: "Found :7920", url: "http://127.0.0.1:7920",
+                  kind: .managed, port: 7920, running: true, owned: false, source: "record"),
+    ],
+    activeId: "local:3001",
+    activeUrl: "http://127.0.0.1:3001"
+  )
+
+  var form = ServerSettingsForm(state: state, address: nil)
+  check("the field starts on the window's own server",
+        form.address == "http://127.0.0.1:3001")
+  check("the picker offers the stored list, then the detected ones",
+        form.rows.map { $0.id } == ["remote:http://nas:8443", "local:3001", "local:7920"])
+  check("a row's title says whether that server answers",
+        form.title(of: form.rows[0]) == "NAS · stopped")
+
+  form = form.selecting(form.rows[0])
+  check("picking a row puts its address in the field", form.address == "http://nas:8443")
+
+  // The typed address wins over everything: the sheet is re-presented after a
+  // refusal with what the user typed, and a prefill from the list would erase it.
+  check("a typed address survives a prefill",
+        ServerSettingsForm(state: state, address: "https://other:9000").address == "https://other:9000")
+  check("with no server at all the field is empty, never a made-up default",
+        ServerSettingsForm(state: ServersState(entries: [], detected: []), address: nil).address.isEmpty)
+
+  check("a host and port is normalised to the address that will be stored",
+        (try? form.validated()) == "http://nas:8443")
+  var refused = false
+  do { _ = try ServerSettingsForm(state: state, address: "https://host/kabmo/").validated() } catch { refused = true }
+  check("a base path is refused before Connect reaches the store", refused)
+
+  group("connectRemote")
+
+  // The address the user retyped because it was wrong: it is already in the
+  // list, and connecting must select it rather than refuse it as a duplicate.
+  do {
+    let deps = FakeDeps(health: ["http://nas:8443": Health(version: "1.0", mode: "prod")])
+    let (store, box) = makeStore(deps: deps, persisted: PersistedState(
+      entries: [StoredServer(id: "remote:http://nas:8443", label: "NAS", url: "http://nas:8443", kind: .remote)]
+    ))
+    let url = try? await store.connectRemote("nas:8443")
+    check("an already-remembered address connects without a duplicate row",
+          url == "http://nas:8443" && box.saved.last?.entries.count == 1)
+    check("...and becomes the selection", box.saved.last?.activeId == "remote:http://nas:8443")
+  }
+
+  do {
+    let deps = FakeDeps(health: ["http://10.0.0.5:3000": Health()])
+    let (store, box) = makeStore(deps: deps, persisted: PersistedState())
+    let url = try? await store.connectRemote("10.0.0.5:3000")
+    check("a new address is remembered and connected", url == "http://10.0.0.5:3000")
+    check("...as a remote row", box.saved.last?.entries.first?.kind == .remote)
+    check("...with the normalised address", box.saved.last?.entries.first?.url == "http://10.0.0.5:3000")
+  }
+
+  do {
+    let deps = FakeDeps()
+    let (store, _) = makeStore(deps: deps, persisted: PersistedState())
+    var message = ""
+    do { _ = try await store.connectRemote("https://nas:8443") } catch {
+      message = (error as? LocalizedError)?.errorDescription ?? "\(error)"
+    }
+    check("a server that does not answer is refused with a sentence, not a blank load",
+          message.contains("not answering"))
+  }
+
+  do {
+    let deps = FakeDeps(health: ["http://ok:3000": Health()])
+    let (store, _) = makeStore(deps: deps, persisted: PersistedState())
+    var refused = false
+    do { _ = try await store.connectRemote("ftp://ok") } catch { refused = true }
+    check("an address that is not http(s) is refused", refused)
+  }
+}
+
 // ------------------------------------------------------------------ side effects
 
 func systemCases() async {
@@ -597,6 +694,8 @@ final class SimpleHTTPServer: @unchecked Sendable {
 // ------------------------------------------------------------------ run
 
 await storeCases()
+// The splash's server settings sheet: prefill, rows, and what Connect does.
+await serverSettingsCases()
 await systemCases()
 // The launch splash: its state machine, and the wordmark it draws.
 splashCases()

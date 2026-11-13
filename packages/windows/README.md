@@ -126,7 +126,7 @@ compile it. Recorded so the next reader does not assume the border works.
 
 From the moment the window opens until the console paints, the shell draws the same
 four things the Android, iOS and macOS shells draw: the **wordmark**, a **progress
-bar**, one sentence, and — on a failure — **Retry**.
+bar**, one sentence, and — on a failure — **Retry** and **Server settings**.
 
 It is a sibling of the webview, never a view inside the page: the page cannot report
 its own readiness, and a page-drawn splash would vanish exactly when the page fails
@@ -146,7 +146,16 @@ to load.
   read from `CoreWebView2NavigationKind.Reload` rather than by comparing addresses —
   the flag the macOS and iOS delegates do not have.
 - **A failed main-frame load keeps the splash up** with our sentence plus WebView2's
-  own (`WebErrorStatus` names the failure kind), and Retry.
+  own (`WebErrorStatus` names the failure kind), and the two actions.
+- **The actions are drawn from the palette, not WPF's default template.** A plain
+  `Button` still paints Aero2's grey plate and ignores `CornerRadius`, so
+  `ShellButton` replaces the template with a `Border` carrying the palette's inks —
+  the same filled/outlined pair the Android and iOS overlays draw, at their metrics.
+- **Server settings is a native dialog**, because the console's own server control is
+  a page and a failed load has none. `ServerSettingsForm` holds the rules (prefill,
+  remembered rows, `ServerAddress.Normalise`), `ServerSettingsDialog` draws them, and
+  Connect runs `ServerStore.ConnectRemoteAsync` — a refusal re-presents the dialog
+  with the sentence and the typed address.
 - **The webview is HIDDEN, not covered.** A WebView2 is a child HWND and WPF cannot
   paint over one, which is why `RenderSplash` toggles the webview's visibility rather
   than raising a `Panel.ZIndex`.

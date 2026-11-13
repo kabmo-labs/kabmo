@@ -119,6 +119,32 @@ pub fn cases(r: &mut Runner) {
         "the sentence is the muted ink, not the platform's label colour",
         shipped_css.contains(&format!(".kabmo-splash label {{ color: {}; }}", shipped.muted)),
     );
+    // The actions: a bare `GtkButton` is painted by the theme, so the palette's
+    // plates and the theme's gradient removal are the whole reason these rules
+    // exist — a retry that reads as a grey system button on the console's paper
+    // is the reported defect.
+    r.check(
+        "the primary action is filled with the ink and labelled in the canvas",
+        shipped_css.contains(&format!(
+            ".kabmo-splash button.kabmo-primary {{ background-color: {}; color: {}; }}",
+            shipped.ink, shipped.canvas
+        )),
+    );
+    r.check(
+        "the secondary action is the paper plate with the ink label",
+        shipped_css.contains(&format!(
+            ".kabmo-splash button.kabmo-secondary {{ background-color: {}; color: {}; }}",
+            shipped.paper, shipped.ink
+        )),
+    );
+    r.check(
+        "the theme's own button gradient is removed",
+        shipped_css.contains("background-image: none;"),
+    );
+    r.check(
+        "both actions share the 8px corner radius",
+        shipped_css.contains("border-radius: 8px;") && shipped_css.contains("padding: 6px 16px;"),
+    );
     r.check(
         "every rule is scoped to the splash, so no other widget inherits it",
         shipped_css

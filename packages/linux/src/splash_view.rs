@@ -4,8 +4,8 @@
  */
 
 /**
- * The splash widget: the README's wordmark, a progress bar, one sentence, and a
- * Retry.
+ * The splash widget: the README's wordmark, a progress bar, one sentence, and the
+ * two actions a failure offers (Retry and Server settings).
  *
  * Split from `splash.rs` (the rules) for the reason `splash.rs` states: the rules
  * are what the suite exercises and this half needs GTK. Same shape as the macOS
@@ -22,12 +22,15 @@ use crate::palette::{splash_css, ShellPalette};
 use crate::splash::{sentence_for, Failure, Phase, Progress};
 use crate::wordmark;
 
-/// The splash widget: a wordmark, a line of status, a bar and a Retry.
+/// The splash widget: a wordmark, a line of status, a bar and the two actions.
 pub struct Splash {
     pub widget: gtk::Box,
     label: gtk::Label,
     bar: gtk::ProgressBar,
     retry: gtk::Button,
+    settings: gtk::Button,
+    /// The pair, shown together on a failure and hidden together otherwise.
+    actions: gtk::Box,
     wordmark: gtk::DrawingArea,
     /// The stylesheet provider, held so a palette change can reload it.
     ///
@@ -133,21 +136,34 @@ impl Splash {
         label.set_margin_top(10);
         column.pack_start(&label, false, false, 0);
 
+        // The actions: the same filled/outlined pair the Android and iOS overlays
+        // draw, with the palette's inks coming from `splash_css` (a bare
+        // `GtkButton` is painted in the theme's own grey, which is why the shipped
+        // Retry looked like a form control from another product).
         let retry = gtk::Button::with_label("Retry");
-        retry.set_halign(gtk::Align::Center);
-        retry.set_margin_top(18);
-        retry.set_no_show_all(true);
-        column.pack_start(&retry, false, false, 0);
+        retry.style_context().add_class("kabmo-primary");
+        let settings = gtk::Button::with_label("Server settings");
+        settings.style_context().add_class("kabmo-secondary");
+
+        let actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+        actions.set_halign(gtk::Align::Center);
+        actions.set_margin_top(18);
+        actions.set_no_show_all(true);
+        actions.pack_start(&retry, false, false, 0);
+        actions.pack_start(&settings, false, false, 0);
+        column.pack_start(&actions, false, false, 0);
 
         widget.pack_start(&column, true, true, 0);
         widget.show_all();
-        retry.hide();
+        actions.hide();
 
         Self {
             widget,
             label,
             bar,
             retry,
+            settings,
+            actions,
             wordmark: wordmark_area,
             style,
             palette: RefCell::new(palette),
@@ -176,6 +192,11 @@ impl Splash {
         self.retry.connect_clicked(move |_| on_retry());
     }
 
+    /// The window owns the settings dialog; this widget only reports the press.
+    pub fn on_open_server_settings(&self, on_open: impl Fn() + 'static) {
+        self.settings.connect_clicked(move |_| on_open());
+    }
+
     pub fn show_progress(&self, progress: Progress) {
         // The single entry point, so no caller can leave the splash half-updated —
         // the bar, the sentence and the actions always describe one `Progress`.
@@ -187,7 +208,15 @@ impl Splash {
         self.widget.show_all();
 
         let failed = progress.phase == Phase::Failed;
-        self.retry.set_visible(failed);
+        // `show_all` above re-shows every child, so the row is set AFTER it — and
+        // `show_all` on the row itself is what draws the buttons inside it, since
+        // the row was created `no_show_all`.
+        if failed {
+            self.actions.show_all();
+            self.actions.set_visible(true);
+        } else {
+            self.actions.set_visible(false);
+        }
 
         // A FAILED load hides the bar: a frozen partial bar says "still working"
         // over a message that says the opposite.

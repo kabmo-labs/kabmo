@@ -11,10 +11,10 @@
  * load. So this is a sibling of the webview, owned by the shell.
  *
  * The same four things the Android and iOS shells draw, in the same order: the
- * README's wordmark, a progress bar, one sentence, and — on a failure — Retry.
- * Every state decision is `SplashState`'s and this class only draws it, because
- * the orderings that fail (a late estimate resurrecting a finished splash, an
- * error page's own `didFinish`) are not visible in a view.
+ * README's wordmark, a progress bar, one sentence, and — on a failure — Retry and
+ * Server settings. Every state decision is `SplashState`'s and this class only
+ * draws it, because the orderings that fail (a late estimate resurrecting a
+ * finished splash, an error page's own `didFinish`) are not visible in a view.
  */
 
 import AppKit
@@ -32,10 +32,16 @@ public final class SplashView: NSView {
   /// Called when the user asks to try the address again.
   public var onRetry: (() -> Void)?
 
+  /// Called when the user gives up and wants the native server settings sheet.
+  public var onOpenServerSettings: (() -> Void)?
+
   private let wordmark = NSImageView()
   private let bar = NSProgressIndicator()
   private let status = NSTextField(labelWithString: "")
-  private let retry = NSButton(title: "Retry", target: nil, action: nil)
+  private let retry = SplashActionButton(title: "Retry", filled: true)
+  private let serverSettings = SplashActionButton(title: "Server settings", filled: false)
+  /// The pair, shown together on a failure and hidden together otherwise.
+  private let actions = NSStackView()
 
   /// The state last drawn, so a palette change can repaint the same one.
   private var state: SplashState = .done
@@ -69,12 +75,22 @@ public final class SplashView: NSView {
     status.lineBreakMode = .byWordWrapping
     status.preferredMaxLayoutWidth = 460
 
-    retry.bezelStyle = .rounded
-    retry.isHidden = true
     retry.target = self
     retry.action = #selector(retryTapped)
+    serverSettings.target = self
+    serverSettings.action = #selector(serverSettingsTapped)
 
-    for view in [wordmark, bar, status, retry] {
+    // One row for both actions, because they are one decision: Retry the
+    // address on screen, or change it. Separate constraints let the two drift
+    // apart in size and spacing as soon as either title changes.
+    actions.orientation = .horizontal
+    actions.alignment = .centerY
+    actions.spacing = SplashActionMetrics.gap
+    actions.addArrangedSubview(retry)
+    actions.addArrangedSubview(serverSettings)
+    actions.isHidden = true
+
+    for view in [wordmark, bar, status, actions] {
       view.translatesAutoresizingMaskIntoConstraints = false
       addSubview(view)
     }
@@ -92,8 +108,8 @@ public final class SplashView: NSView {
       status.centerXAnchor.constraint(equalTo: centerXAnchor),
       status.topAnchor.constraint(equalTo: bar.bottomAnchor, constant: 10),
       status.widthAnchor.constraint(lessThanOrEqualToConstant: 460),
-      retry.centerXAnchor.constraint(equalTo: centerXAnchor),
-      retry.topAnchor.constraint(equalTo: status.bottomAnchor, constant: 16),
+      actions.centerXAnchor.constraint(equalTo: centerXAnchor),
+      actions.topAnchor.constraint(equalTo: status.bottomAnchor, constant: 18),
     ])
 
     applyPalette(.shipped)
@@ -115,8 +131,11 @@ public final class SplashView: NSView {
     layer?.backgroundColor = next.canvasColor.cgColor
     // `NSProgressIndicator` has no tint: its bar is drawn by the system in the
     // accent colour, and the only lever is the app's own `appearance` — so the
-    // bar is left alone rather than pretending to be themed. The sentence and
-    // the background are what a user reads at a glance.
+    // bar is left alone rather than pretending to be themed. The sentence, the
+    // background and the ACTIONS are what a user reads at a glance, and the two
+    // buttons take the palette's own inks (see `SplashActions.swift`).
+    retry.applyPalette(next)
+    serverSettings.applyPalette(next)
     render(state)
   }
 
@@ -130,7 +149,7 @@ public final class SplashView: NSView {
     alphaValue = 1
 
     let failed = state.phase == .failed
-    retry.isHidden = !failed
+    actions.isHidden = !failed
 
     // A determinate bar at 0 is the "stuck" look this splash exists to remove, so
     // the connecting phase keeps it sweeping until a real percentage arrives —
@@ -163,6 +182,11 @@ public final class SplashView: NSView {
     render(.connecting)
     onRetry?()
   }
+
+  /// The window owns the sheet; this view only reports the press.
+  @objc private func serverSettingsTapped() {
+    onOpenServerSettings?()
+  }
 }
 
 /**
@@ -189,10 +213,12 @@ public final class SplashView: NSView {
 public func installSplash(
   in container: NSView,
   state: SplashState,
-  onRetry: (() -> Void)? = nil
+  onRetry: (() -> Void)? = nil,
+  onOpenServerSettings: (() -> Void)? = nil
 ) -> SplashView {
   let splash = SplashView(frame: container.bounds)
   splash.onRetry = onRetry
+  splash.onOpenServerSettings = onOpenServerSettings
   splash.render(state)
   container.addSubview(splash)
   return splash

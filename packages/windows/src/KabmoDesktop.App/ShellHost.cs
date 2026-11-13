@@ -35,6 +35,13 @@ public sealed class ShellHost
     /// <summary>The address the webview has FINISHED on, latched on completion.</summary>
     private string? _shownUrl;
     /// <summary>
+    /// The address the window is TRYING to load — what Retry repeats and what the
+    /// server settings dialog prefills, before the view has finished anything.
+    /// </summary>
+    private string? _pendingUrl;
+    /// <summary>One server settings dialog at a time; it is modal, so a second would stack.</summary>
+    private bool _settingsOpen;
+    /// <summary>
     /// The files the OS handed over that the page has not taken yet.
     ///
     /// Filled from the COMMAND LINE, which is how Windows delivers a document:
@@ -80,6 +87,7 @@ public sealed class ShellHost
         _notifications = new NotificationHost(_window);
         _window.Root.Children.Add(_splash);
         _splash.OnRetry = () => _ = BootAsync();
+        _splash.OnOpenServerSettings = () => _ = OpenServerSettingsAsync();
         // The webview is an HWND, so WPF content layered over it does not
         // render — a visible splash would sit BEHIND it. The splash is shown by
         // hiding the webview, which is the only way to cover an HWND host.
@@ -271,6 +279,7 @@ public sealed class ShellHost
     {
         if (!Uri.TryCreate(url, UriKind.Absolute, out var parsed)) return;
         _shownUrl = null;
+        _pendingUrl = parsed.ToString();
         StartLoad(parsed.ToString());
     }
 
@@ -350,6 +359,53 @@ public sealed class ShellHost
         if (args.NavigationKind == CoreWebView2NavigationKind.Reload)
         {
             RenderSplash(SplashState.Connecting);
+        }
+    }
+
+    /**
+     * The splash's "Server settings": change the address the window loads.
+     *
+     * The console's own server control is a page, and the failure splash is
+     * exactly the moment that page does not exist — so the way back has to be
+     * native. Connect runs `ConnectRemoteAsync`, which normalises, remembers and
+     * probes, and only then navigates.
+     *
+     * A refusal (a bad address, or a server that does not answer) re-presents the
+     * dialog with what the user typed and the sentence that refused it: the form
+     * has already closed when Connect is pressed, so there is nowhere else to show
+     * it. The loop is the whole reason the dialog owns no validation of its own.
+     */
+    private async Task OpenServerSettingsAsync()
+    {
+        if (_store is null || _settingsOpen) return;
+        _settingsOpen = true;
+        try
+        {
+            string? error = null;
+            string? address = null;
+            while (true)
+            {
+                var state = await _store.SnapshotAsync();
+                var form = new ServerSettingsForm(state, address ?? _pendingUrl);
+                var dialog = new ServerSettingsDialog(form, error, _splash.Palette, _window);
+                if (dialog.ShowDialog() != true) return;
+
+                var typed = dialog.TypedAddress;
+                address = typed;
+                try
+                {
+                    Navigate(await _store.ConnectRemoteAsync(typed));
+                    return;
+                }
+                catch (Exception refused)
+                {
+                    error = refused.Message;
+                }
+            }
+        }
+        finally
+        {
+            _settingsOpen = false;
         }
     }
 

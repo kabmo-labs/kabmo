@@ -398,7 +398,9 @@ memory a page-level collection can return (see `src/memory.rs`).
 | `src/bridge.rs` | the injected JS, the call parser, the reply script, and the `desktopInfo` payload |
 | `src/open_paths.rs` | the files the OS handed over: the argv filter, the queue, and the `__kabmoOpenPaths` script |
 | `src/splash.rs` | the launch overlay's RULES: four phases, the progress arithmetic, the reload test, the sentences, and the stylesheet the fill needs |
-| `src/splash_view.rs` | the overlay's widget: the wordmark, the bar and its sweep timer, the sentence, Retry |
+| `src/splash_view.rs` | the overlay's widget: the wordmark, the bar and its sweep timer, the sentence, and the two actions |
+| `src/server_settings.rs` | the splash's server settings RULES: the field's prefill, the picker's rows, and what a submitted address must pass |
+| `src/settings_dialog.rs` | the GTK dialog that draws them: the address field, the remembered rows, Connect |
 | `src/wordmark.rs` | the SVG path parser and the cairo painter for the README's lockup |
 | `src/wordmark_data.rs` | GENERATED from `public/kabmo-wordmark.svg` by `scripts/shell-wordmark.mjs` |
 | `src/memory.rs` | when the web process should trim: the pressure thresholds, and why a policy WebKit would refuse is never handed to it |
@@ -421,8 +423,11 @@ memory a page-level collection can return (see `src/memory.rs`).
   wire shapes, the edge arithmetic, the splash's progress and reload rules, the
   splash's stylesheet, and the wordmark's parser against the SVG — is unit-tested.
   The splash itself was verified under Xvfb: against a dead port it renders the mark,
-  the sentence and Retry in the error tone; against a server that stalls, the mark
-  and the sweeping bar.
+  the sentence and the two actions in the error tone; against a server that stalls, the
+  mark and the sweeping bar. The actions are painted by `splash_css` — a bare
+  `GtkButton` is Adwaita's grey plate, which no palette can reach — so the filled
+  (ink) and outlined (paper) pair are stylesheet rules, and the rules suite asserts
+  them.
   **The splash's SIZE is a GTK rule, not a style choice, and it was wrong.** A
   `GtkOverlay` allocates its overlay child at that child's own requested size and
   honours its alignment, so a single `GtkBox` carrying `halign/valign = Center` was

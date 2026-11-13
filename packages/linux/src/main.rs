@@ -40,6 +40,8 @@ use kabmo_desktop::open_paths::{launch_paths, open_paths_script, OpenPathQueue};
 use kabmo_desktop::APP_NAME;
 use kabmo_desktop::palette::ShellPalette;
 use kabmo_desktop::persisted::{read_state, write_state};
+use kabmo_desktop::server_settings::ServerSettingsForm;
+use kabmo_desktop::settings_dialog;
 use kabmo_desktop::splash::Progress;
 use kabmo_desktop::splash_view::Splash;
 use kabmo_desktop::store::ServerStore;
@@ -486,6 +488,28 @@ impl Shell {
             }
         });
 
+        // The splash's "Server settings": the console's own server control is a
+        // PAGE, and a failed load is exactly when there is no page to open it
+        // from — so the way back is a native dialog.
+        let window_for_settings = self.window.clone();
+        let store_for_settings = self.store.clone();
+        let view_for_settings = self.view.clone();
+        let url_for_settings = self.current_url.clone();
+        let shown_for_settings = self.shown_uri.clone();
+        let progress_for_settings = self.progress.clone();
+        let splash_for_settings = self.splash.clone();
+        self.splash.on_open_server_settings(move || {
+            open_server_settings(
+                &window_for_settings,
+                &store_for_settings,
+                &view_for_settings,
+                &url_for_settings,
+                &shown_for_settings,
+                &progress_for_settings,
+                &splash_for_settings,
+            );
+        });
+
         // A link with `target="_blank"` (every external link in the console)
         // opens in the user's browser, never in a second webview: a console page
         // that spawned a chromeless window would have no address bar and no way
@@ -642,6 +666,55 @@ fn begin_load(
     *progress.borrow_mut() = Progress::connecting();
     splash.show_progress(*progress.borrow());
     view.load_uri(url);
+}
+
+/// The splash's "Server settings": change the address the window loads.
+///
+/// The dialog is a nested GTK loop, so a refusal is re-presented rather than
+/// reported elsewhere: the sheet has already closed when Connect is pressed, and
+/// the sentence that refused the address is the answer the user needs to see
+/// over the field they typed it in.
+///
+/// `connect_remote` may START a stored local server when the typed address is
+/// one of its own (`activate` does that). This path does not wait for it — the
+/// splash's Retry is one press away and the address is the one they asked for —
+/// while the page's own `servers_activate` keeps the window on the current
+/// console until the new one answers (`start_server`).
+fn open_server_settings(
+    window: &gtk::Window,
+    store: &Rc<RefCell<ServerStore<SystemDeps>>>,
+    view: &WebView,
+    current_url: &Rc<RefCell<String>>,
+    shown_uri: &Rc<RefCell<Option<String>>>,
+    progress: &Rc<RefCell<Progress>>,
+    splash: &Rc<Splash>,
+) {
+    let mut error: Option<String> = None;
+    let mut address: Option<String> = None;
+    loop {
+        let state = store.borrow().snapshot();
+        let pending = address
+            .clone()
+            .unwrap_or_else(|| current_url.borrow().clone());
+        let form = ServerSettingsForm::new(&state, Some(pending.as_str()));
+        let Some(typed) = settings_dialog::show(window, &form, error.as_deref()) else {
+            return;
+        };
+        // The borrow ends at this statement (it is not held across `begin_load`):
+        // `connect_remote` mutates the same `RefCell` the snapshot above read, and
+        // a second borrow while one is live panics at run time.
+        let result = store.borrow_mut().connect_remote(&typed);
+        match result {
+            Ok((url, _starting)) => {
+                begin_load(view, current_url, shown_uri, progress, splash, &url);
+                return;
+            }
+            Err(refusal) => {
+                error = Some(refusal.to_string());
+                address = Some(typed);
+            }
+        }
+    }
 }
 
 /// Hand the queued files to the page, when there is a page.

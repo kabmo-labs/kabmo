@@ -613,6 +613,7 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
     runSettingsMenuCases()
     runEditingCases()
     runSplashCases()
+    runServerSettingsCases()
     runSplashFillCases()
     // The upload cases come BEFORE the drop cases for the same measured reason:
     // releasing a drag leaves the suite's view with no document, so a later
@@ -1080,15 +1081,88 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
           sentence?.stringValue == "Loading the console… 42%")
 
     splash.render(SplashState.connecting.failedBecause(.connect))
-    check("a failure offers Retry",
-          splash.subviews.compactMap { $0 as? NSButton }.contains { !$0.isHidden })
+    func actions(in view: NSView) -> [SplashActionButton] {
+      view.subviews.flatMap { child -> [SplashActionButton] in
+        (child as? SplashActionButton).map { [$0] } ?? actions(in: child)
+      }
+    }
+    let buttons = actions(in: splash).filter { !$0.isHidden }
+    check("a failure offers Retry and Server settings",
+          buttons.map { $0.attributedTitle.string } == ["Retry", "Server settings"])
     check("a failure hides the bar, which would say 'still working'", bar?.isHidden == true)
     check("the failure sentence names what to check",
           sentence?.stringValue.contains("Could not connect") == true)
 
+    // The colour and size the shipped `.rounded` bezel could not carry: the
+    // primary is the palette's ink with the canvas as its label, the secondary
+    // is paper with the ink label, and both use the mobile overlays' metrics.
+    if let retry = buttons.first, let settings = buttons.last {
+      let palette = splash.palette
+      func colour(_ button: SplashActionButton) -> CGColor? { button.layer?.backgroundColor }
+      check("Retry is filled with the palette's ink",
+            colour(retry) == palette.inkColor.cgColor)
+      check("Retry's label contrasts with its plate",
+            retry.attributedTitle.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? NSColor
+              == palette.canvasColor)
+      check("Server settings is outlined in the palette's paper",
+            colour(settings) == palette.paperColor.cgColor)
+      check("both actions share the 8pt corner radius",
+            retry.layer?.cornerRadius == 8 && settings.layer?.cornerRadius == 8)
+      check("both actions are at least the 30pt action height",
+            retry.intrinsicContentSize.height >= 30 && settings.intrinsicContentSize.height >= 30)
+    }
+
+    var settingsAsked = false
+    splash.onOpenServerSettings = { settingsAsked = true }
+    buttons.last?.performClick(nil)
+    check("Server settings reports the press to the window", settingsAsked)
+
+    splash.render(.connecting)
+    check("Retry and Server settings are hidden while connecting",
+          actions(in: splash).allSatisfy { $0.superview?.isHidden == true })
+    splash.render(SplashState.connecting.failedBecause(.connect))
+
     splash.render(.done)
     check("the finished splash draws nothing", splash.isHidden)
     splash.removeFromSuperview()
+  }
+
+  /**
+   The server settings sheet, assembled from the real `ServerSettingsSheet`.
+
+   The rules are `Tests/main.swift`'s, but a sheet that ignored them — an empty
+   field over a list of servers, or a picker with no rows — would pass every one
+   of those. What this checks is the view the user is handed on a failure: the
+   field starts on the address the window was trying, every remembered server is
+   offered, and a pick fills the field rather than replacing it with an id.
+   */
+  func runServerSettingsCases() {
+    print("\nthe server settings sheet")
+    let state = ServersState(
+      entries: [
+        ServerEntry(id: "remote:http://nas:8443", label: "NAS", url: "http://nas:8443",
+                    kind: .remote, running: false, owned: false, source: "stored"),
+      ],
+      detected: [],
+      activeId: "remote:http://nas:8443",
+      activeUrl: "http://nas:8443"
+    )
+    let sheet = ServerSettingsSheet(
+      form: ServerSettingsForm(state: state, address: "192.168.1.10:3000"),
+      error: "Could not connect. Check that Kabmo is running and the port is right."
+    )
+    check("the field carries the address the window was trying",
+          sheet.addressField.stringValue == "192.168.1.10:3000")
+    check("the picker offers a row per remembered server",
+          sheet.serverPicker.numberOfItems == 2)
+    check("...with the label and whether it answers",
+          sheet.serverPicker.itemTitle(at: 1) == "NAS · stopped")
+    sheet.serverPicker.selectItem(at: 1)
+    sheet.serverPicker.sendAction(sheet.serverPicker.action, to: sheet.serverPicker.target)
+    check("a pick fills the field with the address, not the id",
+          sheet.addressField.stringValue == "http://nas:8443")
+    check("a refusal is shown as the sheet's own line",
+          sheet.alert.informativeText.contains("Could not connect"))
   }
 
   /**

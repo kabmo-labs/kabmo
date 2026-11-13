@@ -341,6 +341,32 @@ impl<D: Deps> ServerStore<D> {
         Ok(())
     }
 
+    /**
+     * Connect this window to `raw`, remembering it under the same rules as the
+     * panel.
+     *
+     * The splash's server settings need "type an address and go", which is two
+     * operations the panel performs separately — add, then activate. Doing it
+     * here keeps the ORDER and the duplicate case in one place: an address
+     * already in the list is not an error, it is a row to select, and the
+     * address that was typed is the one that must answer (the store's
+     * `activate` refuses a remote that does not).
+     */
+    pub fn connect_remote(&mut self, raw: &str) -> Result<(String, Option<i32>), ShellError> {
+        let normalised = normalise_url(raw)?;
+        let existing = self
+            .state
+            .entries
+            .iter()
+            .find(|entry| entry.url == normalised)
+            .map(|entry| entry.id.clone());
+        if let Some(id) = existing {
+            return self.activate(&id);
+        }
+        self.add_remote("", &normalised)?;
+        self.activate(&server_id_value(ServerKind::Remote, &normalised))
+    }
+
     pub fn remove(&mut self, id: &str) -> Result<(), ShellError> {
         let before = self.state.entries.len();
         self.state.entries.retain(|entry| entry.id != id);

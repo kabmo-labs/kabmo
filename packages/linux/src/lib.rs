@@ -29,6 +29,8 @@ pub mod notification;
 pub mod open_paths;
 pub mod palette;
 pub mod persisted;
+pub mod server_settings;
+pub mod settings_dialog;
 pub mod splash;
 pub mod splash_view;
 pub mod store;

@@ -165,6 +165,40 @@ public sealed class ServerStore
         }
     }
 
+    /**
+     * Connect this window to `raw`, remembering it under the same rules as the panel.
+     *
+     * The splash's server settings need "type an address and go", which is two
+     * operations the panel performs separately — add, then activate. Doing it here
+     * keeps the ORDER and the duplicate case in one place: an address already in
+     * the list is not an error, it is a row to select, and the address that was
+     * typed is the one that must answer (the store's activate refuses a remote
+     * that does not).
+     *
+     * The gate is taken and released around the lookup rather than held across
+     * `AddRemoteAsync`/`ActivateAsync`: `SemaphoreSlim` is not reentrant, so
+     * holding it would be a self-deadlock.
+     */
+    public async Task<string> ConnectRemoteAsync(string raw)
+    {
+        var normalised = ServerAddress.Normalise(raw);
+        string? existingId;
+        await _gate.WaitAsync();
+        try
+        {
+            existingId = _state.Entries.FirstOrDefault(entry => entry.Url == normalised)?.Id;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+
+        if (existingId is not null) return await ActivateAsync(existingId);
+
+        await AddRemoteAsync("", normalised);
+        return await ActivateAsync(ServerAddress.Id(ServerKind.Remote, normalised));
+    }
+
     public async Task RemoveAsync(string id)
     {
         await _gate.WaitAsync();

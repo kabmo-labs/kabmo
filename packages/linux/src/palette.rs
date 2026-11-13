@@ -156,14 +156,24 @@ pub fn is_hex(value: &str) -> bool {
 ///   colour, which on most desktops is blue — a second chroma in a monochrome
 ///   product. `set_fraction` carries no colour, so the stylesheet is the only way
 ///   to say otherwise.
+/// - **The actions' plates.** A bare `GtkButton` is painted by the theme: a grey
+///   rounded system button on the console's paper ground, unreachable from the
+///   palette — measured on Adwaita, where the splash's Retry read as a form
+///   control from another product. These rules are the same filled/outlined pair
+///   the Android and iOS overlays draw, and `background-image: none` is what
+///   removes Adwaita's gradient so the flat palette colour actually shows.
 pub fn splash_css(palette: &ShellPalette) -> String {
     format!(
         ".kabmo-splash {{ background-color: {canvas}; }}\
 .kabmo-splash progressbar trough {{ min-height: 4px; border-radius: 2px; background-color: {hairline}; border: none; }}\
 .kabmo-splash progressbar trough progress {{ min-height: 4px; border-radius: 2px; background-color: {ink}; border: none; }}\
 .kabmo-splash progressbar text {{ color: transparent; }}\
-.kabmo-splash label {{ color: {muted}; }}",
+.kabmo-splash label {{ color: {muted}; }}\
+.kabmo-splash button {{ border-radius: 8px; padding: 6px 16px; font-size: 13px; min-height: 0; background-image: none; box-shadow: none; text-shadow: none; border: 1px solid {hairline}; }}\
+.kabmo-splash button.kabmo-primary {{ background-color: {ink}; color: {canvas}; }}\
+.kabmo-splash button.kabmo-secondary {{ background-color: {paper}; color: {ink}; }}",
         canvas = palette.canvas,
+        paper = palette.paper,
         hairline = palette.hairline,
         ink = palette.ink,
         muted = palette.muted,

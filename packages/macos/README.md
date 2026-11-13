@@ -233,7 +233,7 @@ edit (a cut) would be the thing undo reaches — measured, the field came back a
 
 From the moment the window opens until the console paints, the shell draws the same
 four things the Android and iOS shells draw: the **wordmark**, a **progress bar**,
-one sentence, and — on a failure — **Retry**.
+one sentence, and — on a failure — **Retry** and **Server settings**.
 
 It is a sibling of the webview, never a view inside the page: the page cannot report
 its own readiness (its bundle is what renders the app), and a page-drawn splash would
@@ -252,7 +252,19 @@ vanish exactly when the page fails to load.
 - **100% is not a finish, and progress never moves backwards.** The estimate reaches
   1.0 before `didFinish`, and a redirect runs it back down.
 - **A failed main-frame load keeps the splash up** with our sentence plus the
-  platform's own (`URLError`'s names the address and the error), and Retry.
+  platform's own (`URLError`'s names the address and the error), and the two actions.
+- **The actions are drawn from the palette, not AppKit's bevel styles.** The shipped
+  Retry was an `NSButton(bezelStyle: .rounded)`: a system-grey pill that ignored
+  `ShellPalette` on a dark console. `SplashActions.swift` draws the same filled
+  (ink plate, canvas label) and outlined (paper plate, ink label) pair the Android
+  and iOS overlays use, with their metrics — 13pt label, 8pt corner, 16 x 6 padding,
+  8pt between the buttons.
+- **Server settings is a native sheet, because the console's own server control is a
+  page.** A failed load has no page, so `ServerSettingsForm` (prefill, remembered
+  rows, `normaliseUrl`) plus `ServerSettingsSheet` is the way back: an address field,
+  the servers this shell already knows, Connect. Connect runs `ServerStore.connectRemote`,
+  which remembers, selects and probes; a refusal re-presents the sheet with the
+  sentence and the address the user typed.
 - **`didFinish` does not clear a failure**: a failed load still finishes on the error
   page WebKit renders.
 - **A reload from the console's own header shows the splash again.** `location.reload()`
@@ -263,10 +275,11 @@ vanish exactly when the page fails to load.
 
 `TestsWindow` renders the splash in a real window and asserts the assembled view —
 the mark present and in the artwork's aspect, the bar determinate only once a real
-percentage arrives, the sentence the state's, Retry only on a failure — because a
-splash that drew the wrong phase would pass every state-machine case.
+percentage arrives, the sentence the state's, and the two actions only on a failure,
+with the palette's own inks — because a splash that drew the wrong phase would pass
+every state-machine case.
 
-**It is installed through `installSplash(in:state:onRetry:)`, and that function
+**It is installed through `installSplash(in:state:onRetry:onOpenServerSettings:)`, and that function
 exists because sizing it by hand was a bug that reached users.** AppKit resizes a
 view's subviews when its own frame changes, so only the subviews present at that
 moment are carried along. `buildWindow` restores the window's frame from

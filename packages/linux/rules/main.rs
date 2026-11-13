@@ -26,6 +26,7 @@ mod navigation;
 mod notification;
 mod open_paths;
 mod palette;
+mod server_settings;
 mod splash;
 mod store;
 mod support;
@@ -44,6 +45,7 @@ fn main() {
     bridge::cases(&mut r);
     splash::cases(&mut r);
     palette::cases(&mut r);
+    server_settings::cases(&mut r);
     wordmark::cases(&mut r);
     window::cases(&mut r);
     system::cases(&mut r);

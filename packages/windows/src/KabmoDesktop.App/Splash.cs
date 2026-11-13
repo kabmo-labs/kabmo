@@ -11,10 +11,10 @@
  * load. So this is a sibling of the webview, owned by the shell.
  *
  * The same four things the Android, iOS and macOS shells draw, in the same order:
- * the README's wordmark, a progress bar, one sentence, and — on a failure — Retry.
- * Every state decision is `SplashState`'s and this class only draws it, because
- * the orderings that fail (a late estimate resurrecting a finished splash, an
- * error page's own completion) are not visible in a view.
+ * the README's wordmark, a progress bar, one sentence, and — on a failure — Retry
+ * and Server settings. Every state decision is `SplashState`'s and this class only
+ * draws it, because the orderings that fail (a late estimate resurrecting a
+ * finished splash, an error page's own completion) are not visible in a view.
  *
  * **The bar SWEEPS here rather than filling.** WebView2 exposes no progress
  * estimate at all — `NavigationStarting`, `ContentLoading`, `DOMContentLoaded` and
@@ -46,6 +46,9 @@ public sealed class SplashView : Grid
 {
     private readonly TextBlock _status;
     private readonly Button _retry;
+    private readonly Button _settings;
+    /// <summary>The pair, shown together on a failure and hidden together otherwise.</summary>
+    private readonly StackPanel _actions;
     private readonly ProgressBar _bar;
     private readonly Viewbox _wordmark;
 
@@ -94,21 +97,32 @@ public sealed class SplashView : Grid
             HorizontalAlignment = HorizontalAlignment.Center,
         };
 
-        _retry = new Button
+        // Both actions are drawn by `ShellButton` from the palette — the shipped
+        // one used WPF's own template, which is system grey and ignores
+        // `CornerRadius`, so it could never match the Android/iOS overlays.
+        _retry = ShellButton.Make("Retry", filled: true, palette: ShellPalette.Shipped);
+        _retry.Click += (_, _) => Retry();
+        _settings = ShellButton.Make("Server settings", filled: false, palette: ShellPalette.Shipped);
+        _settings.Margin = new Thickness(8, 0, 0, 0);
+        _settings.Click += (_, _) => OnOpenServerSettings?.Invoke();
+
+        // One row for both actions, because they are one decision: Retry the
+        // address on screen, or change it.
+        _actions = new StackPanel
         {
-            Content = "Retry",
-            Margin = new Thickness(0, 18, 0, 0),
-            Padding = new Thickness(16, 6, 16, 6),
+            Orientation = Orientation.Horizontal,
             HorizontalAlignment = HorizontalAlignment.Center,
+            Margin = new Thickness(0, 18, 0, 0),
             Visibility = Visibility.Collapsed,
         };
-        _retry.Click += (_, _) => Retry();
+        _actions.Children.Add(_retry);
+        _actions.Children.Add(_settings);
 
         var stack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
         stack.Children.Add(_wordmark);
         stack.Children.Add(_bar);
         stack.Children.Add(_status);
-        stack.Children.Add(_retry);
+        stack.Children.Add(_actions);
         Children.Add(stack);
 
         ApplyPalette(ShellPalette.Shipped);
@@ -131,6 +145,8 @@ public sealed class SplashView : Grid
         Background = new SolidColorBrush(ColorOf(palette.Canvas));
         _bar.Foreground = new SolidColorBrush(ColorOf(palette.Ink));
         _bar.Background = new SolidColorBrush(ColorOf(palette.Hairline));
+        ShellButton.Apply(_retry, "Retry", filled: true, palette: palette);
+        ShellButton.Apply(_settings, "Server settings", filled: false, palette: palette);
         Render(_state);
     }
 
@@ -148,6 +164,9 @@ public sealed class SplashView : Grid
     /// <summary>The window owns the reload; a callback keeps this view free of it.</summary>
     public Action? OnRetry { get; set; }
 
+    /// <summary>The window owns the server settings dialog; this view only reports the press.</summary>
+    public Action? OnOpenServerSettings { get; set; }
+
     /// <summary>
     /// Draw a state. The single entry point, so no caller can leave the splash
     /// half-updated — the bar, the sentence and the actions always describe one
@@ -161,7 +180,7 @@ public sealed class SplashView : Grid
         if (!state.Visible) return;
 
         var failed = state.Phase == SplashState.SplashPhase.Failed;
-        _retry.Visibility = failed ? Visibility.Visible : Visibility.Collapsed;
+        _actions.Visibility = failed ? Visibility.Visible : Visibility.Collapsed;
 
         // A failed load hides the bar: a frozen partial bar says "still working"
         // over a message that says the opposite.

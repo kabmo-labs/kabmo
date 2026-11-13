@@ -328,7 +328,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
     // parent whose bounds CHANGE — a splash added at the default rect stayed a
     // 1280x860 box in the bottom-left corner of a 2560x1335 window, in full
     // screen as much as in a window.
-    splash = installSplash(in: container, state: loading) { [weak self] in self?.retryLoad() }
+    splash = installSplash(
+      in: container,
+      state: loading,
+      onRetry: { [weak self] in self?.retryLoad() },
+      onOpenServerSettings: { [weak self] in self?.openServerSettings() }
+    )
     // The palette the console reported on a PREVIOUS launch, so the splash is
     // already the right colour before anything loads. The web view is transparent
     // (`drawsBackground` is off), so this colour is also what shows through it.
@@ -616,6 +621,52 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
     // system error, which is the detail a reader needs when our wording is the
     // generic case.
     splash?.setDetail(error.localizedDescription)
+  }
+
+  /**
+   The splash's "Server settings": change the address the window loads.
+
+   The console's own server control is a page, and the failure splash is exactly
+   the moment that page does not exist — so the way back has to be native. The
+   sheet offers the stored list as shortcuts and one address field; Connect runs
+   `connectRemote`, which normalises, remembers and probes, and only then loads.
+
+   A refusal (a bad address, or a server that does not answer) re-presents the
+   sheet with what the user typed and the sentence that refused it: the alert has
+   already closed when Connect is pressed, so there is nowhere else to show it.
+   */
+  private var settingsSheet: ServerSettingsSheet?
+
+  private func openServerSettings(error: String? = nil, address: String? = nil) {
+    // One sheet at a time: a second press while the store is probing would stack
+    // two sheets over a window that can only show one.
+    guard window.attachedSheet == nil, settingsSheet == nil else { return }
+    Task {
+      let state = await store.snapshot()
+      let form = ServerSettingsForm(state: state, address: address ?? pendingBootURL)
+      await MainActor.run { self.presentServerSettings(form, error: error) }
+    }
+  }
+
+  private func presentServerSettings(_ form: ServerSettingsForm, error: String?) {
+    guard window.attachedSheet == nil, settingsSheet == nil else { return }
+    let sheet = ServerSettingsSheet(form: form, error: error)
+    sheet.onDismiss = { [weak self] in self?.settingsSheet = nil }
+    sheet.onConnect = { [weak self] raw in
+      guard let self else { return }
+      Task {
+        do {
+          let url = try await self.store.connectRemote(raw)
+          await MainActor.run { self.load(url) }
+        } catch {
+          await MainActor.run {
+            self.openServerSettings(error: error.localizedDescription, address: raw)
+          }
+        }
+      }
+    }
+    settingsSheet = sheet
+    sheet.present(over: window)
   }
 
   /// Retry from the splash's own button.

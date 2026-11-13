@@ -278,6 +278,48 @@ await CheckAsync("removing drops the row, the pid and the selection", async () =
     return saved.Last is { Entries.Count: 0, ActiveId: null, Spawned.Count: 0 };
 });
 
+// The splash's server settings: the address the user retyped because it was
+// wrong is already in the list, and connecting must select it rather than refuse
+// it as a duplicate.
+await CheckAsync("ConnectRemote selects an address already in the list", async () =>
+{
+    var deps = new FakeDeps();
+    deps.Health["http://nas:8443"] = new Health { Version = "1.0", Mode = "prod" };
+    var (store, saved) = MakeStore(deps, new PersistedState
+    {
+        Entries = new[] { new StoredServer { Id = "remote:http://nas:8443", Label = "NAS", Url = "http://nas:8443", Kind = ServerKind.Remote } },
+    });
+    var url = await store.ConnectRemoteAsync("nas:8443");
+    return url == "http://nas:8443"
+        && saved.Last?.Entries.Count == 1
+        && saved.Last?.ActiveId == "remote:http://nas:8443";
+});
+
+await CheckAsync("ConnectRemote remembers and connects a new address", async () =>
+{
+    var deps = new FakeDeps();
+    deps.Health["http://10.0.0.5:3000"] = new Health();
+    var (store, saved) = MakeStore(deps, new PersistedState());
+    var url = await store.ConnectRemoteAsync("10.0.0.5:3000");
+    return url == "http://10.0.0.5:3000"
+        && saved.Last?.Entries.FirstOrDefault() is { Kind: ServerKind.Remote }
+        && saved.Last?.Entries[0].Url == "http://10.0.0.5:3000";
+});
+
+await CheckAsync("ConnectRemote refuses a server that does not answer, with a sentence", async () =>
+{
+    var (store, _) = MakeStore(new FakeDeps(), new PersistedState());
+    try
+    {
+        await store.ConnectRemoteAsync("https://nas:8443");
+        return false;
+    }
+    catch (ServerException refused)
+    {
+        return refused.Message.Contains("not answering");
+    }
+});
+
 // ---------------------------------------------------------------- wire format
 
 Group("WireFormat");
@@ -502,6 +544,9 @@ else
 
 // Where a link goes: inside this window, or out to the browser.
 NavigationPolicyCases.Run(Check, Group);
+
+// The splash's "Server settings" dialog: prefill, rows, and validation.
+ServerSettingsCases.Run(Check, Group);
 
 // What a self-update may download, install and run.
 ShellUpdateCases.Run(Check, Group);
