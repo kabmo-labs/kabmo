@@ -18,6 +18,7 @@
 
 import { type TopicDescriptor } from '@/server/lib/realtime/hub.server';
 import { getDefaultFsRoot, resolveRoot, resolveWithinRoot } from '@/server/lib/fs/root';
+import { isMockMode } from '@/server/mock.server';
 import { readGitStatus } from '@/server/lib/fs/git-status-read';
 import { listDirectoryEntries } from '@/server/lib/fs/listing';
 import { discoveredRepos, startRepoScan } from '@/server/lib/fs/git-repos';
@@ -34,7 +35,7 @@ async function resolveScope(scope: string): Promise<{ root: string; repo: string
   const separator = scope.indexOf('\u0000');
   const rootPart = separator === -1 ? scope : scope.slice(0, separator);
   const repo = (separator === -1 ? '.' : scope.slice(separator + 1)) || '.';
-  const root = await resolveRoot(rootPart || null, await getDefaultFsRoot(false));
+  const root = await resolveRoot(rootPart || null, await getDefaultFsRoot(isMockMode()));
   if (!root) return null;
   return { root, repo };
 }
@@ -72,7 +73,7 @@ async function fsResolve(scope: string): Promise<unknown> {
 
 /** One workspace root's nested repositories, and whether discovery is running. */
 async function reposResolve(scope: string): Promise<unknown> {
-  const root = await resolveRoot(scope || null, await getDefaultFsRoot(false));
+  const root = await resolveRoot(scope || null, await getDefaultFsRoot(isMockMode()));
   if (!root) return null;
   startRepoScan(root);
   const { repos, pending } = discoveredRepos(root);

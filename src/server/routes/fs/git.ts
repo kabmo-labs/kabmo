@@ -17,7 +17,8 @@
 import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import path from 'path';
 import { COMMIT_PAGE_SIZE } from '@/shared/lib/fs/commit-page';
-import { resolveRoot } from '@/server/lib/fs/root';
+import { getDefaultFsRoot, resolveRoot } from '@/server/lib/fs/root';
+import { isMockMode } from '@/server/mock.server';
 import { discoveredRepos, rescanRepos, startRepoScan } from '@/server/lib/fs/git-repos';
 import { readRepoDetails } from '@/server/lib/fs/git-repo-details';
 import { fetchGitCommits, readHeadCommitMessage } from '@/server/lib/fs/git-log';
@@ -33,7 +34,7 @@ import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
-  const rootDir = await resolveRoot(url.searchParams.get('root'), process.cwd());
+  const rootDir = await resolveRoot(url.searchParams.get('root'), await getDefaultFsRoot(isMockMode()));
 
   // Kick off nested-repo discovery in the background (non-blocking) and read
   // whatever is already cached. `rescan=1` invalidates the cache so a fresh
@@ -176,7 +177,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export async function action({ request }: ActionFunctionArgs) {
   const formData = await request.formData();
-  const rootDir = await resolveRoot(formData.get('root') as string, process.cwd());
+  const rootDir = await resolveRoot(formData.get('root') as string, await getDefaultFsRoot(isMockMode()));
   const repo = (formData.get('repo') as string) || '.';
   const targetDir = repo === '.' ? rootDir : path.join(rootDir, repo);
   if (targetDir !== rootDir && !targetDir.startsWith(rootDir + path.sep)) {
