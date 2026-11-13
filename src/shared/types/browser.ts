@@ -23,6 +23,27 @@ export interface BrowserViewState {
   tabs: BrowserTabInfo[];
 }
 
+/**
+ * Which engine the session's omp agent will use for its next `browser.open`.
+ *
+ * The panel mirrors the project-shared Chromium over CDP. omp's own WebKit
+ * engine (ABKit) has no CDP endpoint and no frame stream, so a session on
+ * WebKit can never appear here — the panel says so instead of waiting.
+ */
+export interface BrowserEngineState {
+  /** `browser.webkit` as omp reads it; absent means the default, `true`. */
+  webkit: boolean;
+  /** Whether the ABKit host executable exists on this machine. */
+  engineInstalled: boolean;
+  /** What the next open will use, after the install check. */
+  effective: 'webkit' | 'chromium';
+}
+
+/** The engine state plus the server's mode, so the panel can stay quiet in MOCK. */
+export interface BrowserEnginePayload extends BrowserEngineState {
+  mock: boolean;
+}
+
 /** One screencast frame (base64 JPEG) for the currently viewed tab. */
 export interface BrowserViewFrame {
   data: string;

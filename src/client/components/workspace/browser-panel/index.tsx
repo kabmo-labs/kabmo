@@ -1,6 +1,8 @@
 import { useCallback, useState } from 'preact/hooks';
 import { BrowserAddressBar } from '@/client/components/workspace/browser-panel/AddressBar';
+import { BrowserEngineNotice } from '@/client/components/workspace/browser-panel/EngineNotice';
 import { BrowserScreencast } from '@/client/components/workspace/browser-panel/Screencast';
+import { useBrowserEngine } from '@/client/hooks/browser/use-browser-engine';
 import { useScreencast } from '@/client/hooks/browser/use-screencast';
 import { useCloseBrowserTab } from '@/client/hooks/browser/use-close-tab';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
@@ -34,7 +36,20 @@ export function BrowserPanel({ className = '', active = true }: BrowserPanelProp
   const [zoomLevel, setZoomLevel] = useSessionState<number>('browser.zoomLevel', 100);
   const { status, url, title, tabs, targetId, frame, actions, sessionId, selectTarget, reconnect } = useScreencast(active);
   const { closeTab, closing } = useCloseBrowserTab(sessionId);
+  const engine = useBrowserEngine();
   const [closeError, setCloseError] = useState<string | null>(null);
+
+  // A WebKit session can never produce a frame here (no CDP, no screencast), so
+  // the panel explains the engine instead of waiting. `mock` is excluded: the
+  // stream is offline there for a different reason.
+  const webkitActive = engine.state?.effective === 'webkit' && !engine.state.mock;
+  const engineExplainsEmptyView = webkitActive && (status === 'browser-offline' || status === 'no-tab');
+
+  const handleUseChromium = useCallback(() => {
+    void engine.useChromium().then((ok) => {
+      if (ok) reconnect();
+    });
+  }, [engine.useChromium, reconnect]);
 
   const handleOpenExternal = () => {
     if (!url) return;
@@ -98,18 +113,36 @@ export function BrowserPanel({ className = '', active = true }: BrowserPanelProp
         </div>
       )}
 
-      <BrowserScreencast
-        status={status}
-        url={url}
-        tabs={tabs}
-        targetId={targetId}
-        frame={frame}
-        actions={actions}
-        onSelectTarget={selectTarget}
-        onCloseTarget={handleCloseTarget}
-        closingTarget={closing}
-        zoomLevel={zoomLevel}
-      />
+      {webkitActive && status === 'live' && engine.state && (
+        <BrowserEngineNotice
+          saving={engine.saving}
+          error={engine.error}
+          onUseChromium={handleUseChromium}
+          variant="strip"
+        />
+      )}
+
+      {engineExplainsEmptyView && engine.state ? (
+        <BrowserEngineNotice
+          saving={engine.saving}
+          error={engine.error}
+          onUseChromium={handleUseChromium}
+          variant="body"
+        />
+      ) : (
+        <BrowserScreencast
+          status={status}
+          url={url}
+          tabs={tabs}
+          targetId={targetId}
+          frame={frame}
+          actions={actions}
+          onSelectTarget={selectTarget}
+          onCloseTarget={handleCloseTarget}
+          closingTarget={closing}
+          zoomLevel={zoomLevel}
+        />
+      )}
     </div>
   );
 }

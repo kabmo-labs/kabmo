@@ -124,6 +124,10 @@ export async function getOmpConfigValue(key: string): Promise<unknown> {
   if (!result.ok) throw new Error(configFailureLine(result) ?? `omp config get ${key} failed`);
   const text = result.stdout.trim();
   if (!text) return undefined;
+  // `omp config get` answers the human sentinel `(not set)` for a key with no
+  // value. It is not a value: a caller that treats it as one resolves a path
+  // named "(not set)" and reports the engine as missing.
+  if (text === '(not set)') return undefined;
   try {
     return JSON.parse(text);
   } catch {
