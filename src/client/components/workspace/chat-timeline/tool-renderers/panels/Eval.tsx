@@ -6,6 +6,7 @@ import { tryParseJson } from '@/shared/lib/code/syntax-highlight';
 import { MAX_OUTPUT_LINES, truncateTailLines } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/truncate';
 import { useDeferredHighlightLines } from '@/client/hooks/code/deferred-highlight';
 import { NumberedCode } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/numbered-code';
+import { ToolScreenshots } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/ToolScreenshots';
 
 /**
  * The `eval` card's two numbered blocks (the script and its pretty-printed
@@ -183,6 +184,10 @@ export function Eval({ tool }: { tool: ToolCallData }) {
           )}
         </div>
       )}
+
+      {/* Pictures the script captured: the text above names a temp file the
+          panel cannot read, so the bytes from the result are painted here. */}
+      {tool.images && tool.images.length > 0 && <ToolScreenshots images={tool.images} />}
     </div>
   );
 }

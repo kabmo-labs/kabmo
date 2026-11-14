@@ -110,6 +110,26 @@ describe('Eval — result rendering', () => {
     expect(root.querySelectorAll('div[aria-hidden="true"]')).toHaveLength(1);
     expect(root.textContent).toContain('Script Evaluation');
   });
+
+  test('paints the pictures the script captured', () => {
+    // A browser eval answers with `tab.screenshot()`'s image block beside its
+    // text, and the text names a temp file outside the browse scope. The card
+    // must show the bytes, not the path.
+    const hash = '597f429e2085f854a121f689d0acff97f556159fbf8e47f4f728fec832867349';
+    const root = mount(evalTool({
+      output: 'Screenshot 390x844.\n/var/folders/x/T/omp-sshots-1.png',
+      status: 'success',
+      images: [{ mimeType: 'image/png', blobRef: `blob:sha256:${hash}` }],
+    }));
+    expect(root.textContent).toContain('Screenshots');
+    expect(root.querySelector('img')?.getAttribute('src')).toBe(`/api/omp/blob?hash=${hash}`);
+  });
+
+  test('a call with no pictures grows no screenshot section', () => {
+    const root = mount(evalTool({ output: '42', status: 'success' }));
+    expect(root.textContent).not.toContain('Screenshots');
+    expect(root.querySelector('img')).toBeNull();
+  });
 });
 
 describe('Eval — gutter aligns with the code', () => {
