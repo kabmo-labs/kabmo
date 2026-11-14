@@ -56,7 +56,9 @@ describe('WaitingDependencyPicker search', () => {
     await act(async () => {
       (host.querySelector('[data-testid="wait-picker"]') as HTMLButtonElement).click();
     });
-    const input = host.querySelector('input[aria-label="Search running sessions"]') as HTMLInputElement;
+    // The panel is portalled to `document.body` (a `fixed` node placed from the
+    // trigger's rectangle), so it is not inside the mount host.
+    const input = document.body.querySelector('input[aria-label="Search running sessions"]') as HTMLInputElement;
     expect(input).not.toBeNull();
 
     await act(async () => {
@@ -64,7 +66,7 @@ describe('WaitingDependencyPicker search', () => {
       input.dispatchEvent(new Event('input', { bubbles: true }));
     });
 
-    const ids = [...host.querySelectorAll('[data-testid="wait-candidate"]')].map((row) =>
+    const ids = [...document.body.querySelectorAll('[data-testid="wait-candidate"]')].map((row) =>
       row.getAttribute('data-session-id'),
     );
     expect(ids).toEqual(['sess-b']);

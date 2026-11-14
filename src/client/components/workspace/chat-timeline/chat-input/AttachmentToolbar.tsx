@@ -135,8 +135,10 @@ export function AttachmentToolbar({ attachments, onFilesSelected, onRemove, mode
         )}
 
         {/* The NEXT prompt's wait pick, immediately before the stretch control
-            on BOTH layouts. It opens DOWNWARD: this row is the card's top edge,
-            so an upward list would be drawn outside the card. */}
+            on BOTH layouts. Its panel is portalled and placed from the
+            trigger's rectangle, so it flips and scrolls instead of running off
+            the window — the header sits at the bottom of a desktop viewport and
+            at the top of a stretched phone one. */}
         {showWaiting && waiting && (
           <div className={`${modesTrailing ? '' : 'ml-auto '}flex-shrink-0`}>
             <WaitingDependencyPicker
@@ -144,7 +146,6 @@ export function AttachmentToolbar({ attachments, onFilesSelected, onRemove, mode
               value={waiting.value}
               onChange={waiting.onChange}
               compactLabel
-              placement="down"
             />
           </div>
         )}
