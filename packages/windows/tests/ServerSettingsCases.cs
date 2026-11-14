@@ -78,7 +78,7 @@ static class ServerSettingsCases
 
         check(
             "a host and port is normalised to the address that will be stored",
-            form.Validated() == "http://nas:8443");
+            form.Selecting(form.Rows[0]).Validated() == "http://nas:8443");
 
         var refused = false;
         try
