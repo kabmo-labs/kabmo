@@ -31,7 +31,7 @@ export function SkillCard({ skill, installed, busy, onInstallToggle }: SkillCard
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-xs font-bold text-ink tracking-tight font-mono truncate">{skill.name}</span>
           {skill.installs ? (
-            <span className="text-[10px] text-ink/45 font-mono flex-shrink-0">{compactCount(skill.installs)} installs</span>
+            <span className="text-[10px] text-ink/45 font-mono flex-shrink-0">{compactCount(skill.installs)} weekly</span>
           ) : null}
         </div>
 

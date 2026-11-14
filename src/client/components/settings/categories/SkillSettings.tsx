@@ -1,5 +1,5 @@
 import { useState } from 'preact/hooks';
-import type { SettingsState, SkillItem } from '@/shared/types';
+import type { SettingsState, SkillItem, WriteOutcome } from '@/shared/types';
 import { SkillSidebarList } from '@/client/components/settings/categories/skill-settings/SidebarList';
 import { SkillDetailPane } from '@/client/components/settings/categories/skill-settings/DetailPane';
 import { LoadingState } from '@/client/components/settings/LoadingState';
@@ -83,6 +83,26 @@ export function SkillSettings({ onNavigateToCatalog }: SkillSettingsProps) {
       .finally(() => setIsReloading(false));
   };
 
+  // A Skillshare skill is read-only in the pane, but the package is the user's
+  // install: `omp skill uninstall -g` is the counterpart of the catalog install.
+  const uninstallRegistry = async (pkg: string): Promise<WriteOutcome> => {
+    try {
+      const response = await fetch('/api/settings/skills', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'uninstall_registry_skill', package: pkg, ...roots.scopeBodyFor(selectedRootId) }),
+      });
+      const data = (await response.json().catch(() => ({}))) as { error?: string };
+      if (!response.ok || data.error) {
+        return { ok: false, error: data.error || `Request failed (${response.status})` };
+      }
+      await reloadList();
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  };
+
   if (isLoading) {
     return <LoadingState>Loading skills…</LoadingState>;
   }
@@ -120,6 +140,7 @@ export function SkillSettings({ onNavigateToCatalog }: SkillSettingsProps) {
             isCreatingNew={isCreatingNew}
             onSave={save}
             onDelete={remove}
+            onUninstallRegistry={uninstallRegistry}
             onOpenCatalog={() => onNavigateToCatalog?.('browse')}
             onReload={reload}
             isReloading={isReloading}

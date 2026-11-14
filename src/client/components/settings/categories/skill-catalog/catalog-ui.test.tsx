@@ -52,7 +52,7 @@ function mount(node: h.JSX.Element): HTMLElement {
 
 const skill: CatalogSkillItem = {
   id: 'cat-1',
-  sourceId: 'skills-sh',
+  sourceId: 'skillshare',
   name: 'review-pr',
   description: 'Reviews a pull request.',
   repoTag: 'acme/skills',
@@ -95,9 +95,9 @@ describe('SkillCard', () => {
     expect(el.textContent).not.toContain('Installing…');
   });
 
-  test('the install count is compacted and shown', () => {
+  test('the weekly download count is compacted and shown', () => {
     const el = mount(h(SkillCard, { skill, installed: false, busy: false, onInstallToggle: () => {} }));
-    expect(el.textContent).toContain('12K installs');
+    expect(el.textContent).toContain('12K weekly');
   });
 });
 
@@ -116,14 +116,12 @@ function controller(overrides: Partial<GitImportController> = {}): GitImportCont
     skills,
     notes: [],
     selected: ['skills/alpha'],
-    mode: 'managed_copy',
     overwrite: false,
     error: null,
     result: null,
     inspect: async () => {},
     toggle: () => {},
     toggleAll: () => {},
-    setMode: () => {},
     setOverwrite: () => {},
     install: async () => null,
     reset: () => {},
@@ -154,7 +152,6 @@ describe('GitImportPanel', () => {
         controller: controller({
           result: {
             repo: 'acme/skills',
-            mode: 'managed_copy',
             installed: ['alpha'],
             skipped: [{ name: 'gamma', reason: 'already installed — enable overwrite to replace it' }],
             skills: [],

@@ -22,15 +22,17 @@ function Field({ label, children }: { label: string; children: ComponentChildren
 /**
  * The From Git tab: paste a repository, list its SKILL.md files, pick, install.
  *
- * The listing step is the point. `bunx skills add <repo>` installs without ever
- * saying what is inside, and a repository can hold twenty skills — so the choice,
- * the install target and the overwrite decision all happen before a single file
- * is written. The outcome stays on screen afterwards: the server reports a skip
- * per row with its reason, and a toast would have thrown that away.
+ * The listing step is the point. A repository can hold twenty skills, so the
+ * choice and the overwrite decision both happen before a single file is written.
+ * The install copies the picked directories into a root omp reads
+ * (`~/.omp/agent/skills` or `<workspace>/.omp/skills`), which is what makes them
+ * editable and deletable in the Skills pane afterwards. The outcome stays on
+ * screen: the server reports a skip per row with its reason, and a toast would
+ * have thrown that away.
  */
 export function GitImportPanel({ controller, onInstalled }: GitImportPanelProps) {
   const [url, setUrl] = useState(controller.url);
-  const { skills, selected, mode, overwrite } = controller;
+  const { skills, selected, overwrite } = controller;
 
   // A source card's Import button inspects without touching this field, so the
   // input follows the repository the controller actually used — otherwise the
@@ -150,41 +152,11 @@ export function GitImportPanel({ controller, onInstalled }: GitImportPanelProps)
           ) : null}
 
           <div className="rounded-lg border border-ink/15 p-3 space-y-2.5">
-            <Field label="Install into">
-              <div className="flex flex-col sm:flex-row gap-2">
-                {(
-                  [
-                    {
-                      id: 'managed_copy' as const,
-                      title: 'Managed copy',
-                      detail: 'Kabmo owns the files — editable and deletable here.',
-                    },
-                    {
-                      id: 'registry' as const,
-                      title: 'Registry install',
-                      detail: 'Through the skills CLI into ~/.agents/skills — updateable, read-only here.',
-                    },
-                  ]
-                ).map((option) => (
-                  <button
-                    key={option.id}
-                    type="button"
-                    onClick={() => controller.setMode(option.id)}
-                    className={`flex-1 text-left px-2.5 py-2 rounded-lg border transition-colors cursor-pointer ${
-                      mode === option.id ? 'border-ink bg-ink/5' : 'border-ink/20 hover:border-ink/40'
-                    }`}
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className={`w-2 h-2 rounded-full ${mode === option.id ? 'bg-ink' : 'border border-ink/40'}`}
-                      />
-                      <span className="text-xs font-semibold text-ink">{option.title}</span>
-                    </div>
-                    <div className="text-[10px] text-ink/55 leading-relaxed mt-0.5">{option.detail}</div>
-                  </button>
-                ))}
-              </div>
-            </Field>
+            <p className="text-[11px] text-ink/55 leading-relaxed">
+              Installs into <span className="font-mono text-ink/75">~/.omp/agent/skills</span> (or the selected
+              workspace&apos;s <span className="font-mono text-ink/75">.omp/skills</span>), so omp loads the skill and
+              the Skills pane can edit it.
+            </p>
 
             <label className="flex items-start gap-2 cursor-pointer select-none">
               <input

@@ -4,13 +4,13 @@ import type { CatalogSkillItem, GitSkillEntry, SkillCatalogSource, SkillItem } f
 
 export interface SkillCatalogData {
   sources: SkillCatalogSource[];
-  /** skills.sh results — the Browse tab's list. */
+  /** Skillshare results — the Browse tab's list. */
   catalogSkills: CatalogSkillItem[];
   userSkills: SkillItem[];
   setSources: Dispatch<StateUpdater<SkillCatalogSource[]>>;
   setUserSkills: Dispatch<StateUpdater<SkillItem[]>>;
   reload: () => Promise<void>;
-  /** Search skills.sh for real; the answer replaces `catalogSkills`. */
+  /** Search the Skillshare registry for real; the answer replaces `catalogSkills`. */
   search: (query: string) => Promise<CatalogSkillItem[]>;
   addSource: (repo: string, name?: string) => Promise<SkillCatalogSource>;
   removeSource: (id: string) => Promise<void>;
@@ -73,7 +73,7 @@ export function useSkillCatalog(): SkillCatalogData {
     async (query: string) => {
       const trimmed = query.trim();
       if (!trimmed) {
-        // An empty query restores the loader's own popular list rather than
+        // An empty query restores the loader's own (empty) list rather than
         // leaving the last search's rows on screen as if they were the catalog.
         await reload();
         return [];

@@ -10,6 +10,8 @@ interface SkillDetailPaneProps {
   isCreatingNew: boolean;
   onSave: (skillData: Partial<SkillItem>) => Promise<WriteOutcome>;
   onDelete?: (id: string) => Promise<WriteOutcome>;
+  /** Uninstall a Skillshare package (`@scope/name`) through `omp skill`. */
+  onUninstallRegistry?: (pkg: string) => Promise<WriteOutcome>;
   onOpenCatalog?: () => void;
   onReload?: () => void;
   isReloading?: boolean;
@@ -38,6 +40,7 @@ export function SkillDetailPane({
   isCreatingNew,
   onSave,
   onDelete,
+  onUninstallRegistry,
   onOpenCatalog,
   onReload,
   isReloading = false,
@@ -124,6 +127,11 @@ export function SkillDetailPane({
     });
   };
 
+  const handleUninstallRegistry = (pkg: string) => {
+    if (!onUninstallRegistry) return;
+    void feedback.run(() => onUninstallRegistry(pkg));
+  };
+
   return (
     <div className="flex-1 flex flex-col h-full scrollbar-overlay-container bg-paper text-ink p-5 md:p-6 space-y-4">
       <SkillDetailHeader
@@ -139,6 +147,7 @@ export function SkillDetailPane({
         confirmingDelete={confirmingDelete}
         {...(onReload ? { onReload } : {})}
         {...(onOpenCatalog ? { onOpenCatalog } : {})}
+        {...(onUninstallRegistry ? { onUninstallRegistry: handleUninstallRegistry } : {})}
         onHiddenChange={setHidden}
         onRequestDelete={() => setConfirmingDelete(true)}
         onCancelDelete={() => setConfirmingDelete(false)}

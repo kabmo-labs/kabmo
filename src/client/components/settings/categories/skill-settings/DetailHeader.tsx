@@ -1,7 +1,9 @@
 import { CHECKBOX_CLASS } from '@/client/components/common/checkbox/style';
 import type { ComponentChildren } from 'preact';
+import { useState } from 'preact/hooks';
 import { AlertCircle, Check, Eye, EyeOff, Loader2, Lock, RefreshCw, Save, Sparkles, Trash2 } from 'lucide-preact';
 import type { SkillItem } from '@/shared/types';
+import { skillsharePackage } from '@/shared/lib/omp/skill-source';
 import { scopeLabel, sourceBadge } from '@/client/components/settings/categories/skill-settings/row-meta';
 
 interface SkillDetailHeaderProps {
@@ -21,6 +23,8 @@ interface SkillDetailHeaderProps {
   onRequestDelete: () => void;
   onConfirmDelete: () => void;
   onCancelDelete: () => void;
+  /** Uninstall a Skillshare package (`@scope/name`) through `omp skill`. */
+  onUninstallRegistry?: (pkg: string) => void;
   onSave: () => void;
   /** A write is in flight: the buttons report that instead of accepting another. */
   saving?: boolean;
@@ -67,13 +71,16 @@ export function SkillDetailHeader({
   onRequestDelete,
   onConfirmDelete,
   onCancelDelete,
+  onUninstallRegistry,
   onSave,
   saving = false,
   saved = false,
   writeError = null,
   onDismissWriteError,
 }: SkillDetailHeaderProps) {
+  const [confirmingUninstall, setConfirmingUninstall] = useState(false);
   const title = isCreatingNew ? 'New skill' : (skill?.name ?? name);
+  const registryPackage = skill ? skillsharePackage(skill.source) : null;
 
   return (
     <div className="space-y-3">
@@ -137,8 +144,10 @@ export function SkillDetailHeader({
       {readOnly ? (
         <div className="rounded-lg border border-ink/15 bg-ink/[0.03] px-3 py-2 text-[11px] text-ink/70 leading-relaxed">
           Provided by <span className="font-mono text-ink/85">{skill?.source}</span>, so Kabmo cannot edit it. The file
-          is <span className="font-mono text-ink/85 break-all">{skill?.filePath}</span>. Edit it at its source, or
-          import a copy into <span className="font-mono text-ink/85">~/.omp/agent/skills</span> to own it here.
+          is <span className="font-mono text-ink/85 break-all">{skill?.filePath}</span>.{' '}
+          {registryPackage
+            ? 'Uninstall it here to remove the package from omp, or edit it at its source.'
+            : 'Edit it at its source, or import a copy into ~/.omp/agent/skills to own it here.'}
         </div>
       ) : null}
 
@@ -202,6 +211,38 @@ export function SkillDetailHeader({
             >
               <Trash2 size={12} />
               <span>Delete</span>
+            </button>
+          )
+        ) : registryPackage && onUninstallRegistry ? (
+          confirmingUninstall ? (
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmingUninstall(false);
+                  onUninstallRegistry(registryPackage);
+                }}
+                className="px-2 py-1.5 rounded-lg bg-error/15 border border-error/40 text-error text-[11px] font-semibold hover:bg-error/25 transition-colors cursor-pointer"
+              >
+                Uninstall package
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmingUninstall(false)}
+                className="px-2 py-1.5 rounded-lg border border-ink/20 text-[11px] font-medium text-ink/70 hover:bg-ink/5 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmingUninstall(true)}
+              disabled={saving}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-ink/20 hover:border-error hover:text-error text-ink/70 text-[11px] font-medium transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Trash2 size={12} />
+              <span>Uninstall</span>
             </button>
           )
         ) : (

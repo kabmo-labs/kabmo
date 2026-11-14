@@ -16,7 +16,6 @@ import {
 } from '@/server/lib/omp/config/skills';
 import {
   installCatalogSkill,
-  searchSkillCatalog,
   toCatalogSkills,
   uninstallCatalogSkill,
 } from '@/server/lib/omp/config/skills-catalog';
@@ -38,6 +37,10 @@ const SOURCE_LABELS: Record<string, string> = {
   'github:project': 'Project / .github/skills',
   'opencode:user': 'User / opencode',
   'opencode:project': 'Project / .opencode',
+  'claude-plugins:user': 'User / Claude plugin',
+  'claude-plugins:project': 'Project / Claude plugin',
+  // `skillshare:@scope/name@version` — the registry store omp installs into.
+  skillshare: 'Skillshare registry',
 };
 
 /**
@@ -47,7 +50,8 @@ const SOURCE_LABELS: Record<string, string> = {
  * rewrite another tool's file.
  */
 async function toSkillItem(skill: DiscoveredSkill): Promise<SkillItem> {
-  const locationLabel = SOURCE_LABELS[skill.source] ?? skill.source;
+  const locationLabel = SOURCE_LABELS[skill.source]
+    ?? (skill.source.startsWith('skillshare:') ? SOURCE_LABELS.skillshare : skill.source);
   let instructions = skill.filePath;
   if (skill.managed) {
     const file = await readSkillFile(skill.filePath);
@@ -108,17 +112,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
     const scope = await resolveDiscoveryScope(url.searchParams.get('root'), url.searchParams.get('scope'));
     const catalogSources = await readCatalogSources(db);
 
-    const [skills, popular, curated] = await Promise.all([
-      listSkills(scope),
-      searchSkillCatalog('popular', 18),
-      searchSkillCatalog('code review', 8),
-    ]);
+    const skills = await listSkills(scope);
 
-    // skills.sh entries are their own source: their install runs the CLI against
-    // a registry package, which is a different path from a local source card.
-    const seen = new Set<string>();
-    const catalogSkills = toCatalogSkills([...popular, ...curated], 'skills-sh')
-      .filter((item) => (seen.has(item.repoTag) ? false : (seen.add(item.repoTag), true)));
+    // The Browse tab starts EMPTY. omp's CLI exposes no "popular" listing, and
+    // a pre-fetched query the user never typed is a list they cannot explain —
+    // the registry is searched when they search it.
+    const catalogSkills = toCatalogSkills([], 'skillshare');
 
     return json({ skills, catalogSources, catalogSkills, root: scope.workspace, isMock: false });
   } catch (error) {
@@ -192,19 +191,28 @@ export async function action({ request, params }: ActionFunctionArgs) {
     });
     if (catalogResponse) return catalogResponse;
 
-    // Catalog install/uninstall goes through the real skills CLI, which is what
-    // actually puts the skill where omp reads it.
+    // Catalog install/uninstall goes through `omp skill`, which is what actually
+    // puts the package where omp reads it. The spec is the row's `repoTag`
+    // (`@scope/name`), not its display name: two packages can ship a skill with
+    // the same name, and the registry addresses packages.
     if (body.type === 'install_toggle') {
       const { skill, install } = body;
+      const pkg = typeof skill?.repoTag === 'string' ? skill.repoTag : '';
+      if (!pkg) return json({ error: 'A catalog skill needs its package spec' }, { status: 400 });
       if (mock) return json({ success: true, skills: DEFAULT_SKILLS });
+      if (install) await installCatalogSkill(pkg);
+      else await uninstallCatalogSkill(pkg);
+      await reloadLiveSessions();
+      return json({ success: true, skills: await listSkills(scope) });
+    }
 
-      if (install) {
-        if (typeof skill.repoTag === 'string' && /^[\w.\-]+\/[\w.\-@:]+$/.test(skill.repoTag)) {
-          await installCatalogSkill(skill.repoTag, typeof skill.name === 'string' ? skill.name : null);
-        }
-      } else if (typeof skill.name === 'string' && skill.name.trim()) {
-        await uninstallCatalogSkill(skill.name.trim());
-      }
+    // A Skillshare skill is read-only in the pane (omp owns its store), but it
+    // is still the user's install: uninstalling it is `omp skill uninstall -g`.
+    if (body.type === 'uninstall_registry_skill') {
+      const pkg = typeof body.package === 'string' ? body.package : '';
+      if (!pkg) return json({ error: 'package is required' }, { status: 400 });
+      if (mock) return json({ success: true, skills: DEFAULT_SKILLS });
+      await uninstallCatalogSkill(pkg);
       await reloadLiveSessions();
       return json({ success: true, skills: await listSkills(scope) });
     }

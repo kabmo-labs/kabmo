@@ -220,34 +220,33 @@ describe('skills catalog', () => {
   test('search degrades to an empty list in mock mode, and results map to the UI contract', async () => {
     expect(await searchSkillCatalog('anything')).toEqual([]);
     expect(toCatalogSkills([
-      { package: 'owner/repo', name: 'Repo Skill', source: 'owner/repo', installs: 12 },
-      { package: 'other/thing', name: 'Thing', source: '', installs: 0 },
-    ], 'skills.sh')).toEqual([
+      { package: '@owner/repo', name: 'Repo Skill', description: 'Does a thing', source: 'owner', installs: 12 },
+      { package: '@other/thing', name: 'Thing', description: '', source: 'other', installs: 0 },
+    ], 'skillshare')).toEqual([
       {
-        id: 'catalog-owner/repo',
-        sourceId: 'skills.sh',
+        id: 'catalog-@owner/repo',
+        sourceId: 'skillshare',
         name: 'Repo Skill',
-        description: 'From owner/repo',
-        repoTag: 'owner/repo',
-        githubUrl: 'https://github.com/owner/repo',
-        instructions: 'owner/repo',
+        description: 'Does a thing',
+        repoTag: '@owner/repo',
+        instructions: '@owner/repo',
+        installs: 12,
       },
       {
-        id: 'catalog-other/thing',
-        sourceId: 'skills.sh',
+        id: 'catalog-@other/thing',
+        sourceId: 'skillshare',
         name: 'Thing',
         description: '',
-        repoTag: 'other/thing',
-        githubUrl: undefined,
-        instructions: 'other/thing',
+        repoTag: '@other/thing',
+        instructions: '@other/thing',
       },
     ]);
   });
 
-  test('rejects malformed input, and refuses a valid install in mock mode without spawning bunx', async () => {
+  test('rejects malformed input, and refuses a valid install in mock mode without spawning omp', async () => {
     await expect(installCatalogSkill('not-a-package')).rejects.toThrow(/Invalid skill package/);
-    await expect(uninstallCatalogSkill('bad name!')).rejects.toThrow(/Invalid skill name/);
-    await expect(installCatalogSkill('owner/repo')).rejects.toThrow(/unavailable in mock mode/);
-    await expect(uninstallCatalogSkill('some-skill')).rejects.toThrow(/unavailable in mock mode/);
+    await expect(uninstallCatalogSkill('bad name!')).rejects.toThrow(/Invalid skill package/);
+    await expect(installCatalogSkill('@owner/repo')).rejects.toThrow(/unavailable in mock mode/);
+    await expect(uninstallCatalogSkill('@owner/repo')).rejects.toThrow(/unavailable in mock mode/);
   });
 });

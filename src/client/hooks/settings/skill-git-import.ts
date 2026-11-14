@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'preact/hooks';
-import type { GitRepoInspection, GitSkillEntry, GitSkillInstallMode, GitSkillInstallResult } from '@/shared/types';
+import type { GitRepoInspection, GitSkillEntry, GitSkillInstallResult } from '@/shared/types';
 
 export interface GitImportState {
   inspecting: boolean;
@@ -11,7 +11,6 @@ export interface GitImportState {
   notes: string[];
   /** Repo-relative paths the user ticked. */
   selected: string[];
-  mode: GitSkillInstallMode;
   overwrite: boolean;
   error: string | null;
   result: GitSkillInstallResult | null;
@@ -21,7 +20,6 @@ export interface GitImportController extends GitImportState {
   inspect: (url: string) => Promise<void>;
   toggle: (path: string) => void;
   toggleAll: (select: boolean) => void;
-  setMode: (mode: GitSkillInstallMode) => void;
   setOverwrite: (overwrite: boolean) => void;
   install: () => Promise<GitSkillInstallResult | null>;
   reset: () => void;
@@ -35,7 +33,6 @@ const INITIAL: GitImportState = {
   skills: [],
   notes: [],
   selected: [],
-  mode: 'managed_copy',
   overwrite: false,
   error: null,
   result: null,
@@ -116,10 +113,6 @@ export function useSkillGitImport(): GitImportController {
     }));
   }, []);
 
-  const setMode = useCallback((mode: GitSkillInstallMode) => {
-    setState((prev) => ({ ...prev, mode }));
-  }, []);
-
   const setOverwrite = useCallback((overwrite: boolean) => {
     setState((prev) => ({ ...prev, overwrite }));
   }, []);
@@ -132,7 +125,6 @@ export function useSkillGitImport(): GitImportController {
         type: 'install_git_skills',
         url: state.url,
         paths: state.selected,
-        mode: state.mode,
         overwrite: state.overwrite,
       });
       setState((prev) => ({ ...prev, installing: false, result }));
@@ -145,9 +137,9 @@ export function useSkillGitImport(): GitImportController {
       }));
       return null;
     }
-  }, [state.selected, state.url, state.mode, state.overwrite]);
+  }, [state.selected, state.url, state.overwrite]);
 
   const reset = useCallback(() => setState(INITIAL), []);
 
-  return { ...state, inspect, toggle, toggleAll, setMode, setOverwrite, install, reset };
+  return { ...state, inspect, toggle, toggleAll, setOverwrite, install, reset };
 }

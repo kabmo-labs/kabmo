@@ -5,15 +5,18 @@ export function sourceBadge(skill: SkillItem): string {
   const source = skill.source ?? '';
   if (source.startsWith('native:')) return 'omp';
   if (source.startsWith('agents:')) return 'agents';
+  if (source.startsWith('claude-plugins:')) return 'claude';
   if (source.startsWith('claude:')) return 'claude';
   if (source.startsWith('codex:')) return 'codex';
   if (source.startsWith('github:')) return 'github';
   if (source.startsWith('opencode:')) return 'opencode';
+  if (source.startsWith('skillshare:')) return 'skillshare';
   return source.split(':')[0] || 'other';
 }
 
 /** The one-line provenance shown under a row's name. */
 export function scopeLabel(skill: SkillItem): string {
+  if (skill.source?.startsWith('skillshare:')) return 'user';
   if (skill.source?.endsWith(':project')) return 'project';
   if (skill.source?.endsWith(':user')) return 'user';
   return skill.location;

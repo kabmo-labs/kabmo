@@ -94,12 +94,15 @@ describe('row metadata', () => {
   test('a discovery source reads as a short badge', () => {
     expect(sourceBadge(LIST[0]!)).toBe('omp');
     expect(sourceBadge(LIST[2]!)).toBe('agents');
+    expect(sourceBadge(skill({ source: 'claude-plugins:user' }))).toBe('claude');
+    expect(sourceBadge(skill({ source: 'skillshare:@acme/pdf@1.2.3' }))).toBe('skillshare');
     expect(sourceBadge(skill({ source: undefined }))).toBe('other');
   });
 
   test('the scope comes from the source, not from the location field', () => {
     expect(scopeLabel(LIST[0]!)).toBe('user');
     expect(scopeLabel(LIST[1]!)).toBe('project');
+    expect(scopeLabel(skill({ source: 'skillshare:@acme/pdf@1.2.3', location: 'project' }))).toBe('user');
   });
 });
 
@@ -154,6 +157,31 @@ describe('SkillDetailPane', () => {
     expect(el.textContent).toContain('read-only');
     expect(el.textContent).not.toContain('Save changes');
     expect((el.querySelector('textarea') as HTMLTextAreaElement).readOnly).toBe(true);
+  });
+
+  test('a Skillshare skill offers an uninstall that names its package', () => {
+    const uninstalled: string[] = [];
+    const el = mount(
+      h(SkillDetailPane, {
+        skill: skill({ managed: false, source: 'skillshare:@acme/pdf@1.2.3' }),
+        isCreatingNew: false,
+        onSave: okSave,
+        onUninstallRegistry: async (pkg) => {
+          uninstalled.push(pkg);
+          return { ok: true };
+        },
+      }),
+    );
+    const request = [...el.querySelectorAll('button')].find((button) => button.textContent?.includes('Uninstall'))!;
+    expect(request).toBeDefined();
+    act(() => {
+      request.dispatchEvent(new document.defaultView!.MouseEvent('click', { bubbles: true }));
+    });
+    const confirm = [...el.querySelectorAll('button')].find((button) => button.textContent?.includes('Uninstall package'))!;
+    act(() => {
+      confirm.dispatchEvent(new document.defaultView!.MouseEvent('click', { bubbles: true }));
+    });
+    expect(uninstalled).toEqual(['@acme/pdf']);
   });
 
   test('the body the pane saves carries no second frontmatter block', () => {

@@ -19,10 +19,11 @@
  * - **A project install with no workspace is refused**, never redirected to the
  *   user root: the user picked a scope, and landing the files elsewhere is how a
  *   skill "vanishes" from the list being viewed.
- * - **A registry install is one `bunx skills add --skill <name>` per picked
- *   skill**, and a failure is reported per skill. The CLI has no batch form that
- *   names individual skills, and an unscoped add installs the whole repository
- *   (measured: 20 directories for one click).
+ * - **A repository install copies the picked directories into a root omp
+ *   reads** (`~/.omp/agent/skills` or `<workspace>/.omp/skills`), one refusal
+ *   per skill. The registry path is `omp skill install` and lives in
+ *   `skills-catalog.ts`; an arbitrary repository is not a registry package, so
+ *   it cannot be installed through that command.
  */
 
 import { json } from '@/server/lib/remix-compat';
@@ -30,7 +31,7 @@ import { isMockMode } from '@/server/mock.server';
 import type { DiscoveryScope } from '@/server/lib/omp/config/scope';
 import type { SkillCatalogSource } from '@/shared/types';
 import { DEFAULT_CATALOG_SKILLS } from '@/client/data/settings/skill';
-import { searchSkillCatalog, toCatalogSkills, installCatalogSkill } from '@/server/lib/omp/config/skills-catalog';
+import { searchSkillCatalog, toCatalogSkills } from '@/server/lib/omp/config/skills-catalog';
 import { inspectSkillRepo, toSkillRepoRef } from '@/server/lib/omp/config/skills-git-repo';
 import { installSkillCopies } from '@/server/lib/omp/config/skills-git-install';
 import { readCatalogSources, writeCatalogSources } from '@/server/lib/omp/config/skill-sources';
@@ -53,10 +54,6 @@ export interface CatalogDeps {
   hasWorkspace: boolean;
   /** The live discovery list, re-read after a write. */
   listSkills: (scope: DiscoveryScope) => Promise<{ name: string }[]>;
-}
-
-function message(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
 
 /**
@@ -98,9 +95,9 @@ export async function runCatalogAction(body: Record<string, unknown>, deps: Cata
     return json({ success: true, catalogSources: updated });
   }
 
-  // Real search over skills.sh. The Browse box used to filter the ~26 entries the
-  // loader had pre-fetched, so a query the catalog actually held answered "no
-  // skills found".
+  // Real search over the Skillshare registry. The Browse box used to filter the
+  // ~26 entries the loader had pre-fetched, so a query the catalog actually held
+  // answered "no skills found".
   if (type === 'search_catalog') {
     const query = typeof body.q === 'string' ? body.q.trim() : '';
     if (!query) return json({ query, catalogSkills: [] });
@@ -114,7 +111,7 @@ export async function runCatalogAction(body: Record<string, unknown>, deps: Cata
       });
     }
     const seen = new Set<string>();
-    const catalogSkills = toCatalogSkills(await searchSkillCatalog(query, 24), 'skills-sh').filter((item) =>
+    const catalogSkills = toCatalogSkills(await searchSkillCatalog(query, 24), 'skillshare').filter((item) =>
       seen.has(item.repoTag) ? false : (seen.add(item.repoTag), true),
     );
     return json({ query, catalogSkills });
@@ -158,23 +155,6 @@ export async function runCatalogAction(body: Record<string, unknown>, deps: Cata
     const paths = Array.isArray(body.paths) ? body.paths.filter((path): path is string => typeof path === 'string') : [];
     if (paths.length === 0) return json({ error: 'Select at least one skill to install' }, { status: 400 });
 
-    if (body.mode === 'registry') {
-      const installed: string[] = [];
-      const skipped: Array<{ name: string; reason: string }> = [];
-      for (const path of paths) {
-        const name = path.split('/').pop() ?? '';
-        try {
-          // The CLI takes `owner/repo`; any accepted URL form maps to it.
-          await installCatalogSkill(toSkillRepoRef(url)?.slug ?? url.trim(), name);
-          installed.push(name);
-        } catch (error) {
-          skipped.push({ name, reason: message(error) });
-        }
-      }
-      await reloadLiveSessions();
-      return json({ repo: url, mode: 'registry', installed, skipped, skills: await deps.listSkills(scope) });
-    }
-
     // USER by default: the catalog pane names no workspace, and a managed copy
     // there is the skill the user owns globally. A `project` request needs a
     // root the caller actually named.
@@ -188,7 +168,7 @@ export async function runCatalogAction(body: Record<string, unknown>, deps: Cata
       overwrite: body.overwrite === true,
     });
     if (outcome.installed.length > 0) await reloadLiveSessions();
-    return json({ repo: url, mode: 'managed_copy', ...outcome, skills: await deps.listSkills(scope) });
+    return json({ repo: url, ...outcome, skills: await deps.listSkills(scope) });
   }
 
   return null;

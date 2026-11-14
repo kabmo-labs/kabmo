@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { Loader2, RefreshCw, Search, X } from 'lucide-preact';
 import type { CatalogSkillItem } from '@/shared/types';
 import { invalidateComposerCache } from '@/shared/lib/chat/composer/client';
+import { skillsharePackage } from '@/shared/lib/omp/skill-source';
 import { useToasts } from '@/client/hooks/ui/toasts';
 import { useSkillCatalog } from '@/client/hooks/settings/skill-catalog';
 import { useSkillGitImport } from '@/client/hooks/settings/skill-git-import';
@@ -22,14 +23,18 @@ const SEARCH_DEBOUNCE_MS = 300;
 /**
  * The Skills Catalog screen: three surfaces over the same two sources of truth.
  *
- * Browse is skills.sh, From Git is an arbitrary repository, Sources is the list of
- * repositories either one can offer. They share `useSkillCatalog` so an install in
- * one tab is visible in the others without a second fetch, and the tab strip is
- * the only place the three are named.
+ * Browse is the Skillshare registry omp installs from, From Git is an arbitrary
+ * repository, Sources is the list of repositories either one can offer. They
+ * share `useSkillCatalog` so an install in one tab is visible in the others
+ * without a second fetch, and the tab strip is the only place the three are
+ * named.
  *
- * Search is SERVER-side now. The box used to filter the ~26 rows the loader had
- * pre-fetched, so a query the catalog really held answered "no skills found" —
- * a false negative the user could not distinguish from an empty registry.
+ * Search is SERVER-side and goes through `omp skill search`, so the registry
+ * URL is omp's own `skills.registryUrl` and the results are the packages
+ * `omp skill install` can actually resolve. The box used to filter the ~26 rows
+ * the loader had pre-fetched, so a query the catalog really held answered "no
+ * skills found" — a false negative the user could not distinguish from an empty
+ * registry.
  */
 export function SkillCatalogSettings({ initialTab = 'browse' }: { initialTab?: CatalogTab } = {}) {
   const catalog = useSkillCatalog();
@@ -43,7 +48,11 @@ export function SkillCatalogSettings({ initialTab = 'browse' }: { initialTab?: C
   const [sourceBusy, setSourceBusy] = useState(false);
   const debounce = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  const installed = new Set(catalog.userSkills.map((skill) => skill.name));
+  const installedPackages = new Set(
+    catalog.userSkills
+      .map((skill) => skillsharePackage(skill.source))
+      .filter((pkg): pkg is string => pkg !== null),
+  );
 
   const { pushToast } = useToasts();
 
@@ -66,7 +75,7 @@ export function SkillCatalogSettings({ initialTab = 'browse' }: { initialTab?: C
   };
 
   const handleInstallToggle = async (skill: CatalogSkillItem) => {
-    const isInstalled = installed.has(skill.name);
+    const isInstalled = installedPackages.has(skill.repoTag);
     setBusySkill(skill.id);
     try {
       const response = await fetch('/api/settings/skills', {
@@ -88,8 +97,10 @@ export function SkillCatalogSettings({ initialTab = 'browse' }: { initialTab?: C
 
   const refresh = () => {
     setRefreshing(true);
-    catalog
-      .reload()
+    // Re-run the query on screen: the loader's own list is empty, so a plain
+    // reload would clear the results the user is looking at.
+    const action = query.trim() ? catalog.search(query) : catalog.reload();
+    action
       .then(() => pushToast('Catalog refreshed', 'success'))
       .catch((error) => pushToast(error instanceof Error ? error.message : String(error), 'error'))
       .finally(() => setRefreshing(false));
@@ -157,7 +168,7 @@ export function SkillCatalogSettings({ initialTab = 'browse' }: { initialTab?: C
                 type="text"
                 value={query}
                 onInput={(event) => runSearch(event.currentTarget.value)}
-                placeholder="Search skills.sh…"
+                placeholder="Search the Skillshare registry…"
                 className="w-full pl-9 pr-9 py-2 rounded-lg border border-ink/20 hover:border-ink/40 bg-paper focus:outline-none focus:border-ink text-xs text-ink transition-colors"
               />
               {query ? (
@@ -174,7 +185,9 @@ export function SkillCatalogSettings({ initialTab = 'browse' }: { initialTab?: C
 
             <div className="flex items-center justify-between">
               <span className="text-[11px] text-ink/55">
-                {catalog.catalogSkills.length} skill(s){query.trim() ? ` for “${query.trim()}”` : ' · popular'}
+                {query.trim()
+                  ? `${catalog.catalogSkills.length} skill(s) for “${query.trim()}”`
+                  : 'Search the registry to list skills'}
               </span>
               <button
                 type="button"
@@ -191,9 +204,14 @@ export function SkillCatalogSettings({ initialTab = 'browse' }: { initialTab?: C
             <div className="space-y-3">
               {catalog.catalogSkills.length === 0 ? (
                 <div className="text-center py-10 border border-dashed border-ink/15 rounded-xl space-y-1">
-                  <p className="text-xs text-ink/60">No skills found.</p>
+                  <p className="text-xs text-ink/60">
+                    {query.trim() ? 'No skills match that query.' : 'No skills listed yet.'}
+                  </p>
                   <p className="text-[11px] text-ink/45">
-                    Try another query, or install straight from a repository in <span className="font-semibold">From Git</span>.
+                    {query.trim()
+                      ? 'Try another query, or install straight from a repository in '
+                      : 'Type a query to search the Skillshare registry, or install from a repository in '}
+                    <span className="font-semibold">From Git</span>.
                   </p>
                 </div>
               ) : (
@@ -201,7 +219,7 @@ export function SkillCatalogSettings({ initialTab = 'browse' }: { initialTab?: C
                   <SkillCard
                     key={skill.id}
                     skill={skill}
-                    installed={installed.has(skill.name)}
+                    installed={installedPackages.has(skill.repoTag)}
                     busy={busySkill === skill.id}
                     onInstallToggle={handleInstallToggle}
                   />

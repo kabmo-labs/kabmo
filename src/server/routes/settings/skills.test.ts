@@ -223,3 +223,17 @@ describe('git inspection and install', () => {
     expect(body.catalogSkills).toEqual([]);
   });
 });
+
+describe('registry install and uninstall', () => {
+  test('a catalog toggle without a package spec is a 400, not a silent no-op', async () => {
+    const res = await call(skillsAction, send({ type: 'install_toggle', skill: { name: 'pdf' }, install: true }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain('package spec');
+  });
+
+  test('a registry uninstall without a package is a 400', async () => {
+    const res = await call(skillsAction, send({ type: 'uninstall_registry_skill' }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain('package');
+  });
+});

@@ -55,7 +55,7 @@ export interface CatalogSkillItem {
   githubUrl?: string;
   instructions?: string;
   installed?: boolean;
-  /** Install count reported by skills.sh; absent for a git-repo entry. */
+  /** Weekly downloads reported by the Skillshare registry; absent for a git-repo entry. */
   installs?: number;
 }
 
@@ -81,16 +81,8 @@ export interface GitRepoInspection {
   notes: string[];
 }
 
-/** How an imported skill is installed. */
-export type GitSkillInstallMode =
-  /** Copy the SKILL.md directory into a root Kabmo owns; editable here. */
-  | 'managed_copy'
-  /** `bunx skills add` into `~/.agents/skills`; read-only here, updatable. */
-  | 'registry';
-
 export interface GitSkillInstallResult {
   repo: string;
-  mode: GitSkillInstallMode;
   installed: string[];
   skipped: Array<{ name: string; reason: string }>;
   /** The refreshed discovery list, so the pane needs no second round trip. */

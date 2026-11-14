@@ -6,21 +6,19 @@
 /**
  * Skill import from an arbitrary git repository.
  *
- * The catalog's other install path is `bunx skills add <package>`, which works
- * for a repository the skills.sh registry knows and tells the user nothing about
- * what is inside. A URL a user pastes is neither: it may hold one SKILL.md at the
- * root, twenty under `skills/`, or a plugin layout, and the user has to see the
- * list before anything lands on disk. So this module clones the repository into
- * a staging directory, reads the SKILL.md frontmatter itself, and installs the
- * entries the user picked.
+ * The catalog's registry path is `omp skill install @scope/name`, which only
+ * resolves packages the Skillshare registry knows and tells the user nothing
+ * about what is inside. A URL a user pastes is neither: it may hold one SKILL.md
+ * at the root, twenty under `skills/`, or a plugin layout, and the user has to
+ * see the list before anything lands on disk. So this module clones the
+ * repository into a staging directory, reads the SKILL.md frontmatter itself,
+ * and installs the entries the user picked.
  *
  * Three properties are load-bearing:
  *
- * - **`bunx skills add <repo> --list` is NOT the inspector.** It prints a
- *   human-oriented tree (measured: 60+ wrapped lines for one repository), has no
- *   `--json` form (`--json` is refused together with `--list`), and no exit code
- *   or machine shape to parse. Reading SKILL.md from a clone is the only shape
- *   that survives a CLI rewrite.
+ * - **The inspector is a clone, not a CLI listing.** A human-oriented tree has
+ *   no machine shape to parse, and a CLI rewrite would break it; reading
+ *   SKILL.md from a clone is the only shape that survives.
  * - **Everything is quoted as argv and path-joined through `join()`.** A skill
  *   name is author-chosen, so nothing here builds a shell string, and nothing
  *   copies a path the frontmatter supplied: a copy target is always
