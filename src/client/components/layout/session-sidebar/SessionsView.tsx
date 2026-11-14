@@ -1,5 +1,6 @@
 import { useState } from 'preact/hooks';
 import { useSearchParams } from '@/client/lib/router/search-params';
+import { newSessionParams } from '@/client/lib/router/branch-params';
 import { NewWorkspaceModal } from '@/client/components/layout/session-sidebar/Modals';
 import { SchedulerModal } from '@/client/components/layout/session-sidebar/scheduler-modal';
 import { ClassicSidebarView } from '@/client/components/layout/session-sidebar/ClassicView';
@@ -122,7 +123,6 @@ export function SessionsView({
     prewarmForNewSession();
     setSearchParams(prev => {
       const currentSessionId = prev.get('sessionId');
-      const next = new URLSearchParams(prev);
       // The row this chat will show in the sidebar while omp has not written
       // its transcript yet. The store mints the id (and keeps the row), so the
       // URL carries what the sidebar reads rather than a second source.
@@ -135,10 +135,11 @@ export function SessionsView({
       // — its composer then stayed disabled ("Please select a workspace above")
       // and the first send never happened.
       const contextFolderId = currentFolder?.id ?? (prev.get('folderId') ? Number(prev.get('folderId')) : null);
-      next.set('sessionId', startPendingSession(contextFolderId));
-      if (contextFolderId != null) next.set('folderId', String(contextFolderId));
-      else next.delete('folderId');
-      return next;
+      // `newSessionParams` also drops the branch hints: a draft the user backed
+      // out of leaves `forkFrom`/`forkAt`/`parentSessionId` in the URL, and the
+      // next chat read them as its OWN branch — the source transcript then
+      // filled the "new" chat above its composer.
+      return newSessionParams(prev, startPendingSession(contextFolderId), contextFolderId);
     }, { replace: true });
   };
 
@@ -156,22 +157,15 @@ export function SessionsView({
     prewarmForNewSession(folderId);
     const pendingId = startPendingSession(folderId);
     setSessionKey(pendingId, 'chat.spawnTarget', { folderId, worktreePath });
-    setSearchParams(prev => {
-      const next = new URLSearchParams(prev);
-      next.set('sessionId', pendingId);
-      next.set('folderId', folderId.toString());
-      return next;
-    }, { replace: true });
+    setSearchParams(prev => newSessionParams(prev, pendingId, folderId), { replace: true });
   };
 
   const handleNewSessionForFolder = (folderId: number) => {
     prewarmForNewSession(folderId);
-    setSearchParams(prev => {
-      const next = new URLSearchParams(prev);
-      next.set('sessionId', startPendingSession(folderId));
-      next.set('folderId', folderId.toString());
-      return next;
-    }, { replace: true });
+    setSearchParams(
+      prev => newSessionParams(prev, startPendingSession(folderId), folderId),
+      { replace: true },
+    );
   };
 
   const variantProps: SessionSidebarVariantProps = {

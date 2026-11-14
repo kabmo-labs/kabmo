@@ -25,6 +25,7 @@ import {
 import { markPendingSessionDraft, pendingSessionWait } from '@/client/hooks/chat/omp/pending-waiting';
 import { restoreHeldDraft } from '@/client/hooks/chat/waiting/restore';
 import { useSearchParams } from '@/client/lib/router/search-params';
+import { clearBranchParams } from '@/client/lib/router/branch-params';
 import type { ToastTone } from '@/shared/lib/ui/toast-duration';
 
 export interface WaitingDispatchOptions {
@@ -74,7 +75,9 @@ export function useWaitingDispatch({ onNotice }: WaitingDispatchOptions = {}): v
           // while the dispatch happened elsewhere.
           setSearchParams((prev) => {
             if (prev.get('sessionId') !== pendingId) return prev;
-            const next = new URLSearchParams(prev);
+            // The real session now owns this chat; the draft's branch hints do
+            // not belong to it (its fork/child edge is already in the store).
+            const next = clearBranchParams(prev);
             next.set('sessionId', prompt.sessionId as string);
             return next;
           }, { replace: true });

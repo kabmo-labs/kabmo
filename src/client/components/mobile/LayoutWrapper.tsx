@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'preact/hooks';
 import { useSearchParams } from '@/client/lib/router/search-params';
+import { clearBranchParams, newSessionParams } from '@/client/lib/router/branch-params';
 import { useKabmoEvent } from '@/client/hooks/ui/window-event';
 import { useMobileBackStack } from '@/client/hooks/workspace/mobile-back';
 import type { SettingsCategoryId } from '@/shared/types';
@@ -170,10 +171,13 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
 
   const handleSelectSession = (id: number | string) => {
     setSearchParams(prev => {
-      prev.set('sessionId', id.toString());
+      // The branch hints describe a pending draft. A real session selected here
+      // is not that draft, and the next New Session must not inherit them.
+      const next = clearBranchParams(prev);
+      next.set('sessionId', id.toString());
       // Navigating away from a session must also exit its transcript view.
-      if (prev.has('subagent')) prev.delete('subagent');
-      return prev;
+      if (next.has('subagent')) next.delete('subagent');
+      return next;
     }, { replace: true });
     setCurrentScreen('main');
   };
@@ -188,13 +192,13 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
     if (cwd) triggerSessionPrewarm(cwd);
     setSearchParams(prev => {
       const currentSessionId = prev.get('sessionId');
-      const next = new URLSearchParams(prev);
       const currentFolder = currentSessionId
         ? folders.find(f => f.sessions?.some((s) => String(s.id) === String(currentSessionId)))
         : undefined;
-      next.set('sessionId', startPendingSession(currentFolder?.id ?? folderId ?? null));
-      if (currentFolder) next.set('folderId', currentFolder.id.toString());
-      return next;
+      const contextFolderId = currentFolder?.id ?? folderId ?? null;
+      // `newSessionParams` also drops a backed-out fork's URL hints, which the
+      // next chat would otherwise read as its own branch.
+      return newSessionParams(prev, startPendingSession(contextFolderId), contextFolderId);
     }, { replace: true });
     setCurrentScreen('main');
   };
@@ -205,12 +209,10 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
   const handleNewSessionForFolder = (targetFolderId: number) => {
     const cwd = spawnCwdForNewSession(folders, sessionParam, targetFolderId);
     if (cwd) triggerSessionPrewarm(cwd);
-    setSearchParams(prev => {
-      const next = new URLSearchParams(prev);
-      next.set('sessionId', startPendingSession(targetFolderId));
-      next.set('folderId', targetFolderId.toString());
-      return next;
-    }, { replace: true });
+    setSearchParams(
+      prev => newSessionParams(prev, startPendingSession(targetFolderId), targetFolderId),
+      { replace: true },
+    );
     setCurrentScreen('main');
   };
 

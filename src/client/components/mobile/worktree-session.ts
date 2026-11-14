@@ -18,6 +18,7 @@
  */
 
 import { startPendingSession } from '@/client/hooks/chat/omp/pending-sessions';
+import { clearBranchParams } from '@/client/lib/router/branch-params';
 import { triggerSessionPrewarm } from '@/shared/lib/omp/session/prewarm';
 import { setSessionKey } from '@/shared/lib/workspace/session-state/store';
 import { SPAWN_TARGET_KEY } from '@/client/hooks/chat/timeline/spawn-target';
@@ -41,7 +42,9 @@ export function startWorktreeSession(
   const pendingId = startPendingSession(folderId);
   setSessionKey(pendingId, SPAWN_TARGET_KEY, { folderId, worktreePath });
   deps.setSearchParams((prev) => {
-    const next = new URLSearchParams(prev);
+    // A worktree chat is top-level; a fork the user backed out of left its
+    // source hints in the URL, and this chat would be drawn as that fork.
+    const next = clearBranchParams(prev);
     next.set('sessionId', pendingId);
     next.set('folderId', folderId.toString());
     return next;

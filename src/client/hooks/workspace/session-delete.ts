@@ -23,6 +23,7 @@
 
 import { useCallback, useState } from 'preact/hooks';
 import { useSearchParams } from '@/client/lib/router/search-params';
+import { clearBranchParams } from '@/client/lib/router/branch-params';
 import { forgetSession } from '@/shared/lib/workspace/session-state/store';
 import type { SessionItemData } from '@/shared/types';
 
@@ -74,7 +75,10 @@ export function useSessionDelete(): SessionDeleteActions {
       forgetSession(sessionId);
       if (searchParams.get('sessionId') === sessionId) {
         setSearchParams((prev) => {
-          const next = new URLSearchParams(prev);
+          // The deleted chat is gone, and with it any pending draft's branch
+          // hints the URL still carried: a bare landing page showing a forked
+          // source's transcript would be the next thing the user sees.
+          const next = clearBranchParams(prev);
           next.delete('sessionId');
           // A subagent transcript belongs to the session being removed.
           next.delete('subagent');

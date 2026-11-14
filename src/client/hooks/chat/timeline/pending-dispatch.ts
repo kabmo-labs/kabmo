@@ -20,6 +20,7 @@ import type { Attachment, ChatMessageData, PromptDispatchResult } from '@/shared
 import type { ArmedGoal } from '@/shared/lib/omp/mode/actions';
 import type { ChatTimelineSendDeps } from '@/client/hooks/chat/timeline/send-props';
 import { adoptPendingSession, pendingEntryFor } from '@/client/hooks/chat/omp/pending-sessions';
+import { clearBranchParams } from '@/client/lib/router/branch-params';
 import { recordSpawnHarness } from '@/client/hooks/chat/timeline/spawn-harness';
 import { childSpawnBody } from '@/client/hooks/chat/timeline/child-spawn';
 import { forkRequestBody } from '@/client/hooks/chat/timeline/fork-request';
@@ -184,11 +185,8 @@ export async function dispatchPendingChat(
     deps.pendingHarnessRef.current = null;
     persistUserTurn(body.sessionId, input.newUserMsg);
     deps.setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
+      const next = clearBranchParams(prev);
       next.set('sessionId', body.sessionId!);
-      next.delete('forkFrom');
-      next.delete('forkAt');
-      next.delete('parentSessionId');
       return next;
     }, { replace: true });
     prependInheritedHistory(
@@ -243,11 +241,10 @@ export async function dispatchPendingChat(
     deps.pendingHarnessRef.current = null;
     persistUserTurn(body.sessionId, input.newUserMsg);
     deps.setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
+      // The branch hints belonged to the pending chat; a real session's URL must
+      // not keep them, or the next draft opened here is read as this branch.
+      const next = clearBranchParams(prev);
       next.set('sessionId', body.sessionId!);
-      // The parameter belonged to the pending chat; a real session's URL must
-      // not keep a stale parent hint for a later pending chat.
-      next.delete('parentSessionId');
       return next;
     }, { replace: true });
     return { ok: true, busy: false };
@@ -292,9 +289,8 @@ export async function dispatchPendingChat(
     deps.pendingHarnessRef.current = null;
     persistUserTurn(session.sessionId, input.newUserMsg);
     deps.setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
+      const next = clearBranchParams(prev);
       next.set('sessionId', session.sessionId);
-      next.delete('parentSessionId');
       return next;
     }, { replace: true });
     return { ok: true, busy: false };

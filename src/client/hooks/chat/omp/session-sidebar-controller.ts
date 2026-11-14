@@ -22,6 +22,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { useSearchParams } from '@/client/lib/router/search-params';
+import { clearBranchParams } from '@/client/lib/router/branch-params';
 import { DEFAULT_SESSION_SORT_OPTION, isValidSessionSortOption, sortFolders } from '@/shared/lib/workspace/sidebar-sort';
 import { useSessionStatusAck } from '@/client/hooks/chat/omp/session-statuses';
 import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
@@ -250,10 +251,15 @@ export function useSessionSidebarController(
       onSelectSession(id);
     } else {
       setSearchParams(prev => {
-        prev.set('sessionId', id.toString());
+        // The branch hints belong to a PENDING draft's URL. Selecting a real
+        // session must not leave them behind: they would describe this chat as
+        // a fork of another, and the next New Session would inherit the source
+        // transcript the user already backed out of.
+        const next = clearBranchParams(prev);
+        next.set('sessionId', id.toString());
         // Navigating away from a session must also exit its transcript view.
-        if (prev.has('subagent')) prev.delete('subagent');
-        return prev;
+        if (next.has('subagent')) next.delete('subagent');
+        return next;
       }, { replace: true });
     }
     onAfterSelect?.();

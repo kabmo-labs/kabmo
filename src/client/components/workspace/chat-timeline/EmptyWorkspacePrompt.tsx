@@ -249,21 +249,6 @@ export function EmptyWorkspacePrompt({
     >
       {docked ? (
         <>
-          {/* A fork is composed, not created: the source it branches from is
-              still switchable, so its picker stays above the transcript the
-              preview draws. Every other pending chat loses the row once docked
-              because its first send already dispatched the spawn. */}
-          {branchPreview && onParentSessionChange && (
-            <div className={`shrink-0 flex items-center gap-1 flex-wrap ${isMobile ? 'pl-4 pr-3 pt-3' : 'px-4 pt-3'}`}>
-              <ParentSessionPicker
-                folders={folders as WorkspaceFolderData[]}
-                value={parentSessionId}
-                onChange={onParentSessionChange}
-                label={branchLabel ?? 'Fork from'}
-                allowNone={branchAllowNone ?? false}
-              />
-            </div>
-          )}
           {/* The pending transcript reserves the box the real timeline's own
               scroller does (`TimelineBody`), so adoption moves no text either. */}
           <div
@@ -302,6 +287,22 @@ export function EmptyWorkspacePrompt({
               />
             )}
             {heldPrompt}
+            {/* A fork is composed, not created, so its source stays switchable
+                until the first send. The picker is dock furniture: it belongs
+                directly above the composer, where the control it affects is,
+                not pinned to the top of the transcript where it reads as part
+                of the source history. */}
+            {branchPreview && onParentSessionChange && (
+              <div className="flex items-center gap-1 flex-wrap px-1 pb-1">
+                <ParentSessionPicker
+                  folders={folders as WorkspaceFolderData[]}
+                  value={parentSessionId}
+                  onChange={onParentSessionChange}
+                  label={branchLabel ?? 'Fork from'}
+                  allowNone={branchAllowNone ?? false}
+                />
+              </div>
+            )}
             {composer}
           </ComposerDockFrame>
         </>

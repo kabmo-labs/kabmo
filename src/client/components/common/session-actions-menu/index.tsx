@@ -31,6 +31,7 @@ import { createPortal } from 'preact/compat';
 import { placeMenu, type MenuPlacement } from '@/shared/lib/ui/menu-anchor';
 import { Archive, ArchiveRestore, GitBranch, GitFork, Hourglass, Pencil, Trash2, WandSparkles } from 'lucide-preact';
 import { useSearchParams } from '@/client/lib/router/search-params';
+import { clearBranchParams } from '@/client/lib/router/branch-params';
 import { startPendingSession } from '@/client/hooks/chat/omp/pending-sessions';
 import { expandSessionBranch } from '@/client/hooks/workspace/expanded-sessions';
 import { setHarnessPick } from '@/client/hooks/chat/timeline/session-harness';
@@ -163,7 +164,11 @@ export function SessionActionsMenu({
     if (harness) setHarnessPick(pendingId, harness);
     expandSessionBranch(parentId);
     setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
+      // A fork the user backed out of leaves `forkFrom`/`forkAt` in the URL, and
+      // this chat would otherwise be read as that fork (the fork check runs
+      // before the child one). Start from a branchless query and set only the
+      // parent this child really has.
+      const next = clearBranchParams(prev);
       next.set('sessionId', pendingId);
       next.set('parentSessionId', parentId);
       if (folderId !== undefined) next.set('folderId', String(folderId));

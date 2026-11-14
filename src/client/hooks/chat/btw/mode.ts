@@ -26,6 +26,7 @@ import { useBtwSession, type BtwLiveAnswer } from '@/client/hooks/chat/btw';
 import { useKabmoEvent } from '@/client/hooks/ui/window-event';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
 import { useSearchParams } from '@/client/lib/router/search-params';
+import { clearBranchParams } from '@/client/lib/router/branch-params';
 import { PHASE_VERBS } from '@/shared/lib/chat/timeline/tool-phrases';
 
 /** Question sent when a question arrived carrying only images. */
@@ -152,7 +153,10 @@ export function useBtwMode(sessionId: string | null): BtwMode {
     setOpen(false);
     setSelectedTopicId(null);
     setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
+      // The promoted topic is a real session, not the draft whose branch hints
+      // may still be in the URL (a backed-out fork) — they would describe it as
+      // a fork of another chat.
+      const next = clearBranchParams(prev);
       next.set('sessionId', created);
       if (next.has('subagent')) next.delete('subagent');
       return next;

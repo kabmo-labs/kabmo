@@ -22,6 +22,7 @@
 
 import { useCallback, useState } from 'preact/hooks';
 import { useSearchParams } from '@/client/lib/router/search-params';
+import { clearBranchParams } from '@/client/lib/router/branch-params';
 import { forgetSession } from '@/shared/lib/workspace/session-state/store';
 import {
   deleteSessionsBatch,
@@ -74,7 +75,10 @@ export function useBatchDeleteRun(refresh: () => void): BatchDeleteRun {
       const openSession = searchParams.get('sessionId');
       if (openSession && result.removed.includes(openSession)) {
         setSearchParams((prev) => {
-          const next = new URLSearchParams(prev);
+          // A pending draft's branch hints belong to a chat that no longer
+          // exists: the landing page would otherwise draw the forked source's
+          // transcript above an empty composer.
+          const next = clearBranchParams(prev);
           next.delete('sessionId');
           next.delete('subagent');
           return next;

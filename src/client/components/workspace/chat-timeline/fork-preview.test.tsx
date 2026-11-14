@@ -119,6 +119,17 @@ describe('fork preview in the pending composer', () => {
     expect(el.querySelector('[aria-label="Undo this message"]')).toBeNull();
   });
 
+  test('the fork picker is dock furniture, not part of the transcript', async () => {
+    const el = mount({});
+    await settle();
+    const dock = el.querySelector('[data-composer-dock]');
+    const trigger = el.querySelector('[data-testid="parent-session-picker"]');
+    expect(trigger, 'the fork picker is missing').not.toBeNull();
+    // It used to sit above the preview rows, at the top of the pane; the control
+    // it affects is the composer, so it belongs inside the dock.
+    expect(dock?.contains(trigger as Node), 'the fork picker is outside the composer dock').toBe(true);
+  });
+
   test('"Fork from" stays reachable while the preview is docked, and reports a new source', async () => {
     const picked: string[] = [];
     const el = mount({ onParentSessionChange: (id: string | null) => picked.push(String(id)) });

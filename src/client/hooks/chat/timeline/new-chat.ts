@@ -25,6 +25,7 @@ import { useCallback, useEffect, useRef } from 'preact/hooks';
 import type { Dispatch, SetStateAction } from 'preact/compat';
 import type { Attachment, ChatMessageData, PromptDispatchResult, WorkspaceFolderData } from '@/shared/types';
 import type { SetSearchParams } from '@/client/lib/router/search-params';
+import { clearBranchParams } from '@/client/lib/router/branch-params';
 import { activeProjectForSession } from '@/shared/lib/workspace/active-project';
 import { startPendingSession, patchPendingEntry } from '@/client/hooks/chat/omp/pending-sessions';
 import { setHarnessPick } from '@/client/hooks/chat/timeline/session-harness';
@@ -82,7 +83,9 @@ export function useNewChatSubmit(
     }
     parkedRef.current = { pendingId, text, attachments, ...(harness ? { harness } : {}) };
     setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
+      // New Chat starts a top-level chat: a fork that was backed out of left
+      // `forkFrom`/`forkAt` in the URL, and this chat would be drawn as it.
+      const next = clearBranchParams(prev);
       next.set('sessionId', pendingId);
       // Carry the workspace the chat was started from: the first send SPAWNS a
       // real omp session in that folder's cwd, and a dialog opened from a
