@@ -12,13 +12,19 @@
  * avoid saving twice. The panel keeps only the keys that need its own state:
  * the find bar's Escape, and a reopen that must not consume the chord when the
  * stack is empty.
+ *
+ * Nothing is REGISTERED here. `editor.run` is a global command and a split
+ * column mounts this hook twice, so registering it per pane threw
+ * `command "editor.run" is already registered` the moment the editor split —
+ * which the dev overlay then drew over the page, blocking every click. The one
+ * registration lives in the app's command runtime and reaches the FOCUSED pane
+ * through `useEditorCommandTarget`.
  */
 
-import { useCallback, useEffect, useRef } from 'preact/hooks';
+import { useCallback, useRef } from 'preact/hooks';
 import type { TargetedKeyboardEvent } from 'preact';
 import { EDITOR_KEY_BINDINGS, isFindBarCommand, type EditorCommand } from '@/shared/lib/code/editor/keymap';
 import { resolveBinding } from '@/shared/lib/ui/key-binding';
-import { registerCommand } from '@/client/lib/commands/registry';
 import type { EditorFindState } from '@/client/hooks/editor/use-editor-find';
 
 export interface UseEditorPanelKeysOptions {
@@ -40,17 +46,6 @@ export function useEditorPanelKeys({ find, runCommand, reopenClosed }: UseEditor
   runRef.current = runCommand;
   const reopenRef = useRef(reopenClosed);
   reopenRef.current = reopenClosed;
-
-  // The palette's one adapter into CodeMirror: a row runs `editor.run` with the
-  // command as its argument, and this is the only place that knows how.
-  useEffect(
-    () =>
-      registerCommand('editor.run', (args) => {
-        const command = (args as { command?: EditorCommand } | undefined)?.command;
-        if (command) runRef.current(command);
-      }),
-    [],
-  );
 
   const onKeyDownCapture = useCallback((event: TargetedKeyboardEvent<HTMLDivElement>) => {
     const current = findRef.current;
