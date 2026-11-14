@@ -4,6 +4,22 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.33.0](https://github.com/kabmo-labs/kabmo/compare/v0.32.1...v0.33.0) — 2026-11-14
+
+### Added
+
+* **chat:** list a run's changed files above its footer, from the agent journal ([e7f443f](https://github.com/kabmo-labs/kabmo/commit/e7f443f6c1cfe9ddf221987580e8954a2fba50d9)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **chat:** show run timing in the context popover ([af1cee3](https://github.com/kabmo-labs/kabmo/commit/af1cee316df8733331795448fa220a22070d282a)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** add Hermes Agent over its own ACP server ([8ecbe3f](https://github.com/kabmo-labs/kabmo/commit/8ecbe3fe751250b321943714c0a9b4ec44b02736)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **notifications:** play the Kabmo chime from the native notification ([33f566d](https://github.com/kabmo-labs/kabmo/commit/33f566dbe79785cbc75846c75d2ebb8acfbe55f2)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **settings:** adopt omp 18.20.2's four settings rows and bump the pin ([06993fc](https://github.com/kabmo-labs/kabmo/commit/06993fc6563ca9651d24551cac1f43bf7a65efb2)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **chat:** show a run's changed files with forward-slash display paths ([aee778d](https://github.com/kabmo-labs/kabmo/commit/aee778dc31268ed2e0621704ec8c37b37255fb00)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **mcp:** paint the session MCP status glyph with the readable signal tokens ([cf4bb29](https://github.com/kabmo-labs/kabmo/commit/cf4bb29d1b031521083c8bb17723ae6a98367cac)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **sidebar:** stop counting changes.jsonl as a subagent transcript ([087b720](https://github.com/kabmo-labs/kabmo/commit/087b72004da46bd68f5255b2f5e4bac063a35b8b)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.32.1](https://github.com/kabmo-labs/kabmo/compare/v0.32.0...v0.32.1) — 2026-11-14
 
 ### Fixed
