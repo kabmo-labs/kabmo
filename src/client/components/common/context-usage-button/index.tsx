@@ -42,6 +42,7 @@ import { formatCompactTokens } from '@/shared/lib/format/number';
 import { CONTEXT_BAND_TONES, contextUsageBand } from '@/shared/lib/chat/context/usage';
 import { ContextRing } from '@/client/components/common/context-usage-button/Ring';
 import { McpSection } from '@/client/components/common/context-usage-button/McpSection';
+import { SessionStats } from '@/client/components/common/context-usage-button/SessionStats';
 import { CONTROL_BOX } from '@/client/lib/ui/control-plate';
 
 interface ContextUsageButtonProps {
@@ -127,36 +128,43 @@ export function ContextUsageButton({ sessionId, layout = 'desktop' }: ContextUsa
           {!started || !telemetry ? (
             <div className="pt-2 text-[11px] text-ink/50 italic font-sans">Session not started</div>
           ) : (
-            <div className="pt-2 space-y-1.5 text-[11px] text-ink/80">
-              <div className="flex justify-between gap-2">
-                <span className="text-ink/50 flex-shrink-0">Provider:</span>
-                <span className="truncate text-right">{providerName || '–'}</span>
-              </div>
-              <div className="flex justify-between gap-2">
-                <span className="text-ink/50 flex-shrink-0">Model:</span>
-                <span className="truncate text-right">{modelName || '–'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-ink/50">Context:</span>
-                <span>
-                  {formatCompactTokens(telemetry.contextUsed) ?? '0'} / {formatCompactTokens(telemetry.contextLimit) ?? '0'} ({percent}%)
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-ink/50">Messages:</span>
-                <span>{telemetry.messagesCount}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-ink/50">Cost:</span>
-                <span>{telemetry.costFormatted}</span>
-              </div>
-              {typeof telemetry.cacheHitAverage === 'number' && (
-                <div className="flex justify-between">
-                  <span className="text-ink/50">Cache hit:</span>
-                  <span>{telemetry.cacheHitAverage.toFixed(1)}%</span>
+            <>
+              <div className="pt-2 space-y-1.5 text-[11px] text-ink/80">
+                <div className="flex justify-between gap-2">
+                  <span className="text-ink/50 flex-shrink-0">Provider:</span>
+                  <span className="truncate text-right">{providerName || '–'}</span>
                 </div>
-              )}
-            </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-ink/50 flex-shrink-0">Model:</span>
+                  <span className="truncate text-right">{modelName || '–'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-ink/50">Context:</span>
+                  <span>
+                    {formatCompactTokens(telemetry.contextUsed) ?? '0'} / {formatCompactTokens(telemetry.contextLimit) ?? '0'} ({percent}%)
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-ink/50">Messages:</span>
+                  <span>{telemetry.messagesCount}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-ink/50">Cost:</span>
+                  <span>{telemetry.costFormatted}</span>
+                </div>
+                {typeof telemetry.cacheHitAverage === 'number' && (
+                  <div className="flex justify-between">
+                    <span className="text-ink/50">Cache hit:</span>
+                    <span>{telemetry.cacheHitAverage.toFixed(1)}%</span>
+                  </div>
+                )}
+              </div>
+              <SessionStats
+                turns={telemetry.userCount}
+                steps={telemetry.assistantCount}
+                timing={telemetry.timing}
+              />
+            </>
           )}
           {/* The session's MCP servers, below the context numbers: one popover
               for "what this chat is running with", and the switch is per

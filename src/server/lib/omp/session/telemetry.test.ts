@@ -185,3 +185,84 @@ describe('computeRealSessionTelemetry raw items', () => {
     expect(telemetry.rawMessages[0]?.id).toBe('u1');
   });
 });
+
+describe('computeRealSessionTelemetry timing', () => {
+  /** The call's begin clock: a `custom` entry, the only start omp writes. */
+  function toolStart(callId: string, at: string): Record<string, unknown> {
+    return {
+      type: 'custom',
+      customType: 'tool_execution_start',
+      timestamp: at,
+      data: { toolCallId: callId, toolName: 'bash', startedAt: at },
+    };
+  }
+
+  function toolResult(callId: string, at: string): Record<string, unknown> {
+    return {
+      type: 'message',
+      id: `r-${callId}`,
+      timestamp: at,
+      message: {
+        role: 'toolResult',
+        toolCallId: callId,
+        toolName: 'bash',
+        content: [{ type: 'text', text: 'ok' }],
+      },
+    };
+  }
+
+  test('sums LLM time, tool spans, TTFT and tokens/second', async () => {
+    const file = await writeSession([
+      header,
+      userMessage('u1', 'go'),
+      assistantMessage('a1', { duration: 2000, ttft: 500, usage: { input: 10, output: 100 } }),
+      toolStart('c1', '2026-09-16T02:32:00.000Z'),
+      toolResult('c1', '2026-09-16T02:32:01.500Z'),
+      assistantMessage('a2', { duration: 3000, ttft: 1000, usage: { input: 20, output: 150 } }),
+    ]);
+
+    const { timing } = await computeRealSessionTelemetry(file, 'ses_telemetry');
+    expect(timing).toEqual({
+      llmMs: 5000,
+      toolMs: 1500,
+      ttftAvgMs: 750,
+      // last = 150 output / 3000 ms; avg = 250 output / 5000 ms — both 50/s.
+      lastTps: 50,
+      avgTps: 50,
+    });
+  });
+
+  test('reports no rate when the request is too short to mean anything', async () => {
+    const file = await writeSession([
+      header,
+      userMessage('u1', 'go'),
+      assistantMessage('a1', { duration: 80, usage: { input: 10, output: 5 } }),
+    ]);
+
+    const { timing } = await computeRealSessionTelemetry(file, 'ses_telemetry');
+    // 80 ms is below the 100 ms floor: the span is real, the rate is not.
+    expect(timing).toEqual({ llmMs: 80, toolMs: 0 });
+  });
+
+  test('a tool call with no result contributes no time', async () => {
+    const file = await writeSession([
+      header,
+      userMessage('u1', 'go'),
+      toolStart('c1', '2026-09-16T02:32:00.000Z'),
+    ]);
+
+    const { timing } = await computeRealSessionTelemetry(file, 'ses_telemetry');
+    expect(timing?.toolMs).toBe(0);
+  });
+
+  test('legacy messages without timing leave the rates unmeasured', async () => {
+    const file = await writeSession([
+      header,
+      userMessage('u1', 'go'),
+      assistantMessage('a1', { usage: { input: 10, output: 5 } }),
+    ]);
+
+    const { timing } = await computeRealSessionTelemetry(file, 'ses_telemetry');
+    expect(timing).toEqual({ llmMs: 0, toolMs: 0 });
+  });
+});

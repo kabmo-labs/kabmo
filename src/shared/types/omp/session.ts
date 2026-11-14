@@ -77,7 +77,10 @@ export interface OmpMessage {
   /** Wall-clock start (epoch ms) or ISO string, per omp version. */
   timestamp?: string | number;
   completedAt?: string | number;
+  /** Provider-reported request duration in milliseconds (TTFT included). */
   duration?: number;
+  /** Time to first token in milliseconds, as omp measured it. */
+  ttft?: number;
   /** Provider error fields recorded flat on an abnormal turn. */
   errorStatus?: number;
   errorId?: number;
@@ -106,6 +109,9 @@ export interface OmpMessageEntry {
   thinkingLevel?: string;
   content?: unknown;
   details?: unknown;
+  /** Payload of a `type:"custom"` entry (`tool_execution_start` carries the
+   *  call's `toolCallId` and `startedAt` here — the only begin clock in JSONL). */
+  data?: unknown;
   /** Turn-level metadata omp may place beside the message rather than inside it. */
   attribution?: unknown;
   durationMs?: unknown;

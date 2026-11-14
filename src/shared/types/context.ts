@@ -47,6 +47,22 @@ export interface ContextCostBreakdown {
   total: number;
 }
 
+/** Measured run timing for a session. Absent fields mean the source never
+ *  reported them: an ACP chat sends no per-call timing, and transcripts that
+ *  predate `ttft` have no first-token clock. */
+export interface SessionTimingStats {
+  /** Summed request duration of every assistant call, ms (TTFT included). */
+  llmMs: number;
+  /** Summed wall time of every tool call that has both ends in the file, ms. */
+  toolMs: number;
+  /** Mean time to first token across calls that reported one, ms. */
+  ttftAvgMs?: number;
+  /** Output tokens per second of the last completed call. */
+  lastTps?: number;
+  /** Output tokens per second over the whole session (output / LLM time). */
+  avgTps?: number;
+}
+
 export interface SessionContextTelemetry {
   sessionId: string;
   sessionTitle: string;
@@ -61,6 +77,8 @@ export interface SessionContextTelemetry {
   assistantCount: number;
   totalCost: number;
   costFormatted: string;
+  /** Measured turns/steps/LLM/tool timing; absent when the source has none. */
+  timing?: SessionTimingStats;
   /** Average cache-hit rate (%) across assistant turns. */
   cacheHitAverage?: number;
   /** Per-category cost breakdown for the cost detail popup. */

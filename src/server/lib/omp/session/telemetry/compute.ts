@@ -1,10 +1,19 @@
 import { formatNewSessionTitle } from '@/shared/lib/omp/session/default-title';
 import { contentProfile } from '@/shared/lib/omp/session/telemetry-blocks';
+import { toEpochMs } from '@/shared/lib/omp/session/timestamps';
+import { isRecord } from '@/shared/lib/util/guards';
 import type { RawMessageItem, SessionContextTelemetry } from '@/shared/types/context';
 import type { OmpMessageEntry, OmpUsage } from '@/shared/types/omp/session';
 import { CONTEXT_LIMIT, buildInfo, contextAnchorTokens, emptyTelemetry, formatCost, formatTs, textOf, tokensOf } from '@/server/lib/omp/session/telemetry/format';
 import { loadModelsWithCache } from '@/server/lib/models/registry.server';
 import { scanSessionEntries } from '@/server/lib/omp/session/telemetry/scan';
+
+/**
+ * Below this a request's tokens/second is noise: a cached or instant response
+ * divides by almost nothing and reports an absurd rate. Same floor omp's own
+ * usage row applies (`pi-tui/overlays/usage-row.ts`).
+ */
+const MIN_RATE_DURATION_MS = 100;
 
 /**
  * Compute real `SessionContextTelemetry` for a session file (all-zero on
@@ -56,6 +65,17 @@ export async function computeRealSessionTelemetry(
   let messagesCount = 0;
   const rawMessages: RawMessageItem[] = [];
   let cwd = '';
+  // Timing: `duration`/`ttft` are per assistant message; a tool call's span runs
+  // from its `tool_execution_start` entry to its `toolResult` timestamp. The
+  // join is the same one the chat reload path performs (messages-map.ts), so a
+  // call states one duration whichever surface reads it.
+  let llmDurationMs = 0;
+  let toolDurationMs = 0;
+  let ttftSum = 0;
+  let ttftCount = 0;
+  let lastOutputTokens = 0;
+  let lastDurationMs: number | undefined;
+  const toolStarts = new Map<string, number>();
 
   await scanSessionEntries(filePath, (entry, index) => {
     // Modern session files start with a fixed-width title slot line, so the
@@ -72,6 +92,17 @@ export async function computeRealSessionTelemetry(
       return;
     }
     if (entry.type === 'compaction' && typeof entry.shortSummary === 'string' && !shortSummary) shortSummary = entry.shortSummary;
+    // omp records each call's begin as its own `custom` entry; the result entry
+    // carries no duration. The map is exact by call id and costs one entry.
+    if (entry.type === 'custom' && entry.customType === 'tool_execution_start') {
+      const data = isRecord(entry.data) ? entry.data : undefined;
+      const callId = typeof data?.toolCallId === 'string' ? data.toolCallId : undefined;
+      if (callId) {
+        const startedAt = toEpochMs(data?.startedAt) ?? toEpochMs(entry.timestamp);
+        if (startedAt !== undefined) toolStarts.set(callId, startedAt);
+      }
+      return;
+    }
     if (entry.type !== 'message' || !entry.message) return;
 
     const msg = entry.message;
@@ -80,6 +111,17 @@ export async function computeRealSessionTelemetry(
     const profile = contentProfile(msg.content);
     const info = buildInfo(entry, msg, cwd, index);
     const tokens = tokensOf(msg.usage);
+
+    // A result closes the span its `tool_execution_start` opened. A call still
+    // running when the file was read has no result and adds nothing.
+    if (role === 'toolResult') {
+      const callId = typeof msg.toolCallId === 'string' ? msg.toolCallId : undefined;
+      const startedAt = callId ? toolStarts.get(callId) : undefined;
+      const endedAt = toEpochMs(msg.timestamp) ?? toEpochMs(entry.timestamp);
+      if (startedAt !== undefined && endedAt !== undefined && endedAt >= startedAt) {
+        toolDurationMs += endedAt - startedAt;
+      }
+    }
 
     toolChars += profile.toolChars;
 
@@ -93,6 +135,16 @@ export async function computeRealSessionTelemetry(
       if (msg.usage) lastAsstUsage = msg.usage;
       const anchor = contextAnchorTokens(msg);
       if (anchor !== undefined) contextAnchor = anchor;
+      const duration = typeof msg.duration === 'number' && Number.isFinite(msg.duration) ? msg.duration : undefined;
+      if (duration !== undefined && duration > 0) {
+        llmDurationMs += duration;
+        lastDurationMs = duration;
+        lastOutputTokens = tokens.output;
+      }
+      if (typeof msg.ttft === 'number' && Number.isFinite(msg.ttft) && msg.ttft > 0) {
+        ttftSum += msg.ttft;
+        ttftCount += 1;
+      }
     }
 
     if (msg.usage) {
@@ -177,6 +229,15 @@ export async function computeRealSessionTelemetry(
   const cacheHitPercent = lastAsstUsage && lastTokens.input + lastTokens.output + lastTokens.cacheRead > 0 ? Number(((lastTokens.cacheRead / (lastTokens.input + lastTokens.output + lastTokens.cacheRead)) * 100).toFixed(1)) : 0;
   const cacheHitAverage = cacheAvgInput + cacheAvgCacheRead > 0 ? Number(((cacheAvgCacheRead / (cacheAvgInput + cacheAvgCacheRead)) * 100).toFixed(1)) : 0;
 
+  // Output tokens per second, over the whole request duration — the same
+  // arithmetic omp's usage row prints, so the popover and the TUI agree.
+  const lastTps = lastDurationMs !== undefined && lastDurationMs > MIN_RATE_DURATION_MS && lastOutputTokens > 0
+    ? (lastOutputTokens / lastDurationMs) * 1000
+    : undefined;
+  const avgTps = llmDurationMs > MIN_RATE_DURATION_MS && sumOutput > 0
+    ? (sumOutput / llmDurationMs) * 1000
+    : undefined;
+
   return {
     sessionId,
     sessionTitle: effectiveTitle || shortSummary || firstUserText
@@ -192,6 +253,13 @@ export async function computeRealSessionTelemetry(
     assistantCount,
     totalCost,
     costFormatted: formatCost(totalCost),
+    timing: {
+      llmMs: Math.round(llmDurationMs),
+      toolMs: Math.round(toolDurationMs),
+      ...(ttftCount > 0 ? { ttftAvgMs: Math.round(ttftSum / ttftCount) } : {}),
+      ...(lastTps !== undefined ? { lastTps } : {}),
+      ...(avgTps !== undefined ? { avgTps } : {}),
+    },
     cacheHitAverage,
     costBreakdown: { input: costInput, output: costOutput, cacheRead: costCacheRead, cacheWrite: costCacheWrite, total: totalCost },
     lastMessage: {

@@ -59,6 +59,7 @@ function telemetryAt(percent: number): SessionContextTelemetry {
     assistantCount: 3,
     totalCost: 0.02,
     costFormatted: '$0.02',
+    timing: { llmMs: 5000, toolMs: 1500, ttftAvgMs: 750, lastTps: 50, avgTps: 48.2 },
     cacheHitAverage: 91.5,
     lastMessage: { input: 10, output: 4, reasoning: 0, cacheRead: 2, cacheWrite: 0, cacheHitPercent: 16.6 },
     distribution: { userTokens: 1, userPercent: 25, assistantTokens: 1, assistantPercent: 25, toolTokens: 1, toolPercent: 25, otherTokens: 1, otherPercent: 25 },
@@ -204,11 +205,36 @@ describe('ContextUsageButton', () => {
     expect(panel?.textContent).toContain('DeepSeek V4-1-Flash');
     expect(panel?.textContent).toContain('42%');
     expect(panel?.textContent).toContain('$0.02');
+    expect(panel?.textContent).toContain('Turns / steps:');
+    expect(panel?.textContent).toContain('1 / 3');
+    expect(panel?.textContent).toContain('LLM time:');
+    expect(panel?.textContent).toContain('5.0s');
+    expect(panel?.textContent).toContain('Tool time:');
+    expect(panel?.textContent).toContain('1.5s');
+    expect(panel?.textContent).toContain('TTFT avg:');
+    expect(panel?.textContent).toContain('0.8s');
+    expect(panel?.textContent).toContain('Tok/s:');
+    expect(panel?.textContent).toContain('50.0 / 48.2');
 
     await act(async () => {
       document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape' }));
     });
     expect(dialog()).toBeNull();
+  });
+
+  test('omits timing rows the source never measured', async () => {
+    // An ACP chat reports no per-call timing; printing "0s" would state a
+    // measurement the source never made.
+    await mount({ ...telemetryAt(42), timing: undefined });
+    await act(async () => {
+      trigger().click();
+    });
+    const panel = dialog();
+    expect(panel?.textContent).toContain('Turns / steps:');
+    expect(panel?.textContent).not.toContain('LLM time:');
+    expect(panel?.textContent).not.toContain('Tool time:');
+    expect(panel?.textContent).not.toContain('TTFT avg:');
+    expect(panel?.textContent).not.toContain('Tok/s:');
   });
 
   test('a session with no turn says so instead of printing zeros', async () => {
