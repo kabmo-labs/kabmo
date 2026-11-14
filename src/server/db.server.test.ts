@@ -29,7 +29,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import * as path from 'node:path';
 
@@ -109,9 +109,15 @@ describe('getDatabasePath', () => {
   });
 
   test('a leading ~ expands to the home directory', async () => {
-    Bun.env.KABMO_DB_PATH = '~/.kabmo-e2e-probe/x.sqlite';
-    expect(await getDatabasePath()).toBe(path.join(homedir(), '.kabmo-e2e-probe', 'x.sqlite'));
-    rmSync(path.join(homedir(), '.kabmo-e2e-probe'), { recursive: true, force: true });
+    // The parent must ALREADY exist: `getDatabasePath` creates a missing one,
+    // and a `~`-spelled parent is the developer's real home. A fixed probe
+    // directory there was created and then `rmSync`-ed on every run — a test
+    // that writes into `$HOME`, and deletes a directory it did not create if
+    // one happened to exist. `~` itself exists, so this case expands the tilde
+    // and touches nothing; nested creation is covered by the temp-root case
+    // above.
+    Bun.env.KABMO_DB_PATH = '~/db.sqlite';
+    expect(await getDatabasePath()).toBe(path.join(homedir(), 'db.sqlite'));
   });
 
   test('mock with no override stays cwd-relative workspace.db', async () => {
