@@ -4,6 +4,35 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.32.0](https://github.com/kabmo-labs/kabmo/compare/v0.31.0...v0.32.0) — 2026-11-14
+
+### Added
+
+* **chat:** paint the pictures an eval script captured ([d0722bb](https://github.com/kabmo-labs/kabmo/commit/d0722bba3ddc279fa10f9376fa9a516f7a9a3756)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **commands:** one command catalog, keymap and global palette ([582a6a7](https://github.com/kabmo-labs/kabmo/commit/582a6a761a5f084736c6c5358b0561a89e2d319b)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **composer:** draw Stop and Send as icon-only glyphs ([dd96eca](https://github.com/kabmo-labs/kabmo/commit/dd96eca189d586c498a019884873ee0e869a486a)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **composer:** move the wait-for-session pick into the composer header ([a7ad4c3](https://github.com/kabmo-labs/kabmo/commit/a7ad4c390c5f2a41c0d071ec5e343170fbae2ed7)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **notifications:** deliver banners while the Android app is closed ([859e2ff](https://github.com/kabmo-labs/kabmo/commit/859e2ff5a13fb171e0a05f2e94493d0a24105314)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **notifications:** name when a run ended, how long it took, and draw the title ([5f614c8](https://github.com/kabmo-labs/kabmo/commit/5f614c875e3180f64ef16837c009d0248ceae618)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **shell:** theme the failure splash's actions and add server settings ([5ed5e73](https://github.com/kabmo-labs/kabmo/commit/5ed5e73582ee02a1ac17bab0fa336aacbf9d1960)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **sidebar:** count elapsed time on running session rows ([33e1dda](https://github.com/kabmo-labs/kabmo/commit/33e1dda7b275bad21bee0be0c9b1c0d8556457e7)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Changed
+
+* **build:** code-split the client and read the built shell in production ([01838fc](https://github.com/kabmo-labs/kabmo/commit/01838fcec99d8c16cbe48aee6b25feefbfb06476)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **db:** pair WAL with synchronous=NORMAL and batch bulk writes ([1a9f16c](https://github.com/kabmo-labs/kabmo/commit/1a9f16cd973221bec913614fb0bf1f7c0a62e96a)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **health:** reuse the descriptor sweep for a second ([0e2eafc](https://github.com/kabmo-labs/kabmo/commit/0e2eafcdded19b8f538acf409540ddd8c31af8a2)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **realtime:** encode a fan-out frame once for every subscriber ([c4a7859](https://github.com/kabmo-labs/kabmo/commit/c4a7859cdd2fdb0e4a728d233f17aa8f270784e2)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **shell:** serve the generated stylesheets as one immutable asset ([8325807](https://github.com/kabmo-labs/kabmo/commit/8325807dfd3927a8176189a2c5ed2fd729d97085)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **composer:** keep the wait-for-session panel inside the viewport ([e784c24](https://github.com/kabmo-labs/kabmo/commit/e784c249337dd7afef04f3ccc603f5f6b5bb8be8)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **editor:** register editor.run once, through the focused pane ([c128d2a](https://github.com/kabmo-labs/kabmo/commit/c128d2a43b7654a6a61fa5f8cde6eb6a215fc5cb)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **icons:** keep the solved -text token on an authored glyph ([2b8cb3f](https://github.com/kabmo-labs/kabmo/commit/2b8cb3ff0c0b23d8df32a1e5068bb4bdc42cbbed)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **menu:** hang anchored menus below their trigger on mobile too ([f7d92bf](https://github.com/kabmo-labs/kabmo/commit/f7d92bf24abf4ee7df2516d7ed07dc6754d9b830)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **settings:** use omp's Skillshare registry for the skills catalog ([5aac54c](https://github.com/kabmo-labs/kabmo/commit/5aac54ca4dc89096437c5cb4cfef56bd86fc787c)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.31.0](https://github.com/kabmo-labs/kabmo/compare/v0.30.1...v0.31.0) — 2026-11-13
 
 ### Added
