@@ -428,7 +428,36 @@ fi
 # `ssh-config` discovery provider and `ssh://` reads, LSP watched-file
 # forwarding, the computer secure-input prompt and the `--allow-escape-sequences`
 # fallback in gh-run-watch — host-side or additive fields Kabmo does not read.
-OMP_VERSION="${OMP_VERSION:-18.20.0}"
+#
+# 18.20.2 (2026-11-14): the schema's `source` line moves to 622 settings and the
+# panel gains FOUR rows, net +4: `auth.unpausedProviders` (providers / Services),
+# `bash.allowedEnvVars` (shell / Bash), `commit.enabled` (tools / Available
+# Tools) and `todo.midRunNudges` (tools / Todos). Three new settings are
+# registered with no `ui` and therefore have no row, exactly as the generator
+# treats every no-UI setting: `models.noJudge`, `models.noSpotlight` and
+# `models.offline`. Two defaults change: `grep.contextBefore` 1 → 0 and
+# `grep.contextAfter` 3 → 0, so a default grep shows only matching lines. The
+# RPC wire is byte-identical — 74 commands, 299 definitions, 0 added, 0 removed,
+# 0 changed — so the todo multi-target ops and the `session_clear` hook reach no
+# Kabmo surface. `MODEL_ROLES`, the slash registry and the 30
+# `BUILTIN_TOOL_NAMES` are identical.
+#
+# `auth.unpausedProviders` is the first new row to carry a `ui.condition`
+# (`unpausedProvidersNotProject`). `isConditionMet` has no arm for it and its
+# default shows the row, which is the right answer: the panel edits the global
+# layer, and `omp config list --json` carries no provenance, so Kabmo cannot
+# tell a project layer's disregarded list from an unset one.
+#
+# Not adopted, deliberately: `/commit` and the eval `commit` namespace (a
+# host-side workflow; Kabmo's own commit path is unchanged), the `session_clear`
+# extension event (not on the RPC wire), the `antigravity-cli` ACP provider
+# (host-side), the `--no-judge` / `--no-spotlight` / `--offline` CLI flags
+# (their `models.*` settings carry no `ui`, so the panel has no row for them),
+# path-scoped bash allow rules and
+# per-rule `env` (host-side approval), TTSR `repeatMode` (per-rule config, no
+# panel row), composer paste formatting, `/fork` aborting an active response,
+# and the model-discovery retry — host-side or model-facing.
+OMP_VERSION="${OMP_VERSION:-18.20.2}"
 PACKAGE="@oh-my-pi/pi-coding-agent"
 WANTED="omp/${OMP_VERSION}"
 

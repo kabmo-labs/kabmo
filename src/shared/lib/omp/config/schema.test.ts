@@ -252,15 +252,17 @@ describe('isConditionMet', () => {
   });
 
   test('the provenance conditions degrade to visible, deliberately', () => {
-    // These three hide an editor row when a PROJECT layer supplies the value,
+    // These hide an editor row when a PROJECT layer supplies the value,
     // because the editor writes the GLOBAL layer and promoting a repository's
     // list would be the bug. `omp config list --json` carries no provenance, so
     // the client cannot answer them — visible is the decision, not an oversight.
-    // `perCallModelAllowNotProject` arrived with 18.15.0's `task.perCallModelAllow`.
+    // `perCallModelAllowNotProject` arrived with 18.15.0's `task.perCallModelAllow`;
+    // `unpausedProvidersNotProject` with 18.20.2's `auth.unpausedProviders`.
     for (const condition of [
       'contextFilesExtraNotProject',
       'restrictedFoldersNotProject',
       'perCallModelAllowNotProject',
+      'unpausedProvidersNotProject',
     ]) {
       expect({ condition, met: isConditionMet(condition, {}) }).toEqual({ condition, met: true });
     }

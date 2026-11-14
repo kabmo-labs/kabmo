@@ -1,5 +1,5 @@
 {
-  "source": "@oh-my-pi/pi-coding-agent 10 tabs / 615 settings",
+  "source": "@oh-my-pi/pi-coding-agent 10 tabs / 622 settings",
   "tabs": [
     {
       "id": "appearance",
@@ -124,6 +124,24 @@
     }
   ],
   "entries": {
+    "auth.unpausedProviders": {
+      "type": "array",
+      "default": [],
+      "ui": {
+        "tab": "providers",
+        "group": "Services",
+        "label": "Unpaused Providers",
+        "description": "Turn providers we paused back on: login, token refresh and stored credentials work again. Each pause names the account risk you accept. Project settings cannot set this",
+        "options": [
+          {
+            "value": "google-antigravity",
+            "label": "Google Antigravity (Gemini, Claude, GPT-OSS)",
+            "description": "Google Antigravity is paused: Google's terms do not allow third-party sign-in and Google has suspended accounts that used it (see #18341). Use GEMINI_API_KEY (AI Studio) or google-vertex instead."
+          }
+        ],
+        "condition": "unpausedProvidersNotProject"
+      }
+    },
     "modelRoleStorage": {
       "type": "enum",
       "default": "global",
@@ -6336,6 +6354,38 @@
         ]
       }
     },
+    "todo.midRunNudges": {
+      "type": "enum",
+      "default": "capped",
+      "values": [
+        "off",
+        "capped",
+        "backoff"
+      ],
+      "ui": {
+        "tab": "tools",
+        "group": "Todos",
+        "label": "Mid-Run Todo Nudges",
+        "description": "How often a long turn is reminded to update its todo list while it keeps changing things",
+        "options": [
+          {
+            "value": "off",
+            "label": "Off",
+            "description": "Never nudge mid-run"
+          },
+          {
+            "value": "capped",
+            "label": "Capped",
+            "description": "Nudge after 12 edits or commands, at most twice until the todo list changes or you send a message"
+          },
+          {
+            "value": "backoff",
+            "label": "Backoff",
+            "description": "Keep nudging with a doubling gap: after 12, 24, 48, 96, then every 192 edits or commands"
+          }
+        ]
+      }
+    },
     "todo.eager": {
       "type": "enum",
       "default": "default",
@@ -6431,7 +6481,7 @@
     },
     "grep.contextBefore": {
       "type": "number",
-      "default": 1,
+      "default": 0,
       "ui": {
         "tab": "tools",
         "group": "Grep & Browser",
@@ -6463,7 +6513,7 @@
     },
     "grep.contextAfter": {
       "type": "number",
-      "default": 3,
+      "default": 0,
       "ui": {
         "tab": "tools",
         "group": "Grep & Browser",
@@ -6626,6 +6676,16 @@
         "group": "Available Tools",
         "label": "Archive",
         "description": "Enable the read-only archive eval prelude: prompt history, recent projects, past sessions and recaps"
+      }
+    },
+    "commit.enabled": {
+      "type": "boolean",
+      "default": true,
+      "ui": {
+        "tab": "tools",
+        "group": "Available Tools",
+        "label": "Selective commit",
+        "description": "Enable the commit eval prelude and /commit: commit only the lines this agent and its subagents wrote"
       }
     },
     "computer.display": {
@@ -7187,6 +7247,16 @@
         "group": "Bash",
         "label": "Bash Approval Patterns",
         "description": "Ordered bash command approval rules. Each item has match and approval fields; only '*' wildcards are supported."
+      }
+    },
+    "bash.allowedEnvVars": {
+      "type": "array",
+      "default": [],
+      "ui": {
+        "tab": "shell",
+        "group": "Bash",
+        "label": "Bash Allowed Environment Variables",
+        "description": "Exact environment variable names allowed as leading KEY=VALUE prefixes when matching bash.patterns allow rules (no wildcards). Any value is accepted, so list only benign build/test variables; execution-altering variables (PATH, LD_PRELOAD, BASH_ENV, *_RUNNER, *_WRAPPER) allow arbitrary command execution."
       }
     },
     "bashInterceptor.enabled": {

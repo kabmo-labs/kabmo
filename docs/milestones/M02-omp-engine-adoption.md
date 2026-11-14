@@ -2017,3 +2017,65 @@ devices.
 | R78 | `select` request gains marker hints | none needed | 74 commands / 299 definitions, 0 added/removed; answer still one `{value}` label |
 | R79 | two rows added, one no-UI setting | schema regenerated; no code names a new key | 615 settings / 458 entries; `omp:schema:check` passes |
 | R80 | read/grep/write/proc/host changes | none needed | `ReadToolDetails` identical; `bun test` 11465 pass; `bun run lint` clean |
+
+# omp 18.20.2 adoption (2026-11-14)
+
+The pin moved **18.20.0 → 18.20.2**. The RPC wire is byte-identical; the
+reachable change is four new schema rows and two changed defaults.
+
+## Method
+
+- `bun add @oh-my-pi/pi-coding-agent@18.20.0` and `@18.20.2` into temp trees,
+  then `diff -rq` over `src/` — 197 entries differ.
+- `rpc-wire.schema.json` compared whole: **74 commands, 299 definitions**, 0
+  added, 0 removed, 0 changed. Every notification, event and frame variant is
+  byte-identical, so the todo multi-target ops and the `session_clear` hook
+  reach no Kabmo surface.
+- The schema generator run against 18.20.2 produces **10 tabs / 622 settings /
+  462 entries** (was 615 / 458). The diff is four added rows and two changed
+  defaults; three new settings (`models.noJudge`, `models.noSpotlight`,
+  `models.offline`) are registered with no `ui` and therefore have no row,
+  exactly as the generator treats every no-UI setting.
+- `MODEL_ROLES`, the slash registry and the 30 `BUILTIN_TOOL_NAMES` are
+  byte-identical.
+
+## Findings
+
+### R81 — four rows added, two defaults changed (schema only)
+
+`auth.unpausedProviders` (array, providers / Services) re-enables a paused
+provider such as Google Antigravity. `bash.allowedEnvVars` (array, shell /
+Bash) names the `KEY=VALUE` prefixes a bash allow rule may match.
+`commit.enabled` (boolean, default on, tools / Available Tools) gates the
+`/commit` workflow. `todo.midRunNudges` (enum `off`/`capped`/`backoff`,
+default `capped`, tools / Todos) sets how often a long turn is reminded to
+update its todo list. The two default changes are `grep.contextBefore` 1 → 0
+and `grep.contextAfter` 3 → 0, so a default grep shows only matching lines.
+
+### R82 — `unpausedProvidersNotProject` condition (no arm)
+
+`auth.unpausedProviders` is the first new row to carry a `ui.condition`.
+`isConditionMet` has no arm for it and its default shows the row, which is the
+right answer: the panel edits the global layer, and `omp config list --json`
+carries no provenance, so Kabmo cannot tell a project layer's disregarded list
+from an unset one. Hiding the row would remove the only editor for a global
+setting. The existing "provenance conditions degrade to visible" test now lists
+it alongside the other three.
+
+### R83 — host-side changes (no action)
+
+`/commit` and the eval `commit` namespace, the `session_clear` extension event,
+the `antigravity-cli` ACP provider, the `--no-judge` / `--no-spotlight` /
+`--offline` CLI flags (their `models.*` settings carry no `ui`, so the panel
+has no row for them), path-scoped
+bash allow rules and per-rule `env`, TTSR `repeatMode` (per-rule config, no
+panel row), composer paste formatting, `/fork` aborting an active response, and
+the model-discovery retry.
+
+## 18.20.2 outcomes
+
+| # | Finding | Action | Verification |
+|---|---|---|---|
+| R81 | four rows added, two defaults changed | schema regenerated; no code names a new key | 622 settings / 462 entries; `omp:schema:check` passes |
+| R82 | `unpausedProvidersNotProject` condition | none needed; default shows the row | `isConditionMet` default arm; panel edits the global layer |
+| R83 | host-side changes | none needed | 74 commands / 299 definitions, byte-identical |
