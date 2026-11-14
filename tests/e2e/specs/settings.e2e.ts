@@ -77,13 +77,16 @@ test.describe('settings', () => {
     await page.getByRole('button', { name: 'Chats' }).click();
 
     // The list first: the category never opens on a group the reader did not pick.
-    for (const group of ['Layout', 'Transcript', 'Sessions', 'Keyboard']) {
+    // The list is `CHAT_SETTING_GROUPS`, and it has THREE groups: Keyboard moved
+    // to a category of its own when the command catalog landed, so a fourth row
+    // here is a spec asserting a product that no longer exists.
+    for (const group of ['Layout', 'Transcript', 'Sessions']) {
       await expect(page.getByRole('button', { name: new RegExp(`^${group}`) })).toBeVisible();
     }
     await expect(page.getByText('Chat Width', { exact: true })).toBeHidden();
 
-    await page.getByRole('button', { name: /^Keyboard/ }).click();
-    await expect(page.getByText('Keyboard Shortcuts', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: /^Transcript/ }).click();
+    await expect(page.getByText('Tool Calls', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Back to Chat settings' })).toBeVisible();
 
     const overflow = await page.evaluate(
