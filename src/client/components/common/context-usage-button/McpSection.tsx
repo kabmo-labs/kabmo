@@ -25,12 +25,19 @@ interface McpSectionProps {
   sessionId: string | null;
 }
 
+/**
+ * The `-text` tokens, not the fill ones: the icon is a 12px glyph on the
+ * popover's paper, and the fill hex is the palette's own signal colour, which
+ * is not solved for reading. Measured on `onedarkpro-light`: `--theme-error`
+ * `#E06C75` is 2.91:1 on the paper (a pale pink), while `--theme-error-text`
+ * `#af545b` is 4.51:1 — the red the failure state is supposed to show.
+ */
 const STATUS_ICON_CLASS: Record<McpServerStatus, string> = {
-  active: 'text-success',
-  error: 'text-error',
-  checking: 'text-warning',
-  disabled: 'text-error',
-  unknown: 'text-warning',
+  active: 'text-success-text',
+  error: 'text-error-text',
+  checking: 'text-warning-text',
+  disabled: 'text-error-text',
+  unknown: 'text-warning-text',
 };
 
 function statusDetail(server: SessionMcpServer, status: McpServerStatus): string {
