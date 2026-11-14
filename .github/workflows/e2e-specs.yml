@@ -40,12 +40,14 @@ name: E2E specs
 # A shard is a separate MACHINE, so it keeps the one-worker-per-machine property
 # the config depends on and scales linearly.
 #
-# The split is 2 shards on Linux and 4 on Windows, chosen so the two legs finish
-# together: 89 + 74 tests at 5.1 s each is ~7 min on Linux, 41/48/36/38 at
-# 10.3 s each is ~7 min on Windows (both per-test costs measured on that run,
-# both splits verified with `--list`). `--shard` balances by TEST COUNT, not
-# duration, so the shards are not exactly equal — the timeouts below are ~3x the
-# expected shard, which is still a hang detector.
+# The split is 3 shards on Linux and 4 on Windows: 60/53/50 tests at 5.1 s each
+# is ~5 min on Linux, 41/48/36/38 at 10.3 s each is ~7 min on Windows (both
+# per-test costs measured on the 2026-11-11 run, both splits verified with
+# `--list`). The Linux leg is therefore no longer sized to finish together with
+# Windows — Windows is the bound of the run, and the third Linux shard buys back
+# the ~2 min the two-shard split spent above it. `--shard` balances by TEST
+# COUNT, not duration, so the shards are not exactly equal — the timeouts below
+# are ~3x the expected shard, which is still a hang detector.
 #
 # `fail-fast: false` is load-bearing: a red shard must not cancel the others,
 # because the failure artifacts of every shard are what a reader needs to see
@@ -65,15 +67,15 @@ permissions:
 
 jobs:
   chromium:
-    name: Chromium (${{ matrix.shard }}/2)
+    name: Chromium (${{ matrix.shard }}/3)
     runs-on: ubuntu-latest
-    # ~7 min expected per shard (see the header); 20 is a hang detector, not a
+    # ~5 min expected per shard (see the header); 20 is a hang detector, not a
     # budget.
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2]
+        shard: [1, 2, 3]
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -106,7 +108,7 @@ jobs:
         run: bun run typecheck:e2e
 
       - name: Run the specs
-        run: bun run test:e2e --project=chromium --shard=${{ matrix.shard }}/2
+        run: bun run test:e2e --project=chromium --shard=${{ matrix.shard }}/3
         env:
           CI: "true"
 
