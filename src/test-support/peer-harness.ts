@@ -24,7 +24,7 @@ import { join } from 'node:path';
 import type { RealtimeConnection } from '@/server/lib/realtime/hub.server';
 import { sessionLeasePath } from '@/server/lib/omp/session/ownership.server';
 import { leaseHeldByAnother } from '@/server/lib/omp/session/lease-flock.server';
-import { processParentPid } from '@/server/lib/lifecycle/identity';
+import { isProcessAlive, processParentPid } from '@/server/lib/lifecycle/identity';
 import type { RealtimeServerFrame } from '@/shared/lib/realtime/protocol';
 
 /** Spin the event loop until `condition` holds, up to `timeoutMs`. */
@@ -221,11 +221,19 @@ export async function holdLeaseInForeignProcess(sessionId: string): Promise<Fore
   await waitUntil(() => leaseHeldByAnother(lease) === true);
   // Held AND reparented: until the wrapper exits, the holder's parent is the
   // wrapper itself, which no instance record can name.
+  //
+  // "Reparented" means the parent ALIVE and UNCHANGED across two polls, not
+  // merely different from the wrapper: a caller writes an instance record naming
+  // this pid, and the guard drops a record whose pid is dead — so reading a
+  // parent that is about to be replaced is the difference between a forwarded
+  // resolve and a local answer.
+  let settled: number | null = null;
   await waitUntil(() => {
     const parent = processParentPid(pid);
-    return parent !== null && parent !== child.pid;
+    const stable = parent !== null && parent !== child.pid && isProcessAlive(parent) && parent === settled;
+    settled = parent;
+    return stable;
   });
-  const parentPid = processParentPid(pid);
-  if (parentPid === null) throw new Error('the foreign holder vanished before it was reparented');
-  return { pid, parentPid };
+  if (settled === null) throw new Error('the foreign holder vanished before it was reparented');
+  return { pid, parentPid: settled };
 }
