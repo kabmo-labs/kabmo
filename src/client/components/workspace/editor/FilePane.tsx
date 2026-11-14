@@ -37,16 +37,11 @@ interface FilePaneProps {
   setIsMaximized: (next: boolean) => void;
   zoomLevel: number;
   setZoomLevel: (update: (current: number) => number) => void;
-  paletteOpen: boolean;
-  setPaletteOpen: (open: boolean) => void;
   /** Bumped when the user asks for "go to line"; this pane owns the dialog. */
   goToLineRequest: number;
   /** Open the Save As dialog. */
   onSaveAs: () => void;
   /** The file picker is open. */
-  quickOpen: boolean;
-  onCloseQuickOpen: () => void;
-  onOpenPath?: (path: string) => void;
   rootPath?: string | null;
   repoPath?: string | null;
   runCommand: (command: EditorCommand) => void;
@@ -90,13 +85,8 @@ export function FilePane({
   setIsMaximized,
   zoomLevel,
   setZoomLevel,
-  paletteOpen,
-  setPaletteOpen,
   goToLineRequest,
   onSaveAs,
-  quickOpen,
-  onCloseQuickOpen,
-  onOpenPath,
   rootPath = null,
   repoPath = null,
   runCommand,
@@ -315,12 +305,7 @@ export function FilePane({
           editor={editor}
           find={find}
           surfaceRef={surfaceRef}
-          paletteOpen={paletteOpen}
-          onClosePalette={() => setPaletteOpen(false)}
           goToLineRequest={goToLineRequest}
-          quickOpen={quickOpen}
-          onCloseQuickOpen={onCloseQuickOpen}
-          onOpenPath={onOpenPath}
           rootPath={rootPath}
           repoPath={repoPath}
           onRunCommand={runCommand}

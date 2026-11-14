@@ -81,7 +81,7 @@ describe('ChatSettings master/detail', () => {
   test('lists every group and opens on the first one', () => {
     mount();
 
-    for (const label of ['Layout', 'Transcript', 'Sessions', 'Keyboard']) {
+    for (const label of ['Layout', 'Transcript', 'Sessions']) {
       expect(groupRow(label)).toBeTruthy();
     }
 
@@ -106,7 +106,7 @@ describe('ChatSettings master/detail', () => {
     expect(list.className).not.toContain('hidden');
     expect(detail.className).toContain('hidden');
 
-    act(() => groupRow('Keyboard').click());
+    act(() => groupRow('Sessions').click());
 
     expect(list.className).toContain('hidden');
     expect(detail.className).not.toContain('hidden');

@@ -67,7 +67,12 @@ export const LIST_SLOT_LABELS: Record<ListSlotName, SlotLabel> = {
   },
   commandPaletteAction: {
     label: 'Command palette',
-    detail: 'Commands added to the palette.',
+    detail: 'Commands added to the composer’s `/` popup.',
+    kind: 'row',
+  },
+  command: {
+    label: 'Commands',
+    detail: 'Commands added to the app palette and keymap.',
     kind: 'row',
   },
   fileOpener: {

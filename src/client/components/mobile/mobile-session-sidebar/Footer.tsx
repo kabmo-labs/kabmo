@@ -1,10 +1,11 @@
-import { Info, Monitor, Settings } from 'lucide-preact';
+import { Info, Keyboard, Monitor, Settings } from 'lucide-preact';
 import packageJson from '@/../package.json';
 import type { ShellDownload } from '@/client/hooks/ui/updates/shell-download';
 import { ShellUpdateButton } from '@/client/components/common/shell-update-button';
 
 interface MobileSessionFooterProps {
   onSettings: () => void;
+  onKeyBindings: () => void;
   onAbout: () => void;
   updateAvailable?: boolean;
   onUpdateClick?: () => void;
@@ -17,6 +18,7 @@ interface MobileSessionFooterProps {
 
 export function MobileSessionFooter({
   onSettings,
+  onKeyBindings,
   onAbout,
   updateAvailable,
   onUpdateClick,
@@ -36,6 +38,14 @@ export function MobileSessionFooter({
         >
           <Settings size={14} />
           <span>Settings</span>
+        </button>
+        <button
+          type="button"
+          onClick={onKeyBindings}
+          className="flex items-center space-x-1 hover:text-ink transition-colors"
+        >
+          <Keyboard size={14} />
+          <span>Keys</span>
         </button>
         <button
           type="button"

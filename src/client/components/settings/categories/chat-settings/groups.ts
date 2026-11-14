@@ -16,7 +16,7 @@
  */
 
 import type { LucideIcon } from 'lucide-preact';
-import { Keyboard, ListOrdered, MessageSquare, PanelLeft } from 'lucide-preact';
+import { ListOrdered, MessageSquare, PanelLeft } from 'lucide-preact';
 
 /** Every section a group can own. */
 export const CHAT_SECTION_IDS = [
@@ -26,12 +26,11 @@ export const CHAT_SECTION_IDS = [
   'follow-up',
   'titles',
   'goal',
-  'keybindings',
 ] as const;
 
 export type ChatSectionId = (typeof CHAT_SECTION_IDS)[number];
 
-export type ChatSettingGroupId = 'layout' | 'transcript' | 'sessions' | 'keys';
+export type ChatSettingGroupId = 'layout' | 'transcript' | 'sessions';
 
 export interface ChatSettingGroup {
   id: ChatSettingGroupId;
@@ -69,13 +68,5 @@ export const CHAT_SETTING_GROUPS: readonly ChatSettingGroup[] = [
     description: 'How a session gets its name, and the defaults a new goal starts with.',
     icon: MessageSquare,
     sections: ['titles', 'goal'],
-  },
-  {
-    id: 'keys',
-    label: 'Keyboard',
-    hint: 'Send, newline and steering keys',
-    description: 'Which chord sends a prompt, inserts a newline, or steers the running turn.',
-    icon: Keyboard,
-    sections: ['keybindings'],
   },
 ];

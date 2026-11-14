@@ -11,6 +11,7 @@ import { useWaitingDispatch } from '@/client/hooks/chat/waiting/dispatch';
 import { useUpdates } from '@/client/hooks/ui/updates';
 import { useSidebarStyle } from '@/client/hooks/workspace/sidebar-style';
 import { UPDATE_REQUEST_EVENT } from '@/shared/lib/updates/popup-state';
+import { openKeyBindingHelp } from '@/client/lib/commands/overlays';
 import { updateOutcomeTone } from '@/shared/lib/ui/toast-duration';
 import { useScheduledTaskCount } from '@/client/hooks/workspace/scheduled-tasks';
 import { phoneLeftStripVisible } from '@/shared/lib/workspace/mobile-dock';
@@ -289,6 +290,7 @@ export function MobileSessionSidebar({
 
       <MobileSessionFooter
         onSettings={() => window.dispatchEvent(new CustomEvent('omp:open-settings', { detail: {} }))}
+        onKeyBindings={openKeyBindingHelp}
         onAbout={() => setAboutOpen(true)}
         shellDownload={shellDownload}
         onDesktopToggle={onDesktopToggle}

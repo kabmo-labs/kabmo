@@ -25,6 +25,7 @@ import { EditorPane } from '@/client/components/workspace/editor/Pane';
 import { SplitColumn } from '@/client/components/workspace/editor/SplitColumn';
 import { useSplitEditor } from '@/client/hooks/editor/use-split-editor';
 import { useEditorPanelKeys } from '@/client/hooks/editor/use-editor-panel-keys';
+import { useEditorCommandTarget } from '@/client/hooks/editor/use-editor-command-target';
 import { useCloseGuard } from '@/client/hooks/editor/use-close-guard';
 import { useFileReviewMode } from '@/client/hooks/editor/use-file-review-mode';
 import { useEditorPanelUi } from '@/client/hooks/editor/use-editor-panel-ui';
@@ -206,13 +207,12 @@ export function Editor({
 
   const panelKeys = useEditorPanelKeys({
     find,
-    paletteOpen: panelUi.paletteOpen,
-    setPaletteOpen: panelUi.setPaletteOpen,
     runCommand,
-    saveNow: editor.saveNow,
-    openQuickOpen: () => panelUi.setQuickOpen(true),
     reopenClosed: onReopenClosed,
   });
+  // The focused pane is what `workspace.saveFile` and the palette's editor rows
+  // act on. Published on focus, because a split column mounts two panes.
+  const editorTarget = useEditorCommandTarget({ saveNow: editor.saveNow, runCommand });
 
   // The column belongs to a plugin while the layout says so. There is no tab
   // strip in that mode: the plugin owns the whole surface, the way a right-panel
@@ -247,12 +247,8 @@ export function Editor({
     setIsMaximized,
     zoomLevel,
     setZoomLevel,
-    paletteOpen: panelUi.paletteOpen,
-    setPaletteOpen: panelUi.setPaletteOpen,
     goToLineRequest: panelUi.goToLineRequest,
     onSaveAs: () => panelUi.setSaveAsOpen(true),
-    quickOpen: panelUi.quickOpen,
-    onCloseQuickOpen: () => panelUi.setQuickOpen(false),
     onOpenPath,
     rootPath,
     repoPath,
@@ -308,6 +304,7 @@ export function Editor({
       className={className}
       isMaximized={isMaximized}
       onKeyDownCapture={panelKeys.onKeyDownCapture}
+      onFocusCapture={editorTarget.onFocusCapture}
       asSplitPane={asSplitPane}
       tabs={tabs}
       activeFile={activeFile}

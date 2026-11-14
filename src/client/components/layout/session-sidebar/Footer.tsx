@@ -1,9 +1,11 @@
-import { Info, Settings } from 'lucide-preact';
+import { Info, Keyboard, Settings } from 'lucide-preact';
 import type { ShellDownload } from '@/client/hooks/ui/updates/shell-download';
 import { ShellUpdateButton } from '@/client/components/common/shell-update-button';
 
 interface SessionSidebarFooterProps {
   onSettings: () => void;
+  /** The shortcut sheet: every chord this build answers to. */
+  onKeyBindings: () => void;
   onInfo: () => void;
   updateAvailable?: boolean;
   onUpdateClick?: () => void;
@@ -21,7 +23,7 @@ interface SessionSidebarFooterProps {
  * is unreachable by keyboard"). It is also what lets a browser spec address
  * these controls by role and name instead of by their position in the DOM.
  */
-export function SessionSidebarFooter({ onSettings, onInfo, updateAvailable, onUpdateClick, shellDownload }: SessionSidebarFooterProps) {
+export function SessionSidebarFooter({ onSettings, onKeyBindings, onInfo, updateAvailable, onUpdateClick, shellDownload }: SessionSidebarFooterProps) {
   return (
     <div className="h-10 px-3 border-t border-ink/10 flex items-center justify-between text-ink/60 shrink-0">
       <div className="flex space-x-1">
@@ -33,6 +35,15 @@ export function SessionSidebarFooter({ onSettings, onInfo, updateAvailable, onUp
           className="p-1 rounded hover:text-ink hover:bg-ink/5 cursor-pointer transition-colors"
         >
           <Settings size={16} />
+        </button>
+        <button
+          type="button"
+          onClick={onKeyBindings}
+          title="Keyboard shortcuts"
+          aria-label="Keyboard shortcuts"
+          className="p-1 rounded hover:text-ink hover:bg-ink/5 cursor-pointer transition-colors"
+        >
+          <Keyboard size={16} />
         </button>
         <button
           type="button"

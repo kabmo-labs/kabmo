@@ -50,6 +50,7 @@ import { useKabmoEvent } from '@/client/hooks/ui/window-event';
 import { useToasts } from '@/client/hooks/ui/toasts';
 import { useUpdates } from '@/client/hooks/ui/updates';
 import { UPDATE_REQUEST_EVENT } from '@/shared/lib/updates/popup-state';
+import { openKeyBindingHelp } from '@/client/lib/commands/overlays';
 import { MAX_LEFT_PANEL_WIDTH } from '@/shared/lib/workspace/sidebar-width';
 import { updateOutcomeTone } from '@/shared/lib/ui/toast-duration';
 import type { AgentStreamStatus } from '@/shared/lib/chat/omp/status';
@@ -147,6 +148,7 @@ export function LeftColumn({
           </div>
           <SessionSidebarFooter
             onSettings={() => setSettingsOpen(true)}
+            onKeyBindings={openKeyBindingHelp}
             onInfo={() => setInfoOpen(true)}
             shellDownload={shellDownload}
             updateAvailable={updates.hasUpdate}

@@ -3,7 +3,6 @@ import type { RefObject } from 'preact';
 import { PreviewPane } from '@/client/components/workspace/editor/PreviewPane';
 import { CodeSurface, type CodeSurfaceHandle } from '@/client/components/common/code-surface';
 import { FindWidget } from '@/client/components/workspace/editor/FindWidget';
-import { CommandPalette } from '@/client/components/workspace/editor/CommandPalette';
 import { useScrollRestore } from '@/client/hooks/editor/use-scroll-restore';
 import { useHeadingJump } from '@/client/hooks/editor/use-heading-jump';
 import { indentUnitFor, useEditorIndent } from '@/client/hooks/editor/indent-settings';
@@ -11,7 +10,6 @@ import { useEditorTyping } from '@/client/hooks/editor/typing-settings';
 import { EditorStatusBar } from '@/client/components/workspace/editor/StatusBar';
 import { useWheelZoom } from '@/client/hooks/editor/wheel-zoom';
 import { GoToLineModal } from '@/client/components/workspace/editor/GoToLineModal';
-import { QuickOpenModal } from '@/client/components/workspace/editor/QuickOpenModal';
 import type { CaretPosition } from '@/client/hooks/editor/caret-position';
 import { lineStartOffset } from '@/shared/lib/code/editor/lines';
 import type { UseFileEditorResult } from '@/client/hooks/editor/use-file-editor';
@@ -30,14 +28,9 @@ interface FileDocumentProps {
   editor: UseFileEditorResult;
   find: EditorFindState;
   surfaceRef: RefObject<CodeSurfaceHandle>;
-  paletteOpen: boolean;
-  onClosePalette: () => void;
   /** Bumped when the user asks for "go to line"; a counter, so one bump is one open. */
   goToLineRequest: number;
   /** The file picker is open. */
-  quickOpen: boolean;
-  onCloseQuickOpen: () => void;
-  onOpenPath?: (path: string) => void;
   rootPath?: string | null;
   repoPath?: string | null;
   onRunCommand: (command: EditorCommand) => void;
@@ -78,12 +71,7 @@ export function FileDocument({
   editor,
   find,
   surfaceRef,
-  paletteOpen,
-  onClosePalette,
   goToLineRequest,
-  quickOpen,
-  onCloseQuickOpen,
-  onOpenPath,
   rootPath = null,
   repoPath = null,
   onRunCommand,
@@ -199,20 +187,6 @@ export function FileDocument({
   return (
     <div className="relative flex-1 min-h-0 flex flex-col">
       {find.open ? <FindWidget find={find} /> : null}
-      {paletteOpen ? <CommandPalette onRun={onRunCommand} onClose={onClosePalette} /> : null}
-      {quickOpen && onOpenPath ? (
-        <QuickOpenModal
-          root={rootPath}
-          repo={repoPath}
-          onOpen={(path) => {
-            onCloseQuickOpen();
-            // Through `handleOpenFile`, so the tab gets the id scheme every other
-            // opener shares rather than one computed here.
-            onOpenPath(path);
-          }}
-          onClose={onCloseQuickOpen}
-        />
-      ) : null}
       {goToLineOpen ? (
         <GoToLineModal
           lineCount={editor.content ? editor.content.split('\n').length : 1}

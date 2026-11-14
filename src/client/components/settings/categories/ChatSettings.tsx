@@ -36,7 +36,6 @@ import { ChatToolRenderSection } from '@/client/components/settings/categories/c
 import { ChatFollowUpSection } from '@/client/components/settings/categories/chat-settings/FollowUpSection';
 import { ChatTitleSection } from '@/client/components/settings/categories/chat-settings/TitleSection';
 import { ChatGoalSection } from '@/client/components/settings/categories/chat-settings/GoalSection';
-import { ChatKeybindingsSection } from '@/client/components/settings/categories/chat-settings/KeybindingsSection';
 
 interface ChatSettingsProps {
   settings: SettingsState;
@@ -53,7 +52,6 @@ const SECTIONS: Record<ChatSectionId, (props: SectionProps) => ComponentChildren
   'follow-up': ChatFollowUpSection,
   titles: ChatTitleSection,
   goal: ChatGoalSection,
-  keybindings: ChatKeybindingsSection,
 };
 
 export function ChatSettings({ settings, onUpdate }: ChatSettingsProps) {

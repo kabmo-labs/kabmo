@@ -3,12 +3,12 @@ import type { SettingsState } from '@/shared/types';
 
 export type KeybindingOption = 'Enter' | 'Shift + Enter' | 'Ctrl / Cmd + Enter';
 
-interface ChatKeybindingsSectionProps {
+interface ComposerKeysSectionProps {
   settings: SettingsState;
   onUpdate: (updater: Partial<SettingsState> | ((prev: SettingsState) => SettingsState)) => void;
 }
 
-export function ChatKeybindingsSection({ settings, onUpdate }: ChatKeybindingsSectionProps) {
+export function ComposerKeysSection({ settings, onUpdate }: ComposerKeysSectionProps) {
   const options: KeybindingOption[] = ['Enter', 'Shift + Enter', 'Ctrl / Cmd + Enter'];
 
   const handleKeybindingChange = (

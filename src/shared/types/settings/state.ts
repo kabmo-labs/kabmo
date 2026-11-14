@@ -12,6 +12,7 @@ export type SettingsCategoryId =
   // KABMO
   | 'appearance'
   | 'chats'
+  | 'keyboard'
   | 'notifications'
   | 'usage'
   | 'token-usage'

@@ -21,31 +21,21 @@
 import { useCallback, useState } from 'preact/hooks';
 
 export interface EditorPanelUi {
-  paletteOpen: boolean;
-  setPaletteOpen: (open: boolean) => void;
   /** Bumped once per request; the document opens the dialog when it moves. */
   goToLineRequest: number;
   openGoToLine: () => void;
-  quickOpen: boolean;
-  setQuickOpen: (open: boolean) => void;
   saveAsOpen: boolean;
   setSaveAsOpen: (open: boolean) => void;
 }
 
 export function useEditorPanelUi(): EditorPanelUi {
-  const [paletteOpen, setPaletteOpen] = useState(false);
   const [goToLineRequest, setGoToLineRequest] = useState(0);
-  const [quickOpen, setQuickOpen] = useState(false);
   const [saveAsOpen, setSaveAsOpen] = useState(false);
   const openGoToLine = useCallback(() => setGoToLineRequest((previous) => previous + 1), []);
 
   return {
-    paletteOpen,
-    setPaletteOpen,
     goToLineRequest,
     openGoToLine,
-    quickOpen,
-    setQuickOpen,
     saveAsOpen,
     setSaveAsOpen,
   };

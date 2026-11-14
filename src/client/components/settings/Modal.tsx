@@ -16,6 +16,7 @@ import { harnessIdFromCategory } from '@/shared/lib/harness/menu';
 import { useHarnesses } from '@/client/hooks/models/use-harnesses';
 import { AppearanceSettings } from '@/client/components/settings/categories/AppearanceSettings';
 import { ChatSettings } from '@/client/components/settings/categories/ChatSettings';
+import { KeyboardSettings } from '@/client/components/settings/categories/KeyboardSettings';
 import { ProjectSettings } from '@/client/components/settings/categories/ProjectSettings';
 import { ProviderSettings } from '@/client/components/settings/categories/ProviderSettings';
 import { AgentSettings } from '@/client/components/settings/categories/AgentSettings';
@@ -156,6 +157,8 @@ export function SettingsModal({
         return <AppearanceSettings settings={settings} onUpdate={handleUpdateSettings} />;
       case 'chats':
         return <ChatSettings settings={settings} onUpdate={handleUpdateSettings} />;
+      case 'keyboard':
+        return <KeyboardSettings settings={settings} onUpdate={handleUpdateSettings} />;
       case 'projects':
         return <ProjectSettings />;
       case 'providers':

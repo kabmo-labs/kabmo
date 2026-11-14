@@ -206,6 +206,7 @@ export function registerPluginBundle(pluginId: string, module: unknown): void {
     // only handle that should ever remove its row.
     messageAction: (registration) => registerListSlot(pluginId, 'messageAction', registration),
     commandPaletteAction: (registration) => registerListSlot(pluginId, 'commandPaletteAction', registration),
+    command: (registration) => registerListSlot(pluginId, 'command', registration),
     fileOpener: (registration) => registerListSlot(pluginId, 'fileOpener', registration),
     sourceCodeRenderer: (registration) => registerListSlot(pluginId, 'sourceCodeRenderer', registration),
     diffRenderer: (registration) => registerListSlot(pluginId, 'diffRenderer', registration),

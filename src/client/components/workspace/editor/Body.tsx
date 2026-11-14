@@ -28,16 +28,11 @@ interface EditorBodyProps {
   setIsMaximized: (next: boolean) => void;
   zoomLevel: number;
   setZoomLevel: (update: (current: number) => number) => void;
-  paletteOpen: boolean;
-  setPaletteOpen: (open: boolean) => void;
   /** Bumped when the user asks for "go to line"; the document owns the dialog. */
   goToLineRequest: number;
   /** Open the Save As dialog. */
   onSaveAs: () => void;
   /** The file picker is open. */
-  quickOpen: boolean;
-  onCloseQuickOpen: () => void;
-  onOpenPath?: (path: string) => void;
   rootPath?: string | null;
   repoPath?: string | null;
   runCommand: (command: EditorCommand) => void;
@@ -74,13 +69,8 @@ export function EditorBody({
   setIsMaximized,
   zoomLevel,
   setZoomLevel,
-  paletteOpen,
-  setPaletteOpen,
   goToLineRequest,
   onSaveAs,
-  quickOpen,
-  onCloseQuickOpen,
-  onOpenPath,
   rootPath = null,
   repoPath = null,
   runCommand,
@@ -135,13 +125,8 @@ export function EditorBody({
       setIsMaximized={setIsMaximized}
       zoomLevel={zoomLevel}
       setZoomLevel={setZoomLevel}
-      paletteOpen={paletteOpen}
-      setPaletteOpen={setPaletteOpen}
       goToLineRequest={goToLineRequest}
       onSaveAs={onSaveAs}
-      quickOpen={quickOpen}
-      onCloseQuickOpen={onCloseQuickOpen}
-      onOpenPath={onOpenPath}
       rootPath={rootPath}
       repoPath={repoPath}
       runCommand={runCommand}

@@ -98,6 +98,22 @@ export interface CommandPaletteRegistration extends KeyedRegistration {
   run: (context: CommandActionContext) => void | Promise<void>;
 }
 
+/**
+ * One command in the host's palette and keymap.
+ *
+ * The id is namespaced by the host (`plugin.<pluginId>.<id>`), so two plugins
+ * may both call theirs `open`. `defaultKey` is a suggestion: a chord already
+ * claimed by a built-in is reported in Settings, never silently won.
+ */
+export interface CommandRegistration extends KeyedRegistration {
+  title: string;
+  /** When-clause; absent means always available. */
+  when?: string;
+  /** A parseable chord per platform, e.g. `{ mac: 'cmd+shift+k', other: 'ctrl+shift+k' }`. */
+  defaultKey?: { mac: string; other: string };
+  run: (context: CommandActionContext) => void | Promise<void>;
+}
+
 // ---------------------------------------------------------------------------
 // File openers
 // ---------------------------------------------------------------------------
@@ -226,6 +242,7 @@ export interface ComposerBannerRegistration extends KeyedRegistration {
 export interface PluginListSlots {
   messageAction(registration: MessageActionRegistration): () => void;
   commandPaletteAction(registration: CommandPaletteRegistration): () => void;
+  command(registration: CommandRegistration): () => void;
   fileOpener(registration: FileOpenerRegistration): () => void;
   sourceCodeRenderer(registration: SourceCodeRendererRegistration): () => void;
   diffRenderer(registration: DiffRendererRegistration): () => void;
@@ -250,6 +267,7 @@ export interface PluginListSlots {
 export const LIST_SLOT_NAMES = [
   'messageAction',
   'commandPaletteAction',
+  'command',
   'fileOpener',
   'sourceCodeRenderer',
   'diffRenderer',

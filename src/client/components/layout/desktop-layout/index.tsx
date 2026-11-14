@@ -24,7 +24,7 @@ import { useEditorViewLayout } from '@/client/hooks/workspace/editor-view';
 import { useLeftDockView } from '@/client/components/workspace/plugin-panel/catalog';
 import type { EditorWidthMode } from '@/shared/lib/workspace/panel-widths';
 import { useSettingsModal } from '@/client/hooks/ui/settings-modal';
-import { useWorkspaceKeybindings } from '@/client/hooks/workspace/keybindings';
+import { useWorkspaceCommands } from '@/client/hooks/workspace/commands';
 import { PluginBootstrap } from '@/client/lib/plugins/bootstrap';
 import { useToasts } from '@/client/hooks/ui/toasts';
 import type { EditorDropResult } from '@/client/hooks/editor/use-editor-drop';
@@ -175,7 +175,7 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
   // The workspace shortcuts, from the shared keymap so the toggles' tooltips
   // name the bound chord. `⌘S` is absent: the editor owns it, and binding it
   // twice would save the file twice.
-  useWorkspaceKeybindings({
+  useWorkspaceCommands({
     showEditor,
     editorHasContent,
     // Through the handler, not the raw flag: in full view the sidebar is hidden

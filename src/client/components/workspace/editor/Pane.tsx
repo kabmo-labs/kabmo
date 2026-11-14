@@ -36,6 +36,8 @@ interface EditorPaneProps {
   className?: string;
   isMaximized: boolean;
   onKeyDownCapture: (event: never) => void;
+  /** Publish this pane as the target of the global editor commands. */
+  onFocusCapture: () => void;
   asSplitPane: boolean;
   /** The tab strip. Dropped in a split pane. */
   tabs: ComponentChildren;
@@ -59,6 +61,7 @@ export function EditorPane({
   className = '',
   isMaximized,
   onKeyDownCapture,
+  onFocusCapture,
   asSplitPane,
   tabs,
   activeFile,
@@ -78,7 +81,7 @@ export function EditorPane({
     : `flex flex-col h-full bg-canvas ${className}`;
 
   return (
-    <div className={containerClass} onKeyDownCapture={onKeyDownCapture}>
+    <div className={containerClass} onKeyDownCapture={onKeyDownCapture} onFocusCapture={onFocusCapture}>
       {asSplitPane ? null : tabs}
 
       <EditorNotices

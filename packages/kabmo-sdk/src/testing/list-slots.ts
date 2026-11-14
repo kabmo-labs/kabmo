@@ -20,6 +20,7 @@
 
 import type {
   CommandPaletteRegistration,
+  CommandRegistration,
   ComposerActionRegistration,
   ComposerBannerRegistration,
   ContentScriptRegistration,
@@ -47,6 +48,7 @@ import { GLOBALLY_KEYED_SLOTS } from '../slots';
 export interface FakeListRegistrations {
   messageActions: MessageActionRegistration[];
   commandPaletteActions: CommandPaletteRegistration[];
+  commands: CommandRegistration[];
   fileOpeners: FileOpenerRegistration[];
   sourceCodeRenderers: SourceCodeRendererRegistration[];
   diffRenderers: DiffRendererRegistration[];
@@ -63,6 +65,7 @@ export function emptyListRegistrations(): FakeListRegistrations {
   return {
     messageActions: [],
     commandPaletteActions: [],
+    commands: [],
     fileOpeners: [],
     sourceCodeRenderers: [],
     diffRenderers: [],
@@ -80,6 +83,7 @@ export function emptyListRegistrations(): FakeListRegistrations {
 const ARRAY_BY_SLOT: Record<ListSlotName, keyof FakeListRegistrations> = {
   messageAction: 'messageActions',
   commandPaletteAction: 'commandPaletteActions',
+  command: 'commands',
   fileOpener: 'fileOpeners',
   sourceCodeRenderer: 'sourceCodeRenderers',
   diffRenderer: 'diffRenderers',
@@ -150,6 +154,7 @@ export function createListRegistrar(registrations: () => FakeListRegistrations):
   return {
     messageAction: (registration) => register('messageAction', registration),
     commandPaletteAction: (registration) => register('commandPaletteAction', registration),
+    command: (registration) => register('command', registration),
     fileOpener: (registration) => register('fileOpener', registration),
     sourceCodeRenderer: (registration) => register('sourceCodeRenderer', registration),
     diffRenderer: (registration) => register('diffRenderer', registration),

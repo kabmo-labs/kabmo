@@ -13,6 +13,13 @@ import { LoginScreen } from '@/client/components/auth/login-screen';
 import { useAuthState } from '@/client/hooks/ui/auth';
 import { setWindowChromeAuthRequired, setWindowChromeLayout } from '@/client/hooks/ui/window-chrome';
 import { SidebarDataProvider } from '@/client/hooks/chat/omp/session-list';
+import { useCommandRuntime } from '@/client/hooks/commands/use-command-runtime';
+import { usePluginCommands } from '@/client/hooks/commands/use-plugin-commands';
+import { useOverlays } from '@/client/hooks/commands/use-overlays';
+import { CommandPalette } from '@/client/components/common/command-palette';
+import { ChordHint } from '@/client/components/common/command-palette/ChordHint';
+import { KeyBindingCheatsheet } from '@/client/components/common/key-binding-cheatsheet';
+import { closeKeyBindingHelp } from '@/client/lib/commands/overlays';
 
 /**
  * The mobile and desktop layouts are mutually exclusive screen trees — exactly
@@ -46,6 +53,12 @@ export function App({ initialIsMobile = false, production = false, appSettings =
   const [searchParams] = useSearchParams();
   const sessionId = searchParams.get('sessionId') || '1';
   const authState = useAuthState();
+
+  // One dispatcher, one plugin bridge, one palette — mounted at the root so a
+  // layout switch cannot install a second listener or drop an open overlay.
+  useCommandRuntime();
+  usePluginCommands();
+  const overlays = useOverlays();
 
   // Initialize with server-detected User-Agent to eliminate SSR flash. The
   // device decides the layout on every load — the manual switch below is
@@ -135,6 +148,9 @@ export function App({ initialIsMobile = false, production = false, appSettings =
       <SidebarDataProvider>
         {shell}
         <ToastStack />
+        <CommandPalette />
+        <KeyBindingCheatsheet open={overlays.help} onClose={closeKeyBindingHelp} />
+        <ChordHint />
       </SidebarDataProvider>
     </SessionStateProvider>
   );

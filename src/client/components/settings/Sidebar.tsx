@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-preact';
-import { BarChart3, Bell, BookOpen, Bot, Boxes, Cloud, Coins, Cpu, FolderGit, Library, MessageSquare, Palette, Plug, Power, Puzzle, RefreshCw, Search, Sliders, Terminal, Waypoints, X } from 'lucide-preact';
+import { BarChart3, Bell, BookOpen, Bot, Boxes, Cloud, Coins, Cpu, FolderGit, Keyboard, Library, MessageSquare, Palette, Plug, Power, Puzzle, RefreshCw, Search, Sliders, Terminal, Waypoints, X } from 'lucide-preact';
 import { HarnessGlyph } from '@/client/components/common/harness-glyph';
 import type { SettingsCategoryId } from '@/shared/types';
 import { SETTINGS_SECTIONS, type SettingsSection } from '@/shared/lib/settings/sections';
@@ -22,7 +22,8 @@ export interface CategoryDef {
 export const SETTINGS_CATEGORIES: CategoryDef[] = [
   // KABMO
   { id: 'appearance', label: 'Appearance', icon: Palette, section: 'KABMO', description: 'Custom themes, typography scale, and layout density.' },
-  { id: 'chats', label: 'Chats', icon: MessageSquare, section: 'KABMO', description: 'Chat width, composer style, tool call rendering, session titles, goal mode, and keybindings.' },
+  { id: 'chats', label: 'Chats', icon: MessageSquare, section: 'KABMO', description: 'Chat width, composer style, tool call rendering, session titles, and goal mode.' },
+  { id: 'keyboard', label: 'Keyboard', icon: Keyboard, section: 'KABMO', description: 'Every command shortcut, the composer Enter keys, and chord conflicts.' },
   { id: 'notifications', label: 'Notifications', icon: Bell, section: 'KABMO', description: 'Completion sound, separate Desktop and Mobile delivery switches, and the finished, waiting-for-you and failed run triggers.' },
   { id: 'usage', label: 'Usage', icon: BarChart3, section: 'KABMO', description: 'Build minutes quota, storage, and general usage.' },
   { id: 'token-usage', label: 'Token Usage', icon: Coins, section: 'KABMO', description: 'Token telemetry, cache, and cost breakdown.' },
