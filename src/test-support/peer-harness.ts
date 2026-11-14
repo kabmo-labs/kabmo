@@ -24,6 +24,7 @@ import { join } from 'node:path';
 import type { RealtimeConnection } from '@/server/lib/realtime/hub.server';
 import { sessionLeasePath } from '@/server/lib/omp/session/ownership.server';
 import { leaseHeldByAnother } from '@/server/lib/omp/session/lease-flock.server';
+import { processParentPid } from '@/server/lib/lifecycle/identity';
 import type { RealtimeServerFrame } from '@/shared/lib/realtime/protocol';
 
 /** Spin the event loop until `condition` holds, up to `timeoutMs`. */
@@ -177,17 +178,32 @@ export function usePeerRoots(): PeerRoots {
   };
 }
 
+/** A lease holder in another process: the bun pid, and the pid it is parented by. */
+export interface ForeignLease {
+  pid: number;
+  /** The holder's PARENT now, which is the pid an instance record must name. */
+  parentPid: number;
+}
+
 /**
  * Hold `sessionId`'s lease from a SEPARATE, REPARENTED process — the shape a
- * real second Kabmo instances's omp child has.
+ * real second Kabmo instance's omp child has.
  *
  * A lease held by this very process is deliberately NOT a conflict (the local
  * registry already answers for it), and a directly-spawned child is "our own
  * child" by the guard's parent rule — so the holder must be detached. The
  * `sh -c '… &'` wrapper exits at once and leaves `bun` under init, which is the
  * portable way to get a foreign holder (macOS ships no `setsid`).
+ *
+ * The returned `parentPid` is read AFTER the wrapper is gone, and callers write
+ * an instance record naming it: the guard matches the holder's PARENT against a
+ * record, and the reparenting is an asynchronous side effect of the wrapper
+ * exiting. Writing `pid: 1` and hoping was a race — measured on the Linux gate
+ * (`43568904108`), where the holder was still parented by the wrapper when the
+ * one-shot `resolve` ran, so no record matched and the topic answered locally
+ * instead of forwarding to the owner (`ownerCalls` was `[]`).
  */
-export async function holdLeaseInForeignProcess(sessionId: string): Promise<number> {
+export async function holdLeaseInForeignProcess(sessionId: string): Promise<ForeignLease> {
   const lease = sessionLeasePath(sessionId);
   writeFileSync(lease, '');
   const script = `
@@ -203,5 +219,13 @@ export async function holdLeaseInForeignProcess(sessionId: string): Promise<numb
   });
   const pid = Number((await new Response(child.stdout).text()).trim());
   await waitUntil(() => leaseHeldByAnother(lease) === true);
-  return pid;
+  // Held AND reparented: until the wrapper exits, the holder's parent is the
+  // wrapper itself, which no instance record can name.
+  await waitUntil(() => {
+    const parent = processParentPid(pid);
+    return parent !== null && parent !== child.pid;
+  });
+  const parentPid = processParentPid(pid);
+  if (parentPid === null) throw new Error('the foreign holder vanished before it was reparented');
+  return { pid, parentPid };
 }

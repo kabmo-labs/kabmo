@@ -193,13 +193,16 @@ describe('peer session relay', () => {
       },
     });
 
-    // The ownership guard reads an instance record from Kabmo data dir.
+    // The ownership guard reads an instance record from Kabmo data dir, and it
+    // matches the lease holder's PARENT against that record's pid — so the
+    // record names the pid the harness reports, not a guessed `1`.
+    const holder = await holdLeaseInForeignProcess(sessionId);
+    foreignChildren.push(holder.pid);
     mkdirSync(join(roots.dataRoot, 'run'), { recursive: true });
     writeFileSync(
       join(roots.dataRoot, 'run', `${ownerServer.port}.json`),
-      JSON.stringify({ pid: 1, port: ownerServer.port, host: '127.0.0.1', mode: 'dev', launchMode: 'direct', startedAt: '', version: '0' }),
+      JSON.stringify({ pid: holder.parentPid, port: ownerServer.port, host: '127.0.0.1', mode: 'dev', launchMode: 'direct', startedAt: '', version: '0' }),
     );
-    foreignChildren.push(await holdLeaseInForeignProcess(sessionId));
 
     try {
       const value = (await sessionDescriptor(sessionId).resolve(topic)) as { running?: boolean };
@@ -216,15 +219,6 @@ describe('peer session relay', () => {
     peer = startFakePeer();
     subscribeWithLocalStub(topic, { running: false });
 
-    // The owner must be placeable once it claims the session: the guard matches
-    // the holder's PARENT against an instance record. The foreign holder is
-    // reparented to init (pid 1), so that is the pid the record names.
-    mkdirSync(join(roots.dataRoot, 'run'), { recursive: true });
-    writeFileSync(
-      join(roots.dataRoot, 'run', `${peer.port}.json`),
-      JSON.stringify({ pid: 1, port: peer.port, host: '127.0.0.1', mode: 'dev', launchMode: 'direct', startedAt: '', version: '0' }),
-    );
-
     // The subscribe lands first: at this moment nothing holds the lease, which
     // is exactly the state a real spawn leaves for several seconds (measured:
     // the lease appeared ~8s after `/api/agent/new` returned). The topic's
@@ -234,7 +228,16 @@ describe('peer session relay', () => {
     try {
       await waitUntil(() => peer !== null && peer.subscriptions.length === 0);
       // Only NOW does the owner appear — after the first lookup found nothing.
-      foreignChildren.push(await holdLeaseInForeignProcess(sessionId));
+      const holder = await holdLeaseInForeignProcess(sessionId);
+      foreignChildren.push(holder.pid);
+      // The owner must be placeable once it claims the session: the guard
+      // matches the holder's PARENT against an instance record, so the record
+      // names the pid the harness reported rather than a guessed `1`.
+      mkdirSync(join(roots.dataRoot, 'run'), { recursive: true });
+      writeFileSync(
+        join(roots.dataRoot, 'run', `${peer.port}.json`),
+        JSON.stringify({ pid: holder.parentPid, port: peer.port, host: '127.0.0.1', mode: 'dev', launchMode: 'direct', startedAt: '', version: '0' }),
+      );
       // The descriptor retries on a 2s interval, so the wait must outlast one.
       await waitUntil(() => peer !== null && peer.subscriptions.length > 0, 8_000);
       expect(peer.paths).toEqual(['/api/realtime/ws']);

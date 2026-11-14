@@ -31,16 +31,11 @@ const SHIKI_TOKEN_RE = /--shiki-light:/;
 /** A language with no loader at all: `isLanguageReady` can never become true for it. */
 const UNLOADABLE_LANG = 'not-a-language-at-all';
 
-beforeAll(async () => {
-  // The isomorphic highlighter only boots with `window` present; the Bun test
-  // runtime has none. Stub it, boot, then remove the stub.
-  Object.assign(globalThis, { window: globalThis });
-  await bootSyntax();
-  Reflect.deleteProperty(globalThis, 'window');
-
+/** Resolve once `language` can be tokenized synchronously. */
+async function awaitLanguage(language: string): Promise<void> {
   await new Promise<void>((resolve) => {
     const settle = () => {
-      if (requestLanguage('typescript')) {
+      if (requestLanguage(language)) {
         off();
         resolve();
       }
@@ -48,6 +43,22 @@ beforeAll(async () => {
     const off = onLanguageReady(settle);
     settle();
   });
+}
+
+beforeAll(async () => {
+  // The isomorphic highlighter only boots with `window` present; the Bun test
+  // runtime has none. Stub it, boot, then remove the stub.
+  Object.assign(globalThis, { window: globalThis });
+  await bootSyntax();
+  Reflect.deleteProperty(globalThis, 'window');
+
+  // `javascript` as well as `typescript`: the eager grammars arrive one by one
+  // after boot, and `highlightCode` falls back to javascript for a language it
+  // cannot load. A fallback that had not landed yet made `codeToHtml` throw and
+  // the catch turn the line into PLAIN TEXT — measured on the Linux gate
+  // (`43568904108`): `Received: "const alpha = 1;"` against `/<span class="shiki">/`.
+  await awaitLanguage('typescript');
+  await awaitLanguage('javascript');
 });
 
 describe('highlightSearchLine', () => {
