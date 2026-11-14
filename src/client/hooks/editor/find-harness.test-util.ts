@@ -48,6 +48,24 @@ export interface FindHarness {
   install: () => void;
 }
 
+/**
+ * A session id no other harness in this RUN will mint.
+ *
+ * The query and the toggles persist per session id into a module singleton
+ * (`shared/lib/workspace/session-state`), and TWO files share this harness
+ * (`use-editor-find.test.ts`, `use-editor-find-write.test.ts`). A per-file
+ * counter restarts at 1, so the second file's `test-session-2` read the first
+ * file's persisted `alpha` back — measured on the Ubuntu gate, where the case
+ * that seeds nothing failed with `Received: "alpha"`. Bun shares the module
+ * registry across test files, so the counter has to be shared too.
+ */
+function nextSessionId(): string {
+  const target = globalThis as unknown as Record<string, unknown>;
+  const next = (typeof target.__kabmoFindHarnessSessions === 'number' ? target.__kabmoFindHarnessSessions : 0) + 1;
+  target.__kabmoFindHarnessSessions = next;
+  return `find-harness-session-${next}`;
+}
+
 export async function createFindHarness(): Promise<FindHarness> {
   let useEditorFind: typeof UseEditorFindHook;
   let SessionStateContext: { Provider: (props: { value: { sessionId: string; ready: boolean }; children: ComponentChildren }) => ComponentChildren };
@@ -58,7 +76,6 @@ export async function createFindHarness(): Promise<FindHarness> {
   let find: EditorFindState | null = null;
   let container: HTMLElement;
   let sessionId = 'test-session';
-  let sessionCounter = 0;
 
   const input: FindHarness['input'] = { text: 'alpha beta alpha', documentKey: 'file-1', selection: { start: 0, end: 5 } };
   const selections: FindHarness['selections'] = [];
@@ -148,8 +165,8 @@ export async function createFindHarness(): Promise<FindHarness> {
         find = null;
         // The query and the toggles are persisted per session — that is the
         // feature — so each test gets its OWN session id rather than sharing a
-        // blob with the test before it.
-        sessionId = `test-session-${++sessionCounter}`;
+        // blob with the test before it (or with the other file's harness).
+        sessionId = nextSessionId();
         input.text = 'alpha beta alpha';
         input.documentKey = 'file-1';
         input.selection = { start: 0, end: 5 };

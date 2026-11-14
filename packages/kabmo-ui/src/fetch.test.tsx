@@ -66,6 +66,22 @@ function installFetch(): void {
   };
 }
 
+/**
+ * Put the runner's own `fetch` back.
+ *
+ * The stub above answers a promise that is settled BY THE TEST, so one left
+ * behind never settles at all: every later file that makes a real request —
+ * the CLI suites dial a local server — hung until bun's 5s timeout, and the
+ * failure named those suites rather than this one (measured: `bun test
+ * packages/kabmo-ui/src/fetch.test.tsx src/cli/lib/commands/session.test.js`
+ * failed all four session cases). `Bun.fetch` rather than a captured value:
+ * the handle is the runner's own whatever a file loaded before this one left
+ * on the global.
+ */
+function restoreFetch(): void {
+  (globalThis as unknown as Record<string, unknown>).fetch = Bun.fetch;
+}
+
 beforeEach(() => {
   const win = new Window({ url: 'http://localhost' });
   const target = globalThis as unknown as Record<string, unknown>;
@@ -84,6 +100,7 @@ beforeEach(() => {
 afterEach(() => {
   render(null, container);
   container.remove();
+  restoreFetch();
   const target = globalThis as unknown as Record<string, unknown>;
   for (const key of DOM_GLOBALS) {
     if (key in nativeGlobals) target[key] = nativeGlobals[key];

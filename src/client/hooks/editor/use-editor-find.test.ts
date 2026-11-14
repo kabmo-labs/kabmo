@@ -14,7 +14,6 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { testPosix } from '@/test-support/platform';
 
 import { createFindHarness } from '@/client/hooks/editor/find-harness.test-util';
 
@@ -40,14 +39,10 @@ describe('useEditorFind opening', () => {
     expect([...new Set(harness.reveals)]).toEqual([0]);
   });
 
-  // POSIX-only for a TIMING reason rather than a semantic one: the query is
-  // persisted per session through a debounced write, and on Windows the previous
-  // case's write lands after this case's fresh session is mounted, so the
-  // seeded `alpha` is read back. The behaviour under test (an empty selection
-  // seeds nothing) is platform-independent; the isolation between the two cases
-  // is not, and making it deterministic would mean changing the persistence
-  // contract this suite is not about.
-  testPosix('an empty or multi-line selection does not seed a query', async () => {
+  // Every case runs against its OWN session id (`nextSessionId`), so the query
+  // this case would otherwise inherit cannot exist: the store is a module
+  // singleton and the ids are unique for the whole run, not just this file.
+  test('an empty or multi-line selection does not seed a query', async () => {
     harness.input.selection = { start: 0, end: 0 };
     await harness.act(async () => {
       harness.find?.openFind();
