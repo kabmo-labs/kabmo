@@ -4,6 +4,14 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.32.1](https://github.com/kabmo-labs/kabmo/compare/v0.32.0...v0.32.1) — 2026-11-14
+
+### Fixed
+
+* **chat:** stop a cancelled fork leaking into the next chat, dock its picker ([2b2234d](https://github.com/kabmo-labs/kabmo/commit/2b2234dea7b86fd4527a06d4103e42facffa0417)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **sidebar:** open the empty workspace from New Session ([132debc](https://github.com/kabmo-labs/kabmo/commit/132debccf4b997996f8c5d68925976231490806d)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **ssr:** paint the stored theme on the login screen ([9876f33](https://github.com/kabmo-labs/kabmo/commit/9876f33c7260a6395f1b5ac21eca1d12e0e8fe13)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.32.0](https://github.com/kabmo-labs/kabmo/compare/v0.31.0...v0.32.0) — 2026-11-14
 
 ### Added
