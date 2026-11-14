@@ -127,3 +127,20 @@ describe('desktop session row rename cue', () => {
     expect(el.querySelectorAll('[role="status"]').length).toBe(1);
   });
 });
+
+describe('desktop session row run clock', () => {
+  test('a live run counts in the age slot, from the server start', async () => {
+    const el = await mount({ status: 'stream', timeAgo: 'now', runStartedAt: Date.now() - 65_000 });
+    const clock = el.querySelector('[role="timer"]');
+    expect(clock?.textContent).toBe('1m 5s');
+    expect(clock?.getAttribute('aria-label')).toBe('Running for 1m 5s');
+    // One slot, one reading: the age is not drawn beside the clock.
+    expect(el.textContent).not.toContain('now');
+  });
+
+  test('a settled row keeps the age and draws no clock', async () => {
+    const el = await mount({ status: 'finish', timeAgo: '5m' });
+    expect(el.querySelector('[role="timer"]')).toBeNull();
+    expect(el.textContent).toContain('5m');
+  });
+});

@@ -82,6 +82,9 @@ export interface SessionRowProps {
   timeAgo?: string | null;
   /** Full timestamp shown as the age's hover tooltip. */
   timeTitle?: string | null;
+  /** Epoch ms this row's live run started; the timestamp slot counts instead
+   *  of showing the age. Absent for a settled row. */
+  runStartedAt?: number;
   worktree?: SessionWorktreeInfo;
   /** The row's prompt is held until another session finishes. */
   waitingFor?: { title: string | null };
@@ -117,6 +120,7 @@ export function SessionRow({
   awaitingInput = false,
   timeAgo,
   timeTitle,
+  runStartedAt,
   worktree,
   waitingFor,
   expandable = false,
@@ -235,6 +239,7 @@ export function SessionRow({
         <TrailingSlot
           timeAgo={timeAgo}
           timeTitle={timeTitle}
+          runStartedAt={runStartedAt}
           touch={touch}
           menuOpen={menu.anchor !== null}
           onOpenMenu={hasActions && !selectable ? menu.openBelow : undefined}

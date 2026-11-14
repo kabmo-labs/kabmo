@@ -22,7 +22,7 @@
  * `session-sidebar/SessionItem.test.ts`.
  */
 
-import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
+import { afterAll, afterEach, beforeAll, describe, expect, test, vi } from 'bun:test';
 import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
@@ -180,5 +180,30 @@ describe('modern session row', () => {
   test('a row with nothing to offer draws no menu trigger', async () => {
     const el = await mount();
     expect(el.querySelector('[aria-label="Session actions"]')).toBeNull();
+  });
+
+  test('a live run counts from the server start, once per second', async () => {
+    vi.useFakeTimers();
+    try {
+      const el = await mount({ status: 'stream', timeAgo: 'now', runStartedAt: Date.now() - 5_000 });
+      const clock = () => el.querySelector('[role="timer"]');
+      expect(clock()?.textContent).toBe('5s');
+      expect(clock()?.getAttribute('aria-label')).toBe('Running for 5s');
+      // The age is replaced, not shown beside the clock: one slot, one reading.
+      expect(el.textContent).not.toContain('now');
+
+      await act(async () => {
+        vi.advanceTimersByTime(1_000);
+      });
+      expect(clock()?.textContent).toBe('6s');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test('the age returns when the run is over', async () => {
+    const el = await mount({ status: 'finish', timeAgo: '5m' });
+    expect(el.querySelector('[role="timer"]')).toBeNull();
+    expect(el.textContent).toContain('5m');
   });
 });

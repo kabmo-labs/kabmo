@@ -64,7 +64,7 @@ export function MobileSessionCategory({
   const worktreeDialog = useWorktreeDialog(folder, (worktreePath) =>
     onNewWorktreeSession?.(folder.id, worktreePath),
   );
-  const { refresh } = useSidebarData();
+  const { refresh, runStartedAtMap } = useSidebarData();
   const { expandedSessionIds, toggleSession } = useExpandedSessions();
   // The viewed transcript, so its session row dims while a roster entry is
   // open (desktop parity — same params, same rule).
@@ -138,6 +138,7 @@ export function MobileSessionCategory({
         awaitingInput={Boolean(session.awaitingInput)}
         timeAgo={relativeTimeAgo(session.updated_at ?? session.created_at)}
         timeTitle={formatFullDate(session.updated_at ?? session.created_at)}
+        runStartedAt={sessionStatus[sessionKey] === 'stream' ? runStartedAtMap[sessionKey] : undefined}
         expandable={control.expandable} isChild={control.isChild}
         isExpanded={control.isExpanded}
         onToggleExpand={control.onToggleExpand}

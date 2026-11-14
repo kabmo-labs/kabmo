@@ -186,6 +186,7 @@ export async function loadSidebarStatus(
       streamStatus: state.status,
       ...(state.model ? { runModel: state.model } : {}),
       ...(state.failure ? { runFailure: state.failure } : {}),
+      ...(state.startedAt !== undefined ? { runStartedAt: state.startedAt } : {}),
     };
   }
   // Sessions blocked on a dialog nobody has answered yet. Read live from the

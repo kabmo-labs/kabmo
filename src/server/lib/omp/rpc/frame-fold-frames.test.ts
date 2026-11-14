@@ -180,6 +180,7 @@ describe('the stream row names the run model', () => {
     expect(await foldAndReadRow('s1', { type: 'agent_start' }, { provider: 'anthropic', modelId: 'claude' })).toEqual({
       status: 'stream',
       model: { provider: 'anthropic', modelId: 'claude' },
+      startedAt: expect.any(Number),
     });
   });
 
@@ -189,6 +190,7 @@ describe('the stream row names the run model', () => {
     expect(await foldAndReadRow('s1', { type: 'turn_start' }, null)).toEqual({
       status: 'stream',
       model: { provider: 'openai', modelId: 'gpt-5' },
+      startedAt: expect.any(Number),
     });
   });
 });

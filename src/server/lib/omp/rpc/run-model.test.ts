@@ -90,6 +90,7 @@ describe('syncRunModel repairs the live row', () => {
     expect((await loadStreamStates()).s1).toEqual({
       status: 'stream',
       model: { provider: 'anthropic', modelId: 'claude' },
+      startedAt: expect.any(Number),
     });
   });
 
@@ -111,6 +112,7 @@ describe('syncRunModel repairs the live row', () => {
     expect((await loadStreamStates()).s1).toEqual({
       status: 'stream',
       model: { provider: 'openai', modelId: 'gpt-5' },
+      startedAt: expect.any(Number),
     });
   });
 });

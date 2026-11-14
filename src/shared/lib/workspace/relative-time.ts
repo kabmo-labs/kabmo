@@ -1,3 +1,5 @@
+import { formatDuration } from '@/shared/lib/chat/duration';
+
 /** Compact relative age for sidebar rows: `now`, `5m`, `3h`, `2d`, `6w`, or a
  *  `DD MMM` date once the timestamp is older than a year. Returns null for a
  *  missing/unparseable timestamp so callers can omit the column entirely. */
@@ -38,4 +40,24 @@ export function formatFullDate(value: string | number | null | undefined): strin
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+/**
+ * Elapsed label for a session's LIVE run, in the row's timestamp slot:
+ * `0s`, `7s`, `1m 23s`, `1h 2m`.
+ *
+ * Seconds stop at the hour on purpose. A run that has been going for an hour
+ * is a question about minutes, and re-rendering every second for a digit
+ * nobody reads is motion without information — the same call openchamber made
+ * for its session rows. Below the hour the seconds ARE the aliveness signal,
+ * so they stay.
+ *
+ * Delegates to the chat footer's `formatDuration` so the sidebar and the
+ * footer cannot spell the same span two ways; only the sub-second case is
+ * special, because a live clock must say `0s` while a finished run has no
+ * duration worth printing.
+ */
+export function formatRunElapsed(ms: number): string {
+  if (!Number.isFinite(ms) || ms < 1000) return '0s';
+  return formatDuration(ms) ?? '0s';
 }

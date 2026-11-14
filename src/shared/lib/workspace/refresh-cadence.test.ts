@@ -23,7 +23,7 @@ import {
   SIDEBAR_DATA_TTL_MS,
   STREAM_HEARTBEAT_MS,
 } from '@/shared/lib/workspace/refresh-cadence';
-import { formatFullDate, relativeTimeAgo } from '@/shared/lib/workspace/relative-time';
+import { formatFullDate, formatRunElapsed, relativeTimeAgo } from '@/shared/lib/workspace/relative-time';
 
 describe('refresh cadences', () => {
   test('the documented millisecond values', () => {
@@ -137,5 +137,38 @@ describe('formatFullDate', () => {
   test('parses an ISO string the same as its epoch millis', () => {
     const iso = '2026-01-15T11:30:00.000Z';
     expect(formatFullDate(iso)).toBe(formatFullDate(Date.parse(iso)));
+  });
+});
+
+describe('formatRunElapsed', () => {
+  const SECOND = 1_000;
+  const MINUTE = 60 * SECOND;
+  const HOUR = 60 * MINUTE;
+
+  test('a live clock starts at 0s, never blank or negative', () => {
+    expect(formatRunElapsed(0)).toBe('0s');
+    expect(formatRunElapsed(999)).toBe('0s');
+    expect(formatRunElapsed(-5_000)).toBe('0s');
+    expect(formatRunElapsed(Number.NaN)).toBe('0s');
+  });
+
+  test('seconds below a minute', () => {
+    expect(formatRunElapsed(SECOND)).toBe('1s');
+    expect(formatRunElapsed(59 * SECOND)).toBe('59s');
+  });
+
+  test('minutes keep their seconds', () => {
+    expect(formatRunElapsed(MINUTE)).toBe('1m 0s');
+    expect(formatRunElapsed(83 * SECOND)).toBe('1m 23s');
+    expect(formatRunElapsed(59 * MINUTE + 59 * SECOND)).toBe('59m 59s');
+  });
+
+  test('seconds are dropped once the run is an hour old', () => {
+    // The row's slot is narrow and a second digit past the hour is motion
+    // without information; the minute is the useful unit there.
+    expect(formatRunElapsed(HOUR)).toBe('1h 0m');
+    expect(formatRunElapsed(HOUR + 5 * SECOND)).toBe('1h 0m');
+    expect(formatRunElapsed(HOUR + 4 * MINUTE + 59 * SECOND)).toBe('1h 4m');
+    expect(formatRunElapsed(26 * HOUR + 3 * MINUTE)).toBe('26h 3m');
   });
 });

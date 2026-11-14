@@ -28,6 +28,16 @@ export interface SidebarStatusEntry {
   streamStatus?: 'stream' | 'finish' | 'abort';
   awaitingInput?: boolean;
   runModel?: SessionRunModel;
+  /**
+   * Epoch ms the live run entered `stream`, from `session_stream_state`.
+   *
+   * A row's elapsed clock is measured against this, never against the moment
+   * this tab first saw the run: the start is durable, so a reload, a second
+   * tab or a reconnect resumes the same count instead of restarting at zero.
+   * Absent on terminal badges (the run is over) and on rows written before the
+   * column existed, where the row falls back to its age.
+   */
+  runStartedAt?: number;
   /** Present only on a failed terminal run; the notification's own reason. */
   runFailure?: string;
 }

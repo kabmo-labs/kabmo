@@ -40,6 +40,11 @@ export interface SessionItemData {
    *  provider/model in every tab and Kabmo instances. Absent for a session
    *  with no run row; callers fall back to the transcript's model entry. */
   runModel?: { provider: string; modelId: string };
+  /** Epoch ms this session's LIVE run entered `stream`, persisted beside
+   *  `streamStatus`. The row's elapsed clock counts from here, so a reload or
+   *  a second tab resumes the same count. Absent on terminal badges and on
+   *  rows whose run predates the column. */
+  runStartedAt?: number;
   /**
    * Set on a PENDING row whose prompt is held until another session finishes.
    *

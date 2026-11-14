@@ -7,6 +7,7 @@ import { SelectionCheckbox } from '@/client/components/common/batch-selection/Se
 import { HarnessGlyph, HARNESS_GLYPH_SIZE } from '@/client/components/common/harness-glyph';
 import type { BranchRowStyle } from '@/client/components/common/session-branch/style';
 import { WorktreeBadge } from '@/client/components/layout/session-sidebar/WorktreeBadge';
+import { SessionTimeCell } from '@/client/components/common/session-row/TimeCell';
 import type { SessionWorktreeInfo } from '@/shared/lib/workspace/worktree/types';
 
 /** What a subagent row under this chrome's rows borrows from it. */
@@ -36,6 +37,9 @@ export interface SessionItemProps {
   timeAgo?: string | null;
   /** Full timestamp shown as the age's hover tooltip. */
   timeTitle?: string | null;
+  /** Epoch ms this row's live run started; the timestamp slot counts instead
+   *  of showing the age. Absent for a settled row. */
+  runStartedAt?: number;
   onClick?: () => void;
   onArchive?: () => void;
   /** Omitted for a session that cannot be deleted yet (a pending `new-…` chat,
@@ -83,6 +87,7 @@ export function SessionItem({
   awaitingInput = false,
   timeAgo,
   timeTitle,
+  runStartedAt,
   onClick,
   onArchive,
   onDelete,
@@ -285,14 +290,15 @@ export function SessionItem({
         )}
 
         {/* Same trailing column the phone draws, from the same helper — the
-            row's age is what tells two identically-titled chats apart. */}
-        {!isEditing && timeAgo && (
-          <span
+            row's age is what tells two identically-titled chats apart. While
+            the run is live the slot counts instead, from the server's start. */}
+        {!isEditing && (
+          <SessionTimeCell
+            timeAgo={timeAgo}
+            timeTitle={timeTitle}
+            runStartedAt={runStartedAt}
             className="shrink-0 ml-2 font-mono text-[10px] text-ink/40"
-            title={timeTitle ?? undefined}
-          >
-            {timeAgo}
-          </span>
+          />
         )}
 
         {/* One trigger, whatever the row can do — the menu grows, so a row with

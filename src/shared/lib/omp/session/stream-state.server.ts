@@ -51,10 +51,20 @@ export interface SessionRunModel {
   modelId: string;
 }
 
-/** A session's stream row: its status plus the model that serves that run. */
+/** A session's stream row: its status, the model that serves that run, and
+ *  when the run began. */
 export interface SessionStreamState {
   status: SessionStreamStatus;
   model?: SessionRunModel;
+  /**
+   * Epoch ms the run entered `stream` — the sidebar's live elapsed clock.
+   *
+   * Present only on a LIVE row: a terminal badge keeps the column in SQLite
+   * (the notification's own duration reads it from `previous`), but the time
+   * belongs to the run that already ended, so it is not part of the state a
+   * reader of a settled row sees.
+   */
+  startedAt?: number;
   /**
    * Why a terminal `finish` run failed, when the agent said. NULL/absent is a
    * normal stop. It rides this row because a tab that never opened the session
@@ -212,12 +222,13 @@ export async function markStreamSeen(sessionId: string): Promise<boolean> {
 export async function loadStreamStates(): Promise<Record<string, SessionStreamState>> {
   try {
     const db = await getDb();
-    const rows = (await db.all('SELECT session_id, status, model_provider, model_id, failure FROM session_stream_state')) as {
+    const rows = (await db.all('SELECT session_id, status, model_provider, model_id, failure, started_at FROM session_stream_state')) as {
       session_id: string;
       status: string;
       model_provider: string | null;
       model_id: string | null;
       failure: string | null;
+      started_at: number | null;
     }[];
     const map: Record<string, SessionStreamState> = {};
     for (const row of rows) {
@@ -229,6 +240,9 @@ export async function loadStreamStates(): Promise<Record<string, SessionStreamSt
           ? { model: { provider: row.model_provider, modelId: row.model_id } }
           : {}),
         ...(failure ? { failure } : {}),
+        ...(row.status === 'stream' && typeof row.started_at === 'number'
+          ? { startedAt: row.started_at }
+          : {}),
       };
     }
     return map;

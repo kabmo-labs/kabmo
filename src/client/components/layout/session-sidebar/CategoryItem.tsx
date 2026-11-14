@@ -67,7 +67,7 @@ export function Category({
     if (typeof folder.isExpanded === 'boolean') setIsOpen(folder.isExpanded);
   }, [folder.isExpanded]);
 
-  const { refresh } = useSidebarData();
+  const { refresh, runStartedAtMap } = useSidebarData();
   const toggleFetcher = useFetcher<{ success?: boolean }>();
   const {
     confirmDelete,
@@ -179,6 +179,7 @@ export function Category({
         worktree={session.worktree}
         timeAgo={relativeTimeAgo(session.updated_at ?? session.created_at)}
         timeTitle={formatFullDate(session.updated_at ?? session.created_at)}
+        runStartedAt={sessionStatus[sessionKey] === 'stream' ? runStartedAtMap[sessionKey] : undefined}
         onClick={() => onSelectSession(session.id)}
         onArchive={() => handleArchive(session)}
         // A pending `new-…` chat has no transcript anywhere yet — there is

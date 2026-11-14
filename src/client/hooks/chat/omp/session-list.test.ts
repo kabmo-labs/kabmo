@@ -66,6 +66,19 @@ describe('SidebarDataProvider reads both sidebar topics', () => {
     expect(renderedStatus(harness.holder.api)).toBeUndefined();
     harness.server.stop();
   });
+
+  test('carries the live run start, and drops it with the run', async () => {
+    const harness = await mountProvider();
+    const startedAt = 1_700_000_000_000;
+    await harness.push(undefined, { 'omp-1': { streamStatus: 'stream', runStartedAt: startedAt } });
+    // The row's clock counts from the server's start, so a reload or a second
+    // tab resumes the same number instead of restarting at zero.
+    expect(harness.holder.api?.runStartedAtMap['omp-1']).toBe(startedAt);
+
+    await harness.push(undefined, { 'omp-1': { streamStatus: 'finish' } });
+    expect(harness.holder.api?.runStartedAtMap['omp-1']).toBeUndefined();
+    harness.server.stop();
+  });
 });
 
 /**

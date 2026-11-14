@@ -102,6 +102,15 @@ export interface SidebarDataHandle {
    */
   streamStatusMap: Record<string, 'stream' | 'finish' | 'abort'>;
   /**
+   * Epoch ms each LIVE run entered `stream`, keyed like `streamStatusMap`.
+   *
+   * A separate map rather than a richer status value: every consumer compares
+   * the status to the literal `'stream'`, and widening that map would make
+   * those comparisons silently truthy for a terminal badge. Built from the same
+   * payload at the same moment, so the two cannot describe different runs.
+   */
+  runStartedAtMap: Record<string, number>;
+  /**
    * Text the user just sent for this session, shown by the sidebar's
    * PLACEHOLDER row while omp's transcript scan cannot name the session yet
    * (omp creates the file only at the first assistant message). Undefined once
@@ -254,6 +263,22 @@ export function SidebarDataProvider({ children, initialFolders = [] }: { childre
     for (const [id, entry] of Object.entries(status.data ?? {})) {
       if (entry.streamStatus) streamStatusMap[id] = entry.streamStatus;
     }
+    // The start of each live run, from the same two sources and in the same
+    // pass: a row's clock must not restart when the structure scan catches up
+    // with a run the status payload already named.
+    const runStartedAtMap: Record<string, number> = {};
+    for (const folder of folders) {
+      for (const session of folder.sessions ?? []) {
+        if (session.streamStatus === 'stream' && typeof session.runStartedAt === 'number') {
+          runStartedAtMap[String(session.id)] = session.runStartedAt;
+        }
+      }
+    }
+    for (const [id, entry] of Object.entries(status.data ?? {})) {
+      if (entry.streamStatus === 'stream' && typeof entry.runStartedAt === 'number') {
+        runStartedAtMap[id] = entry.runStartedAt;
+      }
+    }
     // The one overlay: a one-shot terminal badge this mount already acked. It
     // can only REMOVE a status — `stream` itself is never invented client-side,
     // so the spinner and the generating indicator stop when the server's row
@@ -265,6 +290,7 @@ export function SidebarDataProvider({ children, initialFolders = [] }: { childre
     return {
       folders: stripped,
       streamStatusMap,
+      runStartedAtMap,
       isMock,
       initializing,
       failed,
@@ -293,6 +319,7 @@ export function useSidebarData(): SidebarDataHandle {
   return {
     folders: [],
     streamStatusMap: {},
+    runStartedAtMap: {},
     isMock: false,
     initializing: true,
     // No provider means no channel was ever asked; claiming a failure would be

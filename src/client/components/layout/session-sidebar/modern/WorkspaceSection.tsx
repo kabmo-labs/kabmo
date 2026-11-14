@@ -90,7 +90,7 @@ export function WorkspaceSection({
   const urlSubagentId = searchParams.get('subagent');
   const urlSessionId = searchParams.get('sessionId');
   const { expandedSessionIds, toggleSession } = useExpandedSessions();
-  const { refresh } = useSidebarData();
+  const { refresh, runStartedAtMap } = useSidebarData();
   const toggleFetcher = useFetcher<{ success?: boolean }>();
   const {
     confirmDelete,
@@ -176,6 +176,7 @@ export function WorkspaceSection({
         awaitingInput={Boolean(session.awaitingInput)}
         timeAgo={relativeTimeAgo(session.updated_at ?? session.created_at)}
         timeTitle={formatFullDate(session.updated_at ?? session.created_at)}
+        runStartedAt={sessionStatus[key] === 'stream' ? runStartedAtMap[key] : undefined}
         worktree={session.worktree}
         waitingFor={session.waitingFor ? { title: session.waitingFor.title } : undefined}
         expandable={control.expandable} isChild={control.isChild}

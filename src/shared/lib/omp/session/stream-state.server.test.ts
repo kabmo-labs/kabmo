@@ -62,6 +62,9 @@ describe('run model on the stream row', () => {
     expect((await loadStreamStates()).s1).toEqual({
       status: 'stream',
       model: { provider: 'anthropic', modelId: 'claude' },
+      // The live row carries the run's start, which is what the sidebar's
+      // elapsed clock counts from.
+      startedAt: expect.any(Number),
     });
 
     // agent_start / turn_start / message_start / the terminal badge all write
@@ -90,7 +93,7 @@ describe('run model on the stream row', () => {
     // A new run must not inherit the previous run's failure: otherwise its
     // normal end would be announced as an error.
     await markStreamStatus('s1', 'stream');
-    expect((await loadStreamStates()).s1).toEqual({ status: 'stream' });
+    expect((await loadStreamStates()).s1).toEqual({ status: 'stream', startedAt: expect.any(Number) });
   });
 
   test('a reason is stored only on a finish row', async () => {
@@ -112,6 +115,7 @@ describe('run model on the stream row', () => {
     expect((await loadStreamStates()).s1).toEqual({
       status: 'stream',
       model: { provider: 'openai', modelId: 'gpt-5' },
+      startedAt: expect.any(Number),
     });
   });
 
@@ -126,6 +130,7 @@ describe('run model on the stream row', () => {
       expect((await loadStreamStates()).s1).toEqual({
         status: 'stream',
         model: { provider: 'openai', modelId: 'gpt-5' },
+        startedAt: expect.any(Number),
       });
       // A repair is a change: subscribers must see the pair.
       expect(signals).toContain('stream-status');

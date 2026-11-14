@@ -24,22 +24,41 @@
 
 import type { TargetedMouseEvent } from 'preact';
 import { MoreHorizontal } from 'lucide-preact';
+import { SessionTimeCell } from '@/client/components/common/session-row/TimeCell';
 
 export interface TrailingSlotProps {
   timeAgo?: string | null;
   /** Full timestamp shown as the age's hover tooltip. */
   timeTitle?: string | null;
+  /** Epoch ms the row's live run started; replaces the age with a clock. */
+  runStartedAt?: number;
   /** Null when the row has nothing to offer a menu. */
   onOpenMenu?: (event: TargetedMouseEvent<HTMLElement>) => void;
   menuOpen?: boolean;
   touch?: boolean;
 }
 
-export function TrailingSlot({ timeAgo, timeTitle, onOpenMenu, menuOpen = false, touch = false }: TrailingSlotProps) {
+export function TrailingSlot({
+  timeAgo,
+  timeTitle,
+  runStartedAt,
+  onOpenMenu,
+  menuOpen = false,
+  touch = false,
+}: TrailingSlotProps) {
+  // One cell, two readings of the same question: while the run is live the
+  // slot counts, and it hands itself back to the row's age when the run ends.
+  const timeNode = (className: string) => (
+    <SessionTimeCell
+      timeAgo={timeAgo}
+      timeTitle={timeTitle}
+      runStartedAt={runStartedAt}
+      className={className}
+    />
+  );
+
   if (!onOpenMenu) {
-    return timeAgo
-      ? <span className="ml-2 shrink-0 font-mono text-[10px] text-ink/40" title={timeTitle ?? undefined}>{timeAgo}</span>
-      : null;
+    return timeNode('ml-2 shrink-0 font-mono text-[10px] text-ink/40');
   }
 
   const trigger = (
@@ -63,7 +82,7 @@ export function TrailingSlot({ timeAgo, timeTitle, onOpenMenu, menuOpen = false,
   if (touch) {
     return (
       <span className="ml-1 flex shrink-0 items-center gap-0.5">
-        {timeAgo && <span className="font-mono text-[10px] text-ink/40" title={timeTitle ?? undefined}>{timeAgo}</span>}
+        {timeNode('font-mono text-[10px] text-ink/40')}
         {trigger}
       </span>
     );
@@ -75,13 +94,8 @@ export function TrailingSlot({ timeAgo, timeTitle, onOpenMenu, menuOpen = false,
     // `min-w-8` keeps the 22px trigger's box inside the column, and the age
     // stays in flow so the title truncates before it instead of under it.
     <span className="relative ml-2 flex h-4 min-w-8 shrink-0 items-center justify-end pr-1">
-      {timeAgo && (
-        <span
-          className="whitespace-nowrap font-mono text-[10px] leading-none text-ink/40 transition-opacity group-hover/item:opacity-0 group-focus-within/item:opacity-0"
-          title={timeTitle ?? undefined}
-        >
-          {timeAgo}
-        </span>
+      {timeNode(
+        'whitespace-nowrap font-mono text-[10px] leading-none text-ink/40 transition-opacity group-hover/item:opacity-0 group-focus-within/item:opacity-0',
       )}
       {/* `-my-1`: the glyph's 22px hit area is larger than the row's trailing
           box, and negative margin keeps that height out of the row's own — the

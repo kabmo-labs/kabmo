@@ -7,6 +7,7 @@ import { SelectionCheckbox } from '@/client/components/common/batch-selection/Se
 import { HarnessGlyph, HARNESS_GLYPH_SIZE } from '@/client/components/common/harness-glyph';
 import type { BranchRowStyle } from '@/client/components/common/session-branch/style';
 import { WorktreeBadge } from '@/client/components/layout/session-sidebar/WorktreeBadge';
+import { SessionTimeCell } from '@/client/components/common/session-row/TimeCell';
 
 /** What a subagent row under this chrome's rows borrows from it. */
 export const MOBILE_BRANCH_STYLE: BranchRowStyle = {
@@ -31,6 +32,9 @@ export interface MobileSessionRowProps {
   timeAgo: string | null;
   /** Full timestamp shown as the age's hover tooltip. */
   timeTitle?: string | null;
+  /** Epoch ms this row's live run started; the timestamp slot counts instead
+   *  of showing the age. Absent for a settled row. */
+  runStartedAt?: number;
   /** The session has a branch (child sessions and/or a subagent roster). */
   expandable?: boolean;
   isExpanded?: boolean;
@@ -69,6 +73,7 @@ export function MobileSessionRow({
   awaitingInput = false,
   timeAgo,
   timeTitle,
+  runStartedAt,
   expandable = false,
   isExpanded = false,
   onToggleExpand,
@@ -224,12 +229,12 @@ export function MobileSessionRow({
             </span>
           </div>
 
-          <span
+          <SessionTimeCell
+            timeAgo={timeAgo}
+            timeTitle={timeTitle}
+            runStartedAt={runStartedAt}
             className="text-[11px] text-ink/45 font-mono flex-shrink-0 ml-2"
-            title={timeTitle ?? undefined}
-          >
-            {timeAgo ?? ''}
-          </span>
+          />
         </button>
 
         {/* One trigger for rename / archive / delete, always visible: a touch
