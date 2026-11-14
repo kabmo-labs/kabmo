@@ -73,13 +73,13 @@ export interface ComposerToolbarProps {
  * interactive elements in the composer a keyboard user could not see. The ring
  * is ink at 50%, not the `/20`-`/30` the timeline cards use: WCAG 1.4.11 wants
  * 3:1 for a focus indicator, and on `paper` the ramp measures `/30` 1.97, `/45`
- * 2.96 and `/50` 3.43. It is offset by 2px of the card's own paper so it reads
- * as a halo on the filled send button too. The voice control shares this base
+ * 2.96 and `/50` 3.43. It is offset by 2px of the card's own paper so the ring
+ * never touches the glyph it surrounds. The voice control shares this base
  * because it is the third member of the same cluster.
  *
  * The transition is Tailwind's own `transition` (colour, background, border,
  * box-shadow, transform), not a hand-listed property set: those are the five
- * things this button changes, and they are the default for a reason.
+ * things this button can change, and they are the default for a reason.
  */
 const ACTION_BASE =
   'tap-target flex items-center justify-center rounded-lg flex-shrink-0 cursor-pointer ' +
@@ -242,65 +242,46 @@ export function ComposerToolbar({
           </button>
         )}
 
-        {/* Stop is the RED half of the pair: a filled signal control, which is
-            how the rest of the app draws "end this" (the delete dialogs, the
-            batch bar). It used to be an outline with a red tint on hover, and
-            the pair then read as one primary and one ghost when the two do
-            different things.
+        {/* Stop and Send are ICON-ONLY: no plate, no fill, no shadow. The colour
+            moved onto the glyph, and it has to sit ON THE SVG: the icon mode's
+            paint rule is stated on `svg.lucide` at (0,2,1) and beats a single
+            utility, so `authorColourRules` keys on `svg[class~="text-error-text"]`
+            to keep the token. On the button the glyph would take the mode's
+            hashed hue.
 
-            Monochrome has no hue to say that with, so `.composer-action` paints
-            BOTH controls in the palette ink there and the glyph carries the
-            difference (see tailwind.css). The colour mode is unchanged.
+            `-text` is the palette's signal solved to 4.5:1 against paper and
+            canvas; the raw `text-error`/`text-info` measures 2.73:1 and 1.94:1
+            on the worst palettes, under the 3:1 graphic floor for a 12px glyph.
+            Monochrome still paints the pair ink — its pass is (0,5,1) and
+            outranks the utility — so the hue survives only in the colour mode,
+            which is the mode that asks for chroma.
 
-            The fill is `bg-error-text`, NOT `bg-error`: the `-text` token is
-            the palette's own red solved until it clears 4.5:1 against paper
-            and canvas, so the button is a visible shape on all 63 palettes
-            (measured: `bg-error` reaches 2.73:1 against `mono-light`'s paper),
-            and a `text-canvas` glyph on it reads 4.50:1 minimum. The raw
-            palette hex is chosen for a chip's ground, not for a button the
-            user has to find.
-
-            `shadow-xs` is the same lift the send control carries, so the pair is
-            one object; the entrance animation this used to carry was
-            `animate-in zoom-in-90`, which no build has ever emitted (no animate
-            plugin in the bundle): it was a dead class, and the composer's
-            motion is reserved for live state anyway. */}
+            Hover is opacity, never a background: a `hover:bg-*` would put the
+            rectangle back on hover and the control would read as a button
+            again. `disabled:hover` re-states the resting opacity because
+            `:hover` matches a disabled button too — without it, pointing at a
+            barred Send would brighten it. */}
         {showStop && (
           <button
             type="button"
             onClick={onStop}
-            className={`${ACTION_BASE} ${actionSize} composer-action bg-error-text text-canvas shadow-xs hover:bg-error-text-hover`}
+            className={`${ACTION_BASE} ${actionSize} hover:opacity-70`}
             title="Stop generation"
             aria-label="Stop generation"
           >
-            <Square size={iconSize} className="fill-current" />
+            <Square size={iconSize} className="fill-current text-error-text" />
           </button>
         )}
 
-        {/* Send is the BLUE half of the pair, and the one that must stay
-            findable at rest: a run is started from here and stopped from the
-            red control beside it, so the two states are told apart by hue
-            before the glyph is read — in the colour mode. Monochrome paints
-            both in ink (`.composer-action`, tailwind.css).
-
-            `bg-info-text` for the same reason Stop uses `bg-error-text`: it is
-            the palette's blue solved to 4.5:1 against paper and canvas, so the
-            control is a shape on every palette (`bg-info` reaches 1.94:1 on
-            `aura-light`) and its `text-canvas` glyph clears 4.50:1. A
-            one-pixel lift on hover and a press-scale are the whole state
-            language; the disabled state is the house pair (40% opacity, no
-            shadow) rather than a washed-out fill, because a lighter FILL moves
-            the glyph off the inverted-surface rule and into the icon mode's own
-            hue. */}
         <button
           type="button"
           onClick={onSend}
           disabled={sendDisabled}
-          className={`${ACTION_BASE} ${actionSize} composer-action bg-info-text text-canvas shadow-xs hover:bg-info-text-hover hover:shadow-sm disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none disabled:hover:bg-info-text`}
+          className={`${ACTION_BASE} ${actionSize} hover:opacity-70 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:opacity-40`}
           title={chatInFlight ? 'Queue follow-up message' : 'Send message'}
           aria-label={chatInFlight ? 'Queue follow-up message' : 'Send message'}
         >
-          <Send size={iconSize} className="ml-px" />
+          <Send size={iconSize} className="ml-px text-info-text" />
         </button>
       </div>
     </div>

@@ -65,15 +65,6 @@
   --color-warning: var(--theme-warning);
   --color-warning-text: var(--theme-warning-text);
   --color-warning-hover: var(--theme-warning-hover);
-  /* A filled control's hover, for the two slots the composer's action pair
-     uses. Mixing toward the theme's INK follows the palette (darker on a light
-     theme, lighter on a dark one) and keeps the `text-canvas` glyph legal:
-     measured over the 63 palettes, `hover:opacity-90` blended the fill into the
-     paper and dropped the glyph to **3.77:1** on `nightowl-light`, while this
-     mix holds 4.71:1 minimum. The `-text` fill is what the control rests on —
-     the raw palette hex measures 1.94:1 against `aura-light`'s canvas. */
-  --color-error-text-hover: color-mix(in srgb, var(--theme-error-text) 88%, var(--theme-ink));
-  --color-info-text-hover: color-mix(in srgb, var(--theme-info-text) 88%, var(--theme-ink));
   /* The brand mark's own colour, and deliberately NOT a theme token: the logo
      is the same mark in every palette, so a theme flip must not repaint the
      letter that carries it. This is the app icon's accent stroke — the orange
@@ -372,35 +363,11 @@
   background-color: color-mix(in srgb, var(--theme-error) 75%, var(--theme-ink));
 }
 
-/* MONOCHROME: the composer's action pair (Stop / Send) is INK, not red/blue.
- *
- * The pair differs by hue in the colour mode — `bg-error-text` against
- * `bg-info-text` — because that mode is the one place a user asks for chroma.
- * Monochrome is the DEFAULT and it states itself as "every icon in the palette
- * ink" (`icon-paint-ink.ts`), so two filled signal buttons were the only
- * saturated objects left in a window that said it had no colour; reported as
- * "btn send dan btn stop di mode monochrome kenapa masih berwarna?".
- *
- * The fill follows the app's own inverted surface (`bg-ink text-canvas`, used by
- * every primary button), so the pair keeps the same geometry and the glyph's
- * `text-canvas` stays the house pair — the palette's ink/canvas relationship,
- * which is the one every body text already relies on.
- *
- * These rules are UNLAYERED and scoped to `:root:not([data-icon-style="color"])`
- * for two reasons: a rule inside `@layer utilities` would sit at the same layer
- * as the caller's `bg-info-text` and win only by source order, and the
- * `:not(:disabled)` on hover keeps a disabled Send from re-stating the colour
- * fill it was just moved off. The glyph itself is already handled by
- * `monochromeSolidFillRules`, which keys on the very `bg-info-text` /
- * `bg-error-text` classes this rule repaints.
- */
-:root:not([data-icon-style="color"]) .composer-action {
-  background-color: var(--theme-ink);
-}
-
-:root:not([data-icon-style="color"]) .composer-action:hover:not(:disabled) {
-  background-color: color-mix(in srgb, var(--theme-ink) 90%, transparent);
-}
+/* (The composer's Stop/Send pair used to be two FILLED signal buttons, and this
+   is where monochrome repainted them ink. The pair is icon-only now — the
+   colour lives on the glyph (`text-error-text` / `text-info-text`), and the
+   monochrome ink pass in `icon-paint-ink.ts` already outranks those utilities,
+   so a `.composer-action` rule here would have nothing left to paint.) */
 
 /* (The hero card's dot-grain texture lived here and was used by nothing: the
    deploy hero it decorated is not part of this product. A texture with no

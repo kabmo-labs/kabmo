@@ -187,51 +187,46 @@ describe('composer toolbar action pair', () => {
     const el = await mount({ isGenerating: false, sendDisabled: true });
     const submit = el.querySelector(send) as HTMLButtonElement;
     expect(submit.disabled).toBe(true);
-    // The fill changes through a solved hover TOKEN, so the disabled state has
-    // to re-state the resting fill and the 40%: otherwise a barred control
-    // would darken on hover like a live one.
+    // The control is icon-only, so the disabled state is opacity alone. The
+    // `disabled:hover` re-statement is not redundant: `:hover` matches a
+    // disabled button, and without it pointing at a barred Send would brighten
+    // it to the live hover value.
     const classes = submit.className.split(/\s+/);
     expect(classes).toContain('disabled:opacity-40');
-    expect(classes).toContain('disabled:hover:bg-info-text');
-    expect(classes).toContain('disabled:shadow-none');
+    expect(classes).toContain('disabled:hover:opacity-40');
+    expect(classes).toContain('disabled:cursor-not-allowed');
   });
 
-  test('paints Stop red and Send blue, so the two ends of a turn differ before the glyph is read', async () => {
+  test('draws the pair as icons, with the colour on the glyph', async () => {
     const el = await mount({ isGenerating: true, onStop: () => {} });
     const stop = el.querySelector(stops) as HTMLButtonElement;
     const submit = el.querySelector(send) as HTMLButtonElement;
-    // `-text` is the palette's hex SOLVED to 4.5:1 against paper and canvas;
-    // the raw `bg-error`/`bg-info` is a chip ground and measures 2.73:1 and
-    // 1.94:1 on the worst palettes, so a control the user has to find cannot
-    // use it. On the solved fill `text-canvas` reads 4.50:1 minimum — measured
-    // over all 63 palettes.
-    expect(stop.className.split(/\s+/)).toContain('bg-error-text');
-    expect(submit.className.split(/\s+/)).toContain('bg-info-text');
-    expect(stop.className.split(/\s+/)).toContain('text-canvas');
-    expect(submit.className.split(/\s+/)).toContain('text-canvas');
-    // Neither is an outline any more: one geometry, one filled control per
-    // action. A leftover border would draw a second edge on a filled box.
-    expect(stop.className).not.toContain('border-');
-    expect(submit.className).not.toContain('bg-ink');
+    // No plate: a fill class on the button would put the rectangle back, and
+    // the colour would then have to be the surface's foreground again.
+    for (const button of [stop, submit]) {
+      const classes = button.className.split(/\s+/);
+      expect(classes.some((c) => c.startsWith('bg-'))).toBe(false);
+      expect(classes).not.toContain('text-canvas');
+      expect(classes.some((c) => c.startsWith('shadow'))).toBe(false);
+    }
+    // `-text` is the palette's signal SOLVED to 4.5:1 against paper and canvas;
+    // the raw `text-error`/`text-info` measures 2.73:1 and 1.94:1 on the worst
+    // palettes, under the 3:1 graphic floor for a 12px glyph.
+    expect(stop.querySelector('svg')?.getAttribute('class')).toContain('text-error-text');
+    expect(submit.querySelector('svg')?.getAttribute('class')).toContain('text-info-text');
   });
 
-  test('paints the pair in the palette ink under monochrome', async () => {
+  test('leaves the glyph reachable by the monochrome ink pass', async () => {
     const el = await mount({ isGenerating: true, onStop: () => {} });
     const stop = el.querySelector(stops) as HTMLButtonElement;
     const submit = el.querySelector(send) as HTMLButtonElement;
-    // The signal fills above are the COLOUR mode's statement. Monochrome is the
-    // default and it removes chroma, so the stylesheet overrides both fills for
-    // this marker class; without it the window keeps two saturated buttons.
-    expect(stop.className.split(/\s+/)).toContain('composer-action');
-    expect(submit.className.split(/\s+/)).toContain('composer-action');
-
-    const css = await Bun.file(new URL('../../../../tailwind.css', import.meta.url)).text();
-    const start = css.indexOf(':root:not([data-icon-style="color"]) .composer-action {');
-    expect(start).toBeGreaterThan(-1);
-    const block = css.slice(start, css.indexOf(':root:not([data-icon-style="color"]) .composer-action:hover', start));
-    expect(block).toContain('background-color: var(--theme-ink);');
-    // A disabled Send must not re-state the colour fill on hover.
-    expect(css).toContain(':root:not([data-icon-style="color"]) .composer-action:hover:not(:disabled) {');
+    // Monochrome is the default and it paints every glyph that declares no
+    // `text-ink` weight in the palette ink — its rule is (0,5,1) and outranks
+    // the signal utility, so the hue survives only in the colour mode. A
+    // `text-ink` class here would opt the pair out of that pass.
+    for (const button of [stop, submit]) {
+      expect(button.querySelector('svg')?.getAttribute('class')).not.toContain('text-ink');
+    }
   });
 });
 
