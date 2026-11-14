@@ -23,6 +23,7 @@ import { readSettingsBlob } from '@/shared/lib/settings/keys';
 import { resolveTheme } from '@/shared/lib/theme/catalog';
 import { FIRST_FRAME_STYLE_ELEMENT_ID } from '@/shared/lib/theme/first-frame';
 import { applyShellDocumentFacts } from '@/server/lib/assets/shell-attributes.server';
+import { splitShellSettings } from '@/server/lib/assets/shell-settings.server';
 import { SURFACE_STYLE_SETTING_KEY } from '@/shared/lib/theme/surface-style';
 import { ICON_STYLE_SETTING_KEY } from '@/shared/lib/theme/icon-style';
 import { windowChromeColor } from '@/shared/lib/theme/chrome';
@@ -169,7 +170,10 @@ export const ssrRoutes = new Elysia({ name: 'ssr' }).get('*', async ({ request }
   if (pathname === THEMED_MANIFEST_ROUTE) {
     const source = await manifestSource();
     if (!source) return new Response('Not found', { status: 404 });
-    const manifestSettings = isAuthenticatedRequest(request) ? await readSettings() : {};
+    // The manifest's colours are presentation, so they follow the stored theme
+    // for an unauthenticated visitor too — the login screen is what that
+    // visitor sees, and the install's splash must not disagree with it.
+    const manifestSettings = await readSettings();
     return new Response(themedManifest(source, resolveTheme(storedThemeId(manifestSettings))), {
       headers: { 'content-type': 'application/manifest+json; charset=utf-8', 'cache-control': 'no-store' },
     });
@@ -182,13 +186,21 @@ export const ssrRoutes = new Elysia({ name: 'ssr' }).get('*', async ({ request }
   const asset = await tryServeStatic(pathname, request);
   if (asset) return asset;
   // An unauthenticated visitor still gets the shell — it IS the login screen —
-  // but not the settings map. `appSettings` carries the provider registry, the
-  // theme and every stored preference, and publishing it to whoever can reach
-  // the port would hand out exactly what the password protects. The client
-  // answers "is auth required" from `/api/auth/state` and renders the login
-  // screen without it.
+  // but not the settings map. `appSettings` carries the provider registry and
+  // every stored preference, and publishing it to whoever can reach the port
+  // would hand out exactly what the password protects. The client answers "is
+  // auth required" from `/api/auth/state` and renders the login screen without
+  // it.
+  //
+  // The stored settings are still READ for both audiences: the palette, the
+  // surface material and the icon tone are presentation, and the login screen
+  // has to paint the theme the install chose. Only the published map is gated
+  // (`splitShellSettings`).
   const authenticated = isAuthenticatedRequest(request);
-  const settings = authenticated ? await readSettings() : {};
+  const { presentation: settings, published: publishedSettings } = splitShellSettings(
+    await readSettings(),
+    authenticated,
+  );
   // Both blobs, legacy beneath: an install that predates the rename still has
   // its theme in the old row, and the SSR shell is what paints the first frame.
   // Resolved through the catalog: an id this build no longer ships (a
@@ -221,7 +233,7 @@ export const ssrRoutes = new Elysia({ name: 'ssr' }).get('*', async ({ request }
   // questions: "this browser has a session" versus "there is a session to have".
   // A Kabmo running open answers `authenticated: true` for every visitor, so
   // the navbar cannot use it to decide whether a sign-out control applies.
-  const bootstrap = JSON.stringify({ initialIsMobile, shellVersion: androidVersion, iosShellVersion: iosVersion, isAndroid, authenticated, authEnabled: isAuthEnabled(), production: !DEV_ASSETS_ENABLED, appSettings: settings }).replace(/</g, '\\u003c');
+  const bootstrap = JSON.stringify({ initialIsMobile, shellVersion: androidVersion, iosShellVersion: iosVersion, isAndroid, authenticated, authEnabled: isAuthEnabled(), production: !DEV_ASSETS_ENABLED, appSettings: publishedSettings }).replace(/</g, '\\u003c');
   // The template's own `<meta name="theme-color">` is REWRITTEN, not joined by
   // a second tag: with both present Chrome reads the first one, so an appended
   // tag would leave a dark theme painting light browser chrome.
