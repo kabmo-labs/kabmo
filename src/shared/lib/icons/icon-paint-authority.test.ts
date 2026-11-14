@@ -34,6 +34,15 @@ describe('an author class is authority', () => {
       ['text-warning', 'var(--theme-warning)'],
       ['text-info', 'var(--theme-info)'],
       ['text-meta', 'var(--theme-meta)'],
+      // The SOLVED spelling, which is the one a GLYPH needs: the composer's
+      // icon-only Stop/Send paint `text-error-text` / `text-info-text`, and the
+      // toast marks and the context-usage arc have always been solved tokens.
+      // A rule that stopped at the raw five repaints those with the hue.
+      ['text-error-text', 'var(--theme-error-text)'],
+      ['text-success-text', 'var(--theme-success-text)'],
+      ['text-warning-text', 'var(--theme-warning-text)'],
+      ['text-info-text', 'var(--theme-info-text)'],
+      ['text-meta-text', 'var(--theme-meta-text)'],
     ] as const) {
       expect(css).toContain(`:where([data-icon-style="color"]) :where(svg[class~="${token}"]) { --icon-color: ${value}; }`);
     }

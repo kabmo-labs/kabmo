@@ -23,13 +23,29 @@
  */
 const AUTHOR_COLOUR_STEPS = [60, 70, 80, 90] as const;
 
-/** The signal classes a call site may write, and the token each one means. */
-const AUTHOR_COLOURS: ReadonlyArray<readonly [string, string]> = [
-  ['text-error', 'var(--theme-error)'],
-  ['text-success', 'var(--theme-success)'],
-  ['text-warning', 'var(--theme-warning)'],
-  ['text-info', 'var(--theme-info)'],
-  ['text-meta', 'var(--theme-meta)'],
+/**
+ * The signal classes a call site may write: `[token, value, slashable]`.
+ *
+ * `slashable` is false for the solved `-text` spellings — no call site writes
+ * `text-error-text/70`, and a rule for a class nothing emits only drifts.
+ */
+const AUTHOR_COLOURS: ReadonlyArray<readonly [string, string, boolean]> = [
+  ['text-error', 'var(--theme-error)', true],
+  ['text-success', 'var(--theme-success)', true],
+  ['text-warning', 'var(--theme-warning)', true],
+  ['text-info', 'var(--theme-info)', true],
+  ['text-meta', 'var(--theme-meta)', true],
+  // The SOLVED spelling: the same hue at 4.5:1 against paper and canvas, which
+  // is the one a glyph needs — the raw token is a chip's ground and measures
+  // 2.73:1 (error) and 1.94:1 (info) on the worst palettes, under the 3:1
+  // graphic floor. Live call sites: the composer's icon-only Stop/Send, the
+  // toast marks, the context-usage arc. Without these rows the colour mode
+  // repainted every one of them with its hashed hue.
+  ['text-error-text', 'var(--theme-error-text)', false],
+  ['text-success-text', 'var(--theme-success-text)', false],
+  ['text-warning-text', 'var(--theme-warning-text)', false],
+  ['text-info-text', 'var(--theme-info-text)', false],
+  ['text-meta-text', 'var(--theme-meta-text)', false],
 ];
 
 /**
@@ -52,8 +68,9 @@ const AUTHOR_COLOURS: ReadonlyArray<readonly [string, string]> = [
  */
 export function authorColourRules(): string[] {
   const rules: string[] = [];
-  for (const [token, value] of AUTHOR_COLOURS) {
+  for (const [token, value, slashable] of AUTHOR_COLOURS) {
     rules.push(`:where([data-icon-style="color"]) :where(svg[class~="${token}"]) { --icon-color: ${value}; }`);
+    if (!slashable) continue;
     // The SLASHED form is the same statement at a weight, so it has to resolve
     // `--icon-color` too, or the icon falls back to the hue while the class says
     // otherwise. The formula is the one `inkWeightRules` uses: scale chroma,
