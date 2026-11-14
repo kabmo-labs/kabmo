@@ -20,6 +20,7 @@ class NotificationCommandsTest {
     ) : ShellNotifier {
         var requests = 0
         var last: Triple<String, String, String>? = null
+        var lastKind: String? = null
         var lastSession: String? = null
         var lastWhen: Long = 0
         var lastDuration: Long = 0
@@ -33,12 +34,14 @@ class NotificationCommandsTest {
         override fun show(
             title: String,
             body: String,
+            kind: String,
             tag: String,
             sessionId: String,
             whenMs: Long,
             durationMs: Long,
         ): Boolean {
             last = Triple(title, body, tag)
+            lastKind = kind
             lastSession = sessionId
             lastWhen = whenMs
             lastDuration = durationMs
@@ -56,6 +59,7 @@ class NotificationCommandsTest {
                 mapOf(
                     "title" to "Build",
                     "body" to "The run finished.",
+                    "kind" to "finish",
                     "tag" to "finish:s1",
                     "sessionId" to "s1",
                 ),
@@ -63,6 +67,8 @@ class NotificationCommandsTest {
             ),
         )
         assertEquals(Triple("Build", "The run finished.", "finish:s1"), notifier.last)
+        // The kind chooses the channel, and therefore the chime.
+        assertEquals("finish", notifier.lastKind)
         assertEquals("s1", notifier.lastSession)
         // No timestamp or duration in the params: the shade falls back to the
         // posting moment and shows no subtext.
@@ -98,12 +104,13 @@ class NotificationCommandsTest {
             "{\"shown\":false}",
             NotificationCommands.answer(
                 "notification_show",
-                mapOf("title" to "Build", "body" to "Waiting for you."),
+                mapOf("title" to "Build", "body" to "Waiting for you.", "kind" to "ask"),
                 notifier,
             ),
         )
         // Missing fields decode as empty strings, never as a crash.
         assertEquals(Triple("Build", "Waiting for you.", ""), notifier.last)
+        assertEquals("ask", notifier.lastKind)
     }
 
     @Test

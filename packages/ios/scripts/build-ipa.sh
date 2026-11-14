@@ -85,6 +85,13 @@ mkdir -p "$APP"
 cp "$BIN" "$APP/Kabmo"
 chmod +x "$APP/Kabmo"
 
+# The notification chimes, in the bundle ROOT: `UNNotificationSound` resolves a
+# named sound against the bundle, not a subdirectory. The names must match
+# `NotificationWire.soundName(forKind:)`, and the files are the ones every shell
+# reads from `packages/notification-sound/`.
+cp "$REPO/packages/notification-sound/kabmo_notification.wav" "$APP/kabmo_notification.wav"
+cp "$REPO/packages/notification-sound/kabmo_attention.wav" "$APP/kabmo_attention.wav"
+
 # The Info.plist, with the version filled from version.properties. `plutil` is the
 # platform's own editor, so the result is a valid plist by construction — a `sed`
 # over the template would leave the file readable by a human and possibly invalid to

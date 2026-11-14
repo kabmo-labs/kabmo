@@ -4,6 +4,14 @@
     <string name="notification_channel">Agent notifications</string>
     <string name="notification_channel_description">A run finished, the agent is waiting for an answer, or a run failed.</string>
     <!--
+      The ask channel. It exists because Android takes a notification's sound from
+      its channel, and "the agent is blocked on you" must not sound like "the run
+      finished". Named for the moment, so muting it in Android's own settings is
+      an obvious choice.
+    -->
+    <string name="attention_channel">Waiting for you</string>
+    <string name="attention_channel_description">An agent is blocked on a question or an approval.</string>
+    <!--
       The background watcher's ongoing row. It is shown while the notification
       switches are on, and its wording names the promise it keeps (banners
       arrive even when the app is closed) rather than the fact that a service is

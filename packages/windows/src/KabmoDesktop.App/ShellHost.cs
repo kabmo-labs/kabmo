@@ -665,6 +665,8 @@ public sealed class ShellHost
 
                 // The banner must be posted from the UI thread: NotifyIcon is a
                 // WinForms object, and this handler runs on the bridge's own.
+                // `kind` is read and ignored: this platform has no per-notification
+                // sound slot, so Windows plays its own (see `Notifications.cs`).
                 case "notification_show":
                     await _host._window.Dispatcher.InvokeAsync(() =>
                         _host._notifications.Show(

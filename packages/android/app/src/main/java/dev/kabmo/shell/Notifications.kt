@@ -9,6 +9,8 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.AudioAttributes
+import android.net.Uri
 import android.os.Build
 
 /**
@@ -37,6 +39,7 @@ interface ShellNotifier {
     fun show(
         title: String,
         body: String,
+        kind: String,
         tag: String,
         sessionId: String,
         whenMs: Long,
@@ -60,6 +63,7 @@ object NotificationCommands {
                 val shown = notifier.show(
                     title = fields["title"].orEmpty(),
                     body = fields["body"].orEmpty(),
+                    kind = fields["kind"].orEmpty(),
                     tag = fields["tag"].orEmpty(),
                     sessionId = fields["sessionId"].orEmpty(),
                     whenMs = fields["when"]?.toLongOrNull() ?: 0L,
@@ -89,6 +93,12 @@ object NotificationCommands {
  */
 object NotificationPoster {
 
+    /** A notification, not media: the phone's notification volume and DND apply. */
+    private val NOTIFICATION_AUDIO: AudioAttributes = AudioAttributes.Builder()
+        .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+        .build()
+
     fun isGranted(context: Context): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return true
         return context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) ==
@@ -99,6 +109,7 @@ object NotificationPoster {
         context: Context,
         title: String,
         body: String,
+        kind: String,
         tag: String,
         sessionId: String,
         whenMs: Long = 0L,
@@ -109,7 +120,7 @@ object NotificationPoster {
         if (!isGranted(context)) return false
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
             ?: return false
-        ensureChannel(context, manager)
+        ensureChannel(context, manager, kind)
         // A tag lets a second notification for the same session REPLACE the first
         // (`finish` and `error` cannot both fire for one run, but a refreshed
         // reason should not stack). An empty tag falls back to one stable tag.
@@ -120,6 +131,7 @@ object NotificationPoster {
                 context = context,
                 title = title,
                 body = body,
+                kind = kind,
                 sessionId = sessionId,
                 whenMs = whenMs,
                 durationMs = durationMs,
@@ -129,22 +141,40 @@ object NotificationPoster {
         return true
     }
 
-    private fun ensureChannel(context: Context, manager: NotificationManager) {
+    private fun ensureChannel(context: Context, manager: NotificationManager, kind: String) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val channel = NotificationChannel(
-            AndroidNotifier.CHANNEL_ID,
-            context.getString(R.string.notification_channel),
+            NotificationSound.channelFor(kind),
+            context.getString(NotificationSound.channelLabel(kind)),
             NotificationManager.IMPORTANCE_DEFAULT,
         ).apply {
-            description = context.getString(R.string.notification_channel_description)
+            description = context.getString(NotificationSound.channelDescription(kind))
+            // The console's chime, not the platform default. The page stops
+            // playing its Web Audio cue inside a shell precisely because the
+            // banner plays this one; using the default tone here would mean the
+            // shell had no Kabmo sound at all.
+            setSound(
+                Uri.parse(
+                    NotificationSound.resourceUri(
+                        context.packageName,
+                        NotificationSound.soundResource(kind),
+                    ),
+                ),
+                NOTIFICATION_AUDIO,
+            )
         }
         manager.createNotificationChannel(channel)
+        // A channel's sound is fixed when it is created, so the ids above are
+        // NEW ones. Without this, an upgraded install keeps the old channel and
+        // its default tone, and the notification settings show both.
+        manager.deleteNotificationChannel(AndroidNotifier.LEGACY_CHANNEL_ID)
     }
 
     private fun build(
         context: Context,
         title: String,
         body: String,
+        kind: String,
         sessionId: String,
         whenMs: Long,
         durationMs: Long,
@@ -168,7 +198,7 @@ object NotificationPoster {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            Notification.Builder(context, AndroidNotifier.CHANNEL_ID)
+            Notification.Builder(context, NotificationSound.channelFor(kind))
         } else {
             @Suppress("DEPRECATION")
             Notification.Builder(context).setPriority(Notification.PRIORITY_DEFAULT)
@@ -211,14 +241,27 @@ class AndroidNotifier(private val activity: Activity) : ShellNotifier {
     override fun show(
         title: String,
         body: String,
+        kind: String,
         tag: String,
         sessionId: String,
         whenMs: Long,
         durationMs: Long,
-    ): Boolean = NotificationPoster.show(activity, title, body, tag, sessionId, whenMs, durationMs)
+    ): Boolean = NotificationPoster.show(activity, title, body, kind, tag, sessionId, whenMs, durationMs)
 
     companion object {
-        const val CHANNEL_ID = "kabmo-agent"
+        /**
+         * The channel carrying the Kabmo chime.
+         *
+         * `-v2` and not the bare id: Android freezes a channel's sound at
+         * creation, so an install that already had `kabmo-agent` would keep the
+         * platform's default tone for its whole lifetime. The old id is deleted
+         * when this one is created.
+         */
+        const val CHANNEL_ID = "kabmo-agent-v2"
+        /** The ask channel: its own sound, so "waiting for you" is unmistakable. */
+        const val ATTENTION_CHANNEL_ID = "kabmo-attention-v2"
+        /** The pre-chime channels, removed on first post after an upgrade. */
+        const val LEGACY_CHANNEL_ID = "kabmo-agent"
         /** The session a notification tap opens, read by `MainActivity`. */
         const val EXTRA_SESSION = "dev.kabmo.shell.OPEN_SESSION"
         const val TAG = "kabmo"

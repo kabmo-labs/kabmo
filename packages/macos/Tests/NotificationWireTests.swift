@@ -19,6 +19,23 @@ import KabmoDesktop
 func notificationWireCases() {
   group("NotificationWire")
 
+  // The bundle copies both files from `packages/notification-sound/` under these
+  // exact names; a drift silently substitutes the platform tone.
+  check(
+    "the completion chime is the shared asset",
+    NotificationWire.notificationSound == "kabmo_notification.wav"
+  )
+  check("the attention chime is the shared asset", NotificationWire.attentionSound == "kabmo_attention.wav")
+  check(
+    "an ask sounds like waiting for you, not like a finished run",
+    NotificationWire.soundName(forKind: "ask") == "kabmo_attention.wav"
+  )
+  check("a finish plays the completion chime", NotificationWire.soundName(forKind: "finish") == "kabmo_notification.wav")
+  check("an error plays the completion chime", NotificationWire.soundName(forKind: "error") == "kabmo_notification.wav")
+  check(
+    "a console too old to send a kind still gets a chime",
+    NotificationWire.soundName(forKind: "") == "kabmo_notification.wav"
+  )
   check("a tag is the identifier", NotificationWire.identifier(tag: "finish:s1") == "finish:s1")
   check(
     "a padded tag is trimmed",

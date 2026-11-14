@@ -140,6 +140,7 @@ final class ShellServerHost: NSObject, WKScriptMessageHandler {
     ShellNotifications.show(
       title: params["title"] ?? "",
       body: params["body"] ?? "",
+      kind: params["kind"] ?? "",
       tag: params["tag"] ?? "",
       sessionId: params["sessionId"] ?? ""
     ) { [weak self] result in

@@ -13,6 +13,19 @@
  * notification-area icon — which Windows 10+ presents as a toast in the Action
  * Center, with the standard "notifications from apps" setting still governing
  * whether it is shown.
+ *
+ * ## The sound
+ *
+ * Windows plays it, and this shell does not try to replace it. A balloon tip has
+ * no per-notification sound slot (`NOTIFYICONDATA` has `NIIF_NOSOUND` and no
+ * "play this file"), and the frame it renders in is Windows' own, so the only
+ * way to a custom chime would be the WinRT toast API — which needs an app id
+ * registered in the Start menu, exactly the packaging this shell cannot assume.
+ * Playing the chime ourselves on top would then be TWO sounds for one banner.
+ *
+ * The console stops playing its Web Audio cue inside a shell for this reason:
+ * one banner, one sound, whichever sound the platform provides. On the other
+ * three shells that sound is Kabmo's (`packages/notification-sound/`).
  */
 
 using System.Drawing;

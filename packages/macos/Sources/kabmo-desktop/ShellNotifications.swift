@@ -34,11 +34,19 @@ enum ShellNotifications {
   }
 
   /// Post one notification, replacing the earlier one with the same tag.
-  static func show(title: String, body: String, tag: String, sessionId: String) async throws {
+  static func show(
+    title: String,
+    body: String,
+    kind: String,
+    tag: String,
+    sessionId: String
+  ) async throws {
     let content = UNMutableNotificationContent()
     content.title = title.isEmpty ? "Kabmo" : title
     content.body = body
-    content.sound = .default
+    content.sound = UNNotificationSound(
+      named: UNNotificationSoundName(NotificationWire.soundName(forKind: kind))
+    )
     // What the click needs: the tap must land on the session the banner named.
     if !sessionId.isEmpty { content.userInfo = ["sessionId": sessionId] }
     let request = UNNotificationRequest(

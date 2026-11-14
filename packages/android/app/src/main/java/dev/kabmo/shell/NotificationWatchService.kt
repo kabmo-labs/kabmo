@@ -215,6 +215,7 @@ class NotificationWatchService : Service() {
                     this,
                     title = event.title,
                     body = event.body,
+                    kind = event.kind,
                     tag = "${event.kind}:${event.sessionId}",
                     sessionId = event.sessionId,
                     whenMs = event.at,

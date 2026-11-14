@@ -37,7 +37,7 @@ describe('a browser without the Notification API', () => {
   });
 
   test('drops the banner instead of throwing', async () => {
-    await expect(showOsNotification({ title: 'Kabmo', body: 'Done.' })).resolves.toBeUndefined();
+    await expect(showOsNotification({ title: 'Kabmo', body: 'Done.', kind: 'finish' })).resolves.toBeUndefined();
   });
 });
 
@@ -65,6 +65,7 @@ describe('inside a Kabmo shell', () => {
     await showOsNotification({
       title: 'Fix the build',
       body: 'Waiting for you.',
+      kind: 'ask',
       tag: 'ask:s1',
       sessionId: 's1',
     });
@@ -73,7 +74,13 @@ describe('inside a Kabmo shell', () => {
       { method: 'notification_request', params: {} },
       {
         method: 'notification_show',
-        params: { title: 'Fix the build', body: 'Waiting for you.', tag: 'ask:s1', sessionId: 's1' },
+        params: {
+          title: 'Fix the build',
+          body: 'Waiting for you.',
+          kind: 'ask',
+          tag: 'ask:s1',
+          sessionId: 's1',
+        },
       },
     ]);
   });
@@ -84,6 +91,7 @@ describe('inside a Kabmo shell', () => {
     await showOsNotification({
       title: 'Fix the build',
       body: 'The run finished.',
+      kind: 'finish',
       tag: 'finish:s1',
       sessionId: 's1',
       at: 1_763_000_000_000,
@@ -95,6 +103,7 @@ describe('inside a Kabmo shell', () => {
     expect(calls[0]?.params).toEqual({
       title: 'Fix the build',
       body: 'The run finished.',
+      kind: 'finish',
       tag: 'finish:s1',
       sessionId: 's1',
       when: '1763000000000',
@@ -104,10 +113,10 @@ describe('inside a Kabmo shell', () => {
 
   test('an untagged notification does not send an empty tag', async () => {
     const calls = installShell(() => null);
-    await showOsNotification({ title: 'Kabmo', body: 'Done.' });
+    await showOsNotification({ title: 'Kabmo', body: 'Done.', kind: 'finish' });
     expect(calls[0]).toEqual({
       method: 'notification_show',
-      params: { title: 'Kabmo', body: 'Done.' },
+      params: { title: 'Kabmo', body: 'Done.', kind: 'finish' },
     });
   });
 
@@ -115,6 +124,6 @@ describe('inside a Kabmo shell', () => {
     window.__kabmoCall = () => Promise.reject(new Error('This shell does not support notification_request.'));
     expect(await requestNotificationPermission()).toBe(false);
     // The refusal must not escape as an unhandled rejection.
-    await expect(showOsNotification({ title: 'Kabmo', body: 'Done.' })).resolves.toBeUndefined();
+    await expect(showOsNotification({ title: 'Kabmo', body: 'Done.', kind: 'finish' })).resolves.toBeUndefined();
   });
 });

@@ -32,6 +32,12 @@ cp "$BIN" "$APP/Contents/MacOS/Kabmo"
 # not code. Read from the repository root: a copy of the text here would be a
 # second copy that drifts.
 cp "$REPO/LICENSE" "$APP/Contents/Resources/LICENSE"
+# The notification chimes, at the names `NotificationWire.soundName(forKind:)`
+# asks `UNNotificationSound` for. One shared pair of files for every shell: the
+# Android, iOS, Linux and Windows builds all read `packages/notification-sound/`,
+# never a per-platform copy.
+cp "$REPO/packages/notification-sound/kabmo_notification.wav" "$APP/Contents/Resources/"
+cp "$REPO/packages/notification-sound/kabmo_attention.wav" "$APP/Contents/Resources/"
 # Belt and braces: the copy is named `Kabmo` and the plist says so, so a launch
 # from Finder, from `open`, and from the binary directly all report one name.
 

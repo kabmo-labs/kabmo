@@ -348,6 +348,7 @@ impl Shell {
                             notify.get("title").and_then(Value::as_str).unwrap_or_default(),
                             notify.get("body").and_then(Value::as_str).unwrap_or_default(),
                             notify.get("sessionId").and_then(Value::as_str).unwrap_or_default(),
+                            notify.get("kind").and_then(Value::as_str).unwrap_or_default(),
                             &view,
                             &page_ready,
                         );
@@ -761,10 +762,11 @@ fn start_notification(
     title: &str,
     body: &str,
     session_id: &str,
+    kind: &str,
     view: &WebView,
     page_ready: &Rc<Cell<bool>>,
 ) {
-    let clicks = match notification::start(title, body, session_id) {
+    let clicks = match notification::start(title, body, session_id, kind) {
         Ok(clicks) => clicks,
         Err(error) => {
             eprintln!("[kabmo] notification: {error}");

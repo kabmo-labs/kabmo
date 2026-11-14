@@ -16,6 +16,22 @@ enum NotificationWireTests {
     Harness.equal("granted false", NotificationWire.granted(false), "{\"granted\":false}")
     Harness.equal("shown true", NotificationWire.shown(true), "{\"shown\":true}")
     Harness.equal("shown false", NotificationWire.shown(false), "{\"shown\":false}")
+    // The bundle copies both files from `packages/notification-sound/` under
+    // these exact names; a drift silently substitutes the platform tone.
+    Harness.equal("the completion chime is the shared asset", NotificationWire.notificationSound, "kabmo_notification.wav")
+    Harness.equal("the attention chime is the shared asset", NotificationWire.attentionSound, "kabmo_attention.wav")
+    Harness.equal(
+      "an ask sounds like waiting for you, not like a finished run",
+      NotificationWire.soundName(forKind: "ask"),
+      "kabmo_attention.wav"
+    )
+    Harness.equal("a finish plays the completion chime", NotificationWire.soundName(forKind: "finish"), "kabmo_notification.wav")
+    Harness.equal("an error plays the completion chime", NotificationWire.soundName(forKind: "error"), "kabmo_notification.wav")
+    Harness.equal(
+      "a console too old to send a kind still gets a chime",
+      NotificationWire.soundName(forKind: ""),
+      "kabmo_notification.wav"
+    )
 
     Harness.equal("a tag is the identifier", NotificationWire.identifier(tag: "finish:s1"), "finish:s1")
     Harness.equal(

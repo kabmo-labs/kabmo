@@ -23,10 +23,17 @@
 
 import { callShell, hasShellBridge } from '@/client/lib/shell/transport';
 import { openSessionInUrl } from '@/client/lib/router/open-session';
+import type { NotificationKind } from '@/shared/lib/notifications/events';
 
 export interface OsNotification {
   title: string;
   body: string;
+  /**
+   * Which event this is. The shells play a different chime for `ask` (the
+   * console's "the agent is blocked on you" cue) than for `finish`/`error`; a
+   * browser's own notification has no sound slot, so it is ignored there.
+   */
+  kind: NotificationKind;
   /** Replaces an earlier notification for the same thing (a session, a run). */
   tag?: string;
   /** The session a click opens, when the event is about one. */
@@ -90,6 +97,7 @@ export async function showOsNotification(notification: OsNotification): Promise<
       await callShell('notification_show', {
         title: notification.title,
         body: notification.body,
+        kind: notification.kind,
         ...(notification.tag ? { tag: notification.tag } : {}),
         ...(notification.sessionId ? { sessionId: notification.sessionId } : {}),
         // The shells render what they can: Android puts `when` on the shade's

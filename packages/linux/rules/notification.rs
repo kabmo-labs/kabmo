@@ -12,12 +12,14 @@
 // simply never appears, or the click does nothing — so the shapes are pinned.
 
 use kabmo_desktop::notification::{args, open_session_script};
+use std::path::Path;
 
 use crate::support::Runner;
 
 pub fn cases(r: &mut Runner) {
     r.group("notification");
-    let ordinary = args("Build", "The run finished.");
+    let sound = Path::new("/run/user/1000/kabmo_notification.wav");
+    let ordinary = args("Build", "The run finished.", Some(sound));
     r.check(
         "the application identity is stated",
         ordinary.iter().any(|arg| arg == "--app-name=Kabmo"),
@@ -25,6 +27,25 @@ pub fn cases(r: &mut Runner) {
     r.check(
         "the icon is stated too, so the banner is not generic",
         ordinary.iter().any(|arg| arg == "--icon=kabmo"),
+    );
+    r.check(
+        "the chime is handed to the daemon as a sound-file hint",
+        ordinary
+            .iter()
+            .any(|arg| arg == "--hint=string:sound-file:/run/user/1000/kabmo_notification.wav"),
+    );
+    r.check(
+        "the chime hint is a HINT, not a summary or a flag",
+        ordinary
+            .iter()
+            .position(|arg| arg.starts_with("--hint="))
+            .zip(ordinary.iter().position(|arg| arg == "--"))
+            .map(|(hint, terminator)| hint < terminator)
+            .unwrap_or(false),
+    );
+    r.check(
+        "a notification with no readable sound file still posts",
+        !args("Build", "body", None).iter().any(|arg| arg.starts_with("--hint=")),
     );
     r.check(
         "the process waits so a click can be read",
@@ -44,13 +65,13 @@ pub fn cases(r: &mut Runner) {
             && ordinary.last().map(String::as_str) == Some("The run finished."),
     );
 
-    let untitled = args("   ", "body");
+    let untitled = args("   ", "body", None);
     r.check(
         "an empty title still has a summary",
         untitled.get(untitled.len() - 2).map(String::as_str) == Some("Kabmo"),
     );
 
-    let flagged = args("  --help  ", "body");
+    let flagged = args("  --help  ", "body", None);
     r.check(
         "a title is trimmed and cannot be mistaken for a flag",
         flagged.get(flagged.len() - 2).map(String::as_str) == Some("--help")

@@ -117,6 +117,29 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+
+    /**
+     * The notification channels' chimes, from `packages/notification-sound/`.
+     *
+     * ONE pair of files serves every shell (Android, iOS, macOS, Linux) and the
+     * Windows build; they are copied into a GENERATED resource directory instead
+     * of being committed a second time under `src/main/res/raw`, because two
+     * copies of a binary drift the moment one is regenerated. The names matter:
+     * `[a-z0-9_]` only, which is why the shared files are named for a resource.
+     */
+    val notificationSoundRes = layout.buildDirectory.dir("generated/res/notificationSound")
+    val copyNotificationSound = tasks.register<Copy>("copyNotificationSound") {
+        from(rootProject.file("../notification-sound")) {
+            include("kabmo_*.wav")
+        }
+        into(notificationSoundRes.map { it.dir("raw") })
+    }
+    sourceSets.getByName("main").res.srcDir(notificationSoundRes)
+    // `matching` rather than `named`: AGP registers `preBuild` during its own
+    // configuration, and a bare `named` here can run before it exists.
+    tasks.matching { it.name == "preBuild" }.configureEach {
+        dependsOn(copyNotificationSound)
+    }
 }
 
 dependencies {

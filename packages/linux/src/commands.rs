@@ -161,12 +161,14 @@ pub fn handle_command(
 
         // Notifications are STARTED by `main.rs`: the banner has to wait for a
         // click, and the click needs the webview, which this pure dispatcher
-        // does not own. The marker carries the three fields across.
+        // does not own. The marker carries the four fields across, `kind`
+        // included — it picks which chime the daemon plays.
         "notification_show" => Ok(serde_json::json!({
             "shown": true,
             "__notify": {
                 "title": text_param(params, "title"),
                 "body": text_param(params, "body"),
+                "kind": text_param(params, "kind"),
                 "sessionId": text_param(params, "sessionId"),
             },
         })),

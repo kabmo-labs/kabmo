@@ -19,6 +19,24 @@ public enum NotificationWire {
   public static func granted(_ granted: Bool) -> Bool { granted }
 
   /**
+   The chimes a banner plays: the console's own two cues.
+
+   The console stops playing its Web Audio cue inside a shell, so these names ARE
+   the Kabmo notification sound on macOS. `scripts/build-app.sh` copies both
+   files from `packages/notification-sound/` into `Contents/Resources`, and
+   `UNNotificationSound` finds them there by name — a name that drifts is not a
+   crash, it silently becomes the platform's tone.
+   */
+  public static let notificationSound = "kabmo_notification.wav"
+  public static let attentionSound = "kabmo_attention.wav"
+
+  /// Which chime an event carries. `ask` is the agent blocked on you, and must
+  /// not sound like a finished run.
+  public static func soundName(forKind kind: String) -> String {
+    kind == "ask" ? attentionSound : notificationSound
+  }
+
+  /**
    The request identifier.
 
    The page tags by session (`finish:<id>`), so a corrected reason replaces the

@@ -44,12 +44,14 @@ export function useNotificationEvents(): void {
         const event = asNotificationEvent(frame.payload);
         if (!event) return;
         // The chime is its own preference and plays for an ask regardless of
-        // whether this device is allowed a system banner.
+        // whether this device is allowed a system banner; inside a shell the
+        // banner plays it instead (see `native-banner-sound`).
         if (event.kind === 'ask') triggerInputRequiredSound();
         if (!isNotificationPlatformEnabled(notificationPlatformForClient())) return;
         void showOsNotification({
           title: event.title,
           body: event.body,
+          kind: event.kind,
           tag: notificationTag(event),
           sessionId: event.sessionId,
           at: event.at,

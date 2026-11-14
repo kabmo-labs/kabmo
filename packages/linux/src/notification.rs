@@ -16,25 +16,54 @@
 // makes `notify-send` refuse the notification outright — both look like "the
 // feature does nothing".
 
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::mpsc::{self, Receiver};
 
 use crate::store::ShellError;
 use crate::system::which;
 
+/// The chimes, baked into the binary.
+///
+/// The Linux shell ships as a bare executable (a tarball, an AppImage, a `.deb`
+/// with one binary in it), so there is no reliable place to install a data file
+/// that every packaging form keeps. The files are the SAME ones the other shells
+/// read from `packages/notification-sound/`; a few tens of KB of mono is cheaper
+/// than a fifth copy of the assets that a packager has to remember.
+///
+/// Two of them, because the console has two cues: a finished run, and an agent
+/// blocked on you. One sound for both would erase the distinction the console
+/// deliberately draws.
+const SOUND: &[u8] = include_bytes!("../../notification-sound/kabmo_notification.wav");
+const ATTENTION_SOUND: &[u8] = include_bytes!("../../notification-sound/kabmo_attention.wav");
+
+/// The file names the daemon is pointed at. Shared with the other shells so the
+/// sounds are recognisable in a system's sound settings.
+const SOUND_NAME: &str = "kabmo_notification.wav";
+const ATTENTION_SOUND_NAME: &str = "kabmo_attention.wav";
+
 /// `notify-send`'s argument vector for one notification.
-pub fn args(title: &str, body: &str) -> Vec<String> {
+///
+/// `sound` is the freedesktop `sound-file` hint: the daemon plays that file
+/// instead of its own event sound. Passing it is what makes the banner carry the
+/// Kabmo chime — the console stops playing its Web Audio cue inside a shell.
+pub fn args(title: &str, body: &str, sound: Option<&Path>) -> Vec<String> {
     let summary = if title.trim().is_empty() {
         crate::APP_NAME
     } else {
         title.trim()
     };
-    vec![
+    let mut arguments = vec![
         // The daemon shows these as the notification's application identity and
         // icon; without them every banner says "notify-send" and draws a generic
         // icon.
         format!("--app-name={}", crate::APP_NAME),
         "--icon=kabmo".to_string(),
+    ];
+    if let Some(sound) = sound {
+        arguments.push(format!("--hint=string:sound-file:{}", sound.display()));
+    }
+    arguments.extend([
         // Stay alive until the user clicks or dismisses: without `--wait` the
         // process exits after posting, so there is nobody left to read the
         // `default` action and the click cannot open its session. `--action`
@@ -46,7 +75,41 @@ pub fn args(title: &str, body: &str) -> Vec<String> {
         "--".to_string(),
         summary.to_string(),
         body.to_string(),
-    ]
+    ]);
+    arguments
+}
+
+/// Where the embedded chime for `kind` is written for the daemon to read, or None.
+///
+/// Rewritten only when its bytes differ, so a daemon started before an upgrade
+/// cannot keep playing the previous version of the file. `XDG_RUNTIME_DIR` is
+/// the user's own runtime directory; the temp dir is the fallback for a session
+/// that has none.
+fn sound_file(kind: &str) -> Option<PathBuf> {
+    let (name, bytes) = if kind == "ask" {
+        (ATTENTION_SOUND_NAME, ATTENTION_SOUND)
+    } else {
+        (SOUND_NAME, SOUND)
+    };
+    let directory = std::env::var_os("XDG_RUNTIME_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(std::env::temp_dir);
+    let path = directory.join(name);
+    if std::fs::read(&path).ok().as_deref() == Some(bytes) {
+        return Some(path);
+    }
+    match std::fs::write(&path, bytes) {
+        Ok(()) => Some(path),
+        Err(error) => {
+            // The banner still posts, with the desktop's own sound: a read-only
+            // runtime dir must not cost the notification itself.
+            eprintln!(
+                "[kabmo] notification sound: could not write {}: {error}",
+                path.display()
+            );
+            None
+        }
+    }
 }
 
 /// The script a click runs in the page.
@@ -66,7 +129,12 @@ pub fn open_session_script(session_id: &str) -> String {
 ///
 /// A missing helper is a sentence rather than a crash: the bridge turns it into
 /// a logged warning, and the in-app badge is still the record.
-pub fn start(title: &str, body: &str, session_id: &str) -> Result<Receiver<String>, ShellError> {
+pub fn start(
+    title: &str,
+    body: &str,
+    session_id: &str,
+    kind: &str,
+) -> Result<Receiver<String>, ShellError> {
     if which("notify-send").is_none() {
         return Err(ShellError::new(
             "notify-send is not installed; no desktop notification was sent.",
@@ -76,8 +144,15 @@ pub fn start(title: &str, body: &str, session_id: &str) -> Result<Receiver<Strin
     let title = title.to_string();
     let body = body.to_string();
     let session = session_id.to_string();
+    // Resolved here, not inside the worker: the file has to exist before
+    // `notify-send` is handed the hint, and the write is small enough that
+    // deferring it buys nothing.
+    let sound = sound_file(kind);
     std::thread::spawn(move || {
-        let Ok(output) = Command::new("notify-send").args(args(&title, &body)).output() else {
+        let Ok(output) = Command::new("notify-send")
+            .args(args(&title, &body, sound.as_deref()))
+            .output()
+        else {
             return;
         };
         // `--wait` prints the chosen action's id on stdout, one line. Anything

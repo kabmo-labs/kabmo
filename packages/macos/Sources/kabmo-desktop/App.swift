@@ -796,6 +796,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
       try await ShellNotifications.show(
         title: params["title"] as? String ?? "",
         body: params["body"] as? String ?? "",
+        kind: params["kind"] as? String ?? "",
         tag: params["tag"] as? String ?? "",
         sessionId: params["sessionId"] as? String ?? ""
       )

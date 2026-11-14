@@ -1,5 +1,6 @@
 import { useCallback } from 'preact/hooks';
 import { readKabmoSetting } from '@/shared/lib/settings/client';
+import { nativeBannerPlaysSound } from '@/client/lib/notifications/native-banner-sound';
 
 interface WebkitWindow extends Window {
   webkitAudioContext?: typeof AudioContext;
@@ -138,22 +139,28 @@ export function isChatSoundEnabled(appSettings?: Record<string, any>): boolean {
 
 /**
  * Triggers the completion notification sound if the user setting is enabled.
+ *
+ * Silent inside a shell: its banner plays the same chime, and playing both is
+ * the double sound this design removes.
  */
 export function triggerChatCompletionSound(appSettings?: Record<string, any>) {
-  if (isChatSoundEnabled(appSettings)) {
-    playNotificationSound();
-  }
+  if (!isChatSoundEnabled(appSettings)) return;
+  if (nativeBannerPlaysSound('finish', appSettings)) return;
+  playNotificationSound();
 }
 
 /**
  * Triggers the input-required cue, gated by the same notification preference as
  * the completion chime. Reads settings from the primed snapshot: the alert fires
  * from the app-wide session list, which has no settings props to thread.
+ *
+ * Silent inside a shell, like the completion chime — the shell's banner plays
+ * the attention cue instead.
  */
 export function triggerInputRequiredSound() {
-  if (isChatSoundEnabled()) {
-    playInputRequiredSound();
-  }
+  if (!isChatSoundEnabled()) return;
+  if (nativeBannerPlaysSound('ask')) return;
+  playInputRequiredSound();
 }
 
 export function useNotificationSound() {

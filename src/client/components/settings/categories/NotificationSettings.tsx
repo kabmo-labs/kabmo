@@ -209,7 +209,7 @@ export function NotificationSettings({ settings, onUpdate }: NotificationSetting
         <div className="pt-3 border-t border-ink/10 flex items-center justify-between">
           <span className="text-[11px] text-ink/60 flex items-center gap-1.5">
             <Sparkles size={13} className="text-ink/60" />
-            Warm harmonic chime synthesized natively via Web Audio
+            Warm two-tone chime — the app's system notification plays it; a browser plays it here
           </span>
 
           <button

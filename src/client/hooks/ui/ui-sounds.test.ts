@@ -38,6 +38,7 @@ afterEach(() => {
   jest.useRealTimers();
   FakeAudioContext.instances.length = 0;
   (win as unknown as Record<string, unknown>).AudioContext = FakeAudioContext;
+  delete window.__kabmoCall;
 });
 /** The alert mounts the real hook, so every constructed context is a cue. */
 
@@ -238,6 +239,20 @@ describe('isChatSoundEnabled', () => {
     expect(FakeAudioContext.instances).toEqual([]);
 
     primeKabmoSettings({ chatCompletionSound: true });
+    triggerChatCompletionSound();
+    expect(FakeAudioContext.instances).toHaveLength(1);
+  });
+
+  test('inside a shell the banner plays the chime instead', () => {
+    window.__kabmoCall = () => Promise.resolve(null);
+    primeKabmoSettings({ chatCompletionSound: true, notifyOnFinish: true });
+
+    triggerChatCompletionSound();
+    expect(FakeAudioContext.instances).toEqual([]);
+
+    // The same setting with the shell's banner switched off: nothing else is
+    // making sound, so the page must.
+    primeKabmoSettings({ chatCompletionSound: true, notifyOnFinish: false });
     triggerChatCompletionSound();
     expect(FakeAudioContext.instances).toHaveLength(1);
   });

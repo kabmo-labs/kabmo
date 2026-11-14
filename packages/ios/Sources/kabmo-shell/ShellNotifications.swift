@@ -29,6 +29,7 @@ enum ShellNotifications {
   static func show(
     title: String,
     body: String,
+    kind: String,
     tag: String,
     sessionId: String,
     _ completion: @escaping (Result<Void, Error>) -> Void
@@ -36,7 +37,9 @@ enum ShellNotifications {
     let content = UNMutableNotificationContent()
     content.title = title.isEmpty ? "Kabmo" : title
     content.body = body
-    content.sound = .default
+    content.sound = UNNotificationSound(
+      named: UNNotificationSoundName(NotificationWire.soundName(forKind: kind))
+    )
     // A tap has to know WHICH session the banner was about. `userInfo` survives
     // the request and is what `AppDelegate` reads in `didReceive`.
     if !sessionId.isEmpty { content.userInfo = ["sessionId": sessionId] }

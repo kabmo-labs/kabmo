@@ -115,6 +115,9 @@ describe('useNotificationEvents', () => {
       params: {
         title: 'Fix the build',
         body: 'The run ended with error',
+        // The shell picks its chime from this: `ask` is the attention cue, the
+        // others the completion chime.
+        kind: 'error',
         tag: 'error:s-1',
         sessionId: 's-1',
         // The event's own moment travels with it: a banner delivered later must
