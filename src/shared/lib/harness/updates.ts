@@ -155,6 +155,11 @@ export const HARNESS_UPDATE_FACTS: Readonly<Partial<Record<HarnessId, HarnessUpd
     command: 'grok update',
     note: 'The CLI updates itself (`grok update`, plus `[cli] auto_update`); Kabmo runs its own subcommand.',
   },
+  hermes: {
+    kind: 'self',
+    command: 'hermes update',
+    note: 'The CLI updates itself (`hermes update`, which also adds the `hermes-acp` launcher to older installs); Kabmo runs its own subcommand.',
+  },
 };
 
 /** The facts for a harness, or "Kabmo knows nothing about updating it". */

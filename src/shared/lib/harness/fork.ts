@@ -24,10 +24,12 @@ export function harnessForksAtMessage(harness: string | null | undefined): boole
  * Harnesses that advertise `session/fork` but take no anchor: the fork copies
  * the whole conversation. `zcode` is checkpoint-scoped (`latestCheckpoint`),
  * `opencode` and `minimax` have a message-level fork in their own API that
- * their ACP adapter does not pass through.
+ * their ACP adapter does not pass through, and `hermes` advertises
+ * `SessionForkCapabilities()` with a `fork_session(cwd, session_id)` that takes
+ * no message id.
  */
 export function harnessForksWholeChat(harness: string | null | undefined): boolean {
-  return harness === 'opencode' || harness === 'minimax' || harness === 'zcode';
+  return harness === 'opencode' || harness === 'minimax' || harness === 'zcode' || harness === 'hermes';
 }
 
 /** What a harness can fork: nothing, the whole chat, or at a message. */

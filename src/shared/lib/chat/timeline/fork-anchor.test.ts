@@ -26,6 +26,9 @@ describe('forkCapability', () => {
     expect(forkCapability('opencode')).toBe('tip');
     expect(forkCapability('minimax')).toBe('tip');
     expect(forkCapability('zcode')).toBe('tip');
+    // Hermes advertises `SessionForkCapabilities()` and its `fork_session` takes
+    // only cwd + session id, so the fork copies the whole conversation.
+    expect(forkCapability('hermes')).toBe('tip');
   });
 
   test('a harness with no session/fork is none', () => {

@@ -178,6 +178,20 @@ export const HARNESS_PROVIDER_FACTS: Readonly<Partial<Record<HarnessId, HarnessP
     importFrom: [],
     summary: 'Grok takes custom models as [model.<name>] tables in ~/.grok/config.toml (model, base_url, api_key or env_key, context_window). Kabmo does not write that file; xAI models still need `grok login`.',
   },
+  hermes: {
+    registry: {
+      // Hermes keeps providers in `providers.<name>` in ~/.hermes/config.yaml
+      // (`api` for the base URL, `api_key` or `key_env`, `transport`, `models`),
+      // and its own `hermes model` / dashboard write that file. The model list
+      // may be a string array OR a map, which no Kabmo writer models, so the
+      // file is read-only here.
+      kind: 'agent-managed', file: '.hermes/config.yaml', pointer: 'providers',
+      writable: false, baseUrlField: null, apiKeyField: null, modelsField: null,
+    },
+    createsChoice: true,
+    importFrom: [],
+    summary: 'Hermes keeps providers in ~/.hermes/config.yaml (api, api_key or key_env, transport, models), written by `hermes model` and its dashboard; Kabmo shows the models it publishes but does not edit that file.',
+  },
   claude: {
     registry: {
       kind: 'env', file: null, pointer: 'environment',

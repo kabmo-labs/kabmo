@@ -89,6 +89,19 @@ describe('harness catalog after the Gemini retirement', () => {
     expect(HARNESS_LAUNCH.grok?.install).toContain('https://x.ai/cli/install.sh');
   });
 
+  test('hermes is listed and launches its own `acp` subcommand', () => {
+    // Hermes ships the ACP adapter in-tree (`acp_adapter/`), so the launch line
+    // is the CLI's own verb. The `acp` extra is a separate sync step, which the
+    // install hint has to name or the subcommand does not exist on a stock
+    // install.
+    const descriptor = harnessDescriptor('hermes');
+    expect(descriptor?.transport).toBe('acp');
+    expect(descriptor?.glyph).toBe('hermes');
+    expect(HARNESS_LAUNCH.hermes?.command).toEqual(['hermes', 'acp']);
+    expect(HARNESS_LAUNCH.hermes?.install).toContain('hermes-agent.nousresearch.com/install.sh');
+    expect(HARNESS_LAUNCH.hermes?.install).toContain("pm.sync_venv(['acp']");
+  });
+
   test('every catalog entry has a launch line or is the built-in transport', () => {
     // The built-in transport has no agent to launch by definition; everything
     // else without a line would probe to "no launch command is configured",

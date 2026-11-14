@@ -55,6 +55,9 @@ export const HARNESS_MCP_FACTS: Record<BuiltinHarnessId, HarnessMcpFacts> = {
   // Measured on 1.0.77: `mcpCapabilities` advertises stdio, http AND sse, and
   // the agent also loads config.toml / ~/.claude.json / .mcp.json on its own.
   grok: { delivery: 'acp', note: 'Injected on session/new and advertised for stdio, http and sse (measured 1.0.77); grok also loads MCP servers from config.toml, ~/.claude.json and the project .mcp.json.' },
+  // Hermes' ACP adapter takes the editor's `mcpServers` on session/new and adds
+  // them to the servers its own `config.yaml` already enables.
+  hermes: { delivery: 'acp', note: 'Injected on session/new, on top of the servers ~/.hermes/config.yaml enables; the editor list is always added.' },
 };
 
 /**

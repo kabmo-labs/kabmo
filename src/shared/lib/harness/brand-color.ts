@@ -50,6 +50,9 @@ const HARNESS_BASES: Readonly<Record<string, string>> = {
   jcode: '#111111',
   // xAI publishes a one-colour mark.
   grok: '#000000',
+  // Hermes' mark is the vendor's black "nous girl" portrait, so it paints in the
+  // theme's ink like the other monochrome marks.
+  hermes: '#000000',
 };
 
 /**

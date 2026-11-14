@@ -51,7 +51,11 @@ export type BuiltinHarnessId =
    *  by the Jcode daemon. */
   | 'jcode'
   /** xAI's Grok Build CLI, over its own ACP server (`grok agent stdio`). */
-  | 'grok';
+  | 'grok'
+  /** Nous Research's Hermes Agent, over the ACP adapter it ships in-tree
+   *  (`hermes acp`). The stock install exposes only the messages gateway and
+   *  the TUI; the ACP surface arrives with its `acp` extra. */
+  | 'hermes';
 
 /**
  * A harness id: one this build ships, or one the user added.
@@ -82,6 +86,7 @@ export const HARNESS_IDS: readonly BuiltinHarnessId[] = [
   'zcode',
   'jcode',
   'grok',
+  'hermes',
 ];
 
 export interface HarnessDescriptor {
@@ -136,6 +141,7 @@ export type HarnessGlyph =
   | 'zcode'
   | 'jcode'
   | 'grok'
+  | 'hermes'
   /** A user-added ACP harness: no vendor mark, drawn as its initial. */
   | 'custom';
 
@@ -162,6 +168,7 @@ export const HARNESS_CATALOG: Readonly<Record<BuiltinHarnessId, HarnessDescripto
   zcode: { id: 'zcode', label: 'zcode', initial: 'Z', transport: 'acp', glyph: 'zcode' },
   jcode: { id: 'jcode', label: 'jcode', initial: 'J', transport: 'acp', glyph: 'jcode' },
   grok: { id: 'grok', label: 'grok', initial: 'G', transport: 'acp', glyph: 'grok' },
+  hermes: { id: 'hermes', label: 'hermes', initial: 'H', transport: 'acp', glyph: 'hermes' },
 };
 
 /**

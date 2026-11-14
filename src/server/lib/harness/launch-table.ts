@@ -212,4 +212,14 @@ export const HARNESS_LAUNCH: Readonly<Partial<Record<HarnessId, HarnessLaunch>>>
     install: 'curl -fsSL https://x.ai/cli/install.sh | bash',
     note: 'native ACP (`grok agent stdio`); xAI models need `grok login` once. A custom model as a [model.<name>] table in ~/.grok/config.toml (base_url + api_key) runs WITHOUT an xAI login — measured on 1.0.77. Sessions advertise model + reasoning_effort options',
   },
+  // Hermes Agent ships its ACP adapter in-tree (`acp_adapter/`), but the stock
+  // install does not include the `agent-client-protocol` dependency: the `acp`
+  // extra has to be synced once, and until then `hermes acp` is not a command.
+  // The adapter logs to stderr, so stdout stays reserved for JSON-RPC.
+  hermes: {
+    id: 'hermes',
+    command: ['hermes', 'acp'],
+    install: 'curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash   # then: cd ~/.hermes/hermes-agent && python -c "import pm; pm.sync_venv([\'acp\'], explicit=True)"',
+    note: 'native ACP (`hermes acp`); the `acp` extra must be synced once or the subcommand does not exist. Configure a provider with `hermes model` (or ~/.hermes/config.yaml / .env) before a turn succeeds; models are published as `provider:model`',
+  },
 };
