@@ -83,6 +83,14 @@ describe('readSessionChangeIndex', () => {
     const records = await readSessionChangeIndex(SESSION_ID);
     expect(records.length).toBe(2);
   });
+
+  test('a Windows-style separator in the journal path is shown with forward slashes', async () => {
+    const after = await blob('a3', 'three\n');
+    await append({ type: 'change', at: 1004, agent: 'Main', tool: 'edit', path: `${CWD}/src\\win.ts`, before: null, after });
+
+    const records = await readSessionChangeIndex(SESSION_ID);
+    expect(records.at(-1)?.displayPath).toBe('src/win.ts');
+  });
 });
 
 describe('readSessionChangeDiff', () => {

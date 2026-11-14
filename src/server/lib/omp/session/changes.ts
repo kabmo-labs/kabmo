@@ -71,12 +71,19 @@ function cache(): JournalCacheHost {
   return globalThis.__kabmoSessionChanges;
 }
 
-/** `path` relative to the session cwd when it is inside it, else unchanged. */
+/**
+ * `path` relative to the session cwd when it is inside it, else unchanged.
+ *
+ * The relative branch is a display path, not a filesystem one, so its separator
+ * is normalised to `/`: Windows' `path.relative` answers `src\a.ts`, which the
+ * chat list and the diff header would otherwise show beside forward-slash paths
+ * from every other producer.
+ */
 function displayPathFor(absolute: string, cwd: string | null): string {
   if (!cwd) return absolute;
   const relative = path.relative(cwd, absolute);
   if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) return absolute;
-  return relative;
+  return relative.replaceAll('\\', '/');
 }
 
 /** Parse the journal's `change` lines; a torn final line is skipped, not fatal. */
