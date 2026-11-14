@@ -12,6 +12,7 @@
 import { afterEach, beforeEach, describe, expect, setDefaultTimeout, test } from 'bun:test';
 
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
+import { getDb } from '@/server/db.server';
 import { onRealtimeSignal } from '@/server/lib/realtime/signals.server';
 import {
   loadStreamStates,
@@ -148,6 +149,36 @@ describe('run model on the stream row', () => {
       status: 'finish',
       model: { provider: 'anthropic', modelId: 'claude' },
     });
+  });
+
+  test('the run clock starts once, on the transition INTO stream', async () => {
+    // A run writes `stream` several times (prompt dispatch, `agent_start`, a
+    // model change). Restarting the clock on each would report the last frame's
+    // age as the duration, so only the transition may set it.
+    const startedAt = async (): Promise<number | null> => {
+      const db = await getDb();
+      const row = (await db.get('SELECT started_at FROM session_stream_state WHERE session_id = ?', ['s4'])) as
+        | { started_at: number | null }
+        | null;
+      return row?.started_at ?? null;
+    };
+
+    await markStreamStatus('s4', 'stream');
+    const first = await startedAt();
+    expect(first).toBeGreaterThan(0);
+
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    await markStreamStatus('s4', 'stream');
+    expect(await startedAt()).toBe(first);
+
+    // A terminal write keeps it: the banner's duration is read from this row.
+    await markStreamStatus('s4', 'finish');
+    expect(await startedAt()).toBe(first);
+
+    // A NEW run after the terminal badge starts a fresh clock.
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    await markStreamStatus('s4', 'stream');
+    expect(await startedAt()).toBeGreaterThan(first as number);
   });
 
   test('does nothing for a session with no live row', async () => {

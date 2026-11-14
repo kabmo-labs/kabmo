@@ -94,6 +94,14 @@ describe('the notification feed', () => {
     expect(seen.map((entry) => entry.id)).toEqual([event.id]);
   });
 
+  test('a settled run carries how long it took', async () => {
+    await setSwitches({ notifyOnFinish: true });
+    await noteRunSettled('s-1', null, 192_000);
+
+    const [event] = await listNotificationEventsAfter(0);
+    expect(event.durationMs).toBe(192_000);
+  });
+
   test('a failure is an error event, and the reason is its body', async () => {
     await setSwitches({ notifyOnError: true });
     await noteRunSettled('s-2', 'Provider returned 401');

@@ -52,6 +52,8 @@ export function useNotificationEvents(): void {
           body: event.body,
           tag: notificationTag(event),
           sessionId: event.sessionId,
+          at: event.at,
+          ...(event.durationMs ? { durationMs: event.durationMs } : {}),
         });
       }),
     [],

@@ -36,4 +36,8 @@ export async function migrateSessionStreamStateColumns(db: DbClient): Promise<vo
   // only durable place a background tab can learn that a run failed. NULL is a
   // normal stop, so every existing row keeps its meaning.
   await addColumn(db, 'ALTER TABLE session_stream_state ADD COLUMN failure TEXT;');
+  // When the run behind a `stream` row began, so a terminal settle can report
+  // how long it took. Epoch milliseconds, written only on the transition INTO
+  // `stream` — a later write of the same run must not restart the clock.
+  await addColumn(db, 'ALTER TABLE session_stream_state ADD COLUMN started_at INTEGER;');
 }

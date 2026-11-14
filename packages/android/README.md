@@ -400,6 +400,25 @@ read by the small strict reader in `NotificationWatch` rather than `org.json`:
 `org.json` is a stub in that suite, and this parser is the one that must not
 drift.
 
+**The banner carries the EVENT's clock and the run's length.** `setWhen(at)` +
+`setShowWhen(true)` means a banner delivered when the app is next opened names
+when the run ended, not when it was posted — otherwise a backlog of five banners
+all claim "now". The duration has no native slot, so it rides `setSubText` as
+`48s` / `3m 12s` / `1h 04m` (truncated, never rounded up), and only when the
+server knows the start: `session_stream_state.started_at` is written on the
+transition INTO `stream` and kept across the later `stream` writes of the same
+run, because restarting it would report the last frame's age instead. An `ask`
+has no duration and shows no subtext, rather than "0s".
+
+**A session title is stripped of glyphs the shade cannot draw.** Operators paste
+Nerd Font icons and Powerline separators into names because a terminal-wide font
+renders them; the notification shade uses the system font (Roboto), which has no
+Private Use Area coverage, so each icon arrived as a tofu box. `notificationText`
+(`shared/lib/notifications/events.ts`) removes the three PUAs, variation
+selectors and zero-width controls, then collapses whitespace — before the length
+clip, so the budget counts drawable characters. Emoji, CJK and punctuation
+survive. An icon-only title falls back to `Kabmo`.
+
 ### Getting back to it
 
 **Two entry points: the console's Server chip, and long-press the Kabmo icon →

@@ -217,6 +217,8 @@ class NotificationWatchService : Service() {
                     body = event.body,
                     tag = "${event.kind}:${event.sessionId}",
                     sessionId = event.sessionId,
+                    whenMs = event.at,
+                    durationMs = event.durationMs ?: 0L,
                 )
                 writeCursor(baseUrl, event.id)
             }

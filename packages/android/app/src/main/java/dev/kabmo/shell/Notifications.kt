@@ -30,7 +30,18 @@ import android.os.Build
 interface ShellNotifier {
     fun isGranted(): Boolean
     fun requestPermission()
-    fun show(title: String, body: String, tag: String, sessionId: String): Boolean
+    /**
+     * Post one banner. `whenMs` is the event's own moment (0 = now) and
+     * `durationMs` how long the run took (0 = not known, e.g. an `ask`).
+     */
+    fun show(
+        title: String,
+        body: String,
+        tag: String,
+        sessionId: String,
+        whenMs: Long,
+        durationMs: Long,
+    ): Boolean
 }
 
 /**
@@ -51,6 +62,8 @@ object NotificationCommands {
                     body = fields["body"].orEmpty(),
                     tag = fields["tag"].orEmpty(),
                     sessionId = fields["sessionId"].orEmpty(),
+                    whenMs = fields["when"]?.toLongOrNull() ?: 0L,
+                    durationMs = fields["durationMs"]?.toLongOrNull() ?: 0L,
                 )
                 if (shown) "{\"shown\":true}" else "{\"shown\":false}"
             }
@@ -82,7 +95,15 @@ object NotificationPoster {
             PackageManager.PERMISSION_GRANTED
     }
 
-    fun show(context: Context, title: String, body: String, tag: String, sessionId: String): Boolean {
+    fun show(
+        context: Context,
+        title: String,
+        body: String,
+        tag: String,
+        sessionId: String,
+        whenMs: Long = 0L,
+        durationMs: Long = 0L,
+    ): Boolean {
         // Nothing to say, or nothing the user allowed: no notification either way.
         if (title.isBlank() && body.isBlank()) return false
         if (!isGranted(context)) return false
@@ -95,7 +116,15 @@ object NotificationPoster {
         manager.notify(
             tag.ifEmpty { AndroidNotifier.TAG },
             AndroidNotifier.NOTIFICATION_ID,
-            build(context, title, body, sessionId, requestCode = tag.ifEmpty { AndroidNotifier.TAG }.hashCode()),
+            build(
+                context = context,
+                title = title,
+                body = body,
+                sessionId = sessionId,
+                whenMs = whenMs,
+                durationMs = durationMs,
+                requestCode = tag.ifEmpty { AndroidNotifier.TAG }.hashCode(),
+            ),
         )
         return true
     }
@@ -112,7 +141,15 @@ object NotificationPoster {
         manager.createNotificationChannel(channel)
     }
 
-    private fun build(context: Context, title: String, body: String, sessionId: String, requestCode: Int): Notification {
+    private fun build(
+        context: Context,
+        title: String,
+        body: String,
+        sessionId: String,
+        whenMs: Long,
+        durationMs: Long,
+        requestCode: Int,
+    ): Notification {
         // Tapping the notification opens the console ON THAT SESSION. The intent
         // carries the id and `MainActivity` forwards it to
         // `window.__kabmoOpenSession`; without it, a tap opened whichever chat
@@ -143,6 +180,13 @@ object NotificationPoster {
             .setContentTitle(title.ifBlank { context.getString(R.string.app_name) })
             .setContentText(body)
             .setStyle(Notification.BigTextStyle().bigText(body))
+            // The EVENT's moment, not the posting time: a banner delivered when
+            // the app is next opened must not claim it just happened.
+            .setWhen(if (whenMs > 0) whenMs else System.currentTimeMillis())
+            .setShowWhen(true)
+            // The shade has no duration slot; the subtext line is the one place
+            // it can sit beside the timestamp without stealing body text.
+            .apply { NotificationWatch.durationLabel(durationMs)?.let { setSubText(it) } }
             .setAutoCancel(true)
             .setContentIntent(open)
             .build()
@@ -164,8 +208,14 @@ class AndroidNotifier(private val activity: Activity) : ShellNotifier {
         }
     }
 
-    override fun show(title: String, body: String, tag: String, sessionId: String): Boolean =
-        NotificationPoster.show(activity, title, body, tag, sessionId)
+    override fun show(
+        title: String,
+        body: String,
+        tag: String,
+        sessionId: String,
+        whenMs: Long,
+        durationMs: Long,
+    ): Boolean = NotificationPoster.show(activity, title, body, tag, sessionId, whenMs, durationMs)
 
     companion object {
         const val CHANNEL_ID = "kabmo-agent"

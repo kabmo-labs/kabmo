@@ -91,24 +91,29 @@ export async function markStreamStatus(
     // The badge this write REPLACES, read before the upsert. A terminal write
     // that lands on a live row is the run's end; the same write landing on an
     // already-terminal row is a repair, and announcing it would fire a banner
-    // for a run the operator was told about minutes ago.
-    const previous = status === 'finish'
-      ? (await db.get<{ status: string }>(
-          'SELECT status FROM session_stream_state WHERE session_id = ?',
-          [sessionId],
-        ))?.status
-      : undefined;
+    // for a run the operator was told about minutes ago. The same read carries
+    // the run's start, which is what makes the banner able to say how long it
+    // took.
+    const previous = await db.get<{ status: string; started_at: number | null }>(
+      'SELECT status, started_at FROM session_stream_state WHERE session_id = ?',
+      [sessionId],
+    );
+    // Only the transition INTO `stream` starts the clock: a run writes `stream`
+    // several times (prompt dispatch, `agent_start`, a model change), and
+    // restarting on each would report the last frame's age as the duration.
+    const startedAt = status === 'stream' && previous?.status !== 'stream' ? Date.now() : null;
     await db.run(
-      `INSERT INTO session_stream_state (session_id, status, owner_pid, model_provider, model_id, failure, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      `INSERT INTO session_stream_state (session_id, status, owner_pid, model_provider, model_id, failure, started_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
        ON CONFLICT(session_id) DO UPDATE SET
          status = excluded.status,
          owner_pid = excluded.owner_pid,
          model_provider = COALESCE(excluded.model_provider, session_stream_state.model_provider),
          model_id = COALESCE(excluded.model_id, session_stream_state.model_id),
          failure = excluded.failure,
+         started_at = COALESCE(excluded.started_at, session_stream_state.started_at),
          updated_at = excluded.updated_at`,
-      [sessionId, status, ownerPid, model?.provider ?? null, model?.modelId ?? null, reason || null],
+      [sessionId, status, ownerPid, model?.provider ?? null, model?.modelId ?? null, reason || null, startedAt],
     );
     // The signal bus has no imports of its own, so this edge cannot close a
     // cycle: the realtime layer subscribes to it, and this module only raises.
@@ -116,7 +121,10 @@ export async function markStreamStatus(
     // The run's end is news the SERVER announces, because the page that used to
     // diff this status is frozen whenever the console is backgrounded. Fired
     // after the write: the banner names the badge that just appeared.
-    if (status === 'finish' && previous === 'stream') void noteRunSettled(sessionId, reason || null);
+    if (status === 'finish' && previous?.status === 'stream') {
+      const durationMs = previous.started_at ? Date.now() - previous.started_at : null;
+      void noteRunSettled(sessionId, reason || null, durationMs);
+    }
   } catch {
     // Status tracking is best-effort by design.
   }

@@ -34,6 +34,10 @@ data class WatchEvent(
     val sessionId: String,
     val title: String,
     val body: String,
+    /** When the event happened, epoch ms — the shade's own timestamp. */
+    val at: Long,
+    /** How long the run took, when the server knew its start. */
+    val durationMs: Long?,
 )
 
 object NotificationWatch {
@@ -59,11 +63,29 @@ object NotificationWatch {
             sessionId = sessionId,
             title = fields["title"].orEmpty(),
             body = fields["body"].orEmpty(),
+            // A payload without `at` is still postable: the shade then names the
+            // moment it was shown, which is the platform default.
+            at = fields["at"]?.toLongOrNull() ?: 0L,
+            durationMs = fields["durationMs"]?.toLongOrNull()?.takeIf { it > 0 },
         )
     }
 
     /** The id a `cursor` frame carries, or null when it carries none. */
     fun parseCursor(data: String): Long? = parseObject(data)?.get("id")?.toLongOrNull()
+
+    /** `3m 12s`, `48s`, `1h 04m` — a banner's duration, never a raw millisecond count. */
+    fun durationLabel(durationMs: Long): String? {
+        if (durationMs <= 0) return null
+        val totalSeconds = durationMs / 1000
+        val hours = totalSeconds / 3600
+        val minutes = (totalSeconds % 3600) / 60
+        val seconds = totalSeconds % 60
+        return when {
+            hours > 0 -> "${hours}h ${minutes.toString().padStart(2, '0')}m"
+            minutes > 0 -> "${minutes}m ${seconds.toString().padStart(2, '0')}s"
+            else -> "${seconds}s"
+        }
+    }
 
     /**
      * The stream URL for one attempt.

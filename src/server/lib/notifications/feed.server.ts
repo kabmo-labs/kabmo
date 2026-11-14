@@ -37,7 +37,7 @@ import { sessionTitleFor } from '@/shared/lib/omp/session/sidebar';
 import { loadOmpSidebarData } from '@/server/lib/omp/session/reader';
 import { loadHarnessSessionTitle } from '@/server/lib/harness/session-store.server';
 import { appendNotificationEvent } from '@/server/lib/notifications/store.server';
-import type { NotificationEvent, NotificationKind } from '@/shared/lib/notifications/events';
+import { notificationText, type NotificationEvent, type NotificationKind } from '@/shared/lib/notifications/events';
 
 /** Bounds on the stored text: a failure reason can be a whole provider body. */
 const TITLE_LIMIT = 120;
@@ -123,15 +123,25 @@ async function enabledEvents(): Promise<Set<NotificationEventKey>> {
  */
 async function record(
   event: NotificationEventKey,
-  input: { title: string; body: string; sessionId: string; kind: NotificationKind },
+  input: {
+    title: string;
+    body: string;
+    sessionId: string;
+    kind: NotificationKind;
+    durationMs?: number;
+  },
 ): Promise<NotificationEvent | null> {
   const enabled = await enabledEvents();
   if (!enabled.has(event)) return null;
+  // Sanitised BEFORE clipping, so the limit counts characters a banner can
+  // actually draw — a title made of Nerd Font icons would otherwise spend its
+  // whole budget on glyphs the shade renders as tofu.
   const stored = await appendNotificationEvent({
     kind: input.kind,
     sessionId: input.sessionId,
-    title: clip(input.title, TITLE_LIMIT) || 'Kabmo',
-    body: clip(input.body, BODY_LIMIT),
+    title: clip(notificationText(input.title), TITLE_LIMIT) || 'Kabmo',
+    body: clip(notificationText(input.body), BODY_LIMIT),
+    ...(input.durationMs && input.durationMs > 0 ? { durationMs: input.durationMs } : {}),
   });
   getRealtimeHub().publish(TOPIC_NOTIFICATIONS, stored);
   for (const listener of [...listeners()]) {
@@ -149,7 +159,11 @@ async function record(
  * difference between "finished" and "failed" — and the failure reason is the
  * whole body of the error banner.
  */
-export async function noteRunSettled(sessionId: string, failure: string | null): Promise<void> {
+export async function noteRunSettled(
+  sessionId: string,
+  failure: string | null,
+  durationMs?: number | null,
+): Promise<void> {
   if (!sessionId) return;
   try {
     const reason = (failure ?? '').trim();
@@ -158,6 +172,7 @@ export async function noteRunSettled(sessionId: string, failure: string | null):
       sessionId,
       title: await resolveTitle(sessionId),
       body: reason || 'The run finished.',
+      ...(typeof durationMs === 'number' && durationMs > 0 ? { durationMs } : {}),
     });
   } catch (error) {
     console.warn('[notifications] could not record a run outcome:', error);

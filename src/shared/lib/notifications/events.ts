@@ -27,8 +27,16 @@ export interface NotificationEvent {
   title: string;
   /** The body: the failure reason, or the event's own sentence. */
   body: string;
-  /** Epoch milliseconds. */
+  /** Epoch milliseconds of the event itself — the banner's own timestamp. */
   at: number;
+  /**
+   * How long the run took, when the server knows its start.
+   *
+   * Absent for an `ask` (a question has no duration) and for a finish whose
+   * `stream` row predates the column. Android renders it as the shade's subtext;
+   * a surface without that slot simply omits it.
+   */
+  durationMs?: number;
 }
 
 /** The stable notification tag: one banner per session per kind, replaced. */
@@ -56,5 +64,41 @@ export function asNotificationEvent(payload: unknown): NotificationEvent | null 
     title: typeof candidate.title === 'string' ? candidate.title : '',
     body: typeof candidate.body === 'string' ? candidate.body : '',
     at: typeof candidate.at === 'number' ? candidate.at : 0,
+    ...(typeof candidate.durationMs === 'number' && candidate.durationMs > 0
+      ? { durationMs: candidate.durationMs }
+      : {}),
   };
+}
+
+/**
+ * The characters a notification surfaces can actually draw.
+ *
+ * A session title is arbitrary text — operators paste Nerd Font glyphs, Powerline
+ * separators and icon fonts into names, because a terminal-wide font draws them.
+ * Android's notification shade uses the SYSTEM font (Roboto), which has no
+ * coverage for any of them, so a Nerd Font icon becomes a tofu box in the banner
+ * and in the shade. The same is true of any PUA-icon font on any platform, so
+ * the glyphs are removed where the event is built rather than per surface.
+ *
+ * Removed, and nothing else:
+ *
+ * - the three Private Use Areas (`U+E000–U+F8FF`, planes 15 and 16) — Nerd Font,
+ *   Powerline and icon fonts live here;
+ * - variation selectors (`U+FE00–U+FE0F`, `U+E0100–U+E01EF`), which only modify a
+ *   glyph that is no longer there;
+ * - zero-width space/joiner controls and the BOM, which an icon-only title would
+ *   leave behind as invisible text.
+ *
+ * Emoji, CJK and ordinary punctuation survive: they have real glyphs.
+ */
+const UNRENDERABLE = /[\uE000-\uF8FF\u{F0000}-\u{FFFFD}\u{100000}-\u{10FFFD}\uFE00-\uFE0F\u{E0100}-\u{E01EF}\u200B-\u200D\uFEFF]/gu;
+
+/**
+ * Text as a banner can draw it: unrenderable glyphs gone, whitespace collapsed.
+ *
+ * Collapsing is part of the same job — an icon between two words leaves a double
+ * space, and a body that was several lines of log becomes one readable line.
+ */
+export function notificationText(text: string): string {
+  return text.replace(UNRENDERABLE, ' ').replace(/\s+/g, ' ').trim();
 }

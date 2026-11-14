@@ -54,6 +54,30 @@ describe('the notification outbox', () => {
     expect(await latestNotificationEventId()).toBe(second.id);
   });
 
+  test('a duration rides the row and comes back on the event', async () => {
+    const withDuration = await appendNotificationEvent({
+      kind: 'finish',
+      sessionId: 's-1',
+      title: 'One',
+      body: 'The run finished.',
+      durationMs: 192_000,
+    });
+    const without = await appendNotificationEvent({
+      kind: 'ask',
+      sessionId: 's-2',
+      title: 'Two',
+      body: 'Waiting for your answer.',
+    });
+
+    const [first, second] = await listNotificationEventsAfter(0);
+    expect(first.durationMs).toBe(192_000);
+    // An ask has no duration, and the field is absent rather than 0 — a banner
+    // must not print "0s".
+    expect(second.durationMs).toBeUndefined();
+    expect(withDuration.durationMs).toBe(192_000);
+    expect(without.durationMs).toBeUndefined();
+  });
+
   test('an empty outbox has cursor 0, so a first run starts at the beginning', async () => {
     expect(await latestNotificationEventId()).toBe(0);
     expect(await listNotificationEventsAfter(0)).toEqual([]);

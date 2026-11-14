@@ -117,6 +117,9 @@ describe('useNotificationEvents', () => {
         body: 'The run ended with error',
         tag: 'error:s-1',
         sessionId: 's-1',
+        // The event's own moment travels with it: a banner delivered later must
+        // not claim it just happened.
+        when: '1763000000000',
       },
     });
   });

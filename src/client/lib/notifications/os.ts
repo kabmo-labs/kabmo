@@ -31,6 +31,14 @@ export interface OsNotification {
   tag?: string;
   /** The session a click opens, when the event is about one. */
   sessionId?: string;
+  /**
+   * The event's own moment, epoch milliseconds — what the shade's timestamp
+   * names. A banner delivered when the app is next opened must not claim it just
+   * happened, so this travels instead of letting the platform stamp "now".
+   */
+  at?: number;
+  /** How long the run took, when the server knew its start. */
+  durationMs?: number;
 }
 
 /** The browser's constructor, absent on iOS WebViews and in tests. */
@@ -84,6 +92,11 @@ export async function showOsNotification(notification: OsNotification): Promise<
         body: notification.body,
         ...(notification.tag ? { tag: notification.tag } : {}),
         ...(notification.sessionId ? { sessionId: notification.sessionId } : {}),
+        // The shells render what they can: Android puts `when` on the shade's
+        // clock and the duration in its subtext line, and the others ignore
+        // fields they have no slot for.
+        ...(notification.at ? { when: String(notification.at) } : {}),
+        ...(notification.durationMs ? { durationMs: String(notification.durationMs) } : {}),
       });
     } catch (error) {
       // A refused notification is not a failed run: the in-app badge is still
@@ -100,6 +113,9 @@ export async function showOsNotification(notification: OsNotification): Promise<
     const shown = new ctor(notification.title, {
       body: notification.body,
       ...(notification.tag ? { tag: notification.tag } : {}),
+      // The browser has a native timestamp; it has no duration slot, so the
+      // duration is not shown rather than being crammed into the body.
+      ...(notification.at ? { timestamp: notification.at } : {}),
     });
     // A browser notification has no shell to route a click, so the click opens
     // the session here. `focus()` first: a tab that stays in the background

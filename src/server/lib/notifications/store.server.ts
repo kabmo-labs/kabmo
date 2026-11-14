@@ -29,6 +29,7 @@ interface NotificationRow {
   title: string;
   body: string;
   created_at: number;
+  duration_ms: number | null;
 }
 
 function toEvent(row: NotificationRow): NotificationEvent {
@@ -41,6 +42,9 @@ function toEvent(row: NotificationRow): NotificationEvent {
     title: row.title,
     body: row.body,
     at: row.created_at,
+    ...(typeof row.duration_ms === 'number' && row.duration_ms > 0
+      ? { durationMs: row.duration_ms }
+      : {}),
   };
 }
 
@@ -50,9 +54,11 @@ export async function appendNotificationEvent(
 ): Promise<NotificationEvent> {
   const db = await getDb();
   const at = Date.now();
+  const durationMs = input.durationMs ?? null;
   const result = await db.run(
-    'INSERT INTO notification_events (kind, session_id, title, body, created_at) VALUES (?, ?, ?, ?, ?)',
-    [input.kind, input.sessionId, input.title, input.body, at],
+    `INSERT INTO notification_events (kind, session_id, title, body, duration_ms, created_at)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [input.kind, input.sessionId, input.title, input.body, durationMs, at],
   );
   await pruneNotificationEvents();
   return { id: result.lastID, ...input, at };
@@ -62,7 +68,8 @@ export async function appendNotificationEvent(
 export async function listNotificationEventsAfter(id: number): Promise<NotificationEvent[]> {
   const db = await getDb();
   const rows = (await db.all(
-    'SELECT id, kind, session_id, title, body, created_at FROM notification_events WHERE id > ? ORDER BY id ASC',
+    `SELECT id, kind, session_id, title, body, created_at, duration_ms
+       FROM notification_events WHERE id > ? ORDER BY id ASC`,
     [id],
   )) as NotificationRow[];
   return rows.map(toEvent);

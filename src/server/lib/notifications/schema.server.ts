@@ -30,9 +30,18 @@ export async function ensureNotificationSchema(db: DbClient): Promise<void> {
       session_id TEXT NOT NULL,
       title TEXT NOT NULL,
       body TEXT NOT NULL,
+      duration_ms INTEGER,
       created_at INTEGER NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_notification_events_created
       ON notification_events (created_at);
   `);
+  // `CREATE TABLE IF NOT EXISTS` leaves an existing table alone, so an install
+  // that predates the duration would miss the column and every read would fail
+  // on it. Additive, and a fresh install already has it from the DDL above.
+  try {
+    await db.exec('ALTER TABLE notification_events ADD COLUMN duration_ms INTEGER;');
+  } catch {
+    // Already present.
+  }
 }

@@ -78,6 +78,30 @@ describe('inside a Kabmo shell', () => {
     ]);
   });
 
+  test('the event moment and its duration travel as strings', async () => {
+    const calls = installShell(() => ({ shown: true }));
+
+    await showOsNotification({
+      title: 'Fix the build',
+      body: 'The run finished.',
+      tag: 'finish:s1',
+      sessionId: 's1',
+      at: 1_763_000_000_000,
+      durationMs: 192_000,
+    });
+
+    // Form-encoded transport: every param is a string, and a shell without the
+    // slot ignores the ones it cannot draw.
+    expect(calls[0]?.params).toEqual({
+      title: 'Fix the build',
+      body: 'The run finished.',
+      tag: 'finish:s1',
+      sessionId: 's1',
+      when: '1763000000000',
+      durationMs: '192000',
+    });
+  });
+
   test('an untagged notification does not send an empty tag', async () => {
     const calls = installShell(() => null);
     await showOsNotification({ title: 'Kabmo', body: 'Done.' });
