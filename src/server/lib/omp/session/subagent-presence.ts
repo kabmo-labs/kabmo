@@ -36,7 +36,7 @@
  */
 
 import { promises as fs, statSync } from 'fs';
-import { sessionFileHasSubagents } from '@/server/lib/omp/session/subagent-presence-scan';
+import { sessionFileHasSubagents, siblingDirHasSubagentTranscript } from '@/server/lib/omp/session/subagent-presence-scan';
 import { readPresenceVerdict, writePresenceVerdict } from '@/server/lib/omp/session/subagent-presence-store';
 import { siblingDirForSession } from '@/server/lib/omp/subagent/history/paths';
 
@@ -47,6 +47,15 @@ interface PresenceEntry {
 
 /** Bounded so a long-lived server with many sessions cannot grow unbounded. */
 const MAX_ENTRIES = 2_000;
+
+/**
+ * Bumped whenever the VERDICT RULE changes, so a verdict saved under the old
+ * rule is not read back. `v2`: a sibling `.jsonl` must be a subagent transcript
+ * (its header names a `parentSession`), not any artifact — `changes.jsonl` made
+ * every tool-running session claim a subagent, and the saved `true` outlived
+ * the code that produced it.
+ */
+const PRESENCE_RULE_VERSION = 'v2';
 
 const cache = new Map<string, PresenceEntry>();
 
@@ -103,7 +112,7 @@ export async function sessionHasSubagents(
 ): Promise<boolean> {
   const siblingDir = siblingDirForSession(sessionPath);
   const siblingMtime = siblingDirVersion(siblingDir);
-  const version = `${sessionLastEntryAt}:${siblingMtime}`;
+  const version = `${PRESENCE_RULE_VERSION}:${sessionLastEntryAt}:${siblingMtime}`;
 
   const cached = cache.get(sessionPath);
   if (cached && cached.version === version) return cached.hasSubagents;
@@ -122,7 +131,7 @@ export async function sessionHasSubagents(
   if (siblingMtime !== 0) {
     try {
       const files = await fs.readdir(siblingDir);
-      hasSubagents = files.some((file) => file.endsWith('.jsonl'));
+      hasSubagents = await siblingDirHasSubagentTranscript(siblingDir, files);
     } catch {
       hasSubagents = false;
     }

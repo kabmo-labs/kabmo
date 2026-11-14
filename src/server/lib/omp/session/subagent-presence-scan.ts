@@ -31,6 +31,7 @@
  * could not have matched.
  */
 
+import { join } from 'path';
 import { isRecord } from '@/shared/lib/util/guards';
 import { parseSubagentProgress } from '@/shared/lib/omp/subagent/parse';
 import { SUBAGENT_ID_RE } from '@/server/lib/omp/subagent/history/paths';
@@ -117,4 +118,57 @@ export async function sessionFileHasSubagents(filePath: string): Promise<boolean
   }
   pending += decoder.decode();
   return lineAdmitsSubagent(pending.trim());
+}
+
+/** Enough of a transcript to hold its title and session header lines. */
+const TRANSCRIPT_HEADER_BYTES = 8 * 1024;
+
+/**
+ * Whether one sibling artifact is a SUBAGENT transcript.
+ *
+ * The sibling directory also holds omp's own per-session artifacts —
+ * `changes.jsonl` (the tool-call log), `blobs/`, `*.bash.log` — and
+ * `changes.jsonl` ends in `.jsonl` exactly like a subagent transcript does.
+ * Counting it made every session that ran a tool claim a subagent, so the row
+ * drew a chevron whose branch was empty: the roster is derived from the
+ * parent's `task` toolResults, and there are none.
+ *
+ * A subagent transcript is a session file whose header names its parent, so the
+ * test is that header — not the extension, and not a substring of the body
+ * (a bash label can quote `parentSession`).
+ */
+async function isSubagentTranscript(filePath: string): Promise<boolean> {
+  try {
+    const head = await Bun.file(filePath).slice(0, TRANSCRIPT_HEADER_BYTES).text();
+    for (const line of head.split('\n')) {
+      if (line.length === 0) continue;
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(line);
+      } catch {
+        // A torn first line is not a header; keep looking at the next one.
+        continue;
+      }
+      if (!isRecord(parsed) || parsed.type !== 'session') continue;
+      return typeof parsed.parentSession === 'string' && parsed.parentSession.length > 0;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * True when the sibling artifacts directory holds at least one subagent
+ * transcript. `files` is the directory listing the caller already read.
+ */
+export async function siblingDirHasSubagentTranscript(
+  dir: string,
+  files: readonly string[],
+): Promise<boolean> {
+  for (const file of files) {
+    if (!file.endsWith('.jsonl')) continue;
+    if (await isSubagentTranscript(join(dir, file))) return true;
+  }
+  return false;
 }

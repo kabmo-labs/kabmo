@@ -81,11 +81,15 @@ function writeSession(agentDir: string, fixture: SessionFixture): string {
 
   if (fixture.subagents?.length) {
     // A sibling directory named after the session file, holding one .jsonl per
-    // subagent — the shape `sessionHasSubagents` reads.
+    // subagent — the shape `sessionHasSubagents` reads. The header must name
+    // its parent: a bare `.jsonl` is not a subagent transcript.
     const sibling = file.replace(/\.jsonl$/, '');
     fs.mkdirSync(sibling, { recursive: true });
     for (const id of fixture.subagents) {
-      fs.writeFileSync(path.join(sibling, `${id}.jsonl`), `${JSON.stringify({ type: 'message' })}\n`);
+      fs.writeFileSync(
+        path.join(sibling, `${id}.jsonl`),
+        `${JSON.stringify({ type: 'session', id, cwd: '/tmp/project', parentSession: file })}\n`,
+      );
     }
   }
   clearSessionFileCaches();

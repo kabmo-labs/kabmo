@@ -115,6 +115,6 @@ describe('saved presence verdict', () => {
     await closeDb();
     expect(await sessionHasSubagents(file, 'entry-1')).toBe(true);
     // Asking the store again is a miss, not an error: no handle means no cache.
-    expect(await readPresenceVerdict(file, 'entry-1:0')).toBeNull();
+    expect(await readPresenceVerdict(file, 'v2:entry-1:0')).toBeNull();
   });
 });

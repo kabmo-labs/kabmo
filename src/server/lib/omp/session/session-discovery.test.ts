@@ -212,8 +212,9 @@ describe('sessionHasSubagents', () => {
   test('a sibling artifacts directory holding a transcript reports subagents', async () => {
     const dir = tempDir('sub');
     const file = writeSessionFile(join(dir, 'parent.jsonl'), [header('parent')]);
-    fs.mkdirSync(join(dir, 'parent'), { recursive: true });
-    fs.writeFileSync(join(dir, 'parent', 'AlphaBeta.jsonl'), '');
+    // A subagent transcript is a session file whose header names its parent;
+    // an empty `.jsonl` (or `changes.jsonl`) is not one.
+    writeSessionFile(join(dir, 'parent', 'AlphaBeta.jsonl'), [header('child', { parentSession: file })]);
     expect(await sessionHasSubagents(file, '2026-09-01T00:00:00.000Z')).toBe(true);
   });
 
@@ -237,8 +238,7 @@ describe('sessionHasSubagents', () => {
     const dir = tempDir('sub');
     const file = writeSessionFile(join(dir, 'parent.jsonl'), [header('parent')]);
     const sibling = join(dir, 'parent');
-    fs.mkdirSync(sibling, { recursive: true });
-    fs.writeFileSync(join(sibling, 'AlphaBeta.jsonl'), '');
+    writeSessionFile(join(sibling, 'AlphaBeta.jsonl'), [header('child', { parentSession: file })]);
     expect(await sessionHasSubagents(file, '2026-09-01T00:00:00.000Z')).toBe(true);
     // Same last-entry timestamp, but the sibling dir is gone: the version
     // changed, so the cached answer must not survive.
