@@ -19,6 +19,7 @@ import type { AcpId } from '@/server/lib/harness/acp/protocol';
 import type { PendingPermissions } from '@/server/lib/harness/acp/permissions';
 import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 import { allowOption, autoApproval, type PermissionOption } from '@/server/lib/harness/acp/permissions';
+import { noteAwaitingInput } from '@/server/lib/notifications/feed.server';
 
 /**
  * The option id to select when the tier already allows this call, or null to
@@ -104,6 +105,9 @@ export function answerPermissionRequest(
   }
   const dialog = host.permissions.add(id, String(params.sessionId ?? host.sessionId), params);
   host.emit(dialog as unknown as AgentEvent);
+  // The agent is now blocked on the operator. Announced from the SERVER so the
+  // banner arrives even when no page is open to see the dialog.
+  void noteAwaitingInput(host.sessionId);
   // Answered LATER; the transport must not send a refusal now or the agent
   // sees two answers to one request.
   return Promise.resolve({ answered: false, deferred: true });

@@ -26,6 +26,7 @@ import { EventFanout } from '@/server/lib/omp/rpc/event-fanout';
 import { syncRunModel as syncRunModelFor } from '@/server/lib/omp/rpc/run-model';
 import { reloadChildPlugins } from '@/server/lib/omp/rpc/reload-plugins';
 import { noteRefusedPrompt } from '@/server/lib/omp/rpc/terminal-settle';
+import { noteAwaitingInput } from '@/server/lib/notifications/feed.server';
 import { clearStreamStatus, type SessionRunModel } from '@/shared/lib/omp/session/stream-state.server';
 import { GET_STATE_TIMEOUT_MS, IDLE_REAP_MS, READY_TIMEOUT_MS, SUBAGENT_STALE_MS, type AgentEvent, type EventListener, type RpcSessionState } from '@/server/lib/omp/rpc/constants';
 
@@ -225,7 +226,9 @@ export class AgentSessionWrapper {
 
   /** SessionFrameHost adapter: remember a blocking dialog for reattaching clients. */
   trackUiDialog(frame: AgentEvent): void {
-    this.pendingUiDialogs.track(frame);
+    // A dialog that was not already parked is a NEW question, and the one
+    // moment the operator can be told about it while the console is closed.
+    if (this.pendingUiDialogs.track(frame)) void noteAwaitingInput(this.sessionId);
   }
 
   /** SessionFrameHost adapter: fold a subagent frame into the liveness roster. */

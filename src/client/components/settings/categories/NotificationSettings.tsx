@@ -18,6 +18,7 @@ import {
 import type { SettingsState } from '@/shared/types';
 import { playNotificationSound } from '@/client/hooks/ui/notification-sound';
 import { requestNotificationPermission } from '@/client/lib/notifications/os';
+import { syncNativeNotificationWatch } from '@/client/lib/notifications/watch';
 import { notificationPlatformForClient } from '@/client/lib/notifications/platform';
 
 interface NotificationSettingsProps {
@@ -141,6 +142,14 @@ export function NotificationSettings({ settings, onUpdate }: NotificationSetting
     const enabledHere = currentPlatform === 'mobile' ? mobileEnabled : desktopEnabled;
     if (anySystemNotification && enabledHere) void requestNotificationPermission();
   }, [anySystemNotification, desktopEnabled, mobileEnabled, currentPlatform]);
+
+  // A phone shell watches the server's notification stream while the console is
+  // closed (a backgrounded WebView is frozen), and it needs to know when that
+  // watching is wanted. Passed the LIVE state: it is one write ahead of the
+  // snapshot the shell would otherwise read.
+  useEffect(() => {
+    syncNativeNotificationWatch(settings);
+  }, [settings]);
 
   // Turning a switch on asks for permission immediately, so it can never read
   // "on" without the shell having had its chance to prompt.

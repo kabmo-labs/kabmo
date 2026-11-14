@@ -130,6 +130,17 @@ export const TOPIC_WAITING = 'waiting';
 /** Installed panel plugins and their catalog. */
 export const TOPIC_PANELS = 'panels';
 
+/**
+ * System-notification events, as an EVENT STREAM rather than a value.
+ *
+ * The server decides what is news (a run finished, a run failed, an agent is
+ * blocked) and publishes one frame per event; a page consumes the frames and
+ * posts the banner. The snapshot is empty on purpose: replaying the outbox to a
+ * page that just reconnected is the "every notification at once" failure this
+ * topic replaced.
+ */
+export const TOPIC_NOTIFICATIONS = 'notifications';
+
 /** The model catalog. */
 export const TOPIC_MODELS = 'models';
 

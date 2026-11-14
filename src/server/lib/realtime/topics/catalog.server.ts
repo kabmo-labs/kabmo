@@ -17,6 +17,7 @@
 
 import {
   TOPIC_MODELS,
+  TOPIC_NOTIFICATIONS,
   TOPIC_PANELS,
   TOPIC_SCHEDULE,
   TOPIC_SIDEBAR,
@@ -72,6 +73,10 @@ export const EXACT_TOPICS = new Map<string, TopicDescriptor>([
   [TOPIC_PANELS, { resolve: () => globalDescriptor(TOPIC_PANELS).resolve(TOPIC_PANELS) }],
   [TOPIC_MODELS, { resolve: () => globalDescriptor(TOPIC_MODELS).resolve(TOPIC_MODELS) }],
   [TOPIC_WAITING, { resolve: () => globalDescriptor(TOPIC_WAITING).resolve(TOPIC_WAITING) }],
+  // An EVENT STREAM, not a value: the snapshot is empty and every frame is one
+  // notification. Replaying the outbox here would announce a backlog to a page
+  // that just reconnected, which is the failure the server-side feed removes.
+  [TOPIC_NOTIFICATIONS, { resolve: async () => ({ events: [] }) }],
 ]);
 
 /** Suffixes a `session:<id>:<suffix>` topic may carry. */

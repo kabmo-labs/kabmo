@@ -3,6 +3,16 @@
     <string name="app_name">Kabmo</string>
     <string name="notification_channel">Agent notifications</string>
     <string name="notification_channel_description">A run finished, the agent is waiting for an answer, or a run failed.</string>
+    <!--
+      The background watcher's ongoing row. It is shown while the notification
+      switches are on, and its wording names the promise it keeps (banners
+      arrive even when the app is closed) rather than the fact that a service is
+      running.
+    -->
+    <string name="watch_channel">Notification watch</string>
+    <string name="watch_channel_description">Keeps agent notifications arriving while Kabmo is closed.</string>
+    <string name="watch_title">Agent notifications are on</string>
+    <string name="watch_body">They arrive even while Kabmo is closed. Turn them off in Settings → Notifications.</string>
     <string name="settings_title">Server settings</string>
     <string name="settings_short">Settings</string>
 

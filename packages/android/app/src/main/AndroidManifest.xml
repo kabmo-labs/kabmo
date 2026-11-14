@@ -21,6 +21,22 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!--
+      The background watcher (`NotificationWatchService`). A backgrounded WebView
+      is frozen, so the page cannot post a banner for a run that ends while the
+      app is away; the shell holds its own connection to the server's
+      notification stream instead. Android only allows that as a foreground
+      service, which is why the app shows an ongoing row while it is away.
+    -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!--
+      `specialUse`, not `dataSync`: a dataSync foreground service is cut off
+      after 6 hours per day on Android 15, and this one has to stay up for as
+      long as the operator's notification switches are on. The subtype below is
+      the declaration the platform asks for in exchange.
+    -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+
+    <!--
       The in-app APK update (`ApkInstaller`). Android requires the permission to
       CREATE an install session at all; the user still grants the per-app
       "install unknown apps" toggle once, and the system still shows its own
@@ -106,6 +122,22 @@
     </intent-filter>
 <!-- END GENERATED document-types -->
         </activity>
+
+        <!--
+          The notification watcher. The type is declared here because Android 14+
+          refuses a foreground service whose type is not in the manifest, and
+          `specialUse` (rather than `dataSync`) is what a connection that must
+          outlive a working day needs — see the subtype property below. Not
+          exported: only this app starts it.
+        -->
+        <service
+            android:name=".NotificationWatchService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Keeps agent run and awaiting-input notifications arriving while the console is closed" />
+        </service>
 
         <activity
             android:name=".SettingsActivity"

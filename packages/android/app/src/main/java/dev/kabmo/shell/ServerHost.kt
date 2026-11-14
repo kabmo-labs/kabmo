@@ -47,6 +47,8 @@ class ServerHost(
     private val onActivate: (url: String) -> Unit,
     /** The platform half of the console's two notification commands. */
     private val notifier: ShellNotifier,
+    /** Whether the background watcher is armed, from the console's own switches. */
+    private val watch: ShellWatch,
 ) {
 
     @JavascriptInterface
@@ -63,6 +65,7 @@ class ServerHost(
             // and keeping them out of the server switch is what lets the wire be
             // tested without an Android Context.
             val notification = NotificationCommands.answer(method, fields, notifier)
+                ?: NotificationWatchCommands.answer(method, fields, watch)
             if (notification != null) {
                 answer(numericId, ok = true, notification)
                 return@execute

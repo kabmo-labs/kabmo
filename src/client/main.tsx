@@ -16,6 +16,7 @@ import { installBackDispatcher } from '@/client/lib/native/back';
 import { installPalettePublisher } from '@/client/lib/native/palette';
 import { installShellTransport } from '@/client/lib/shell/transport';
 import { installResumeDispatcher } from '@/client/lib/native/resume';
+import { syncNativeNotificationWatch } from '@/client/lib/notifications/watch';
 import { installOpenSessionDispatcher } from '@/client/lib/native/open-session';
 import { installFileLaunchHandler } from '@/client/lib/launch/file-handlers';
 import { installOpenPaths } from '@/client/lib/native/open-paths';
@@ -105,6 +106,12 @@ installShellTransport();
 // is the only reliable resume signal there — see `shared/lib/realtime/resume.ts`
 // for the watchdog that covers the case no event arrives at all.
 installResumeDispatcher();
+
+// A phone shell keeps its own connection to the server's notification stream
+// while the console is closed, because a backgrounded WebView is frozen and
+// cannot post a banner. It needs the console's own switches to know whether to
+// watch at all, and this is the only moment a page is guaranteed to exist.
+syncNativeNotificationWatch();
 
 // A file the OS handed to Kabmo (PWA File Handling) arrives as a
 // `FileSystemFileHandle` on `launchQueue`, and the consumer must be installed

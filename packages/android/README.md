@@ -359,6 +359,47 @@ with the current percent beside the label and a **Reset to 100%** button.
 `http://host:3000/kabmo` would send `/api/health` to `http://host:3000/api/health`.
 The field says so instead of accepting a URL that breaks.
 
+### Notifications while the app is closed
+
+**The console does not post the banners — the server records them and this shell
+delivers them.** The first implementation diffed consecutive `sidebar:status`
+snapshots in the page, which is invisible the moment Android freezes the
+renderer: nothing arrives, nothing is decided, and the backlog the page finally
+receives on resume fires every banner in one burst — the reported "no
+notification while closed, then all of them at once".
+
+Two halves, and neither is optional:
+
+- **The server decides and records** (`server/lib/notifications/feed.server.ts`).
+  A run settling writes an event (kind `finish`/`error`, the failure reason as
+  the body), an agent parking a dialog writes `ask`, and each event is gated by
+  its own switch (`notifyOnFinish` / `notifyOnAsk` / `notifyOnError`) before it
+  is stored. An open page gets the same events over the realtime socket, so
+  there is one decision and two transports.
+- **The shell holds its own connection** (`NotificationWatchService`) to
+  `GET /api/notifications/stream?platform=mobile&after=<id>`. Android keeps a
+  background network connection alive only as a FOREGROUND service, so the app
+  shows an ongoing row while the switches are on. Its type is `specialUse`, not
+  `dataSync`: Android 15 cuts a `dataSync` service off after six hours a day,
+  and this one has to outlive a working day. The cookie
+  comes from the WebView's own jar (the stream is behind the same session), the
+  cursor is persisted per server URL, and the first run sends no cursor at all —
+  the server answers that with the newest id, never the outbox, so a fresh
+  install does not announce history.
+
+`notification_watch` arms it: the console pushes its own switches on boot and on
+every change (`client/lib/notifications/watch.ts`), because the shell has no page
+to ask once it is backgrounded. The service is started from THAT command, while
+the console is visible — Android 12+ refuses a foreground-service start from the
+background, so starting it in `onStop` would fail exactly when it is needed.
+Disarming stops it. A banner posted by the page and one posted by the watcher
+share the tag and id, so the same event never shows twice.
+
+The wire is pinned by `NotificationWatchTest` (JVM), which is why the payload is
+read by the small strict reader in `NotificationWatch` rather than `org.json`:
+`org.json` is a stub in that suite, and this parser is the one that must not
+drift.
+
 ### Getting back to it
 
 **Two entry points: the console's Server chip, and long-press the Kabmo icon →
@@ -383,8 +424,9 @@ them.
 install (`src/client/lib/shell/transport.ts`). Commands: `servers_state`,
 `servers_add`, `servers_remove`, `servers_activate`, `notification_request`
 (`POST_NOTIFICATIONS` on API 33+, asked only when a notification preference is
-switched on) and `notification_show` (the agent's finished/waiting/failed
-banner; a tap opens that session). There is deliberately no
+switched on), `notification_show` (the agent's finished/waiting/failed banner; a
+tap opens that session) and `notification_watch` (arms the background watcher
+from the console's own switches). There is deliberately no
 `servers_start` / `servers_stop` — a phone has no child process to own — and the
 state answers `startable: false`, so the panel never draws the control. The list
 is `server_list` in SharedPreferences, migrated once from the single

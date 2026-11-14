@@ -430,6 +430,7 @@ class MainActivity : Activity() {
                 reply = { script -> replyToPage(script) },
                 onActivate = { url -> switchServer(url) },
                 notifier = AndroidNotifier(this),
+                watch = AndroidWatch(this),
             ),
             "kabmoHost",
         )

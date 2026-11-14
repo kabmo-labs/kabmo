@@ -29,8 +29,7 @@ import { createContext } from 'preact/compat';
 import type { ReactNode } from 'preact/compat';
 import { useRealtimeTopic } from '@/client/hooks/ui/realtime';
 import { useSidebarFullReload } from '@/client/hooks/chat/omp/sidebar-reload';
-import { useInputRequiredAlert } from '@/client/hooks/ui/input-required-alert';
-import { useRunOutcomeAlert } from '@/client/hooks/ui/run-outcome-alert';
+import { useNotificationEvents } from '@/client/hooks/ui/notification-events';
 
 import { realtimeClient } from '@/shared/lib/realtime/client';
 import { TOPIC_SIDEBAR, TOPIC_SIDEBAR_ACTIVITY, TOPIC_SIDEBAR_STATUS } from '@/shared/lib/realtime/protocol';
@@ -209,12 +208,11 @@ export function SidebarDataProvider({ children, initialFolders = [] }: { childre
   // Without this the list moved with nothing on screen saying so.
   const isRefreshing = refreshing || structure.refreshing || activity.refreshing;
 
-  // Fires for ANY session, including one this tab never opened — the cue that an
-  // agent is blocked on an answer must not depend on the open timeline.
-  useInputRequiredAlert(folders);
-  // The same list, for the terminal side of a run: a session that finished
-  // while the operator was reading another one is exactly what a banner is for.
-  useRunOutcomeAlert(folders);
+  // Every system banner the server records, in every session — including one
+  // this tab never opened. The events are decided by the server (see
+  // `hooks/ui/notification-events`), not inferred from this list, so a page that
+  // was frozen while they happened cannot replay them as a burst.
+  useNotificationEvents();
 
   const markSeen = useCallback((sessionId: number | string) => {
     const key = String(sessionId);

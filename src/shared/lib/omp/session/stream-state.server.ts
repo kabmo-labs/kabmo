@@ -41,6 +41,7 @@
 
 import { getDb } from '@/server/db.server';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
+import { noteRunSettled } from '@/server/lib/notifications/feed.server';
 
 export type SessionStreamStatus = 'stream' | 'finish' | 'abort';
 
@@ -87,6 +88,16 @@ export async function markStreamStatus(
     // A live or aborted row never carries a reason, and a new `stream` write
     // clears the previous run's: the next terminal settle must not inherit it.
     const reason = status === 'finish' && typeof failure === 'string' ? failure.trim() : '';
+    // The badge this write REPLACES, read before the upsert. A terminal write
+    // that lands on a live row is the run's end; the same write landing on an
+    // already-terminal row is a repair, and announcing it would fire a banner
+    // for a run the operator was told about minutes ago.
+    const previous = status === 'finish'
+      ? (await db.get<{ status: string }>(
+          'SELECT status FROM session_stream_state WHERE session_id = ?',
+          [sessionId],
+        ))?.status
+      : undefined;
     await db.run(
       `INSERT INTO session_stream_state (session_id, status, owner_pid, model_provider, model_id, failure, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
@@ -102,6 +113,10 @@ export async function markStreamStatus(
     // The signal bus has no imports of its own, so this edge cannot close a
     // cycle: the realtime layer subscribes to it, and this module only raises.
     emitRealtimeSignal('stream-status');
+    // The run's end is news the SERVER announces, because the page that used to
+    // diff this status is frozen whenever the console is backgrounded. Fired
+    // after the write: the banner names the badge that just appeared.
+    if (status === 'finish' && previous === 'stream') void noteRunSettled(sessionId, reason || null);
   } catch {
     // Status tracking is best-effort by design.
   }
