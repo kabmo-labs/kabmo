@@ -206,7 +206,17 @@ describe('peer session relay', () => {
 
     try {
       const value = (await sessionDescriptor(sessionId).resolve(topic)) as { running?: boolean };
-      expect(ownerCalls).toEqual([`/api/agent/${sessionId}`]);
+      const { resolveSessionOwnership } = await import('@/server/lib/omp/session/ownership.server');
+      const { listInstanceRecords } = await import('@/server/lib/lifecycle/instance');
+      const { processParentPid } = await import('@/server/lib/lifecycle/identity');
+      const diag = JSON.stringify({
+        holder,
+        parentNow: processParentPid(holder.pid),
+        records: listInstanceRecords(),
+        ownership: await resolveSessionOwnership(sessionId),
+        calls: ownerCalls,
+      });
+      expect(ownerCalls, diag).toEqual([`/api/agent/${sessionId}`]);
       expect(value.running).toBe(true);
     } finally {
       ownerServer.stop(true);
