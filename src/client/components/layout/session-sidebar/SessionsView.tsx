@@ -119,28 +119,21 @@ export function SessionsView({
     if (cwd) triggerSessionPrewarm(cwd);
   };
 
+  /**
+   * The sidebar's primary action opens the EMPTY WORKSPACE — the landing, with
+   * no query at all.
+   *
+   * It used to mint a pending `new-…` chat, which made the button inherit the
+   * open session's folder and put `?sessionId=new-…&folderId=…` in the URL.
+   * That is not empty: the sidebar grew a draft row the user never asked for,
+   * and the URL named a chat that did not exist. A landing is the one screen
+   * whose contract is "nothing has been chosen yet" — the workspace picker is
+   * right there, and the first send spawns the real session from whatever the
+   * user picks. Per-folder `+` and New child are different actions and keep
+   * their own pending session, because those DO choose a context up front.
+   */
   const handleNewSession = () => {
-    prewarmForNewSession();
-    setSearchParams(prev => {
-      const currentSessionId = prev.get('sessionId');
-      // The row this chat will show in the sidebar while omp has not written
-      // its transcript yet. The store mints the id (and keeps the row), so the
-      // URL carries what the sidebar reads rather than a second source.
-      const currentFolder = currentSessionId
-        ? folders.find(f => f.sessions?.some((s) => String(s.id) === String(currentSessionId)))
-        : undefined;
-      // The folder the chat will run in: the active session's, else the one the
-      // URL already names. Dropping the URL's own `folderId` (the previous
-      // `else next.delete`) left a chat opened with `?folderId=` with NO context
-      // — its composer then stayed disabled ("Please select a workspace above")
-      // and the first send never happened.
-      const contextFolderId = currentFolder?.id ?? (prev.get('folderId') ? Number(prev.get('folderId')) : null);
-      // `newSessionParams` also drops the branch hints: a draft the user backed
-      // out of leaves `forkFrom`/`forkAt`/`parentSessionId` in the URL, and the
-      // next chat read them as its OWN branch — the source transcript then
-      // filled the "new" chat above its composer.
-      return newSessionParams(prev, startPendingSession(contextFolderId), contextFolderId);
-    }, { replace: true });
+    setSearchParams(new URLSearchParams(), { replace: true });
   };
 
   /**

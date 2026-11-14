@@ -39,45 +39,38 @@ test.describe('sidebar', () => {
     await expect(app.getByRole('button', { name: 'Appearance' })).toBeVisible();
   });
 
-  test('creates a new session and switches the active one', async ({ harness, page }) => {
+  test('New Session opens the empty workspace on a clean URL', async ({ harness, page }) => {
     const server = await harness('real');
     const workspace = await seedWorkspace(server, 'e2e-sidebar-switch');
 
     await openApp(page, `${server.baseURL}/?folderId=${workspace.id}`);
     await expect(page.getByText('e2e-sidebar-switch').first()).toBeVisible();
 
-    // New Session opens a pending `new-…` chat; the URL carries it, which is
-    // the observable the switch depends on.
-    await page.getByRole('button', { name: /new session/i }).first().click();
-    await expect(page).toHaveURL(/sessionId=new-/);
+    // The primary action opens the LANDING: no `sessionId`, no `folderId`. It
+    // used to mint a pending `new-…` chat that inherited the open session, so
+    // the URL named a chat and the sidebar grew a row before anything was
+    // chosen. Nothing has been chosen on a landing — that is the point.
+    await page.getByRole('button', { name: /^new session$/i }).first().click();
+    await expect(page).toHaveURL(new URL('/', server.baseURL).href);
+    await expect(page.locator(`[data-testid="${TESTID.composerInput}"]`)).toBeVisible();
+    await expect(page.locator('[data-testid="session-item"][data-session-id^="new-"]')).toHaveCount(0);
 
     workspace.dispose();
   });
 
-  test('an EMPTY new chat leaves the sidebar when the user switches away', async ({ harness, page }) => {
-    // The reported behaviour: click New Session, type nothing, click another
-    // session — and the empty chat stayed in the sidebar for good, with nothing
-    // behind it. The row exists for a DRAFT (omp writes no transcript until the
-    // first assistant message settles, ~17s), so an empty composer is the
-    // negative answer and the row goes with the switch.
-    //
-    // Mounted on the `page` fixture rather than `app`: the demo session ids the
-    // mock seed writes have no mode record, so clicking one makes the chat's
-    // own `/api/sessions/:id/modes` probe answer 404 — a pre-existing console
-    // error unrelated to the list, and one `app`'s no-errors assertion fails on.
+  test('a new chat in a WORKSPACE still mints a pending row', async ({ harness, page }) => {
+    // The folder `+` is a different action: it chooses a context up front, so
+    // its chat is named and its draft row exists from the first click. Only the
+    // sidebar's primary action is the landing.
     const server = await harness('mock');
     await openApp(page, server.baseURL);
 
-    // The session to switch TO is addressed by its own id, never by `.first()`:
-    // the pending row is injected at the TOP of its folder, so a positional
-    // locator resolves to that row at click time and the click would re-select
-    // the pending chat — a spec that passes with the bug still in place.
     const firstItem = page.locator('[data-testid="session-item"]').first();
     await expect(firstItem).toBeVisible();
     const otherId = await firstItem.getAttribute('data-session-id');
     expect(otherId).toBeTruthy();
 
-    await page.getByRole('button', { name: /^new session$/i }).first().click();
+    await page.getByRole('button', { name: /^new session in /i }).first().click();
     const pendingId = new URL(page.url()).searchParams.get('sessionId') ?? '';
     expect(pendingId.startsWith('new-')).toBe(true);
     expect(pendingId).not.toBe(otherId);
@@ -96,15 +89,15 @@ test.describe('sidebar', () => {
     const server = await harness('mock');
     await openApp(page, server.baseURL);
 
-    // Open a real session FIRST, so New Session inherits its folder and the
-    // composer is enabled — the draft is what this spec is about.
+    // Open a real session FIRST, so the workspace `+` inherits its folder and
+    // the composer is enabled — the draft is what this spec is about.
     const firstItem = page.locator('[data-testid="session-item"]').first();
     await expect(firstItem).toBeVisible();
     const otherId = await firstItem.getAttribute('data-session-id');
     expect(otherId).toBeTruthy();
     await firstItem.click();
 
-    await page.getByRole('button', { name: /^new session$/i }).first().click();
+    await page.getByRole('button', { name: /^new session in /i }).first().click();
     const pendingId = new URL(page.url()).searchParams.get('sessionId') ?? '';
     expect(pendingId.startsWith('new-')).toBe(true);
 

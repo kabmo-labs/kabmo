@@ -100,10 +100,10 @@ test.describe('right panel', () => {
     await openApp(page, `${server.baseURL}/?folderId=${workspace.id}`);
     await expect(page.getByText('e2e-panels-adopt').first()).toBeVisible();
 
-    // The FOLDER's own New Session, not the toolbar's: the toolbar one inherits
-    // the active session's folder, and a spec that opened the app with
-    // `?folderId=` and clicked no session has none — the composer then stays
-    // disabled ("Please select a workspace above") and the send never happens.
+    // The FOLDER's own New Session, not the toolbar's: the toolbar one opens
+    // the empty workspace (a clean URL, no pending chat), so there would be no
+    // pending slot to adopt. The folder `+` chooses a context up front and
+    // mints the `new-…` chat this spec is about.
     // The pending slot's own blob must have LOADED before the panel click: the
     // provider only marks itself ready once that fetch settles, and while it is
     // in flight a later `ready` flip would mask the bug by re-reading the store
@@ -114,7 +114,7 @@ test.describe('right panel', () => {
         response.request().method() === 'GET' &&
         /^\/api\/sessions\/new-.+\/state$/.test(new URL(response.url()).pathname),
     );
-    await page.getByRole('button', { name: /^new session$/i }).last().click();
+    await page.getByRole('button', { name: /^new session in /i }).first().click();
     await expect(page).toHaveURL(/sessionId=new-/);
     await pendingStateLoaded;
 

@@ -182,24 +182,12 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
     setCurrentScreen('main');
   };
 
-  // Mirrors the desktop sidebar: a client-side pending session (`new-…`) that
-  // the chat timeline replaces with the real omp session id on first send.
-  // The current folder stays selected so the composer keeps its context.
+  // The drawer's primary action mirrors the desktop's: open the EMPTY
+  // WORKSPACE — the landing, with a clean URL. A pending `new-…` chat would
+  // name a session in the URL and grow a sidebar row before anything was
+  // chosen; the landing's own workspace picker is where the choice belongs.
   const handleNewSession = () => {
-    // Same resolution the send path uses (active session's folder, else the
-    // URL folderId) so the prewarmed cwd matches the eventual spawn cwd.
-    const cwd = spawnCwdForNewSession(folders, sessionParam, folderId ?? undefined);
-    if (cwd) triggerSessionPrewarm(cwd);
-    setSearchParams(prev => {
-      const currentSessionId = prev.get('sessionId');
-      const currentFolder = currentSessionId
-        ? folders.find(f => f.sessions?.some((s) => String(s.id) === String(currentSessionId)))
-        : undefined;
-      const contextFolderId = currentFolder?.id ?? folderId ?? null;
-      // `newSessionParams` also drops a backed-out fork's URL hints, which the
-      // next chat would otherwise read as its own branch.
-      return newSessionParams(prev, startPendingSession(contextFolderId), contextFolderId);
-    }, { replace: true });
+    setSearchParams(new URLSearchParams(), { replace: true });
     setCurrentScreen('main');
   };
 

@@ -259,9 +259,11 @@ test.describe('mobile layout', () => {
     // The phone never asked the controller for the pending placeholder, so a
     // brand-new chat had NO row in the drawer until omp's transcript scan
     // landed — the row appeared "after a while" with nothing explaining the gap.
+    // Driven by a WORKSPACE's own `+`: the drawer's primary New Session opens
+    // the empty workspace (clean URL), which by definition has no row yet.
     await app.getByRole('button', { name: 'Open Sessions' }).click();
 
-    await app.getByRole('button', { name: 'New Session' }).first().click();
+    await app.getByRole('button', { name: /^new session in /i }).first().click();
     const pendingId = new URL(app.url()).searchParams.get('sessionId') ?? '';
     expect(pendingId.startsWith('new-')).toBe(true);
 

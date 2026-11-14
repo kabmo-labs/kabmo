@@ -27,10 +27,13 @@ export function clearBranchParams(params: URLSearchParams): URLSearchParams {
 }
 
 /**
- * The query a freshly started `new-…` chat is opened with: the id, the folder
- * it will run in, and no branch hints — a New Session is top-level by
- * definition. A child or a fork sets its hints afterwards, in the call that
- * deliberately opened one.
+ * The query a chat opened in a KNOWN context is started with: a workspace's own
+ * `+`, a worktree chat, a child, a fork — the id, the folder it will run in, and
+ * no branch hints. A new chat is top-level unless the call that opened it names
+ * a branch, and that call sets its hints itself.
+ *
+ * The sidebar's primary New Session does NOT use this: it opens the landing on
+ * a clean URL, because nothing has been chosen there yet.
  */
 export function newSessionParams(
   prev: URLSearchParams,
