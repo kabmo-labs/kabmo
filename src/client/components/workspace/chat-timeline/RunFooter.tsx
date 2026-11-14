@@ -1,5 +1,6 @@
-import type { Attachment, ChatMessageData } from '@/shared/types';
+import type { Attachment, ChangedFile, ChatMessageData } from '@/shared/types';
 import { AiMessageFooter } from '@/client/components/workspace/chat-timeline/AiMessageFooter';
+import { ChangedFilesSummary } from '@/client/components/workspace/chat-timeline/ChangedFilesSummary';
 import { messageAnswerText } from '@/shared/lib/chat/notice-row';
 import { formatMessageStamp } from '@/shared/lib/format/time';
 import type { ForkAnchorRole } from '@/shared/lib/chat/timeline/fork-anchor';
@@ -46,6 +47,12 @@ interface RunFooterProps {
    * side answer) turns them off rather than rendering dead buttons.
    */
   showActions?: boolean;
+  /** Files this run changed, from the session's agent change journal. */
+  changedFiles?: ChangedFile[];
+  /** Session id the journal diff tabs read from. */
+  sessionId?: string;
+  /** The run's wall-clock window, epoch ms. */
+  runWindow?: { start: number; end: number };
 }
 
 /**
@@ -70,9 +77,22 @@ export function RunFooter({
   onFork,
   isMobile = false,
   showActions = true,
+  changedFiles,
+  sessionId,
+  runWindow,
 }: RunFooterProps) {
   return (
     <div className="mt-2">
+      {changedFiles && changedFiles.length > 0 && sessionId && runWindow && (
+        <div className="mb-1.5">
+          <ChangedFilesSummary
+            files={changedFiles}
+            sessionId={sessionId}
+            from={runWindow.start}
+            to={runWindow.end}
+          />
+        </div>
+      )}
       <AiMessageFooter
         provider={msg.provider || provider}
         providerNames={providerNames}

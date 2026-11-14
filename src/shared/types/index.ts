@@ -21,6 +21,7 @@ export * from '@/shared/types/settings/plugin';
 export * from '@/shared/types/settings/write';
 export * from '@/shared/types/context';
 export * from '@/shared/types/omp/session';
+export * from '@/shared/types/session-changes';
 export * from '@/shared/types/omp/agent';
 export * from '@/shared/types/omp/instructions';
 export * from '@/shared/types/omp/subagent';

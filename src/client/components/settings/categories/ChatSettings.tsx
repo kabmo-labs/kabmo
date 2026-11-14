@@ -33,6 +33,7 @@ import {
 import { ChatLayoutSection } from '@/client/components/settings/categories/chat-settings/LayoutSection';
 import { ComposerStyleSection } from '@/client/components/settings/categories/chat-settings/ComposerStyleSection';
 import { ChatToolRenderSection } from '@/client/components/settings/categories/chat-settings/ToolRenderSection';
+import { ChatChangedFilesSection } from '@/client/components/settings/categories/chat-settings/ChangedFilesSection';
 import { ChatFollowUpSection } from '@/client/components/settings/categories/chat-settings/FollowUpSection';
 import { ChatTitleSection } from '@/client/components/settings/categories/chat-settings/TitleSection';
 import { ChatGoalSection } from '@/client/components/settings/categories/chat-settings/GoalSection';
@@ -49,6 +50,7 @@ const SECTIONS: Record<ChatSectionId, (props: SectionProps) => ComponentChildren
   width: ChatLayoutSection,
   composer: ComposerStyleSection,
   'tool-calls': ChatToolRenderSection,
+  'changed-files': ChatChangedFilesSection,
   'follow-up': ChatFollowUpSection,
   titles: ChatTitleSection,
   goal: ChatGoalSection,

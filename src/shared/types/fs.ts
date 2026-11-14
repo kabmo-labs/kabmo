@@ -23,6 +23,15 @@ export interface OpenedFile {
   diffStatus?: string;
   diffStaged?: boolean;
   /**
+   * Where a diff tab's two sides come from. `git` (the default) reads the
+   * working tree through `/api/fs/git`; `journal` reads the agent's own
+   * before/after snapshots from the session's `changes.jsonl`, so the tab shows
+   * what the agent wrote even after someone else edited the file.
+   */
+  diffSource?: 'git' | 'journal';
+  /** The journal range a `diffSource: 'journal'` tab renders. */
+  journalDiff?: JournalDiffRef;
+  /**
    * The live `FileSystemFileHandle` id a PWA launch opened this tab through.
    *
    * Present only for a file the OS handed over: it has no server-reachable
@@ -37,6 +46,18 @@ export interface OpenedFile {
    * back: there is no path the server can reach and no writable handle.
    */
   deviceFile?: boolean;
+}
+
+/**
+ * One agent write range in a session's change journal: the absolute path plus
+ * the run window (`from`/`to`, epoch ms) whose net change the diff shows.
+ */
+export interface JournalDiffRef {
+  sessionId: string;
+  /** Absolute path as the journal recorded it. */
+  path: string;
+  from: number;
+  to: number;
 }
 
 export interface SearchResultItem {

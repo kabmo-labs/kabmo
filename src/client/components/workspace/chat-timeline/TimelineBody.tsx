@@ -5,6 +5,8 @@ import { MinimapShortcuts } from '@/client/components/workspace/chat-timeline/Mi
 import { MobileTurnJump } from '@/client/components/workspace/chat-timeline/MobileTurnJump';
 import { LoadingOlderIndicator } from '@/client/components/workspace/chat-timeline/SessionSkeleton';
 import { OrphanAsks } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/OrphanAsks';
+import { useSessionChanges } from '@/client/hooks/chat/timeline/session-changes';
+import { useShowChangedFiles } from '@/client/hooks/chat/timeline/changed-files-setting';
 import type { Attachment, ChatMessageData, UserTurnRef } from '@/shared/types';
 import type { ForkAnchorRole } from '@/shared/lib/chat/timeline/fork-anchor';
 
@@ -41,6 +43,8 @@ interface TimelineBodyProps {
   jumpToBottom: (behavior?: ScrollBehavior) => void;
   /** Which rows of `messages` are mounted (see `useTimelineRowWindow`). */
   rowWindow: TimelineRowWindow;
+  /** Session id the journal diff tabs read from. */
+  sessionId?: string;
 }
 
 /**
@@ -76,7 +80,14 @@ export function TimelineBody({
   showScrollBottom,
   jumpToBottom,
   rowWindow,
+  sessionId,
 }: TimelineBodyProps) {
+  // The agent's own change journal, for the per-run file list above each
+  // footer. Read once a run settles; a session with no journal (older omp)
+  // answers an empty list and the summary simply does not render. The setting
+  // gates the read too, so turning the list off costs no request.
+  const showChangedFiles = useShowChangedFiles();
+  const records = useSessionChanges(sessionId ?? null, isGenerating, showChangedFiles);
   return (
     <>
       {/* Jump to a user turn. The rail is desktop's form — one 1px line per
@@ -129,6 +140,8 @@ export function TimelineBody({
             onFork={onFork}
             isMobile={isMobile}
             rowWindow={rowWindow}
+            sessionId={sessionId}
+            changeRecords={records}
           />
           {/* An ask whose tool card this client cannot see (a subagent's, an
               extension's own dialog, a call outside the loaded window) still

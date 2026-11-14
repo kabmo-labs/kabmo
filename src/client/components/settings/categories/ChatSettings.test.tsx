@@ -94,7 +94,7 @@ describe('ChatSettings master/detail', () => {
 
     act(() => groupRow('Transcript').click());
 
-    expect(headings()).toEqual(['Tool Calls', 'Follow-up Dispatch']);
+    expect(headings()).toEqual(['Tool Calls', 'Changed Files', 'Follow-up Dispatch']);
     expect(groupRow('Transcript').getAttribute('aria-current')).toBe('true');
     expect(updates).toBe(0);
   });

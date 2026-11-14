@@ -23,6 +23,7 @@ export const CHAT_SECTION_IDS = [
   'width',
   'composer',
   'tool-calls',
+  'changed-files',
   'follow-up',
   'titles',
   'goal',
@@ -55,11 +56,11 @@ export const CHAT_SETTING_GROUPS: readonly ChatSettingGroup[] = [
   {
     id: 'transcript',
     label: 'Transcript',
-    hint: 'Tool calls and follow-up dispatch',
+    hint: 'Tool calls, changed files and follow-up dispatch',
     description:
-      'How a tool call is drawn, and what happens to a prompt sent while the agent is still running.',
+      'How a tool call is drawn, whether a run lists the files it changed, and what happens to a prompt sent while the agent is still running.',
     icon: ListOrdered,
-    sections: ['tool-calls', 'follow-up'],
+    sections: ['tool-calls', 'changed-files', 'follow-up'],
   },
   {
     id: 'sessions',

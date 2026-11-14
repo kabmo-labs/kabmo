@@ -2,8 +2,10 @@ import { useCallback, useRef, useState } from 'preact/hooks';
 import { useSessionUiState } from '@/client/hooks/workspace/session-state';
 import { isUnmergedCode } from '@/shared/lib/fs/git-unmerged';
 import { useFileDiff } from '@/client/hooks/workspace/diff-file';
+import { useJournalDiff } from '@/client/hooks/workspace/journal-diff';
 import { useDiffGitActions } from '@/client/hooks/workspace/diff-git-actions';
 import { getLanguageFromPath } from '@/shared/lib/code/language';
+import type { JournalDiffRef } from '@/shared/types/fs';
 import { DiffToolbar, type DiffContentMode, type DiffViewMode } from '@/client/components/workspace/diff-panel/Toolbar';
 import { ConflictBanner } from '@/client/components/workspace/diff-panel/ConflictBanner';
 import { ThemedMergeDiffView } from '@/client/components/workspace/diff-panel/ThemedMergeDiffView';
@@ -33,6 +35,14 @@ interface DiffPanelProps {
    * already covers the chat and the sidebar.
    */
   viewModeButtons?: boolean;
+  /**
+   * Read the two sides from the session's agent change journal instead of the
+   * worktree. The panel then shows what the agent wrote, even after someone
+   * else edited the file, and its git writes are hidden.
+   */
+  journalDiff?: JournalDiffRef;
+  /** Hide the git writes (stage / discard). Implied by `journalDiff`. */
+  readOnly?: boolean;
 }
 
 export function DiffPanel({
@@ -46,6 +56,8 @@ export function DiffPanel({
   className = '',
   tabKey = null,
   viewModeButtons = true,
+  journalDiff,
+  readOnly = false,
 }: DiffPanelProps) {
   // Read and persist view mode & whitespace preference in session_ui_state
   const [viewMode, setViewMode] = useSessionUiState<DiffViewMode>('diff.viewMode', 'unified');
@@ -75,6 +87,11 @@ export function DiffPanel({
   }, []);
   const editorFontFamily = useEditorFontStack();
 
+  // Both hooks run unconditionally (hooks cannot be conditional); the journal
+  // one is inert without a ref, and the git one is told not to read when the
+  // journal owns the panel.
+  const gitDiff = useFileDiff({ filePath, status, isStaged, repo, root, enabled: !journalDiff });
+  const journalDiffState = useJournalDiff(journalDiff);
   const {
     rawDiff,
     oldContent,
@@ -85,8 +102,9 @@ export function DiffPanel({
     errorMessage,
     fetchDiff,
     adoptState,
-  } = useFileDiff({ filePath, status, isStaged, repo, root });
-  const conflicted = isUnmergedCode(currentStatus);
+  } = journalDiff ? journalDiffState : gitDiff;
+  const conflicted = !journalDiff && isUnmergedCode(currentStatus);
+  const isReadOnly = readOnly || Boolean(journalDiff);
 
   const language = getLanguageFromPath(filePath);
   // A contributed renderer replaces the built-in views below, never the toolbar.
@@ -168,12 +186,13 @@ export function DiffPanel({
         isCopied={isCopied}
         isBusy={isBusy}
         viewModeButtons={viewModeButtons}
+        readOnly={isReadOnly}
         onSetViewMode={handleSetViewMode}
         onSetContentMode={handleSetContentMode}
         onToggleWordWrap={handleToggleWordWrap}
         onToggleWhitespace={handleToggleWhitespace}
-        onStageUnstage={() => void gitActions.stageUnstage()}
-        onDiscard={() => setShowDiscardConfirm(true)}
+        onStageUnstage={() => { if (!isReadOnly) void gitActions.stageUnstage(); }}
+        onDiscard={() => { if (!isReadOnly) setShowDiscardConfirm(true); }}
         onOpenInEditor={onOpenInEditor}
         onRefresh={() => void fetchDiff()}
         onCopyDiff={handleCopyDiff}

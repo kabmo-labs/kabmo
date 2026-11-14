@@ -6,6 +6,12 @@ interface UseFileDiffOptions {
   isStaged: boolean;
   repo: string;
   root?: string;
+  /**
+   * Whether this hook owns the read. A journal diff tab passes `false`: its two
+   * sides come from the session's change journal, and a git read would be a
+   * second, wrong answer for the same panel.
+   */
+  enabled?: boolean;
 }
 
 export interface FileDiffState {
@@ -33,7 +39,7 @@ export interface FileDiffState {
  * earlier read overwriting a newer one, and a dependency on the staged/status
  * copies re-keying the callback and firing a fetch per render.
  */
-export function useFileDiff({ filePath, status, isStaged, repo, root }: UseFileDiffOptions): FileDiffState {
+export function useFileDiff({ filePath, status, isStaged, repo, root, enabled = true }: UseFileDiffOptions): FileDiffState {
   const [rawDiff, setRawDiff] = useState<string>('');
   const [oldContent, setOldContent] = useState<string>('');
   const [newContent, setNewContent] = useState<string>('');
@@ -53,7 +59,7 @@ export function useFileDiff({ filePath, status, isStaged, repo, root }: UseFileD
   const fetchSeqRef = useRef(0);
 
   const fetchDiff = useCallback(async (overrides: { staged?: boolean; status?: string } = {}) => {
-    if (!filePath) return;
+    if (!enabled || !filePath) return;
     const seq = ++fetchSeqRef.current;
     setIsLoading(true);
     setErrorMessage(null);
@@ -109,7 +115,7 @@ export function useFileDiff({ filePath, status, isStaged, repo, root }: UseFileD
     } finally {
       if (seq === fetchSeqRef.current) setIsLoading(false);
     }
-  }, [filePath, repo, root]);
+  }, [filePath, repo, root, enabled]);
 
   /**
    * The read is keyed on the pair the caller asked for, not only on the path.
@@ -121,12 +127,13 @@ export function useFileDiff({ filePath, status, isStaged, repo, root }: UseFileD
    * seeded first: `fetchDiff` reads them, and the state copies lag a render.
    */
   useEffect(() => {
+    if (!enabled) return;
     stagedRef.current = isStaged;
     statusRef.current = status;
     setCurrentStatus(status);
     setCurrentStaged(isStaged);
     void fetchDiff();
-  }, [fetchDiff, isStaged, status]);
+  }, [fetchDiff, isStaged, status, enabled]);
 
   const adoptState = useCallback((next: { staged?: boolean; status?: string }) => {
     if (typeof next.staged === 'boolean') {

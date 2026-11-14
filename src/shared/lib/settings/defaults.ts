@@ -46,6 +46,7 @@ export const DEFAULT_SETTINGS = {
   goalDefaultBudget: null,
   chatWidthMode: DEFAULT_CHAT_WIDTH_MODE,
   toolRenderStyle: DEFAULT_TOOL_RENDER_MODE,
+  showChangedFiles: true,
   sidebarStyle: DEFAULT_SIDEBAR_STYLE,
   composerStyle: DEFAULT_COMPOSER_STYLE,
   surfaceStyle: DEFAULT_SURFACE_STYLE,

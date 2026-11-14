@@ -2,8 +2,9 @@ import { ArrowLeft } from 'lucide-preact';
 import { FileIcon } from '@/client/components/common/file-icon';
 import { DiffPanel } from '@/client/components/workspace/diff-panel';
 import { getGitStatusInfo } from '@/shared/lib/fs/git-status';
-import { diffTabId } from '@/shared/lib/workspace/file-tab-id';
+import { diffTabId, journalDiffTabId } from '@/shared/lib/workspace/file-tab-id';
 import { titlebarPaddingLeft, titlebarPaddingRight } from '@/shared/lib/ui/titlebar';
+import type { JournalDiffRef } from '@/shared/types/fs';
 
 interface MobileFullDiffProps {
   diff: {
@@ -12,6 +13,8 @@ interface MobileFullDiffProps {
     staged?: boolean;
     repo?: string;
     root?: string;
+    /** Present when the two sides come from the agent change journal. */
+    journal?: JournalDiffRef;
   };
   onClose: () => void;
   onFileSaved?: () => void;
@@ -77,10 +80,14 @@ export function MobileFullDiff({ diff, onClose, onFileSaved }: MobileFullDiffPro
           isStaged={isStaged}
           root={diff.root}
           repo={diff.repo || '.'}
+          journalDiff={diff.journal}
+          readOnly={Boolean(diff.journal)}
           onFileSaved={onFileSaved}
           // The same id a desktop diff tab uses for this path+staged pair, so a
           // diff read on the phone and one read on the desktop share an offset.
-          tabKey={diffTabId(diff.path, isStaged)}
+          tabKey={diff.journal
+            ? journalDiffTabId(diff.journal.path, diff.journal.from, diff.journal.to)
+            : diffTabId(diff.path, isStaged)}
         />
       </div>
     </div>

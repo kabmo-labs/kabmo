@@ -23,6 +23,7 @@ import { Window } from 'happy-dom';
 import { applySettingsSideEffects } from '@/client/components/settings/apply-side-effects';
 import { DEFAULT_SETTINGS } from '@/shared/lib/settings/defaults';
 import { SIDEBAR_STYLE_CHANGED_EVENT } from '@/client/hooks/workspace/sidebar-style';
+import { CHANGED_FILES_CHANGED_EVENT } from '@/client/hooks/chat/timeline/changed-files-setting';
 import { EDITOR_FONT_CHANGED_EVENT } from '@/client/hooks/editor/font';
 import type { SettingsState } from '@/shared/types';
 
@@ -74,6 +75,16 @@ describe('applySettingsSideEffects', () => {
     applySettingsSideEffects(state({ sidebarStyle: 'modern' }), state({ sidebarStyle: 'modern' }));
 
     expect(seen).toEqual([]);
+  });
+
+  test('announces the changed-files toggle so the open timeline redraws', () => {
+    const win = installDom();
+    const seen: unknown[] = [];
+    win.addEventListener(CHANGED_FILES_CHANGED_EVENT, (event) => seen.push((event as unknown as CustomEvent).detail));
+
+    applySettingsSideEffects(state(), state({ showChangedFiles: false }));
+
+    expect(seen).toEqual([false]);
   });
 
   test('an unrelated edit announces nothing at all', () => {

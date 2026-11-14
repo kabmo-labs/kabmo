@@ -98,6 +98,8 @@ export function EditorBody({
         isStaged={Boolean(activeFile.diffStaged)}
         root={activeFile.root}
         repo={activeFile.repo || '.'}
+        journalDiff={activeFile.journalDiff}
+        readOnly={activeFile.diffSource === 'journal'}
         onOpenInEditor={() => onConvertDiffToEditor(activeFile.id)}
         onFileSaved={onFileSaved}
         className="flex-1"

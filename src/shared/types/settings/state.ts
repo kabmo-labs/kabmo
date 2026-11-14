@@ -140,6 +140,14 @@ export interface SettingsState {
    */
   toolRenderStyle: ToolRenderMode;
   /**
+   * Whether a run's footer carries the collapsed "N files changed" list, read
+   * from the session's agent change journal. On by default: the list is the
+   * only place the transcript says which files a run touched, and a reader who
+   * does not want it can turn it off. Global, like the other transcript
+   * presentation choices.
+   */
+  showChangedFiles: boolean;
+  /**
    * Which chrome the session sidebar draws (`classic` | `modern`). A
    * PRESENTATION choice over one data source, not a second sidebar: both styles
    * render the same folders, rows, actions and dialogs.

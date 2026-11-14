@@ -268,7 +268,7 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
                   onFork={fork}
                   showScrollBottom={showScrollBottom}
                   jumpToBottom={jumpToBottom}
-                  rowWindow={rowWindow}
+                  rowWindow={rowWindow} sessionId={sessionId}
                 />
               )}
             </div>

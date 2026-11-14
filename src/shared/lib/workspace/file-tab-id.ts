@@ -23,6 +23,15 @@ export function diffTabId(path: string, staged: boolean): string {
   return `diff-${staged ? 'staged' : 'working'}-${path}`;
 }
 
+/**
+ * The diff tab id for one journal range. The same file changed in two runs is
+ * two different diffs, so the range is part of the id — unlike a git diff,
+ * where the path and side are the whole identity.
+ */
+export function journalDiffTabId(path: string, from: number, to: number): string {
+  return `diff-journal-${from}-${to}-${path}`;
+}
+
 /** Display name for a diff tab: `main.ts` → `main.ts (Diff)`. */
 export function diffTabName(path: string): string {
   return `${path.split('/').pop() || path} (Diff)`;

@@ -2,14 +2,14 @@ import { useCallback, useEffect, useRef } from 'preact/hooks';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
 import { useSessionStateContext } from '@/client/hooks/workspace/session-state/context';
 import { useKabmoEvent } from '@/client/hooks/ui/window-event';
-import { diffTabId, diffTabName, fileTabId } from '@/shared/lib/workspace/file-tab-id';
+import { diffTabId, diffTabName, fileTabId, journalDiffTabId } from '@/shared/lib/workspace/file-tab-id';
 import { getSessionValue, setSessionKey } from '@/shared/lib/workspace/session-state/store';
 import {
   SCROLL_POSITIONS_KEY,
   dropScrollPosition,
   type ScrollPositions,
 } from '@/shared/lib/workspace/scroll-positions';
-import type { OpenedFile } from '@/shared/types/fs';
+import type { JournalDiffRef, OpenedFile } from '@/shared/types/fs';
 
 export interface OpenFileInput {
   id?: number | string;
@@ -135,10 +135,16 @@ export function useFileTabs(
     status?: string;
     repo?: string;
     root?: string;
+    /** `journal` reads the agent's own before/after snapshots, not the worktree. */
+    source?: 'journal';
+    journal?: JournalDiffRef;
   }) => {
     const rawPath = diffInfo.file.replace(/^\/+/, '');
     const isStaged = Boolean(diffInfo.staged);
-    const diffId = diffTabId(rawPath, isStaged);
+    const journal = diffInfo.source === 'journal' ? diffInfo.journal : undefined;
+    const diffId = journal
+      ? journalDiffTabId(journal.path, journal.from, journal.to)
+      : diffTabId(rawPath, isStaged);
 
     const diffEntry: OpenedFile = {
       id: diffId,
@@ -149,11 +155,12 @@ export function useFileTabs(
       diffStaged: isStaged,
       repo: diffInfo.repo || '.',
       root: diffInfo.root ?? activeProjectPath ?? undefined,
+      ...(journal ? { diffSource: 'journal' as const, journalDiff: journal } : {}),
     };
 
     setOpenedFiles(prev => {
       const existing = prev.find(
-        f => f.id === diffId || (f.isDiff && f.path === rawPath && f.diffStaged === isStaged)
+        f => f.id === diffId || (!journal && f.isDiff && f.path === rawPath && f.diffStaged === isStaged)
       );
       if (existing) {
         setActiveFileId(existing.id);
@@ -289,6 +296,8 @@ export function useFileTabs(
       status?: string;
       repo?: string;
       root?: string;
+      source?: 'journal';
+      journal?: JournalDiffRef;
     }>;
     if (!customEvent.detail || !customEvent.detail.file) return;
     handleOpenDiff(customEvent.detail);

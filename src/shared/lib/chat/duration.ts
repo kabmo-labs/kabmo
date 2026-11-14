@@ -80,3 +80,37 @@ export function responseRunDurationMs(
   if (start === null || end <= start) return null;
   return end - start;
 }
+
+/**
+ * Wall-clock window of one run: the opening row's start to the owner row's end.
+ *
+ * The change journal records epoch-ms write times and nothing that names a
+ * message, so this window is what buckets a write into the run that made it.
+ * `null` when either end is unmeasurable — a caller then shows no file list
+ * rather than guessing.
+ */
+export function runWindowMs(
+  messages: TimedMessage[],
+  runStartIndex: number,
+  ownerIndex: number,
+): { start: number; end: number } | null {
+  // A session file can start mid-run: the first run then has no user row
+  // (`runStartIndex` is -1), and falling back to the OWNER row's start would
+  // begin the window at the last assistant message — after every write the run
+  // made. Walk forward from the first row instead.
+  const start = runStartIndex >= 0
+    ? (msgStartMs(messages[runStartIndex]) ?? msgStartMs(messages[ownerIndex]))
+    : firstStartMs(messages, ownerIndex);
+  const end = msgEndMs(messages[ownerIndex]);
+  if (start === null || end === null || end < start) return null;
+  return { start, end };
+}
+
+/** First measurable start at or before `lastIndex`, scanning from the top. */
+function firstStartMs(messages: TimedMessage[], lastIndex: number): number | null {
+  for (let index = 0; index <= lastIndex; index++) {
+    const start = msgStartMs(messages[index]);
+    if (start !== null) return start;
+  }
+  return null;
+}

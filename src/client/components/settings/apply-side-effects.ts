@@ -31,6 +31,7 @@ import type { SettingsState } from '@/shared/types';
 import { applyDocumentTheme } from '@/client/hooks/ui/theme';
 import { applyChatWidthMode } from '@/client/hooks/chat/timeline/width-mode';
 import { applyToolRenderMode } from '@/client/hooks/chat/timeline/tool-render-mode';
+import { applyShowChangedFiles } from '@/client/hooks/chat/timeline/changed-files-setting';
 import { applySidebarStyle } from '@/client/hooks/workspace/sidebar-style';
 import { applyComposerStyle } from '@/client/hooks/chat/composer/style';
 import { applySurfaceStyle } from '@/client/hooks/ui/surface-style';
@@ -73,6 +74,12 @@ export function applySettingsSideEffects(previous: SettingsState, next: Settings
   // hear about the change now.
   if (next.toolRenderStyle !== previous.toolRenderStyle) {
     applyToolRenderMode(next.toolRenderStyle);
+  }
+
+  // The changed-files list is a Preact subtree above each run footer, so the
+  // open timeline has to hear about the change now.
+  if (next.showChangedFiles !== previous.showChangedFiles) {
+    applyShowChangedFiles(next.showChangedFiles);
   }
 
   // The sidebar style picks a Preact tree for the whole left column, and the

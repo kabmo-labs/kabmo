@@ -1,10 +1,11 @@
-import { AlignJustify, Check, ChevronDown, ChevronUp, Code2, Columns, Copy, Diff, FileCode, Minus, Plus, RefreshCw, Space, Undo2, WrapText } from 'lucide-preact';
+import { AlignJustify, Check, ChevronDown, ChevronUp, Code2, Columns, Copy, Diff, FileCode, RefreshCw, Space, WrapText } from 'lucide-preact';
 import { FileIcon } from '@/client/components/common/file-icon';
 import { EditorViewButtons, useEditorViewActions } from '@/client/components/common/editor-view-buttons';
 import { getGitStatusInfo } from '@/shared/lib/fs/git-status';
 import { ToolbarRow, type ToolbarCluster } from '@/client/components/common/toolbar-row';
 import { DiffContentModeSegments, DiffViewModeSegments } from '@/client/components/workspace/diff-panel/ToolbarSegments';
 import { HunkStepper } from '@/client/components/workspace/diff-panel/HunkStepper';
+import { ACTION_CLASS, gitActionClusters } from '@/client/components/workspace/diff-panel/toolbar-git-actions';
 
 export type DiffViewMode = 'unified' | 'split';
 
@@ -41,6 +42,12 @@ interface DiffToolbarProps {
    * chat column or sidebar beside it for a mode to widen into.
    */
   viewModeButtons?: boolean;
+  /**
+   * Hide the git writes. A journal diff shows the agent's own snapshots, which
+   * are not the worktree: staging or discarding from it would write a state the
+   * reader never saw.
+   */
+  readOnly?: boolean;
   onSetViewMode: (mode: DiffViewMode) => void;
   onSetContentMode: (mode: DiffContentMode) => void;
   onToggleWordWrap: () => void;
@@ -51,9 +58,6 @@ interface DiffToolbarProps {
   onRefresh: () => void;
   onCopyDiff: () => void;
 }
-
-const ACTION_CLASS =
-  'flex items-center justify-center p-1.5 rounded transition-colors cursor-pointer disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-ink/50';
 
 export function DiffToolbar({
   filePath,
@@ -72,6 +76,7 @@ export function DiffToolbar({
   isCopied,
   isBusy = false,
   viewModeButtons = true,
+  readOnly = false,
   onSetViewMode,
   onSetContentMode,
   onToggleWordWrap,
@@ -249,53 +254,14 @@ export function DiffToolbar({
     ),
   });
 
-  if (!isStaged) {
-    clusters.push({
-      id: 'discard',
-      actions: [{ label: 'Discard changes in this file', icon: Undo2, onSelect: onDiscard, disabled: locked }],
-      children: (
-        <button
-          type="button"
-          onClick={onDiscard}
-          className={`${ACTION_CLASS} text-ink/50 hover:text-error hover:bg-error/10`}
-          title="Discard changes in this file"
-          aria-label="Discard changes in this file"
-          disabled={locked}
-        >
-          <Undo2 size={13} />
-        </button>
-      ),
-    });
-  }
-
-  clusters.push({
-    id: 'stage',
-    // The panel's primary write: a menu row must not be the only way to stage.
-    pinned: true,
-    actions: [{ label: stageLabel, icon: isStaged ? Minus : Plus, onSelect: onStageUnstage, disabled: locked }],
-    children: (
-      <button
-        type="button"
-        onClick={onStageUnstage}
-        className="px-2 py-1 text-[11px] font-medium rounded border border-ink/15 hover:bg-ink/5 flex items-center space-x-1 transition-colors text-ink cursor-pointer disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent"
-        title={stageLabel}
-        aria-label={stageLabel}
-        disabled={locked}
-      >
-        {isStaged ? (
-          <>
-            <Minus size={12} />
-            <span className="hidden @[360px]:inline">Unstage</span>
-          </>
-        ) : (
-          <>
-            <Plus size={12} />
-            <span className="hidden @[360px]:inline">Stage</span>
-          </>
-        )}
-      </button>
-    ),
-  });
+  clusters.push(...gitActionClusters({
+    isStaged,
+    locked,
+    readOnly,
+    stageLabel,
+    onStageUnstage,
+    onDiscard,
+  }));
 
   if (onOpenInEditor) {
     clusters.push({

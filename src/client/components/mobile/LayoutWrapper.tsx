@@ -3,7 +3,7 @@ import { useSearchParams } from '@/client/lib/router/search-params';
 import { clearBranchParams, newSessionParams } from '@/client/lib/router/branch-params';
 import { useKabmoEvent } from '@/client/hooks/ui/window-event';
 import { useMobileBackStack } from '@/client/hooks/workspace/mobile-back';
-import type { SettingsCategoryId } from '@/shared/types';
+import type { JournalDiffRef, SettingsCategoryId } from '@/shared/types';
 import { MobileMainView } from '@/client/components/mobile/MainView';
 import { WindowAura } from '@/client/components/layout/WindowAura';
 import { ShellNotice } from '@/client/components/layout/ShellNotice';
@@ -50,7 +50,7 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
 
   const [currentScreen, setCurrentScreen] = useState<MobileScreen>('main');
   const [mobileEditorFile, setMobileEditorFile] = useState<MobileEditorFile | null>(null);
-  const [mobileDiff, setMobileDiff] = useState<{ path: string; status?: string; staged?: boolean; repo?: string; root?: string } | null>(null);
+  const [mobileDiff, setMobileDiff] = useState<{ path: string; status?: string; staged?: boolean; repo?: string; root?: string; journal?: JournalDiffRef } | null>(null);
   // Bumped whenever a write lands so the workspace panels (explorer, git,
   // context) re-read from disk — the same signal the desktop layout passes down.
   const [refreshKey, setRefreshKey] = useState(0);
@@ -121,7 +121,15 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
   // phone the same event opens the full-screen diff; without a listener here
   // the tap was silently dropped.
   useKabmoEvent('omp:open-diff', (e) => {
-    const detail = (e as CustomEvent<{ file?: string; status?: string; staged?: boolean; repo?: string; root?: string }>).detail;
+    const detail = (e as CustomEvent<{
+      file?: string;
+      status?: string;
+      staged?: boolean;
+      repo?: string;
+      root?: string;
+      source?: 'journal';
+      journal?: JournalDiffRef;
+    }>).detail;
     if (!detail?.file) return;
     setMobileDiff({
       path: detail.file.replace(/^\/+/, ''),
@@ -129,6 +137,7 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
       staged: detail.staged,
       repo: detail.repo,
       root: detail.root ?? activeProjectPath ?? undefined,
+      ...(detail.source === 'journal' && detail.journal ? { journal: detail.journal } : {}),
     });
   });
 

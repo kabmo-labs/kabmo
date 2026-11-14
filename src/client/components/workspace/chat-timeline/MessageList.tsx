@@ -8,9 +8,11 @@ import { TurnRail } from '@/client/components/workspace/chat-timeline/TurnRail';
 import { useToolRenderMode } from '@/client/hooks/chat/timeline/tool-render-mode';
 import { isNoticeRow } from '@/shared/lib/chat/notice-row';
 import { previousNonNoticeIndex, resolveRunFooters, streamingRowIndex } from '@/shared/lib/chat/timeline/run-footer';
+import { bucketChangesByRun } from '@/shared/lib/chat/timeline/changed-files';
+import { runWindowMs } from '@/shared/lib/chat/duration';
 import { groupTraceRows } from '@/shared/lib/chat/timeline/trace-groups';
 import type { TimelineRowWindow } from '@/client/hooks/chat/timeline/row-window';
-import type { Attachment, ChatMessageData } from '@/shared/types';
+import type { Attachment, ChatMessageData, SessionChangeRecord } from '@/shared/types';
 import type { ForkAnchorRole } from '@/shared/lib/chat/timeline/fork-anchor';
 
 export interface MessageListProps {
@@ -46,6 +48,10 @@ export interface MessageListProps {
    * own timeline mounts a window instead.
    */
   rowWindow?: TimelineRowWindow;
+  /** Session id the journal diff tabs read from. */
+  sessionId?: string;
+  /** The session's agent change journal, bucketed into runs here. */
+  changeRecords?: SessionChangeRecord[];
 }
 
 /**
@@ -78,6 +84,8 @@ export const MessageList = memo(function MessageList({
   isMobile = false,
   userActions = true,
   rowWindow,
+  sessionId,
+  changeRecords,
 }: MessageListProps) {
   const { streamingIdx, footers, prevNonNoticeIdx } = useMemo(() => {
     return {
@@ -89,6 +97,24 @@ export const MessageList = memo(function MessageList({
       prevNonNoticeIdx: previousNonNoticeIndex(messages),
     };
   }, [messages, isGenerating]);
+
+  // The journal's writes bucketed into runs, and each run's wall-clock window
+  // (the range a journal diff tab reads). Both are derived from the same
+  // `footers` pass, so a run's list and its diff cannot disagree about which
+  // run they describe.
+  const changedFilesByOwner = useMemo(
+    () => bucketChangesByRun(messages, footers, changeRecords ?? []),
+    [messages, footers, changeRecords],
+  );
+  const runWindows = useMemo(() => {
+    const windows = new Map<number, { start: number; end: number }>();
+    for (const slot of footers) {
+      if (!slot) continue;
+      const window = runWindowMs(messages, slot.runStartIndex, slot.ownerIndex);
+      if (window) windows.set(slot.ownerIndex, window);
+    }
+    return windows;
+  }, [messages, footers]);
 
   const start = rowWindow ? rowWindow.start : 0;
   const end = rowWindow ? Math.min(rowWindow.end, messages.length) : messages.length;
@@ -167,6 +193,9 @@ export const MessageList = memo(function MessageList({
                     onFork={onFork}
                     isMobile={isMobile}
                     showActions={userActions}
+                    changedFiles={changedFilesByOwner.get(inlineFooter.ownerIndex)}
+                    sessionId={sessionId}
+                    runWindow={runWindows.get(inlineFooter.ownerIndex)}
                   />
                 )}
               </div>
@@ -190,6 +219,9 @@ export const MessageList = memo(function MessageList({
             onFork={onFork}
             isMobile={isMobile}
             showActions={userActions}
+            changedFiles={changedFilesByOwner.get(trailingFooter.ownerIndex)}
+            sessionId={sessionId}
+            runWindow={runWindows.get(trailingFooter.ownerIndex)}
           />
         )}
         </Fragment>

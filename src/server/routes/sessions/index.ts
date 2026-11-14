@@ -21,6 +21,7 @@ import { getSessionRelations, updateSessionParent } from '@/server/routes/sessio
 import { forkSessionRoute } from '@/server/routes/sessions/fork';
 import { getSessionAnswer } from '@/server/routes/sessions/answer';
 import { getSessionMcp, probeSessionMcp, setSessionMcp } from '@/server/routes/sessions/mcp';
+import { getSessionChangeDiff, getSessionChanges } from '@/server/routes/sessions/changes';
 
 export const sessionsBindings: HandlerBinding[] = [
   ...bindingsFor(sessionsList, '/api/sessions/list'),
@@ -42,6 +43,11 @@ export const sessionsBindings: HandlerBinding[] = [
   { method: 'POST', path: '/api/sessions/:sessionId/parent', handler: updateSessionParent },
   { method: 'POST', path: '/api/sessions/:sessionId/fork', handler: forkSessionRoute },
   { method: 'GET', path: '/api/sessions/:sessionId/answer', handler: getSessionAnswer },
+  // The agent's own change journal: the per-run file list and one file's net
+  // diff. Static suffixes under the same `:sessionId` position, so the
+  // parameter name must stay `sessionId`.
+  { method: 'GET', path: '/api/sessions/:sessionId/changes', handler: getSessionChanges },
+  { method: 'GET', path: '/api/sessions/:sessionId/changes/diff', handler: getSessionChangeDiff },
   // The MCP list this session has, and the per-session switch. A static suffix
   // under the same `:sessionId` position, so the parameter name must stay
   // `sessionId` (Elysia requires one name per position).
