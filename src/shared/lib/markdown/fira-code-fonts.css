@@ -7,12 +7,29 @@
  * GENERATED — do not edit by hand. Run `bun run scripts/katex-fonts-woff2.mjs`
  * after upgrading @fontsource/fira-code.
  *
- * Fira Code, latin subset, woff2-only, weights 400/500/600/700 — the faces
- * `main.tsx` imports. Replaces `@fontsource/fira-code/{400,500,600,700}.css`,
- * which pulled 7 subsets (cyrillic, cyrillic-ext, greek, greek-ext, latin,
- * latin-ext, symbols2) x 4 weights x 2 formats = 56 files. This console is
- * English-only, so the other six subsets were dead weight, and the woff
- * fallback is never fetched by a browser that supports woff2.
+ * Fira Code, latin + symbols2 subsets, woff2-only, weights 400/500/600/700 —
+ * the faces `main.tsx` imports. Replaces
+ * `@fontsource/fira-code/{400,500,600,700}.css`, which pulled 7 subsets
+ * (cyrillic, cyrillic-ext, greek, greek-ext, latin, latin-ext, symbols2) x 4
+ * weights x 2 formats = 56 files. This console is English-only, so the
+ * language subsets were dead weight, and the woff fallback is never fetched by
+ * a browser that supports woff2.
+ *
+ * ## `symbols2` is NOT a language subset — dropping it broke every ASCII box
+ *
+ * It is the only subset carrying U+2500-259F (box drawing) and U+2000-200A
+ * (the fixed-width spaces). Without it those codepoints have no Fira Code face
+ * and fall through to the next family in the stack, `monospace` — a system
+ * face whose advance is not 0.6 em. Measured in WebKit at 12px: `M` 7.2px,
+ * `─`/`│`/`┌` 8.502px, so a box drawn with `─` overshoots its own `│` border by
+ * 1.3px per column and an agent's ASCII diagram arrives visibly skewed. With
+ * the face below declared, all four measure 7.2px.
+ *
+ * The `unicode-range` on every face is upstream's, and it is what keeps the
+ * 4 kB symbols2 files off the wire: a page that lays out no box-drawing glyph
+ * never requests them. Declaring the ranges also makes the face choice
+ * explicit instead of relying on "last declared wins" for the U+2000-200A
+ * overlap with latin.
  *
  * `font-display: swap` and the family/style/weight declarations match upstream,
  * so text metrics are unchanged.
@@ -24,6 +41,7 @@
   font-display: swap;
   font-weight: 400;
   src: url('@fontsource/fira-code/files/fira-code-latin-400-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
 @font-face {
@@ -32,6 +50,7 @@
   font-display: swap;
   font-weight: 500;
   src: url('@fontsource/fira-code/files/fira-code-latin-500-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
 @font-face {
@@ -40,6 +59,7 @@
   font-display: swap;
   font-weight: 600;
   src: url('@fontsource/fira-code/files/fira-code-latin-600-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
 @font-face {
@@ -48,4 +68,43 @@
   font-display: swap;
   font-weight: 700;
   src: url('@fontsource/fira-code/files/fira-code-latin-700-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Box drawing, block elements and the fixed-width spaces — see the note above.
+ * Declared AFTER latin so the U+2000-200A overlap resolves to this face. */
+@font-face {
+  font-family: 'Fira Code';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url('@fontsource/fira-code/files/fira-code-symbols2-400-normal.woff2') format('woff2');
+  unicode-range: U+2000-2001, U+2004-2008, U+200A, U+23B8-23BD, U+2500-259F;
+}
+
+@font-face {
+  font-family: 'Fira Code';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url('@fontsource/fira-code/files/fira-code-symbols2-500-normal.woff2') format('woff2');
+  unicode-range: U+2000-2001, U+2004-2008, U+200A, U+23B8-23BD, U+2500-259F;
+}
+
+@font-face {
+  font-family: 'Fira Code';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url('@fontsource/fira-code/files/fira-code-symbols2-600-normal.woff2') format('woff2');
+  unicode-range: U+2000-2001, U+2004-2008, U+200A, U+23B8-23BD, U+2500-259F;
+}
+
+@font-face {
+  font-family: 'Fira Code';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url('@fontsource/fira-code/files/fira-code-symbols2-700-normal.woff2') format('woff2');
+  unicode-range: U+2000-2001, U+2004-2008, U+200A, U+23B8-23BD, U+2500-259F;
 }

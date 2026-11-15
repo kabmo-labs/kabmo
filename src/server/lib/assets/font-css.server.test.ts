@@ -50,6 +50,25 @@ describe('/fonts.css is assembled from source, not from a build artifact', () =>
     expect(urls(sheet)).toContain('/fonts/fira-code-latin-400-normal.woff2');
   });
 
+  /**
+   * The `symbols2` subset is the ONLY face carrying U+2500-259F, and it is not
+   * a language subset — so a "drop the unused subsets" pass removes it and
+   * every ASCII box in a markdown code block silently skews. Measured in
+   * WebKit at 12px with the face absent: `M` 7.2px, `─`/`│`/`┌` 8.502px, so a
+   * `─` border overshoots its own `│` corner by 1.3px per column. With it
+   * declared, all four measure 7.2px and a 42-column box renders every line at
+   * exactly 302.4px.
+   */
+  test('it declares the box-drawing subset, which no language subset carries', () => {
+    expect(urls(sheet)).toContain('/fonts/fira-code-symbols2-400-normal.woff2');
+    expect(urls(sheet)).toContain('/fonts/fira-code-symbols2-700-normal.woff2');
+    // The range is what keeps the 4 kB files off the wire on a page that lays
+    // out no box-drawing glyph, so a face without it is a different contract.
+    const symbols2 = [...sheet.matchAll(/@font-face\s*\{[^{}]*symbols2[^{}]*\}/g)].map(([block]) => block);
+    expect(symbols2.length).toBe(4);
+    for (const block of symbols2) expect(block).toContain('U+2500-259F');
+  });
+
   test('every url is rewritten to the served route — no relative or node_modules path survives', () => {
     const targets = urls(sheet);
     expect(targets.length).toBeGreaterThan(20);
