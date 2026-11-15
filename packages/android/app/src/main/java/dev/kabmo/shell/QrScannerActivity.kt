@@ -159,20 +159,17 @@ class QrScannerActivity : Activity() {
 
         @JavascriptInterface
         fun error(message: String) {
-            // The page has already drawn the sentence; the shell only needs to
-            // know the scan did not produce a code, so the caller can stay put.
+            // Deliberately does NOT finish. The page has already drawn the
+            // sentence, and it is the only place that can: closing the screen
+            // here destroyed the reason before the user could read it, and the
+            // caller has nothing to add (it ignores the result on CANCELED).
+            // The scanner stays up so a second image can be tried; Back leaves.
             if (finished) return
-            finished = true
-            runOnUiThread {
-                setResult(RESULT_CANCELED, Intent().putExtra(EXTRA_ERROR, message))
-                finish()
-            }
         }
     }
 
     companion object {
         const val EXTRA_LINK = "dev.kabmo.shell.QR_LINK"
-        const val EXTRA_ERROR = "dev.kabmo.shell.QR_ERROR"
         private const val REQUEST_CAMERA = 0x4b44
         private const val REQUEST_IMAGE = 0x4b46
     }

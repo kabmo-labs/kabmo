@@ -56,10 +56,15 @@ public final class QrScannerSheet: NSObject, AVCaptureMetadataOutputObjectsDeleg
     previewView.autoresizingMask = [.width, .height]
     container.addSubview(previewView)
 
-    let label = NSTextField(labelWithString: "Point the camera at the pairing code")
+    // A wrapping label with room for three lines: the refusal sentences are the
+    // only explanation the user gets ("The camera was blocked. Allow it in System
+    // Settings, or use the pairing link instead." is ~85 characters, which a
+    // single 18-point line at 420 points wide clips mid-sentence).
+    let label = NSTextField(wrappingLabelWithString: "Point the camera at the pairing code")
     label.alignment = .center
     label.textColor = .secondaryLabelColor
-    label.frame = NSRect(x: 0, y: 8, width: container.bounds.width, height: 18)
+    label.maximumNumberOfLines = 3
+    label.frame = NSRect(x: 16, y: 8, width: container.bounds.width - 32, height: 48)
     label.autoresizingMask = [.width, .maxYMargin]
     container.addSubview(label)
     status = label

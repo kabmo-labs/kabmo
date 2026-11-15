@@ -135,10 +135,29 @@ android {
         into(notificationSoundRes.map { it.dir("raw") })
     }
     sourceSets.getByName("main").res.srcDir(notificationSoundRes)
+
+    /**
+     * The QR scanner page, from `packages/qr-scanner/`.
+     *
+     * ONE page serves Android, Windows and Linux (the Apple shells decode
+     * natively). It is copied into a GENERATED assets directory instead of being
+     * committed a second time under `src/main/assets`, because the three copies
+     * this replaces had already drifted: the Android one reported a decoded code
+     * to a bridge name no host injected, and the Windows one had no decoder at
+     * all. `qr-scanner.html` is generated from `page.html` by
+     * `bun packages/qr-scanner/build.mjs`.
+     */
+    val scannerAssets = layout.buildDirectory.dir("generated/assets/qrScanner")
+    val copyScannerPage = tasks.register<Copy>("copyScannerPage") {
+        from(rootProject.file("../qr-scanner/qr-scanner.html"))
+        into(scannerAssets)
+    }
+    sourceSets.getByName("main").assets.srcDir(scannerAssets)
+
     // `matching` rather than `named`: AGP registers `preBuild` during its own
     // configuration, and a bare `named` here can run before it exists.
     tasks.matching { it.name == "preBuild" }.configureEach {
-        dependsOn(copyNotificationSound)
+        dependsOn(copyNotificationSound, copyScannerPage)
     }
 }
 
@@ -146,4 +165,17 @@ dependencies {
     // The only tests are plain JVM tests over `UrlNormalizer` — no Android
     // framework, no Robolectric — so the runner is JUnit 4 and nothing else.
     testImplementation("junit:junit:4.13.2")
+}
+
+/**
+ * `QrScannerPageTest` reads the scanner page and its generated artifact, neither
+ * of which is a compiled input. Without this declaration Gradle caches a green
+ * result across an edit to either, and the contract test silently stops testing
+ * anything.
+ */
+tasks.withType<Test>().configureEach {
+    inputs.files(
+        rootProject.file("../qr-scanner/page.html"),
+        rootProject.file("../qr-scanner/qr-scanner.html"),
+    ).withPropertyName("qrScannerPage")
 }

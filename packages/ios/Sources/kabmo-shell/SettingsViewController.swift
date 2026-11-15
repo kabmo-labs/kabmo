@@ -574,16 +574,41 @@ extension SettingsViewController: UITextFieldDelegate {
   // MARK: - Image picking
 
   /// Read the chosen image and hand the code to the same `pair()` the paste uses.
+  ///
+  /// Every failure here says so. Each of these guards used to `return` silently:
+  /// a pick whose provider could not produce a `UIImage`, an image whose
+  /// `cgImage` was nil (a `CIImage`-backed `UIImage`, which is what some HEIC and
+  /// animated providers hand back), and a load the system reports as failed all
+  /// looked identical to the user — nothing happened at all.
   fileprivate func handlePicked(_ result: PHPickerResult) {
     let provider = result.itemProvider
-    guard provider.canLoadObject(ofClass: UIImage.self) else { return }
-    provider.loadObject(ofClass: UIImage.self) { [weak self] object, _ in
-      guard
-        let self,
-        let image = object as? UIImage,
-        let cgImage = image.cgImage
-      else { return }
-      let code = QrImageDecoder.decode(CIImage(cgImage: cgImage))
+    guard provider.canLoadObject(ofClass: UIImage.self) else {
+      status(
+        "That file is not an image. Choose a screenshot of the pairing code.",
+        tone: .failure
+      )
+      return
+    }
+    provider.loadObject(ofClass: UIImage.self) { [weak self] object, error in
+      guard let self else { return }
+      guard let image = object as? UIImage else {
+        let reason = error?.localizedDescription
+          ?? "That image could not be read. Choose a screenshot of the pairing code."
+        DispatchQueue.main.async { self.status(reason, tone: .failure) }
+        return
+      }
+      // `cgImage` is nil for some formats; `CIImage(image:)` covers those, and a
+      // decode that never runs is the one outcome worse than "no code found".
+      guard let bitmap = image.cgImage.map({ CIImage(cgImage: $0) }) ?? CIImage(image: image) else {
+        DispatchQueue.main.async {
+          self.status(
+            "That image could not be read. Choose a screenshot of the pairing code.",
+            tone: .failure
+          )
+        }
+        return
+      }
+      let code = QrImageDecoder.decode(bitmap)
       DispatchQueue.main.async {
         guard let code else {
           self.status(

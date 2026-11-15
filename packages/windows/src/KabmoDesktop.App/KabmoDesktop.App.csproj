@@ -114,8 +114,14 @@
   <ItemGroup>
     <!-- The scanner page, embedded so an installed build carries it. It is
          written to a temp folder at run time because WebView2's virtual host
-         mapping serves a DIRECTORY, not a string. -->
-    <EmbeddedResource Include="Assets\qr-scanner.html" LogicalName="qr-scanner.html" />
+         mapping serves a DIRECTORY, not a string.
+
+         ONE page serves Android, Windows and Linux; `packages/qr-scanner/` is
+         the only copy, and `qr-scanner.html` is generated from `page.html` by
+         `bun packages/qr-scanner/build.mjs`. It carries jsQR inlined because
+         WebView2 on Windows has no `BarcodeDetector` — see that package's
+         build script. -->
+    <EmbeddedResource Include="..\..\..\qr-scanner\qr-scanner.html" LogicalName="qr-scanner.html" />
   </ItemGroup>
 
 </Project>
