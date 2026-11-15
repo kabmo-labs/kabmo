@@ -18,6 +18,8 @@
  *
  *   - {@link readSessionChangeIndex} — every record, with a display path, for
  *     the chat's per-run file list. No blob content, so it stays small.
+ *   - {@link readSessionChangeList} — that index minus creations whose file is
+ *     gone (a `bash rm` is never journaled). The route serves this one.
  *   - {@link readSessionChangeDiff} — the net change of one path inside one
  *     run window: the first record's `before` and the last record's `after`.
  *   - {@link readSessionChangeStats} — that same net change as `+`/`−` line
@@ -175,6 +177,49 @@ export async function readSessionChangeIndex(sessionId: string): Promise<Session
     before: record.before,
     after: record.after,
   }));
+}
+
+/** True when the path is still on disk; a stat error other than ENOENT counts
+ *  as present, so a permission problem never hides a real change. */
+async function pathExists(absolute: string): Promise<boolean> {
+  try {
+    await stat(absolute);
+    return true;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code !== 'ENOENT';
+  }
+}
+
+/**
+ * The index the chat's per-run list reads: {@link readSessionChangeIndex} minus
+ * creations whose file is gone.
+ *
+ * omp journals edit-tool writes only. A delete through `bash` (`rm`, `git
+ * clean`, a script) never reaches `changes.jsonl`, so a file the run created
+ * and then removed still reads as `added` — measured on a real session: the
+ * run wrote `MarkdownRenderer.test.tsx`, `rm`'d it six seconds later, and the
+ * list counted 8 files while the commit had 7. A creation whose path is absent
+ * now is that case, and its net change is zero.
+ *
+ * A MODIFIED path is kept even when absent: the run did change it, and the
+ * journal diff still holds both sides.
+ */
+export async function readSessionChangeList(sessionId: string): Promise<SessionChangeRecord[]> {
+  const records = await readSessionChangeIndex(sessionId);
+  if (records.length === 0) return records;
+
+  const firstByPath = new Map<string, SessionChangeRecord>();
+  for (const record of records) {
+    if (!firstByPath.has(record.path)) firstByPath.set(record.path, record);
+  }
+  const gone = new Set<string>();
+  await Promise.all(
+    [...firstByPath].map(async ([absolutePath, first]) => {
+      if (first.before !== null) return;
+      if (!(await pathExists(absolutePath))) gone.add(absolutePath);
+    }),
+  );
+  return gone.size === 0 ? records : records.filter((record) => !gone.has(record.path));
 }
 
 /**

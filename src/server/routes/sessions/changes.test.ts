@@ -19,7 +19,7 @@ import { clearSessionFileCaches } from '@/server/lib/omp/session/files';
 import { getSessionChangeDiff, getSessionChanges } from '@/server/routes/sessions/changes';
 
 const SESSION_ID = '01a0cc50-fd62-7417-899c-e24ff8c8608c';
-const CWD = '/tmp/project';
+let CWD = '';
 let agentDir = '';
 let journalDir = '';
 
@@ -34,6 +34,10 @@ function args(sessionId: string | undefined, query = ''): LoaderFunctionArgs {
 beforeAll(async () => {
   agentDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'omp-changes-route-'));
   process.env.PI_CODING_AGENT_DIR = agentDir;
+  CWD = path.join(agentDir, 'project');
+  await fsp.mkdir(CWD, { recursive: true });
+  // The list drops a creation whose file is gone, so the kept one must exist.
+  await fsp.writeFile(path.join(CWD, 'a.ts'), 'one\n');
   const cwdDir = path.join(agentDir, 'sessions', '-tmp-project');
   await fsp.mkdir(cwdDir, { recursive: true });
   const sessionFile = path.join(cwdDir, `2026-01-01T00-00-00-000Z_${SESSION_ID}.jsonl`);
@@ -47,7 +51,12 @@ beforeAll(async () => {
   await fsp.writeFile(path.join(journalDir, 'blobs', after), Bun.gzipSync(Buffer.from('one\n', 'utf8')));
   await fsp.writeFile(
     path.join(journalDir, 'changes.jsonl'),
-    `${JSON.stringify({ type: 'change', at: 1000, agent: 'Main', tool: 'write', path: `${CWD}/a.ts`, before: null, after })}\n`,
+    [
+      JSON.stringify({ type: 'change', at: 1000, agent: 'Main', tool: 'write', path: `${CWD}/a.ts`, before: null, after }),
+      // Created then `rm`'d: the journal has no delete record, so the list must
+      // drop it by checking the path.
+      JSON.stringify({ type: 'change', at: 1001, agent: 'Main', tool: 'write', path: `${CWD}/gone.ts`, before: null, after }),
+    ].join('\n') + '\n',
   );
   clearSessionFileCaches();
 });
@@ -59,7 +68,7 @@ afterAll(async () => {
 });
 
 describe('getSessionChanges', () => {
-  test('answers the records for a real session', async () => {
+  test('answers the records for a real session, minus a creation whose file is gone', async () => {
     const response = (await getSessionChanges(args(SESSION_ID))) as Response;
     expect(response.status).toBe(200);
     const body = (await response.json()) as { records: Array<{ displayPath: string }> };

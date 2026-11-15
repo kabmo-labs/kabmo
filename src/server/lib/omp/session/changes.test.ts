@@ -18,7 +18,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import * as fsp from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { readSessionChangeDiff, readSessionChangeIndex, readSessionChangeStats } from '@/server/lib/omp/session/changes';
+import { readSessionChangeDiff, readSessionChangeIndex, readSessionChangeList, readSessionChangeStats } from '@/server/lib/omp/session/changes';
 import { clearSessionFileCaches } from '@/server/lib/omp/session/files';
 
 const SESSION_ID = '01a0cc50-fd62-7417-899c-e24ff8c8608c';
@@ -134,6 +134,37 @@ describe('readSessionChangeDiff', () => {
 
   test('a path with no record in the range answers null', async () => {
     expect(await readSessionChangeDiff(SESSION_ID, `${CWD}/src/net.ts`, 9000, 9001)).toBeNull();
+  });
+});
+
+describe('readSessionChangeList', () => {
+  test('drops a creation whose file is gone — a bash rm never reaches the journal', async () => {
+    const created = await blob('l1', 'gone\n');
+    const file = path.join(agentDir, 'gone.ts');
+    await append({ type: 'change', at: 6000, agent: 'Main', tool: 'write', path: file, before: null, after: created });
+
+    expect(await readSessionChangeIndex(SESSION_ID)).toContainEqual(
+      expect.objectContaining({ path: file }),
+    );
+    expect((await readSessionChangeList(SESSION_ID)).some((record) => record.path === file)).toBe(false);
+  });
+
+  test('keeps a creation whose file still exists', async () => {
+    const created = await blob('l2', 'here\n');
+    const file = path.join(agentDir, 'here.ts');
+    await fsp.writeFile(file, 'here\n');
+    await append({ type: 'change', at: 6001, agent: 'Main', tool: 'write', path: file, before: null, after: created });
+
+    expect((await readSessionChangeList(SESSION_ID)).some((record) => record.path === file)).toBe(true);
+  });
+
+  test('keeps a modified path even when the file is gone', async () => {
+    const before = await blob('l3', 'a\n');
+    const after = await blob('l4', 'b\n');
+    const file = path.join(agentDir, 'modified-gone.ts');
+    await append({ type: 'change', at: 6002, agent: 'Main', tool: 'edit', path: file, before, after });
+
+    expect((await readSessionChangeList(SESSION_ID)).some((record) => record.path === file)).toBe(true);
   });
 });
 

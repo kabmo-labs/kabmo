@@ -9,7 +9,9 @@
  *   GET /api/sessions/:sessionId/changes
  *     Every `change` record, oldest first, with a display path. No blob
  *     content: the client buckets records into runs and only asks for a diff
- *     when a file is clicked.
+ *     when a file is clicked. A creation whose file is gone is dropped — a
+ *     `bash rm` never reaches the journal, so the run's list would otherwise
+ *     count a file that no longer exists.
  *
  *   GET /api/sessions/:sessionId/changes/diff?path=<abs>&from=<ms>&to=<ms>
  *     The net change of one path inside one run window: the first record's
@@ -27,14 +29,14 @@
 import { json } from '@/server/lib/remix-compat';
 import type { LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { isSinglePathSegment } from '@/server/lib/fs/path-segment';
-import { readSessionChangeDiff, readSessionChangeIndex, readSessionChangeStats } from '@/server/lib/omp/session/changes';
+import { readSessionChangeDiff, readSessionChangeList, readSessionChangeStats } from '@/server/lib/omp/session/changes';
 
 /** GET /api/sessions/:sessionId/changes */
 export async function getSessionChanges({ params }: LoaderFunctionArgs) {
   const sessionId = params.sessionId;
   if (!sessionId) return json({ error: 'Missing session id' }, { status: 400 });
   if (!isSinglePathSegment(sessionId)) return json({ error: 'Session not found' }, { status: 404 });
-  return json({ sessionId, records: await readSessionChangeIndex(sessionId) });
+  return json({ sessionId, records: await readSessionChangeList(sessionId) });
 }
 
 /** GET /api/sessions/:sessionId/changes/diff */
