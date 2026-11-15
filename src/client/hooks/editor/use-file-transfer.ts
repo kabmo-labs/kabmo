@@ -18,7 +18,8 @@
  */
 
 import { useCallback, useState } from 'preact/hooks';
-import { copyImageToClipboard, downloadUrl, saveBlob } from '@/client/hooks/editor/file-actions';
+import { copyImageToClipboard, downloadUrl } from '@/client/hooks/editor/file-actions';
+import { saveBlob } from '@/client/lib/browser/download';
 import type { ByteSource } from '@/client/components/workspace/editor/viewers/bytes';
 
 interface FileTransferTarget {

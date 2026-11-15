@@ -22,6 +22,7 @@ import { useEffect } from 'preact/hooks';
 import { createPortal } from 'preact/compat';
 import { X } from 'lucide-preact';
 import { QrCode } from '@/client/components/settings/categories/connect-settings/QrCode';
+import { downloadQrSvg } from '@/client/components/settings/categories/connect-settings/qr-image';
 import { copyToClipboard } from '@/client/hooks/ui/clipboard';
 import { pushToast } from '@/client/hooks/ui/toasts';
 import type { PairingCode } from '@/client/hooks/connect/use-pairing';
@@ -144,13 +145,22 @@ export function PairDialog({ code, error, busy, secondsLeft, onClose, onRetry }:
             </div>
 
             <div className="mt-4 flex items-center justify-between gap-2">
-              <button
-                type="button"
-                onClick={() => void copyPairingLink(code.webLink)}
-                className="rounded-lg border border-ink/15 px-2.5 py-1.5 text-[11px] font-semibold text-ink transition-colors hover:bg-ink/5"
-              >
-                Copy link
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => void copyPairingLink(code.webLink)}
+                  className="rounded-lg border border-ink/15 px-2.5 py-1.5 text-[11px] font-semibold text-ink transition-colors hover:bg-ink/5"
+                >
+                  Copy link
+                </button>
+                <button
+                  type="button"
+                  onClick={() => downloadQrSvg(code.qr, 'kabmo-pairing-qr.svg', 'Pairing QR code')}
+                  className="rounded-lg border border-ink/15 px-2.5 py-1.5 text-[11px] font-semibold text-ink transition-colors hover:bg-ink/5"
+                >
+                  Download QR
+                </button>
+              </div>
               <div className="flex items-center gap-2">
                 {expired && (
                   <button

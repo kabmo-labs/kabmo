@@ -17,28 +17,11 @@
  */
 
 import type { JSX } from 'preact';
+import { QUIET_ZONE, qrGeometry } from '@/client/components/settings/categories/connect-settings/qr-image';
 import type { QrMatrix } from '@/shared/lib/connect/types';
 
-const QUIET_ZONE = 4;
-
-/**
- * The widest the code is drawn, in CSS pixels.
- *
- * A screenshot of this dialog is what a camera-less device uploads, so the size
- * is a functional choice, not a layout one: at 260 px a ~100-module code is under
- * 3 px per module, and `jsQR` failed to read a real capture of it ("no QR code
- * found") while the same code at 4 px per module decoded every time.
- */
-const TARGET_EDGE = 340;
-
 export function QrCode({ matrix, label }: { matrix: QrMatrix; label: string }) {
-  const span = matrix.size + QUIET_ZONE * 2;
-  // An INTEGER number of pixels per module. A fractional size makes the browser
-  // antialias every module edge, which is exactly what a binarizer cannot read —
-  // and it is why the same code scanned from a phone camera but not from a
-  // screenshot.
-  const modulePx = Math.max(3, Math.floor(TARGET_EDGE / span));
-  const edge = span * modulePx;
+  const { span, edge } = qrGeometry(matrix);
   const rects: JSX.Element[] = [];
   for (let row = 0; row < matrix.size; row += 1) {
     const line = matrix.rows[row] ?? '';

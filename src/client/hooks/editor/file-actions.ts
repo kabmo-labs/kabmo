@@ -4,22 +4,14 @@
  */
 
 /**
- * Browser file actions shared by the editor surfaces. `saveBlob` is the one
- * place that builds and clicks the download anchor, so the text path (a Blob
+ * Browser file actions shared by the editor surfaces. The download anchor
+ * itself lives in `@/client/lib/browser/download`, so the text path (a Blob
  * over the buffer) and the image path (a Blob over the fetched bytes) cannot
  * drift apart — the image case has no text buffer at all, which is why it
  * needs the URL variant.
  */
 
-/** Hand `blob` to the browser as a download named `name`. */
-export function saveBlob(blob: Blob, name: string): void {
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = name;
-  anchor.click();
-  URL.revokeObjectURL(url);
-}
+import { saveBlob } from '@/client/lib/browser/download';
 
 /**
  * Download a URL's bytes under `name`. Used for images, whose content never

@@ -31,7 +31,8 @@ import {
   currentEditorFont,
   useEditorFontStack,
 } from '@/client/hooks/editor/font';
-import { copyImageToClipboard, downloadUrl, saveBlob } from '@/client/hooks/editor/file-actions';
+import { copyImageToClipboard, downloadUrl } from '@/client/hooks/editor/file-actions';
+import { saveBlob } from '@/client/lib/browser/download';
 import { EDITOR_DEFAULT_FONT_FAMILY, EDITOR_FONT_FAMILY } from '@/shared/lib/code/editor/typography';
 import { primeKabmoSettings } from '@/shared/lib/settings/client';
 

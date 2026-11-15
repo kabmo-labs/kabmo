@@ -56,8 +56,8 @@ afterAll(() => {
   restoreDomGlobals();
 });
 
-/** Mount the dialog and return its Copy link button. */
-async function mountDialog(): Promise<HTMLButtonElement> {
+/** Mount the dialog and return the button whose label is `label`. */
+async function mountButton(label: string): Promise<HTMLButtonElement> {
   const host = document.createElement('div');
   document.body.appendChild(host);
   container = host;
@@ -74,8 +74,8 @@ async function mountDialog(): Promise<HTMLButtonElement> {
       host,
     );
   });
-  const button = [...document.querySelectorAll('button')].find((node) => node.textContent === 'Copy link');
-  if (!button) throw new Error('Copy link button not found');
+  const button = [...document.querySelectorAll('button')].find((node) => node.textContent === label);
+  if (!button) throw new Error(`${label} button not found`);
   return button;
 }
 
@@ -95,7 +95,7 @@ describe('PairDialog copy link', () => {
       return true;
     }) as typeof document.execCommand;
 
-    const button = await mountDialog();
+    const button = await mountButton('Copy link');
     await act(async () => {
       button.click();
     });
@@ -110,7 +110,7 @@ describe('PairDialog copy link', () => {
     removeClipboardApi();
     document.execCommand = (() => false) as typeof document.execCommand;
 
-    const button = await mountDialog();
+    const button = await mountButton('Copy link');
     await act(async () => {
       button.click();
     });
@@ -119,5 +119,41 @@ describe('PairDialog copy link', () => {
     expect(toasts).toHaveLength(1);
     expect(toasts[0]?.type).toBe('error');
     expect(toasts[0]?.message).toContain('Could not copy the pairing link');
+  });
+});
+
+describe('PairDialog download QR', () => {
+  test('saves the code as an SVG file with the quiet zone included', async () => {
+    const blobs: Blob[] = [];
+    const clicked: { href: string; download: string }[] = [];
+    const nativeCreate = URL.createObjectURL;
+    const nativeRevoke = URL.revokeObjectURL;
+    const nativeClick = win.HTMLAnchorElement.prototype.click;
+    URL.createObjectURL = (blob: Blob | MediaSource) => {
+      blobs.push(blob as Blob);
+      return 'blob:qr';
+    };
+    URL.revokeObjectURL = () => {};
+    win.HTMLAnchorElement.prototype.click = function click(this: HTMLAnchorElement) {
+      clicked.push({ href: this.href, download: this.download });
+    };
+
+    try {
+      const button = await mountButton('Download QR');
+      await act(async () => {
+        button.click();
+      });
+
+      expect(clicked).toEqual([{ href: 'blob:qr', download: 'kabmo-pairing-qr.svg' }]);
+      expect(blobs[0]?.type).toBe('image/svg+xml');
+      const markup = await blobs[0]!.text();
+      // size 1 + four modules of quiet zone on each side.
+      expect(markup).toContain('viewBox="0 0 9 9"');
+      expect(markup).toContain('<rect x="4" y="4" width="1" height="1"/>');
+    } finally {
+      URL.createObjectURL = nativeCreate;
+      URL.revokeObjectURL = nativeRevoke;
+      win.HTMLAnchorElement.prototype.click = nativeClick;
+    }
   });
 });
