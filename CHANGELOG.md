@@ -4,6 +4,20 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.34.0](https://github.com/kabmo-labs/kabmo/compare/v0.33.0...v0.34.0) — 2026-11-15
+
+### Added
+
+* **chat:** show +/− stats in changed-files summary and align it with tool blocks ([63faba5](https://github.com/kabmo-labs/kabmo/commit/63faba5b4d6b06997cd2af12ec45c916235714e1)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **connect:** pair a device by QR and reach the server over a tunnel ([3451a54](https://github.com/kabmo-labs/kabmo/commit/3451a54318b769ff68a1fe56a2a3abeeab8ec094)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **markdown:** added a refresh button to mermaid blocks ([a0e44d7](https://github.com/kabmo-labs/kabmo/commit/a0e44d7a7582d576d21ac7096d8014c6f56137e1)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **chat:** drop a run's created file that no longer exists from the changes list ([2877242](https://github.com/kabmo-labs/kabmo/commit/287724215debe88389cfdac59225a1cc7ec1f8f6)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **linux:** made the pairing QR scanner compile against GTK 3 and WebKitGTK 4.1 ([931a0cd](https://github.com/kabmo-labs/kabmo/commit/931a0cdbd5162d410c0413845ddce74342167d44)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **markdown:** kept ASCII box art on the mono grid by bundling the box-drawing subset ([685d063](https://github.com/kabmo-labs/kabmo/commit/685d063a0d9d9c4220d068239f84fd729555d433)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.33.0](https://github.com/kabmo-labs/kabmo/compare/v0.32.1...v0.33.0) — 2026-11-14
 
 ### Added
