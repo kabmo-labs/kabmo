@@ -4,6 +4,20 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.35.0](https://github.com/kabmo-labs/kabmo/compare/v0.34.0...v0.35.0) — 2026-11-15
+
+### Added
+
+* **connect:** added a Download QR button to the pairing dialog ([2772314](https://github.com/kabmo-labs/kabmo/commit/277231485b675dabad25c117e7c0897cb1d31393)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **android:** declare MODIFY_AUDIO_SETTINGS so WebView capture opens ([f913635](https://github.com/kabmo-labs/kabmo/commit/f913635e52320456d9dc9bf3c9ecc138efc8bda8)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **connect:** copy the pairing link on insecure origins and report the outcome ([c698ff4](https://github.com/kabmo-labs/kabmo/commit/c698ff4de018d817f910f5810efc3fac46196bd2)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **dictation:** name why the microphone did not open ([ea2bc20](https://github.com/kabmo-labs/kabmo/commit/ea2bc20627436bd049c59b73f8014d10b3ecea11)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **shells:** read a pairing QR from the camera or an image on every shell ([351b338](https://github.com/kabmo-labs/kabmo/commit/351b33871300ea1c769e3c6b99185237831b5ae4)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **shells:** wire microphone capture on macOS and Linux ([0921be2](https://github.com/kabmo-labs/kabmo/commit/0921be235becba703b496be4761d7891dac95509)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.34.0](https://github.com/kabmo-labs/kabmo/compare/v0.33.0...v0.34.0) — 2026-11-15
 
 ### Added
