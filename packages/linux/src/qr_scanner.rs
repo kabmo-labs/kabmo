@@ -28,8 +28,9 @@
  */
 
 use gtk::prelude::*;
+use javascriptcore::ValueExt;
 use serde_json::Value;
-use webkit2gtk::{WebView, WebViewExt};
+use webkit2gtk::{SettingsExt, UserContentManagerExt, WebView, WebViewExt};
 
 /// The page, embedded so an installed build carries it.
 const SCANNER_PAGE: &str = include_str!("../assets/qr-scanner.html");
@@ -38,7 +39,7 @@ const SCANNER_PAGE: &str = include_str!("../assets/qr-scanner.html");
 const SECURE_BASE: &str = "https://kabmo.local/";
 
 /// Show the scanner; `Some(text)` means a code was read.
-pub fn show(parent: &gtk::Window) -> Option<String> {
+pub fn show(parent: &gtk::Dialog) -> Option<String> {
     let dialog = gtk::Dialog::with_buttons(
         Some("Scan pairing code"),
         Some(parent),
@@ -48,7 +49,7 @@ pub fn show(parent: &gtk::Window) -> Option<String> {
     dialog.set_default_size(460, 420);
 
     let view = WebView::new();
-    if let Some(settings) = view.settings() {
+    if let Some(settings) = WebViewExt::settings(&view) {
         settings.set_enable_javascript(true);
         settings.set_enable_media_stream(true);
     }
@@ -78,7 +79,7 @@ pub fn show(parent: &gtk::Window) -> Option<String> {
                         "window.__kabmoQrImage && window.__kabmoQrImage({})",
                         serde_json::to_string(&data_url).unwrap_or_else(|_| "''".to_string())
                     );
-                    view_for_pick.run_javascript(&script, None::<&gio::Cancellable>, |_| {});
+                    view_for_pick.run_javascript(&script, None::<&gtk::gio::Cancellable>, |_| {});
                 }
                 return;
             }
@@ -117,7 +118,7 @@ pub fn show(parent: &gtk::Window) -> Option<String> {
 /// The bytes never leave the app: the page decodes them in place, which is the
 /// same decoder the camera uses.
 fn pick_image(parent: &gtk::Dialog) -> Option<String> {
-    let chooser = gtk::FileChooserDialog::new(
+    let chooser = gtk::FileChooserDialog::with_buttons(
         Some("Choose a pairing code image"),
         Some(parent),
         gtk::FileChooserAction::Open,
@@ -131,7 +132,7 @@ fn pick_image(parent: &gtk::Dialog) -> Option<String> {
     for pattern in ["*.png", "*.jpg", "*.jpeg", "*.webp", "*.bmp", "*.gif"] {
         filter.add_pattern(pattern);
     }
-    chooser.add_filter(&filter);
+    chooser.add_filter(filter);
 
     let response = chooser.run();
     let path = chooser.filename();
