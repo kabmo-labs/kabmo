@@ -18,7 +18,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import * as fsp from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { readSessionChangeDiff, readSessionChangeIndex } from '@/server/lib/omp/session/changes';
+import { readSessionChangeDiff, readSessionChangeIndex, readSessionChangeStats } from '@/server/lib/omp/session/changes';
 import { clearSessionFileCaches } from '@/server/lib/omp/session/files';
 
 const SESSION_ID = '01a0cc50-fd62-7417-899c-e24ff8c8608c';
@@ -134,5 +134,37 @@ describe('readSessionChangeDiff', () => {
 
   test('a path with no record in the range answers null', async () => {
     expect(await readSessionChangeDiff(SESSION_ID, `${CWD}/src/net.ts`, 9000, 9001)).toBeNull();
+  });
+});
+
+describe('readSessionChangeStats', () => {
+  test('counts the net change of the run, not each write', async () => {
+    const before = await blob('s1', 'alpha\nbeta\n');
+    const middle = await blob('s2', 'alpha\nBETA\n');
+    const after = await blob('s3', 'alpha\nBETA\ngamma\n');
+    const file = `${CWD}/src/stats.ts`;
+    await append({ type: 'change', at: 5000, agent: 'Main', tool: 'edit', path: file, before, after: middle });
+    await append({ type: 'change', at: 5001, agent: 'Main', tool: 'edit', path: file, before: middle, after });
+
+    expect(await readSessionChangeStats(SESSION_ID, 5000, 5001)).toEqual({
+      [file]: { added: 2, removed: 1 },
+    });
+  });
+
+  test('a created file counts its lines as additions', async () => {
+    const created = await blob('s4', 'one\ntwo\n');
+    const file = `${CWD}/src/created-stats.ts`;
+    await append({ type: 'change', at: 5100, agent: 'Main', tool: 'write', path: file, before: null, after: created });
+
+    expect(await readSessionChangeStats(SESSION_ID, 5100, 5100)).toEqual({
+      [file]: { added: 2, removed: 0 },
+    });
+  });
+
+  test('a path whose blob was not stored is absent, not zero', async () => {
+    const file = `${CWD}/src/unstored.ts`;
+    await append({ type: 'change', at: 5200, agent: 'Main', tool: 'write', path: file, before: undefined, after: undefined });
+
+    expect(await readSessionChangeStats(SESSION_ID, 5200, 5200)).toEqual({});
   });
 });

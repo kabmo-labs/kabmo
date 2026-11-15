@@ -20,6 +20,9 @@
  *     the chat's per-run file list. No blob content, so it stays small.
  *   - {@link readSessionChangeDiff} — the net change of one path inside one
  *     run window: the first record's `before` and the last record's `after`.
+ *   - {@link readSessionChangeStats} — that same net change as `+`/`−` line
+ *     counts for every path in one window, which the run's file summary shows
+ *     without opening a diff.
  *
  * The journal is append-only and can grow to megabytes, so the parse is cached
  * by size+mtime (the same rule `plans.ts` follows). A session with no journal
@@ -33,7 +36,12 @@ import { readRawHeaderLine } from '@/server/lib/omp/session/files';
 import { findSessionFileById } from '@/server/lib/omp/session/locator';
 import { siblingDirForSession } from '@/server/lib/omp/subagent/history/paths';
 import { unifiedDiff } from '@/shared/lib/fs/unified-diff';
-import type { SessionChangeDiff, SessionChangeRecord } from '@/shared/types/session-changes';
+import { patchSides } from '@/shared/lib/fs/patch-sides';
+import type {
+  SessionChangeCounts,
+  SessionChangeDiff,
+  SessionChangeRecord,
+} from '@/shared/types/session-changes';
 
 const JOURNAL_FILE = 'changes.jsonl';
 const BLOB_DIR = 'blobs';
@@ -217,4 +225,44 @@ export async function readSessionChangeDiff(
     diff: unifiedDiff(displayPath, oldContent, newContent),
     unavailable: false,
   };
+}
+
+/**
+ * Net `+`/`−` line counts for every path changed inside `[from, to]`.
+ *
+ * The net rule is {@link readSessionChangeDiff}'s — first record's `before` to
+ * last record's `after` — so the summary's numbers describe the diff the file
+ * opens, not the churn of each intermediate write. A path whose blob was not
+ * stored is absent rather than counted as zero: a count would be a guess.
+ */
+export async function readSessionChangeStats(
+  sessionId: string,
+  from: number,
+  to: number,
+): Promise<Record<string, SessionChangeCounts>> {
+  const journal = await readJournal(sessionId);
+  if (!journal) return {};
+
+  const spans = new Map<string, { first: RawChangeRecord; last: RawChangeRecord }>();
+  for (const record of journal.records) {
+    if (record.at < from || record.at > to) continue;
+    const span = spans.get(record.path);
+    if (span) span.last = record;
+    else spans.set(record.path, { first: record, last: record });
+  }
+
+  const stats: Record<string, SessionChangeCounts> = {};
+  await Promise.all(
+    [...spans].map(async ([absolutePath, { first, last }]) => {
+      const [before, after] = await Promise.all([
+        resolveBlob(journal.dir, first.before),
+        resolveBlob(journal.dir, last.after),
+      ]);
+      if (before === undefined || after === undefined) return;
+      const sides = patchSides(unifiedDiff(absolutePath, before ?? '', after ?? ''));
+      if (sides.additions === 0 && sides.deletions === 0) return;
+      stats[absolutePath] = { added: sides.additions, removed: sides.deletions };
+    }),
+  );
+  return stats;
 }

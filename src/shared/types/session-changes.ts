@@ -44,6 +44,12 @@ export interface ChangedFile {
   agent: string;
 }
 
+/** One file's net `+`/`−` line counts inside a run window. */
+export interface SessionChangeCounts {
+  added: number;
+  removed: number;
+}
+
 /** The two sides of one file's net change in a run, plus a unified patch. */
 export interface SessionChangeDiff {
   path: string;

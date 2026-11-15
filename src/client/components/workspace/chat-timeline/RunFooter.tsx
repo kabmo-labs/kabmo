@@ -90,6 +90,7 @@ export function RunFooter({
             sessionId={sessionId}
             from={runWindow.start}
             to={runWindow.end}
+            isMobile={isMobile}
           />
         </div>
       )}
