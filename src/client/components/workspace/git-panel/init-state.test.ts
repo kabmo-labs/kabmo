@@ -23,6 +23,7 @@ import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { GitPanel } from '@/client/components/workspace/git-panel';
 import { SessionStateProvider } from '@/client/components/common/session-state-provider/index';
+import { resetToasts } from '@/client/hooks/ui/toasts';
 import { resetRealtimeClient } from '@/shared/lib/realtime/client';
 import { gitTopic, reposTopic } from '@/shared/lib/realtime/protocol';
 import { startRealtimeTestServer, type RealtimeTestServer } from '@/test-support/realtime-server';
@@ -65,6 +66,10 @@ afterEach(() => {
     container.remove();
   }
   resetRealtimeClient();
+  // The Initialize click pushes a real toast into the module-level queue, which
+  // outlives this file: without this, the next file that asserts the queue sees
+  // "Initialized the repository" (measured: PairDialog.test.tsx failed on Windows).
+  resetToasts();
   server?.stop();
 });
 
