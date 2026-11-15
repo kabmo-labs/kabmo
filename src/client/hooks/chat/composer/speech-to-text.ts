@@ -21,6 +21,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { concatSamples, float32ToPcm16 } from '@/shared/lib/dictation/audio';
+import { describeCaptureFailure } from '@/shared/lib/dictation/capture-failure';
 import { DICTATION_SAMPLE_RATE } from '@/shared/lib/dictation/protocol';
 import type { DictationServerFrame } from '@/shared/lib/dictation/protocol';
 
@@ -117,26 +118,32 @@ export function useSpeechToText({ onResult, modelKey, language }: UseSpeechToTex
       .getUserMedia({ audio: true })
       .then((stream) => {
         streamRef.current = stream;
-        const context = new AudioContext({ sampleRate: DICTATION_SAMPLE_RATE });
-        contextRef.current = context;
-        inputRateRef.current = context.sampleRate;
+        try {
+          const context = new AudioContext({ sampleRate: DICTATION_SAMPLE_RATE });
+          contextRef.current = context;
+          inputRateRef.current = context.sampleRate;
 
-        const source = context.createMediaStreamSource(stream);
-        sourceRef.current = source;
-        const processor = context.createScriptProcessor(4096, 1, 1);
-        processorRef.current = processor;
-        processor.onaudioprocess = (event) => {
-          chunksRef.current.push(new Float32Array(event.inputBuffer.getChannelData(0)));
-        };
-        source.connect(processor);
-        processor.connect(context.destination);
-        setIsListening(true);
+          const source = context.createMediaStreamSource(stream);
+          sourceRef.current = source;
+          const processor = context.createScriptProcessor(4096, 1, 1);
+          processorRef.current = processor;
+          processor.onaudioprocess = (event) => {
+            chunksRef.current.push(new Float32Array(event.inputBuffer.getChannelData(0)));
+          };
+          source.connect(processor);
+          processor.connect(context.destination);
+          setIsListening(true);
+        } catch {
+          // The microphone IS open at this point, so the failure is the audio
+          // graph, not the permission — and the stream has to be released or
+          // the OS keeps showing the microphone in use.
+          fail('Could not start audio capture.');
+        }
       })
       .catch((cause: unknown) => {
-        const name = cause instanceof DOMException ? cause.name : '';
-        setError(name === 'NotAllowedError' ? 'Microphone permission denied.' : 'Could not open the microphone.');
+        setError(describeCaptureFailure(cause));
       });
-  }, [isSupported]);
+  }, [fail, isSupported]);
 
   const stopListening = useCallback(() => {
     setIsListening(false);
