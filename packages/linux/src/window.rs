@@ -33,7 +33,10 @@
 
 use gtk::prelude::*;
 use gtk::gdk;
-use webkit2gtk::{SettingsExt, WebInspectorExt, WebView, WebViewExt};
+use webkit2gtk::{
+    PermissionRequestExt, SettingsExt, UserMediaPermissionRequest, UserMediaPermissionRequestExt,
+    WebInspectorExt, WebView, WebViewExt,
+};
 
 use crate::APP_NAME;
 
@@ -476,11 +479,39 @@ pub fn configure_view(view: &WebView) {
         settings.set_enable_developer_extras(true);
         settings.set_enable_webaudio(true);
         settings.set_enable_webgl(true);
+        // `getUserMedia` does not EXIST without this: WebKitGTK ships
+        // `enable-media-stream` FALSE, so `navigator.mediaDevices` is undefined
+        // and the composer's mic button never renders — the same silent absence
+        // the Android shell had, one layer earlier. The QR scanner's own dialog
+        // sets it for the same reason.
+        settings.set_enable_media_stream(true);
         // A console page is not an article: it needs the clipboard, and a
         // webview that refuses `navigator.clipboard` silently breaks Copy.
         settings.set_enable_write_console_messages_to_stdout(false);
         settings.set_javascript_can_access_clipboard(true);
     }
+    // WebKitGTK DENIES every permission request unless the embedder answers this
+    // signal, so enabling the media stream above is only half of dictation: the
+    // page would still be refused the microphone, and the refusal is a
+    // `NotAllowedError` the composer reports as "Microphone permission denied."
+    // while the OS never asked anything.
+    //
+    // The allowlist is the one the Android chrome client uses — audio and video
+    // capture, nothing else — and it is bounded by the navigation policy: this
+    // webview only ever hosts the server's own origin, because every other
+    // origin is handed to the system browser (`NavigationPolicy`).
+    view.connect_permission_request(|_view, request| {
+        let capture = request
+            .downcast_ref::<UserMediaPermissionRequest>()
+            .map(|media| media.is_for_audio_device() || media.is_for_video_device())
+            .unwrap_or(false);
+        if capture {
+            request.allow();
+        } else {
+            request.deny();
+        }
+        true
+    });
     // The page draws its own background; a white flash between the splash and
     // the first paint is what this avoids.
     view.set_background_color(&gdk::RGBA::new(0.98, 0.97, 0.95, 1.0));

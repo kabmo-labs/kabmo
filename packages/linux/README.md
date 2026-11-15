@@ -455,6 +455,12 @@ memory a page-level collection can return (see `src/memory.rs`).
   without hardware acceleration falls back to software rendering. That is the
   risk `docs/milestones/M10-packaging-and-shells.md` names for this platform, and it is
   why the shell does not bundle a second engine.
+- **Dictation is wired, not exercised on a device here.** `configure_view` turns
+  on `WebKitSettings:enable-media-stream` (WebKitGTK ships it off, so
+  `navigator.mediaDevices` does not exist without it) and answers the
+  `permission-request` signal for audio/video capture only — WebKitGTK denies
+  every request the embedder does not answer. The release job compiles the crate;
+  the first real recording on Linux is the proof.
 - **The tray is the server's, not the shell's.** `kabmo serve --tray` still works
   and raises its own icon, but the shell deliberately does not pass `--tray` —
   one app, one icon.

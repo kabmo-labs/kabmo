@@ -315,4 +315,32 @@ public final class ShellUIDelegate: NSObject, WKUIDelegate {
     }
     return nil
   }
+
+  /// `getUserMedia` from the page — composer dictation.
+  ///
+  /// WebKit's default is `.prompt`, and this shell has no prompt UI, so the
+  /// request simply never resolves: the composer's mic button appears to do
+  /// nothing, which is the same symptom as a denied permission with none of the
+  /// evidence. The decision is `.grant` for the two capture types Kabmo uses and
+  /// `.deny` for anything else, so a capability nobody reviewed is never handed
+  /// out by a delegate that was written for the microphone.
+  ///
+  /// The grant is bounded by the shell's own navigation policy — this web view
+  /// only ever hosts the configured server's origin — and the system prompt still
+  /// runs on top of it, which is why `NSMicrophoneUsageDescription` must be in
+  /// the bundle: a missing key terminates the app instead of refusing.
+  public func webView(
+    _ webView: WKWebView,
+    requestMediaCapturePermissionFor origin: WKSecurityOrigin,
+    initiatedByFrame frame: WKFrameInfo,
+    type: WKMediaCaptureType,
+    decisionHandler: @escaping (WKPermissionDecision) -> Void
+  ) {
+    switch type {
+    case .microphone, .camera, .cameraAndMicrophone:
+      decisionHandler(.grant)
+    @unknown default:
+      decisionHandler(.deny)
+    }
+  }
 }

@@ -563,6 +563,11 @@ pins it.
   process. `kabmo-desktop-window-tests` therefore drives the shipped
   `ShellWindow` with a synthetic press and asserts the origin changes; the
   physical drag was checked by hand.
+- **The microphone path is wired, not recorded.** `ShellUIDelegate` grants the
+  capture request, the bundle carries `NSMicrophoneUsageDescription`, and the
+  window suite asserts the shipped delegate answers WebKit's selector — but no
+  case records audio: that needs a TCC grant and a user gesture the suite cannot
+  produce. The first real dictation on a Mac is the proof.
 - **The tray is the server's, not the shell's.** `kabmo serve --tray` still works
   and raises its own icon, but the shell deliberately does not pass `--tray` —
   one app, one icon.

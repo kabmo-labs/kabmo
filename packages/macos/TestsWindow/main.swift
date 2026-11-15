@@ -628,6 +628,8 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
 
     uploadPanelSheetCases(window: window, check: check, pump: pump)
 
+    mediaCaptureWindowCases(view: webView, check: check)
+
     // HERE, before the drop cases: the drop cases end by releasing a drag that
     // leaves the view with no document at all — after them `evaluateJavaScript`
     // answers nil and this case would fail for a reason that has nothing to do

@@ -87,6 +87,13 @@ __DOCUMENT_TYPES__
        moment the camera is touched, which is a crash rather than a refusal. -->
   <key>NSCameraUsageDescription</key>
   <string>Kabmo uses the camera to scan a pairing code. The image is read on this Mac and never uploaded.</string>
+  <!-- Composer dictation, and the same rule as the camera above: a usage
+       description is what turns the system prompt into a question, and a
+       missing key TERMINATES the app the moment the microphone is touched.
+       `ShellUIDelegate` grants the capture request; this key is the other half,
+       and the iOS shell ships the same pair for the same reason. -->
+  <key>NSMicrophoneUsageDescription</key>
+  <string>Kabmo uses the microphone for composer dictation. Audio is sent to the server you configured and nowhere else.</string>
   <!-- A plain HTTP server on loopback is the normal case; without this the
        webview refuses it under App Transport Security. -->
   <key>NSAppTransportSecurity</key>
