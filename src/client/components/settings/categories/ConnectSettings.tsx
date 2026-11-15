@@ -24,11 +24,12 @@ import { useConnectStatus } from '@/client/hooks/connect/use-connect-status';
 import { usePairing } from '@/client/hooks/connect/use-pairing';
 import { ServerCard } from '@/client/components/settings/categories/connect-settings/ServerCard';
 import { TunnelRow } from '@/client/components/settings/categories/connect-settings/TunnelRow';
+import { CloudflareConfig } from '@/client/components/settings/categories/connect-settings/CloudflareConfig';
 import { DeviceTable } from '@/client/components/settings/categories/connect-settings/DeviceTable';
 import { PairDialog } from '@/client/components/settings/categories/connect-settings/PairDialog';
 
 export function ConnectSettings() {
-  const { status, error, busy, refresh, setTunnel, revoke } = useConnectStatus();
+  const { status, error, busy, refresh, setTunnel, setCloudflareConfig, revoke } = useConnectStatus();
   const pairing = usePairing();
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -82,6 +83,12 @@ export function ConnectSettings() {
           ))}
         </div>
       </section>
+
+      <CloudflareConfig
+        path={status.cloudflareConfigPath}
+        busy={busy === 'cloudflare:config'}
+        onSave={(next) => void setCloudflareConfig(next)}
+      />
 
       <DeviceTable
         devices={status.devices}

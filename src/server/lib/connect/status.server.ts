@@ -31,6 +31,7 @@ import {
   findCloudflared,
   runningTunnelUrl,
 } from '@/server/lib/connect/cloudflared.server';
+import { resolveCloudflaredConfigPath } from '@/server/lib/connect/cloudflared-config.server';
 import type {
   ConnectAddress,
   ConnectStatus,
@@ -112,8 +113,8 @@ async function tailscaleState(): Promise<{ tunnel: TunnelState; address: Connect
   };
 }
 
-function cloudflareState(port: number): { tunnel: TunnelState; address: ConnectAddress | null } {
-  const presence = findCloudflared();
+function cloudflareState(port: number, configPath: string): { tunnel: TunnelState; address: ConnectAddress | null } {
+  const presence = findCloudflared(configPath);
   if (presence.reason || !presence.binary || !presence.configPath) {
     const reason = presence.reason ?? 'cloudflared is not configured.';
     return {
@@ -148,8 +149,12 @@ function cloudflareState(port: number): { tunnel: TunnelState; address: ConnectA
 /** The whole page's payload. */
 export async function connectStatus(): Promise<ConnectStatus> {
   const port = currentPort();
-  const [tailscale, devices] = await Promise.all([tailscaleState(), listPairedDevices()]);
-  const cloudflare = cloudflareState(port);
+  const [tailscale, devices, configPath] = await Promise.all([
+    tailscaleState(),
+    listPairedDevices(),
+    resolveCloudflaredConfigPath(),
+  ]);
+  const cloudflare = cloudflareState(port, configPath);
 
   const lanReachable = boundBeyondLoopback();
   const lan: ConnectAddress[] = lanOrigins(port).map((url) => ({
@@ -172,6 +177,7 @@ export async function connectStatus(): Promise<ConnectStatus> {
     version: pkg.version,
     addresses,
     tunnels: [tailscale.tunnel, cloudflare.tunnel],
+    cloudflareConfigPath: configPath,
     devices,
   };
 }

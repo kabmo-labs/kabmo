@@ -30,12 +30,41 @@ export interface UseConnectStatusResult {
   busy: string | null;
   refresh: () => Promise<void>;
   setTunnel: (provider: TunnelProvider, verb: TunnelVerb) => Promise<string | null>;
+  setCloudflareConfig: (path: string) => Promise<string | null>;
   revoke: (id: string) => Promise<string | null>;
 }
 
 interface StatusEnvelope {
   status?: ConnectStatus;
   error?: string;
+}
+
+interface PostOutcome {
+  payload: StatusEnvelope | null;
+  message: string | null;
+}
+
+async function postTunnel(body: Record<string, unknown>): Promise<PostOutcome> {
+  try {
+    const response = await fetch('/api/connect/tunnels', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const payload = (await response.json().catch(() => null)) as StatusEnvelope | null;
+    if (!response.ok) {
+      return {
+        payload,
+        message: payload?.error ?? `The tunnel did not change (HTTP ${response.status}).`,
+      };
+    }
+    return { payload, message: null };
+  } catch (cause) {
+    return {
+      payload: null,
+      message: cause instanceof Error ? cause.message : 'The tunnel did not change.',
+    };
+  }
 }
 
 export function useConnectStatus(): UseConnectStatusResult {
@@ -61,26 +90,12 @@ export function useConnectStatus(): UseConnectStatusResult {
     void refresh();
   }, [refresh]);
 
-  const setTunnel = useCallback(
-    async (provider: TunnelProvider, verb: TunnelVerb): Promise<string | null> => {
-      setBusy(`${provider}:${verb}`);
+  const applyTunnel = useCallback(
+    async (busyKey: string, body: Record<string, unknown>): Promise<string | null> => {
+      setBusy(busyKey);
       try {
-        const response = await fetch('/api/connect/tunnels', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ provider, action: verb }),
-        });
-        const payload = (await response.json().catch(() => null)) as StatusEnvelope | null;
+        const { payload, message } = await postTunnel(body);
         if (payload?.status) setStatus(payload.status);
-        if (!response.ok) {
-          const message = payload?.error ?? `The tunnel did not change (HTTP ${response.status}).`;
-          setError(message);
-          return message;
-        }
-        setError(null);
-        return null;
-      } catch (cause) {
-        const message = cause instanceof Error ? cause.message : 'The tunnel did not change.';
         setError(message);
         return message;
       } finally {
@@ -88,6 +103,16 @@ export function useConnectStatus(): UseConnectStatusResult {
       }
     },
     [],
+  );
+
+  const setTunnel = useCallback(
+    (provider: TunnelProvider, verb: TunnelVerb) => applyTunnel(`${provider}:${verb}`, { provider, action: verb }),
+    [applyTunnel],
+  );
+
+  const setCloudflareConfig = useCallback(
+    (path: string) => applyTunnel('cloudflare:config', { provider: 'cloudflare', action: 'config', path }),
+    [applyTunnel],
   );
 
   const revoke = useCallback(async (id: string): Promise<string | null> => {
@@ -112,5 +137,5 @@ export function useConnectStatus(): UseConnectStatusResult {
     }
   }, []);
 
-  return { status, error, busy, refresh, setTunnel, revoke };
+  return { status, error, busy, refresh, setTunnel, setCloudflareConfig, revoke };
 }

@@ -81,6 +81,13 @@ export interface ConnectStatus {
   version: string;
   addresses: ConnectAddress[];
   tunnels: TunnelState[];
+  /**
+   * The cloudflared config the Cloudflare row reads and the start path runs.
+   *
+   * The page shows it because "which file am I using?" is the question a user
+   * with two configs cannot answer from the tunnel's state alone.
+   */
+  cloudflareConfigPath: string;
   devices: PairedDevice[];
 }
 
