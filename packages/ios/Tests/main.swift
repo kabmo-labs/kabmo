@@ -26,5 +26,6 @@ WebProcessRecoveryTests.run()
 RouteChoiceTests.run()
 PairingLinkTests.run()
 QrImageDecoderTests.run()
+DownloadPolicyTests.run()
 
 Harness.finish()

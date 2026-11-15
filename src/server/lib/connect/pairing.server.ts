@@ -37,6 +37,16 @@ export interface PendingPairing {
   secretHash: string;
   candidates: ConnectCandidate[];
   expiresAt: number;
+  /**
+   * The code as a downloadable PNG, drawn once when the code is minted.
+   *
+   * Held here because the download is an HTTP request from a shell's own
+   * download machinery (or the browser), which can only carry the session
+   * cookie — it cannot run the page's renderer. The secret is not stored in a
+   * form that can be replayed as a credential, and the bytes carry the same
+   * five-minute life as everything else in this entry.
+   */
+  qrPng: Uint8Array | null;
 }
 
 declare global {
@@ -76,8 +86,31 @@ export function createPairing(candidates: ConnectCandidate[]): {
     secretHash: hashSecret(secret),
     candidates,
     expiresAt,
+    qrPng: null,
   });
   return { pairingId, secret, expiresAt: new Date(expiresAt).toISOString() };
+}
+
+/**
+ * Attach the rendered PNG to a pending code.
+ *
+ * Separate from `createPairing` because the image encodes the browser link,
+ * which needs the secret that minting has just produced — the route is the only
+ * place that has both.
+ */
+export function attachPairingQr(pairingId: string, png: Uint8Array): void {
+  const entry = store().get(pairingId);
+  if (!entry) return;
+  entry.qrPng = png;
+}
+
+/** The code's PNG, or null when it was never drawn, expired, or was used. */
+export function pairingQr(pairingId: string): Uint8Array | null {
+  const now = Date.now();
+  sweep(now);
+  const entry = store().get(pairingId);
+  if (!entry || entry.expiresAt <= now) return null;
+  return entry.qrPng;
 }
 
 /**

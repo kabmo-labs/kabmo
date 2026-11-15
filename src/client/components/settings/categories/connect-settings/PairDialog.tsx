@@ -22,7 +22,6 @@ import { useEffect } from 'preact/hooks';
 import { createPortal } from 'preact/compat';
 import { X } from 'lucide-preact';
 import { QrCode } from '@/client/components/settings/categories/connect-settings/QrCode';
-import { downloadQrSvg } from '@/client/components/settings/categories/connect-settings/qr-image';
 import { copyToClipboard } from '@/client/hooks/ui/clipboard';
 import { pushToast } from '@/client/hooks/ui/toasts';
 import type { PairingCode } from '@/client/hooks/connect/use-pairing';
@@ -153,13 +152,18 @@ export function PairDialog({ code, error, busy, secondsLeft, onClose, onRetry }:
                 >
                   Copy link
                 </button>
-                <button
-                  type="button"
-                  onClick={() => downloadQrSvg(code.qr, 'kabmo-pairing-qr.svg', 'Pairing QR code')}
-                  className="rounded-lg border border-ink/15 px-2.5 py-1.5 text-[11px] font-semibold text-ink transition-colors hover:bg-ink/5"
-                >
-                  Download QR
-                </button>
+                {/* A download of an expired code would save the server's refusal
+                    text under a .png name, so the control is only offered while
+                    the code still exists. */}
+                {!expired && code.qrUrl !== '' && (
+                  <a
+                    href={code.qrUrl}
+                    download="kabmo-pairing-qr.png"
+                    className="rounded-lg border border-ink/15 px-2.5 py-1.5 text-[11px] font-semibold text-ink transition-colors hover:bg-ink/5"
+                  >
+                    Download QR
+                  </a>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 {expired && (

@@ -21,10 +21,11 @@
 import { json, NO_STORE_HEADERS, type ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { connectIdentity } from '@/server/lib/connect/identity.server';
 import { connectStatus } from '@/server/lib/connect/status.server';
-import { createPairing, consumePairing } from '@/server/lib/connect/pairing.server';
+import { createPairing, attachPairingQr, consumePairing } from '@/server/lib/connect/pairing.server';
 import { mintDeviceToken, touchDevice, DEVICE_COOKIE } from '@/server/lib/connect/devices.server';
 import { isSecureRequest } from '@/server/lib/auth/token';
 import { qrMatrix } from '@/server/lib/connect/qr.server';
+import { qrPng } from '@/server/lib/connect/qr-png.server';
 import { encodePairingFragment, encodePairingPayload, PAIRING_VERSION } from '@/shared/lib/connect/payload';
 import { ROUTE_TIER } from '@/shared/lib/connect/tier';
 import type { ConnectCandidate, ConnectRouteKind } from '@/shared/lib/connect/types';
@@ -143,6 +144,10 @@ export async function action({ request }: ActionFunctionArgs) {
   // LAN, because the LAN origin is not a secure context.
   const best = [...candidates].sort((left, right) => ROUTE_TIER[left.kind] - ROUTE_TIER[right.kind])[0];
   const webLink = `${best.url}/pair#${encodePairingFragment(payload)}`;
+  const qr = qrMatrix(webLink);
+  // Drawn once, here: the download is an HTTP GET from a host's own download
+  // machinery, which cannot run this page's renderer to draw it later.
+  attachPairingQr(pairing.pairingId, qrPng(qr));
 
   return json(
     {
@@ -150,8 +155,9 @@ export async function action({ request }: ActionFunctionArgs) {
       expiresAt: pairing.expiresAt,
       link,
       webLink,
+      qrUrl: `/api/connect/pair/qr.png?pairingId=${encodeURIComponent(pairing.pairingId)}`,
       candidates,
-      qr: qrMatrix(webLink),
+      qr,
     },
     { headers: NO_STORE_HEADERS },
   );

@@ -30,12 +30,13 @@ use gtk::prelude::*;
 use javascriptcore::ValueExt;
 use serde_json::Value;
 use webkit2gtk::{
-    NavigationPolicyDecisionExt, PolicyDecisionExt, PolicyDecisionType, URIRequestExt,
-    UserContentInjectedFrames, UserContentManagerExt, UserScript, UserScriptInjectionTime, WebView,
-    WebViewExt,
+    DownloadExt, NavigationPolicyDecisionExt, PolicyDecisionExt, PolicyDecisionType, URIRequestExt,
+    URIResponseExt, UserContentInjectedFrames, UserContentManagerExt, UserScript,
+    UserScriptInjectionTime, WebContextExt, WebView, WebViewExt,
 };
 
 use kabmo_desktop::bridge::{bootstrap_script, parse_call, reply_script, DesktopInfo};
+use kabmo_desktop::downloads;
 use kabmo_desktop::open_paths::{launch_paths, open_paths_script, OpenPathQueue};
 use kabmo_desktop::APP_NAME;
 use kabmo_desktop::palette::ShellPalette;
@@ -268,6 +269,7 @@ impl Shell {
     fn wire(&self) {
         self.wire_bridge();
         self.wire_navigation();
+        self.wire_downloads();
         wire_edge_resize(&self.window, &self.view);
         {
             let slot = self.last_press.clone();
@@ -554,6 +556,34 @@ impl Shell {
             decision.ignore();
             open_external(&navigation);
             true
+        });
+    }
+
+    /// Save a file the console asked for.
+    ///
+    /// WebKitGTK cancels a download with no destination, and the console had no
+    /// download handling at all: a link that saved a file in a browser did
+    /// nothing here. The destination is the user's Downloads directory, under
+    /// the name the server suggested, never overwriting a file that is already
+    /// there — the rule itself is `downloads::unique_path`'s, pinned by the
+    /// suite.
+    fn wire_downloads(&self) {
+        let Some(context) = self.view.context() else {
+            return;
+        };
+        context.connect_download_started(|_context, download| {
+            let Some(directory) = downloads::directory() else {
+                eprintln!("[kabmo] download: no Downloads directory to save into");
+                return;
+            };
+            let suggested = download
+                .response()
+                .and_then(|response| response.suggested_filename())
+                .map(|name| name.to_string())
+                .unwrap_or_default();
+            let name = downloads::safe_name(&suggested);
+            let target = downloads::unique_path(&directory, &name, |path| path.exists());
+            download.set_destination(&target.to_string_lossy());
         });
     }
 

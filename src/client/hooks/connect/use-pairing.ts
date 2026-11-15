@@ -22,6 +22,8 @@ export interface PairingCode {
   link: string;
   /** The `https://…/pair#…` link a browser can open. This is what the QR holds. */
   webLink: string;
+  /** The same code as a downloadable PNG, served by this origin. */
+  qrUrl: string;
   candidates: ConnectCandidate[];
   qr: { size: number; rows: string[] };
 }
@@ -66,6 +68,9 @@ export function usePairing(): UsePairingResult {
         expiresAt: payload.expiresAt ?? '',
         link: payload.link,
         webLink: payload.webLink ?? payload.link,
+        // A server too old to serve the PNG still mints a scannable code; the
+        // dialog then leaves the download out rather than pointing it at nothing.
+        qrUrl: payload.qrUrl ?? '',
         candidates: payload.candidates ?? [],
         qr: payload.qr,
       });

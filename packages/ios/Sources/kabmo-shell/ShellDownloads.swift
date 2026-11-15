@@ -50,11 +50,18 @@ final class ShellDownloads: NSObject, WKDownloadDelegate {
     for response: WKNavigationResponse,
     installedVersion: String
   ) -> WKNavigationResponsePolicy {
-    guard !response.canShowMIMEType else { return .allow }
-
     let url = response.response.url
     let disposition = (response.response as? HTTPURLResponse)?
       .value(forHTTPHeaderField: "Content-Disposition")
+
+    // The response is a download when it cannot be shown OR when the server says
+    // so. The second half is not covered by `canShowMIMEType`: a PNG is
+    // renderable, so an attachment link displayed the image and saved nothing —
+    // measured on WebKit, the pairing QR was one of them.
+    guard DownloadPolicy.shouldDownload(
+      canShowMIMEType: response.canShowMIMEType,
+      contentDisposition: disposition
+    ) else { return .allow }
 
     if let url, ShellUpdate.isIPADownload(url: url.absoluteString, contentDisposition: disposition) {
       reportIPADownload(url: url, installedVersion: installedVersion)

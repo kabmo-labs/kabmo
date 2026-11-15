@@ -128,6 +128,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
   /// The `WKUIDelegate`: the file panel and where a popup goes. Built in
   /// `buildWindow`, when the window it presents over exists.
   private var shellUI: ShellUIDelegate?
+  /// The download delegate. The web view does not start a transfer without one,
+  /// so a `download` link was dead until this existed.
+  private var shellDownloads: ShellDownloads?
+
+  /// Say that a download failed.
+  ///
+  /// A transfer that fails silently is the exact symptom the control had before
+  /// this shell handled downloads at all ("the button does nothing"), so the
+  /// failure is stated where the user clicked.
+  private func reportDownloadFailure(_ message: String) {
+    let alert = NSAlert()
+    alert.messageText = "The file could not be downloaded."
+    alert.informativeText = message
+    alert.alertStyle = .warning
+    if window != nil, window.isVisible {
+      alert.beginSheetModal(for: window)
+    } else {
+      alert.runModal()
+    }
+  }
   /// True once a page has finished a load, so a flush is worth attempting.
   private var pageReady = false
 
@@ -302,6 +322,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
     let panels = ShellUIDelegate(store: uploadAccept, window: window)
     shellUI = panels
     webView.uiDelegate = panels
+    // Downloads. `WKNavigationResponsePolicy.download` without a delegate fails
+    // with no destination, so the delegate is the half that makes the policy
+    // mean anything; a finished file is REVEALED in Finder, which is the only
+    // moment the shell can say the download happened.
+    let downloads = ShellDownloads()
+    downloads.onFinish = { file in
+      NSWorkspace.shared.activateFileViewerSelecting([file])
+    }
+    downloads.onFailure = { [weak self] message in
+      self?.reportDownloadFailure(message)
+    }
+    shellDownloads = downloads
     // The page draws the title bar, so it must reach the window's top edge.
     webView.setValue(false, forKey: "drawsBackground")
 
@@ -451,6 +483,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
     decidePolicyFor navigationAction: WKNavigationAction,
     decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
   ) {
+    // A link carrying `download` is a file, not a document: answer `.download`
+    // so WebKit starts a transfer and hands it to the delegate below. Without
+    // this the click navigated the window to a file the shell never saved.
+    if navigationAction.shouldPerformDownload {
+      decisionHandler(.download)
+      return
+    }
+
     let destination = navigationAction.request.url?.absoluteString
     // `webView.url` is the document being SHOWN at this point: the incoming one
     // has not committed yet, which is exactly the "where are we leaving from"
@@ -465,6 +505,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
       NSWorkspace.shared.open(url)
     }
     decisionHandler(.cancel)
+  }
+
+  /// A response the console cannot render — a download the page asked for.
+  ///
+  /// `Content-Disposition: attachment` is what marks it: the response's MIME
+  /// type may be an image the web view COULD show, and answering `.allow` then
+  /// displayed the file in place and saved nothing. This is the path a native
+  /// shell's download machinery exists for, and the pairing QR is the first
+  /// control in the console that takes it.
+  func webView(
+    _ webView: WKWebView,
+    decidePolicyFor navigationResponse: WKNavigationResponse,
+    decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void
+  ) {
+    let disposition = (navigationResponse.response as? HTTPURLResponse)?
+      .value(forHTTPHeaderField: "Content-Disposition")
+    let save = !navigationResponse.canShowMIMEType || DownloadFile.isAttachment(disposition)
+    decisionHandler(save ? .download : .allow)
+  }
+
+  /// A transfer started from a navigation ACTION (a link with `download`).
+  ///
+  /// Without a delegate the transfer has no destination and fails silently.
+  func webView(_ webView: WKWebView, navigationAction: WKNavigationAction, didBecome download: WKDownload) {
+    download.delegate = shellDownloads
+  }
+
+  /// A transfer started from a response — the path the policy above selects.
+  func webView(_ webView: WKWebView, navigationResponse: WKNavigationResponse, didBecome download: WKDownload) {
+    download.delegate = shellDownloads
   }
 
   func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {

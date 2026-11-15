@@ -74,7 +74,10 @@ final class ShellNavigationDelegate: NSObject, WKNavigationDelegate, WKUIDelegat
       scheme: url.scheme
     )
     guard decision == .external else {
-      decisionHandler(.allow)
+      // A link carrying `download` is a file, not a document. Returning `.allow`
+      // here let WebKit display it instead — the pairing dialog's Download did
+      // nothing, or replaced the console with the image it was supposed to save.
+      decisionHandler(navigationAction.shouldPerformDownload ? .download : .allow)
       return
     }
 

@@ -21,6 +21,7 @@
  */
 
 mod bridge;
+mod downloads;
 mod memory;
 mod navigation;
 mod notification;
@@ -50,6 +51,7 @@ fn main() {
     window::cases(&mut r);
     system::cases(&mut r);
     navigation::cases(&mut r);
+    downloads::cases(&mut r);
     update::cases(&mut r);
     open_paths::cases(&mut r);
     notification::cases(&mut r);

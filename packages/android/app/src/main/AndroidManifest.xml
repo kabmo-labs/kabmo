@@ -13,6 +13,18 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <!--
+      Saving a download into the public Downloads folder on API 28 and lower.
+      `DownloadManager.Request.setDestinationInExternalPublicDir` documents the
+      permission as required there; from API 29 the system's scoped storage
+      handles it without one, which is why the ceiling is declared rather than
+      the permission being requested at runtime. Without it `enqueue` throws on
+      an old device, and the download a user asked for never appears.
+    -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+
+    <!--
       Composer dictation. The console captures audio with `getUserMedia`, which
       the WebView refuses unless the APP holds this permission AND the chrome
       client grants the request — see `KabmoChromeClient.onPermissionRequest`.

@@ -715,6 +715,8 @@ droppedPathsCases()
 openPathsCases()
 // The panel behind every `<input type="file">`, which WebKit otherwise cancels.
 filePanelCases()
+// Where a downloaded file goes, and the name it is saved under.
+downloadCases()
 WebProcessRecoveryTests.run()
 // The identifiers that keep one session's banner from replacing another's.
 notificationWireCases()

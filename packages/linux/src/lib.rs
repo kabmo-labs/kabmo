@@ -24,6 +24,7 @@ pub const APP_NAME: &str = "Kabmo";
 
 pub mod base64;
 pub mod bridge;
+pub mod downloads;
 pub mod memory;
 pub mod navigation;
 pub mod notification;

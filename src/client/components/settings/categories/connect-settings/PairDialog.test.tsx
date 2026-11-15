@@ -4,14 +4,22 @@
  */
 
 /**
- * The pairing dialog's Copy link button.
+ * The pairing dialog's two outbound controls.
  *
- * The bug this pins: the button called `navigator.clipboard?.writeText(...)`.
- * Kabmo is routinely opened over plain HTTP on a LAN or Tailscale address — the
- * exact setup the dialog exists for — and `navigator.clipboard` is undefined
- * outside a secure context, so the optional chain swallowed the click with no
- * copy and no feedback. The button now goes through `copyToClipboard` (which
- * falls back to `execCommand`) and reports the outcome as a toast.
+ * The Copy link cases pin the bug where the button called
+ * `navigator.clipboard?.writeText(...)`. Kabmo is routinely opened over plain
+ * HTTP on a LAN or Tailscale address — the exact setup the dialog exists for —
+ * and `navigator.clipboard` is undefined outside a secure context, so the
+ * optional chain swallowed the click with no copy and no feedback. The button now
+ * goes through `copyToClipboard` (which falls back to `execCommand`) and reports
+ * the outcome as a toast.
+ *
+ * The Download case pins the SECOND bug: the control used to build a Blob and
+ * click an anchor the page created itself. A native shell cannot download a
+ * `blob:` URL — Android's download listener ignores it, and the desktop shells
+ * never see a navigation — so the button did nothing there while the file it
+ * produced in a browser was an SVG most viewers refuse to open. It is now a real
+ * link to the server's PNG, which is the one shape every host can download.
  */
 
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
@@ -31,6 +39,7 @@ const CODE: PairingCode = {
   expiresAt: new Date(Date.now() + 120_000).toISOString(),
   link: 'kabmo://pair#abc',
   webLink: 'https://kabmo.example/pair#abc',
+  qrUrl: '/api/connect/pair/qr.png?pairingId=pair-1',
   candidates: [{ kind: 'lan', url: 'http://192.168.1.5:3000' }],
   qr: { size: 1, rows: ['1'] },
 };
@@ -56,8 +65,8 @@ afterAll(() => {
   restoreDomGlobals();
 });
 
-/** Mount the dialog and return the button whose label is `label`. */
-async function mountButton(label: string): Promise<HTMLButtonElement> {
+/** Mount the dialog. */
+async function mountDialog(secondsLeft = 90): Promise<void> {
   const host = document.createElement('div');
   document.body.appendChild(host);
   container = host;
@@ -67,16 +76,22 @@ async function mountButton(label: string): Promise<HTMLButtonElement> {
         code: CODE,
         error: null,
         busy: false,
-        secondsLeft: 90,
+        secondsLeft,
         onClose: () => {},
         onRetry: () => {},
       }),
       host,
     );
   });
-  const button = [...document.querySelectorAll('button')].find((node) => node.textContent === label);
-  if (!button) throw new Error(`${label} button not found`);
-  return button;
+}
+
+/** The control whose visible label is `label`. */
+function control(label: string): HTMLElement {
+  const node = [...document.querySelectorAll<HTMLElement>('button, a')].find(
+    (candidate) => candidate.textContent === label,
+  );
+  if (!node) throw new Error(`${label} control not found`);
+  return node;
 }
 
 /** Make the page look like an insecure LAN origin: no async clipboard API. */
@@ -95,9 +110,9 @@ describe('PairDialog copy link', () => {
       return true;
     }) as typeof document.execCommand;
 
-    const button = await mountButton('Copy link');
+    await mountDialog();
     await act(async () => {
-      button.click();
+      control('Copy link').click();
     });
 
     expect(copied).toBe(CODE.webLink);
@@ -110,9 +125,9 @@ describe('PairDialog copy link', () => {
     removeClipboardApi();
     document.execCommand = (() => false) as typeof document.execCommand;
 
-    const button = await mountButton('Copy link');
+    await mountDialog();
     await act(async () => {
-      button.click();
+      control('Copy link').click();
     });
 
     const toasts = getToastsSnapshot();
@@ -123,37 +138,22 @@ describe('PairDialog copy link', () => {
 });
 
 describe('PairDialog download QR', () => {
-  test('saves the code as an SVG file with the quiet zone included', async () => {
-    const blobs: Blob[] = [];
-    const clicked: { href: string; download: string }[] = [];
-    const nativeCreate = URL.createObjectURL;
-    const nativeRevoke = URL.revokeObjectURL;
-    const nativeClick = win.HTMLAnchorElement.prototype.click;
-    URL.createObjectURL = (blob: Blob | MediaSource) => {
-      blobs.push(blob as Blob);
-      return 'blob:qr';
-    };
-    URL.revokeObjectURL = () => {};
-    win.HTMLAnchorElement.prototype.click = function click(this: HTMLAnchorElement) {
-      clicked.push({ href: this.href, download: this.download });
-    };
+  test('is a link to the server PNG, not a Blob the page builds', async () => {
+    await mountDialog();
+    const link = control('Download QR');
+    expect(link.tagName).toBe('A');
+    const anchor = link as HTMLAnchorElement;
+    expect(anchor.getAttribute('href')).toBe(CODE.qrUrl);
+    expect(anchor.getAttribute('download')).toBe('kabmo-pairing-qr.png');
+    // An SVG was the first attempt, and viewers rejected it.
+    expect(anchor.getAttribute('href')).not.toContain('.svg');
+  });
 
-    try {
-      const button = await mountButton('Download QR');
-      await act(async () => {
-        button.click();
-      });
-
-      expect(clicked).toEqual([{ href: 'blob:qr', download: 'kabmo-pairing-qr.svg' }]);
-      expect(blobs[0]?.type).toBe('image/svg+xml');
-      const markup = await blobs[0]!.text();
-      // size 1 + four modules of quiet zone on each side.
-      expect(markup).toContain('viewBox="0 0 9 9"');
-      expect(markup).toContain('<rect x="4" y="4" width="1" height="1"/>');
-    } finally {
-      URL.createObjectURL = nativeCreate;
-      URL.revokeObjectURL = nativeRevoke;
-      win.HTMLAnchorElement.prototype.click = nativeClick;
-    }
+  test('an expired code offers no download, because the server would save its refusal', async () => {
+    await mountDialog(0);
+    const labels = [...document.querySelectorAll<HTMLElement>('button, a')].map((node) => node.textContent);
+    expect(labels).not.toContain('Download QR');
+    // The link stays available for a different reason: it is a copy, not a file.
+    expect(labels).toContain('Copy link');
   });
 });
