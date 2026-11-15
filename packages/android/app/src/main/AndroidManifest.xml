@@ -23,6 +23,26 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <!--
+      The other half of WebView audio capture, and the one that is easy to miss
+      because it is a NORMAL permission: no prompt, no settings row, nothing on
+      screen says it is absent.
+
+      Chromium's Android audio path selects a "communication device" before it
+      opens the capture device, and that selection is gated on this permission.
+      Without it the WebView logs `Unable to select communication device!` and
+      `getUserMedia({audio: true})` rejects with `NotReadableError: Could not
+      start audio source` — before any `AudioRecord` exists, so the app's
+      RECORD_AUDIO grant looks fine and the microphone still never opens. That
+      is the reported "Could not open the microphone" in the composer: the
+      permission request was granted, the origin was secure, and the capture
+      still failed one layer below both.
+
+      Chrome declares this in its own manifest, which is why the same page
+      records in Chrome on the same device and not in this shell.
+    -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+
+    <!--
       Pairing by camera, and nothing else. The console's login screen offers
       "Scan with camera" when the origin is secure; the WebView refuses the
       request unless the APP holds this permission AND the chrome client grants

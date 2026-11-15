@@ -40,10 +40,11 @@ export JAVA_HOME=/path/to/jdk-17
 # → app/build/outputs/apk/release/app-release.apk  (measured 76,917 B, R8 + resource shrink)
 
 ./gradlew :app:testDebugUnitTest
-# → 60 tests: URL normalization, zoom math, the overlay's state rules (including
+# → 173 tests: URL normalization, zoom math, the overlay's state rules (including
 #   what makes a reload a reload), the update decisions (what counts as an APK,
-#   what counts as an upgrade, what each installer status means), and the
-#   wordmark drawable against the README SVG (plain JVM, no emulator)
+#   what counts as an upgrade, what each installer status means), the manifest's
+#   capture permissions, and the wordmark drawable against the README SVG
+#   (plain JVM, no emulator)
 ```
 
 The release APK is **77 KB** because it carries no library: one `classes.dex`,
@@ -590,6 +591,7 @@ Every one of these is a Kabmo feature that dies silently without it:
 | WebView hook | Feature it keeps alive |
 |---|---|
 | `onShowFileChooser` | the composer's 📎 attach button |
+| `onPermissionRequest` + `MODIFY_AUDIO_SETTINGS` | composer dictation (the mic) and the pairing camera — the chrome client grants the capture resource, and the manifest declares the permission Chromium's audio path needs before it will open a capture device |
 | `onCreateWindow` | provider OAuth login (`window.open(…, '_blank')`), release notes, social links |
 | `setDownloadListener` + cookie forwarding | the editor's Download button |
 | `onReceivedSslError` | a named refusal instead of a blank page |

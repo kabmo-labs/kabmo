@@ -14,8 +14,16 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 
 /**
- * `window.open` and the file chooser — the two WebView capabilities Kabmo uses
- * that a bare `WebChromeClient` silently drops.
+ * `getUserMedia`, `window.open` and the file chooser — the three WebView
+ * capabilities Kabmo uses that a bare `WebChromeClient` silently drops.
+ *
+ * **`onPermissionRequest`** is how the microphone opens at all: the default
+ * implementation DENIES, which is why composer dictation did nothing on Android
+ * even after the origin became a secure context, and why the pairing camera
+ * could not open. It is only half of it — the app also has to declare
+ * `RECORD_AUDIO` (plus `MODIFY_AUDIO_SETTINGS`, which Chromium's audio path
+ * needs and nothing in this source tree references; see
+ * `AndroidManifest.xml`). `ManifestCapturePermissionsTest` pins the pair.
  *
  * **`onCreateWindow`** is what makes `window.open(url, '_blank')` work. Kabmo's
  * provider login does exactly that (`LoginModal`), so without it the OAuth page
