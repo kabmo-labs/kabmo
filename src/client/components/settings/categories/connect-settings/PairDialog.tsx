@@ -22,6 +22,8 @@ import { useEffect } from 'preact/hooks';
 import { createPortal } from 'preact/compat';
 import { X } from 'lucide-preact';
 import { QrCode } from '@/client/components/settings/categories/connect-settings/QrCode';
+import { copyToClipboard } from '@/client/hooks/ui/clipboard';
+import { pushToast } from '@/client/hooks/ui/toasts';
 import type { PairingCode } from '@/client/hooks/connect/use-pairing';
 
 const ROUTE_LABEL: Record<string, string> = {
@@ -43,6 +45,23 @@ function clock(seconds: number): string {
   const minutes = Math.floor(seconds / 60);
   const rest = seconds % 60;
   return `${minutes}:${String(rest).padStart(2, '0')}`;
+}
+
+/**
+ * Copy the pairing link and say what happened.
+ *
+ * `navigator.clipboard` is undefined outside a secure context, and Kabmo is
+ * routinely opened over plain HTTP on a LAN or Tailscale address — the exact
+ * setup this dialog exists for. The old `navigator.clipboard?.writeText(...)`
+ * therefore did nothing at all there, with no feedback. `copyToClipboard` falls
+ * back to `execCommand`, and the toast reports the outcome either way.
+ */
+async function copyPairingLink(link: string): Promise<void> {
+  const ok = await copyToClipboard(link);
+  pushToast(
+    ok ? 'Pairing link copied' : 'Could not copy the pairing link — select it from the routes list instead.',
+    ok ? 'success' : 'error',
+  );
 }
 
 export function PairDialog({ code, error, busy, secondsLeft, onClose, onRetry }: PairDialogProps) {
@@ -127,7 +146,7 @@ export function PairDialog({ code, error, busy, secondsLeft, onClose, onRetry }:
             <div className="mt-4 flex items-center justify-between gap-2">
               <button
                 type="button"
-                onClick={() => void navigator.clipboard?.writeText(code.webLink).catch(() => {})}
+                onClick={() => void copyPairingLink(code.webLink)}
                 className="rounded-lg border border-ink/15 px-2.5 py-1.5 text-[11px] font-semibold text-ink transition-colors hover:bg-ink/5"
               >
                 Copy link
