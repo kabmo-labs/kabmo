@@ -25,6 +25,11 @@ import {
   stopCloudflared,
 } from '@/server/lib/connect/cloudflared.server';
 
+// The stand-in is a `#!/bin/sh` script, so the cases that spawn it are
+// POSIX-only: Windows cannot execute it, and they would fail on the spawn
+// instead of on the lifecycle they exist to measure. The Linux gate covers it.
+const posixOnly = process.platform !== 'win32';
+
 const dirs: string[] = [];
 
 function fakeCloudflared(): string {
@@ -42,7 +47,7 @@ afterEach(() => {
 });
 
 describe('cloudflared lifecycle', () => {
-  test('starting records the public URL and reports the process alive', async () => {
+  test.skipIf(!posixOnly)('starting records the public URL and reports the process alive', async () => {
     const binary = fakeCloudflared();
     const port = 39_101;
     const outcome = await startCloudflared(binary, '/tmp/config.yml', 'kabmo.example.com', port);
@@ -57,7 +62,7 @@ describe('cloudflared lifecycle', () => {
     expect(runningTunnelUrl(port)).toBeNull();
   });
 
-  test('starting twice for one port reuses the running tunnel', async () => {
+  test.skipIf(!posixOnly)('starting twice for one port reuses the running tunnel', async () => {
     const binary = fakeCloudflared();
     const port = 39_102;
     await startCloudflared(binary, '/tmp/config.yml', 'a.example.com', port);

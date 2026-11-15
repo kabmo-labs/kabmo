@@ -20,6 +20,11 @@ import os from 'os';
 import path from 'path';
 import { serveIsUp, startServe, stopServe, tailscaleNode } from '@/server/lib/connect/tailscale.server';
 
+// The stand-in is a `#!/bin/sh` script, so this suite is POSIX-only: Windows
+// cannot execute it, and every case would then fail on the spawn instead of on
+// the parsing it exists to measure. The Linux gate covers the behaviour.
+const posixOnly = process.platform !== 'win32';
+
 const dirs: string[] = [];
 
 function fakeTailscale(script: string): string {
@@ -40,7 +45,7 @@ const RUNNING = `cat <<'JSON'
 JSON`;
 
 describe('tailscaleNode', () => {
-  test('derives the https origin from the MagicDNS name', async () => {
+  test.skipIf(!posixOnly)('derives the https origin from the MagicDNS name', async () => {
     const binary = fakeTailscale(RUNNING);
     const node = await tailscaleNode(binary);
     expect(node?.url).toBe('https://node.tailnet.ts.net');
@@ -48,17 +53,17 @@ describe('tailscaleNode', () => {
     expect(node?.backendState).toBe('Running');
   });
 
-  test('answers null when the daemon does not answer', async () => {
+  test.skipIf(!posixOnly)('answers null when the daemon does not answer', async () => {
     const binary = fakeTailscale('exit 1');
     expect(await tailscaleNode(binary)).toBeNull();
   });
 
-  test('answers null for output that is not JSON', async () => {
+  test.skipIf(!posixOnly)('answers null for output that is not JSON', async () => {
     const binary = fakeTailscale('echo "not json"');
     expect(await tailscaleNode(binary)).toBeNull();
   });
 
-  test('reports a node that is not signed in', async () => {
+  test.skipIf(!posixOnly)('reports a node that is not signed in', async () => {
     const binary = fakeTailscale(`echo '{"BackendState":"NeedsLogin","Self":{}}'`);
     const node = await tailscaleNode(binary);
     expect(node?.backendState).toBe('NeedsLogin');
@@ -67,36 +72,36 @@ describe('tailscaleNode', () => {
 });
 
 describe('serveIsUp', () => {
-  test('reads a TCP share as up', async () => {
+  test.skipIf(!posixOnly)('reads a TCP share as up', async () => {
     const binary = fakeTailscale(`echo '{"TCP":{"443":{"HTTPS":true}}}'`);
     expect(await serveIsUp(binary)).toBe(true);
   });
 
-  test('reads an empty config as down', async () => {
+  test.skipIf(!posixOnly)('reads an empty config as down', async () => {
     const binary = fakeTailscale(`echo '{}'`);
     expect(await serveIsUp(binary)).toBe(false);
   });
 
-  test('reads a failing command as down', async () => {
+  test.skipIf(!posixOnly)('reads a failing command as down', async () => {
     const binary = fakeTailscale('exit 1');
     expect(await serveIsUp(binary)).toBe(false);
   });
 });
 
 describe('startServe / stopServe', () => {
-  test('a successful share reports no reason', async () => {
+  test.skipIf(!posixOnly)('a successful share reports no reason', async () => {
     const binary = fakeTailscale('exit 0');
     expect(await startServe(binary, 3000)).toEqual({ ok: true, reason: null });
   });
 
-  test('a refusal carries the CLI sentence', async () => {
+  test.skipIf(!posixOnly)('a refusal carries the CLI sentence', async () => {
     const binary = fakeTailscale('echo "HTTPS is not enabled for this tailnet" >&2; exit 1');
     const outcome = await startServe(binary, 3000);
     expect(outcome.ok).toBe(false);
     expect(outcome.reason).toContain('HTTPS is not enabled');
   });
 
-  test('a silent timeout names the likely cause instead of the timeout', async () => {
+  test.skipIf(!posixOnly)('a silent timeout names the likely cause instead of the timeout', async () => {
     // The real CLI blocks when HTTPS is off, and "timed out" alone tells the user
     // nothing they can act on.
     const binary = fakeTailscale('sleep 30');
@@ -105,7 +110,7 @@ describe('startServe / stopServe', () => {
     expect(outcome.reason).toContain('HTTPS may be disabled');
   }, 30_000);
 
-  test('stopping a share that is not there still succeeds', async () => {
+  test.skipIf(!posixOnly)('stopping a share that is not there still succeeds', async () => {
     const binary = fakeTailscale('exit 0');
     expect(await stopServe(binary)).toEqual({ ok: true, reason: null });
   });
