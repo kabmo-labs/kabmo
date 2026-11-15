@@ -91,10 +91,15 @@ describe('login rate limit', () => {
 describe('the rate limit cannot be evaded by a forged forwarding header', () => {
   // Verified against a live server: 8 attempts with rotating `x-forwarded-for`
   // and `x-real-ip` values all answered 429. This pins the REASON, against the
-  // real gate rather than a stand-in: the key is the socket address the gate
-  // records, and a caller-supplied header is never consulted. If that ever
-  // changed, a caller could present a fresh identity per attempt and walk
-  // straight through the budget — invisible until exploited.
+  // real gate rather than a stand-in: for a DIRECT connection the key is the
+  // socket address the gate records, and a caller-supplied header is never
+  // consulted. If that ever changed, a caller could present a fresh identity per
+  // attempt and walk straight through the budget — invisible until exploited.
+  //
+  // The socket here is a LAN address on purpose. A loopback socket is the one
+  // case where the header IS read (see the tunnel test below), because a tunnel
+  // connects from 127.0.0.1 and every client behind it would otherwise share one
+  // budget — which let an attacker anywhere lock the owner out for 15 minutes.
   const loginRequest = (forwardedFor: string) => new Request('http://127.0.0.1/api/auth/login', {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-forwarded-for': forwardedFor, 'x-real-ip': forwardedFor },
@@ -103,9 +108,9 @@ describe('the rate limit cannot be evaded by a forged forwarding header', () => 
   test('a forged forwarding header does not become the rate-limit key', async () => {
     const request = loginRequest('10.0.0.1');
     // The gate records the socket address it was handed…
-    await authGate(request, '127.0.0.1');
+    await authGate(request, '192.168.18.50');
     // …and that is what the login route throttles on, not the header.
-    expect(clientAddressFor(request)).toBe('127.0.0.1');
+    expect(clientAddressFor(request)).toBe('192.168.18.50');
     expect(clientAddressFor(request)).not.toBe('10.0.0.1');
   });
 
@@ -113,12 +118,24 @@ describe('the rate limit cannot be evaded by a forged forwarding header', () => 
     const keys = new Set<string>();
     for (let attempt = 0; attempt < 5; attempt += 1) {
       const request = loginRequest(`10.0.0.${attempt}`);
-      await authGate(request, '127.0.0.1');
+      await authGate(request, '192.168.18.50');
       keys.add(clientAddressFor(request));
     }
     // Five different forged identities, one key.
     expect(keys.size).toBe(1);
-    expect([...keys][0]).toBe('127.0.0.1');
+    expect([...keys][0]).toBe('192.168.18.50');
+  });
+
+  test('behind a tunnel the forwarded address IS the key, so one client cannot lock out the rest', async () => {
+    // `cloudflared` and `tailscale serve` both connect from loopback. Keying on
+    // the socket there gave every client on the internet one shared budget: ten
+    // failures from an attacker locked the owner out for fifteen minutes.
+    const attacker = loginRequest('203.0.113.9');
+    const owner = loginRequest('198.51.100.4');
+    await authGate(attacker, '127.0.0.1');
+    await authGate(owner, '127.0.0.1');
+    expect(clientAddressFor(attacker)).toBe('203.0.113.9');
+    expect(clientAddressFor(owner)).toBe('198.51.100.4');
   });
 
   test('an unidentifiable caller falls back to the shared key, not a fresh one', async () => {

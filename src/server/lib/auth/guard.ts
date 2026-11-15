@@ -30,6 +30,7 @@
 import { hashPassword, deriveCredentialKey, readSessionSecret, writeSessionSecret, type ActiveAuthConfig } from '@/server/lib/auth/config';
 import { readSessionCookie, verifySessionToken } from '@/server/lib/auth/token';
 import { agentTokenScopeForPath, bearerToken, verifyAgentToken } from '@/server/lib/sessions/agent-token.server';
+import { verifyDeviceToken, readDeviceCookie } from '@/server/lib/connect/devices.server';
 import { rememberClientAddress } from '@/server/lib/auth/client-address';
 import type { CredentialHandover } from '@/shared/lib/auth/handover';
 
@@ -56,6 +57,13 @@ const PUBLIC_EXACT = new Set([
   '/api/auth/state',
   '/api/auth/login',
   '/api/auth/logout',
+  // A device redeeming a pairing code has no cookie yet — the one-time secret in
+  // the code IS its credential. Minting a code stays gated; only the redemption
+  // is public, and it is single-use with a two-minute life.
+  '/api/connect/pair/claim',
+  // The page a phone's camera opens. It carries no session and no data of its
+  // own: it reads the pairing payload from the URL fragment and posts it once.
+  '/pair',
   LOGIN_PATH,
   '/robots.txt',
   '/sw.js',
@@ -237,10 +245,20 @@ export function isAuthEnabled(): boolean {
  */
 export function isAuthenticatedRequest(request: Request): boolean {
   if (!active) return true;
-  return verifySessionToken(readSessionCookie(request), {
-    sessionSecret: active.sessionSecret,
-    credentialKey: active.credentialKey,
-  });
+  if (
+    verifySessionToken(readSessionCookie(request), {
+      sessionSecret: active.sessionSecret,
+      credentialKey: active.credentialKey,
+    })
+  ) {
+    return true;
+  }
+  // A paired device carries its own token, and the gate accepts it for every
+  // path — so this must agree, or the shell renders the login screen to a device
+  // that is already authenticated. Measured: after pairing, the cookie was set
+  // and every API call answered 200, while the document still drew the password
+  // form because this function only knew about session cookies.
+  return verifyDeviceToken(bearerToken(request)) !== null || verifyDeviceToken(readDeviceCookie(request)) !== null;
 }
 
 /** JSON body for a rejected API call, or a redirect for a document request. */
@@ -303,6 +321,15 @@ export function authGate(request: Request, clientAddress?: string): Response | u
   if (scope) {
     const agentSession = verifyAgentToken(bearerToken(request));
     if (agentSession && (scope === 'any' || scope === agentSession)) return undefined;
+  }
+
+  // A paired device carries its own token, and it is good for the whole console
+  // rather than one path: the device is a browser, not a subprocess. Revoking
+  // the device removes the hash from the cache, so the next request fails here.
+  // The cookie form is what a webview can actually send — it cannot attach a
+  // header to its own page requests or to a WebSocket upgrade.
+  if (verifyDeviceToken(bearerToken(request)) || verifyDeviceToken(readDeviceCookie(request))) {
+    return undefined;
   }
 
   const wantsHtml = (request.headers.get('accept') ?? '').includes('text/html');

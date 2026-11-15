@@ -22,11 +22,14 @@
 /// `release/linux.test.js` asserts them together against this value.
 pub const APP_NAME: &str = "Kabmo";
 
+pub mod base64;
 pub mod bridge;
 pub mod memory;
 pub mod navigation;
 pub mod notification;
 pub mod open_paths;
+pub mod pairing_link;
+pub mod qr_scanner;
 pub mod palette;
 pub mod persisted;
 pub mod server_settings;

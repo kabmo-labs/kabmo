@@ -250,5 +250,39 @@ final class ShellNavigationDelegate: NSObject, WKNavigationDelegate, WKUIDelegat
   ) {
     download.delegate = downloads
   }
+
+  // MARK: - Capture permission
+
+  /// `getUserMedia` from the page.
+  ///
+  /// Without this delegate method WebKit refuses every capture request, which is
+  /// why composer dictation did nothing on iOS even once the origin became a
+  /// secure context, and why the pairing camera could not open. The microphone
+  /// and the camera are both granted now; a request for both is granted as one.
+  ///
+  /// The page still needs a SECURE ORIGIN for `getUserMedia` to exist at all —
+  /// over `http://192.168.x.x` the API is undefined and this callback is never
+  /// reached. That is the platform's rule, not this shell's.
+  ///
+  /// The prompts themselves are the system's — `NSMicrophoneUsageDescription` and
+  /// `NSCameraUsageDescription` in `Info.plist` are what they show, and a missing
+  /// key is a crash rather than a refusal, so the three must ship together.
+  func webView(
+    _ webView: WKWebView,
+    requestMediaCapturePermissionFor origin: WKSecurityOrigin,
+    initiatedByFrame frame: WKFrameInfo,
+    type: WKMediaCaptureType,
+    decisionHandler: @escaping (WKPermissionDecision) -> Void
+  ) {
+    switch type {
+    case .microphone, .camera, .cameraAndMicrophone:
+      decisionHandler(.grant)
+    @unknown default:
+      // A capture type newer than this build knows about is refused rather than
+      // guessed at: granting a capability nobody has reviewed is the wrong
+      // default for a permission prompt.
+      decisionHandler(.deny)
+    }
+  }
 }
 #endif

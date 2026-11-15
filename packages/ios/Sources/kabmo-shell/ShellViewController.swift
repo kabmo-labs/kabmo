@@ -33,6 +33,10 @@ final class ShellViewController: UIViewController {
   private let navigation = ShellNavigationDelegate()
   private var loading = LoadingState.done
   private var loadedURL: String?
+  /// A pairing link the settings screen accepted; loaded on the next appearance.
+  private var pendingPairLink: String?
+  /// One fallback per failure; cleared by a successful load.
+  private var fallbackAttempted = false
   private var pendingSettings = false
 
   /// The observation feeding the overlay's progress bar.
@@ -130,6 +134,8 @@ final class ShellViewController: UIViewController {
       openSettings()
       return
     }
+
+    if loadPendingPairLink() { return }
 
     guard let url = settings.url else { return }
     if url == loadedURL { return }
@@ -301,6 +307,7 @@ final class ShellViewController: UIViewController {
       }
     }
     navigation.onLoadFinished = { [weak self] in
+      self?.fallbackAttempted = false
       guard let self else { return }
       self.applyLoading(self.loading.finished())
       // A document that arrived before the console did — a cold start by "Open
@@ -333,6 +340,7 @@ final class ShellViewController: UIViewController {
       // error, which is what makes a wrong port diagnosable. Same shape as the
       // macOS, Windows and Linux shells.
       self.overlay.setDetail(detail)
+      self.tryFallbackAddress()
     }
     navigation.onCertificateProblem = { [weak self] detail in
       self?.showCertificateAlert(detail)
@@ -371,6 +379,50 @@ final class ShellViewController: UIViewController {
     guard url != loadedURL else { return }
     navigation.serverURL = url
     startLoad(url)
+  }
+
+  /// Load a pairing link, if one is waiting.
+  ///
+  /// The page it opens redeems the code and redirects to `/`, so `loadedURL` is
+  /// latched to the ORIGIN rather than to the link: the next appearance compares
+  /// against `settings.url`, and latching the link would make it reload the origin
+  /// once for no reason.
+  private func loadPendingPairLink() -> Bool {
+    guard let link = pendingPairLink else { return false }
+    pendingPairLink = nil
+    startLoad(link)
+    loadedURL = settings.url
+    return true
+  }
+
+  /// The address that just failed is not the only one this shell knows.
+  ///
+  /// A phone that paired at home and then left the network keeps the LAN address as
+  /// its active row, and the load fails with nothing but an error page. The other
+  /// stored addresses are probed in parallel and the best reachable one is loaded
+  /// instead — `RouteChoice` decides which, so Tailscale wins over a LAN address
+  /// even when the LAN one is marginally faster, because only the Tailscale origin
+  /// is a secure context.
+  ///
+  /// Attempted ONCE per failure: a fallback that also fails must not start a probe
+  /// loop between two dead addresses. The flag is cleared by a successful load.
+  private func tryFallbackAddress() {
+    guard !fallbackAttempted else { return }
+    fallbackAttempted = true
+
+    let current = settings.url
+    let candidates = settings.servers.entries.map(\.url).filter { $0 != current }
+    guard !candidates.isEmpty else { return }
+
+    DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+      guard let best = ServerProbe.best(candidates) else { return }
+      DispatchQueue.main.async {
+        guard let self else { return }
+        self.settings.write(url: best)
+        self.navigation.serverURL = best
+        self.startLoad(best)
+      }
+    }
   }
 
   private func startLoad(_ url: String) {
@@ -430,6 +482,11 @@ final class ShellViewController: UIViewController {
 
   private func openSettings() {
     let screen = SettingsViewController(settings: settings)
+    screen.onPair = { [weak self] link in
+      // The screen dismisses itself; `viewDidAppear` then loads the link in THIS
+      // app's web view, which is what puts the device cookie in this app's store.
+      self?.pendingPairLink = link
+    }
     screen.onSaved = { [weak self] in
       guard let self else { return }
       // The saved address may have changed, so the origin test's input has to move

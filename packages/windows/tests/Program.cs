@@ -548,6 +548,9 @@ NavigationPolicyCases.Run(Check, Group);
 // The splash's "Server settings" dialog: prefill, rows, and validation.
 ServerSettingsCases.Run(Check, Group);
 
+// The pasted pairing link, which the dialog hands to the web view.
+PairingLinkCases.Run(Check, Group);
+
 // What a self-update may download, install and run.
 ShellUpdateCases.Run(Check, Group);
 

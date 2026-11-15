@@ -12,27 +12,9 @@ import { useKabmoEvent } from '@/client/hooks/ui/window-event';
 import { useToasts } from '@/client/hooks/ui/toasts';
 import { useDialogBehaviour } from '@/client/hooks/ui/dialog-behaviour';
 import { SettingsSidebar, settingsCategoriesFor } from '@/client/components/settings/Sidebar';
-import { harnessIdFromCategory } from '@/shared/lib/harness/menu';
 import { useHarnesses } from '@/client/hooks/models/use-harnesses';
-import { AppearanceSettings } from '@/client/components/settings/categories/AppearanceSettings';
-import { ChatSettings } from '@/client/components/settings/categories/ChatSettings';
-import { KeyboardSettings } from '@/client/components/settings/categories/KeyboardSettings';
-import { ProjectSettings } from '@/client/components/settings/categories/ProjectSettings';
-import { ProviderSettings } from '@/client/components/settings/categories/ProviderSettings';
-import { AgentSettings } from '@/client/components/settings/categories/AgentSettings';
-import { BehaviorSettings } from '@/client/components/settings/categories/BehaviorSettings';
-import { CommandSettings } from '@/client/components/settings/categories/CommandSettings';
-import { McpSettings } from '@/client/components/settings/categories/McpSettings';
-import { HarnessSettings } from '@/client/components/settings/categories/HarnessSettings';
-import { SkillSettings } from '@/client/components/settings/categories/SkillSettings';
-import { PluginSettings } from '@/client/components/settings/categories/PluginSettings';
-import { PanelPluginSettings } from '@/client/components/settings/categories/PanelPluginSettings';
-import { SkillCatalogSettings, type CatalogTab } from '@/client/components/settings/categories/SkillCatalogSettings';
-import { OtherSettings } from '@/client/components/settings/categories/OtherSettings';
-import { OmpSettings } from '@/client/components/settings/categories/OmpSettings';
-import { TokenUsageSettings } from '@/client/components/settings/categories/TokenUsageSettings';
-import { UsageSettings } from '@/client/components/settings/categories/UsageSettings';
-import { NotificationSettings } from '@/client/components/settings/categories/NotificationSettings';
+import { CategoryContent } from '@/client/components/settings/category-content';
+import type { CatalogTab } from '@/client/components/settings/categories/SkillCatalogSettings';
 
 export interface SettingsModalProps {
   isOpen: boolean;
@@ -151,69 +133,6 @@ export function SettingsModal({
   const categories = settingsCategoriesFor(harnesses.map((entry) => entry.id));
   const currentCategoryDef = categories.find(c => c.id === activeCategory) || categories[0];
 
-  const renderCategoryContent = () => {
-    switch (activeCategory) {
-      case 'appearance':
-        return <AppearanceSettings settings={settings} onUpdate={handleUpdateSettings} />;
-      case 'chats':
-        return <ChatSettings settings={settings} onUpdate={handleUpdateSettings} />;
-      case 'keyboard':
-        return <KeyboardSettings settings={settings} onUpdate={handleUpdateSettings} />;
-      case 'projects':
-        return <ProjectSettings />;
-      case 'providers':
-        return (
-          <ProviderSettings
-            autoOpenAdd={autoOpenAdd}
-            onAddModalClose={() => setAutoOpenAdd(false)}
-          />
-        );
-      case 'agents':
-        return <AgentSettings settings={settings} onUpdate={handleUpdateSettings} />;
-      case 'harness-index':
-        return <HarnessSettings />;
-      case 'behavior':
-        return <BehaviorSettings />;
-      case 'commands':
-        return <CommandSettings settings={settings} onUpdate={handleUpdateSettings} />;
-      case 'mcp':
-        return <McpSettings settings={settings} onUpdate={handleUpdateSettings} />;
-      case 'token-usage':
-        return <TokenUsageSettings settings={settings} onUpdate={handleUpdateSettings} />;
-      case 'notifications':
-        return <NotificationSettings settings={settings} onUpdate={handleUpdateSettings} />;
-      case 'plugins':
-        return <PluginSettings />;
-      case 'panel-plugins':
-        return <PanelPluginSettings />;
-      case 'skills':
-        return (
-          <SkillSettings
-            settings={settings}
-            onUpdate={handleUpdateSettings}
-            onNavigateToCatalog={(tab) => {
-              setCatalogTab(tab ?? 'browse');
-              setActiveCategory('skills-catalog');
-            }}
-          />
-        );
-      case 'skills-catalog':
-        return <SkillCatalogSettings initialTab={catalogTab} />;
-      case 'omp':
-        return <OmpSettings settings={settings} onUpdate={handleUpdateSettings} />;
-      case 'usage':
-        return <UsageSettings />;
-      default: {
-        // A single harness page: its own card, verbatim — the same component the
-        // overview draws, because a second renderer for one agent is how the two
-        // views start disagreeing about what it can do.
-        const harnessId = harnessIdFromCategory(activeCategory);
-        if (harnessId) return <HarnessSettings only={harnessId} />;
-        return <OtherSettings category={activeCategory} />;
-      }
-    }
-  };
-
   return (
     <div
       className="fixed inset-0 modal-scrim backdrop-blur-[2px] z-50 flex items-center justify-center p-0 md:p-6 animate-in fade-in duration-150"
@@ -298,7 +217,18 @@ export function SettingsModal({
             style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
           >
             <div className="w-full h-full flex-1 flex flex-col">
-              {renderCategoryContent()}
+              <CategoryContent
+                category={activeCategory}
+                settings={settings}
+                onUpdate={handleUpdateSettings}
+                autoOpenAdd={autoOpenAdd}
+                onAddModalClose={() => setAutoOpenAdd(false)}
+                catalogTab={catalogTab}
+                onNavigateToCatalog={(tab) => {
+                  setCatalogTab(tab ?? 'browse');
+                  setActiveCategory('skills-catalog');
+                }}
+              />
             </div>
           </div>
         </div>

@@ -1,4 +1,5 @@
 #if canImport(UIKit)
+import PhotosUI
 import UIKit
 import WebKit
 import KabmoShell
@@ -17,6 +18,7 @@ final class SettingsViewController: UIViewController {
 
   private let settings: ShellSettings
   private let urlField = UITextField()
+  private let pairField = UITextField()
   private let statusLabel = UILabel()
   private let testButton = UIButton(type: .system)
   private let connectButton = UIButton(type: .system)
@@ -53,6 +55,14 @@ final class SettingsViewController: UIViewController {
 
   /// Called after a successful save, so the shell can re-read the address.
   var onSaved: (() -> Void)?
+
+  /// A pairing link the user pasted, handed to the shell to load.
+  ///
+  /// The link is loaded in THIS app's web view, not in Safari: the cookie the
+  /// server's `/pair` page receives lands in this app's cookie store, and Safari's
+  /// is a different one — pairing there would leave the shell still asking for a
+  /// password.
+  var onPair: ((String) -> Void)?
 
   init(settings: ShellSettings) {
     self.settings = settings
@@ -101,6 +111,13 @@ final class SettingsViewController: UIViewController {
       column.trailingAnchor.constraint(equalTo: scroll.frameLayoutGuide.trailingAnchor, constant: -20),
     ])
 
+    column.addArrangedSubview(SettingsControls.label("Pairing link"))
+    column.addArrangedSubview(pairInput())
+    column.addArrangedSubview(
+      SettingsControls.hint("Copy it from Settings → Connect on the server. Pairing signs this device in without a password, and the link works once.")
+    )
+    column.addArrangedSubview(SettingsControls.spacer(20))
+
     column.addArrangedSubview(SettingsControls.label("Server URL"))
     column.addArrangedSubview(urlInput())
     column.addArrangedSubview(SettingsControls.hint("Scheme, host and port only — a path is not supported."))
@@ -139,6 +156,94 @@ final class SettingsViewController: UIViewController {
   }
 
   // MARK: - Fields
+
+  private func pairInput() -> UIView {
+    pairField.placeholder = "https://…/pair#…"
+    pairField.font = .systemFont(ofSize: 15)
+    pairField.textColor = Palette.ink
+    pairField.backgroundColor = Palette.field
+    pairField.layer.cornerRadius = 8
+    pairField.layer.borderWidth = 1
+    pairField.layer.borderColor = Palette.hairline.cgColor
+    pairField.autocapitalizationType = .none
+    pairField.autocorrectionType = .no
+    pairField.keyboardType = .URL
+    pairField.returnKeyType = .go
+    pairField.delegate = self
+    pairField.leftView = UIView(frame: CGRect(x: 0, y: 0, width: 12, height: 1))
+    pairField.leftViewMode = .always
+    pairField.rightView = UIView(frame: CGRect(x: 0, y: 0, width: 12, height: 1))
+    pairField.rightViewMode = .always
+    pairField.heightAnchor.constraint(equalToConstant: 44).isActive = true
+
+    let scan = UIButton(type: .system)
+    scan.setTitle("Scan", for: .normal)
+    scan.titleLabel?.font = .systemFont(ofSize: 15, weight: .semibold)
+    scan.addAction(UIAction { [weak self] _ in self?.scan() }, for: .touchUpInside)
+
+    // For a device with no camera: the code arrived as a screenshot and there is
+    // nothing to point at. `PHPickerViewController` needs no photo-library
+    // permission, which is why it is used rather than `UIImagePickerController`.
+    let image = UIButton(type: .system)
+    image.setTitle("Image", for: .normal)
+    image.titleLabel?.font = .systemFont(ofSize: 15, weight: .semibold)
+    image.addAction(UIAction { [weak self] _ in self?.pickImage() }, for: .touchUpInside)
+
+    let pair = UIButton(type: .system)
+    pair.setTitle("Pair", for: .normal)
+    pair.titleLabel?.font = .systemFont(ofSize: 15, weight: .semibold)
+    pair.addAction(UIAction { [weak self] _ in self?.pair() }, for: .touchUpInside)
+
+    let actions = UIStackView(arrangedSubviews: [scan, image, pair])
+    actions.axis = .horizontal
+    actions.spacing = 8
+    actions.distribution = .fillEqually
+
+    let column = UIStackView(arrangedSubviews: [pairField, actions])
+    column.axis = .vertical
+    column.spacing = 8
+    return column
+  }
+
+  /// Pick an image of a code and read it with the platform's detector.
+  private func pickImage() {
+    var configuration = PHPickerConfiguration()
+    configuration.filter = .images
+    configuration.selectionLimit = 1
+    let picker = PHPickerViewController(configuration: configuration)
+    picker.delegate = self
+    present(picker, animated: true)
+  }
+
+  /// Open the shell's own scanner; the code it reads lands in the field, so there
+  /// is ONE submit path — the same `pair()` the paste uses.
+  private func scan() {
+    let scanner = QrScannerViewController()
+    scanner.onCode = { [weak self] code in
+      guard let self else { return }
+      self.pairField.text = code
+      self.pair()
+    }
+    let nav = UINavigationController(rootViewController: scanner)
+    nav.modalPresentationStyle = .fullScreen
+    present(nav, animated: true)
+  }
+
+  /// Hand the pasted link to the shell, which loads it in its own web view.
+  ///
+  /// The origin is stored here so the shell has an address even if the page never
+  /// finishes; the link itself is what the shell loads, because only the page can
+  /// redeem the code and set the cookie.
+  private func pair() {
+    let raw = (pairField.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+    guard let origin = PairingLink.origin(of: raw) else {
+      status("That is not a pairing link. Copy the https link from Settings → Connect on the server.", tone: .failure)
+      return
+    }
+    settings.write(url: origin)
+    onPair?(raw)
+    dismiss(animated: true)
+  }
 
   private func urlInput() -> UIView {
     urlField.placeholder = "http://192.168.1.20:3000"
@@ -466,9 +571,44 @@ final class SettingsViewController: UIViewController {
 }
 
 extension SettingsViewController: UITextFieldDelegate {
+  // MARK: - Image picking
+
+  /// Read the chosen image and hand the code to the same `pair()` the paste uses.
+  fileprivate func handlePicked(_ result: PHPickerResult) {
+    let provider = result.itemProvider
+    guard provider.canLoadObject(ofClass: UIImage.self) else { return }
+    provider.loadObject(ofClass: UIImage.self) { [weak self] object, _ in
+      guard
+        let self,
+        let image = object as? UIImage,
+        let cgImage = image.cgImage
+      else { return }
+      let code = QrImageDecoder.decode(CIImage(cgImage: cgImage))
+      DispatchQueue.main.async {
+        guard let code else {
+          self.status(
+            "No QR code was found in that image. Try a sharper screenshot, or paste the link instead.",
+            tone: .failure
+          )
+          return
+        }
+        self.pairField.text = code
+        self.pair()
+      }
+    }
+  }
+
   func textFieldShouldReturn(_ textField: UITextField) -> Bool {
     textField.resignFirstResponder()
     return true
+  }
+}
+
+extension SettingsViewController: PHPickerViewControllerDelegate {
+  func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+    picker.dismiss(animated: true)
+    guard let result = results.first else { return }
+    handlePicked(result)
   }
 }
 #endif

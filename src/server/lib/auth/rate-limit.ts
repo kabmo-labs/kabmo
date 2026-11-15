@@ -16,11 +16,14 @@
  * cleared by hand after a restart, and the process is only reachable at all
  * because someone chose to expose it.
  *
- * The key is the SOCKET address (`requestIP`), never `x-forwarded-for`: that
- * header is caller-supplied, so trusting it would let one client present a fresh
- * identity per attempt and walk straight through the budget. Behind a reverse
- * proxy every client shares the proxy's socket address, which throttles them
- * together — the conservative direction for a limit whose job is to fail closed.
+ * The key is the SOCKET address (`requestIP`), except when the socket is
+ * loopback — the case a tunnel creates. `cloudflared` and `tailscale serve`
+ * connect from `127.0.0.1`, so every client behind one shares a single address
+ * and ten failures from an attacker anywhere would lock the owner out. In that
+ * one case the forwarded address is used instead; see
+ * `effectiveClientAddress` in `client-address.ts` for why the socket, not the
+ * header, is the condition. A direct remote connection still keys on its own
+ * socket address, which a caller cannot forge.
  */
 
 /** Sliding window an attempt count is measured over. */

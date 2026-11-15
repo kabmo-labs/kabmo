@@ -28,10 +28,24 @@ internal sealed class ServerSettingsDialog : Window
 {
     private readonly TextBox _address;
     private readonly ComboBox _picker;
+    private readonly TextBox _pairing;
     private readonly ServerSettingsForm _form;
 
     /// <summary>What the field holds when Connect was pressed.</summary>
     public string TypedAddress => _address.Text.Trim();
+
+    /// <summary>
+    /// The pairing link, when the user pasted one. Takes precedence over the
+    /// address: a device that has a code does not need to know the address at all.
+    /// </summary>
+    public string TypedPairingLink => _pairing.Text.Trim();
+
+    /// <summary>
+    /// The user asked for the camera. The dialog closes so the caller can open the
+    /// scanner: a modal dialog cannot host a second modal window, and the scanner
+    /// needs the whole surface.
+    /// </summary>
+    public bool ScanRequested { get; private set; }
 
     public ServerSettingsDialog(ServerSettingsForm form, string? error, ShellPalette palette, Window owner)
     {
@@ -91,6 +105,46 @@ internal sealed class ServerSettingsDialog : Window
         _picker.SelectedIndex = 0;
         _picker.SelectionChanged += (_, _) => Picked();
         column.Children.Add(_picker);
+
+        // Pairing sits BELOW the address, because it is the alternative to typing
+        // one. The link is loaded in THIS app's web view, so the device cookie the
+        // server's `/pair` page receives lands in this app's cookie store —
+        // pairing in a browser would leave the shell still asking for a password.
+        column.Children.Add(new TextBlock
+        {
+            Text = "Pairing link (optional)",
+            FontSize = 11,
+            Margin = new Thickness(0, 12, 0, 4),
+            Foreground = ShellButton.Brush(palette.Muted),
+        });
+
+        _pairing = new TextBox
+        {
+            FontSize = 13,
+            Padding = new Thickness(8, 6, 8, 6),
+            MinWidth = 380,
+            Background = ShellButton.Brush(palette.Paper),
+            Foreground = ShellButton.Brush(palette.Ink),
+            BorderBrush = ShellButton.Brush(palette.Hairline),
+            BorderThickness = new Thickness(1),
+            CaretBrush = ShellButton.Brush(palette.Ink),
+        };
+        System.Windows.Automation.AutomationProperties.SetName(_pairing, "Pairing link");
+
+        var pairingRow = new StackPanel { Orientation = Orientation.Horizontal };
+        _pairing.Width = 300;
+        pairingRow.Children.Add(_pairing);
+
+        var scan = ShellButton.Make("Scan…", filled: false, palette: palette);
+        scan.Margin = new Thickness(8, 0, 0, 0);
+        scan.Click += (_, _) =>
+        {
+            ScanRequested = true;
+            DialogResult = false;
+        };
+        System.Windows.Automation.AutomationProperties.SetName(scan, "Scan pairing code");
+        pairingRow.Children.Add(scan);
+        column.Children.Add(pairingRow);
 
         var actions = new StackPanel
         {

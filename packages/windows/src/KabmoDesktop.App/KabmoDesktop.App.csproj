@@ -111,4 +111,11 @@
       Text="packages/windows/version.properties declares no versionName." />
   </Target>
 
+  <ItemGroup>
+    <!-- The scanner page, embedded so an installed build carries it. It is
+         written to a temp folder at run time because WebView2's virtual host
+         mapping serves a DIRECTORY, not a string. -->
+    <EmbeddedResource Include="Assets\qr-scanner.html" LogicalName="qr-scanner.html" />
+  </ItemGroup>
+
 </Project>

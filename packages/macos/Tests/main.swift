@@ -696,6 +696,10 @@ final class SimpleHTTPServer: @unchecked Sendable {
 await storeCases()
 // The splash's server settings sheet: prefill, rows, and what Connect does.
 await serverSettingsCases()
+// The pasted pairing link, which the sheet hands to the web view.
+pairingLinkCases()
+// Reading a code out of an image, for a machine with no camera.
+qrImageDecoderCases()
 await systemCases()
 // The launch splash: its state machine, and the wordmark it draws.
 splashCases()

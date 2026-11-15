@@ -31,6 +31,7 @@ import { harnessBindings } from '@/server/routes/harness';
 import { healthBindings } from '@/server/routes/health';
 import { wellKnownBindings } from '@/server/routes/well-known';
 import { notificationsBindings } from '@/server/routes/notifications';
+import { connectBindings } from '@/server/routes/connect';
 
 const allBindings: HandlerBinding[] = [
   ...authBindings,
@@ -61,6 +62,7 @@ const allBindings: HandlerBinding[] = [
   ...pluginsBindings,
   ...healthBindings,
   ...notificationsBindings,
+  ...connectBindings,
   ...wellKnownBindings,
 ];
 

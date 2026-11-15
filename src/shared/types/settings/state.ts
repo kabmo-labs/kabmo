@@ -20,6 +20,8 @@ export type SettingsCategoryId =
    *  sandboxed panel views). Deliberately NOT under OMP → Plugins, which holds
    *  plugins: these are Kabmo surfaces omp has no concept of. */
   | 'panel-plugins'
+  // CONNECT — how a device reaches this install: tunnels, addresses, pairing.
+  | 'connect'
   // WORKSPACE
   | 'projects'
   // OMP

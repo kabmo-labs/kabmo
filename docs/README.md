@@ -26,7 +26,7 @@ is not documentation and does not move.
 | 10 | [Packaging and shells](milestones/M10-packaging-and-shells.md) | five native shells released as artifacts; the bundled-server sidecar is not built | partial |
 | 11 | [Worktree sessions](milestones/M11-worktree-sessions.md) | a chat born in its own git worktree, chosen before the first send | done |
 | 12 | [CodeMirror 6 editor](milestones/M12-editor-codemirror6.md) | the hand-built code surface replaced end to end, diff view included | partial |
-| 13 | [Shell transport and QR pairing](milestones/M13-shell-transport-and-qr.md) | the measured case for TLS trust and pairing between a shell and a server | planned |
+| 13 | [Shell transport and QR pairing](milestones/M13-shell-transport-and-qr.md) | the measured case for TLS trust and pairing between a shell and a server | partial |
 | 14 | [Editor panel gaps](milestones/M14-editor-panel-gaps.md) | external-change guard, indentation, tab management, Save As, split editor | done |
 | 15 | [Composer styles](milestones/M15-composer-styles.md) | five selectable composer styles, each with a desktop and a phone form | done |
 | 16 | [Multi-harness research](milestones/M16-harnesses-research.md) | the measured ACP/RPC capability matrix for nine agent harnesses | done |

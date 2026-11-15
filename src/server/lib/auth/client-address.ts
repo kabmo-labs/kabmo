@@ -16,8 +16,20 @@
  * and the handler are handed the SAME object (verified on Elysia 1.4.30). It is
  * also self-cleaning: the entry disappears with the request.
  *
- * This is the socket address, never `x-forwarded-for` — that header is
- * caller-supplied, so a rate limit keyed on it would be trivially evaded.
+ * ## Why `x-forwarded-for` is read, and only from loopback
+ *
+ * The header is caller-supplied, so a rate limit keyed on it unconditionally is
+ * trivially evaded — that was the original rule, and it is still right for a
+ * direct connection. But a tunnel breaks the other way: `cloudflared` and
+ * `tailscale serve` both connect to this server from `127.0.0.1`, so EVERY
+ * client behind a tunnel shares one socket address. Ten failed logins from an
+ * attacker anywhere on the internet then locked the owner out for fifteen
+ * minutes — a denial of service against the person the limit exists to protect.
+ *
+ * The condition is therefore the socket, not the header: the forwarded value is
+ * used only when the connection itself came from loopback. A remote attacker
+ * cannot make their own socket address loopback, and a local process that can
+ * forge the header already has the machine.
  *
  * NOTE: there is deliberately no `clientAddressFromContext(context)` here.
  *
@@ -38,9 +50,31 @@ import { UNKNOWN_CLIENT_KEY } from '@/server/lib/auth/rate-limit';
 
 const addresses = new WeakMap<Request, string>();
 
+/** Whether a socket address is this machine talking to itself. */
+function isLoopback(address: string): boolean {
+  return address === '127.0.0.1' || address === '::1' || address === '::ffff:127.0.0.1';
+}
+
+/**
+ * The address a rate limit should key on.
+ *
+ * Behind a tunnel the socket is loopback for every client, so the forwarded
+ * value is the only thing that distinguishes them. It is trusted ONLY in that
+ * case — see the module comment for why the socket, not the header, is the
+ * condition.
+ */
+export function effectiveClientAddress(request: Request, socketAddress: string | undefined): string {
+  if (!socketAddress) return UNKNOWN_CLIENT_KEY;
+  if (!isLoopback(socketAddress)) return socketAddress;
+  const forwarded = request.headers.get('x-forwarded-for');
+  if (!forwarded) return socketAddress;
+  const first = forwarded.split(',')[0]?.trim();
+  return first || socketAddress;
+}
+
 /** Record the socket address for `request`. Called by the auth gate. */
 export function rememberClientAddress(request: Request, address: string | undefined): void {
-  addresses.set(request, address && address.length > 0 ? address : UNKNOWN_CLIENT_KEY);
+  addresses.set(request, effectiveClientAddress(request, address));
 }
 
 /**

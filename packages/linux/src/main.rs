@@ -40,6 +40,7 @@ use kabmo_desktop::open_paths::{launch_paths, open_paths_script, OpenPathQueue};
 use kabmo_desktop::APP_NAME;
 use kabmo_desktop::palette::ShellPalette;
 use kabmo_desktop::persisted::{read_state, write_state};
+use kabmo_desktop::pairing_link;
 use kabmo_desktop::server_settings::ServerSettingsForm;
 use kabmo_desktop::settings_dialog;
 use kabmo_desktop::splash::Progress;
@@ -698,9 +699,38 @@ fn open_server_settings(
             .clone()
             .unwrap_or_else(|| current_url.borrow().clone());
         let form = ServerSettingsForm::new(&state, Some(pending.as_str()));
-        let Some(typed) = settings_dialog::show(window, &form, error.as_deref()) else {
+        let Some(choice) = settings_dialog::show(window, &form, error.as_deref()) else {
             return;
         };
+
+        // A filled pairing field wins: the user pasted a code, and the address
+        // beside it is whatever the dialog was prefilled with. The ORIGIN is
+        // remembered first, so a failed redemption still leaves the shell pointed
+        // at the right server; the LINK is what gets loaded, because only the
+        // server's `/pair` page can redeem the code and set the cookie.
+        if let Some(link) = choice.pairing_link {
+            let Some(origin) = pairing_link::origin_of(&link) else {
+                error = Some(
+                    "That is not a pairing link. Copy the https link from Settings → Connect on the server."
+                        .to_string(),
+                );
+                address = Some(choice.address);
+                continue;
+            };
+            match store.borrow_mut().connect_remote(&origin) {
+                Ok(_) => {
+                    begin_load(view, current_url, shown_uri, progress, splash, &link);
+                    return;
+                }
+                Err(refusal) => {
+                    error = Some(refusal.to_string());
+                    address = Some(origin);
+                    continue;
+                }
+            }
+        }
+
+        let typed = choice.address;
         // The borrow ends at this statement (it is not held across `begin_load`):
         // `connect_remote` mutates the same `RefCell` the snapshot above read, and
         // a second borrow while one is live panics at run time.

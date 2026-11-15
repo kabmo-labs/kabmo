@@ -23,5 +23,8 @@ HealthProbeTests.run()
 WordmarkTests.run()
 DeviceFilesTests.run()
 WebProcessRecoveryTests.run()
+RouteChoiceTests.run()
+PairingLinkTests.run()
+QrImageDecoderTests.run()
 
 Harness.finish()

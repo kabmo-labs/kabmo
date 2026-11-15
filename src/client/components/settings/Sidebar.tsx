@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-preact';
-import { BarChart3, Bell, BookOpen, Bot, Boxes, Cloud, Coins, Cpu, FolderGit, Keyboard, Library, MessageSquare, Palette, Plug, Power, Puzzle, RefreshCw, Search, Sliders, Terminal, Waypoints, X } from 'lucide-preact';
+import { BarChart3, Bell, BookOpen, Bot, Boxes, Cloud, Coins, Cpu, FolderGit, Keyboard, Library, MessageSquare, Palette, Plug, Power, Puzzle, Radio, RefreshCw, Search, Sliders, Terminal, Waypoints, X } from 'lucide-preact';
 import { HarnessGlyph } from '@/client/components/common/harness-glyph';
 import type { SettingsCategoryId } from '@/shared/types';
 import { SETTINGS_SECTIONS, type SettingsSection } from '@/shared/lib/settings/sections';
@@ -28,6 +28,8 @@ export const SETTINGS_CATEGORIES: CategoryDef[] = [
   { id: 'usage', label: 'Usage', icon: BarChart3, section: 'KABMO', description: 'Build minutes quota, storage, and general usage.' },
   { id: 'token-usage', label: 'Token Usage', icon: Coins, section: 'KABMO', description: 'Token telemetry, cache, and cost breakdown.' },
   { id: 'panel-plugins', label: 'Plugins Kabmo', icon: Puzzle, section: 'KABMO', description: 'Plugins installed into Kabmo: panels, background services, and the MCP servers they register.' },
+  // CONNECT
+  { id: 'connect', label: 'Connect', icon: Radio, section: 'CONNECT', description: 'Tunnels, addresses, and the devices paired to this server.' },
   // WORKSPACE
   { id: 'projects', label: 'Projects', icon: FolderGit, section: 'WORKSPACE', description: 'Workspace directories, roots, and ignored paths.' },
   // OMP

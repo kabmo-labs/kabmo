@@ -2,8 +2,11 @@ package dev.kabmo.shell
 
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.Manifest
 import android.net.Uri
 import android.os.Message
+import android.webkit.PermissionRequest
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
@@ -40,6 +43,70 @@ class KabmoChromeClient(
      * every `onCreateWindow` example that omits the list).
      */
     private val popups = mutableListOf<WebView>()
+
+    /**
+     * The capture request waiting on the platform prompt.
+     *
+     * `onPermissionRequest` must answer synchronously, but the runtime grant is
+     * asynchronous — so the request is held here and answered from
+     * `onCapturePermissionResult`, which the Activity calls when the dialog
+     * closes. A second request while one is pending denies the older one: two
+     * live `PermissionRequest` objects for one camera is a leak, and the page
+     * only ever has one capture in flight.
+     */
+    private var pending: PermissionRequest? = null
+
+    /**
+     * `getUserMedia` from the page.
+     *
+     * The default implementation DENIES, which is why dictation did nothing on
+     * Android even after the origin became a secure context, and why the pairing
+     * camera could not open. Both are granted now, and only those two: a page
+     * asking for anything else is refused rather than handed a capability this
+     * app has no feature for.
+     *
+     * The page still needs a SECURE ORIGIN for `getUserMedia` to exist at all —
+     * over `http://192.168.x.x` the API is undefined and this callback is never
+     * reached. That is the platform's rule, not this shell's.
+     */
+    override fun onPermissionRequest(request: PermissionRequest) {
+        val wanted = request.resources.filter { permissionFor(it) != null }
+        if (wanted.isEmpty()) {
+            request.deny()
+            return
+        }
+
+        val missing = wanted
+            .mapNotNull { permissionFor(it) }
+            .filter { activity.checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED }
+            .distinct()
+        if (missing.isEmpty()) {
+            request.grant(wanted.toTypedArray())
+            return
+        }
+
+        pending?.deny()
+        pending = request
+        activity.requestPermissions(missing.toTypedArray(), REQUEST_CAPTURE)
+    }
+
+    /** Answer the held request once the platform prompt has been answered. */
+    fun onCapturePermissionResult(granted: Set<String>) {
+        val request = pending ?: return
+        pending = null
+        val allowed = request.resources.filter { resource ->
+            val permission = permissionFor(resource)
+            permission == null || permission in granted
+        }
+        if (allowed.isEmpty()) request.deny() else request.grant(allowed.toTypedArray())
+    }
+
+    /** The platform permission a WebView capture resource needs, or null. */
+    private fun permissionFor(resource: String): String? = when (resource) {
+        PermissionRequest.RESOURCE_AUDIO_CAPTURE -> Manifest.permission.RECORD_AUDIO
+        PermissionRequest.RESOURCE_VIDEO_CAPTURE -> Manifest.permission.CAMERA
+        else -> null
+    }
 
     override fun onCreateWindow(
         view: WebView,
@@ -117,5 +184,10 @@ class KabmoChromeClient(
             // No browser installed: nothing to do, and returning false here
             // would make the WebView try to render the URL itself.
         }
+    }
+
+    companion object {
+        /** The capture prompt's request code, answered by `MainActivity`. */
+        const val REQUEST_CAPTURE = 0x4b43
     }
 }

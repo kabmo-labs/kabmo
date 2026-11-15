@@ -27,6 +27,13 @@
     <string name="url_label">Server URL</string>
     <string name="url_hint">http://192.168.1.20:3000</string>
     <string name="url_help">Scheme, host and port only — a path is not supported.</string>
+    <string name="pair_label">Pairing link</string>
+    <string name="pair_hint">https://…/pair#…</string>
+    <string name="pair_help">Copy it from Settings → Connect on the server. Pairing signs this device in without a password, and the link works once.</string>
+    <string name="pair_button">Pair</string>
+    <string name="scan_button">Scan QR code</string>
+    <string name="scan_title">Scan pairing code</string>
+    <string name="pair_not_a_link">That is not a pairing link. Copy the https link from Settings → Connect on the server.</string>
     <string name="zoom_label">Page zoom</string>
     <string name="zoom_value">%1$d%%</string>
     <string name="zoom_help">Scales the whole console. 100% is the page\'s own size; this applies immediately, with no reload.</string>

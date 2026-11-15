@@ -27,6 +27,7 @@ import { ensureSessionRelationsSchema } from '@/server/lib/sessions/schema.serve
 import { ensurePromptHistorySchema } from '@/server/lib/chat/schema.server';
 import { ensureSessionMcpSchema } from '@/server/lib/mcp/schema.server';
 import { ensureNotificationSchema } from '@/server/lib/notifications/schema.server';
+import { ensureConnectSchema } from '@/server/lib/connect/devices.server';
 import { migrateWorkspaceFolderColumns } from '@/shared/lib/workspace/schema-migrations';
 import { migrateSessionStreamStateColumns } from '@/shared/lib/omp/session/schema-migrations';
 
@@ -157,6 +158,9 @@ export async function initSchema(db: DbClient): Promise<void> {
   // The system-notification outbox: written by the run settles, read by a page
   // over the realtime socket and by the Android watcher over SSE.
   await ensureNotificationSchema(db);
+  // Paired devices and their token hashes: the Connect page's list, and the
+  // credential the auth gate verifies on every request from a phone.
+  await ensureConnectSchema(db);
   await db.exec(`
     CREATE TABLE IF NOT EXISTS files (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

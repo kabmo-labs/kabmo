@@ -13,6 +13,26 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <!--
+      Composer dictation. The console captures audio with `getUserMedia`, which
+      the WebView refuses unless the APP holds this permission AND the chrome
+      client grants the request — see `KabmoChromeClient.onPermissionRequest`.
+      Declared here rather than requested at install: it is a runtime permission
+      on every supported API level, and the prompt is raised the first time the
+      user presses the microphone.
+    -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <!--
+      Pairing by camera, and nothing else. The console's login screen offers
+      "Scan with camera" when the origin is secure; the WebView refuses the
+      request unless the APP holds this permission AND the chrome client grants
+      `RESOURCE_VIDEO_CAPTURE` — see `KabmoChromeClient.onPermissionRequest`.
+      Declared as a runtime permission, so the prompt appears the first time the
+      user presses the button rather than at install.
+    -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <!--
       Agent notifications (finished / waiting / failed). On API 33+ this is a
       runtime permission the shell asks for only when a notification preference
       is switched on; older releases grant it at install. The WebView cannot ask
@@ -143,6 +163,17 @@
             android:name=".SettingsActivity"
             android:exported="false"
             android:label="@string/settings_title"
+            android:theme="@style/Theme.Kabmo" />
+
+        <!--
+          The shell's own QR scanner. Not exported: it is opened by the settings
+          screen, and a camera preview is not something another app should be able
+          to launch on this one's behalf.
+        -->
+        <activity
+            android:name=".QrScannerActivity"
+            android:exported="false"
+            android:label="@string/scan_title"
             android:theme="@style/Theme.Kabmo" />
 
         <!--

@@ -21,8 +21,13 @@
  *
  * There is no `LIBRARY` group: plugins, skills and the skills catalog are omp's
  * own extension surface, so they file under `OMP` with the rest of its config.
+ *
+ * `CONNECT` sits directly after `KABMO` because it is about reaching this
+ * install, not about configuring the agent: tunnels, addresses and paired
+ * devices are the first thing a user sets up on a new machine, and burying them
+ * under `OMP` would file a network fact with the engine's own config.
  */
 
-export const SETTINGS_SECTIONS = ['KABMO', 'WORKSPACE', 'OMP', 'HARNESSES'] as const;
+export const SETTINGS_SECTIONS = ['KABMO', 'CONNECT', 'WORKSPACE', 'OMP', 'HARNESSES'] as const;
 
 export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];

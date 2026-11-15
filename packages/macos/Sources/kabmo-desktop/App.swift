@@ -636,6 +636,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
    already closed when Connect is pressed, so there is nowhere else to show it.
    */
   private var settingsSheet: ServerSettingsSheet?
+  /// The camera scanner, held for the life of its sheet: an `NSWindow` released
+  /// while it is on screen is a crash, and the capture session must outlive the
+  /// delegate callbacks.
+  private var scannerSheet: QrScannerSheet?
 
   private func openServerSettings(error: String? = nil, address: String? = nil) {
     // One sheet at a time: a second press while the store is probing would stack
@@ -645,6 +649,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
       let state = await store.snapshot()
       let form = ServerSettingsForm(state: state, address: address ?? pendingBootURL)
       await MainActor.run { self.presentServerSettings(form, error: error) }
+    }
+  }
+
+  /// A pairing link, pasted or scanned: remember its origin, then load the link.
+  ///
+  /// The LINK is what gets loaded, not the origin: only the server's `/pair` page
+  /// can redeem the code and set the device cookie, and that cookie is what makes
+  /// the console open without a password.
+  private func handlePairingLink(_ link: String) {
+    guard let origin = PairingLink.origin(of: link) else {
+      openServerSettings(
+        error: "That is not a pairing link. Copy the https link from Settings → Connect on the server.",
+        address: nil
+      )
+      return
+    }
+    Task {
+      do {
+        // Remember the origin first, so a failed redemption still leaves the
+        // shell pointed at the right server.
+        _ = try await store.connectRemote(origin)
+        await MainActor.run { self.load(link) }
+      } catch {
+        await MainActor.run {
+          self.openServerSettings(error: error.localizedDescription, address: origin)
+        }
+      }
     }
   }
 
@@ -664,6 +695,49 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
           }
         }
       }
+    }
+    sheet.onPair = { [weak self] link in
+      self?.handlePairingLink(link)
+    }
+    sheet.onScan = { [weak self] in
+      guard let self else { return }
+      // The scanner is a sheet over the SAME window, so the settings sheet has to
+      // step aside first: AppKit allows one sheet at a time, and a second
+      // `beginSheet` on a window that already has one is silently ignored.
+      if let open = self.settingsSheet {
+        self.settingsSheet = nil
+        open.alert.window.sheetParent?.endSheet(open.alert.window)
+      }
+      let scanner = QrScannerSheet()
+      self.scannerSheet = scanner
+      scanner.onCode = { [weak self] code in
+        guard let self else { return }
+        self.scannerSheet = nil
+        self.handlePairingLink(code)
+      }
+      scanner.onCancel = { [weak self] in
+        guard let self else { return }
+        self.scannerSheet = nil
+        self.openServerSettings()
+      }
+      scanner.present(over: window)
+    }
+    sheet.onUpload = { [weak self] in
+      guard let self else { return }
+      let panel = NSOpenPanel()
+      panel.title = "Choose a pairing code image"
+      panel.allowsMultipleSelection = false
+      panel.canChooseDirectories = false
+      panel.allowedContentTypes = [.png, .jpeg, .webP, .bmp, .gif, .image]
+      guard panel.runModal() == .OK, let url = panel.url else { return }
+      guard let code = QrImageDecoder.decode(contentsOf: url) else {
+        self.openServerSettings(
+          error: "No QR code was found in that image. Try a sharper screenshot, or paste the link instead.",
+          address: nil
+        )
+        return
+      }
+      self.handlePairingLink(code)
     }
     settingsSheet = sheet
     sheet.present(over: window)

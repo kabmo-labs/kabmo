@@ -38,6 +38,18 @@ class MainActivity : Activity() {
 
     private lateinit var webView: WebView
     private lateinit var overlay: LoadingOverlay
+    /**
+     * Held so the microphone prompt's result can be routed back to the WebView.
+     *
+     * `onPermissionRequest` must be answered synchronously, but the platform
+     * grant is asynchronous — the chrome client parks the request and this
+     * Activity answers it from `onRequestPermissionsResult`.
+     */
+    private var chromeClient: KabmoChromeClient? = null
+    /** A pairing link waiting to be loaded; see `EXTRA_PAIR_LINK`. */
+    private var pendingPairLink: String? = null
+    /** One fallback per failure; cleared by a successful load. */
+    private var fallbackAttempted = false
     private var loading = LoadingState.done()
     private var loadedUrl: String? = null
 
@@ -80,6 +92,8 @@ class MainActivity : Activity() {
 
         configureWebView()
 
+        pendingPairLink = intent?.getStringExtra(EXTRA_PAIR_LINK)?.takeIf { it.isNotBlank() }
+
         if (ServerConfig.read(this) == null) {
             // First run: there is nothing to load. The setup screen saves a URL
             // and finishes; `onResume` then loads it.
@@ -112,6 +126,14 @@ class MainActivity : Activity() {
         setIntent(intent)
         if (intent?.action == ACTION_OPEN_SETTINGS) {
             openSettings()
+            return
+        }
+        val pairLink = intent?.getStringExtra(EXTRA_PAIR_LINK)?.takeIf { it.isNotBlank() }
+        if (pairLink != null) {
+            // `singleTask` delivers the settings screen's result here, and no
+            // `onResume` follows a re-launch of an activity already in front.
+            pendingPairLink = pairLink
+            loadPendingPairLink()
             return
         }
         // A document opened while the console is already in front. `singleTask`
@@ -169,6 +191,8 @@ class MainActivity : Activity() {
         // `shared/lib/realtime/resume.ts` covers the case where even this never
         // runs.
         webView.evaluateJavascript("window.__kabmoResume && window.__kabmoResume()", null)
+
+        if (loadPendingPairLink()) return
 
         val url = ServerConfig.read(this)
         if (url == null) return
@@ -303,6 +327,56 @@ class MainActivity : Activity() {
      * `onPageStarted` on the same tick: arming afterwards would let the first
      * progress frame of a real load be ignored as "already finished".
      */
+    /**
+     * Load a pairing link, if one is waiting.
+     *
+     * The page it opens redeems the code and redirects to `/`, so `loadedUrl` is
+     * latched to the ORIGIN rather than to the link: the next resume compares
+     * against `ServerConfig.read()`, and latching the link would make it reload
+     * the origin once for no reason.
+     */
+    /**
+     * The address that just failed is not the only one this shell knows.
+     *
+     * A phone that paired at home and then left the network keeps the LAN address
+     * as its active row, and the load fails with nothing but an error page. The
+     * other stored addresses are probed in parallel and the best reachable one is
+     * loaded instead — `RouteChoice` decides which, so Tailscale wins over a LAN
+     * address even when the LAN one is marginally faster, because only the
+     * Tailscale origin is a secure context.
+     *
+     * Attempted ONCE per failure: a fallback that also fails must not start a
+     * probe loop between two dead addresses. The flag is cleared by a successful
+     * load.
+     */
+    private fun tryFallbackAddress() {
+        if (fallbackAttempted) return
+        fallbackAttempted = true
+
+        val current = ServerConfig.read(this)
+        val candidates = ServerConfig.servers(this).entries
+            .map { it.url }
+            .filter { it != current }
+        if (candidates.isEmpty()) return
+
+        Thread {
+            val best = ServerProbe.best(candidates) ?: return@Thread
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                ServerConfig.write(this, best)
+                startLoad(best)
+            }
+        }.start()
+    }
+
+    private fun loadPendingPairLink(): Boolean {
+        val link = pendingPairLink ?: return false
+        pendingPairLink = null
+        startLoad(link)
+        ServerConfig.read(this)?.let { loadedUrl = it }
+        return true
+    }
+
     private fun startLoad(url: String) {
         // Latched HERE rather than by each caller, so the recorded address is the
         // one a load was actually started for: a caller that latched it first and
@@ -400,6 +474,32 @@ class MainActivity : Activity() {
      * `android:enableOnBackInvokedCallback` and the manifest does not set it.
      * Adding AndroidX for one callback would be a library per button.
      */
+    /**
+     * The capture prompt's answer, handed back to the WebView.
+     *
+     * `onPermissionRequest` cannot wait for this: it must answer synchronously,
+     * so the chrome client parks the request and this is where it is granted or
+     * denied. The GRANTED SET travels rather than a single boolean, because one
+     * prompt can ask for the microphone and the camera together and the page is
+     * granted only what it actually got. Any other request code is ignored — the
+     * notification prompt has its own flow and re-checks the grant when it needs
+     * to.
+     */
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode != KabmoChromeClient.REQUEST_CAPTURE) return
+        val granted = permissions
+            .filterIndexed { index, _ ->
+                grantResults.getOrNull(index) == android.content.pm.PackageManager.PERMISSION_GRANTED
+            }
+            .toSet()
+        chromeClient?.onCapturePermissionResult(granted)
+    }
+
     @Deprecated("Deprecated in the platform; see the method's own comment")
     override fun onBackPressed() {
         // The page gets the first refusal. Kabmo's phone layout keeps its
@@ -456,6 +556,7 @@ class MainActivity : Activity() {
                 }
             },
             onLoadFinished = {
+                fallbackAttempted = false
                 applyLoading(loading.finished())
                 // A document that arrived before the console did — a cold start
                 // by "Open with" — has been waiting since `onCreate`, and this
@@ -475,13 +576,16 @@ class MainActivity : Activity() {
                 // closes the app right after signing in never reaches.
                 flushCookies()
             },
-            onLoadFailed = { failure -> applyLoading(loading.failedBecause(failure)) },
+            onLoadFailed = { failure ->
+                applyLoading(loading.failedBecause(failure))
+                tryFallbackAddress()
+            },
         )
         webView.webChromeClient = KabmoChromeClient(
             activity = this,
             onFileChooser = { callback, params -> showFileChooser(callback, params) },
             onProgress = { percent -> applyLoading(loading.progressed(percent)) },
-        )
+        ).also { chromeClient = it }
         webView.setDownloadListener { url, _, contentDisposition, mimeType, _ ->
             // An APK is the ONE download the shell finishes itself: the console
             // offered it by name (the sidebar's "Update APK"), and handing the
@@ -750,10 +854,20 @@ class MainActivity : Activity() {
             .show()
     }
 
-    private companion object {
+    companion object {
         const val REQUEST_FILE = 4101
 
         /** The launcher shortcut's action; see `res/xml/shortcuts.xml`. */
         const val ACTION_OPEN_SETTINGS = "dev.kabmo.shell.OPEN_SETTINGS"
+
+        /**
+         * A pairing link the settings screen just accepted.
+         *
+         * The link is loaded in THIS app's WebView, not in a browser: the cookie
+         * the server's `/pair` page receives lands in this app's cookie jar, and
+         * a browser's jar is a different one — pairing in Chrome would leave the
+         * shell still asking for a password.
+         */
+        const val EXTRA_PAIR_LINK = "dev.kabmo.shell.PAIR_LINK"
     }
 }

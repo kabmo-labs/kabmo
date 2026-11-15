@@ -41,6 +41,12 @@ class SettingsActivity : Activity() {
     /** The slider's current value; written through on every user change. */
     private var zoomPercent = ServerConfig.ZOOM_DEFAULT
 
+    /** The pasted pairing link; see `pairSection`. */
+    private lateinit var pairField: EditText
+
+    /** The scanner's request code. */
+    private val REQUEST_SCAN = 0x4b45
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -57,6 +63,7 @@ class SettingsActivity : Activity() {
         scroll.addView(column)
 
         column.addView(title())
+        column.addView(pairSection())
         column.addView(label(getString(R.string.url_label)))
         column.addView(urlInput())
         column.addView(hint(getString(R.string.url_help)))
@@ -413,6 +420,92 @@ class SettingsActivity : Activity() {
      * it used to sign the user out for adjusting the zoom; the explicit
      * "Clear cookies" button is the one gesture that ends a session.
      */
+    /**
+     * Pairing: paste the link the server's Connect page copied.
+     *
+     * This is the path that needs no password and no typed address. The link is
+     * loaded in THIS app's WebView rather than handed to a browser, because the
+     * cookie the server's `/pair` page receives lands in the jar of whichever
+     * app opened it — pairing in Chrome would leave this shell still asking for
+     * a password.
+     *
+     * The origin is stored here so the shell has an address even if the page
+     * never finishes; the link itself travels as an extra and is loaded by
+     * `MainActivity`.
+     */
+    private fun pairSection(): LinearLayout = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        setPadding(0, 0, 0, dp(20))
+
+        addView(label(getString(R.string.pair_label)))
+        pairField = EditText(this@SettingsActivity).apply {
+            inputType = InputType.TYPE_TEXT_VARIATION_URI or InputType.TYPE_CLASS_TEXT
+            hint = getString(R.string.pair_hint)
+            isSingleLine = true
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+            setTextColor(Color.parseColor("#141310"))
+            background = GradientDrawable().apply {
+                cornerRadius = dp(8).toFloat()
+                setColor(Color.parseColor("#FFFFFF"))
+                setStroke(dp(1), Color.parseColor("#D9D4C7"))
+            }
+            setPadding(dp(12), dp(10), dp(12), dp(10))
+        }
+        addView(pairField)
+        addView(hint(getString(R.string.pair_help)))
+        addView(
+            LinearLayout(this@SettingsActivity).apply {
+                orientation = LinearLayout.HORIZONTAL
+                setPadding(0, dp(10), 0, 0)
+                addView(button(getString(R.string.scan_button), filled = false) { scan() })
+                addView(button(getString(R.string.pair_button), filled = true) { pair() })
+            },
+        )
+    }
+
+    /**
+     * Open the shell's own scanner.
+     *
+     * The camera lives in `QrScannerActivity` rather than here because a preview
+     * needs the whole screen and its own permission prompt; this screen is a form.
+     * The decoded text comes back as a pairing link and lands in the field, so
+     * there is ONE submit path — the same `pair()` the paste uses.
+     */
+    private fun scan() {
+        startActivityForResult(Intent(this, QrScannerActivity::class.java), REQUEST_SCAN)
+    }
+
+    @Deprecated("Deprecated in the platform, still the only callback path below API 33")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != REQUEST_SCAN) return
+        if (resultCode != RESULT_OK) {
+            // The scanner draws its own refusal; nothing to add here.
+            return
+        }
+        val link = data?.getStringExtra(QrScannerActivity.EXTRA_LINK)?.trim().orEmpty()
+        if (link.isEmpty()) return
+        pairField.setText(link)
+        pair()
+    }
+
+    private fun pair() {
+        val raw = pairField.text.toString().trim()
+        val origin = PairingLink.originOf(raw)
+        if (origin == null) {
+            showError(getString(R.string.pair_not_a_link))
+            return
+        }
+        ServerConfig.write(this, origin)
+        startActivity(
+            Intent(this, MainActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                putExtra(MainActivity.EXTRA_PAIR_LINK, raw)
+            },
+        )
+        finish()
+    }
+
     private fun save() {
         val normalized = UrlNormalizer.normalize(urlField.text.toString())
         if (normalized is NormalizedUrl.Error) {

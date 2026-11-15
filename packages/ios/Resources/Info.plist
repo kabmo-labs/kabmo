@@ -285,6 +285,24 @@
   </array>
 
   <!--
+    Composer dictation. `getUserMedia` needs this key AND the delegate's grant
+    (`ShellNavigationDelegate.requestMediaCapturePermissionFor`); without the key
+    iOS terminates the app the moment the microphone is touched, which is a crash
+    rather than a refusal.
+  -->
+  <key>NSMicrophoneUsageDescription</key>
+  <string>Kabmo uses the microphone for composer dictation. Audio is sent to the server you configured and nowhere else.</string>
+
+  <!--
+    Pairing by camera. The console's login screen offers "Scan with camera" when
+    the origin is secure; WebKit refuses the request unless this key exists AND
+    the delegate grants `.camera` — see
+    `ShellNavigationDelegate.requestMediaCapturePermissionFor`.
+  -->
+  <key>NSCameraUsageDescription</key>
+  <string>Kabmo uses the camera to scan a pairing code. The image is read on this device and never uploaded.</string>
+
+  <!--
     A plain HTTP server on a LAN is the normal case, and the address is typed at
     runtime so it cannot be listed in a per-domain exception. Without this the web
     view refuses every `http://` address the user enters.

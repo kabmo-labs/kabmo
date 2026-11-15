@@ -1,6 +1,6 @@
 # End-to-end transport security for Kabmo shells, and QR pairing
 
-Status: **planned** — research only, nothing implemented: no shell trusts a certificate and there is no QR pairing (2026-10-23, `0bd0bf29`).
+Status: **partial** — the QR pairing half shipped (2026-11-15): a one-time code, a per-device token, a browser pairing page and a `Connect` settings page, with the route order measured in §5. The TLS half did NOT ship: no shell trusts a certificate, and the pinning tiers in §7 remain unbuilt. Tunnels (Tailscale Serve, named Cloudflare) turned out to be the cheaper answer to the certificate problem — see [Connect, tunnels and pairing](https://github.com/kabmo-labs/kabmo/wiki/Connect-and-Tunnels).
 Every number marked ⟦measured⟧ was produced on this machine (macOS 27 / arm64,
 Bun 1.4.3, OpenSSL 4.0.3) with the scripts listed in
 [Verification log](#verification-log). Loopback throughput is CPU-bound and is

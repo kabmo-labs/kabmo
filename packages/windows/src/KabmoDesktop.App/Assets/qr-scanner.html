@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Scan pairing code</title>
+<!--
+  The shell's own QR scanner, hosted in the shell's own web view.
+
+  WHY A PAGE AND NOT NATIVE CAMERA CODE: the shells are web-view apps, and the
+  decoder that already exists and is already tested is `jsQR` (the console's
+  login screen uses it). A native scanner would be a second decoder per platform
+  — Camera2 + ZXing on Android, MediaCapture + ZXing.Net on Windows, GStreamer +
+  rqrr on Linux — three dependencies and three chances to disagree about what a
+  valid code is. The camera PERMISSION is still native: the host grants
+  `RESOURCE_VIDEO_CAPTURE` / `.camera` and this page only asks.
+
+  The host must load this with an HTTPS base URL (`https://kabmo.local/`), not
+  `file://` or `about:blank`: `getUserMedia` needs a secure context, and a
+  document with an opaque origin does not have one.
+
+  The host provides ONE of these bridges, and the page tries them in order:
+    window.__kabmoQrResult(text) / window.__kabmoQrError(message)
+        — Android's `addJavascriptInterface`, WebKitGTK's script message handler
+    window.chrome.webview.postMessage({ type, text })
+        — WebView2, which has no injected object
+    window.webkit.messageHandlers.kabmoQr.postMessage({ type, text })
+        — WebKitGTK's script message handler
+  and may provide `window.jsQR` (the decoder) when the platform has no
+  `BarcodeDetector`. Chromium — Android WebView and WebView2 — has one; WebKitGTK
+  does not, so the Linux host inlines jsQR.
+-->
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; height: 100%; background: #141310; color: #f7f5f0;
+               font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  body { display: flex; flex-direction: column; }
+  #stage { position: relative; flex: 1; overflow: hidden; }
+  video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  #frame { position: absolute; inset: 12% 12%; border: 2px solid rgba(247,245,240,.85);
+           border-radius: 12px; pointer-events: none; }
+  #status { margin: 0; padding: 14px 18px 6px;
+            text-align: center; font-size: 13px; color: rgba(247,245,240,.8); }
+  #status.error { color: #ff9d9d; }
+  #upload { display: block; margin: 0 auto calc(14px + env(safe-area-inset-bottom, 0px));
+            padding: 8px 14px; border-radius: 8px; border: 1px solid rgba(247,245,240,.3);
+            background: transparent; color: rgba(247,245,240,.85); font: inherit; font-size: 12px; }
+  #upload[hidden] { display: none; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <video id="video" playsinline muted autoplay></video>
+  <div id="frame" aria-hidden="true"></div>
+</div>
+<p id="status">Point the camera at the pairing code</p>
+<button id="upload" type="button">Upload an image instead</button>
+<script>
+(function () {
+  var video = document.getElementById('video');
+  var status = document.getElementById('status');
+  var stopped = false;
+
+  // One report path, three hosts. A host that provides none of them still shows
+  // the sentence on screen, which is the honest degradation.
+  function report(type, text) {
+    if (typeof window.__kabmoQrResult === 'function') {
+      if (type === 'code') window.__kabmoQrResult(text);
+      else if (typeof window.__kabmoQrError === 'function') window.__kabmoQrError(text);
+      return;
+    }
+    if (window.chrome && window.chrome.webview && typeof window.chrome.webview.postMessage === 'function') {
+      window.chrome.webview.postMessage({ type: type, text: text });
+      return;
+    }
+    var handlers = window.webkit && window.webkit.messageHandlers;
+    if (handlers && handlers.kabmoQr && typeof handlers.kabmoQr.postMessage === 'function') {
+      handlers.kabmoQr.postMessage({ type: type, text: text });
+    }
+  }
+
+  function fail(message) {
+    status.textContent = message;
+    status.className = 'error';
+    report('error', message);
+  }
+
+  function done(text) {
+    if (stopped) return;
+    stopped = true;
+    stopStream();
+    status.textContent = 'Code read.';
+    report('code', text);
+  }
+
+  var stream = null;
+  function stopStream() {
+    if (!stream) return;
+    for (var i = 0; i < stream.getTracks().length; i += 1) stream.getTracks()[i].stop();
+    stream = null;
+  }
+
+  if (!window.isSecureContext) {
+    fail('The camera needs a secure address. Use the pairing link instead.');
+    return;
+  }
+  if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
+    fail('This device does not offer a camera to the app. Use the pairing link instead.');
+    return;
+  }
+
+  // `BarcodeDetector` where the platform has it (Chromium), `jsQR` where the host
+  // inlined it (WebKitGTK). One of the two is always present.
+  var detector = null;
+  if (typeof window.BarcodeDetector === 'function') {
+    try { detector = new window.BarcodeDetector({ formats: ['qr_code'] }); } catch (_) { detector = null; }
+  }
+  var canvas = document.createElement('canvas');
+  var context = canvas.getContext('2d', { willReadFrequently: true });
+
+  // One decode, two sources: a video frame and an uploaded image. The image path
+  // exists for the device with no camera — a tablet, a desktop, a phone whose
+  // camera is broken — which received the code as a screenshot.
+  function decodeImage(image) {
+    if (detector) {
+      return detector.detect(image).then(function (codes) {
+        return codes && codes.length > 0 ? codes[0].rawValue : null;
+      }).catch(function () { return null; });
+    }
+    if (typeof window.jsQR === 'function' && context) {
+      var width = image.width || image.naturalWidth || 0;
+      var height = image.height || image.naturalHeight || 0;
+      if (!width || !height) return Promise.resolve(null);
+      canvas.width = width;
+      canvas.height = height;
+      context.drawImage(image, 0, 0, width, height);
+      var pixels = context.getImageData(0, 0, width, height);
+      var found = window.jsQR(pixels.data, width, height, { inversionAttempts: 'attemptBoth' });
+      return Promise.resolve(found && found.data ? found.data : null);
+    }
+    return Promise.resolve(null);
+  }
+
+  // The host may hand the page an image instead of opening the camera: it owns
+  // the file picker, so the page never needs one (a WebView file chooser is a
+  // second permission path for no benefit).
+  window.__kabmoQrImage = function (dataUrl) {
+    stopStream();
+    status.textContent = 'Reading the image…';
+    var image = new Image();
+    image.onload = function () {
+      decodeImage(image).then(function (text) {
+        if (text) done(text);
+        else fail('No QR code was found in that image. Try a sharper screenshot, or paste the link instead.');
+      });
+    };
+    image.onerror = function () {
+      fail('That file could not be read as an image.');
+    };
+    image.src = dataUrl;
+  };
+
+  function decodeFrame() {
+    if (stopped) return;
+    if (video.videoWidth > 0 && video.videoHeight > 0) {
+      if (detector) {
+        detector.detect(video).then(function (codes) {
+          if (codes && codes.length > 0 && codes[0].rawValue) done(codes[0].rawValue);
+        }).catch(function () { /* a frame that cannot be read is not an error */ });
+      } else if (typeof window.jsQR === 'function' && context) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        var pixels = context.getImageData(0, 0, canvas.width, canvas.height);
+        var found = window.jsQR(pixels.data, pixels.width, pixels.height, { inversionAttempts: 'attemptBoth' });
+        if (found && found.data) done(found.data);
+      }
+    }
+    setTimeout(decodeFrame, 150);
+  }
+
+  navigator.mediaDevices.getUserMedia({
+    video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } },
+    audio: false
+  }).then(function (opened) {
+    stream = opened;
+    video.srcObject = opened;
+    var played = video.play();
+    if (played && typeof played.catch === 'function') played.catch(function () {});
+    decodeFrame();
+  }).catch(function (error) {
+    var name = error && error.name ? error.name : '';
+    fail(name === 'NotAllowedError'
+      ? 'The camera was blocked. Allow it for this app, or use the pairing link instead.'
+      : name === 'NotFoundError'
+        ? 'No camera was found on this device. Use the pairing link instead.'
+        : 'The camera could not be opened. Use the pairing link instead.');
+  });
+
+  // The host owns the file picker: a WebView file chooser is a second permission
+  // path for no benefit, and every host already has a native one. Each host
+  // exposes it through whichever bridge it has.
+  var pick = null;
+  if (typeof window.__kabmoQrPickImage === 'function') {
+    pick = window.__kabmoQrPickImage;
+  } else if (window.KabmoQr && typeof window.KabmoQr.pickImage === 'function') {
+    pick = function () { window.KabmoQr.pickImage(); };
+  } else if (window.chrome && window.chrome.webview && typeof window.chrome.webview.postMessage === 'function') {
+    pick = function () { window.chrome.webview.postMessage({ type: 'pick' }); };
+  } else if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.kabmoQr) {
+    pick = function () { window.webkit.messageHandlers.kabmoQr.postMessage({ type: 'pick' }); };
+  }
+
+  var upload = document.getElementById('upload');
+  if (pick) {
+    upload.addEventListener('click', pick);
+  } else {
+    // No picker on this host: the button would do nothing, and a control that
+    // does nothing is worse than no control.
+    upload.hidden = true;
+  }
+
+  window.addEventListener('pagehide', stopStream);
+})();
+</script>
+</body>
+</html>

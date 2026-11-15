@@ -83,6 +83,10 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
   <array>
 __DOCUMENT_TYPES__
   </array>
+  <!-- The shell's own QR scanner. Without this key the app is terminated the
+       moment the camera is touched, which is a crash rather than a refusal. -->
+  <key>NSCameraUsageDescription</key>
+  <string>Kabmo uses the camera to scan a pairing code. The image is read on this Mac and never uploaded.</string>
   <!-- A plain HTTP server on loopback is the normal case; without this the
        webview refuses it under App Transport Security. -->
   <key>NSAppTransportSecurity</key>

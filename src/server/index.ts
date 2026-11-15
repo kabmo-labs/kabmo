@@ -11,6 +11,7 @@ import { ssrRoutes } from '@/server/plugins/ssr';
 import { setListener } from '@/server/lib/lifecycle/listener';
 import { getDatabasePath } from '@/server/db.server';
 import { initAgentTokens } from '@/server/lib/sessions/agent-token.server';
+import { initDeviceTokens } from '@/server/lib/connect/devices.server';
 import { logDetectedRegistry } from '@/server/lib/models/detected-registry.server';
 import { ompStartupError, ompStartupLogLines } from '@/server/lib/omp/core/startup';
 import { readInstanceRecord, removeInstanceRecord, writeInstanceRecord } from '@/server/lib/lifecycle/instance';
@@ -76,6 +77,7 @@ console.log(`[kabmo] ui auth:        ${authNotice}${runPassword.source === 'argv
 for (const line of ompStartupLogLines()) console.log(`[kabmo] ${line}`);
 console.log(`[kabmo] db:             ${await getDatabasePath()}`);
 await initAgentTokens();
+await initDeviceTokens();
 
 const port = Number(Bun.env.PORT) || 3000;
 const host = Bun.env.HOST || 'localhost';

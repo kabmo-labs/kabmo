@@ -8,6 +8,7 @@ import { isTrayEnabledByArgv } from '@/server/lib/lifecycle/argv-flags';
 import { isTlsEnabledByArgv } from '@/server/lib/lifecycle/tls';
 import { isMockMode } from '@/server/mock.server';
 import { pluginPlatformReady } from '@/server/lib/plugins/loader.server';
+import { connectIdentity } from '@/server/lib/connect/identity.server';
 
 const STARTED_AT = Date.now();
 const STARTED_ISO = new Date(STARTED_AT).toISOString();
@@ -46,6 +47,10 @@ export async function loader() {
       // address, so a LAN-bound instance with no password — reachable by anyone
       // on the network — is visible from the CLI instead of only from a browser.
       authEnabled: isAuthEnabled(),
+      // Stable identity of this install, derived from a persisted key. A paired
+      // device pins it and refuses an address that answers with a different one,
+      // which is what stops a reassigned LAN address from receiving its token.
+      serverId: connectIdentity().serverId,
       // Reported so discovery does not have to guess the scheme: `status` and
       // `findLiveInstance` read it to build the URL they print and probe.
       tls: isTlsEnabledByArgv(),

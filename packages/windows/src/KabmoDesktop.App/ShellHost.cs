@@ -390,8 +390,28 @@ public sealed class ShellHost
                 var dialog = new ServerSettingsDialog(form, error, _splash.Palette, _window);
                 if (dialog.ShowDialog() != true) return;
 
+                if (dialog.ScanRequested)
+                {
+                    var scanned = ScanPairingCode();
+                    if (scanned is null) continue;
+                    if (await ApplyPairingLinkAsync(scanned)) return;
+                    error = "That is not a pairing link. Copy the https link from Settings → Connect on the server.";
+                    continue;
+                }
+
                 var typed = dialog.TypedAddress;
+                var link = dialog.TypedPairingLink;
                 address = typed;
+
+                // A filled pairing field wins: the user pasted a code, and the
+                // address beside it is whatever the dialog was prefilled with.
+                if (link.Length > 0)
+                {
+                    if (await ApplyPairingLinkAsync(link)) return;
+                    error = "That is not a pairing link. Copy the https link from Settings → Connect on the server.";
+                    continue;
+                }
+
                 try
                 {
                     Navigate(await _store.ConnectRemoteAsync(typed));
@@ -407,6 +427,35 @@ public sealed class ShellHost
         {
             _settingsOpen = false;
         }
+    }
+
+    /// <summary>
+    /// A pairing link, pasted or scanned: remember its origin, then load the link.
+    ///
+    /// The LINK is what gets loaded, not the origin: only the server's `/pair` page
+    /// can redeem the code and set the device cookie, and that cookie is what makes
+    /// the console open without a password.
+    /// </summary>
+    /// <returns>False when the text is not a pairing link at all.</returns>
+    private async Task<bool> ApplyPairingLinkAsync(string link)
+    {
+        var origin = PairingLink.OriginOf(link);
+        if (origin is null) return false;
+        // Remember the origin first, so a failed redemption still leaves the shell
+        // pointed at the right server.
+        await _store!.ConnectRemoteAsync(origin);
+        Navigate(link);
+        return true;
+    }
+
+    /// <summary>Open the scanner and wait for a code, or null when it was closed.</summary>
+    private string? ScanPairingCode()
+    {
+        var scanner = new QrScannerWindow(_window);
+        string? code = null;
+        scanner.OnCode = value => code = value;
+        scanner.ShowDialog();
+        return code;
     }
 
     /// <summary>Hand a URL to the system's default handler.</summary>
