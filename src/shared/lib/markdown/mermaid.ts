@@ -18,6 +18,7 @@
  */
 
 import { sanitizeMermaidSvg } from '@/shared/lib/markdown/sanitize';
+import { mermaidActionsHtml, mermaidSourceHtml } from '@/shared/lib/markdown/mermaid-actions';
 import { isDarkTheme } from '@/shared/lib/theme/catalog';
 
 export interface MermaidRenderResult {
@@ -91,13 +92,10 @@ async function loadMermaid(themeKey: ThemeKey): Promise<MermaidModule['default']
 }
 
 function applySvg(block: HTMLElement, svg: string, themeKey: ThemeKey): void {
-  const source = block.dataset.mermaid ?? '';
-  const copyAttr = source.replace(/"/g, '&quot;');
-  block.innerHTML =
-    `<button type="button" class="code-copy-float" data-copy="${copyAttr}" aria-label="Copy diagram source" title="Copy diagram source">` +
-    '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>' +
-    '</button>' +
-    svg;
+  // `dataset.mermaid` is URI-encoded for the attribute; the copy button must
+  // give the reader the diagram they can paste back, not its percent escape.
+  const source = decodeURIComponent(block.dataset.mermaid ?? '');
+  block.innerHTML = mermaidActionsHtml(source) + svg;
   block.dataset.mermaidState = 'done';
   block.dataset.mermaidTheme = themeKey;
 
@@ -166,4 +164,40 @@ export async function hydrateMermaidBlocks(
     }),
   );
   return { rendered: results.filter(Boolean).length, failed: results.filter((ok) => !ok).length };
+}
+
+/**
+ * Re-render one block from scratch — the block's own Refresh button.
+ *
+ * The cached SVG is dropped first: a blank diagram is usually a cached blank
+ * (or an SVG whose sanitized markup lost a node), so re-applying the cache
+ * would reproduce the blank the reader just asked to fix. The block is reset
+ * to its placeholder before the retry, so a failed second attempt shows the
+ * source in the error colour instead of leaving the old blank SVG up.
+ */
+export async function refreshMermaidBlock(block: HTMLElement): Promise<void> {
+  const encoded = block.dataset.mermaid;
+  if (encoded == null) return;
+  const source = decodeURIComponent(encoded);
+  const themeKey = resolveThemeKey();
+  svgCache.delete(cacheKey(themeKey, source));
+  block.dataset.mermaidState = 'pending';
+  delete block.dataset.mermaidTheme;
+  block.innerHTML = `<div class="code-block">${mermaidActionsHtml(source)}${mermaidSourceHtml(source)}</div>`;
+  await renderBlock(block, false);
+}
+
+/**
+ * Handle a click that landed on a block's Refresh button.
+ *
+ * Returns true when the click WAS a refresh, so the caller stops there: the
+ * block is also a door into the zoom/pan viewer, and letting the click fall
+ * through would open a blank overlay instead of retrying the render.
+ */
+export function refreshMermaidFromClick(target: EventTarget | null): boolean {
+  const button = (target as HTMLElement | null)?.closest?.<HTMLButtonElement>('button[data-mermaid-refresh]');
+  if (!button) return false;
+  const block = button.closest<HTMLElement>('.mermaid-block');
+  if (block) void refreshMermaidBlock(block);
+  return true;
 }

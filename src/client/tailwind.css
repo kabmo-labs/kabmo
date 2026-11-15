@@ -1018,6 +1018,11 @@ html[data-theme-variant="dark"] .shiki span { color: var(--shiki-dark); }
 .prose-content .mermaid-block .code-copy-float {
   z-index: 1;
 }
+/* Refresh sits left of copy: a blank diagram is the one state where the reader
+   needs it, and it must not cover the copy button they already know. */
+.prose-content .mermaid-block .code-copy-float.mermaid-refresh-float {
+  right: 2.125rem;
+}
 .prose-content .mermaid-block[data-mermaid-state='error'] pre {
   color: var(--theme-error);
 }

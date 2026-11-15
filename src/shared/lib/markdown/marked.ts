@@ -32,6 +32,7 @@ import { codeSafeAutolink } from '@/shared/lib/markdown/autolink';
 import remend from 'remend';
 import { highlightCode } from '@/shared/lib/code/syntax-highlight';
 import { directiveBlockHtml, isDirectiveLanguage, parseDirectiveAttributes } from '@/shared/lib/markdown/directives';
+import { mermaidActionsHtml, mermaidSourceHtml } from '@/shared/lib/markdown/mermaid-actions';
 import { mathExtensions, setProseEscaped } from '@/shared/lib/markdown/math-extensions';
 import { registerBlockMapper } from '@/shared/lib/markdown/blocks/renderer';
 import { mapBlocks } from '@/shared/lib/markdown/blocks/scan';
@@ -82,11 +83,13 @@ function codeBlockShell(code: string, bodyHtml: string): string {
 </div>\n`;
 }
 
-// ```mermaid fences become a placeholder hydrated to SVG by mermaid.ts.
+// ```mermaid fences become a placeholder hydrated to SVG by mermaid.ts. The
+// actions come from `mermaid-actions.ts` rather than `codeBlockShell` because
+// the hydrated block carries a refresh button too, and both states must show
+// the same set.
 function mermaidBlockRenderer(code: string): string {
-  const body = `<pre><code class="language-mermaid">${escapeHtml(code)}</code></pre>`;
-  const shell = codeBlockShell(code, body);
-  return `<div class="mermaid-block" data-mermaid="${encodeURIComponent(code)}" data-mermaid-state="pending">${shell}</div>`;
+  const body = `<div class="code-block">${mermaidActionsHtml(code)}${mermaidSourceHtml(code)}</div>`;
+  return `<div class="mermaid-block" data-mermaid="${encodeURIComponent(code)}" data-mermaid-state="pending">${body}</div>`;
 }
 
 function codeBlockRenderer(token: CodeToken): string {

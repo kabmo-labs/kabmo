@@ -48,3 +48,29 @@ export async function readClipboardText(): Promise<string | null> {
     return null;
   }
 }
+
+const COPY_ICON =
+  '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+const CHECK_ICON =
+  '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+
+/**
+ * Copy a code block's text and flash the checkmark on its button.
+ *
+ * The button is markup the markdown renderer injected, so the swap is DOM work
+ * rather than component state — and it belongs next to the clipboard call it
+ * reports, not in the renderer's delegated click handler.
+ */
+export function copyFromButton(button: HTMLButtonElement): void {
+  const text = button.dataset.copy ?? '';
+  if (!text) return;
+  void copyToClipboard(text).then((ok) => {
+    if (!ok) return;
+    button.setAttribute('data-copied', 'true');
+    button.innerHTML = CHECK_ICON;
+    setTimeout(() => {
+      button.removeAttribute('data-copied');
+      button.innerHTML = COPY_ICON;
+    }, 2000);
+  });
+}

@@ -34,11 +34,12 @@ import { rewriteWikiReferences, type WikiRenderScope } from '@/shared/lib/wiki/d
 import { expandGollumLinks } from '@/shared/lib/wiki/pages';
 import { MATH_PENDING_CLASS, preloadKatex } from '@/shared/lib/markdown/katex';
 import { sanitizeHtml } from '@/shared/lib/markdown/sanitize';
+import { refreshMermaidFromClick } from '@/shared/lib/markdown/mermaid';
 import { DIRECTIVE_BLOCK_CLASS } from '@/shared/lib/markdown/directives';
 import { hydrateDirectiveBlocks, unmountDirectiveBlocks } from '@/client/lib/plugins/directives';
 import { useMathHydration, useMermaidHydration } from '@/client/hooks/ui/markdown-hydration';
 import { useDirectiveContext, useDirectiveRenderer } from '@/client/hooks/workspace/directives';
-import { copyToClipboard } from '@/client/hooks/ui/clipboard';
+import { copyFromButton } from '@/client/hooks/ui/clipboard';
 import { openFileInEditor } from '@/client/hooks/ui/open-file';
 import { useSyntaxReady } from '@/client/hooks/ui/syntax-ready';
 import { DiagramViewer } from '@/client/components/common/diagram-viewer';
@@ -253,21 +254,17 @@ export function MarkdownRenderer({
       return;
     }
 
-    const target = (e.target as HTMLElement).closest<HTMLButtonElement>('button.code-copy-float');
-    if (target) {
-      const text = target.dataset.copy ?? '';
-      if (!text) return;
+    if (refreshMermaidFromClick(e.target)) {
       e.preventDefault();
       e.stopPropagation();
-      void copyToClipboard(text).then((ok) => {
-        if (!ok) return;
-        target.setAttribute('data-copied', 'true');
-        target.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
-        setTimeout(() => {
-          target.removeAttribute('data-copied');
-          target.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
-        }, 2000);
-      });
+      return;
+    }
+
+    const target = (e.target as HTMLElement).closest<HTMLButtonElement>('button.code-copy-float');
+    if (target) {
+      e.preventDefault();
+      e.stopPropagation();
+      copyFromButton(target);
       return;
     }
 
