@@ -25,7 +25,10 @@ import {
   type PairingPayload,
 } from '@/shared/lib/connect/payload';
 
-const NOW = Date.parse('2026-11-15T10:00:00Z');
+// Relative to the real clock: `encodePairingPayload` validates expiry against
+// `Date.now()`, so a fixed timestamp turns this suite into a time bomb — it
+// passed until the hardcoded date fell behind the runner's clock.
+const NOW = Date.now();
 
 function payload(overrides: Partial<PairingPayload> = {}): PairingPayload {
   return {
@@ -50,8 +53,10 @@ describe('encodePairingPayload / parsePairingPayload', () => {
   });
 
   test('refuses an expired payload', () => {
-    const link = encodePairingPayload(payload({ expiresAt: new Date(NOW - 1).toISOString() }));
-    expect(parsePairingPayload(link, NOW)).toBeNull();
+    // The encoder refuses to MINT an expired code, so expiry is measured where
+    // it is decided: the parser, given a clock past the payload's own deadline.
+    const link = encodePairingPayload(payload());
+    expect(parsePairingPayload(link, NOW + 10 * 60_000)).toBeNull();
   });
 
   test('refuses to mint a payload with no usable candidate', () => {
@@ -125,8 +130,8 @@ describe('parsePairingLink', () => {
   });
 
   test('refuses an expired code carried in a fragment', () => {
-    const fragment = encodePairingFragment(payload({ expiresAt: new Date(NOW - 1).toISOString() }));
-    expect(parsePairingLink(`https://node.tailnet.ts.net/pair#${fragment}`, NOW)).toBeNull();
+    const fragment = encodePairingFragment(payload());
+    expect(parsePairingLink(`https://node.tailnet.ts.net/pair#${fragment}`, NOW + 10 * 60_000)).toBeNull();
   });
 });
 
