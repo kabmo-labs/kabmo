@@ -21,7 +21,7 @@ const DEMO_KIND_MODELS: Array<Pick<ModelRoleCandidate, 'id' | 'name' | 'provider
   { id: 'deepseek', name: 'DeepSeek Search', provider: 'web', kind: 'search' },
   { id: 'gemma-3-1b', name: 'Gemma 3 1B', provider: 'local', kind: 'tiny' },
   { id: 'whisper-base', name: 'Whisper Base', provider: 'local', kind: 'stt' },
-  { id: 'kokoro', name: 'Kokoro-82M', provider: 'local', kind: 'tts' },
+  { id: 'phonon-31m', name: 'Phonon 31M', provider: 'local', kind: 'tts' },
   { id: 'flux-schnell', name: 'FLUX.1 Schnell', provider: 'local', kind: 'image' },
 ];
 

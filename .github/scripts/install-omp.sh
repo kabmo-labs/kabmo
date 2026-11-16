@@ -483,7 +483,57 @@ fi
 # clipboard stderr capture, Perplexity's sign-out wall, IDA 9.5 SDK calls and
 # `xd://` device URLs refusing a line selector — host-side or additive fields
 # Kabmo does not read.
-OMP_VERSION="${OMP_VERSION:-18.20.3}"
+#
+# 18.21.0 (2026-11-17): the schema's `source` line moves to 627 settings and the
+# panel gains ONE row, `tui.renderEmbeds` (appearance / Display), net +1;
+# `task.agentPrewalkAuto` is registered with no `ui`, so omp's own panel has no
+# row for it and the generator skips it the same way. The local TTS backend
+# moves from Kokoro-82M to Phonon 31M: `tts.localVoice` and `speech.voice` swap
+# their twelve voice ids (default `af_heart` → `harper`), and `tts.localSpeed` /
+# `speech.speed` narrow their ladder from 0.5–2.5 to 0.8–1.3. omp migrates a
+# stored Kokoro voice and a `local/kokoro` speech role on read, so no Kabmo code
+# is coupled to either name. The RPC wire keeps its 74 commands and gains ONE
+# ADDITIVE definition (299 → 300), `ShellForkOutcome`, carried by the new
+# `BashResult.fork`; one description changes (`hasPendingAsyncWork` now also
+# names child agents and queued peer messages). `MODEL_ROLES`, the 30
+# `BUILTIN_TOOL_NAMES` and the slash registry are identical.
+#
+# The run lifecycle is reworked internally: a run opens at its first
+# `agent_start` and closes at exactly one `agent_end`, and every model loop that
+# stops while the run goes on emits `agent_pause` instead. The RPC, JSON print
+# and collab wires keep their per-loop `agent_end` shape (`loop-end-wire.ts`):
+# a pause is `agent_end {isTerminal:false, yielded, awaitingAsyncWork?}`, which
+# is exactly what Kabmo already folds, so no frame handling changes. Two
+# consequences DO reach Kabmo's state machine, both already correct:
+#   - `prompt_result` now reports at a yielded pause, not only at the run's end.
+#     Kabmo's fold only acts on `agentInvoked:false` (a prompt that opened no
+#     turn), so a real run's frame still changes nothing.
+#   - `get_state.isSettled` no longer reads `hasPendingAsyncWork` directly; the
+#     run stays open while a job, child agent or peer message can wake it, so
+#     the verdict is unchanged. `session_settled` therefore still implies no
+#     wake source.
+#
+# Two upstream changes reach a Kabmo surface, neither needing code:
+#   - a `bash` call that overlapped another on the session's shell now reports
+#     `details.fork {carried, jobs}` and appends a notice naming what was lost
+#     (state, or background jobs left in the copy). Kabmo renders the result
+#     text, so the notice shows as-is; the field is additive.
+#   - a bash redirect into a handler-written URL (`> proc://<id>/kill`,
+#     `> xd://<tool>`) now performs the write and reports the handler's answer
+#     as a result notice. Kabmo's extension writes `xd://propose` through the
+#     `write` tool, whose path is unchanged.
+#
+# Not adopted, deliberately: `tui.renderEmbeds` (it only reaches the system
+# prompt when `tuiTranscript` is on, which is the interactive TUI; RPC, print,
+# ACP and subagents pass false, so Kabmo's agent is never invited to emit
+# `<img>`/`<iframe>`), `task.agentPrewalkAuto` (a per-agent prewalk policy with
+# no panel row), the `ask` tool's image answers (`formDialog` only; the RPC host
+# walks the form field by field and never carries images), the `Model.reasoning`
+# field becoming optional (Kabmo already treats `undefined` as "not reported"),
+# and the TTS/Phonon, browser scratch-page, MCP reconnect, `/move` rescope,
+# pinned-Hub download and selective-commit index-retry work — host-side or
+# model-facing.
+OMP_VERSION="${OMP_VERSION:-18.21.0}"
 PACKAGE="@oh-my-pi/pi-coding-agent"
 WANTED="omp/${OMP_VERSION}"
 

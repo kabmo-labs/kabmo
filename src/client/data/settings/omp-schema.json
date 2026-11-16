@@ -1,5 +1,5 @@
 {
-  "source": "@oh-my-pi/pi-coding-agent 10 tabs / 625 settings",
+  "source": "@oh-my-pi/pi-coding-agent 10 tabs / 627 settings",
   "tabs": [
     {
       "id": "appearance",
@@ -594,6 +594,16 @@
         "group": "Display",
         "label": "Render SVG Figures",
         "description": "Invite the agent to draw diagrams and charts as SVG, rendered inline as images on terminals that show graphics"
+      }
+    },
+    "tui.renderEmbeds": {
+      "type": "boolean",
+      "default": true,
+      "ui": {
+        "tab": "appearance",
+        "group": "Display",
+        "label": "Render Embedded Images and Pages",
+        "description": "Invite the agent to show pictures with <img> and web pages with <iframe>, loading them (remote addresses included) to draw inline on terminals that show graphics"
       }
     },
     "tui.autoGraph": {
@@ -3602,74 +3612,74 @@
     },
     "tts.localVoice": {
       "type": "enum",
-      "default": "af_heart",
+      "default": "harper",
       "values": [
-        "af_heart",
-        "af_bella",
-        "af_nicole",
-        "af_aoede",
-        "af_kore",
-        "af_sarah",
-        "am_michael",
-        "am_fenrir",
-        "am_puck",
-        "bf_emma",
-        "bm_george",
-        "bm_fable"
+        "harper",
+        "hadley",
+        "delia",
+        "everly",
+        "easton",
+        "preston",
+        "miles",
+        "trevor",
+        "maeve",
+        "bryony",
+        "edwin",
+        "hugh"
       ],
       "ui": {
         "tab": "providers",
         "group": "Services",
         "label": "Local TTS Voice",
-        "description": "Kokoro voice used by the local TTS backend (American/British, female/male)",
+        "description": "Phonon voice used by the local TTS backend (American/British, female/male)",
         "options": [
           {
-            "value": "af_heart",
-            "label": "Heart (American female)"
+            "value": "harper",
+            "label": "Harper (American female)"
           },
           {
-            "value": "af_bella",
-            "label": "Bella (American female)"
+            "value": "hadley",
+            "label": "Hadley (American female)"
           },
           {
-            "value": "af_nicole",
-            "label": "Nicole (American female)"
+            "value": "delia",
+            "label": "Delia (American female)"
           },
           {
-            "value": "af_aoede",
-            "label": "Aoede (American female)"
+            "value": "everly",
+            "label": "Everly (American female)"
           },
           {
-            "value": "af_kore",
-            "label": "Kore (American female)"
+            "value": "easton",
+            "label": "Easton (American male)"
           },
           {
-            "value": "af_sarah",
-            "label": "Sarah (American female)"
+            "value": "preston",
+            "label": "Preston (American male)"
           },
           {
-            "value": "am_michael",
-            "label": "Michael (American male)"
+            "value": "miles",
+            "label": "Miles (American male)"
           },
           {
-            "value": "am_fenrir",
-            "label": "Fenrir (American male)"
+            "value": "trevor",
+            "label": "Trevor (American male)"
           },
           {
-            "value": "am_puck",
-            "label": "Puck (American male)"
+            "value": "maeve",
+            "label": "Maeve (British female)"
           },
           {
-            "value": "bf_emma",
-            "label": "Emma (British female)"
+            "value": "bryony",
+            "label": "Bryony (British female)"
           },
           {
-            "value": "bm_george",
-            "label": "George (British male)"
+            "value": "edwin",
+            "label": "Edwin (British male)"
           },
           {
-            "value": "bm_fable",
-            "label": "Fable (British male)"
+            "value": "hugh",
+            "label": "Hugh (British male)"
           }
         ]
       }
@@ -3681,39 +3691,31 @@
         "tab": "providers",
         "group": "Services",
         "label": "Local TTS Speed",
-        "description": "Speaking rate of the local TTS backend (tts tool, omp say). 1 = normal; clamped to 0.5–2.5",
+        "description": "Speaking rate of the local TTS backend (tts tool, omp say). 1 = normal; clamped to 0.8–1.3",
         "options": [
           {
-            "value": "0.5",
-            "label": "0.5×"
+            "value": "0.8",
+            "label": "0.8×"
           },
           {
-            "value": "0.75",
-            "label": "0.75×"
+            "value": "0.9",
+            "label": "0.9×"
           },
           {
             "value": "1",
             "label": "1× (normal)"
           },
           {
-            "value": "1.25",
-            "label": "1.25×"
+            "value": "1.1",
+            "label": "1.1×"
           },
           {
-            "value": "1.5",
-            "label": "1.5×"
+            "value": "1.2",
+            "label": "1.2×"
           },
           {
-            "value": "1.75",
-            "label": "1.75×"
-          },
-          {
-            "value": "2",
-            "label": "2×"
-          },
-          {
-            "value": "2.5",
-            "label": "2.5×"
+            "value": "1.3",
+            "label": "1.3×"
           }
         ]
       }
@@ -3769,74 +3771,74 @@
     },
     "speech.voice": {
       "type": "enum",
-      "default": "af_heart",
+      "default": "harper",
       "values": [
-        "af_heart",
-        "af_bella",
-        "af_nicole",
-        "af_aoede",
-        "af_kore",
-        "af_sarah",
-        "am_michael",
-        "am_fenrir",
-        "am_puck",
-        "bf_emma",
-        "bm_george",
-        "bm_fable"
+        "harper",
+        "hadley",
+        "delia",
+        "everly",
+        "easton",
+        "preston",
+        "miles",
+        "trevor",
+        "maeve",
+        "bryony",
+        "edwin",
+        "hugh"
       ],
       "ui": {
         "tab": "providers",
         "group": "Services",
         "label": "Speech Vocalization Voice",
-        "description": "Kokoro voice used when speaking the assistant's output aloud",
+        "description": "Phonon voice used when speaking the assistant's output aloud",
         "options": [
           {
-            "value": "af_heart",
-            "label": "Heart (American female)"
+            "value": "harper",
+            "label": "Harper (American female)"
           },
           {
-            "value": "af_bella",
-            "label": "Bella (American female)"
+            "value": "hadley",
+            "label": "Hadley (American female)"
           },
           {
-            "value": "af_nicole",
-            "label": "Nicole (American female)"
+            "value": "delia",
+            "label": "Delia (American female)"
           },
           {
-            "value": "af_aoede",
-            "label": "Aoede (American female)"
+            "value": "everly",
+            "label": "Everly (American female)"
           },
           {
-            "value": "af_kore",
-            "label": "Kore (American female)"
+            "value": "easton",
+            "label": "Easton (American male)"
           },
           {
-            "value": "af_sarah",
-            "label": "Sarah (American female)"
+            "value": "preston",
+            "label": "Preston (American male)"
           },
           {
-            "value": "am_michael",
-            "label": "Michael (American male)"
+            "value": "miles",
+            "label": "Miles (American male)"
           },
           {
-            "value": "am_fenrir",
-            "label": "Fenrir (American male)"
+            "value": "trevor",
+            "label": "Trevor (American male)"
           },
           {
-            "value": "am_puck",
-            "label": "Puck (American male)"
+            "value": "maeve",
+            "label": "Maeve (British female)"
           },
           {
-            "value": "bf_emma",
-            "label": "Emma (British female)"
+            "value": "bryony",
+            "label": "Bryony (British female)"
           },
           {
-            "value": "bm_george",
-            "label": "George (British male)"
+            "value": "edwin",
+            "label": "Edwin (British male)"
           },
           {
-            "value": "bm_fable",
-            "label": "Fable (British male)"
+            "value": "hugh",
+            "label": "Hugh (British male)"
           }
         ]
       }
@@ -3848,39 +3850,31 @@
         "tab": "providers",
         "group": "Services",
         "label": "Speech Vocalization Speed",
-        "description": "Speaking rate when reading the assistant's output aloud. 1 = normal; clamped to 0.5–2.5",
+        "description": "Speaking rate when reading the assistant's output aloud. 1 = normal; clamped to 0.8–1.3",
         "options": [
           {
-            "value": "0.5",
-            "label": "0.5×"
+            "value": "0.8",
+            "label": "0.8×"
           },
           {
-            "value": "0.75",
-            "label": "0.75×"
+            "value": "0.9",
+            "label": "0.9×"
           },
           {
             "value": "1",
             "label": "1× (normal)"
           },
           {
-            "value": "1.25",
-            "label": "1.25×"
+            "value": "1.1",
+            "label": "1.1×"
           },
           {
-            "value": "1.5",
-            "label": "1.5×"
+            "value": "1.2",
+            "label": "1.2×"
           },
           {
-            "value": "1.75",
-            "label": "1.75×"
-          },
-          {
-            "value": "2",
-            "label": "2×"
-          },
-          {
-            "value": "2.5",
-            "label": "2.5×"
+            "value": "1.3",
+            "label": "1.3×"
           }
         ]
       }
@@ -6689,7 +6683,7 @@
         "tab": "tools",
         "group": "Available Tools",
         "label": "Speech Generation",
-        "description": "Enable the tts tool for on-device (Kokoro) or xAI Grok Voice speech-file synthesis"
+        "description": "Enable the tts tool for on-device (Phonon) or xAI Grok Voice speech-file synthesis"
       }
     },
     "generate_image.enabled": {

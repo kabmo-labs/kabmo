@@ -5,7 +5,7 @@ the installed binary was **18.8.3** (2026-10-07); the pin now matches (F9). This
 of everything between the two versions that Kabmo either gets wrong or
 does not use, and the phased plan to close it.
 
-Status: **done** — every phase closed; P4b–d and P5 were measured and deliberately not adopted, and the pin has since moved on to 18.20.0 (2026-11-13).
+Status: **done** — every phase closed; P4b–d and P5 were measured and deliberately not adopted, and the pin has since moved on to 18.21.0 (2026-11-17).
 
 **Re-audited at 18.9.2 (2026-10-12)** — the pin moved on again and the schema had
 drifted 9 rows; see [the re-audit section](#omp-1892-re-audit-2026-10-12) at the
@@ -2150,3 +2150,90 @@ trailing line selector. None is a surface Kabmo reads.
 | R85 | `seance` removed upstream | none needed; Kabmo never named it | 102 differing files, no `seance` reference in `src/` |
 | R86 | step reports as progress IRC | none needed | `ircMessageFromDetails` keeps `progress`; `IrcNotice` badge exists |
 | R87 | host-side changes | none needed | 74 commands / 299 definitions, byte-identical |
+
+# omp 18.21.0 adoption (2026-11-17)
+
+The pin moved **18.20.3 → 18.21.0**. The RPC wire gains one additive definition
+and the run lifecycle is reworked internally; the reachable change is one new
+settings row plus the Kokoro→Phonon TTS move. No Kabmo frame handling changes.
+
+## Method
+
+- `npm pack @oh-my-pi/pi-coding-agent@18.20.3` and `@18.21.0` into temp trees,
+  then `diff -rq` over `src/` — 91 entries, 7 added/removed files.
+- `rpc-wire.schema.json` compared whole: **74 commands, 299 → 300 definitions**,
+  1 added (`ShellForkOutcome`), 0 removed, 1 changed description
+  (`hasPendingAsyncWork`), plus the additive `BashResult.fork`.
+- The schema generator run against an installed 18.21.0 produces **10 tabs /
+  627 settings / 466 entries** (was 625 / 465). The diff is one added row, the
+  TTS voice/speed enums, and four descriptions.
+- `MODEL_ROLES`, the 30 `BUILTIN_TOOL_NAMES` and the slash registry are
+  byte-identical; `settings-defs.ts` (the tab order) is unchanged.
+
+## Findings
+
+### R88 — `tui.renderEmbeds` added (schema only)
+
+`tui.renderEmbeds` (boolean, default `true`, appearance / Display) invites the
+agent to show pictures with `<img>` and pages with `<iframe>`. The invitation
+reaches the system prompt only when `tuiTranscript` is on, which is the
+interactive TUI; RPC, print, ACP and subagent sessions pass `false`
+(`sdk.ts`). Kabmo's agent is therefore never told to emit embeds, and its
+markdown renderer keeps escaping assistant HTML. The row is offered because the
+panel is the only place a user can reach an omp setting.
+
+### R89 — local TTS moved from Kokoro-82M to Phonon 31M (schema only)
+
+`tts.localVoice` and `speech.voice` swap their twelve voice ids (default
+`af_heart` → `harper`), and `tts.localSpeed` / `speech.speed` narrow from
+0.5–2.5 to 0.8–1.3. omp migrates a stored Kokoro voice and a `local/kokoro`
+speech role on read (`migrateKokoroSpeechSettings`), so no Kabmo code is coupled
+to either name. The demo role catalog's TTS row now names `phonon-31m` /
+"Phonon 31M" instead of the retired model.
+
+### R90 — run lifecycle reworked; the wire shape is unchanged
+
+A run now opens at its first `agent_start` and closes at exactly one
+`agent_end`; every model loop that stops while the run goes on emits
+`agent_pause`. The RPC, JSON print and collab wires keep their per-loop
+`agent_end` shape (`loop-end-wire.ts`): a pause is
+`agent_end {isTerminal:false, yielded, awaitingAsyncWork?}`, which is exactly
+what `frame-fold.ts` and the client fold already read. Two consequences reach
+Kabmo's state machine, both already correct:
+
+- `prompt_result` now reports at a yielded pause, not only at the run's end.
+  Kabmo's fold acts only on `agentInvoked:false` (a prompt that opened no turn),
+  so a real run's frame still changes nothing.
+- `get_state.isSettled` no longer reads `hasPendingAsyncWork` directly; the run
+  stays open while a job, child agent or peer message can wake it, so the
+  verdict is unchanged and `session_settled` still implies no wake source.
+
+### R91 — `bash` fork outcome and URL-redirect writes (rendered as text)
+
+A `bash` call that overlapped another on the session's shell now reports
+`details.fork {carried, jobs}` and appends a notice naming what was lost (state,
+or background jobs left in the copy). Kabmo renders the result text, so the
+notice shows as-is; the field is additive. A bash redirect into a
+handler-written URL (`> proc://<id>/kill`, `> xd://<tool>`) now performs the
+write and reports the handler's answer as a result notice; Kabmo's extension
+writes `xd://propose` through the `write` tool, whose path is unchanged.
+
+### R92 — host-side changes (no action)
+
+The `ask` tool's image answers (`formDialog` only; the RPC host walks the form
+field by field and never carries images), `Model.reasoning` becoming optional
+(Kabmo already treats `undefined` as "not reported"), `task.agentPrewalkAuto`
+(no `ui` block), the browser scratch-page/`page-shot` split, MCP reconnect and
+`/move` rescoping, pinned-Hub downloads, selective-commit index retries, the
+Phonon TTS worker, and the `agent_pause`-aware task/registry bookkeeping. None
+is a surface Kabmo reads.
+
+## 18.21.0 outcomes
+
+| # | Finding | Action | Verification |
+|---|---|---|---|
+| R88 | `tui.renderEmbeds` added | schema regenerated; row offered, no code names it | 627 settings / 466 entries; `omp:schema:check` passes |
+| R89 | Kokoro → Phonon TTS | schema regenerated; demo catalog names `phonon-31m` | voice default `harper`, speed ladder 0.8–1.3 |
+| R90 | run lifecycle rework | none needed; wire keeps per-loop `agent_end` | 74 commands / 300 definitions; `isTerminal:false` fold unchanged |
+| R91 | bash fork + URL writes | none needed; notices render as result text | `details.fork` additive; `write` tool path unchanged |
+| R92 | host-side changes | none needed | `MODEL_ROLES`, `BUILTIN_TOOL_NAMES`, slash registry identical |
