@@ -25,8 +25,11 @@ import type {
   ShellTrace,
 } from '@/server/lib/changes/capture-types';
 import type { GitScan } from '@/server/lib/changes/scan.server';
+import { readSessionChangePaths } from '@/server/lib/changes/reader.server';
+import { sessionsInCwd } from '@/server/lib/changes/sessions.server';
 
 export interface BashCaptureHost {
+  sessionId: string;
   cwd: string;
   home: string;
   readFile(absolute: string): Promise<string | null | undefined>;
@@ -128,9 +131,19 @@ async function reconcileScan(
   if (!after) return;
   if (start.truncated || after.truncated) await host.note(pending, 'scan-budget', pending.command);
 
+  // A concurrent session in the same cwd may have written a path the scan
+  // sees. Its own journal is the exact record; skip what it already claimed.
+  const from = pending.startedAt - 1000;
+  const to = Date.now() + 1000;
+  const claimed = new Set<string>();
+  for (const sessionId of await sessionsInCwd(host.cwd, host.sessionId)) {
+    for (const path of await readSessionChangePaths(sessionId, from, to)) claimed.add(path);
+  }
+
   const paths = new Set([...start.dirty.keys(), ...after.dirty.keys()]);
   for (const absolute of paths) {
     if (skip.has(absolute)) continue;
+    if (claimed.has(absolute)) continue;
     const before = start.dirty.has(absolute)
       ? start.dirty.get(absolute) ?? null
       : await host.readHead(start.root, absolute);

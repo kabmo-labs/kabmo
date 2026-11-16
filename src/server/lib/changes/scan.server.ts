@@ -71,7 +71,9 @@ async function readText(absolute: string): Promise<string | null> {
 export async function takeGitScan(cwd: string): Promise<GitScan | null> {
   const root = (await runGit(cwd, ['rev-parse', '--show-toplevel']))?.trim();
   if (!root) return null;
-  const status = await runGit(root, ['status', '--porcelain=v1', '-z']);
+  // `--no-optional-locks` keeps a concurrent scan from taking the index lock:
+  // two sessions in one repo must not make each other's `git status` fail.
+  const status = await runGit(root, ['status', '--porcelain=v1', '-z', '--no-optional-locks']);
   if (status === null) return null;
 
   const entries = parseStatus(status);

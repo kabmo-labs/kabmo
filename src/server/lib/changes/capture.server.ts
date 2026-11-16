@@ -276,6 +276,7 @@ export class ChangeCapture {
 
   async #endBash(pending: PendingCall, trace: ShellTrace | null): Promise<void> {
     const host: BashCaptureHost = {
+      sessionId: this.deps.journal.sessionId,
       cwd: this.deps.cwd,
       home: this.deps.home,
       readFile: (absolute) => this.#readCapped(absolute),

@@ -215,6 +215,20 @@ async function resolveMergedBlob(
   return dir ? readBlob(dir, key) : undefined;
 }
 
+/** The paths one session recorded inside `[from, to]`; the scan's cross-check. */
+export async function readSessionChangePaths(
+  sessionId: string,
+  from: number,
+  to: number,
+): Promise<Set<string>> {
+  const records = await readJournalRecords(sessionId);
+  const paths = new Set<string>();
+  for (const record of records) {
+    if (record.at >= from && record.at <= to) paths.add(record.path);
+  }
+  return paths;
+}
+
 /** Every change record of one session, oldest first, with display paths. */
 export async function readSessionChangeIndex(sessionId: string): Promise<SessionChangeRecord[]> {
   const records = await readMergedRecords(sessionId, false);
