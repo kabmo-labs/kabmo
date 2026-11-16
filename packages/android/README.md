@@ -393,8 +393,34 @@ every change (`client/lib/notifications/watch.ts`), because the shell has no pag
 to ask once it is backgrounded. The service is started from THAT command, while
 the console is visible — Android 12+ refuses a foreground-service start from the
 background, so starting it in `onStop` would fail exactly when it is needed.
-Disarming stops it. A banner posted by the page and one posted by the watcher
-share the tag and id, so the same event never shows twice.
+Disarming stops it.
+
+Four rules keep it from being background work with nothing to show for it:
+
+- **The heartbeat is 60 s, and the shell times the read out at 150 s.** The
+  stream is idle between events, so liveness is the server's comment frame
+  (`HEARTBEAT_MS` in `server/routes/notifications/stream.ts`). 25 s woke the
+  radio more than twice as often for the same proof; at 60 s it idles for most
+  of the interval. `readTimeout = 0` was the first shape and it fails silently:
+  a socket that dies without a FIN (a Wi-Fi to cellular handoff, an expired NAT
+  entry) leaves `readLine()` blocked forever, so no banner arrives again until
+  the app is reopened.
+- **A denied `POST_NOTIFICATIONS` stops the service.** On API 33+ every
+  `NotificationPoster.show` is a no-op without the grant, so the socket and the
+  ongoing row would be pure cost. `AndroidWatch.setArmed` refuses to start, the
+  watcher re-checks on every pass, and `MainActivity.onResume` starts it the
+  moment the grant exists.
+- **While the console is in front, the PAGE posts and the watcher only advances
+  its cursor.** `ShellVisibility` is set from `onStart`/`onStop`; both halves
+  posting was a second `notify` for the same tag and id — the shade merged them,
+  but the alert was drawn twice and the work was done twice.
+- **Doze is best-effort, and that is deliberate.** Nothing holds a wake lock: a
+  partial lock would cost more battery than the banner saves, so a notification
+  that lands while the device is in deep idle may wait for the next wake. The
+  `specialUse` type is what keeps the service itself from being capped.
+
+A banner posted by the page and one posted by the watcher share the tag and id,
+so the same event never shows twice.
 
 The wire is pinned by `NotificationWatchTest` (JVM), which is why the payload is
 read by the small strict reader in `NotificationWatch` rather than `org.json`:

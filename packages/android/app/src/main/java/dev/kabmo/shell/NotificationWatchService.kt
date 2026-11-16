@@ -133,16 +133,25 @@ class NotificationWatchService : Service() {
     }
 
     private fun watchLoop() {
-        var backoffMs = FIRST_RETRY_MS
+        var backoffMs = WatchPolicy.FIRST_RETRY_MS
         while (running) {
             val baseUrl = ServerConfig.read(this)
-            if (baseUrl == null) {
-                // Nothing to watch: a first run, or the list lost its active row.
+            // The permission is re-read on every pass, not only at start: a grant
+            // revoked from Settings while the app is away would otherwise leave a
+            // socket and a foreground row posting nothing at all.
+            if (!WatchPolicy.shouldRun(
+                    armed = AndroidWatch.armed(this),
+                    canPost = NotificationPoster.isGranted(this),
+                    hasServer = baseUrl != null,
+                )
+            ) {
+                // Nothing to watch, or nothing that could be shown: a first run, a
+                // list that lost its active row, or a denied notification grant.
                 stopSelf()
                 return
             }
             try {
-                if (streamOnce(baseUrl)) backoffMs = FIRST_RETRY_MS
+                if (streamOnce(baseUrl!!)) backoffMs = WatchPolicy.FIRST_RETRY_MS
             } catch (_: InterruptedException) {
                 return
             } catch (_: Exception) {
@@ -154,7 +163,7 @@ class NotificationWatchService : Service() {
             } catch (_: InterruptedException) {
                 return
             }
-            backoffMs = (backoffMs * 2).coerceAtMost(MAX_RETRY_MS)
+            backoffMs = WatchPolicy.nextRetry(backoffMs)
         }
     }
 
@@ -171,10 +180,17 @@ class NotificationWatchService : Service() {
             // retrying with the cookie the next sign-in refreshes.
             instanceFollowRedirects = false
             connectTimeout = CONNECT_TIMEOUT_MS
-            // The stream is idle between events; the server's heartbeat is what
-            // proves it is alive, so a read timeout would tear down a healthy
-            // connection every time a run is quiet.
-            readTimeout = 0
+            // The stream is idle between events, so the timeout is measured
+            // against the server's heartbeat (`HEARTBEAT_MS` in
+            // `server/routes/notifications/stream.ts`, 60 s) rather than against
+            // events: two and a half missed beats is a link that is gone.
+            //
+            // `0` — no timeout — was the first shape, and it is the one that
+            // fails silently: a socket that dies without a FIN (a Wi-Fi to
+            // cellular handoff, a NAT entry that expired, a server killed
+            // mid-write) leaves `readLine()` blocked forever, so the loop never
+            // reconnects and no banner arrives again until the app is reopened.
+            readTimeout = READ_TIMEOUT_MS
             setRequestProperty("Accept", "text/event-stream")
             setRequestProperty("Cache-Control", "no-cache")
             cookieFor(baseUrl)?.let { setRequestProperty("Cookie", it) }
@@ -211,16 +227,27 @@ class NotificationWatchService : Service() {
         when (eventName) {
             NotificationWatch.EVENT_NOTIFICATION -> {
                 val event = NotificationWatch.parse(data) ?: return
-                NotificationPoster.show(
-                    this,
-                    title = event.title,
-                    body = event.body,
-                    kind = event.kind,
-                    tag = "${event.kind}:${event.sessionId}",
-                    sessionId = event.sessionId,
-                    whenMs = event.at,
-                    durationMs = event.durationMs ?: 0L,
-                )
+                // One banner per event: the page posts from its realtime socket
+                // while the console is in front, and this service posts from the
+                // stream while it is not. Both posting was a second `notify` for
+                // the same tag and id — the shade merged them, but the alert was
+                // drawn twice and the work was done twice.
+                //
+                // The cursor advances either way: the event WAS delivered, just
+                // not by this half, and advancing it is what stops a replay when
+                // the console goes away.
+                if (!ShellVisibility.isVisible) {
+                    NotificationPoster.show(
+                        this,
+                        title = event.title,
+                        body = event.body,
+                        kind = event.kind,
+                        tag = "${event.kind}:${event.sessionId}",
+                        sessionId = event.sessionId,
+                        whenMs = event.at,
+                        durationMs = event.durationMs ?: 0L,
+                    )
+                }
                 writeCursor(baseUrl, event.id)
             }
             NotificationWatch.EVENT_CURSOR -> {
@@ -283,8 +310,12 @@ class NotificationWatchService : Service() {
         private const val KEY_CURSOR_URL = "notification_cursor_url"
         private const val CONNECT_TIMEOUT_MS = 10_000
         private const val COOKIE_WAIT_MS = 2_000L
-        private const val FIRST_RETRY_MS = 5_000L
-        private const val MAX_RETRY_MS = 60_000L
+        /**
+         * Two and a half missed heartbeats (`HEARTBEAT_MS` = 60 s on the server).
+         * Long enough that a healthy but quiet stream is never torn down, short
+         * enough that a dead link is noticed while the user still cares.
+         */
+        private const val READ_TIMEOUT_MS = 150_000
 
         /**
          * `FOREGROUND_SERVICE_TYPE_SPECIAL_USE` (API 34), spelled out so the

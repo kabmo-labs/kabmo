@@ -9,7 +9,10 @@
  * The event switches live in the server's settings, and the shell has no page
  * to ask once the app is backgrounded — so the answer is pushed to it here, on
  * boot and whenever a switch changes. The shell persists it and starts its
- * watcher from `onStop` only when it is armed.
+ * watcher from that command, while the console is still visible (Android 12+
+ * refuses a foreground-service start from the background); it also refuses to
+ * start when the OS notification permission is missing, and `MainActivity`
+ * re-arms on the next resume once the grant exists.
  *
  * A no-op outside a phone shell: the desktop shells and a browser have no
  * background watcher, and their notifications are posted by the page itself.

@@ -162,8 +162,25 @@ class MainActivity : Activity() {
         )
     }
 
+    override fun onStart() {
+        super.onStart()
+        // The page can receive a frame from here until `onStop`, so the watcher
+        // must not post a second banner for the same event. See `ShellVisibility`.
+        ShellVisibility.isVisible = true
+    }
+
+    override fun onStop() {
+        ShellVisibility.isVisible = false
+        super.onStop()
+    }
+
     override fun onResume() {
         super.onResume()
+
+        // A notification permission granted after the console armed the watcher
+        // (the system dialog, or Settings) is the one moment the service can
+        // start: `AndroidWatch.setArmed` refused it while the grant was missing.
+        AndroidWatch.rearm(this)
 
         // A critical trim paused the WebView's timers; nothing else would ever
         // start them again, and a paused WebView answers no JavaScript.

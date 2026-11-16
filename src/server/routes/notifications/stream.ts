@@ -41,8 +41,17 @@ import {
   listNotificationEventsAfter,
 } from '@/server/lib/notifications/store.server';
 
-/** Long enough that a phone's radio sleeps between beats, short enough to notice a dead link. */
-const HEARTBEAT_MS = 25_000;
+/**
+ * The comment frame that proves the stream is alive.
+ *
+ * 60 s, not 25: this stream has exactly one consumer — the Android watcher — and
+ * every beat is a radio wakeup on a phone that is otherwise asleep. 25 s woke it
+ * more than twice as often for the same liveness proof; 60 s lets it idle for
+ * most of the interval, and the shell's read timeout (150 s, two and a half
+ * beats) still notices a link that died. The page does not use this route: an
+ * open page has the realtime socket, whose own heartbeat is separate.
+ */
+const HEARTBEAT_MS = 60_000;
 
 async function platformEnabled(platform: NotificationPlatform): Promise<boolean> {
   try {
