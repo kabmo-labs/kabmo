@@ -142,7 +142,7 @@ describe('classifyCommand', () => {
 
   test('a newline separates commands', () => {
     const result = plan("printf 'x' > a.txt\npython3 - <<'PY'\nprint('hi')\nPY\ntouch b.txt");
-    expect(ops(result)).toEqual(['update:/repo/a.txt', 'update:/repo/b.txt']);
+    expect(ops(result)).toEqual([`update:${at('a.txt')}`, `update:${at('b.txt')}`]);
     expect(result.scan).toBe(true);
   });
 
