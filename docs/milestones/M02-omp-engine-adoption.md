@@ -2079,3 +2079,74 @@ the model-discovery retry.
 | R81 | four rows added, two defaults changed | schema regenerated; no code names a new key | 622 settings / 462 entries; `omp:schema:check` passes |
 | R82 | `unpausedProvidersNotProject` condition | none needed; default shows the row | `isConditionMet` default arm; panel edits the global layer |
 | R83 | host-side changes | none needed | 74 commands / 299 definitions, byte-identical |
+
+# omp 18.20.3 adoption (2026-11-16)
+
+The pin moved **18.20.2 → 18.20.3**. The RPC wire is byte-identical; the
+reachable change is three new Mnemopi rows. The release also removes the
+`seance` agent and turns earlier `steps` stages into progress messages, neither
+of which needs code here.
+
+## Method
+
+- `npm pack @oh-my-pi/pi-coding-agent@18.20.2` and `@18.20.3` into temp trees
+  (the generator's `OMP_SCHEMA_PACKAGE_DIR` cannot read a bare tarball tree: the
+  package's `src/` imports `@oh-my-pi/omptype`, which only resolves beside a real
+  install), then `diff -rq` over `src/` — 102 entries.
+- `rpc-wire.schema.json` compared whole: **74 commands, 299 definitions**, 0
+  added, 0 removed, 0 changed. Every notification, event and frame variant is
+  byte-identical.
+- The schema generator run against an installed 18.20.3 (the global install the
+  version check accepts) produces **10 tabs / 625 settings / 465 entries** (was
+  622 / 462). The diff is three added rows and nothing else.
+- `MODEL_ROLES`, the 30 `BUILTIN_TOOL_NAMES` and `settings-ui.ts` are
+  byte-identical. The slash registry loses `/seance` and gains nothing.
+
+## Findings
+
+### R84 — three Mnemopi rows added (schema only)
+
+`mnemopi.recallRelevance` (enum `auto`/`on`/`off`, default `off`, memory /
+Mnemopi) has the judge filter recalled memories before injection;
+`mnemopi.embeddingQueryPrefix` (string) prefixes recall queries for
+instruction-tuned embedders; `mnemopi.embeddingInputType` (boolean, default
+off) sends `input_type` so asymmetric embedders such as NVIDIA NIM work. All
+three carry `mnemopiActive`, which `isConditionMet` already answers, so no arm
+is needed and the rows hide unless `memory.backend` is `mnemopi`.
+
+### R85 — `seance` removed upstream (no Kabmo surface)
+
+18.20.3 deletes the bundled `seance` consult agent, its slash command, its task
+policy and prompts, and the `seanceSource`/`seanceSourceArtifactsDir` plumbing
+that pointed `history://`, `artifact://` and `agent://` at a source pool.
+Kabmo never carried the agent name, the guard row or any of those fields, so
+nothing here changes.
+
+### R86 — earlier `steps` stages arrive as progress messages (already rendered)
+
+A stepped `task` spawn now delivers what the child returns for each earlier
+stage to the spawning agent as an IRC message with `progress: true`
+(`sendStepReport`), instead of only the last stage's result. Kabmo's
+`ircMessageFromDetails` already keeps `progress`, and `IrcNotice` already draws
+the `progress` badge, so the reports render as peer-message cards with no code
+change.
+
+### R87 — host-side changes (no action)
+
+Browser pointer-space mapping, `tab.route`/`requests`/`waitForUrl` grammar, WebKit
+engine updates and screenshot limits; an approval prompt now closes on the
+call's abort signal (the RPC host passes none, so Kabmo's dialog is unchanged);
+session delete ordering (the id is read before the transcript goes); `/commit`
+BOM handling and C-quoted diff paths; the find tool's `lexicalFallback`;
+mnemopi relevance/embedding plumbing; clipboard stderr capture; Perplexity's
+sign-out wall; IDA 9.5 SDK calls; and `xd://` device URLs now refusing a
+trailing line selector. None is a surface Kabmo reads.
+
+## 18.20.3 outcomes
+
+| # | Finding | Action | Verification |
+|---|---|---|---|
+| R84 | three Mnemopi rows added | schema regenerated; no code names a new key | 625 settings / 465 entries; `omp:schema:check` passes |
+| R85 | `seance` removed upstream | none needed; Kabmo never named it | 102 differing files, no `seance` reference in `src/` |
+| R86 | step reports as progress IRC | none needed | `ircMessageFromDetails` keeps `progress`; `IrcNotice` badge exists |
+| R87 | host-side changes | none needed | 74 commands / 299 definitions, byte-identical |

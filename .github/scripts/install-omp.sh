@@ -457,7 +457,33 @@ fi
 # per-rule `env` (host-side approval), TTSR `repeatMode` (per-rule config, no
 # panel row), composer paste formatting, `/fork` aborting an active response,
 # and the model-discovery retry — host-side or model-facing.
-OMP_VERSION="${OMP_VERSION:-18.20.2}"
+#
+# 18.20.3 (2026-11-16): the schema's `source` line moves to 625 settings and the
+# panel gains THREE rows, net +3, all under memory / Mnemopi and all gated by
+# the `mnemopiActive` condition `isConditionMet` already answers:
+# `mnemopi.recallRelevance` (enum auto/on/off, default off),
+# `mnemopi.embeddingQueryPrefix` and `mnemopi.embeddingInputType` (boolean,
+# default off). The RPC wire is byte-identical — 74 commands, 299 definitions, 0
+# added, 0 removed, 0 changed — and `MODEL_ROLES`, the 30
+# `BUILTIN_TOOL_NAMES` and `settings-ui.ts` are identical too.
+#
+# Two upstream changes reach Kabmo's data, neither needing code:
+#   - the bundled `seance` consult agent is removed with its slash command, task
+#     policy, prompts and the `seanceSource` artifact plumbing. Kabmo never
+#     named it.
+#   - a stepped `task` spawn now delivers each earlier stage's result to the
+#     spawning agent as an IRC message carrying `progress: true`. Kabmo keeps
+#     that field and its notice card already draws the badge.
+#
+# Not adopted, deliberately: the browser's pointer-space/screenshot limits and
+# `tab.route`/`requests`/`waitForUrl` grammar (Kabmo never drives that tool),
+# the abort signal on an approval prompt (the RPC host passes none, so the
+# dialog Kabmo shows cannot be cancelled from here), the session-delete
+# ordering, `/commit`'s BOM/C-quoted paths, the find tool's `lexicalFallback`,
+# clipboard stderr capture, Perplexity's sign-out wall, IDA 9.5 SDK calls and
+# `xd://` device URLs refusing a line selector — host-side or additive fields
+# Kabmo does not read.
+OMP_VERSION="${OMP_VERSION:-18.20.3}"
 PACKAGE="@oh-my-pi/pi-coding-agent"
 WANTED="omp/${OMP_VERSION}"
 

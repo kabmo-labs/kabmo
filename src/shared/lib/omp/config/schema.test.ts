@@ -161,6 +161,26 @@ describe('OMP_SCHEMA', () => {
     // …and `edit.mode` gained `none`, which removes the `edit` tool.
     expect(OMP_SCHEMA.entries['edit.mode']?.values).toContain('none');
   });
+
+  test("18.20.3's three Mnemopi rows are present and gated on the backend", () => {
+    // The generator only emits a row for a setting that carries a `ui` block,
+    // so a row dropped here means the panel lost its only editor. All three
+    // are upstream-gated on `mnemopiActive`; a missing condition would show a
+    // Mnemopi-only row to every user.
+    const rows = {
+      'mnemopi.recallRelevance': { type: 'enum', default: 'off' },
+      'mnemopi.embeddingQueryPrefix': { type: 'string', default: undefined },
+      'mnemopi.embeddingInputType': { type: 'boolean', default: false },
+    } as const;
+    for (const [key, want] of Object.entries(rows)) {
+      const entry = OMP_SCHEMA.entries[key];
+      expect({ key, entry: entry && { type: entry.type, tab: entry.ui.tab, group: entry.ui.group, condition: entry.ui.condition, default: entry.default } }).toEqual({
+        key,
+        entry: { ...want, tab: 'memory', group: 'Mnemopi', condition: 'mnemopiActive' },
+      });
+    }
+    expect(OMP_SCHEMA.entries['mnemopi.recallRelevance']?.values).toEqual(['auto', 'on', 'off']);
+  });
 });
 
 describe('ALL_SCHEMA_ENTRIES', () => {

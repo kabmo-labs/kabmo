@@ -1,5 +1,5 @@
 {
-  "source": "@oh-my-pi/pi-coding-agent 10 tabs / 622 settings",
+  "source": "@oh-my-pi/pi-coding-agent 10 tabs / 625 settings",
   "tabs": [
     {
       "id": "appearance",
@@ -5230,6 +5230,39 @@
         "condition": "mnemopiActive"
       }
     },
+    "mnemopi.recallRelevance": {
+      "type": "enum",
+      "default": "off",
+      "values": [
+        "auto",
+        "on",
+        "off"
+      ],
+      "ui": {
+        "tab": "memory",
+        "group": "Mnemopi",
+        "label": "Mnemopi Recall Relevance",
+        "description": "Ask the judge model role whether each automatically recalled memory is relevant to the task before injecting it",
+        "options": [
+          {
+            "value": "auto",
+            "label": "Auto",
+            "description": "Filter only with a native judge backend; otherwise inject every recalled memory"
+          },
+          {
+            "value": "on",
+            "label": "On",
+            "description": "Filter with whichever model the judge role resolves to; an on-device judge may answer only some memories in time"
+          },
+          {
+            "value": "off",
+            "label": "Off",
+            "description": "Never filter; inject every recalled memory"
+          }
+        ],
+        "condition": "mnemopiActive"
+      }
+    },
     "mnemopi.autoRetain": {
       "type": "boolean",
       "default": true,
@@ -5312,6 +5345,27 @@
         "group": "Mnemopi",
         "label": "Mnemopi Embedding API Key",
         "description": "Optional embedding API key passed to Mnemopi",
+        "condition": "mnemopiActive"
+      }
+    },
+    "mnemopi.embeddingQueryPrefix": {
+      "type": "string",
+      "ui": {
+        "tab": "memory",
+        "group": "Mnemopi",
+        "label": "Mnemopi Embedding Query Prefix",
+        "description": "Text prepended to recall queries before embedding, for instruction-tuned embedders (Qwen3-Embedding, E5); stored memories are embedded unchanged",
+        "condition": "mnemopiActive"
+      }
+    },
+    "mnemopi.embeddingInputType": {
+      "type": "boolean",
+      "default": false,
+      "ui": {
+        "tab": "memory",
+        "group": "Mnemopi",
+        "label": "Mnemopi Embedding Input Type",
+        "description": "Send input_type (query for recall, passage for stored memories) with embedding API requests; NVIDIA NIM asymmetric embedders require it",
         "condition": "mnemopiActive"
       }
     },
