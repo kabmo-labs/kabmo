@@ -192,6 +192,56 @@ describe('detectComposerTrigger — @ mentions', () => {
   });
 });
 
+describe('detectComposerTrigger — @harness:<id>:[model]', () => {
+  test('the tail after the second colon is the model query', () => {
+    const text = '@harness:omp-rpc:';
+    expect(detectComposerTrigger(text, text.length)).toEqual({
+      kind: 'mention',
+      query: '',
+      start: 0,
+      end: text.length,
+      phase: 'model',
+      // Only the text AFTER `harness:<id>:` is replaced.
+      replaceFrom: text.length,
+      harness: 'omp-rpc',
+    });
+  });
+
+  test('a typed model is the query, and a slash stays inside it', () => {
+    const text = '@harness:claude:kenari/agnes';
+    expect(detectComposerTrigger(text, text.length)).toMatchObject({
+      kind: 'mention',
+      phase: 'model',
+      query: 'kenari/agnes',
+      harness: 'claude',
+      start: 0,
+      replaceFrom: '@harness:claude:'.length,
+    });
+  });
+
+  test('the alias resolves to the catalog id, so the rows are the agent’s own', () => {
+    const text = '@harness:omp:op';
+    expect(detectComposerTrigger(text, text.length)).toMatchObject({ phase: 'model', harness: 'omp-rpc', query: 'op' });
+  });
+
+  test('a bare harness mention is still a name-phase row', () => {
+    const text = '@harness:claude';
+    expect(detectComposerTrigger(text, text.length)).toMatchObject({ phase: 'name', query: 'harness:claude' });
+  });
+
+  test('accepting a model keeps the mention the user typed', () => {
+    const text = '@harness:omp-rpc:ken';
+    const trigger = detectComposerTrigger(text, text.length);
+    if (!trigger) throw new Error('expected a trigger');
+
+    const token = 'kenari-jatis/deepseek ';
+    expect(insertToken(text, trigger, token)).toEqual({
+      value: `@harness:omp-rpc:${token}`,
+      caret: `@harness:omp-rpc:${token}`.length,
+    });
+  });
+});
+
 describe('tokenForItem', () => {
   const base: ComposerPickItem = {
     id: 'x',

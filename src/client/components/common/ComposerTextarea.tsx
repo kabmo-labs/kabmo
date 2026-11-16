@@ -183,6 +183,7 @@ export function ComposerTextarea({
         activeIndex={composer.activeIndex}
         loading={composer.loading}
         error={composer.error}
+        emptyText={composer.emptyText}
         listboxId={composer.listboxId}
         optionId={composer.optionId}
         onSelect={composer.selectItem}

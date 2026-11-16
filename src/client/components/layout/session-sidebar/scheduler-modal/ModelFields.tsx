@@ -22,7 +22,7 @@ import { useModelsCatalog } from '@/client/hooks/models/use-models-catalog';
 import {
   harnessModels,
   pickerHarnesses,
-} from '@/client/components/workspace/model-dropdown/harness-models';
+} from '@/shared/lib/harness/models';
 import { APPROVAL_MODES, type ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 import { selectableThinkingLevels } from '@/shared/lib/models/thinking-levels';
 import type { AIModelOption } from '@/shared/types';

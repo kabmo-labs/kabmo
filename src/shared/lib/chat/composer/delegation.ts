@@ -17,7 +17,7 @@
  * known agent name.
  */
 
-import { harnessDescriptor, type HarnessId } from '@/shared/lib/harness/catalog';
+import { harnessDescriptor, harnessIdForName, type HarnessId } from '@/shared/lib/harness/catalog';
 
 export interface HarnessDelegation {
   harness: HarnessId;
@@ -51,17 +51,6 @@ export interface ParseDelegationOptions {
 /** `@harness:<id>[:<model>]` or bare `@<harnessId>`. */
 const MENTION_RE = /(^|[\s([{])@(?:(harness):)?([a-z0-9][a-z0-9-]*)(?::([^\s#]+))?/gi;
 
-/** The names users type that are not catalog ids. `omp` is the default RPC
- *  surface; `claude-code` is the vendor's name for the `claude` adapter. */
-const HARNESS_ALIASES: Readonly<Record<string, HarnessId>> = {
-  omp: 'omp-rpc',
-  'claude-code': 'claude',
-};
-
-function harnessIdFor(name: string): HarnessId | null {
-  return HARNESS_ALIASES[name] ?? (harnessDescriptor(name) ? (name as HarnessId) : null);
-}
-
 /**
  * Parse one message. The error list is non-empty when the message cannot be
  * delegated as written; the caller refuses the send rather than guessing.
@@ -84,7 +73,7 @@ export function parseHarnessMentions(
       const name = match[3]?.toLowerCase();
       if (!name) continue;
       const isBare = namespace === undefined;
-      const known = harnessIdFor(name);
+      const known = harnessIdForName(name);
       if (namespace && !known) {
         errors.push({
           code: 'unknown_harness',

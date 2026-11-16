@@ -1,41 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
-import type { AIModelOption, ModelEntry, ModelPreferences } from '@/shared/types';
+import type { AIModelOption, ModelPreferences } from '@/shared/types';
 import { fetchModelsData, subscribeModelsUpdated } from '@/shared/lib/models/client';
+import { modelEntryOption } from '@/shared/lib/models/option';
 import {
   EMPTY_MODEL_PREFERENCES,
   applyModelPreferences,
   readModelPreferences,
 } from '@/shared/lib/models/preferences';
-
-function toOption(m: ModelEntry): AIModelOption {
-  const ladder = Array.isArray(m.thinkingLevels) ? m.thinkingLevels : [];
-  const cost = m.cost;
-  return {
-    id: m.id,
-    name: m.name || m.id,
-    // A row without a provider still has to render. `/api/models` is read from
-    // omp's registry, and a partial entry (a custom provider whose `provider`
-    // field never landed) used to crash the whole picker — `buildPickerGroups`
-    // upper-cased `undefined` and the composer's model pill took the chat input
-    // down with it. `unknown` keeps the row visible and gives it a stable
-    // section instead of dropping a model the user may have selected.
-    provider: m.provider || 'unknown',
-    // The provider's fetched web icon, when the server has one. Carried through
-    // so the picker's section header and the selected model's mark can draw the
-    // site's own logo instead of the initials of a provider nobody has drawn.
-    ...(m.providerIconUrl ? { providerIconUrl: m.providerIconUrl } : {}),
-    contextWindow: m.contextWindow,
-    thinkingLevel: ladder[0] ?? 'off',
-    thinkingLevels: ladder,
-    capabilities: ladder.length > 1 ? ['Tool calling', 'Reasoning'] : ['Tool calling'],
-    cost: cost ? {
-      input: cost.input !== undefined ? `$${cost.input}` : '—',
-      output: cost.output !== undefined ? `$${cost.output}` : '—',
-      cacheRead: cost.cacheRead !== undefined ? `$${cost.cacheRead}` : undefined,
-      cacheWrite: cost.cacheWrite !== undefined ? `$${cost.cacheWrite}` : undefined,
-    } : undefined,
-  };
-}
 
 export interface ModelCatalogState {
   models: AIModelOption[];
@@ -98,7 +69,7 @@ export function useModelCatalog(externalSelectedModel?: AIModelOption): ModelCat
       // empty state over a transient failure.
       if (Array.isArray(data.modelList) && !data.modelError) {
         const prefs = readModelPreferences(data.modelPreferences);
-        const realModels = applyModelPreferences(data.modelList.map(toOption), prefs);
+        const realModels = applyModelPreferences(data.modelList.map(modelEntryOption), prefs);
         setPreferences(prefs);
         // Keep a thinking level the user already picked, but only when it is
         // still a real level of this model's ladder (legacy mock values like

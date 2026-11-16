@@ -5,6 +5,7 @@ import type { ComposerMatchItem, ComposerPickItem, ComposerTrigger } from '@/sha
 import { detectComposerTrigger, insertToken, sendInsteadOfAccept, tokenForItem } from '@/shared/lib/chat/composer/trigger';
 import { filterComposerItems } from '@/shared/lib/chat/composer/filter';
 import { useComposerItems } from '@/client/hooks/chat/composer/items';
+import { useHarnessModelPicker } from '@/client/hooks/chat/composer/harness-model-picker';
 
 export interface UseComposerTriggerOptions {
   value: string;
@@ -35,6 +36,8 @@ export interface ComposerTriggerController {
   matches: ComposerMatchItem[];
   loading: boolean;
   error: string | null;
+  /** Why a model-scoped mention has no rows, when the harness said why. */
+  emptyText: string | null;
   activeIndex: number;
   setActiveIndex: (index: number) => void;
   handleChange: (e: ChangeEvent<HTMLTextAreaElement>) => void;
@@ -77,11 +80,21 @@ export function useComposerTrigger(options: UseComposerTriggerOptions): Composer
   const pendingCaretRef = useRef<number | null>(null);
 
   const includeAgents = !harness || harness === 'omp-rpc' || harness === 'omp-acp';
-  const { items, loading, error } = useComposerItems(trigger?.kind ?? null, rootPath ?? null, sessionId ?? null, includeAgents);
+  const modelPhase = trigger?.kind === 'mention' && trigger.phase === 'model';
+  const modelHarness = modelPhase ? trigger.harness ?? null : null;
+  const modelPicker = useHarnessModelPicker(modelHarness);
+  // A model completion must not also fire the mention loader: its rows are the
+  // harness's catalogue, not agents and files.
+  const { items, loading, error } = useComposerItems(
+    modelPhase ? null : trigger?.kind ?? null,
+    rootPath ?? null,
+    sessionId ?? null,
+    includeAgents,
+  );
 
   const matches = useMemo(
-    () => (trigger ? filterComposerItems(items, trigger) : []),
-    [items, trigger],
+    () => (trigger ? filterComposerItems(modelPhase ? modelPicker.items : items, trigger) : []),
+    [items, modelPicker.items, modelPhase, trigger],
   );
 
   const clampedIndex = matches.length > 0
@@ -140,6 +153,12 @@ export function useComposerTrigger(options: UseComposerTriggerOptions): Composer
       const next = insertToken(value, trigger, tokenForItem(item));
       pendingCaretRef.current = next.caret;
       setValue(next.value);
+      // A model pick COMPLETES the mention. Re-querying would match the model
+      // it just inserted and leave the popup covering the task that follows.
+      if (trigger.phase === 'model') {
+        close();
+        return;
+      }
       // Re-query instead of closing: oh-my-pi reopens on the accepted text, so
       // `/fast` → `/fast ` immediately offers its subcommands and the collapsed
       // `/skill:` row expands into the individual skills. `shouldOpen` keeps a
@@ -147,7 +166,7 @@ export function useComposerTrigger(options: UseComposerTriggerOptions): Composer
       setTrigger(detectComposerTrigger(next.value, next.caret));
       setActiveIndexState(0);
     },
-    [value, trigger, setValue],
+    [value, trigger, setValue, close],
   );
 
   const handleKeyDown = useCallback(
@@ -206,8 +225,9 @@ export function useComposerTrigger(options: UseComposerTriggerOptions): Composer
     trigger,
     isOpen: open,
     matches,
-    loading,
-    error,
+    loading: modelPhase ? modelPicker.loading : loading,
+    error: modelPhase ? null : error,
+    emptyText: modelPhase ? modelPicker.emptyText : null,
     activeIndex: clampedIndex,
     setActiveIndex,
     handleChange,

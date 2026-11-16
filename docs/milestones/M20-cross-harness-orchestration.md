@@ -628,16 +628,24 @@ Rules:
 - **Picker rows are namespaced.** `@harness:<id>` cannot collide with `@file:`
   or an omp `@agent`; the harness rows survive `includeAgents: false` so an ACP
   chat can still delegate.
+- **The model tail completes from the harness's OWN catalogue.** Typing
+  `@harness:<id>:` turns the popup into that harness's model list — the same
+  rows the model dropdown shows for its tab (`harnessModels`): omp's
+  `/api/models` registry for `omp-rpc`, the live session's published selectors
+  (then the probe) for an ACP agent. A row inserts only the tail, as the
+  `--model` value (`provider/id` for omp, the bare value for an ACP agent), so
+  the typed mention prefix survives. The alias table is shared with the parser:
+  `@harness:omp:` scopes to `omp-rpc` instead of offering an empty list.
 
 Files: `shared/lib/chat/composer/delegation.ts` (grammar + command formatter),
-`client.ts` (picker rows), `prompt-text.ts` (send-time compilation),
+`client.ts` (picker rows), `trigger.ts` (the `model` trigger phase),
+`harness-model-items.ts` (model rows), `prompt-text.ts` (send-time compilation),
 `send.ts`/`send-helpers.ts` (one assembly, refusal before render),
 `server/lib/sessions/spawn.server.ts` (model precedence + worker preamble),
 `cli/lib/commands/session.js` (`--model`, `--thinking`).
 
 Not shipped in this step: composer-side direct spawn (the orchestrator still
-runs the command), model autocomplete below `@harness:<id>:` (the model is typed
-and validated), role templates (`#role`), the MCP injection and the Run/fleet
+runs the command), role templates (`#role`), the MCP injection and the Run/fleet
 UI.
 
 ### 8.9 Measured: a real three-worker run

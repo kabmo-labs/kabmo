@@ -10,7 +10,7 @@ import { useCollapsedSections } from '@/client/components/workspace/model-dropdo
 import { useHarnesses } from '@/client/hooks/models/use-harnesses';
 import { harnessCategoryId } from '@/shared/lib/harness/menu';
 import { useFullscreenPicker } from '@/client/components/workspace/model-dropdown/fullscreen-picker';
-import { harnessModels, pickerHarnesses } from '@/client/components/workspace/model-dropdown/harness-models';
+import { harnessModels, pickerHarnesses } from '@/shared/lib/harness/models';
 import { useRowMutations } from '@/client/components/workspace/model-dropdown/row-mutations';
 import { HarnessGlyph, HARNESS_GLYPH_SIZE } from '@/client/components/common/harness-glyph';
 import { buildPickerGroups, type PickerRow } from '@/client/components/workspace/model-dropdown/groups';

@@ -262,14 +262,15 @@ export interface QueuedMessage {
 /** Trigger group that opened the composer autocomplete: `@` → mention, `/` → command. */
 export type ComposerPickKind = 'mention' | 'command';
 /** Origin of a pickable item: an `@` mention is an agent or a workspace file. */
-export type ComposerPickSource = 'agent' | 'harness' | 'file' | 'command' | 'skill';
+export type ComposerPickSource = 'agent' | 'harness' | 'model' | 'file' | 'command' | 'skill';
 
 /**
- * Which part of a slash invocation the popup is completing. oh-my-pi splits
- * these the same way: `name` completes the command token itself, `args`
- * completes a declarative subcommand after `<command> `.
+ * Which part of an invocation the popup is completing. oh-my-pi splits these
+ * the same way: `name` completes the command token itself, `args` completes a
+ * declarative subcommand after `<command> `, and `model` completes the
+ * `[:<model>]` tail of an `@harness:<id>:` mention.
  */
-export type ComposerTriggerPhase = 'name' | 'args';
+export type ComposerTriggerPhase = 'name' | 'args' | 'model';
 
 /** A detected trigger: the `@`/`/` char plus the query typed after it. */
 export interface ComposerTrigger {
@@ -279,10 +280,15 @@ export interface ComposerTrigger {
   start: number;
   /** Caret index when detected. */
   end: number;
-  /** Command completion phase; `mention` triggers are always `name`. */
+  /** Command completion phase; a plain `@` mention completes its `name`. */
   phase: ComposerTriggerPhase;
   /** Index the accepted text replaces from — equals `start` in the `name` phase. */
   replaceFrom: number;
+  /**
+   * The harness whose model the `model` phase completes (`@harness:<id>:`),
+   * resolved through the catalog's alias table (`omp` → `omp-rpc`).
+   */
+  harness?: string;
   /** Command the `args` phase belongs to (name or alias as typed). */
   command?: string;
   /**

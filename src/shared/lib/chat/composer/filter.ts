@@ -37,6 +37,22 @@ function rankComposerItem(
   return null;
 }
 
+function rankMentionItems(items: ComposerPickItem[], rankingQuery: string): ComposerMatchItem[] {
+  if (rankingQuery === '') {
+    return items.map((item) => ({ ...item, match: null }));
+  }
+
+  const ranked: RankedMatch[] = [];
+  items.forEach((item, index) => {
+    const score = rankComposerItem(item.name, item.description, rankingQuery);
+    if (score) ranked.push({ ...score, index });
+  });
+
+  ranked.sort((a, b) => a.tier - b.tier || a.index - b.index);
+
+  return ranked.map((entry) => ({ ...items[entry.index], match: entry.match }));
+}
+
 /**
  * Filter `@` mention items by query, ranked by tier then original order.
  *
@@ -51,23 +67,17 @@ function filterMentionItems(items: ComposerPickItem[], query: string): ComposerM
   const pool = fileQuery ? items.filter((item) => item.source === 'file') : items;
   const rankingQuery = fileQuery ? trimmed.replace(FILE_QUERY_PREFIX_RE, '').trim() : trimmed;
 
-  if (rankingQuery === '') {
-    return pool.map((item) => ({ ...item, match: null }));
-  }
-
-  const ranked: RankedMatch[] = [];
-  pool.forEach((item, index) => {
-    const score = rankComposerItem(item.name, item.description, rankingQuery);
-    if (score) ranked.push({ ...score, index });
-  });
-
-  ranked.sort((a, b) => a.tier - b.tier || a.index - b.index);
-
-  return ranked.map((entry) => ({ ...pool[entry.index], match: entry.match }));
+  return rankMentionItems(pool, rankingQuery);
 }
 
 /** Dispatch on the trigger: mentions keep their own ranking, commands use omp's. */
 export function filterComposerItems(items: ComposerPickItem[], trigger: ComposerTrigger): ComposerMatchItem[] {
+  // A harness's model list has no `file:` namespace of its own, so it ranks as
+  // a plain pool. Reusing the mention ranker keeps exact > prefix > substring >
+  // description identical to every other `@` row.
+  if (trigger.kind === 'mention' && trigger.phase === 'model') {
+    return rankMentionItems(items, trigger.query.trim());
+  }
   if (trigger.kind === 'mention') return filterMentionItems(items, trigger.query);
   if (trigger.phase === 'args' && trigger.command) {
     return commandArgumentItems(items, trigger.command, trigger.query);

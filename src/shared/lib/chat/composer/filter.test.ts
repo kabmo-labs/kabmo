@@ -176,3 +176,42 @@ describe('filterComposerItems — command dispatch', () => {
     expect(names(filterComposerItems(COMMANDS, trigger))).toEqual(['retry']);
   });
 });
+
+describe('filterComposerItems — @harness:<id>: model phase', () => {
+  const MODELS: ComposerPickItem[] = [
+    { id: 'm1', name: 'DeepSeek V4.1 Flash', description: 'kenari-jatis/deepseek-v4.1-flash', kind: 'model', source: 'model', token: 'kenari-jatis/deepseek-v4.1-flash' },
+    { id: 'm2', name: 'Claude Fable 5', description: 'kenari/claude-fable-5', kind: 'model', source: 'model', token: 'kenari/claude-fable-5' },
+    { id: 'm3', name: 'Opus', description: 'opus', kind: 'model', source: 'model', token: 'opus' },
+  ];
+  const modelTrigger = (query: string): ComposerTrigger => ({
+    kind: 'mention',
+    query,
+    start: 0,
+    end: 17 + query.length,
+    phase: 'model',
+    replaceFrom: 17,
+    harness: 'omp-rpc',
+  });
+
+  test('an empty query lists the whole harness catalogue in order', () => {
+    expect(names(filterComposerItems(MODELS, modelTrigger('')))).toEqual([
+      'DeepSeek V4.1 Flash', 'Claude Fable 5', 'Opus',
+    ]);
+  });
+
+  test('a model name ranks by the same tiers as every other mention', () => {
+    expect(names(filterComposerItems(MODELS, modelTrigger('opus')))).toEqual(['Opus']);
+    expect(names(filterComposerItems(MODELS, modelTrigger('claude')))).toEqual(['Claude Fable 5']);
+  });
+
+  test('a provider/value pasted into the tail matches the row description', () => {
+    expect(names(filterComposerItems(MODELS, modelTrigger('kenari-jatis/')))).toEqual(['DeepSeek V4.1 Flash']);
+  });
+
+  test('a `file:` prefix does NOT scope the model list to files', () => {
+    const rows: ComposerPickItem[] = [
+      { id: 'm', name: 'file:model', description: '', kind: 'model', source: 'model', token: 'file:model' },
+    ];
+    expect(names(filterComposerItems(rows, modelTrigger('file:')))).toEqual(['file:model']);
+  });
+});

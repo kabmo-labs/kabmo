@@ -13,7 +13,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { acpModelOption, harnessModels, pickerHarnesses } from '@/client/components/workspace/model-dropdown/harness-models';
+import { acpModelOption, harnessModels, pickerHarnesses } from '@/shared/lib/harness/models';
 import type { HarnessSummary } from '@/shared/types/harness';
 import type { AIModelOption } from '@/shared/types';
 

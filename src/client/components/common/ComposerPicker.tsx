@@ -19,6 +19,9 @@ export interface ComposerPickerProps {
   activeIndex: number;
   loading: boolean;
   error: string | null;
+  /** Why the list is empty, when the source has a specific answer (a blocked
+   *  harness's refusal). Falls back to the phase's own copy. */
+  emptyText?: string | null;
   listboxId: string;
   optionId: (index: number) => string;
   onSelect: (item: ComposerPickItem) => void;
@@ -55,6 +58,7 @@ export function ComposerPicker({
   activeIndex,
   loading,
   error,
+  emptyText,
   listboxId,
   optionId,
   onSelect,
@@ -70,18 +74,23 @@ export function ComposerPicker({
   if (!open) return null;
 
   const isMention = kind === 'mention';
+  const isModel = isMention && phase === 'model';
   const isArgs = !isMention && phase === 'args';
-  const headerText = isMention
-    ? 'Type to search files and agents'
-    : isArgs
-      ? 'Pick a subcommand'
-      : 'Type to search commands and skills';
-  const ariaLabel = isMention ? 'Files and agents' : isArgs ? 'Subcommands' : 'Commands and skills';
-  const emptyText = isMention
-    ? 'No matching files or agents'
-    : isArgs
-      ? 'No matching subcommands'
-      : 'No matching commands or skills';
+  const headerText = isModel
+    ? 'Type to search the harness’s models'
+    : isMention
+      ? 'Type to search files and agents'
+      : isArgs
+        ? 'Pick a subcommand'
+        : 'Type to search commands and skills';
+  const ariaLabel = isModel ? 'Harness models' : isMention ? 'Files and agents' : isArgs ? 'Subcommands' : 'Commands and skills';
+  const emptyFallback = isModel
+    ? 'No models available for this harness'
+    : isMention
+      ? 'No matching files or agents'
+      : isArgs
+        ? 'No matching subcommands'
+        : 'No matching commands or skills';
 
   return (
     <div
@@ -102,7 +111,7 @@ export function ComposerPicker({
         ) : loading && items.length === 0 ? (
           <div className="px-3 py-2 text-ink/50">Loading…</div>
         ) : items.length === 0 ? (
-          <div className="px-3 py-2 text-ink/50">{emptyText}</div>
+          <div className="px-3 py-2 text-ink/50">{emptyText ?? emptyFallback}</div>
         ) : (
           items.slice(0, MAX_OPTIONS).map((item, index) => (
             <div
@@ -122,6 +131,9 @@ export function ComposerPicker({
                 </span>
                 {item.source === 'harness' && (
                   <span className="text-ink/40 text-[10px] uppercase shrink-0">harness</span>
+                )}
+                {item.source === 'model' && (
+                  <span className="text-ink/40 text-[10px] uppercase shrink-0">model</span>
                 )}
                 {item.source === 'file' && (
                   <span className="text-ink/40 text-[10px] uppercase shrink-0">file</span>

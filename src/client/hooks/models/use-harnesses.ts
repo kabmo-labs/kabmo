@@ -174,10 +174,23 @@ async function setHarnessEnabled(id: string, enabled: boolean): Promise<string |
   }
 }
 
-export function useHarnesses(): HarnessesController {
+export interface UseHarnessesOptions {
+  /**
+   * Read `/api/harness` and follow its changes. Defaults to true.
+   *
+   * The composer's `@harness:<id>:` completion mounts this hook on EVERY
+   * composer, but only needs the catalogue once a model trigger is active;
+   * disabling until then keeps an idle draft from issuing a request (and a
+   * caller that stubs one endpoint from seeing a second).
+   */
+  enabled?: boolean;
+}
+
+export function useHarnesses({ enabled = true }: UseHarnessesOptions = {}): HarnessesController {
   const [snapshot, setSnapshot] = useState(() => ({ ...store }));
 
   useEffect(() => {
+    if (!enabled) return;
     const sync = () => setSnapshot({ ...store });
     listeners.add(sync);
     // A subscriber that arrives after the first read has to see the catalog the
@@ -194,7 +207,7 @@ export function useHarnesses(): HarnessesController {
       listeners.delete(sync);
       offModels();
     };
-  }, []);
+  }, [enabled]);
 
   return {
     harnesses: snapshot.harnesses,

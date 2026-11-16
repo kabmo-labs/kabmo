@@ -218,6 +218,27 @@ export function harnessDescriptor(id: string | null | undefined): HarnessDescrip
 }
 
 /**
+ * The names users type that are not catalog ids. `omp` is the default RPC
+ * surface; `claude-code` is the vendor's name for the `claude` adapter.
+ *
+ * One table because TWO readers must agree: the delegation parser refuses an
+ * unknown `@harness:` name, and the composer's model completion scopes the list
+ * by the same resolved id. A second copy is how `@harness:omp:` could delegate
+ * to omp while its model popup offered nothing.
+ */
+export const HARNESS_NAME_ALIASES: Readonly<Record<string, HarnessId>> = {
+  omp: 'omp-rpc',
+  'claude-code': 'claude',
+};
+
+/** Resolve an alias or a catalog id (case-insensitively), or null. */
+export function harnessIdForName(name: string | null | undefined): HarnessId | null {
+  if (!name) return null;
+  const lower = name.toLowerCase();
+  return HARNESS_NAME_ALIASES[lower] ?? (harnessDescriptor(lower) ? (lower as HarnessId) : null);
+}
+
+/**
  * The row's badge text: the label, with omp's two surfaces told apart.
  *
  * `omp` alone would make `omp-rpc` and `omp-acp` indistinguishable in a row

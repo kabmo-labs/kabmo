@@ -3,7 +3,7 @@ import type { ClipboardEvent, SetStateAction } from 'preact/compat';
 import type { Attachment } from '@/shared/types';
 import { useModelSelection } from '@/client/hooks/chat/composer/model-selection';
 import { useHarnesses } from '@/client/hooks/models/use-harnesses';
-import { harnessModels } from '@/client/components/workspace/model-dropdown/harness-models';
+import { harnessModels } from '@/shared/lib/harness/models';
 import { NO_PENDING_PICK } from '@/client/hooks/chat/timeline/deferred-model';
 import { CHAT_COMPOSER_MAX_LINES, useAutoGrow } from '@/client/hooks/chat/composer/auto-grow';
 import { useVoiceInput } from '@/client/hooks/chat/composer/voice-input';

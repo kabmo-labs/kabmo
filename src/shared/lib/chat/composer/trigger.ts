@@ -1,7 +1,18 @@
+import { harnessIdForName } from '@/shared/lib/harness/catalog';
 import type { CommandItem, ComposerMatchItem, ComposerPickItem, ComposerTrigger } from '@/shared/types';
 
 /** Chars that may legally precede an `@` agent trigger (besides string start). */
 const AT_PRECEDING_RE = /[\s([{]/;
+
+/**
+ * `@harness:<id>:<model>` — the model tail the popup completes.
+ *
+ * The namespace is spelled out here rather than reused from the delegation
+ * parser: this is a TYPING rule about the token before the caret, and the
+ * parser's job is the whole paragraph after send. Both resolve the id through
+ * the same catalog alias table, so `@harness:omp:` scopes to `omp-rpc`.
+ */
+const SCOPED_HARNESS_MENTION_RE = /^harness:([a-z0-9][a-z0-9-]*):([^\s#]*)$/i;
 
 /** oh-my-pi's `SKILL_NAMESPACE`: skills are addressed as `/skill:<name>`. */
 export const SKILL_NAMESPACE = 'skill:';
@@ -167,7 +178,24 @@ export function detectComposerTrigger(text: string, caret: number): ComposerTrig
     if (ch === '@') {
       if (i === 0 || AT_PRECEDING_RE.test(beforeOnLine[i - 1])) {
         const at = lineStart + i;
-        return { kind: 'mention', query: before.slice(at + 1), start: at, end, phase: 'name', replaceFrom: at };
+        const mention = beforeOnLine.slice(i + 1);
+        const scoped = SCOPED_HARNESS_MENTION_RE.exec(mention);
+        if (scoped) {
+          const typed = scoped[1] ?? '';
+          // The tail after `harness:<id>:` is the model query, and accepting a
+          // row replaces ONLY that tail — `start` still names the `@` so the
+          // rest of the mention survives.
+          return {
+            kind: 'mention',
+            query: scoped[2] ?? '',
+            start: at,
+            end,
+            phase: 'model',
+            replaceFrom: at + 1 + 'harness:'.length + typed.length + 1,
+            harness: harnessIdForName(typed) ?? typed.toLowerCase(),
+          };
+        }
+        return { kind: 'mention', query: mention, start: at, end, phase: 'name', replaceFrom: at };
       }
       return null;
     }
