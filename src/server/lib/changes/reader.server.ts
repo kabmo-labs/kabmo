@@ -31,6 +31,8 @@ import path from 'node:path';
 import { blobsDir, sessionChangesDir } from '@/server/lib/changes/paths.server';
 import { readBlob } from '@/server/lib/changes/blobs.server';
 import { parseJournalLine, type JournalChangeRecord } from '@/server/lib/changes/records';
+import { isExcludedTempPath } from '@/server/lib/changes/temp-path';
+import { sessionCwd } from '@/server/lib/changes/sessions.server';
 import {
   readSessionChangeIndex as readOmpIndex,
   readSessionChangeList as readOmpList,
@@ -145,9 +147,11 @@ async function ompBlobDir(sessionId: string): Promise<string | null> {
  */
 async function readMergedRecords(sessionId: string, list: boolean): Promise<MergedRecord[]> {
   const kabmo = await readJournalRecords(sessionId);
+  const cwd = await sessionCwd(sessionId);
+  const excluded = (absolute: string): boolean => isExcludedTempPath(absolute, cwd ?? '');
   if (kabmo.length === 0) {
     const omp = list ? await readOmpList(sessionId) : await readOmpIndex(sessionId);
-    return omp.map((record) => ({ ...record, store: 'omp' as const }));
+    return omp.filter((record) => !excluded(record.path)).map((record) => ({ ...record, store: 'omp' as const }));
   }
 
   const firstKabmoAt = kabmo[0].at;
@@ -155,9 +159,11 @@ async function readMergedRecords(sessionId: string, list: boolean): Promise<Merg
   const merged: MergedRecord[] = [];
   for (const record of omp) {
     if (record.at >= firstKabmoAt) continue;
+    if (excluded(record.path)) continue;
     merged.push({ ...record, store: 'omp' });
   }
   for (const record of kabmo) {
+    if (excluded(record.path)) continue;
     merged.push({
       at: record.at,
       ...(record.runId ? { runId: record.runId } : {}),

@@ -27,7 +27,9 @@ let original: string | undefined;
 beforeAll(async () => {
   original = Bun.env.KABMO_DATA_DIR;
   dataDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'kabmo-changes-attach-'));
-  cwd = await fsp.mkdtemp(path.join(os.tmpdir(), 'kabmo-changes-cwd-'));
+  // A repo-local dir, not a temp one: the journal excludes `/tmp`, and the
+  // session cwd here is a real filesystem path the capture reads.
+  cwd = await fsp.mkdtemp(path.join(import.meta.dir, '.tmp-attach-'));
   Bun.env.KABMO_DATA_DIR = dataDir;
 });
 

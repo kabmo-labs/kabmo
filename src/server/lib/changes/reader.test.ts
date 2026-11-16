@@ -54,6 +54,10 @@ beforeAll(async () => {
     at: 300, agent: 'Main', tool: 'bash', op: 'delete', path: '/repo/b.ts',
     displayPath: 'b.ts', before: 'X', after: null, source: 'trace', command: 'rm b.ts', exit: 0,
   });
+  await journal.recordChange({
+    at: 400, agent: 'Main', tool: 'bash', op: 'update', path: path.join(os.tmpdir(), 'tmp.txt'),
+    displayPath: 'tmp.txt', before: 'a', after: 'b', source: 'trace',
+  });
   await journal.flush();
 });
 
@@ -72,6 +76,13 @@ describe('readSessionChangeIndex', () => {
     const records = await readSessionChangeIndex(SESSION);
     expect(records.map((record) => record.displayPath)).toEqual(['a.ts', 'a.ts', 'b.ts']);
     expect(records[2]?.tool).toBe('bash');
+  });
+});
+
+describe('temp paths', () => {
+  test('a temp path is not listed', async () => {
+    const records = await readSessionChangeIndex(SESSION);
+    expect(records.some((record) => record.displayPath === 'tmp.txt')).toBe(false);
   });
 });
 

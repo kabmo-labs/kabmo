@@ -21,6 +21,7 @@
 import { readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { childEnv } from '@/server/lib/fs/child-env';
+import { isExcludedTempPath } from '@/server/lib/changes/temp-path';
 
 const SCAN_BUDGET_FILES = 200;
 const GIT_TIMEOUT_MS = 5_000;
@@ -80,6 +81,7 @@ export async function takeGitScan(cwd: string): Promise<GitScan | null> {
   const dirty = new Map<string, string | null>();
   for (const relative of entries.slice(0, SCAN_BUDGET_FILES)) {
     const absolute = path.resolve(root, relative);
+    if (isExcludedTempPath(absolute, cwd)) continue;
     dirty.set(absolute, await readText(absolute));
   }
   return { root, dirty, truncated: entries.length > SCAN_BUDGET_FILES };
@@ -95,7 +97,7 @@ export async function takeGitScan(cwd: string): Promise<GitScan | null> {
  */
 export async function takeDirScan(cwd: string): Promise<GitScan | null> {
   const files: string[] = [];
-  let truncated = await walkFiles(cwd, files, SCAN_BUDGET_FILES);
+  let truncated = await walkFiles(cwd, files, SCAN_BUDGET_FILES, cwd);
   const dirty = new Map<string, string | null>();
   let bytes = 0;
   for (const absolute of files) {
@@ -114,14 +116,15 @@ export async function takeDirScan(cwd: string): Promise<GitScan | null> {
 }
 
 /** Recursive file walk, bounded; `node_modules` and `.git` are skipped. */
-async function walkFiles(dir: string, out: string[], budget: number): Promise<boolean> {
+async function walkFiles(dir: string, out: string[], budget: number, cwd: string): Promise<boolean> {
   const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
   for (const entry of entries) {
     if (out.length >= budget) return true;
     if (entry.name === 'node_modules' || entry.name === '.git') continue;
     const absolute = path.join(dir, entry.name);
+    if (isExcludedTempPath(absolute, cwd)) continue;
     if (entry.isDirectory()) {
-      if (await walkFiles(absolute, out, budget)) return true;
+      if (await walkFiles(absolute, out, budget, cwd)) return true;
     } else if (entry.isFile()) {
       out.push(absolute);
     }

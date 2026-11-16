@@ -21,6 +21,8 @@ import { readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { changesRoot } from '@/server/lib/changes/paths.server';
 import { parseJournalLine } from '@/server/lib/changes/records';
+import { readRawHeaderLine } from '@/server/lib/omp/session/files';
+import { findSessionFileById } from '@/server/lib/omp/session/locator';
 
 interface CwdCache {
   root: string;
@@ -31,6 +33,19 @@ interface CwdCache {
 declare global {
   // eslint-disable-next-line no-var
   var __kabmoSessionsByCwd: CwdCache | undefined;
+}
+
+/** The session's cwd: the Kabmo header first, then the omp transcript header. */
+export async function sessionCwd(sessionId: string): Promise<string | null> {
+  const file = path.join(changesRoot(), sessionId, 'changes.jsonl');
+  const head = await Bun.file(file).slice(0, 1024).text().catch(() => '');
+  const record = parseJournalLine(head.split('\n')[0] ?? '');
+  if (record?.type === 'session') return record.cwd;
+
+  const sessionFile = await findSessionFileById(sessionId);
+  if (!sessionFile) return null;
+  const header = await readRawHeaderLine(sessionFile).catch(() => null);
+  return header && typeof header.cwd === 'string' ? header.cwd : null;
 }
 
 /** Session ids whose journal header names `cwd`, excluding `excludeSessionId`. */
