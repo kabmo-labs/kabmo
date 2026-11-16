@@ -31,6 +31,7 @@ import { HelpCircle } from 'lucide-preact';
 import type { ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
 import { useAskFrames } from '@/client/hooks/chat/timeline/ask-frames';
 import { GroupedAsk } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/GroupedAsk';
+import { LooseFieldAsk } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/LooseFieldAsk';
 import type { ExtensionDialogResponse } from '@/client/components/workspace/chat-timeline/tool-renderers/extension-dialog/Lazy';
 
 /** One orphan ask, rendered as a self-contained card at the end of the timeline. */
@@ -44,11 +45,15 @@ function OrphanAskCard({ frame, onRespond }: {
         <HelpCircle size={11} className="shrink-0" />
         <span>Input needed: the agent is blocked until you answer.</span>
       </div>
-      <GroupedAsk
-        frame={frame}
-        recorded={(frame.questions ?? []).map(() => null)}
-        onRespond={(response) => onRespond(frame, response)}
-      />
+      {frame.questions && frame.questions.length > 0 ? (
+        <GroupedAsk
+          frame={frame}
+          recorded={(frame.questions ?? []).map(() => null)}
+          onRespond={(response) => onRespond(frame, response)}
+        />
+      ) : (
+        <LooseFieldAsk frame={frame} onRespond={onRespond} />
+      )}
     </div>
   );
 }

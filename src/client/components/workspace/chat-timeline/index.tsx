@@ -106,7 +106,7 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
   // blocked on (an approval gate, an extension picker) has no card and keeps
   // the modal. It also waits for committed history: a replayed dialog has no
   // card to match yet, and deciding early flashed the modal and withdrew it.
-  const { framesByTool, orphanAsks, modalRequest } = useMemo(
+  const { framesByTool, looseByTool, orphanAsks, modalRequest } = useMemo(
     () => splitAskFrames(localMessages, extensionDialogs, !sessionLoading),
     [localMessages, extensionDialogs, sessionLoading],
   );
@@ -115,8 +115,8 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
     resolveExtensionDialog(request.id);
   }, [respondToExtensionUi, resolveExtensionDialog]);
   const askFrames = useMemo<AskFramesHandle>(
-    () => ({ framesByTool, orphanAsks, respond: respondToFrame }),
-    [framesByTool, orphanAsks, respondToFrame],
+    () => ({ framesByTool, looseByTool, orphanAsks, respond: respondToFrame }),
+    [framesByTool, looseByTool, orphanAsks, respondToFrame],
   );
 
   const newChat = useNewChatOpen({ folders, sessionId, selectedFolderId, ...(activeHarness.harness ? { harness: activeHarness.harness } : {}) });

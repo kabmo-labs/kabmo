@@ -59,6 +59,14 @@ export function normalizeAskText(value: string): string {
  * title starts with followed by ` (` — the shape omp's field-by-field walk
  * uses for a rejected text answer (`question (Enter a number)`). Longest wins
  * so `Pick a colour (light)` is not captured by an `Pick a colour` beside it.
+ *
+ * A prefixed match is the other half: omp titles a field with its CONTEXT (the
+ * text between the previous control and this one) followed by the question, so
+ * a form with an explanatory paragraph before a field asked
+ * `paragraph question` and matched nothing. That frame then reached the
+ * modal — the reported "question 2 opens as a dialog" — because the per-field
+ * walk claims by title and a context block is common. Matching the suffix
+ * keeps the frame on its card.
  */
 export function askQuestionForTitle(questions: AskQuestion[], title: unknown): number {
   if (typeof title !== 'string') return -1;
@@ -69,7 +77,13 @@ export function askQuestionForTitle(questions: AskQuestion[], title: unknown): n
   for (let index = 0; index < questions.length; index += 1) {
     const candidate = normalizeAskText(questions[index].question);
     if (!candidate || candidate.length <= longest) continue;
-    if (needle === candidate || needle.startsWith(`${candidate} (`)) {
+    // Exact, omp's rejected-answer suffix, a context PREFIX, or both at once.
+    if (
+      needle === candidate ||
+      needle.startsWith(`${candidate} (`) ||
+      needle.endsWith(` ${candidate}`) ||
+      needle.includes(` ${candidate} (`)
+    ) {
       best = index;
       longest = candidate.length;
     }
@@ -90,6 +104,7 @@ function readOption(raw: unknown): AskOption | null {
     label,
     description: typeof record.description === 'string' ? record.description : undefined,
     preview: typeof record.preview === 'string' ? record.preview : undefined,
+    ...(record.checked === true ? { checked: true } : {}),
   };
 }
 
@@ -109,6 +124,12 @@ export function isAskToolCall(tool: ToolCallData): boolean {
  * are the fallback key: the question's own options (minus the synthetic
  * "Other" row) must be exactly the rows the dialog offers (minus omp's "Other"
  * and multi-select "Done" rows), and there must be at least two of them.
+ *
+ * A question with ONE row is the exception that needs the same key: a single
+ * checkbox has no `Other` row and no second label to make a set, and a
+ * context-prefixed title (see `askQuestionForTitle`) used to leave it as the
+ * only question with no claim at all. The exact single label is still specific
+ * enough to identify it among the open ask's own questions.
  */
 export function askQuestionForOptions(questions: AskQuestion[], options: unknown): number {
   if (!Array.isArray(options)) return -1;
@@ -118,16 +139,48 @@ export function askQuestionForOptions(questions: AskQuestion[], options: unknown
       .map(normalizeAskText)
       .filter((label) => label && !isOtherOption(label) && !/done selecting$/.test(label)),
   );
-  if (offered.size < 2) return -1;
+  if (offered.size === 0) return -1;
   let best = -1;
   for (let index = 0; index < questions.length; index += 1) {
     const labels = questions[index].options
       .map((option) => normalizeAskText(option.label))
       .filter((label) => label && !isOtherOption(label));
-    if (labels.length < 2 || labels.length !== offered.size) continue;
+    if (labels.length !== offered.size) continue;
+    if (labels.length < 2 && questions[index].options.length !== 1) continue;
     if (labels.every((label) => offered.has(label))) best = index;
   }
   return best;
+}
+
+/**
+ * Index of the question a per-field dialog belongs to: its title first, then
+ * its rows. Both keys are the ones omp and Kabmo must agree on, and a caller
+ * that only wants "does this frame belong to this ask" gets one answer.
+ */
+export function askQuestionForFrame(questions: AskQuestion[], frame: ExtensionUiDialogRequest): number {
+  const byTitle = askQuestionForTitle(questions, frame.title);
+  if (byTitle !== -1) return byTitle;
+  return askQuestionForOptions(questions, frame.options);
+}
+
+/**
+ * True when a dialog title shares a distinctive word with the question.
+ *
+ * The last-resort owner of a field dialog is the only open ask, but that must
+ * not swallow an extension picker that happens to arrive while the agent is
+ * blocked. Titles that share no content word with any question are treated as
+ * someone else's dialog; the words are long enough (`length > 3`) that `the`,
+ * `a` or punctuation cannot make a match.
+ */
+export function askQuestionSharesText(questions: AskQuestion[], title: unknown): boolean {
+  if (typeof title !== 'string') return false;
+  const needle = normalizeAskText(title);
+  if (!needle) return false;
+  return questions.some((question) =>
+    normalizeAskText(question.question)
+      .split(' ')
+      .some((word) => word.length > 3 && needle.includes(word)),
+  );
 }
 
 /**

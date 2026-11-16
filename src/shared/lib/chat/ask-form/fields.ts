@@ -53,6 +53,7 @@ export function toQuestions(fields: DraftField[]): AskQuestion[] {
     const options: AskOption[] = field.options.map((option) => ({
       label: option.label || option.value,
       value: option.value,
+      ...(option.checked ? { checked: true } : {}),
     }));
     if (
       field.kind === 'choice' &&

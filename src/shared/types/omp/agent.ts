@@ -265,6 +265,15 @@ export interface ExtensionUiDialogRequest {
    */
   secret?: boolean;
   /**
+   * RPC `select` fields describing a MULTI-select control (omp 18.18.3's
+   * per-field walk). `selectionMarker: "checkbox"` says the rows toggle instead
+   * of answering, and `checkedIndices` is authoritative for what is currently
+   * ticked after each re-ask.
+   */
+  selectionMarker?: 'radio' | 'checkbox';
+  checkedIndices?: number[];
+  markableCount?: number;
+  /**
    * Present only on the GROUPED `ask` request, which omp sends after
    * `set_ask_dialog {enabled:true}`: every question of one `ask` tool call in a
    * single frame, answered by one `answers` response instead of one `select`

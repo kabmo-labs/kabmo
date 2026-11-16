@@ -66,7 +66,7 @@ describe('an ask dialog with no tool card', () => {
 
   test('renders inline with every question and its own submit', () => {
     const split = splitWithoutCards([ORPHAN]);
-    const handle: AskFramesHandle = { framesByTool: split.framesByTool, orphanAsks: split.orphanAsks, respond: () => {} };
+    const handle: AskFramesHandle = { framesByTool: split.framesByTool, looseByTool: split.looseByTool, orphanAsks: split.orphanAsks, respond: () => {} };
 
     act(() => {
       render(h(AskFramesContext.Provider, { value: handle }, h(OrphanAsks, {})), container);
@@ -86,6 +86,7 @@ describe('an ask dialog with no tool card', () => {
     const split = splitWithoutCards([ORPHAN]);
     const handle: AskFramesHandle = {
       framesByTool: split.framesByTool,
+      looseByTool: split.looseByTool,
       orphanAsks: split.orphanAsks,
       respond: (_request, response) => sent.push(response),
     };
@@ -123,5 +124,47 @@ describe('an ask dialog with no tool card', () => {
     const split = splitWithoutCards([gate]);
     expect(split.modalRequest).toBe(gate);
     expect(split.orphanAsks).toEqual([]);
+  });
+
+  test('a per-field dialog of a failed ask is drawn inline, not as a modal', () => {
+    // omp 18.18.3 walks the ask HTML form one field at a time, so the stray
+    // frame is an ordinary `select` — not `method:"ask"`. It still has no card
+    // when its tool call already failed, and the modal has no ask body for it.
+    const field: ExtensionUiDialogRequest = {
+      type: 'extension_ui_request',
+      id: 'field-1',
+      method: 'select',
+      title: 'Pick colors',
+      options: ['red', 'green', 'Other (type your own)'],
+    };
+    const history = [{
+      id: 'm1',
+      role: 'ai',
+      content: '',
+      toolCalls: [{
+        id: 'call-dead',
+        type: 'ask',
+        name: 'ask',
+        title: 'ask',
+        status: 'error',
+        input: { questions: [{ id: 'q1', question: 'Pick colors', options: [{ label: 'red' }, { label: 'green' }] }] },
+      }],
+    }] as unknown as Parameters<typeof splitAskFrames>[0];
+    const split = splitAskFrames(history, [field], true);
+
+    expect(split.modalRequest).toBeNull();
+    expect(split.orphanAsks).toEqual([field]);
+
+    const handle: AskFramesHandle = {
+      framesByTool: split.framesByTool,
+      looseByTool: split.looseByTool,
+      orphanAsks: split.orphanAsks,
+      respond: () => {},
+    };
+    act(() => { render(h(AskFramesContext.Provider, { value: handle }, h(OrphanAsks, {})), container); });
+
+    expect(container.textContent).toContain('Pick colors');
+    expect(container.textContent).toContain('green');
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
   });
 });

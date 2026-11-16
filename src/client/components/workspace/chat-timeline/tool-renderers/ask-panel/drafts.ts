@@ -68,6 +68,25 @@ export function useAskDrafts({ toolId, questions, groups, recorded, respond }: U
   const [drafts, setDrafts] = useState<Record<number, string>>(() => loadDrafts(toolId));
   const [multiSelected, setMultiSelected] = useState<Record<number, string[]>>({});
   const sentRef = useRef<Set<string>>(new Set());
+  // Frames whose checked rows have already seeded the display.
+  const syncedRef = useRef<Set<string>>(new Set());
+
+  // A checkbox the form marks `checked` starts ON, and the frame reports it in
+  // `checkedIndices`. Drawing an empty set made the first click SEND that label
+  // — toggling the default OFF — while the card showed it as selected.
+  useEffect(() => {
+    for (let index = 0; index < questions.length; index += 1) {
+      if (questions[index].multi !== true) continue;
+      const frame = liveFrame(groups, index);
+      if (!frame || frame.method !== 'select' || !Array.isArray(frame.checkedIndices)) continue;
+      if (syncedRef.current.has(frame.id)) continue;
+      syncedRef.current.add(frame.id);
+      const checked = frame.checkedIndices
+        .map((row) => frame.options?.[row])
+        .filter((label): label is string => typeof label === 'string');
+      setMultiSelected((current) => ({ ...current, [index]: checked }));
+    }
+  }, [questions, groups]);
 
   useEffect(() => {
     for (let index = 0; index < questions.length; index += 1) {

@@ -15,6 +15,12 @@ export interface AskOption {
   preview?: string;
   /** The control's `value`, when an HTML form spelled one ("Value" in JSON). */
   value?: string;
+  /**
+   * A checkbox/radio the `<form>` marks `checked`/`selected`. A multi-select
+   * starts with these ON, and sending such a label toggles it OFF — so the UIs
+   * must draw the default rather than an empty set.
+   */
+  checked?: boolean;
 }
 
 export interface AskQuestion {

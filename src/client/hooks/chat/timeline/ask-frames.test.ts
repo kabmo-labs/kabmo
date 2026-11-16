@@ -74,7 +74,7 @@ describe('splitAskFrames', () => {
     const gate = confirmFrame('g1', 'Run bash?');
 
     // The regression: the frame has been replayed, its tool call has not.
-    expect(splitAskFrames([], [question], false)).toEqual({ framesByTool: new Map(), orphanAsks: [], modalRequest: null });
+    expect(splitAskFrames([], [question], false)).toEqual({ framesByTool: new Map(), looseByTool: new Map(), orphanAsks: [], modalRequest: null });
     // The hold is uniform — a gate cannot be told from an ask before history
     // either, and it is re-decided the moment the history settles.
     expect(splitAskFrames([], [gate], false).modalRequest).toBeNull();
@@ -127,7 +127,7 @@ describe('splitAskFrames', () => {
     expect(split.framesByTool.get('call_ask')?.[0]?.map((held) => held.id)).toEqual(['f1']);
   });
 
-  test('an already answered ask cannot claim a later dialog', () => {
+  test('a frame naming an answered ask is drawn inline, never as a modal', () => {
     const [answered] = askHistory(['Which language?']);
     answered.toolCalls![0].details = { selectedOptions: ['Python'] };
 
@@ -135,12 +135,16 @@ describe('splitAskFrames', () => {
     const split = splitAskFrames([answered], [frame], true);
 
     expect(split.framesByTool.get('call_ask')).toBeUndefined();
-    expect(split.modalRequest).toBe(frame);
+    // The ask worked; its dialog is a stray ask dialog, and the modal has no
+    // ask body. It belongs on the timeline where its call lives.
+    expect(split.orphanAsks).toEqual([frame]);
+    expect(split.modalRequest).toBeNull();
   });
 
-  test('a retry whose questions never parsed falls back to the modal', () => {
-    // The safety net the module note describes: no card can claim the frame,
-    // so it stays answerable instead of vanishing.
+  test('a frame matching a failed ask stays inline even when another call is truncated', () => {
+    // The safety net the module note describes: no card can render it, so it
+    // stays answerable on the timeline instead of becoming a modal the ask
+    // body cannot fill.
     const [dead] = askHistory(['Which language?']);
     dead.toolCalls![0].id = 'call_dead';
     dead.toolCalls![0].status = 'error';
@@ -155,7 +159,8 @@ describe('splitAskFrames', () => {
     const split = splitAskFrames([dead, truncated], [frame], true);
 
     expect(split.framesByTool.size).toBe(0);
-    expect(split.modalRequest).toBe(frame);
+    expect(split.orphanAsks).toEqual([frame]);
+    expect(split.modalRequest).toBeNull();
   });
 
   test('an approval gate is not claimed by an open question\'s card', () => {
@@ -180,6 +185,74 @@ describe('splitAskFrames', () => {
 
     expect(split.framesByTool.size).toBe(0);
     expect(split.modalRequest).toBe(gate);
+  });
+
+  test('a context-prefixed title is claimed by suffix, not sent to the modal', () => {
+    // omp titles a per-field dialog with the text between the previous control
+    // and this one, then the question. A context block made the title match
+    // nothing, so the SECOND question of a two-question form opened as a modal.
+    const [history] = askHistory(['Which language?', 'Normalise the text?']);
+    history.toolCalls![0].input = {
+      questions: [
+        { id: 'lang', question: 'Which language?', options: [{ label: 'Python' }, { label: 'Go' }] },
+        { id: 'norm', question: 'Normalise the text?', multi: true, options: [{ label: 'Fix typos' }] },
+      ],
+    };
+    const second: ExtensionUiDialogRequest = {
+      type: 'extension_ui_request',
+      id: 'f2',
+      method: 'select',
+      title: 'Every entry will be written as pending.\n\nNormalise the text?',
+      options: ['Fix typos', 'Done selecting'],
+      selectionMarker: 'checkbox',
+    };
+
+    const split = splitAskFrames([history], [second], true);
+
+    expect(split.framesByTool.get('call_ask')?.[1]?.map((held) => held.id)).toEqual(['f2']);
+    expect(split.modalRequest).toBeNull();
+  });
+
+  test('a one-row question is claimed by its single option', () => {
+    const [history] = askHistory(['Normalise the text?']);
+    history.toolCalls![0].input = {
+      questions: [{ id: 'norm', question: 'Normalise the text?', multi: true, options: [{ label: 'Fix typos' }] }],
+    };
+    const frame: ExtensionUiDialogRequest = {
+      type: 'extension_ui_request',
+      id: 'f1',
+      method: 'select',
+      title: 'This build derived a different question',
+      options: ['Fix typos', 'Done selecting'],
+      selectionMarker: 'checkbox',
+    };
+
+    const split = splitAskFrames([history], [frame], true);
+
+    expect(split.framesByTool.get('call_ask')?.[0]?.map((held) => held.id)).toEqual(['f1']);
+    expect(split.modalRequest).toBeNull();
+  });
+
+  test('a drifted field dialog is drawn on the card as a loose control', () => {
+    // The last resort between "the title names the question" and "open a
+    // modal": the only open ask owns a field dialog that still shares a content
+    // word with one of its questions. It is answerable on the card even when no
+    // single question can be named.
+    const [history] = askHistory(['Which language?']);
+    history.toolCalls![0].input = {
+      questions: [{ id: 'lang', question: 'Which language?', kind: 'text', options: [] }],
+    };
+    const frame: ExtensionUiDialogRequest = {
+      type: 'extension_ui_request',
+      id: 'f1',
+      method: 'input',
+      title: 'Tell me: which concrete language, please',
+    };
+
+    const split = splitAskFrames([history], [frame], true);
+
+    expect(split.looseByTool.get('call_ask')?.map((held) => held.id)).toEqual(['f1']);
+    expect(split.modalRequest).toBeNull();
   });
 
   test('a select whose title matches no question is claimed by its option rows', () => {

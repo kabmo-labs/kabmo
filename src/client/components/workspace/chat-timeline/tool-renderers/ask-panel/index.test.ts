@@ -46,7 +46,7 @@ function mountFromFrame(frame: IncomingExtensionUiRequest): ExtensionUiDialogReq
   createOmpAgentCallbacks(deps).onExtensionUiRequest?.(frame);
 
   const split = splitAskFrames([MESSAGE], queue, true);
-  const handle: AskFramesHandle = { framesByTool: split.framesByTool, orphanAsks: [], respond: () => {} };
+  const handle: AskFramesHandle = { framesByTool: split.framesByTool, looseByTool: split.looseByTool, orphanAsks: [], respond: () => {} };
   act(() => { render(h(AskFramesContext.Provider, { value: handle }, h(AskPanel, { tool: ASK_TOOL })), container); });
   return queue;
 }
@@ -54,7 +54,7 @@ function mountFromFrame(frame: IncomingExtensionUiRequest): ExtensionUiDialogReq
 /** Mount the card with an explicit frame queue and tool, keeping it mounted. */
 function paint(queue: ExtensionUiDialogRequest[], tool: ToolCallData = ASK_TOOL): void {
   const split = splitAskFrames([MESSAGE], queue, true);
-  const handle: AskFramesHandle = { framesByTool: split.framesByTool, orphanAsks: [], respond: () => {} };
+  const handle: AskFramesHandle = { framesByTool: split.framesByTool, looseByTool: split.looseByTool, orphanAsks: [], respond: () => {} };
   act(() => { render(h(AskFramesContext.Provider, { value: handle }, h(AskPanel, { tool })), container); });
 }
 

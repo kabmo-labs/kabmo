@@ -27,11 +27,14 @@ import { HelpCircle, XCircle } from 'lucide-preact';
 import type { ToolCallData } from '@/shared/types';
 import type { ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
 import { isAskSettled, parseAskQuestions } from '@/shared/lib/chat/ask-questions';
+import type { AskQuestion } from '@/shared/lib/chat/ask-form/types';
 import { parseAskResult } from '@/shared/lib/chat/ask-results';
 import { useAskFrames } from '@/client/hooks/chat/timeline/ask-frames';
 import { liveFrame, useAskDrafts } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/drafts';
 import { QuestionBlock } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/QuestionBlock';
 import { GroupedAsk } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/GroupedAsk';
+import { FormAsk } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/FormAsk';
+import { LooseFieldAsk } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/LooseFieldAsk';
 import { PluginPendingInteractions } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/PluginPendingInteractions';
 import type { ExtensionDialogResponse } from '@/client/components/workspace/chat-timeline/tool-renderers/extension-dialog/Lazy';
 import { FallbackOutput } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/FallbackOutput';
@@ -40,6 +43,7 @@ import { FallbackOutput } from '@/client/components/workspace/chat-timeline/tool
 const NO_FRAMES: ExtensionUiDialogRequest[] = [];
 const NO_GROUPS: ExtensionUiDialogRequest[][] = [];
 const NO_LABELS: string[] = [];
+const NO_QUESTIONS: AskQuestion[] = [];
 
 /**
  * A grouped ask this client answered, waiting for omp to echo it in the result.
@@ -56,13 +60,20 @@ interface SubmittedAsk {
 export function AskPanel({ tool }: { tool: ToolCallData }) {
   const questions = parseAskQuestions(tool);
   const recorded = parseAskResult(tool, questions);
-  const { framesByTool, respond } = useAskFrames();
+  const { framesByTool, looseByTool, respond } = useAskFrames();
   const groups = framesByTool.get(tool.id) ?? NO_GROUPS;
+  const loose = looseByTool.get(tool.id) ?? NO_FRAMES;
+  const settled = isAskSettled(tool);
+  // Two or more open fields are answered by ONE Submit (`FormAsk`). The
+  // per-question draft bookkeeper must not run in that mode: it auto-sends a
+  // restored draft the moment its frame arrives, which would answer question 1
+  // before the user could reach the form's Submit.
+  const groupedForm = !settled && questions.length > 1 && recorded.some((answer) => answer === null);
   const [submitted, setSubmitted] = useState<SubmittedAsk | null>(null);
   const { drafts, multiSelected, commit, toggleMulti } = useAskDrafts({
     toolId: tool.id,
-    questions,
-    groups,
+    questions: groupedForm ? NO_QUESTIONS : questions,
+    groups: groupedForm ? NO_GROUPS : groups,
     recorded,
     respond,
   });
@@ -82,7 +93,6 @@ export function AskPanel({ tool }: { tool: ToolCallData }) {
   // mid-ask reads its still-blocking tool call back from the JSONL as
   // `success` (omp writes no result until the question is answered), and that
   // question must stay answerable.
-  const settled = isAskSettled(tool);
   const waiting = !settled && groups.some((frames, index) => frames.length > 0 && !recorded[index]);
   // omp asks in order and blocks on each, so the earliest question holding a
   // dialog is the only open one: everything before it is answered, whether or
@@ -138,6 +148,41 @@ export function AskPanel({ tool }: { tool: ToolCallData }) {
     );
   }
 
+  // Two or more fields from the per-field walk: draw the WHOLE form and take a
+  // single Submit. The old card answered one question per round trip, so the
+  // second question appeared only after the first had gone to omp — and a
+  // field whose derived title drifted was handed to the modal. The submit here
+  // is what `FormAsk` replays into omp's one-dialog-per-field wire.
+  if (groupedForm) {
+    const live = groups.map((frames) => (frames.length > 0 ? frames[frames.length - 1] : null)).find(Boolean) ?? loose[0] ?? null;
+    return (
+      <div className="space-y-2">
+        {waiting && (
+          <div className="flex items-center gap-1.5 text-[10.5px] text-ink/50">
+            <HelpCircle size={11} className="shrink-0" />
+            <span>Input needed: the agent is blocked until you answer.</span>
+          </div>
+        )}
+        <FormAsk
+          questions={questions}
+          groups={groups}
+          recorded={recorded}
+          loose={loose}
+          onRespond={respond}
+          interactions={
+            live ? (
+              <PluginPendingInteractions
+                frame={live}
+                recorded={questions.map((_, index) => recorded[index] !== null)}
+                onRespond={(response) => respond(live, response)}
+              />
+            ) : undefined
+          }
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-2">
       {waiting && (
@@ -182,6 +227,10 @@ export function AskPanel({ tool }: { tool: ToolCallData }) {
           />
         );
       })}
+
+      {loose.map((frame) => (
+        <LooseFieldAsk key={frame.id} frame={frame} onRespond={respond} />
+      ))}
 
       {(tool.status === 'error' || tool.status === 'aborted') && tool.output && (
         <div className="flex items-start gap-2 rounded-md border border-ink/8 bg-ink/[0.02] px-2.5 py-1.5 text-[10.5px] text-ink/60">

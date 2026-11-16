@@ -72,7 +72,7 @@ test.describe('ask tool', () => {
     workspace.dispose();
   });
 
-  test('reads the 18.18.3 html form and answers its fields in order', async ({ harness, page }) => {
+  test('answers a whole 18.18.3 html form in one submit', async ({ harness, page }) => {
     const server = await harness('real');
     const workspace = await seedWorkspace(server, 'e2e-ask-form');
 
@@ -83,28 +83,27 @@ test.describe('ask tool', () => {
     await input.fill('form-ask:Choose a flavour');
     await input.press('Enter');
 
-    // The tool call carries `{ html }`; both named controls of the form must
-    // reach the card, each as its own numbered question. The radio group is
-    // titled by its LEGEND (`Flavour`), not by the paragraph above the
-    // fieldset — and because that title is what omp puts on the live dialog,
-    // getting it wrong parked the dialog in the modal instead of this card.
+    // The tool call carries `{ html }`; BOTH named controls of the form reach
+    // the card at once, each as its own numbered question. The radio group is
+    // titled by its LEGEND (`Flavour`), not by the paragraph above the fieldset
+    // — and because that title is what omp puts on the live dialog, getting it
+    // wrong parked the dialog in the modal instead of this card.
     await expect(page.getByText('Choose a flavour').first()).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText('Flavour').first()).toBeVisible();
     await expect(page.getByText('Serving')).toBeVisible();
     await expect(page.getByRole('dialog')).toHaveCount(0);
 
-    // The "Other" escape hatch is a real ROW now: 18.18.3 cancels the ask when
-    // a typed answer is sent in place of the label it offered.
-    await expect(page.getByRole('button', { name: /Other \(type your own\)/ })).toBeVisible();
+    // One submit for the whole form, disabled until every question is answered.
+    const submit = page.getByRole('button', { name: 'Submit answers' });
+    await expect(submit).toBeDisabled();
 
     await page.getByRole('button', { name: /^Yes\b/ }).click();
-
-    // omp opens a follow-up `input` titled with the same question for a text
-    // field; the answer arrives in that dialog.
-    const serving = page.getByRole('textbox', { name: '1', exact: true });
+    const serving = page.getByRole('textbox', { name: 'Your answer for question 2' });
     await expect(serving).toBeVisible();
     await serving.fill('2');
-    await page.getByRole('button', { name: 'Submit' }).click();
+    await expect(submit).toBeEnabled();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await submit.click();
 
     const rows = page.locator('[data-answer-row]');
     await expect(rows).toHaveCount(2);
