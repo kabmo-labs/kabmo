@@ -114,8 +114,10 @@ test.describe('sidebar batch delete', () => {
     await page.getByRole('button', { name: 'Unselect all' }).click();
     await expect(page.getByTestId('batch-action-bar')).toContainText(`0 of ${boxCount - 1} sessions`);
 
-    // Cancel leaves the mode and the list is untouched.
-    await page.getByRole('button', { name: 'Cancel selection' }).click();
+    // Cancel leaves the mode and the list is untouched. Scoped to the bar: the
+    // modern chrome's Select toggle carries the same accessible name while the
+    // mode is on, and the bar's own Cancel is the control this asserts.
+    await page.getByTestId('batch-action-bar').getByRole('button', { name: 'Cancel selection' }).click();
     await expect(page.getByTestId('batch-action-bar')).toHaveCount(0);
     await expect(boxes).toHaveCount(0);
     await expect(page.locator(`[data-testid="${TESTID.sessionItem}"]`)).toHaveCount(rowsBefore);

@@ -455,7 +455,10 @@ test.describe('terminal', () => {
     // The "Latest" button is the viewport's own report — it is rendered from
     // `onScroll` — so it is the honest non-visual observable of "the reader is
     // scrolled back". Before the fix it was already gone on the next chunk.
-    const latest = page.getByRole('button', { name: /Latest/ });
+    // Exact name: the modern sidebar's sort control reads "Sort workspaces,
+    // currently Latest chat" (the default order), which a /Latest/ regex also
+    // matches. The terminal's own button is named exactly "Latest".
+    const latest = page.getByRole('button', { name: 'Latest', exact: true });
     await page.mouse.move(box.x + 60, box.y + 60);
     await page.mouse.wheel(0, -500);
     await expect(latest).toBeVisible();

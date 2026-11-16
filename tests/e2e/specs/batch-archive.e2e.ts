@@ -45,8 +45,12 @@ async function enterWorkspaceSelection(page: Page) {
 }
 
 /**
- * Toggle the sidebar's archive view. Like Select, the control lives on the
- * toolbar row when it fits and in the `⋯` menu when it does not.
+ * Toggle the sidebar's archive view. Three forms, because the two chrome styles
+ * are both shipped and the modern one is now the default:
+ *
+ * - classic, control on the toolbar row when it fits;
+ * - classic, in the `⋯` overflow when it does not;
+ * - modern, the `Archived` filter chip (its own view toggle, no overflow menu).
  */
 async function toggleArchiveView(page: Page, label: 'Show Archive' | 'Hide Archive') {
   const onRow = page.getByRole('button', { name: label, exact: true });
@@ -54,8 +58,13 @@ async function toggleArchiveView(page: Page, label: 'Show Archive' | 'Hide Archi
     await onRow.click();
     return;
   }
-  await page.getByRole('button', { name: 'More sidebar actions' }).click();
-  await page.getByRole('menuitem', { name: label, exact: true }).click();
+  const overflow = page.getByRole('button', { name: 'More sidebar actions' });
+  if (await overflow.count() > 0) {
+    await overflow.click();
+    await page.getByRole('menuitem', { name: label, exact: true }).click();
+    return;
+  }
+  await page.getByRole('button', { name: 'Archived', exact: true }).click();
 }
 
 test.describe('sidebar batch archive', () => {
