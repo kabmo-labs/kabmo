@@ -160,6 +160,9 @@ export class ChangeCapture {
       args,
     });
     pending.ready = this.#snapshotBefore(pending);
+    // The start task is not done until the snapshot is: `flush()` after a start
+    // frame must mean the before state was read, not merely scheduled.
+    await pending.ready;
   }
 
   async #snapshotBefore(pending: PendingCall): Promise<void> {
