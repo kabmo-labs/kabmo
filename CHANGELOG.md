@@ -4,6 +4,15 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.38.1](https://github.com/kabmo-labs/kabmo/compare/v0.38.0...v0.38.1) — 2026-11-16
+
+### Fixed
+
+* **changes:** catch and dedupe scan creates that race the start snapshot ([e7e88dc](https://github.com/kabmo-labs/kabmo/commit/e7e88dce75c22d4fb0a326e65349f7b0a8cb0be4)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **changes:** keep a concurrent session's scan out of another session's journal ([c1c9654](https://github.com/kabmo-labs/kabmo/commit/c1c9654371c7830c61cdf363e1d25371a487d06d)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **changes:** make flush wait for the start snapshot ([7d6cf06](https://github.com/kabmo-labs/kabmo/commit/7d6cf065410b2bf8246d2501b06999199a9daf8b)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **changes:** record writes and bash creates that race the snapshot ([5f6ca1d](https://github.com/kabmo-labs/kabmo/commit/5f6ca1de99be4027d6685115ca5569c7e2f6f755)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.38.0](https://github.com/kabmo-labs/kabmo/compare/v0.37.0...v0.38.0) — 2026-11-16
 
 ### Added
