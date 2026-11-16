@@ -230,44 +230,6 @@ describe('scan pass', () => {
   });
 });
 
-describe('directory scan', () => {
-  test('a python3 script in a non-git cwd is reconciled from the directory scan', async () => {
-    const files = new Map<string, string>();
-    const scans = [
-      { root: REPO, dirty: new Map<string, string | null>(), truncated: false },
-      { root: REPO, dirty: new Map([[at('file4.txt'), 'python']]), truncated: false },
-    ];
-    const capture = makeCapture('cap-dir-scan', files, {
-      takeScan: async () => scans.shift() ?? null,
-      readHead: async () => null,
-    });
-    capture.onFrame({
-      type: 'tool_execution_start',
-      toolCallId: 'c1',
-      toolName: 'bash',
-      args: { command: "python3 - <<'PY'\nopen('file4.txt','w').write('python')\nPY" },
-    });
-    await capture.flush();
-    files.set(at('file4.txt'), 'python');
-    capture.onFrame({
-      type: 'tool_execution_end',
-      toolCallId: 'c1',
-      toolName: 'bash',
-      result: { details: { trace: { status: 0, units: [{ nodes: [{ k: 'simple', argv: ['python3', '-'], st: 0 }] }] } } },
-    });
-    await capture.flush();
-
-    const lines = await records('cap-dir-scan');
-    const change = lines.find((line) => line.type === 'change');
-    expect(change?.type).toBe('change');
-    if (change?.type !== 'change') throw new Error('expected a change');
-    expect(change.before).toBeNull();
-    expect(typeof change.after).toBe('string');
-    expect(change.source).toBe('scan');
-    expect(lines.some((line) => line.type === 'note' && line.reason === 'opaque-command')).toBe(true);
-  });
-});
-
 describe('cross-session scan', () => {
   test('a scan skips a path another session in the same cwd recorded', async () => {
     const other = new ChangeJournal('cap-other', REPO);

@@ -25,7 +25,8 @@ import type {
   ShellTrace,
 } from '@/server/lib/changes/capture-types';
 import type { GitScan } from '@/server/lib/changes/scan.server';
-import { readSessionChangePaths } from '@/server/lib/changes/reader.server';
+import { readSessionChangeLast, readSessionChangePaths } from '@/server/lib/changes/reader.server';
+import { blobKey } from '@/server/lib/changes/blobs.server';
 import { sessionsInCwd } from '@/server/lib/changes/sessions.server';
 
 export interface BashCaptureHost {
@@ -150,7 +151,21 @@ async function reconcileScan(
     const afterText = after.dirty.has(absolute)
       ? after.dirty.get(absolute) ?? null
       : await host.readFile(absolute);
-    if (before === afterText) continue;
+    if (before === afterText) {
+      // A fast command can create the file before the start scan reads the
+      // directory, so both snapshots hold the after content. The birth time
+      // still proves the command created it.
+      const info = await host.statFile(absolute);
+      if (info && info.birthtimeMs >= pending.startedAt) {
+        await host.writeChange(pending, absolute, null, afterText, 'scan');
+      }
+      continue;
+    }
+    // A later opaque command's scan sees files an earlier call already
+    // recorded. Same content means no new change; skip the duplicate.
+    const last = await readSessionChangeLast(host.sessionId, absolute);
+    const afterKey = afterText === null || afterText === undefined ? afterText : blobKey(afterText);
+    if (last && last.after === afterKey) continue;
     await host.writeChange(pending, absolute, before, afterText, 'scan');
   }
 }

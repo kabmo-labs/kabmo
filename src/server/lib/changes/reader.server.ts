@@ -215,6 +215,20 @@ async function resolveMergedBlob(
   return dir ? readBlob(dir, key) : undefined;
 }
 
+/** The last record for one path, for the scan's same-content dedupe. */
+export async function readSessionChangeLast(
+  sessionId: string,
+  absolute: string,
+): Promise<{ at: number; after: string | null | undefined } | null> {
+  const records = await readJournalRecords(sessionId);
+  let last: JournalChangeRecord | null = null;
+  for (const record of records) {
+    if (record.path !== absolute) continue;
+    if (!last || record.at >= last.at) last = record;
+  }
+  return last ? { at: last.at, after: last.after } : null;
+}
+
 /** The paths one session recorded inside `[from, to]`; the scan's cross-check. */
 export async function readSessionChangePaths(
   sessionId: string,
