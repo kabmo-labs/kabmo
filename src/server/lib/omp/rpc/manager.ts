@@ -259,9 +259,10 @@ export class AgentSessionWrapper {
     this.fanout.emit(event);
   }
 
-  onEvent(listener: EventListener): () => void {
-    return this.fanout.on(listener);
-  }
+  onEvent(listener: EventListener): () => void { return this.fanout.on(listener); }
+
+  /** Frames before the shell trace is stripped — the change journal's tap. */
+  onRawEvent(listener: EventListener): () => void { return this.fanout.onRaw(listener); }
 
   /** Dialogs omp is still blocked on, oldest first. A client reattaching to a
    *  live session replays these so the modal it lost on reload comes back. */

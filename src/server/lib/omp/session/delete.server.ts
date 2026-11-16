@@ -43,6 +43,7 @@ import { siblingDirForSession } from '@/server/lib/omp/subagent/history/paths';
 import { isSinglePathSegment } from '@/server/lib/fs/path-segment';
 import { deleteSessionRelations } from '@/server/lib/sessions/relations.server';
 import { removeSessionMcpOverlay } from '@/server/lib/mcp/session-overlay.server';
+import { purgeChangeJournal } from '@/server/lib/changes/purge.server';
 
 export interface SessionPurgeResult {
   /** Something keyed to this id existed — a transcript, a mock session row, or
@@ -147,6 +148,9 @@ export async function purgeSessionData(sessionId: string): Promise<SessionPurgeR
   // The overlay is a temp directory, not a row: a deleted session must not
   // leave one behind for a future id to inherit.
   await removeSessionMcpOverlay(sessionId);
+  // The change journal holds file contents; a deleted session must not keep a
+  // copy of every file the run touched.
+  await purgeChangeJournal(sessionId);
 
   // A prompt waiting on this session will never be released: the dependency is
   // gone. Fail it BY NAME rather than letting it wait for a session that no

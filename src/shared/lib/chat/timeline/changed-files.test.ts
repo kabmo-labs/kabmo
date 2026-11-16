@@ -61,6 +61,22 @@ describe('bucketChangesByRun', () => {
     expect(buckets.get(3)?.map((file) => file.displayPath)).toEqual(['b.ts']);
   });
 
+  test('a run id wins over the wall-clock window', () => {
+    // `runAt` 900 is just before the first window (1000); the change at 2500 is
+    // outside every window, but the run id says it belongs to run 1.
+    const buckets = bucketChangesByRun(messages, footers, [
+      record({ at: 2500, runId: 'r1', runAt: 900, path: '/repo/late.ts', displayPath: 'late.ts' }),
+    ]);
+    expect(buckets.get(1)?.map((file) => file.displayPath)).toEqual(['late.ts']);
+  });
+
+  test('a late subagent change keeps its run', () => {
+    const buckets = bucketChangesByRun(messages, footers, [
+      record({ at: 5000, runId: 'r1', runAt: 1000, path: '/repo/late.ts', displayPath: 'late.ts' }),
+    ]);
+    expect(buckets.get(1)?.map((file) => file.displayPath)).toEqual(['late.ts']);
+  });
+
   test('a write outside every window is dropped', () => {
     const buckets = bucketChangesByRun(messages, footers, [record({ at: 2500 })]);
     expect(buckets.size).toBe(0);

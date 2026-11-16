@@ -29,7 +29,7 @@
 import { json } from '@/server/lib/remix-compat';
 import type { LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { isSinglePathSegment } from '@/server/lib/fs/path-segment';
-import { readSessionChangeDiff, readSessionChangeList, readSessionChangeStats } from '@/server/lib/omp/session/changes';
+import { readSessionChangeDiff, readSessionChangeList, readSessionChangeStats } from '@/server/lib/changes/reader.server';
 
 /** GET /api/sessions/:sessionId/changes */
 export async function getSessionChanges({ params }: LoaderFunctionArgs) {

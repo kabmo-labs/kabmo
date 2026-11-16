@@ -332,11 +332,10 @@ export async function startNewRpcSession(
 
   const registry = getRegistry();
   const realSessionId = wrapper.sessionId;
-  wrapper.onDestroy(() => {
-    if (registry.get(wrapper.sessionId) === wrapper) registry.delete(wrapper.sessionId);
-    if (registry.get(realSessionId) === wrapper) registry.delete(realSessionId);
-  });
-  registry.set(realSessionId, wrapper);
+  // The same registration the cold path uses: it installs the destroy cleanup
+  // AND starts the change journal, so a prewarmed session is not a second
+  // convention.
+  registerSpawnedSession(registry, wrapper, realSessionId, realSessionId);
   // A prewarmed process is adopted here, not in `startRpcSession`, so this is
   // the only spawn path that sees it — a session's cwd may sit outside every
   // registered workspace, and the discovery watcher has to learn it. Awaited

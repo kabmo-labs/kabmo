@@ -15,6 +15,7 @@
  */
 
 import type { HarnessSession } from '@/server/lib/harness/session';
+import { attachChangeJournal } from '@/server/lib/changes/attach.server';
 
 /** Pulled from the omp registry module so there is one map, not two. */
 export function registerAcpSession(
@@ -27,7 +28,9 @@ export function registerAcpSession(
   const registry = liveRegistry();
   registry.set(session.sessionId, session);
   if (requestedId && requestedId !== session.sessionId) registry.set(requestedId, session);
+  const journal = attachChangeJournal(session);
   session.onDestroy(() => {
+    journal.detach();
     if (registry.get(session.sessionId) === session) registry.delete(session.sessionId);
     if (registry.get(requestedId) === session) registry.delete(requestedId);
     // The caller's cleanup rides the SAME hook: `onDestroy` holds one callback,

@@ -29,8 +29,18 @@ import { stripShellTrace } from '@/shared/lib/omp/session/shell-trace';
 
 export class EventFanout {
   readonly #listeners: EventListener[] = [];
+  readonly #rawListeners: EventListener[] = [];
 
   emit(event: AgentEvent): void {
+    // Raw listeners run BEFORE the strip: the change journal needs the shell
+    // trace, and the strip mutates the frame in place.
+    for (const listener of this.#rawListeners) {
+      try {
+        listener(event);
+      } catch {
+        // Deliberately swallowed: see the module doc.
+      }
+    }
     stripShellTrace(event);
     for (const listener of this.#listeners) {
       try {
@@ -47,6 +57,15 @@ export class EventFanout {
     return () => {
       const index = this.#listeners.indexOf(listener);
       if (index !== -1) this.#listeners.splice(index, 1);
+    };
+  }
+
+  /** Register a listener that sees the frame before the shell trace is stripped. */
+  onRaw(listener: EventListener): () => void {
+    this.#rawListeners.push(listener);
+    return () => {
+      const index = this.#rawListeners.indexOf(listener);
+      if (index !== -1) this.#rawListeners.splice(index, 1);
     };
   }
 }

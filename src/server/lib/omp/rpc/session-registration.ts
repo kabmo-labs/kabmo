@@ -17,6 +17,7 @@
 
 import type { AgentSessionWrapper } from '@/server/lib/omp/rpc/manager';
 import type { HarnessSession } from '@/server/lib/harness/session';
+import { attachChangeJournal } from '@/server/lib/changes/attach.server';
 
 /** Any session this registry can hold: the function only touches `sessionId` and
  *  `onDestroy`, which both transports provide. */
@@ -51,7 +52,11 @@ export function registerSpawnedSession(
   requestedId: string,
   realSessionId: string,
 ): void {
+  // The journal starts with the session and stops with it. `onDestroy` holds
+  // one callback, so the detach rides the same one as the registry cleanup.
+  const journal = attachChangeJournal(created);
   created.onDestroy(() => {
+    journal.detach();
     if (registry.get(created.sessionId) === created) registry.delete(created.sessionId);
     if (registry.get(realSessionId) === created) registry.delete(realSessionId);
     // The alias must go too, or a dead wrapper would answer for the requested id

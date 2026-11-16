@@ -17,6 +17,10 @@
 export interface SessionChangeRecord {
   /** Epoch ms the write landed. */
   at: number;
+  /** The run this record belongs to; absent on a journal written before runs. */
+  runId?: string;
+  /** The run's `agent_start` time, for mapping the run to a chat row. */
+  runAt?: number;
   /** Registry id of the agent that wrote (`Main`, `AuthLoader`). */
   agent: string;
   /** Parent agent id; absent for the root agent. */
