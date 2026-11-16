@@ -15,9 +15,9 @@
 
 import { readKabmoSetting } from '@/shared/lib/settings/client';
 import {
-  DEFAULT_ICON_STYLE,
   ICON_STYLE_ATTRIBUTE,
   ICON_STYLE_SETTING_KEY,
+  ICON_STYLE_WITHOUT_ATTRIBUTE,
   resolveIconStyle,
 } from '@/shared/lib/theme/icon-style';
 import {
@@ -54,14 +54,17 @@ export function applyIconPaper(theme?: string): void {
 /**
  * Point the document at `style`.
  *
- * The default is REMOVED rather than written, so the ink rule in CSS is the
- * single statement of what "no attribute" means.
+ * `monochrome` is REMOVED rather than written, because the ink pass in CSS is
+ * stated as the absence of the attribute (`:root:not([data-icon-style="color"])`).
+ * The comparison is against that ABSENT state, not against `DEFAULT_ICON_STYLE`:
+ * the default is `color`, and omitting the attribute for it would paint every
+ * mark ink while the setting says full colour.
  */
 export function applyIconStyle(style: unknown): void {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
   const resolved = resolveIconStyle(style);
-  if (resolved === DEFAULT_ICON_STYLE) root.removeAttribute(ICON_STYLE_ATTRIBUTE);
+  if (resolved === ICON_STYLE_WITHOUT_ATTRIBUTE) root.removeAttribute(ICON_STYLE_ATTRIBUTE);
   else root.setAttribute(ICON_STYLE_ATTRIBUTE, resolved);
   // The bucket belongs to the same writer: a document that states one style
   // without the other paints a `mid` palette with the `deep` table.

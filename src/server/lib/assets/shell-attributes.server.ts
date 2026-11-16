@@ -18,24 +18,27 @@
  * - **`data-theme` and `data-theme-variant` are ALWAYS written.** They are the
  *   palette; `applyDocumentTheme` owns them after hydration, and a document
  *   served without them keeps `:root`'s shipped palette.
- * - **The two style attributes are written only when they are not the default.**
- *   `applySurfaceStyle` / `applyIconStyle` remove the attribute for the default,
- *   so emitting `data-surface="classic"` here would make the server and the
- *   client disagree about the document's own state — and every CSS rule keys on
- *   the value, not on its absence.
+ * - **The two style attributes are written only when the style is not the one
+ *   CSS paints with no attribute** (`classic` / `monochrome`). The client's
+ *   `applySurfaceStyle` / `applyIconStyle` remove the attribute for exactly
+ *   those values, so emitting `data-surface="classic"` here would make the
+ *   server and the client disagree about the document's own state — and every
+ *   CSS rule keys on the value, not on its absence. This is NOT the same test
+ *   as `DEFAULT_*`: the defaults are now `glass` / `color`, and those must be
+ *   emitted so the first frame is already frosted and coloured.
  */
 
 import type { ThemePalette } from '@/shared/types/theme';
 import {
-  DEFAULT_ICON_STYLE,
   ICON_STYLE_ATTRIBUTE,
+  ICON_STYLE_WITHOUT_ATTRIBUTE,
   resolveIconStyle,
 } from '@/shared/lib/theme/icon-style';
 import { ICON_PAPER_ATTRIBUTE } from '@/shared/lib/icons/tint';
 import { paperBucketOf } from '@/shared/lib/icons/icon-tone';
 import {
-  DEFAULT_SURFACE_STYLE,
   SURFACE_ATTRIBUTE,
+  SURFACE_STYLE_WITHOUT_ATTRIBUTE,
   resolveSurfaceStyle,
 } from '@/shared/lib/theme/surface-style';
 
@@ -59,8 +62,8 @@ export function styleAttributes(surfaceStyle: unknown, iconStyle: unknown, palet
   const surface = resolveSurfaceStyle(surfaceStyle);
   const icon = resolveIconStyle(iconStyle);
   const parts: string[] = [];
-  if (surface !== DEFAULT_SURFACE_STYLE) parts.push(`${SURFACE_ATTRIBUTE}="${surface}"`);
-  if (icon !== DEFAULT_ICON_STYLE) parts.push(`${ICON_STYLE_ATTRIBUTE}="${icon}"`);
+  if (surface !== SURFACE_STYLE_WITHOUT_ATTRIBUTE) parts.push(`${SURFACE_ATTRIBUTE}="${surface}"`);
+  if (icon !== ICON_STYLE_WITHOUT_ATTRIBUTE) parts.push(`${ICON_STYLE_ATTRIBUTE}="${icon}"`);
   // The paper bucket is written for EVERY light palette, including the default
   // one, because it is not a preference: without it the first frame paints the
   // `deep` icon table on a `mid` paper — one step darker than the palette allows,

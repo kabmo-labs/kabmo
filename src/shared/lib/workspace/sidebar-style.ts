@@ -14,13 +14,12 @@
  * which is why the shared row and the shared workspace section are primitives
  * rather than two copies.
  *
- *  - `classic` — the toolbar of boxed icons and the 24px rows Kabmo has always
- *    shipped. It is the DEFAULT, deliberately: an upgrade must not rearrange a
- *    sidebar the user did not ask to change (the same rule
- *    `DEFAULT_TOOL_RENDER_MODE` follows).
+ *  - `classic` — the toolbar of boxed icons and the 24px rows Kabmo shipped
+ *    before the setting existed.
  *  - `modern`  — a permanent search field, filter chips, sticky workspace
  *    headers and a taller row whose trailing column is shared by the age and
- *    the actions trigger.
+ *    the actions trigger. The DEFAULT: a fresh install leads with the chrome
+ *    the product is designed around, and a stored `classic` still wins.
  *
  * **The names and the copy live here**; the markup lives in
  * `layout/session-sidebar/modern/`. A style added here without a renderer is a
@@ -41,10 +40,10 @@ export type SidebarStyle = 'classic' | 'modern';
 
 
 /**
- * The style a document with no stored preference renders at — the one Kabmo
- * shipped before the setting existed, so an upgrade changes nothing.
+ * The style a document with no stored preference renders at. A fresh install
+ * leads with the modern chrome; a stored `classic` is still honoured.
  */
-export const DEFAULT_SIDEBAR_STYLE: SidebarStyle = 'classic';
+export const DEFAULT_SIDEBAR_STYLE: SidebarStyle = 'modern';
 
 /** Every style, in the order the settings control lists them. */
 export const SIDEBAR_STYLES = ['classic', 'modern'] as const;

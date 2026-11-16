@@ -12,13 +12,13 @@
  * why this module states names and copy while `src/client/tailwind.css` states
  * every pixel.
  *
- *  - `classic` — opaque paper over the palette's canvas. The look Kabmo has
- *    always shipped, and the DEFAULT: an upgrade must not restyle a window the
- *    user did not ask to change (the rule `DEFAULT_SIDEBAR_STYLE` follows).
+ *  - `classic` — opaque paper over the palette's canvas. Rendered when the
+ *    attribute is ABSENT, which is why `SURFACE_STYLE_WITHOUT_ATTRIBUTE` is
+ *    `classic` and not the default: CSS states the opaque look once, in `:root`.
  *  - `glass`   — one frosted plane over a palette-coloured aura, with the
  *    panels above it as translucent tints. The plane owns the blur (a single
  *    `backdrop-filter` per window), so the panel count does not decide the
- *    frame budget.
+ *    frame budget. The DEFAULT a fresh install resolves to.
  *
  * The style reaches the document as `data-surface` on `<html>`, never as a
  * prop: the sidebar, the navbar, the composer and every modal are separate
@@ -33,10 +33,20 @@
 export type SurfaceStyle = 'classic' | 'glass';
 
 /**
- * The style a document with no stored preference renders at — the one Kabmo
- * shipped before the setting existed, so an upgrade changes nothing.
+ * The style a fresh install — or any stored value this build cannot draw —
+ * resolves to.
  */
-export const DEFAULT_SURFACE_STYLE: SurfaceStyle = 'classic';
+export const DEFAULT_SURFACE_STYLE: SurfaceStyle = 'glass';
+
+/**
+ * The style CSS paints when `data-surface` is absent.
+ *
+ * Two facts, kept apart on purpose: the DEFAULT is what a fresh install picks,
+ * while the ABSENT state is what `:root` in `tailwind.css` paints. They
+ * coincide only before the default moved to `glass`; every writer must compare
+ * against THIS constant when deciding whether the attribute can be omitted.
+ */
+export const SURFACE_STYLE_WITHOUT_ATTRIBUTE: SurfaceStyle = 'classic';
 
 /** Document attribute carrying the style. Read by CSS only. */
 export const SURFACE_ATTRIBUTE = 'data-surface';

@@ -19,14 +19,14 @@
  * 3. **File-type marks** (`file-icon/`) — the language and tool logos a file
  *    list is read by.
  *
- *  - `monochrome` — every icon in the surrounding ink. The DEFAULT, because it
- *    is what Kabmo ships today: an upgrade must not repaint a window the user
- *    did not ask to change.
+ *  - `monochrome` — every icon in the surrounding ink. Rendered when the
+ *    attribute is ABSENT, which is why `ICON_STYLE_WITHOUT_ATTRIBUTE` is
+ *    `monochrome` and not the default: the ink pass is stated once, in CSS.
  *  - `color`      — each icon in its own colour. A brand colour that would
  *    vanish on the active variant (a black logo on a dark theme) keeps the ink
  *    instead, and the generated hues are stated at a lightness that clears the
  *    3:1 non-text floor on every palette of that variant, so this never trades a
- *    legible row for a literal hex.
+ *    legible row for a literal hex. The DEFAULT a fresh install resolves to.
  *
  * Every rule is `:where()`-wrapped, so this is a DEFAULT paint and never an
  * override: a caller's own `text-error` on a missing file, or `text-ink/40` on a
@@ -41,10 +41,18 @@
 export type IconStyle = 'monochrome' | 'color';
 
 /**
- * The style a document with no stored preference renders at. Every provider
- * mark was ink before this setting existed, so this is the no-change default.
+ * The style a fresh install — or any stored value this build cannot draw —
+ * resolves to.
  */
-export const DEFAULT_ICON_STYLE: IconStyle = 'monochrome';
+export const DEFAULT_ICON_STYLE: IconStyle = 'color';
+
+/**
+ * The style CSS paints when `data-icon-style` is absent. Separate from the
+ * default for the same reason as `SURFACE_STYLE_WITHOUT_ATTRIBUTE`: the ink
+ * pass is written as `:root:not([data-icon-style="color"])`, so only this value
+ * may omit the attribute.
+ */
+export const ICON_STYLE_WITHOUT_ATTRIBUTE: IconStyle = 'monochrome';
 
 /** Document attribute carrying the style. Read by CSS only. */
 export const ICON_STYLE_ATTRIBUTE = 'data-icon-style';

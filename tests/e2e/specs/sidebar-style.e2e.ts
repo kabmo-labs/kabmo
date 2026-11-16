@@ -32,13 +32,30 @@ async function setSidebarStyle(baseURL: string, style: 'classic' | 'modern'): Pr
 }
 
 test.describe('sidebar style', () => {
-  test('the default is classic: a fresh install draws the shipped chrome', async ({ harness, page }) => {
+  test('the default is modern: a fresh install draws the search-and-chips chrome', async ({ harness, page }) => {
     const server = await harness('real');
     const workspace = await seedWorkspace(server, 'e2e-style-default');
 
     await page.goto(`${server.baseURL}/?folderId=${workspace.id}`);
     const sidebar = page.locator('aside').first();
     await expect(sidebar.getByText('e2e-style-default').first()).toBeVisible();
+
+    // No stored preference: the modern chrome's permanent search field and
+    // focus chips are what a fresh profile draws.
+    await expect(sidebar.locator('input[type="search"]')).toBeVisible();
+    await expect(sidebar.getByRole('button', { name: 'All', exact: true })).toBeVisible();
+
+    workspace.dispose();
+  });
+
+  test('classic draws no permanent search field', async ({ harness, page }) => {
+    const server = await harness('real');
+    const workspace = await seedWorkspace(server, 'e2e-style-classic');
+    await setSidebarStyle(server.baseURL, 'classic');
+
+    await page.goto(`${server.baseURL}/?folderId=${workspace.id}`);
+    const sidebar = page.locator('aside').first();
+    await expect(sidebar.getByText('e2e-style-classic').first()).toBeVisible();
 
     // The classic chrome has no permanent search field; search is a mode there.
     await expect(sidebar.locator('input[type="search"]')).toHaveCount(0);

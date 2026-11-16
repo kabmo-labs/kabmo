@@ -7,11 +7,13 @@
  * The first frame's `<html>` attributes.
  *
  * The rule worth pinning is the ASYMMETRY: the palette is always written, and
- * the two presentation styles are written only when they are not the default —
- * because the client's writers REMOVE the attribute for the default, and a
- * server that emitted `data-surface="classic"` would leave a document the
- * client thinks is "explicitly classic" and a reload flipping between two
- * spellings of the same state.
+ * the two presentation styles are written only when they are not the style CSS
+ * paints with no attribute (`classic` / `monochrome`) — because the client's
+ * writers REMOVE the attribute for exactly those values, and a server that
+ * emitted `data-surface="classic"` would leave a document the client thinks is
+ * "explicitly classic" and a reload flipping between two spellings of the same
+ * state. The shipped DEFAULTS (`glass` / `color`) are therefore emitted, so the
+ * first frame is already frosted and coloured.
  */
 
 import { describe, expect, test } from 'bun:test';
@@ -35,13 +37,18 @@ const light = KABMO_PALETTES[0];
 const dark = THEMES.find((theme) => theme.variant === 'dark')!;
 
 describe('styleAttributes', () => {
-  test('the defaults add nothing at all', () => {
+  test('the styles CSS paints with no attribute add nothing', () => {
     expect(styleAttributes('classic', 'monochrome')).toBe('');
-    expect(styleAttributes(undefined, undefined)).toBe('');
-    expect(styleAttributes('nonsense', 'nonsense')).toBe('');
   });
 
-  test('each non-default style contributes its own attribute', () => {
+  test('the shipped defaults are emitted so the first frame is frosted and coloured', () => {
+    const defaults = ' data-surface="glass" data-icon-style="color"';
+    expect(styleAttributes(undefined, undefined)).toBe(defaults);
+    expect(styleAttributes('nonsense', 'nonsense')).toBe(defaults);
+    expect(styleAttributes('glass', 'color')).toBe(defaults);
+  });
+
+  test('each style contributes its own attribute independently', () => {
     expect(styleAttributes('glass', 'monochrome')).toBe(' data-surface="glass"');
     expect(styleAttributes('classic', 'color')).toBe(' data-icon-style="color"');
     expect(styleAttributes('glass', 'color')).toBe(' data-surface="glass" data-icon-style="color"');
@@ -58,7 +65,7 @@ describe('styleAttributes', () => {
 });
 
 describe('applyShellDocumentFacts', () => {
-  test('writes the palette and the chrome colour, and nothing else by default', () => {
+  test('writes the palette, the shipped styles and the chrome colour', () => {
     const html = applyShellDocumentFacts(TEMPLATE, {
       palette: light,
       surfaceStyle: undefined,
@@ -67,11 +74,9 @@ describe('applyShellDocumentFacts', () => {
     });
 
     expect(html).toContain(
-      `<html lang="en" data-theme="${light.id}" data-icon-paper="mid" data-theme-variant="${light.variant}">`,
+      `<html lang="en" data-theme="${light.id}" data-surface="glass" data-icon-style="color" data-icon-paper="mid" data-theme-variant="${light.variant}">`,
     );
     expect(html).toContain('<meta name="theme-color" content="#123456" />');
-    expect(html).not.toContain('data-surface');
-    expect(html).not.toContain('data-icon-style');
   });
 
   test('a stored glass style lands on the FIRST frame, not after hydration', () => {

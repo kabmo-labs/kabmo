@@ -9,12 +9,11 @@
  * The value is stored in the `kabmo_settings` blob and read on every render of
  * the left column, so the two failure modes worth pinning are:
  *
- * - **an unknown value must resolve to `classic`.** A blob written by a newer
- *   build, a hand-edited row, or a downgrade would otherwise name a renderer
- *   that does not exist in this build.
- * - **the default must stay `classic`.** It is what an upgrade renders, and the
- *   setting exists so a user opts IN to a different chrome — flipping the
- *   default silently rearranges a sidebar nobody asked to change.
+ * - **an unknown value must resolve to the shipped default.** A blob written by
+ *   a newer build, a hand-edited row, or a downgrade would otherwise name a
+ *   renderer that does not exist in this build.
+ * - **the default is `modern`.** A fresh install leads with the search/chips
+ *   chrome; a stored `classic` still renders the older sidebar unchanged.
  */
 
 import { describe, expect, test } from 'bun:test';
@@ -27,8 +26,8 @@ import {
 } from '@/shared/lib/workspace/sidebar-style';
 
 describe('resolveSidebarStyle', () => {
-  test('the shipped default is classic, so an upgrade rearranges nothing', () => {
-    expect(DEFAULT_SIDEBAR_STYLE).toBe('classic');
+  test('the shipped default is modern, so a fresh install leads with search and chips', () => {
+    expect(DEFAULT_SIDEBAR_STYLE).toBe('modern');
   });
 
   test('every style this build can draw resolves to itself', () => {

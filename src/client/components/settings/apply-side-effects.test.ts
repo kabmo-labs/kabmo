@@ -62,7 +62,7 @@ describe('applySettingsSideEffects', () => {
     const seen: unknown[] = [];
     win.addEventListener(SIDEBAR_STYLE_CHANGED_EVENT, (event) => seen.push((event as unknown as CustomEvent).detail));
 
-    applySettingsSideEffects(state(), state({ sidebarStyle: 'modern' }));
+    applySettingsSideEffects(state({ sidebarStyle: 'classic' }), state({ sidebarStyle: 'modern' }));
 
     expect(seen).toEqual(['modern']);
   });
@@ -103,11 +103,12 @@ describe('applySettingsSideEffects', () => {
     installDom();
     const root = globalThis.document.documentElement;
 
-    applySettingsSideEffects(state(), state({ surfaceStyle: 'glass' }));
+    applySettingsSideEffects(state({ surfaceStyle: 'classic' }), state({ surfaceStyle: 'glass' }));
     expect(root.getAttribute('data-surface')).toBe('glass');
 
     // Same value again: the attribute must survive an unrelated re-render
-    // untouched (the writer removes the default, so a stray call would clear it).
+    // untouched (classic is written as the attribute's absence, so a stray
+    // call would clear it).
     applySettingsSideEffects(state({ surfaceStyle: 'glass' }), state({ surfaceStyle: 'glass', goalDefaultBudget: 1 }));
     expect(root.getAttribute('data-surface')).toBe('glass');
 
@@ -119,7 +120,7 @@ describe('applySettingsSideEffects', () => {
     installDom();
     const root = globalThis.document.documentElement;
 
-    applySettingsSideEffects(state(), state({ iconStyle: 'color' }));
+    applySettingsSideEffects(state({ iconStyle: 'monochrome' }), state({ iconStyle: 'color' }));
     expect(root.getAttribute('data-icon-style')).toBe('color');
 
     applySettingsSideEffects(state({ iconStyle: 'color' }), state({ iconStyle: 'color', goalDefaultBudget: 1 }));

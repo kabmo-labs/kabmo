@@ -81,9 +81,10 @@ export async function setTheme(page: Page, themeId: string): Promise<void> {
  * Written through the settings route for the same reason `setTheme` is: the
  * capture needs one surface under several palettes/materials in a row, and a
  * card for a value that is not in view cannot be clicked. The verification is
- * per KEY, because a default is REMOVED from `<html>` rather than written
- * (`applySurfaceStyle`/`applyIconStyle`), so "did it apply" is
- * `attribute === expected` with `null` standing for the default.
+ * per KEY, because the style CSS paints with no attribute is REMOVED from
+ * `<html>` rather than written (`applySurfaceStyle`/`applyIconStyle`), so "did
+ * it apply" is `attribute === expected` with `null` standing for `classic` /
+ * `monochrome` — not for the shipped default, which is now `glass` / `color`.
  */
 async function applyAppearance(
   page: Page,
@@ -115,12 +116,12 @@ async function applyAppearance(
   }
 }
 
-/** Pick a surface material: the attribute is absent for the opaque default. */
+/** Pick a surface material: `classic` is the attribute's absence. */
 export async function setSurfaceStyle(page: Page, style: 'classic' | 'glass'): Promise<void> {
   await applyAppearance(page, { surfaceStyle: style }, { 'data-surface': style === 'classic' ? null : style });
 }
 
-/** Pick an icon paint: the attribute is absent for the ink default. */
+/** Pick an icon paint: `monochrome` is the attribute's absence. */
 export async function setIconStyle(page: Page, style: 'monochrome' | 'color'): Promise<void> {
   await applyAppearance(page, { iconStyle: style }, { 'data-icon-style': style === 'monochrome' ? null : style });
 }
@@ -129,9 +130,9 @@ export async function setIconStyle(page: Page, style: 'monochrome' | 'color'): P
  * The appearance every capture on the README is taken in.
  *
  * The stills and both recordings show the product as this build ships it, so
- * they use the material and icon paint it leads with — glass and full colour —
- * rather than the upgrade-safe defaults a fresh profile still starts at. One
- * pair of constants rather than a literal per script, because the tour and the
+ * they state the shipped defaults explicitly — glass and full colour — rather
+ * than depending on whatever profile the capture browser starts with. One pair
+ * of constants rather than a literal per script, because the tour and the
  * stills sit on one page and a mismatch is visible side by side. The image that
  * states the CHOICE instead of the look is `theme-styles`, which captures all
  * four combinations on purpose.

@@ -8,10 +8,10 @@
  *
  * Both writers exist because the value reaches CSS through the document, not a
  * prop — so the facts worth pinning are the ones a wrong implementation breaks
- * silently: the default must CLEAR the attribute (a document carrying it and a
- * document not carrying it have to be the same state), an unknown stored value
- * must not produce an attribute no rule matches, and the boot path must read
- * the primed settings snapshot rather than hardcode the default.
+ * silently: the style CSS paints with no attribute (`classic` / `monochrome`)
+ * must CLEAR it, an unknown stored value must resolve to the shipped default
+ * (`glass` / `color`) and write THAT, and the boot path must read the primed
+ * settings snapshot rather than hardcode the default.
  *
  * The settings client keeps a module-level snapshot, so each case primes it
  * explicitly instead of relying on file order.
@@ -59,23 +59,23 @@ describe('the stored keys', () => {
 });
 
 describe('applySurfaceStyle', () => {
-  test('writes the non-default style as the attribute CSS keys on', () => {
+  test('writes glass as the attribute CSS keys on', () => {
     applySurfaceStyle('glass');
 
     expect(document.documentElement.getAttribute('data-surface')).toBe('glass');
   });
 
-  test('the default CLEARS the attribute instead of writing it', () => {
+  test('classic CLEARS the attribute instead of writing it', () => {
     applySurfaceStyle('glass');
     applySurfaceStyle('classic');
 
     expect(document.documentElement.hasAttribute('data-surface')).toBe(false);
   });
 
-  test('an unknown value resolves to the default rather than an unmatched rule', () => {
+  test('an unknown value resolves to the glass default and writes it', () => {
     applySurfaceStyle('liquid');
 
-    expect(document.documentElement.hasAttribute('data-surface')).toBe(false);
+    expect(document.documentElement.getAttribute('data-surface')).toBe('glass');
   });
 });
 
@@ -109,12 +109,12 @@ describe('the boot path', () => {
     expect(document.documentElement.getAttribute('data-icon-style')).toBe('color');
   });
 
-  test('an install with no stored preference boots opaque and monochrome', () => {
+  test('an install with no stored preference boots glass and full colour', () => {
     primeKabmoSettings({});
     initSurfaceStyle();
     initIconStyle();
 
-    expect(document.documentElement.hasAttribute('data-surface')).toBe(false);
-    expect(document.documentElement.hasAttribute('data-icon-style')).toBe(false);
+    expect(document.documentElement.getAttribute('data-surface')).toBe('glass');
+    expect(document.documentElement.getAttribute('data-icon-style')).toBe('color');
   });
 });

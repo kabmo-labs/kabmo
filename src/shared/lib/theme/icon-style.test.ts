@@ -6,9 +6,10 @@
 /**
  * The icon style's contract.
  *
- * Two facts are pinned here: the default must be what shipped (monochrome ink),
- * and an unreadable stored value must land on it rather than leaving every mark
- * with no rule to paint it.
+ * Two facts are pinned here: the default is full colour, and an unreadable
+ * stored value must land on it rather than leaving every mark with no rule to
+ * paint it. The style CSS paints with no attribute (`monochrome`) is a separate
+ * constant, because the ink pass is written as the absence of the attribute.
  */
 
 import { describe, expect, test } from 'bun:test';
@@ -17,6 +18,7 @@ import {
   ICON_STYLE_ATTRIBUTE,
   ICON_STYLES,
   ICON_STYLE_COPY,
+  ICON_STYLE_WITHOUT_ATTRIBUTE,
   isIconStyle,
   resolveIconStyle,
 } from '@/shared/lib/theme/icon-style';
@@ -47,8 +49,9 @@ describe('resolveIconStyle', () => {
 });
 
 describe('the style table', () => {
-  test('the default is monochrome, which is what every mark shipped as', () => {
-    expect(DEFAULT_ICON_STYLE).toBe('monochrome');
+  test('a fresh install resolves to full colour, while the absent attribute stays ink', () => {
+    expect(DEFAULT_ICON_STYLE).toBe('color');
+    expect(ICON_STYLE_WITHOUT_ATTRIBUTE).toBe('monochrome');
     expect(ICON_STYLES).toContain(DEFAULT_ICON_STYLE);
   });
 

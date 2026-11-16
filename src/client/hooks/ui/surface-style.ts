@@ -23,24 +23,27 @@
 
 import { readKabmoSetting } from '@/shared/lib/settings/client';
 import {
-  DEFAULT_SURFACE_STYLE,
   SURFACE_ATTRIBUTE,
   SURFACE_STYLE_SETTING_KEY,
+  SURFACE_STYLE_WITHOUT_ATTRIBUTE,
   resolveSurfaceStyle,
 } from '@/shared/lib/theme/surface-style';
 
 /**
  * Point the document at `style`.
  *
- * The default is REMOVED rather than written, so a document carrying `classic`
- * and a document carrying nothing are the same state — which is what makes the
- * `:root` fallback in CSS the single statement of the opaque default.
+ * The style CSS paints with no attribute is REMOVED rather than written, so a
+ * document carrying `classic` and a document carrying nothing are the same
+ * state — which is what makes the `:root` fallback in CSS the single statement
+ * of the opaque look. The comparison is against that ABSENT state, not against
+ * `DEFAULT_SURFACE_STYLE`: the default is `glass`, and omitting the attribute
+ * for it would paint the opaque shell while the setting says glass.
  */
 export function applySurfaceStyle(style: unknown): void {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
   const resolved = resolveSurfaceStyle(style);
-  if (resolved === DEFAULT_SURFACE_STYLE) root.removeAttribute(SURFACE_ATTRIBUTE);
+  if (resolved === SURFACE_STYLE_WITHOUT_ATTRIBUTE) root.removeAttribute(SURFACE_ATTRIBUTE);
   else root.setAttribute(SURFACE_ATTRIBUTE, resolved);
 }
 

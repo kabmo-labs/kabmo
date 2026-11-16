@@ -133,9 +133,11 @@ export function solidSignalFillRules(): string[] {
 /**
  * The same fill, in MONOCHROME — and there it was a blank button.
  *
- * The rule above is gated on the colour mode, but `monochrome` is the DEFAULT
- * (`DEFAULT_ICON_STYLE`), and its rule paints every glyph without a `text-ink`
- * class in `var(--theme-ink)`. On a solid signal fill that ink is the fill:
+ * The rule above is gated on the colour mode, but `monochrome` is the style CSS
+ * paints with NO `data-icon-style` attribute (`ICON_STYLE_WITHOUT_ATTRIBUTE`,
+ * not the default — that is `color`), and its rule paints every glyph without a
+ * `text-ink` class in `var(--theme-ink)`. On a solid signal fill that ink is
+ * the fill:
  * measured across the 63 palettes, `Square` on `bg-error` computes **1.04:1**
  * on `osaka-jade-light` and 44 of 63 sit under the 3:1 graphic floor. So the
  * fill has to be excluded from the ink pass and take the surface's foreground
