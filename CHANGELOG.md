@@ -4,6 +4,12 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.37.0](https://github.com/kabmo-labs/kabmo/compare/v0.36.0...v0.37.0) — 2026-11-16
+
+### Added
+
+* **appearance:** default new installs to modern sidebar, glass surfaces and full-colour icons ([7aedb14](https://github.com/kabmo-labs/kabmo/commit/7aedb14c0f334b6f977c52e6d9a5856b45401058)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.36.0](https://github.com/kabmo-labs/kabmo/compare/v0.35.0...v0.36.0) — 2026-11-16
 
 ### Added
