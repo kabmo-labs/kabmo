@@ -16,7 +16,11 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import * as fsp from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { makeCapture, records } from '@/server/lib/changes/capture-test-util';
+import { makeCapture, records, REPO } from '@/server/lib/changes/capture-test-util';
+
+// The capture journals the host's spelling of the path: a literal `/repo` never
+// matches on Windows.
+const RACE = path.join(REPO, 'race.txt');
 
 let dataDir = '';
 let agentDir = '';
@@ -43,7 +47,7 @@ afterAll(async () => {
 
 describe('snapshot races', () => {
   test('a write whose snapshot raced is recorded with an unknown before', async () => {
-    const files = new Map([['/repo/race.txt', 'content']]);
+    const files = new Map([[RACE, 'content']]);
     const capture = makeCapture('cap-write-race', files);
     capture.onFrame({
       type: 'tool_execution_start',
@@ -69,7 +73,7 @@ describe('snapshot races', () => {
   });
 
   test('a fast bash create whose snapshot raced is recorded as a create', async () => {
-    const files = new Map([['/repo/race.txt', 'hi\n']]);
+    const files = new Map([[RACE, 'hi\n']]);
     const capture = makeCapture('cap-bash-race', files, {
       statFile: async (absolute) =>
         files.has(absolute)
