@@ -4,6 +4,19 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.38.0](https://github.com/kabmo-labs/kabmo/compare/v0.37.0...v0.38.0) — 2026-11-16
+
+### Added
+
+* **changes:** journal every file mutation, including bash writes omp never records ([8412717](https://github.com/kabmo-labs/kabmo/commit/8412717203315e6a61f32a2e59040dcde04b3cb9)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **settings:** adopt omp 18.20.3's three settings rows and bump the pin ([94f8ca2](https://github.com/kabmo-labs/kabmo/commit/94f8ca2b7c0fb7806b249b740f35ec0fcd29e1e0)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **auth:** scope agent tokens to the session tree ([c089150](https://github.com/kabmo-labs/kabmo/commit/c089150b6965ba55569654af6283a8d49c389cd2)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **chat:** answer a multi-question ask form in one grouped submit ([d967d4a](https://github.com/kabmo-labs/kabmo/commit/d967d4a14daf3bc7f24310a6948ff765e4bedd99)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **composer:** restored the model list after [@harness](https://github.com/harness):<id>: ([e9b0dd5](https://github.com/kabmo-labs/kabmo/commit/e9b0dd5d0ec8e35a494d1d69907023ec8c09f871)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.37.0](https://github.com/kabmo-labs/kabmo/compare/v0.36.0...v0.37.0) — 2026-11-16
 
 ### Added
