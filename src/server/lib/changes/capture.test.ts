@@ -12,14 +12,15 @@
  *
  * The fake filesystem is a `Map`, so the before/after pair is deterministic:
  * `flush()` after the start frame proves the snapshot ran before the test
- * changes the file.
+ * changes the file. Every path goes through `at()`, so the fixture is native
+ * on Windows too.
  */
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import * as fsp from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { makeCapture, records } from '@/server/lib/changes/capture-test-util';
+import { makeCapture, records, REPO } from '@/server/lib/changes/capture-test-util';
 import { readSessionChangeDiff } from '@/server/lib/changes/reader.server';
 
 let dataDir = '';
@@ -39,9 +40,14 @@ afterAll(async () => {
 
 const WINDOW_END = Date.now() + 60_000;
 
+/** A path inside the fixture repo, spelled the way the host spells it. */
+function at(relative: string): string {
+  return path.join(REPO, relative);
+}
+
 describe('tool adapters', () => {
   test('edit records the before and after text', async () => {
-    const files = new Map([['/repo/a.ts', 'old']]);
+    const files = new Map([[at('a.ts'), 'old']]);
     const capture = makeCapture('cap-edit', files);
     capture.onFrame({
       type: 'tool_execution_start',
@@ -50,11 +56,11 @@ describe('tool adapters', () => {
       args: { path: 'a.ts', old_string: 'old', new_string: 'new' },
     });
     await capture.flush();
-    files.set('/repo/a.ts', 'new');
+    files.set(at('a.ts'), 'new');
     capture.onFrame({ type: 'tool_execution_end', toolCallId: 'c1', toolName: 'edit' });
     await capture.flush();
 
-    const diff = await readSessionChangeDiff('cap-edit', '/repo/a.ts', 0, WINDOW_END);
+    const diff = await readSessionChangeDiff('cap-edit', at('a.ts'), 0, WINDOW_END);
     expect(diff?.status).toBe('modified');
     expect(diff?.oldContent).toBe('old');
     expect(diff?.newContent).toBe('new');
@@ -70,11 +76,11 @@ describe('tool adapters', () => {
       args: { path: 'b.ts', content: 'B' },
     });
     await capture.flush();
-    files.set('/repo/b.ts', 'B');
+    files.set(at('b.ts'), 'B');
     capture.onFrame({ type: 'tool_execution_end', toolCallId: 'c1', toolName: 'write' });
     await capture.flush();
 
-    const diff = await readSessionChangeDiff('cap-write', '/repo/b.ts', 0, WINDOW_END);
+    const diff = await readSessionChangeDiff('cap-write', at('b.ts'), 0, WINDOW_END);
     expect(diff?.status).toBe('added');
     expect(diff?.newContent).toBe('B');
   });
@@ -82,7 +88,7 @@ describe('tool adapters', () => {
 
 describe('bash capture', () => {
   test('rm is a delete, from the trace argv', async () => {
-    const files = new Map([['/repo/c.ts', 'C']]);
+    const files = new Map([[at('c.ts'), 'C']]);
     const capture = makeCapture('cap-rm', files);
     capture.onFrame({
       type: 'tool_execution_start',
@@ -91,7 +97,7 @@ describe('bash capture', () => {
       args: { command: 'rm -f c.ts' },
     });
     await capture.flush();
-    files.delete('/repo/c.ts');
+    files.delete(at('c.ts'));
     capture.onFrame({
       type: 'tool_execution_end',
       toolCallId: 'c1',
@@ -100,13 +106,13 @@ describe('bash capture', () => {
     });
     await capture.flush();
 
-    const diff = await readSessionChangeDiff('cap-rm', '/repo/c.ts', 0, WINDOW_END);
+    const diff = await readSessionChangeDiff('cap-rm', at('c.ts'), 0, WINDOW_END);
     expect(diff?.status).toBe('deleted');
     expect(diff?.oldContent).toBe('C');
   });
 
   test('sed -i is an update', async () => {
-    const files = new Map([['/repo/d.ts', 'a']]);
+    const files = new Map([[at('d.ts'), 'a']]);
     const capture = makeCapture('cap-sed', files);
     capture.onFrame({
       type: 'tool_execution_start',
@@ -115,7 +121,7 @@ describe('bash capture', () => {
       args: { command: "sed -i 's/a/b/' d.ts" },
     });
     await capture.flush();
-    files.set('/repo/d.ts', 'b');
+    files.set(at('d.ts'), 'b');
     capture.onFrame({
       type: 'tool_execution_end',
       toolCallId: 'c1',
@@ -124,7 +130,7 @@ describe('bash capture', () => {
     });
     await capture.flush();
 
-    const diff = await readSessionChangeDiff('cap-sed', '/repo/d.ts', 0, WINDOW_END);
+    const diff = await readSessionChangeDiff('cap-sed', at('d.ts'), 0, WINDOW_END);
     expect(diff?.status).toBe('modified');
     expect(diff?.oldContent).toBe('a');
     expect(diff?.newContent).toBe('b');
@@ -140,7 +146,7 @@ describe('bash capture', () => {
       args: { command: 'echo hi > e.txt' },
     });
     await capture.flush();
-    files.set('/repo/e.txt', 'hi\n');
+    files.set(at('e.txt'), 'hi\n');
     capture.onFrame({
       type: 'tool_execution_end',
       toolCallId: 'c1',
@@ -149,7 +155,7 @@ describe('bash capture', () => {
     });
     await capture.flush();
 
-    const diff = await readSessionChangeDiff('cap-redirect', '/repo/e.txt', 0, WINDOW_END);
+    const diff = await readSessionChangeDiff('cap-redirect', at('e.txt'), 0, WINDOW_END);
     expect(diff?.status).toBe('added');
     expect(diff?.newContent).toBe('hi\n');
   });
@@ -183,10 +189,10 @@ describe('bash capture', () => {
 
 describe('scan pass', () => {
   test('an opaque git reset is reconciled from the two snapshots', async () => {
-    const files = new Map([['/repo/g.ts', 'old']]);
+    const files = new Map([[at('g.ts'), 'old']]);
     const scans = [
-      { root: '/repo', dirty: new Map([['/repo/g.ts', 'old']]), truncated: false },
-      { root: '/repo', dirty: new Map([['/repo/g.ts', 'new']]), truncated: false },
+      { root: REPO, dirty: new Map([[at('g.ts'), 'old']]), truncated: false },
+      { root: REPO, dirty: new Map([[at('g.ts'), 'new']]), truncated: false },
     ];
     const capture = makeCapture('cap-scan', files, {
       takeScan: async () => scans.shift() ?? null,
@@ -199,7 +205,7 @@ describe('scan pass', () => {
       args: { command: 'git reset --hard' },
     });
     await capture.flush();
-    files.set('/repo/g.ts', 'new');
+    files.set(at('g.ts'), 'new');
     capture.onFrame({
       type: 'tool_execution_end',
       toolCallId: 'c1',
@@ -208,7 +214,7 @@ describe('scan pass', () => {
     });
     await capture.flush();
 
-    const diff = await readSessionChangeDiff('cap-scan', '/repo/g.ts', 0, WINDOW_END);
+    const diff = await readSessionChangeDiff('cap-scan', at('g.ts'), 0, WINDOW_END);
     expect(diff?.status).toBe('modified');
     expect(diff?.oldContent).toBe('old');
     expect(diff?.newContent).toBe('new');
@@ -217,14 +223,14 @@ describe('scan pass', () => {
 
 describe('subagents', () => {
   test('a child edit is attributed to the child', async () => {
-    const files = new Map([['/repo/f.ts', 'old']]);
+    const files = new Map([[at('f.ts'), 'old']]);
     const capture = makeCapture('cap-sub', files);
     capture.onFrame({
       type: 'subagent_event',
       payload: { type: 'tool_execution_start', toolCallId: 's1', toolName: 'edit', args: { path: 'f.ts' }, agent: 'Child' },
     });
     await capture.flush();
-    files.set('/repo/f.ts', 'new');
+    files.set(at('f.ts'), 'new');
     capture.onFrame({
       type: 'subagent_event',
       payload: { type: 'tool_execution_end', toolCallId: 's1', toolName: 'edit', agent: 'Child' },
