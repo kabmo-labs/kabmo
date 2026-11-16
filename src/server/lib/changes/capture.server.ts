@@ -39,7 +39,6 @@ import {
   displayPathFor,
   extractTrace,
   MUTATING_TOOL,
-  SCAN_COMMAND,
 } from '@/server/lib/changes/capture-fs.server';
 import type {
   CaptureDeps,
@@ -170,7 +169,7 @@ export class ChangeCapture {
       const command = typeof pending.args.command === 'string' ? pending.args.command : '';
       pending.command = command;
       pending.plan = classifyCommand(command, this.deps.cwd, this.deps.home);
-      if (pending.plan.opaque && SCAN_COMMAND.test(command)) {
+      if (pending.plan.scan) {
         pending.scan = await this.#takeScan(this.deps.cwd);
       }
     }

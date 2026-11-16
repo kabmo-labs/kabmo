@@ -41,8 +41,16 @@ export function tokenizeCommand(script: string): Token[] {
 
   for (let i = 0; i < script.length; i++) {
     const ch = script[i];
-    if (ch === ' ' || ch === '\t' || ch === '\n' || ch === '\r') {
+    if (ch === ' ' || ch === '\t' || ch === '\r') {
       flush();
+      continue;
+    }
+    // A newline is a command separator, not whitespace: `printf > a` and
+    // `python3 - <<PY` on separate lines are two commands, and merging them
+    // made the second one invisible to the classifier.
+    if (ch === '\n') {
+      flush();
+      tokens.push({ kind: 'op', value: ';' });
       continue;
     }
     if (ch === '#' && !hasWord) {

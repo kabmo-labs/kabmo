@@ -140,6 +140,26 @@ describe('classifyCommand', () => {
     expect(ops(result)).toEqual([`update:${at('f')}`]);
   });
 
+  test('a newline separates commands', () => {
+    const result = plan("printf 'x' > a.txt\npython3 - <<'PY'\nprint('hi')\nPY\ntouch b.txt");
+    expect(ops(result)).toEqual(['update:/repo/a.txt', 'update:/repo/b.txt']);
+    expect(result.scan).toBe(true);
+  });
+
+  test('a scan verb later in a chain still triggers the scan', () => {
+    const result = plan("printf 'x' > a.txt && python3 - <<'PY'\nopen('b.txt','w').write('y')\nPY");
+    expect(result.scan).toBe(true);
+    expect(result.opaque).toBe(true);
+  });
+
+  test('a test runner does not trigger the scan', () => {
+    expect(plan('bun test').scan).toBe(false);
+  });
+
+  test('git reset triggers the scan', () => {
+    expect(plan('git reset --hard').scan).toBe(true);
+  });
+
   test('a chain is the union of its commands', () => {
     const result = plan('rm a && echo hi > b');
     expect(ops(result)).toEqual([`delete:${at('a')}`, `update:${at('b')}`]);

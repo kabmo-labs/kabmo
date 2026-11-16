@@ -94,22 +94,11 @@ export async function takeGitScan(cwd: string): Promise<GitScan | null> {
  * skipped rather than journaled as a text diff.
  */
 export async function takeDirScan(cwd: string): Promise<GitScan | null> {
-  let entries;
-  try {
-    entries = await readdir(cwd, { withFileTypes: true });
-  } catch {
-    return null;
-  }
+  const files: string[] = [];
+  let truncated = await walkFiles(cwd, files, SCAN_BUDGET_FILES);
   const dirty = new Map<string, string | null>();
   let bytes = 0;
-  let truncated = false;
-  for (const entry of entries) {
-    if (!entry.isFile()) continue;
-    if (dirty.size >= SCAN_BUDGET_FILES) {
-      truncated = true;
-      break;
-    }
-    const absolute = path.join(cwd, entry.name);
+  for (const absolute of files) {
     const info = await stat(absolute).catch(() => null);
     if (!info) continue;
     if (bytes + info.size > DIR_SCAN_MAX_BYTES) {
@@ -122,6 +111,22 @@ export async function takeDirScan(cwd: string): Promise<GitScan | null> {
     dirty.set(absolute, text);
   }
   return { root: cwd, dirty, truncated };
+}
+
+/** Recursive file walk, bounded; `node_modules` and `.git` are skipped. */
+async function walkFiles(dir: string, out: string[], budget: number): Promise<boolean> {
+  const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
+  for (const entry of entries) {
+    if (out.length >= budget) return true;
+    if (entry.name === 'node_modules' || entry.name === '.git') continue;
+    const absolute = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (await walkFiles(absolute, out, budget)) return true;
+    } else if (entry.isFile()) {
+      out.push(absolute);
+    }
+  }
+  return false;
 }
 
 /** Git first (exact for tracked files), then the directory scan. */

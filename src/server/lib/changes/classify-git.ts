@@ -41,10 +41,11 @@ export function classifyGit(
   mutations: CommandMutation[],
   opaque: boolean,
   readOnly: boolean,
+  scan: boolean,
 ): CommandPlan {
   const sub = args[0];
-  if (!sub) return { mutations, opaque, readOnly };
-  if (GIT_READ_ONLY[sub] === true) return { mutations, opaque, readOnly };
+  if (!sub) return { mutations, opaque, readOnly, scan };
+  if (GIT_READ_ONLY[sub] === true) return { mutations, opaque, readOnly, scan };
 
   const add = (op: MutationOp, raw: string, from?: string): void => {
     if (isSpecialFile(raw)) return;
@@ -59,30 +60,30 @@ export function classifyGit(
 
   if (sub === 'mv') {
     const files = nonFlagArgs(args.slice(1));
-    if (files.length < 2) return { mutations, opaque: true, readOnly: false };
+    if (files.length < 2) return { mutations, opaque: true, readOnly: false, scan: true };
     const from = resolvePath(cwd, home, files[0]);
     const to = resolvePath(cwd, home, files[files.length - 1]);
-    if (!from || !to) return { mutations, opaque: true, readOnly: false };
+    if (!from || !to) return { mutations, opaque: true, readOnly: false, scan: true };
     mutations.push({ op: 'rename', path: to, from });
-    return { mutations, opaque, readOnly: false };
+    return { mutations, opaque, readOnly: false, scan };
   }
   if (sub === 'rm') {
     for (const file of nonFlagArgs(args.slice(1))) add('delete', file);
-    return { mutations, opaque, readOnly };
+    return { mutations, opaque, readOnly, scan };
   }
   if (sub === 'checkout' || sub === 'restore') {
     const separator = args.indexOf('--');
     if (separator !== -1) {
       for (const file of args.slice(separator + 1)) add('update', file);
-      return { mutations, opaque, readOnly };
+      return { mutations, opaque, readOnly, scan };
     }
     if (sub === 'restore') {
       for (const file of nonFlagArgs(args.slice(1))) add('update', file);
-      return { mutations, opaque, readOnly };
+      return { mutations, opaque, readOnly, scan };
     }
-    return { mutations, opaque: true, readOnly: false };
+    return { mutations, opaque: true, readOnly: false, scan: true };
   }
-  if (GIT_OPAQUE[sub] === true) return { mutations, opaque: true, readOnly: false };
+  if (GIT_OPAQUE[sub] === true) return { mutations, opaque: true, readOnly: false, scan: true };
 
-  return { mutations, opaque: true, readOnly: false };
+  return { mutations, opaque: true, readOnly: false, scan: true };
 }

@@ -61,6 +61,8 @@ export interface CommandPlan {
   opaque: boolean;
   /** Every command is a known read-only verb and there is no output redirect. */
   readOnly: boolean;
+  /** An opaque command whose effect a filesystem scan can reconcile. */
+  scan: boolean;
 }
 
 /** Verbs that never write a file. */
@@ -95,6 +97,21 @@ const OPAQUE: Record<string, true> = {
   watch: true,
 };
 
+/** Opaque verbs whose effect a filesystem scan can reconcile. */
+const SCAN_VERBS: Record<string, true> = {
+  make: true, cargo: true, go: true, sh: true, bash: true, zsh: true,
+  python: true, python3: true, node: true, deno: true, xargs: true,
+  sudo: true, eval: true, source: true, '.': true,
+};
+
+/** Package managers scan only for the subcommands that write the tree. */
+const SCAN_PACKAGE_VERBS: Record<string, true> = {
+  npm: true, pnpm: true, yarn: true, bun: true,
+};
+const SCAN_PACKAGE_SUBCOMMANDS: Record<string, true> = {
+  install: true, i: true, add: true, remove: true, uninstall: true,
+};
+
 /** Classify one already-parsed `argv` (the shell trace's `simple` node). */
 export function classifyArgv(argv: readonly string[], cwd: string, home: string): CommandPlan {
   return classifySimple({ words: [...argv], redirects: [] }, cwd, home);
@@ -105,6 +122,7 @@ export function classifyCommand(script: string, cwd: string, home: string): Comm
   const mutations: CommandMutation[] = [];
   let opaque = false;
   let readOnly = true;
+  let scan = false;
   let currentCwd = cwd;
   for (const command of splitCommands(tokenizeCommand(stripHeredocs(script)))) {
     const verb = command.words[0] ? path.basename(command.words[0]) : '';
@@ -121,14 +139,16 @@ export function classifyCommand(script: string, cwd: string, home: string): Comm
     mutations.push(...result.mutations);
     if (result.opaque) opaque = true;
     if (!result.readOnly) readOnly = false;
+    if (result.scan) scan = true;
   }
-  return { mutations: dedupe(mutations), opaque, readOnly };
+  return { mutations: dedupe(mutations), opaque, readOnly, scan };
 }
 
 function classifySimple(command: SimpleCommand, cwd: string, home: string): CommandPlan {
   const mutations: CommandMutation[] = [];
   let opaque = false;
   let readOnly = true;
+  let scan = false;
 
   const add = (op: MutationOp, raw: string, from?: string): void => {
     // `/dev/null` and friends are redirect sinks, not working-tree mutations.
@@ -147,35 +167,37 @@ function classifySimple(command: SimpleCommand, cwd: string, home: string): Comm
   }
 
   const argv = command.words;
-  if (argv.length === 0) return { mutations, opaque, readOnly };
+  if (argv.length === 0) return { mutations, opaque, readOnly, scan };
   const verb = path.basename(argv[0]);
   const args = argv.slice(1);
 
-  if (READ_ONLY[verb] === true) return { mutations, opaque, readOnly };
+  if (READ_ONLY[verb] === true) return { mutations, opaque, readOnly, scan };
+  if (SCAN_VERBS[verb] === true) scan = true;
+  if (SCAN_PACKAGE_VERBS[verb] === true && SCAN_PACKAGE_SUBCOMMANDS[args[0] ?? ''] === true) scan = true;
 
   if (verb === 'sed' || verb === 'gsed' || verb === 'perl') {
     const inPlace = args.some((arg) => arg === '-i' || arg.startsWith('-i') || arg === '--in-place' || arg.startsWith('--in-place='));
-    if (!inPlace) return { mutations, opaque, readOnly };
+    if (!inPlace) return { mutations, opaque, readOnly, scan };
     for (const file of scriptFiles(args)) add('update', file);
-    return { mutations, opaque, readOnly };
+    return { mutations, opaque, readOnly, scan };
   }
   if (verb === 'awk' || verb === 'gawk') {
     const index = args.findIndex((arg) => arg === '-i' || arg === 'inplace');
-    if (index === -1) return { mutations, opaque, readOnly };
+    if (index === -1) return { mutations, opaque, readOnly, scan };
     // `-i inplace` is two tokens; the program follows, then the files.
     const programAt = args[index] === '-i' && args[index + 1] === 'inplace' ? index + 2 : index + 1;
     for (const file of args.slice(programAt + 1).filter((arg) => !arg.startsWith('-'))) add('update', file);
-    return { mutations, opaque, readOnly };
+    return { mutations, opaque, readOnly, scan };
   }
   if (verb === 'rm' || verb === 'rmdir' || verb === 'unlink') {
     for (const file of nonFlagArgs(args)) add('delete', file);
-    return { mutations, opaque, readOnly };
+    return { mutations, opaque, readOnly, scan };
   }
   if (verb === 'mv') {
     const files = nonFlagArgs(args);
     if (files.length < 2) {
       opaque = true;
-      return { mutations, opaque, readOnly };
+      return { mutations, opaque, readOnly, scan };
     }
     const dest = files[files.length - 1];
     const sources = files.slice(0, -1);
@@ -190,13 +212,13 @@ function classifySimple(command: SimpleCommand, cwd: string, home: string): Comm
       mutations.push({ op: 'rename', path: to, from });
       readOnly = false;
     }
-    return { mutations, opaque, readOnly };
+    return { mutations, opaque, readOnly, scan };
   }
   if (verb === 'cp') {
     const files = nonFlagArgs(args);
     if (files.length < 2) {
       opaque = true;
-      return { mutations, opaque, readOnly };
+      return { mutations, opaque, readOnly, scan };
     }
     const dest = files[files.length - 1];
     const sources = files.slice(0, -1);
@@ -210,63 +232,64 @@ function classifySimple(command: SimpleCommand, cwd: string, home: string): Comm
       mutations.push({ op: 'update', path: to });
       readOnly = false;
     }
-    return { mutations, opaque, readOnly };
+    return { mutations, opaque, readOnly, scan };
   }
   if (verb === 'tee' || verb === 'touch') {
     for (const file of nonFlagArgs(args)) add('update', file);
-    return { mutations, opaque, readOnly };
+    return { mutations, opaque, readOnly, scan };
   }
   if (verb === 'truncate') {
     for (const file of truncateFiles(args)) add('update', file);
-    return { mutations, opaque, readOnly };
+    return { mutations, opaque, readOnly, scan };
   }
   if (verb === 'install' || verb === 'ln') {
     const files = nonFlagArgs(args);
     const file = files[files.length - 1];
     if (file) add(verb === 'ln' ? 'create' : 'update', file);
     else opaque = true;
-    return { mutations, opaque, readOnly };
+    return { mutations, opaque, readOnly, scan };
   }
   if (verb === 'dd') {
     for (const arg of args) {
       if (arg.startsWith('of=')) add('update', arg.slice(3));
     }
-    return { mutations, opaque, readOnly };
+    return { mutations, opaque, readOnly, scan };
   }
   if (verb === 'sort') {
     const out = flagValue(args, '-o') ?? flagValue(args, '--output');
     if (out) add('update', out);
-    return { mutations, opaque, readOnly };
+    return { mutations, opaque, readOnly, scan };
   }
   if (verb === 'uniq') {
     const files = nonFlagArgs(args);
     if (files.length >= 2) add('update', files[1]);
-    return { mutations, opaque, readOnly };
+    return { mutations, opaque, readOnly, scan };
   }
   if (verb === 'curl' || verb === 'wget') {
     const out = flagValue(args, '-o') ?? flagValue(args, '--output') ?? flagValue(args, '-O');
     if (out) add('update', out);
-    return { mutations, opaque, readOnly };
+    return { mutations, opaque, readOnly, scan };
   }
   if (verb === 'find') {
     const mutating = args.some((arg) => arg === '-delete' || arg === '-exec' || arg === '-execdir' || arg === '-ok' || arg === '-okdir');
     if (mutating) {
       opaque = true;
       readOnly = false;
+      scan = true;
     }
-    return { mutations, opaque, readOnly };
+    return { mutations, opaque, readOnly, scan };
   }
   if (verb === 'git') {
-    return classifyGit(args, cwd, home, mutations, opaque, readOnly);
+    return classifyGit(args, cwd, home, mutations, opaque, readOnly, scan);
   }
   if (OPAQUE[verb] === true) {
     opaque = true;
     readOnly = false;
-    return { mutations, opaque, readOnly };
+    return { mutations, opaque, readOnly, scan };
   }
 
   // An unknown verb is not assumed harmless.
   opaque = true;
   readOnly = false;
-  return { mutations, opaque, readOnly };
+  return { mutations, opaque, readOnly, scan };
 }

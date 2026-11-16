@@ -22,14 +22,6 @@ import type { ShellTrace } from '@/server/lib/changes/capture-types';
 /** A tool whose name promises a write; only these earn an `unknown-tool` note. */
 export const MUTATING_TOOL = /(edit|write|replace|patch|create|delete|remove|move|rename|apply|insert|append)/i;
 
-/**
- * An opaque command worth a filesystem snapshot. A test runner is opaque but
- * usually does not rewrite the tree, and scanning on every `bun test` would
- * cost two git processes per run; a reset, an install or a script is the case
- * the scan exists for.
- */
-export const SCAN_COMMAND = /^(?:git\s+(?:reset|clean|checkout|restore|stash|apply|rebase|merge|pull|cherry-pick|revert)|(?:npm|pnpm|yarn|bun)\s+(?:install|i|add|remove|uninstall)|make|cargo\s+(?:build|run)|go\s+(?:build|run)|(?:sh|bash|zsh|python3?|node)\s)/;
-
 export async function defaultReadFile(absolute: string): Promise<string | null> {
   try {
     return await Bun.file(absolute).text();
