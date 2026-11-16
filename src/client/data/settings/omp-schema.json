@@ -1,5 +1,5 @@
 {
-  "source": "@oh-my-pi/pi-coding-agent 10 tabs / 627 settings",
+  "source": "@oh-my-pi/pi-coding-agent 10 tabs / 629 settings",
   "tabs": [
     {
       "id": "appearance",
@@ -97,7 +97,9 @@
         "Discovery & MCP",
         "Developer",
         "Extensions",
-        "IDA Pro"
+        "Disassembler",
+        "IDA Pro",
+        "Ghidra"
       ]
     },
     {
@@ -7585,7 +7587,8 @@
       "values": [
         "keep",
         "ask",
-        "remove"
+        "remove",
+        "force"
       ],
       "ui": {
         "tab": "tasks",
@@ -7607,6 +7610,11 @@
             "value": "remove",
             "label": "Remove",
             "description": "Remove clean worktrees; ask when they have uncommitted changes or new commits. Gitignored files (e.g. `.env`) are deleted too"
+          },
+          {
+            "value": "force",
+            "label": "Force Remove",
+            "description": "Remove every worktree without asking, even with uncommitted changes. Uncommitted work, gitignored files (e.g. `.env`), and commits only on a detached HEAD are lost; new commits on the branch are kept"
           }
         ]
       }
@@ -8568,44 +8576,52 @@
         "description": "Directory to save screenshots. If unset, screenshots go to a temp file. Supports ~. Examples: ~/Downloads, ~/Desktop, /sdcard/Download (Android)"
       }
     },
-    "ida.enabled": {
-      "type": "boolean",
-      "default": true,
+    "disassembler.backend": {
+      "type": "enum",
+      "default": "auto",
+      "values": [
+        "auto",
+        "ghidra",
+        "ida",
+        "none"
+      ],
       "ui": {
         "tab": "tools",
         "group": "Available Tools",
-        "label": "IDA Pro",
-        "description": "Open executables read with `read` in IDA Pro (idalib) and enable the `ida` tool; inert when no IDA install is found"
+        "label": "Disassembler",
+        "description": "Backend for analysis selectors in read and eval's dsm namespace; bare executable reads show metadata only. Auto uses IDA Pro when installed, else Ghidra (downloaded on first analysis)",
+        "options": [
+          {
+            "value": "auto",
+            "label": "Auto",
+            "description": "IDA Pro when an install with idalib is found, otherwise Ghidra"
+          },
+          {
+            "value": "ghidra",
+            "label": "Ghidra",
+            "description": "Ghidra via PyGhidra; provisions Ghidra 12.2, a JDK 25 and PyGhidra on first analysis when not installed"
+          },
+          {
+            "value": "ida",
+            "label": "IDA Pro",
+            "description": "IDA Pro via idalib; analysis disabled when no install is found"
+          },
+          {
+            "value": "none",
+            "label": "None",
+            "description": "Executable metadata only; analysis disabled"
+          }
+        ]
       }
     },
-    "ida.python": {
-      "type": "string",
-      "default": "",
-      "ui": {
-        "tab": "tools",
-        "group": "IDA Pro",
-        "label": "IDA Python",
-        "description": "Python interpreter that can import ida_domain and idapro; empty auto-detects"
-      }
-    },
-    "ida.installDir": {
-      "type": "string",
-      "default": "",
-      "ui": {
-        "tab": "tools",
-        "group": "IDA Pro",
-        "label": "IDA Install Dir",
-        "description": "Directory containing libidalib, exported as IDADIR; empty auto-detects ($IDADIR, ida-config.json, standard install paths)"
-      }
-    },
-    "ida.maxOpen": {
+    "disassembler.maxOpen": {
       "type": "number",
       "default": 4,
       "ui": {
         "tab": "tools",
-        "group": "IDA Pro",
-        "label": "IDA Max Open Databases",
-        "description": "Most IDA databases (omp.ida.* daemons in omp ps) open at once per project; opening another saves and closes the least recently used idle one",
+        "group": "Disassembler",
+        "label": "Max Open Databases",
+        "description": "Most databases (omp.ida.* / omp.ghidra.* daemons in omp ps) open at once per project; opening another evicts an unreferenced idle one. Close retained dsm handles when done",
         "options": [
           {
             "value": "2",
@@ -8626,14 +8642,14 @@
         ]
       }
     },
-    "ida.idleCloseSec": {
+    "disassembler.idleCloseSec": {
       "type": "number",
       "default": 900,
       "ui": {
         "tab": "tools",
-        "group": "IDA Pro",
-        "label": "IDA Idle Close Timeout",
-        "description": "Save and close IDA databases idle longer than this many seconds (0 = never); the exec namespace resets on reopen",
+        "group": "Disassembler",
+        "label": "Idle Close Timeout",
+        "description": "Save and close unreferenced databases idle longer than this many seconds (0 = never); retained dsm handles stay open. The exec namespace resets on reopen",
         "options": [
           {
             "value": "0",
@@ -8656,6 +8672,46 @@
             "label": "1 hour"
           }
         ]
+      }
+    },
+    "ida.python": {
+      "type": "string",
+      "default": "",
+      "ui": {
+        "tab": "tools",
+        "group": "IDA Pro",
+        "label": "IDA Python",
+        "description": "Python interpreter that can import ida_domain and idapro; empty auto-detects"
+      }
+    },
+    "ida.installDir": {
+      "type": "string",
+      "default": "",
+      "ui": {
+        "tab": "tools",
+        "group": "IDA Pro",
+        "label": "IDA Install Dir",
+        "description": "Directory containing libidalib, exported as IDADIR; empty auto-detects ($IDADIR, ida-config.json, standard install paths)"
+      }
+    },
+    "ghidra.installDir": {
+      "type": "string",
+      "default": "",
+      "ui": {
+        "tab": "tools",
+        "group": "Ghidra",
+        "label": "Ghidra Install Dir",
+        "description": "Ghidra 12+ install directory (contains Ghidra/application.properties); empty uses $GHIDRA_INSTALL_DIR, Homebrew, else a managed download under ~/.omp/ghidra"
+      }
+    },
+    "ghidra.python": {
+      "type": "string",
+      "default": "",
+      "ui": {
+        "tab": "tools",
+        "group": "Ghidra",
+        "label": "Ghidra Python",
+        "description": "Python interpreter that can import pyghidra; empty uses a managed venv built from the install's bundled wheels"
       }
     },
     "mcp.enableProjectConfig": {

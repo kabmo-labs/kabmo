@@ -5,7 +5,7 @@ the installed binary was **18.8.3** (2026-10-07); the pin now matches (F9). This
 of everything between the two versions that Kabmo either gets wrong or
 does not use, and the phased plan to close it.
 
-Status: **done** — every phase closed; P4b–d and P5 were measured and deliberately not adopted, and the pin has since moved on to 18.21.0 (2026-11-17).
+Status: **done** — every phase closed; P4b–d and P5 were measured and deliberately not adopted, and the pin has since moved on to 18.22.0 (2026-11-17).
 
 **Re-audited at 18.9.2 (2026-10-12)** — the pin moved on again and the schema had
 drifted 9 rows; see [the re-audit section](#omp-1892-re-audit-2026-10-12) at the
@@ -2237,3 +2237,66 @@ is a surface Kabmo reads.
 | R90 | run lifecycle rework | none needed; wire keeps per-loop `agent_end` | 74 commands / 300 definitions; `isTerminal:false` fold unchanged |
 | R91 | bash fork + URL writes | none needed; notices render as result text | `details.fork` additive; `write` tool path unchanged |
 | R92 | host-side changes | none needed | `MODEL_ROLES`, `BUILTIN_TOOL_NAMES`, slash registry identical |
+
+# omp 18.22.0 adoption (2026-11-17)
+
+The pin moved **18.21.0 → 18.22.0**. The RPC wire is byte-identical; the
+reachable change is the settings panel's disassembler rows (and the retired
+`ida` tool toggle). Binary analysis moved behind `read` selectors and eval's
+`dsm` namespace, which Kabmo renders as text.
+
+## Method
+
+- `npm pack @oh-my-pi/pi-coding-agent@18.21.0` and `@18.22.0` into temp trees,
+  then `diff -rq` over `src/` — 44 entries, 14 added/removed files.
+- `rpc-wire.schema.json` compared whole: **74 commands, 300 definitions**, 0
+  added, 0 removed, 0 changed. `MODEL_ROLES`, the slash registry and
+  `modes/settings.ts` are identical.
+- The schema generator run against an installed 18.22.0 produces **10 tabs /
+  629 settings / 468 entries** (was 627 / 466).
+- `BUILTIN_TOOL_NAMES` loses `ida` (30 → 29 tools); Kabmo never carried it.
+
+## Findings
+
+### R93 — the `ida` tool became a `disassembler` backend (schema only)
+
+`ida.enabled` is removed with the tool. Three rows replace it —
+`disassembler.backend` (auto/ghidra/ida/none), `disassembler.maxOpen` and
+`disassembler.idleCloseSec` (tools / Disassembler) — and Ghidra adds
+`ghidra.installDir` / `ghidra.python` (tools / Ghidra). `ida.python` and
+`ida.installDir` stay because the IDA backend still reads them. The panel is
+the only place a user can pick the backend, so a regenerated schema without
+these rows removes every path to analysis.
+
+### R94 — `worktree.onExit` gains `force` (schema only)
+
+`force` removes every worktree without asking, uncommitted work and gitignored
+files included, keeping only commits on the branch. Kabmo offers the setting
+from the schema and does not act on it (it never creates omp worktrees).
+
+### R95 — reading an executable is metadata-only unless a view is requested
+
+A `read` of an ELF/PE/Mach-O (extensionless included) now answers on-disk
+metadata and a guidance line, and never starts a backend or provisions Ghidra;
+`:overview`, `:imports` and the other views are the explicit opt-in, and an IDA
+database requires `disassembler.backend=ida`. Kabmo's Read card renders the
+result text as-is, so the card shows the metadata and the selector guidance the
+model sees; `ReadToolDetails` is unchanged.
+
+### R96 — host-side changes (no action)
+
+The `dsm` eval namespace and `xd://eval/dsm` doc topic (advertised only when a
+backend resolves), the Ghidra/PyGhidra managed venv, the plan review's
+save-stays-open change (TUI overlay; Kabmo's review is its own `xd://propose`
+flow), the session-view copy elision, ctime-based selective-commit windows with
+deleted-file call matching, the LSP `PathMap`, the mlx venv refactor and the
+`__omp_worker_disasm_host` selector rename.
+
+## 18.22.0 outcomes
+
+| # | Finding | Action | Verification |
+|---|---|---|---|
+| R93 | disassembler rows replace `ida.enabled` | schema regenerated; 7 rows pinned | 629 settings / 468 entries; `omp:schema:check` passes |
+| R94 | `worktree.onExit` gains `force` | schema regenerated; no code acts on it | enum is `keep/ask/remove/force` |
+| R95 | executable reads are metadata-only | none needed; card renders text | `ReadToolDetails` unchanged; wire byte-identical |
+| R96 | host-side changes | none needed | 74 commands / 300 definitions; roles and slash registry identical |

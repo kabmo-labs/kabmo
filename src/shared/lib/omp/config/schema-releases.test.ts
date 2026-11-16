@@ -161,4 +161,33 @@ describe('OMP_SCHEMA release rows', () => {
     // schema offers it — the same rule as every no-UI setting.
     expect(OMP_SCHEMA.entries['task.agentPrewalkAuto']).toBeUndefined();
   });
+
+  test("18.22.0's disassembler rows replace the ida tool toggle", () => {
+    // omp 18.22.0 drops the `ida` TOOL: binary analysis moved behind `read`
+    // selectors and eval's `dsm` namespace. The rows that select the backend
+    // are therefore the only way to reach it from the console, and the tool's
+    // own `ida.enabled` switch must be gone (naming it writes a key omp no
+    // longer has).
+    const expected: Record<string, { type: SchemaEntry['type']; tab: string; group: string; default: unknown }> = {
+      'disassembler.backend': { type: 'enum', tab: 'tools', group: 'Available Tools', default: 'auto' },
+      'disassembler.maxOpen': { type: 'number', tab: 'tools', group: 'Disassembler', default: 4 },
+      'disassembler.idleCloseSec': { type: 'number', tab: 'tools', group: 'Disassembler', default: 900 },
+      'ghidra.installDir': { type: 'string', tab: 'tools', group: 'Ghidra', default: '' },
+      'ghidra.python': { type: 'string', tab: 'tools', group: 'Ghidra', default: '' },
+      'ida.python': { type: 'string', tab: 'tools', group: 'IDA Pro', default: '' },
+      'ida.installDir': { type: 'string', tab: 'tools', group: 'IDA Pro', default: '' },
+    };
+    for (const [key, want] of Object.entries(expected)) {
+      const entry = OMP_SCHEMA.entries[key];
+      expect({ key, entry: entry && { type: entry.type, tab: entry.ui.tab, group: entry.ui.group, default: entry.default } }).toEqual({
+        key,
+        entry: want,
+      });
+    }
+    expect(OMP_SCHEMA.entries['disassembler.backend']?.values).toEqual(['auto', 'ghidra', 'ida', 'none']);
+    expect(OMP_SCHEMA.entries['ida.enabled']).toBeUndefined();
+    // `worktree.onExit` gained `force`, which removes every worktree without
+    // asking; a stale ladder would hide the only uncoverable value.
+    expect(OMP_SCHEMA.entries['worktree.onExit']?.values).toEqual(['keep', 'ask', 'remove', 'force']);
+  });
 });

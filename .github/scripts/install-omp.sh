@@ -533,7 +533,36 @@ fi
 # and the TTS/Phonon, browser scratch-page, MCP reconnect, `/move` rescope,
 # pinned-Hub download and selective-commit index-retry work — host-side or
 # model-facing.
-OMP_VERSION="${OMP_VERSION:-18.21.0}"
+#
+# 18.22.0 (2026-11-17): the schema's `source` line moves to 629 settings and the
+# panel gains FIVE rows while losing THREE (net +2). The `ida` TOOL is gone from
+# `BUILTIN_TOOL_NAMES` (30 → 29 tools) and binary analysis moved behind `read`
+# selectors and eval's `dsm` namespace, so the `ida.enabled` row is deleted
+# while `ida.python`/`ida.installDir` stay. In its place:
+# `disassembler.backend` (auto/ghidra/ida/none), `disassembler.maxOpen` and
+# `disassembler.idleCloseSec` (tools / Disassembler), plus `ghidra.installDir`
+# and `ghidra.python` (tools / Ghidra). `worktree.onExit` gains `force`, which
+# removes every worktree without asking, uncommitted work included. The RPC wire
+# is byte-identical — 74 commands, 300 definitions, 0 added, 0 removed, 0
+# changed — and `MODEL_ROLES`, the slash registry and `modes/settings.ts` are
+# identical, so nothing Kabmo folds or guards moved.
+#
+# One upstream change reaches Kabmo's read surface, and needs no code: reading
+# an executable (ELF/PE/Mach-O, extensionless included) now answers on-disk
+# metadata only and never starts a backend or a download; the analysis views
+# (`:overview`, `:imports`, …) are an explicit opt-in, and IDA databases require
+# `disassembler.backend=ida`. Kabmo renders the result text as-is.
+#
+# Not adopted, deliberately: the `dsm` eval namespace and its `xd://eval/dsm`
+# doc topic (advertised only when a backend resolves, which needs IDA or a
+# Ghidra provisioning pass; Kabmo never scripts it), the Ghidra/PyGhidra
+# runtime and its managed venv, `read`'s universal-Mach-O metadata slices, the
+# plan review's save-stays-open change (TUI overlay; Kabmo's review is its own
+# `xd://propose` flow), the `worktree.onExit=force` execution path (Kabmo offers
+# the setting from the schema but does not act on it), and the session-view
+# copy elision, ctime-based selective-commit windows, deleted-file call
+# matching, LSP `PathMap`, mlx venv and CLI worker-selector renames — host-side.
+OMP_VERSION="${OMP_VERSION:-18.22.0}"
 PACKAGE="@oh-my-pi/pi-coding-agent"
 WANTED="omp/${OMP_VERSION}"
 
