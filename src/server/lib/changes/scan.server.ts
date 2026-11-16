@@ -18,11 +18,13 @@
  * there, answers `null` and the caller writes a note instead of a guess.
  */
 
+import { readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { childEnv } from '@/server/lib/fs/child-env';
 
 const SCAN_BUDGET_FILES = 200;
 const GIT_TIMEOUT_MS = 5_000;
+const DIR_SCAN_MAX_BYTES = 10 * 1024 * 1024;
 
 export interface GitScan {
   root: string;
@@ -79,6 +81,52 @@ export async function takeGitScan(cwd: string): Promise<GitScan | null> {
     dirty.set(absolute, await readText(absolute));
   }
   return { root, dirty, truncated: entries.length > SCAN_BUDGET_FILES };
+}
+
+/**
+ * A non-git fallback: the cwd's own files and their content, bounded.
+ *
+ * A `python3 script.py` in a temp directory writes files no `argv` names, and
+ * there is no git index to ask. The directory scan is the only reconciliation
+ * available there; it is bounded to 200 files and 10 MB, and a binary file is
+ * skipped rather than journaled as a text diff.
+ */
+export async function takeDirScan(cwd: string): Promise<GitScan | null> {
+  let entries;
+  try {
+    entries = await readdir(cwd, { withFileTypes: true });
+  } catch {
+    return null;
+  }
+  const dirty = new Map<string, string | null>();
+  let bytes = 0;
+  let truncated = false;
+  for (const entry of entries) {
+    if (!entry.isFile()) continue;
+    if (dirty.size >= SCAN_BUDGET_FILES) {
+      truncated = true;
+      break;
+    }
+    const absolute = path.join(cwd, entry.name);
+    const info = await stat(absolute).catch(() => null);
+    if (!info) continue;
+    if (bytes + info.size > DIR_SCAN_MAX_BYTES) {
+      truncated = true;
+      continue;
+    }
+    const text = await readText(absolute);
+    if (text === null || text.includes('\0')) continue;
+    bytes += info.size;
+    dirty.set(absolute, text);
+  }
+  return { root: cwd, dirty, truncated };
+}
+
+/** Git first (exact for tracked files), then the directory scan. */
+export async function takeScan(cwd: string): Promise<GitScan | null> {
+  const git = await takeGitScan(cwd);
+  if (git) return git;
+  return takeDirScan(cwd);
 }
 
 /** The content at HEAD for a path that was clean; `null` when it did not exist. */

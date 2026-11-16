@@ -38,10 +38,10 @@ export async function defaultReadFile(absolute: string): Promise<string | null> 
   }
 }
 
-export async function defaultStatFile(absolute: string): Promise<{ mtimeMs: number; size: number } | null> {
+export async function defaultStatFile(absolute: string): Promise<{ mtimeMs: number; size: number; birthtimeMs: number } | null> {
   try {
     const info = await stat(absolute);
-    return { mtimeMs: info.mtimeMs, size: info.size };
+    return { mtimeMs: info.mtimeMs, size: info.size, birthtimeMs: info.birthtimeMs };
   } catch {
     return null;
   }

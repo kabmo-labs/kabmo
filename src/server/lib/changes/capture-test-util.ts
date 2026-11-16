@@ -35,7 +35,7 @@ export function makeCapture(
     cwd: REPO,
     home: HOME,
     readFile: async (absolute) => files.get(absolute) ?? null,
-    statFile: async (absolute) => (files.has(absolute) ? { mtimeMs: 1, size: files.get(absolute)?.length ?? 0 } : null),
+    statFile: async (absolute) => (files.has(absolute) ? { mtimeMs: 1, size: files.get(absolute)?.length ?? 0, birthtimeMs: 0 } : null),
     ...extra,
   });
 }

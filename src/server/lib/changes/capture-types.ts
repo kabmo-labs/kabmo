@@ -48,6 +48,8 @@ export interface ChangeExtra {
   command?: string;
   exit?: number;
   from?: string;
+  /** Why a side is `undefined`; the journal writes the matching note. */
+  unavailableReason?: 'too-large' | 'snapshot-race';
 }
 
 export interface CaptureDeps {
@@ -55,7 +57,7 @@ export interface CaptureDeps {
   cwd: string;
   home: string;
   readFile?: (absolute: string) => Promise<string | null>;
-  statFile?: (absolute: string) => Promise<{ mtimeMs: number; size: number } | null>;
+  statFile?: (absolute: string) => Promise<{ mtimeMs: number; size: number; birthtimeMs: number } | null>;
   /** The git snapshot seam; tests inject a fake, production uses `scan.server`. */
   takeScan?: (cwd: string) => Promise<GitScan | null>;
   readHead?: (root: string, absolute: string) => Promise<string | null>;

@@ -30,6 +30,7 @@ export interface BashCaptureHost {
   cwd: string;
   home: string;
   readFile(absolute: string): Promise<string | null | undefined>;
+  statFile(absolute: string): Promise<{ mtimeMs: number; size: number; birthtimeMs: number } | null>;
   takeScan(cwd: string): Promise<GitScan | null>;
   readHead(root: string, absolute: string): Promise<string | null>;
   writeChange(
@@ -65,12 +66,24 @@ export async function captureBashChanges(
   }
 
   const exit = typeof trace?.status === 'number' ? trace.status : undefined;
+  // Paths the trace already handled; the scan must not record them again.
+  const written = new Set<string>();
   for (const mutation of mutations.values()) {
+    written.add(mutation.path);
+    if (mutation.from) written.add(mutation.from);
     if (mutation.op === 'rename' && mutation.from) {
       const fromEntry = pending.before.get(mutation.from);
       const before = fromEntry ? fromEntry.text : null;
       const after = await host.readFile(mutation.path);
-      if (before === after) continue;
+      if (before === after) {
+        const info = await host.statFile(mutation.path);
+        if (info && info.mtimeMs >= pending.startedAt) {
+          const created = info.birthtimeMs >= pending.startedAt;
+          await host.writeChange(pending, mutation.from, created ? null : undefined, null, 'trace', { command: pending.command, exit, ...(created ? {} : { unavailableReason: 'snapshot-race' }) });
+          await host.writeChange(pending, mutation.path, null, after, 'trace', { command: pending.command, exit, from: mutation.from });
+        }
+        continue;
+      }
       // Two records, so the existing A/M/D list can render a rename.
       await host.writeChange(pending, mutation.from, before, null, 'trace', { command: pending.command, exit });
       await host.writeChange(pending, mutation.path, null, after, 'trace', { command: pending.command, exit, from: mutation.from });
@@ -79,21 +92,45 @@ export async function captureBashChanges(
     const pathEntry = pending.before.get(mutation.path);
     const before = pathEntry ? pathEntry.text : null;
     const after = await host.readFile(mutation.path);
+    if (before === after) {
+      // A fast command can finish before the start-frame snapshot reads the
+      // file. The mtime proves the command touched it; the birth time says
+      // whether it created the file (A) or rewrote an existing one (M).
+      const info = await host.statFile(mutation.path);
+      if (info && info.mtimeMs >= pending.startedAt) {
+        const created = info.birthtimeMs >= pending.startedAt;
+        await host.writeChange(
+          pending,
+          mutation.path,
+          created ? null : undefined,
+          after,
+          'trace',
+          created ? { command: pending.command, exit } : { command: pending.command, exit, unavailableReason: 'snapshot-race' },
+        );
+      }
+      continue;
+    }
     await host.writeChange(pending, mutation.path, before, after, 'trace', { command: pending.command, exit });
   }
 
-  if (pending.scan) await reconcileScan(pending, pending.scan, host);
+  if (pending.scan) await reconcileScan(pending, pending.scan, host, written);
   if (plan.opaque) await host.note(pending, 'opaque-command', pending.command);
 }
 
 /** Journal the delta an opaque command made, from the two git snapshots. */
-async function reconcileScan(pending: PendingCall, start: GitScan, host: BashCaptureHost): Promise<void> {
+async function reconcileScan(
+  pending: PendingCall,
+  start: GitScan,
+  host: BashCaptureHost,
+  skip: Set<string>,
+): Promise<void> {
   const after = await host.takeScan(host.cwd);
   if (!after) return;
   if (start.truncated || after.truncated) await host.note(pending, 'scan-budget', pending.command);
 
   const paths = new Set([...start.dirty.keys(), ...after.dirty.keys()]);
   for (const absolute of paths) {
+    if (skip.has(absolute)) continue;
     const before = start.dirty.has(absolute)
       ? start.dirty.get(absolute) ?? null
       : await host.readHead(start.root, absolute);

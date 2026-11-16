@@ -60,6 +60,8 @@ export interface ChangeInput {
   source: JournalChangeRecord['source'];
   command?: string;
   exit?: number;
+  /** Why a side is `undefined`; defaults to the blob cap. */
+  unavailableReason?: 'too-large' | 'snapshot-race';
 }
 
 export class ChangeJournal {
@@ -96,7 +98,7 @@ export class ChangeJournal {
           type: 'note',
           at: input.at,
           ...(input.toolCallId ? { toolCallId: input.toolCallId } : {}),
-          reason: 'too-large',
+          reason: input.unavailableReason ?? 'too-large',
           detail: input.path,
         });
       }

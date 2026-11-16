@@ -48,14 +48,15 @@ import type {
   PendingCall,
   ShellTrace,
 } from '@/server/lib/changes/capture-types';
-import { readHeadContent, takeGitScan, type GitScan } from '@/server/lib/changes/scan.server';
+import { readHeadContent, takeScan, type GitScan } from '@/server/lib/changes/scan.server';
+import { reconstructEdit, resolveRacedWrite } from '@/server/lib/changes/capture-write.server';
 import { MAX_BLOB_BYTES } from '@/server/lib/changes/blobs.server';
 
 export class ChangeCapture {
   readonly #pending = new Map<string, PendingCall>();
   readonly #tasks = new Set<Promise<void>>();
   readonly #readFile: (absolute: string) => Promise<string | null>;
-  readonly #statFile: (absolute: string) => Promise<{ mtimeMs: number; size: number } | null>;
+  readonly #statFile: (absolute: string) => Promise<{ mtimeMs: number; size: number; birthtimeMs: number } | null>;
   readonly #takeScan: (cwd: string) => Promise<GitScan | null>;
   readonly #readHead: (root: string, absolute: string) => Promise<string | null>;
   /** The open run; kept after a terminal end so a late subagent keeps its id. */
@@ -66,7 +67,7 @@ export class ChangeCapture {
   constructor(private readonly deps: CaptureDeps) {
     this.#readFile = deps.readFile ?? defaultReadFile;
     this.#statFile = deps.statFile ?? defaultStatFile;
-    this.#takeScan = deps.takeScan ?? takeGitScan;
+    this.#takeScan = deps.takeScan ?? takeScan;
     this.#readHead = deps.readHead ?? readHeadContent;
   }
 
@@ -235,9 +236,28 @@ export class ChangeCapture {
       const before = entry ? entry.text : null;
       const after = await this.#readCapped(absolute);
       if (before === after) {
-        const reconstructed = this.#reconstructEdit(pending, after);
-        if (reconstructed === null) continue;
-        await this.#writeChange(pending, absolute, reconstructed, after, 'tool');
+        const reconstructed = reconstructEdit(pending, after);
+        if (reconstructed !== null) {
+          await this.#writeChange(pending, absolute, reconstructed, after, 'tool');
+          continue;
+        }
+        // A `write` whose snapshot raced the tool: omp's own journal read the
+        // file before the write, so its `before` is exact. Without it, record
+        // the change with an unknown before rather than dropping the file.
+        if (pending.tool === 'write' && typeof pending.args.content === 'string' && after === pending.args.content) {
+          const raced = await resolveRacedWrite(pending, absolute, {
+            sessionId: this.deps.journal.sessionId,
+            statFile: this.#statFile,
+          });
+          await this.#writeChange(
+            pending,
+            absolute,
+            raced.before,
+            after,
+            'tool',
+            raced.reason ? { unavailableReason: raced.reason } : {},
+          );
+        }
         continue;
       }
       await this.#writeChange(pending, absolute, before, after, 'tool');
@@ -251,21 +271,12 @@ export class ChangeCapture {
     return this.#readFile(absolute);
   }
 
-  /** The before side of an `edit` whose write landed before the snapshot. */
-  #reconstructEdit(pending: PendingCall, after: string | null | undefined): string | null {
-    if (after === null || after === undefined) return null;
-    const oldString = pending.args.old_string;
-    const newString = pending.args.new_string;
-    if (typeof oldString !== 'string' || typeof newString !== 'string' || !newString) return null;
-    if (!after.includes(newString)) return null;
-    return after.replace(newString, oldString);
-  }
-
   async #endBash(pending: PendingCall, trace: ShellTrace | null): Promise<void> {
     const host: BashCaptureHost = {
       cwd: this.deps.cwd,
       home: this.deps.home,
       readFile: (absolute) => this.#readCapped(absolute),
+      statFile: this.#statFile,
       takeScan: this.#takeScan,
       readHead: this.#readHead,
       writeChange: (call, absolute, before, after, source, extra) =>
@@ -313,6 +324,7 @@ export class ChangeCapture {
       source,
       ...(extra.command ? { command: extra.command } : {}),
       ...(extra.exit !== undefined ? { exit: extra.exit } : {}),
+      ...(extra.unavailableReason ? { unavailableReason: extra.unavailableReason } : {}),
     });
   }
 

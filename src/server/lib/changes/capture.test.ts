@@ -24,18 +24,26 @@ import { makeCapture, records, REPO } from '@/server/lib/changes/capture-test-ut
 import { readSessionChangeDiff } from '@/server/lib/changes/reader.server';
 
 let dataDir = '';
+let agentDir = '';
 let original: string | undefined;
+let originalAgent: string | undefined;
 
 beforeAll(async () => {
   original = Bun.env.KABMO_DATA_DIR;
+  originalAgent = Bun.env.PI_CODING_AGENT_DIR;
   dataDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'kabmo-changes-capture-'));
+  agentDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'kabmo-changes-capture-agent-'));
   Bun.env.KABMO_DATA_DIR = dataDir;
+  Bun.env.PI_CODING_AGENT_DIR = agentDir;
 });
 
 afterAll(async () => {
   if (original === undefined) delete Bun.env.KABMO_DATA_DIR;
   else Bun.env.KABMO_DATA_DIR = original;
+  if (originalAgent === undefined) delete Bun.env.PI_CODING_AGENT_DIR;
+  else Bun.env.PI_CODING_AGENT_DIR = originalAgent;
   await fsp.rm(dataDir, { recursive: true, force: true });
+  await fsp.rm(agentDir, { recursive: true, force: true });
 });
 
 const WINDOW_END = Date.now() + 60_000;
@@ -218,6 +226,44 @@ describe('scan pass', () => {
     expect(diff?.status).toBe('modified');
     expect(diff?.oldContent).toBe('old');
     expect(diff?.newContent).toBe('new');
+  });
+});
+
+describe('directory scan', () => {
+  test('a python3 script in a non-git cwd is reconciled from the directory scan', async () => {
+    const files = new Map<string, string>();
+    const scans = [
+      { root: '/repo', dirty: new Map<string, string | null>(), truncated: false },
+      { root: '/repo', dirty: new Map([['/repo/file4.txt', 'python']]), truncated: false },
+    ];
+    const capture = makeCapture('cap-dir-scan', files, {
+      takeScan: async () => scans.shift() ?? null,
+      readHead: async () => null,
+    });
+    capture.onFrame({
+      type: 'tool_execution_start',
+      toolCallId: 'c1',
+      toolName: 'bash',
+      args: { command: "python3 - <<'PY'\nopen('file4.txt','w').write('python')\nPY" },
+    });
+    await capture.flush();
+    files.set('/repo/file4.txt', 'python');
+    capture.onFrame({
+      type: 'tool_execution_end',
+      toolCallId: 'c1',
+      toolName: 'bash',
+      result: { details: { trace: { status: 0, units: [{ nodes: [{ k: 'simple', argv: ['python3', '-'], st: 0 }] }] } } },
+    });
+    await capture.flush();
+
+    const lines = await records('cap-dir-scan');
+    const change = lines.find((line) => line.type === 'change');
+    expect(change?.type).toBe('change');
+    if (change?.type !== 'change') throw new Error('expected a change');
+    expect(change.before).toBeNull();
+    expect(typeof change.after).toBe('string');
+    expect(change.source).toBe('scan');
+    expect(lines.some((line) => line.type === 'note' && line.reason === 'opaque-command')).toBe(true);
   });
 });
 
