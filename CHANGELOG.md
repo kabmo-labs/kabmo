@@ -4,6 +4,17 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.36.0](https://github.com/kabmo-labs/kabmo/compare/v0.35.0...v0.36.0) — 2026-11-16
+
+### Added
+
+* **connect:** run the cloudflared tunnel from a config copy pointed at this port ([9284b3b](https://github.com/kabmo-labs/kabmo/commit/9284b3bde50f2bdd6327db0c7f00d89a3f8b3b28)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **android:** kept the background watcher alive and stopped it posting twice ([edd6260](https://github.com/kabmo-labs/kabmo/commit/edd62609ac709507c6de4afbd2e336cbf80ebe0e)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **connect:** made the pairing QR download a real PNG on every shell ([547c90f](https://github.com/kabmo-labs/kabmo/commit/547c90f6389dab7cfc07e0809b36f42dda838f46)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.35.0](https://github.com/kabmo-labs/kabmo/compare/v0.34.0...v0.35.0) — 2026-11-15
 
 ### Added
