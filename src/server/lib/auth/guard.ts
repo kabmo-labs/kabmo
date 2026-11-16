@@ -29,7 +29,8 @@
 
 import { hashPassword, deriveCredentialKey, readSessionSecret, writeSessionSecret, type ActiveAuthConfig } from '@/server/lib/auth/config';
 import { readSessionCookie, verifySessionToken } from '@/server/lib/auth/token';
-import { agentTokenScopeForPath, bearerToken, verifyAgentToken } from '@/server/lib/sessions/agent-token.server';
+import { agentGate } from '@/server/lib/auth/agent-gate.server';
+import { bearerToken } from '@/server/lib/sessions/agent-token.server';
 import { verifyDeviceToken, readDeviceCookie } from '@/server/lib/connect/devices.server';
 import { rememberClientAddress } from '@/server/lib/auth/client-address';
 import type { CredentialHandover } from '@/shared/lib/auth/handover';
@@ -275,7 +276,13 @@ function rejectionResponse(pathname: string, wantsHtml: boolean): Response {
 }
 
 /**
- * The gate itself. Returns a `Response` to reject, or `undefined` to continue.
+ * The gate itself. Resolves to a `Response` to reject, or `undefined` to
+ * continue.
+ *
+ * Async because the agent-token rule is a tree question, and answering it needs
+ * one indexed read of `session_relations`. The gate still never touches the
+ * request body: the measured Elysia trap is about passing the context to a
+ * helper, not about awaiting.
  *
  * `clientAddress` comes from the socket (Elysia's `server.requestIP`) and is
  * recorded for the login route, which throttles by it. It is optional so a test
@@ -285,7 +292,7 @@ function rejectionResponse(pathname: string, wantsHtml: boolean): Response {
  * the routes that matter are same-origin, so rejecting it would only break
  * browsers that probe.
  */
-export function authGate(request: Request, clientAddress?: string): Response | undefined {
+export async function authGate(request: Request, clientAddress?: string): Promise<Response | undefined> {
   if (request.method === 'OPTIONS') return undefined;
 
   rememberClientAddress(request, clientAddress);
@@ -314,14 +321,11 @@ export function authGate(request: Request, clientAddress?: string): Response | u
     return undefined;
   }
 
-  // An agent subprocess carries a bearer token instead of a cookie. It is
-  // scoped by path to the session it names; spawn is the one path a child may
-  // call under its own token (to create its own children).
-  const scope = agentTokenScopeForPath(pathname);
-  if (scope) {
-    const agentSession = verifyAgentToken(bearerToken(request));
-    if (agentSession && (scope === 'any' || scope === agentSession)) return undefined;
-  }
+  // An agent subprocess carries a bearer token instead of a cookie. The rule is
+  // a session TREE, not a path id — see `agent-gate.server.ts` for why.
+  const agent = await agentGate(request, pathname);
+  if (agent.kind === 'pass') return undefined;
+  if (agent.kind === 'deny') return agent.response;
 
   // A paired device carries its own token, and it is good for the whole console
   // rather than one path: the device is a browser, not a subprocess. Revoking

@@ -104,15 +104,51 @@ export function agentEnvironment(token: string): Record<string, string> {
  * What a token may touch, by path.
  *
  * `'any'` is only spawn: a child must be allowed to create its own children.
- * Every other path carries the session id it names, and the token must be that
- * session's. A token is not an admin credential.
+ * Every other path names a session, and the token must belong to that session's
+ * TREE — itself, an ancestor, or a descendant. The tree rule is what makes the
+ * shipped orchestration contract work: a worker tells its coordinator, and a
+ * coordinator reads its worker. A token is not an admin credential, and a
+ * sibling is not in the tree.
+ *
+ * The scope is a KIND, not an id, because the gate has to know which question
+ * to ask. Returning the id alone made the gate compare it to the token's
+ * session, which refused both directions of the parent/child edge.
  */
-export function agentTokenScopeForPath(pathname: string): 'any' | string | null {
-  if (pathname === '/api/sessions/spawn') return 'any';
+export type AgentPathScope =
+  | { kind: 'any' }
+  | { kind: 'tree'; target: string };
+
+export function agentTokenScopeForPath(pathname: string): AgentPathScope | null {
+  if (pathname === '/api/sessions/spawn') return { kind: 'any' };
   const direct = /^\/api\/(?:agent|chat)\/([^/]+)$/.exec(pathname);
-  if (direct) return direct[1] ?? null;
+  if (direct?.[1]) return { kind: 'tree', target: direct[1] };
   const sub = /^\/api\/sessions\/([^/]+)\/(?:fork|relations|answer)$/.exec(pathname);
-  return sub?.[1] ?? null;
+  return sub?.[1] ? { kind: 'tree', target: sub[1] } : null;
+}
+
+/**
+ * The session a bearer token identifies, reading the table when the cache does
+ * not know it.
+ *
+ * The cache is per process and is filled at boot plus on every local spawn. A
+ * PEER instance that owns the session never saw that spawn, so a cache-only
+ * check answered 401 to a relayed agent request — the same class of failure the
+ * tree rule exists to remove. One indexed read on a miss, then the cache is
+ * warm for the rest of the process.
+ */
+export async function lookupAgentToken(token: string | null): Promise<string | null> {
+  const cached = verifyAgentToken(token);
+  if (cached) return cached;
+  if (!token) return null;
+  const hash = hashAgentToken(token);
+  const db = await getDb();
+  const row = await db.get<{ session_id: string }>(
+    'SELECT session_id FROM session_agent_tokens WHERE token_hash = ? AND revoked_at IS NULL',
+    [hash],
+  );
+  if (!row) return null;
+  cache().set(hash, { sessionId: row.session_id });
+  return row.session_id;
 }
 
 /** Drop the in-memory entry for a session whose rows are being purged. */

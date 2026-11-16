@@ -134,10 +134,10 @@ describe('authentication is per run, never inherited from disk', () => {
   // REAL file into a throwaway data directory and asserts that the gate ignores
   // it — a stubbed file reader would prove nothing about that.
 
-  test('no password means the gate lets everything through', () => {
+  test('no password means the gate lets everything through', async () => {
     expect(isAuthEnabled()).toBe(false);
     const request = new Request('http://localhost/api/settings');
-    expect(authGate(request)).toBeUndefined();
+    expect(await authGate(request)).toBeUndefined();
   });
 
   test('a stored secret alone does NOT enable authentication', async () => {
@@ -153,7 +153,7 @@ describe('authentication is per run, never inherited from disk', () => {
     }));
 
     expect(isAuthEnabled()).toBe(false);
-    expect(authGate(new Request('http://localhost/api/settings'))).toBeUndefined();
+    expect(await authGate(new Request('http://localhost/api/settings'))).toBeUndefined();
   });
 
   test('initAuth turns the gate on, and it rejects a request with no cookie', async () => {
@@ -161,7 +161,7 @@ describe('authentication is per run, never inherited from disk', () => {
     await initAuth('correct-horse');
 
     expect(isAuthEnabled()).toBe(true);
-    const response = authGate(new Request('http://localhost/api/settings'));
+    const response = await authGate(new Request('http://localhost/api/settings'));
     expect(response?.status).toBe(401);
   });
 
@@ -176,16 +176,16 @@ describe('authentication is per run, never inherited from disk', () => {
     useTempDataDir();
     await initAuth('correct-horse');
 
-    expect(authGate(new Request('http://localhost/api/updates/android'))).toBeUndefined();
-    expect(authGate(new Request('http://localhost/api/updates/ios'))).toBeUndefined();
-    expect(authGate(new Request('http://localhost/api/updates/desktop?kind=macos'))?.status).toBe(401);
+    expect(await authGate(new Request('http://localhost/api/updates/android'))).toBeUndefined();
+    expect(await authGate(new Request('http://localhost/api/updates/ios'))).toBeUndefined();
+    expect((await authGate(new Request('http://localhost/api/updates/desktop?kind=macos')))?.status).toBe(401);
   });
 
   test('a document request is redirected to the login screen, not answered 401', async () => {
     useTempDataDir();
     await initAuth('correct-horse');
 
-    const response = authGate(new Request('http://localhost/', { headers: { accept: 'text/html' } }));
+    const response = await authGate(new Request('http://localhost/', { headers: { accept: 'text/html' } }));
     // A document has no body to render an error into, so it is sent to the
     // screen that can ask for the password.
     expect(response?.status).toBe(302);
@@ -224,7 +224,7 @@ describe('authentication is per run, never inherited from disk', () => {
     });
 
     // The token is good before the revocation…
-    expect(authGate(withCookie())).toBeUndefined();
+    expect(await authGate(withCookie())).toBeUndefined();
 
     const result = await revokeAllSessions();
     expect(result.revoked).toBe(true);
@@ -232,7 +232,7 @@ describe('authentication is per run, never inherited from disk', () => {
     // …and dead after it, without the password having changed. This is the only
     // revocation a stateless token admits, and it is what makes "sign out
     // everywhere" possible at all.
-    expect(authGate(withCookie())?.status).toBe(401);
+    expect((await authGate(withCookie()))?.status).toBe(401);
 
     // The new secret is persisted, so the revocation survives a restart rather
     // than being undone by the old secret being read back from disk.
@@ -256,7 +256,7 @@ describe('authentication is per run, never inherited from disk', () => {
       headers: { cookie: `omp_session=${fresh}` },
     });
     // Revoking everywhere must not lock out the browser that asked for it.
-    expect(authGate(request)).toBeUndefined();
+    expect(await authGate(request)).toBeUndefined();
   });
 });
 
@@ -267,7 +267,7 @@ describe('a session outlives the process that minted it', () => {
     const first = loadAuthConfig()!;
     const token = sessionTokenFor(first);
     const request = new Request('http://localhost/api/settings', { headers: { cookie: `omp_session=${token}` } });
-    expect(authGate(request)).toBeUndefined();
+    expect(await authGate(request)).toBeUndefined();
 
     // The second boot, in the same process: exactly what `bun --hot` does on
     // every save, and what restarting a daemon does. The secret is read back
@@ -281,7 +281,7 @@ describe('a session outlives the process that minted it', () => {
     // every session — the persisted secret never delivered its documented "a
     // restart keeps its sessions".
     expect(second.credentialKey).toBe(first.credentialKey);
-    expect(authGate(request)).toBeUndefined();
+    expect(await authGate(request)).toBeUndefined();
   });
 
   test('a restart with a DIFFERENT password revokes them', async () => {
@@ -293,7 +293,7 @@ describe('a session outlives the process that minted it', () => {
     // Stable for an unchanged password, still bound to it: replacing the
     // password is exactly what a session's death must follow.
     const request = new Request('http://localhost/api/settings', { headers: { cookie: `omp_session=${token}` } });
-    expect(authGate(request)?.status).toBe(401);
+    expect((await authGate(request))?.status).toBe(401);
   });
 });
 
@@ -303,7 +303,7 @@ describe('the login screen is only for a visitor without a session', () => {
     await initAuth('correct-horse');
     const token = sessionTokenFor(loadAuthConfig()!);
 
-    const response = authGate(new Request('http://localhost/login', {
+    const response = await authGate(new Request('http://localhost/login', {
       headers: { cookie: `omp_session=${token}`, accept: 'text/html' },
     }));
 
@@ -319,14 +319,14 @@ describe('the login screen is only for a visitor without a session', () => {
 
     // `/login` stays public — it IS the way in — so the gate must let it
     // through to the shell that renders the form.
-    expect(authGate(new Request('http://localhost/login', { headers: { accept: 'text/html' } }))).toBeUndefined();
+    expect(await authGate(new Request('http://localhost/login', { headers: { accept: 'text/html' } }))).toBeUndefined();
   });
 
-  test('with authentication off there is nothing to log into', () => {
+  test('with authentication off there is nothing to log into', async () => {
     useTempDataDir();
     // No password armed: every request counts as authenticated, which makes
     // `/login` a URL with no meaning rather than a screen.
-    const response = authGate(new Request('http://localhost/login', { headers: { accept: 'text/html' } }));
+    const response = await authGate(new Request('http://localhost/login', { headers: { accept: 'text/html' } }));
     expect(response?.status).toBe(302);
     expect(response?.headers.get('location')).toBe('/');
   });

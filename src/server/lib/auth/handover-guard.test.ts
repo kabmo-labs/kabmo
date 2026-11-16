@@ -76,7 +76,7 @@ describe('initAuthFromHandover', () => {
 
     // A restart must not sign the user out: this is the property the key +
     // secret pair exists to preserve.
-    const response = authGate(new Request('http://localhost/api/folders', {
+    const response = await authGate(new Request('http://localhost/api/folders', {
       headers: { cookie: `omp_session=${token}` },
     }));
     expect(response).toBeUndefined();

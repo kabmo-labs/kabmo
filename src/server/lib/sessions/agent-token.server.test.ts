@@ -12,6 +12,7 @@ import {
   createAgentToken,
   hashAgentToken,
   initAgentTokens,
+  lookupAgentToken,
   rememberAgentToken,
   revokeAgentToken,
   verifyAgentToken,
@@ -53,12 +54,34 @@ describe('agent tokens', () => {
   });
 
   test('the path scope names the session it may touch', () => {
-    expect(agentTokenScopeForPath('/api/sessions/spawn')).toBe('any');
-    expect(agentTokenScopeForPath('/api/agent/s1')).toBe('s1');
-    expect(agentTokenScopeForPath('/api/chat/s1')).toBe('s1');
-    expect(agentTokenScopeForPath('/api/sessions/s1/fork')).toBe('s1');
-    expect(agentTokenScopeForPath('/api/sessions/s1/relations')).toBe('s1');
+    expect(agentTokenScopeForPath('/api/sessions/spawn')).toEqual({ kind: 'any' });
+    expect(agentTokenScopeForPath('/api/agent/s1')).toEqual({ kind: 'tree', target: 's1' });
+    expect(agentTokenScopeForPath('/api/chat/s1')).toEqual({ kind: 'tree', target: 's1' });
+    expect(agentTokenScopeForPath('/api/sessions/s1/fork')).toEqual({ kind: 'tree', target: 's1' });
+    expect(agentTokenScopeForPath('/api/sessions/s1/relations')).toEqual({ kind: 'tree', target: 's1' });
     expect(agentTokenScopeForPath('/api/sessions/s1/archive')).toBeNull();
     expect(agentTokenScopeForPath('/api/settings')).toBeNull();
+  });
+
+  test('a token this process never minted is found in the table', async () => {
+    // The peer-instance case: the owning process spawned the session, so this
+    // process's cache is empty while the row exists.
+    const token = createAgentToken();
+    await rememberAgentToken('s1', token);
+    globalThis.__kabmoAgentTokens = undefined;
+
+    expect(verifyAgentToken(token)).toBeNull();
+    expect(await lookupAgentToken(token)).toBe('s1');
+    // The read warms the cache, so the next call costs nothing.
+    expect(verifyAgentToken(token)).toBe('s1');
+  });
+
+  test('a revoked token is not resurrected by the table fallback', async () => {
+    const token = createAgentToken();
+    await rememberAgentToken('s1', token);
+    await revokeAgentToken('s1');
+    globalThis.__kabmoAgentTokens = undefined;
+
+    expect(await lookupAgentToken(token)).toBeNull();
   });
 });
