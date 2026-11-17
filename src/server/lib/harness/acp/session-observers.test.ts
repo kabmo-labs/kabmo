@@ -241,10 +241,10 @@ describe('ACP session facts', () => {
 
   test('agent-side delete runs only when the agent advertises it', async () => {
     const { session, deletedSessions } = mountSession();
-    await session.deleteAgentSession();
+    expect(await session.deleteAgentSession()).toBe(false);
     expect(deletedSessions()).toEqual([]);
     session.capabilities = { ...session.capabilities, deleteSession: true };
-    await session.deleteAgentSession();
+    expect(await session.deleteAgentSession()).toBe(true);
     expect(deletedSessions()).toEqual(['acp-1']);
   });
 

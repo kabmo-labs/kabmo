@@ -121,6 +121,10 @@ export function BatchDeleteModal({
               <span className="font-mono text-ink">~/.omp/agent/sessions</span> — the conversations are
               gone from the sidebar and from oh-my-pi.
             </li>
+            <li>
+              Chats that ran on another agent (opencode, dsh, …) are removed from that agent's own
+              history too; one the agent cannot delete is refused, not silently forgotten.
+            </li>
             <li>Their subagent transcripts, side questions, queued messages and saved layout go too.</li>
             <li>A session that is mid-run is refused rather than interrupted; stop it and delete again.</li>
           </ul>

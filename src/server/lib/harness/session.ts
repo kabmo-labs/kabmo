@@ -53,8 +53,10 @@ export interface HarnessSession extends HarnessEventSource, HarnessSessionState 
   destroy(): void;
   destroyAndWait(): Promise<void>;
   /** Delete the harness's own session record, when the agent advertises one
-   *  (`sessionCapabilities.delete`). Best-effort: the local rows are the caller's. */
-  deleteAgentSession?(): Promise<void>;
+   *  (`sessionCapabilities.delete`). `false` means the agent has no such verb;
+   *  a failure is thrown so the delete route can refuse instead of claiming a
+   *  removal the agent did not perform. */
+  deleteAgentSession?(): Promise<boolean>;
   onDestroy(callback: () => void): void;
 }
 

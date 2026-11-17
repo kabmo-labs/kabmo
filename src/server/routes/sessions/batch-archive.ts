@@ -28,9 +28,10 @@ import { methodNotAllowed, parseJsonBody } from '@/server/lib/route-adapter';
 import { getDb } from '@/server/db.server';
 import { isSinglePathSegment } from '@/server/lib/fs/path-segment';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
+import { SESSION_BATCH_LIMIT } from '@/shared/lib/sessions/batch-limits';
 
-/** One request cannot carry an unbounded selection. */
-const MAX_BATCH = 500;
+/** One request cannot carry an unbounded selection; the client splits a larger
+ *  selection into requests of this size. */
 
 export async function batchArchiveSessions({ request }: ActionFunctionArgs) {
   if (request.method !== 'POST') {
@@ -46,8 +47,8 @@ export async function batchArchiveSessions({ request }: ActionFunctionArgs) {
   }
   const ids = [...new Set(raw as string[])];
   if (ids.length === 0) return json({ error: 'No sessions selected' }, { status: 400 });
-  if (ids.length > MAX_BATCH) {
-    return json({ error: `At most ${MAX_BATCH} sessions can be archived at once.` }, { status: 400 });
+  if (ids.length > SESSION_BATCH_LIMIT) {
+    return json({ error: `At most ${SESSION_BATCH_LIMIT} sessions can be archived at once.` }, { status: 400 });
   }
 
   const db = await getDb();

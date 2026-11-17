@@ -107,6 +107,11 @@ export function SessionDeleteModal({
             <span className="font-mono text-ink">~/.omp/agent/sessions</span> — the conversation is
             gone from the sidebar and from oh-my-pi.
           </li>
+          <li>
+            A chat that ran on another agent (opencode, dsh, …) is removed from that agent's own
+            history too. If the agent cannot delete it, the delete is refused instead of leaving a
+            row that returns on the next import.
+          </li>
           <li>The subagent transcripts and any side questions asked in it are removed with it.</li>
           <li>Its queued messages, archive state, and saved panel layout go too.</li>
         </ul>

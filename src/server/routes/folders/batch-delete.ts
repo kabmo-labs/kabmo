@@ -24,8 +24,7 @@ import { getDb } from '@/server/db.server';
 import { deleteWorkspaceFolder } from '@/shared/lib/workspace/project-settings';
 import { syncDiscoveryRootsWatch } from '@/server/lib/omp/config/roots-watch.server';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
-
-const MAX_BATCH = 200;
+import { WORKSPACE_BATCH_LIMIT } from '@/shared/lib/sessions/batch-limits';
 
 export async function batchDeleteFolders({ request }: ActionFunctionArgs) {
   if (request.method !== 'POST') {
@@ -41,8 +40,8 @@ export async function batchDeleteFolders({ request }: ActionFunctionArgs) {
   }
   const ids = [...new Set(raw as string[])];
   if (ids.length === 0) return json({ error: 'No workspaces selected' }, { status: 400 });
-  if (ids.length > MAX_BATCH) {
-    return json({ error: `At most ${MAX_BATCH} workspaces can be deleted at once.` }, { status: 400 });
+  if (ids.length > WORKSPACE_BATCH_LIMIT) {
+    return json({ error: `At most ${WORKSPACE_BATCH_LIMIT} workspaces can be deleted at once.` }, { status: 400 });
   }
 
   const db = await getDb();

@@ -28,11 +28,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { getDb } from '@/server/db.server';
+import { saveHarnessConfig } from '@/server/lib/harness/config.server';
 import { saveHarnessSession } from '@/server/lib/harness/session-store.server';
 import { clearSessionFileCaches } from '@/server/lib/omp/session/files';
 import { invalidateOmpSidebarData } from '@/server/lib/omp/session/reader';
 import { loadSidebarStructure } from '@/server/lib/omp/session/sidebar-data.server';
 import { deleteSession } from '@/server/routes/sessions/delete';
+import { EMPTY_HARNESS_CONFIG } from '@/shared/lib/harness/config';
+import { fakeAcpDeleteAgent } from '@/test-support/fake-acp-delete';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { removeDir } from '@/test-support/remove-dir';
 
@@ -49,6 +52,7 @@ let root = '';
 let sessionsRoot = '';
 let project = '';
 let folderId = 0;
+let fakeAgent = '';
 
 beforeAll(async () => {
   root = await fs.promises.mkdtemp(join(tmpdir(), 'omc-delete-acp-'));
@@ -61,6 +65,10 @@ beforeAll(async () => {
   Bun.env.PI_CODING_AGENT_DIR = agent;
   Bun.env.MOCK = 'false';
   Bun.env.SYNC_WORKSPACE = 'false';
+  // The delete flow now asks the AGENT to drop its own copy. Point the harnesses
+  // these cases use at a scripted agent: spawning the developer's real
+  // `opencode`/`claude` would delete their history, and CI has neither installed.
+  fakeAgent = await fakeAcpDeleteAgent();
 });
 
 afterAll(async () => {
@@ -80,6 +88,9 @@ beforeEach(async () => {
   await db.run('INSERT INTO workspace_folders (name, project_path) VALUES (?, ?)', ['ws', project]);
   const row = await db.get<{ id: number }>('SELECT id FROM workspace_folders ORDER BY id DESC LIMIT 1');
   folderId = Number(row?.id);
+  for (const harness of ['opencode', 'claude'] as const) {
+    await saveHarnessConfig(harness, { ...EMPTY_HARNESS_CONFIG, command: fakeAgent });
+  }
   await fs.promises.rm(join(sessionsRoot, 'project'), { recursive: true, force: true });
   invalidateOmpSidebarData();
   clearSessionFileCaches();
@@ -223,5 +234,48 @@ describe('deleting an ACP chat', () => {
     } finally {
       forgetLive(id);
     }
+  });
+
+  test('an imported dsh chat is removed from the agent store, not only from Kabmo', async () => {
+    // The reported defect: the row went, `dsh` kept the conversation, and the
+    // next auto-import put it back. `dsh` advertises no `session/delete`, so its
+    // directory is the only copy Kabmo can remove.
+    const home = await fs.promises.mkdtemp(join(tmpdir(), 'omc-dsh-home-'));
+    const savedHome = Bun.env.DSH_HOME;
+    Bun.env.DSH_HOME = home;
+    const id = 'dsh-session-1';
+    const sessionDir = join(home, 'sessions', '--projects-kabmo--', id);
+    try {
+      await fs.promises.mkdir(sessionDir, { recursive: true });
+      await Bun.write(join(sessionDir, 'session.v4.jsonl.zstd'), 'transcript');
+      await saveHarnessSession({ sessionId: id, harness: 'dsh', agentSessionId: id, cwd: project });
+      expect(await sidebarRow(id)).toBeDefined();
+
+      expect((await deleteSessionRoute(id)).status).toBe(200);
+
+      expect(fs.existsSync(sessionDir)).toBe(false);
+      expect(await sidebarRow(id)).toBeUndefined();
+    } finally {
+      if (savedHome === undefined) delete Bun.env.DSH_HOME;
+      else Bun.env.DSH_HOME = savedHome;
+      removeDir(home);
+    }
+  });
+
+  test('an agent that cannot delete its own session refuses, and the row stays', async () => {
+    // A refusal is the honest answer: purging the row would only bring it back
+    // on the next import, and the user would believe the chat was gone.
+    const id = 'ses_acp_undeletable';
+    await saveHarnessConfig('antigravity', {
+      ...EMPTY_HARNESS_CONFIG,
+      command: fakeAgent,
+      env: 'FAKE_ACP_DELETE_CAP=0',
+    });
+    await saveHarnessSession({ sessionId: id, harness: 'antigravity', agentSessionId: id, cwd: project });
+
+    const res = await deleteSessionRoute(id);
+    expect(res.status).toBe(502);
+    expect(await res.json()).toMatchObject({ code: 'agent_session_not_removed' });
+    expect(await sidebarRow(id)).toBeDefined();
   });
 });

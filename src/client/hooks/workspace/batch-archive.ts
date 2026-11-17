@@ -15,6 +15,7 @@
  */
 
 import type { ToastTone } from '@/shared/lib/ui/toast-duration';
+import { chunkIds, SESSION_BATCH_LIMIT } from '@/shared/lib/sessions/batch-limits';
 
 export interface BatchArchiveRefusal {
   id: string;
@@ -51,9 +52,24 @@ async function postBatch(url: string, ids: readonly string[]): Promise<BatchArch
   }
 }
 
-/** Archive sessions in one request. Pending `new-…` ids are refused by the server. */
-export function archiveSessionsBatch(ids: readonly string[]): Promise<BatchArchiveOutcome> {
-  return postBatch('/api/sessions/batch-archive', ids);
+/** Archive sessions in one request per `SESSION_BATCH_LIMIT` ids. Pending
+ *  `new-…` ids are refused by the server.
+ *
+ *  Archive shares the delete bound and therefore the same split: "select all"
+ *  over an imported history is larger than one request may carry, and the API
+ *  must not refuse a selection the sidebar itself offered. */
+export async function archiveSessionsBatch(ids: readonly string[]): Promise<BatchArchiveOutcome> {
+  if (ids.length === 0) return { ...EMPTY };
+  const archived: string[] = [];
+  const refused: BatchArchiveRefusal[] = [];
+  let error: string | undefined;
+  for (const chunk of chunkIds(ids, SESSION_BATCH_LIMIT)) {
+    const outcome = await postBatch('/api/sessions/batch-archive', chunk);
+    archived.push(...outcome.archived);
+    refused.push(...outcome.refused);
+    error ??= outcome.error;
+  }
+  return { archived, refused, ...(error ? { error } : {}) };
 }
 
 /**

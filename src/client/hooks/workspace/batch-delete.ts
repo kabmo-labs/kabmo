@@ -13,6 +13,8 @@
  * reports after it closes.
  */
 
+import { chunkIds, SESSION_BATCH_LIMIT, WORKSPACE_BATCH_LIMIT } from '@/shared/lib/sessions/batch-limits';
+
 export interface BatchDeleteRefusal {
   id: string;
   error: string;
@@ -48,9 +50,34 @@ async function postBatch(url: string, ids: readonly string[]): Promise<BatchDele
   }
 }
 
-/** Remove sessions, transcripts included. Pending `new-…` ids are refused by the server. */
+/** Send one request per chunk and merge the verdicts, in selection order. */
+async function postInChunks(
+  url: string,
+  ids: readonly string[],
+  limit: number,
+): Promise<BatchDeleteOutcome> {
+  const removed: string[] = [];
+  const refused: BatchDeleteRefusal[] = [];
+  let error: string | undefined;
+  for (const chunk of chunkIds(ids, limit)) {
+    const outcome = await postBatch(url, chunk);
+    removed.push(...outcome.removed);
+    refused.push(...outcome.refused);
+    // First failure is the one reported: a later chunk's identical network
+    // error adds nothing, and the dialog names the reason once.
+    error ??= outcome.error;
+  }
+  return { removed, refused, ...(error ? { error } : {}) };
+}
+
+/** Remove sessions, transcripts included. Pending `new-…` ids are refused by the server.
+ *
+ *  The selection is split into `SESSION_BATCH_LIMIT` requests rather than
+ *  refused as a whole: the sidebar lets the user select every row, and an
+ *  imported history is routinely larger than one request's bound. */
 export function deleteSessionsBatch(ids: readonly string[]): Promise<BatchDeleteOutcome> {
-  return postBatch('/api/sessions/batch-delete', ids);
+  if (ids.length === 0) return Promise.resolve({ ...EMPTY });
+  return postInChunks('/api/sessions/batch-delete', ids, SESSION_BATCH_LIMIT);
 }
 
 /**
@@ -59,5 +86,6 @@ export function deleteSessionsBatch(ids: readonly string[]): Promise<BatchDelete
  * registration (and the tombstone that stops the sync re-adding it).
  */
 export function deleteWorkspacesBatch(ids: readonly string[]): Promise<BatchDeleteOutcome> {
-  return postBatch('/api/folders/batch-delete', ids);
+  if (ids.length === 0) return Promise.resolve({ ...EMPTY });
+  return postInChunks('/api/folders/batch-delete', ids, WORKSPACE_BATCH_LIMIT);
 }

@@ -29,6 +29,7 @@
 
 import { getLiveSession } from '@/server/lib/omp/rpc/session-registry';
 import { loadHarnessSession } from '@/server/lib/harness/session-store.server';
+import { createAgentSessionRemover, type AgentSessionRemover } from '@/server/lib/harness/session-delete.server';
 import { purgeSessionData } from '@/server/lib/omp/session/delete.server';
 import { dependentsDeepestFirst } from '@/server/lib/sessions/lifecycle.server';
 import { purgeBtwForSession } from '@/server/lib/btw/purge.server';
@@ -40,7 +41,7 @@ export interface SessionRemoval {
   ok: boolean;
   /** HTTP status the single-session route answers with; batch callers use `error`. */
   status: number;
-  code?: 'session_pending' | 'invalid_id' | 'session_busy' | 'not_found';
+  code?: 'session_pending' | 'invalid_id' | 'session_busy' | 'not_found' | 'agent_session_not_removed';
   error?: string;
   fileRemoved?: boolean;
   artifactsRemoved?: boolean;
@@ -51,7 +52,10 @@ export interface SessionRemoval {
  * Remove one session, in the documented order. Never throws: every failure is
  * a verdict, because a batch has to keep going after one refused id.
  */
-export async function removeSession(sessionId: string): Promise<SessionRemoval> {
+export async function removeSession(
+  sessionId: string,
+  remover?: AgentSessionRemover,
+): Promise<SessionRemoval> {
   if (sessionId.startsWith('new-')) {
     return {
       ok: false,
@@ -68,10 +72,12 @@ export async function removeSession(sessionId: string): Promise<SessionRemoval> 
   }
 
   try {
+    const record = await loadHarnessSession(sessionId).catch(() => null);
     // A live child is the only other writer of the transcript. Busy means a
     // turn, a live subagent, or a dialog the agent is parked on — omp's child
     // and an ACP agent's alike.
     const live = getLiveSession(sessionId);
+    let agentSessionRemoved = false;
     if (live?.isAlive()) {
       if (live.isBusy()) {
         return {
@@ -81,16 +87,43 @@ export async function removeSession(sessionId: string): Promise<SessionRemoval> 
           error: 'This session is working. Stop the run before deleting it.',
         };
       }
-      // An IMPORTED chat's transcript belongs to the user's agent, not to this
-      // row. Removing it from Kabmo's sidebar must not delete the conversation
-      // they ran in a terminal: the row is a discovery, so Delete forgets it
-      // here and leaves the agent's store alone. A chat Kabmo spawned uses the
-      // agent's own delete, as before.
-      const record = await loadHarnessSession(sessionId).catch(() => null);
-      if (record?.origin !== 'imported' && 'deleteAgentSession' in live && live.deleteAgentSession) {
-        await live.deleteAgentSession();
+      let failure: string | null = null;
+      try {
+        if (record && 'deleteAgentSession' in live && live.deleteAgentSession) {
+          agentSessionRemoved = await live.deleteAgentSession();
+        }
+      } catch (cause) {
+        failure = cause instanceof Error ? cause.message : String(cause);
       }
       await live.destroyAndWait();
+      if (failure) {
+        return { ok: false, status: 502, code: 'agent_session_not_removed', error: failure };
+      }
+    }
+
+    // An IMPORTED chat, a closed tab and a chat whose child exited leave no live
+    // process to ask, and that is the case the old flow skipped: the row went,
+    // the agent kept the conversation, and the next import put the row back. The
+    // agent is asked through a fresh process (or its own store is removed) before
+    // any Kabmo row disappears, so a refusal leaves the sidebar truthful.
+    if (record && !agentSessionRemoved) {
+      const active = remover ?? createAgentSessionRemover();
+      const own = remover ? null : active;
+      try {
+        const removal = await active.remove(record);
+        if (!removal.removed) {
+          return {
+            ok: false,
+            status: 502,
+            code: 'agent_session_not_removed',
+            error: removal.error
+              ? `Could not delete this chat from ${record.harness}: ${removal.error}`
+              : `Could not delete this chat from ${record.harness}`,
+          };
+        }
+      } finally {
+        await own?.dispose();
+      }
     }
 
     // Side questions live outside the session file and are removed first: their
@@ -141,7 +174,10 @@ function busyRemoval(sessionId: string): SessionRemoval {
  * half of the tree disappeared. Deepest first, so a parent never loses the rows
  * that name it before the children are gone.
  */
-export async function removeSessionTree(sessionId: string): Promise<SessionTreeRemoval> {
+export async function removeSessionTree(
+  sessionId: string,
+  remover?: AgentSessionRemover,
+): Promise<SessionTreeRemoval> {
   const rootLive = getLiveSession(sessionId);
   if (rootLive?.isAlive() && rootLive.isBusy()) {
     return { result: busyRemoval(sessionId), removedDependents: [] };
@@ -155,11 +191,19 @@ export async function removeSessionTree(sessionId: string): Promise<SessionTreeR
     }
   }
 
+  // One remover for the whole tree: a dependent on the same harness reuses the
+  // child the root already spawned instead of booting the agent again.
+  const active = remover ?? createAgentSessionRemover();
+  const own = remover ? null : active;
   const removedDependents: string[] = [];
-  for (const id of dependents) {
-    const verdict = await removeSession(id);
-    if (!verdict.ok) return { result: verdict, removedDependents };
-    removedDependents.push(id);
+  try {
+    for (const id of dependents) {
+      const verdict = await removeSession(id, active);
+      if (!verdict.ok) return { result: verdict, removedDependents };
+      removedDependents.push(id);
+    }
+    return { result: await removeSession(sessionId, active), removedDependents };
+  } finally {
+    await own?.dispose();
   }
-  return { result: await removeSession(sessionId), removedDependents };
 }

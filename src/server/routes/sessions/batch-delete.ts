@@ -21,9 +21,12 @@ import { json } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed, parseJsonBody } from '@/server/lib/route-adapter';
 import { removeSessionTree } from '@/server/lib/omp/session/delete-flow.server';
+import { createAgentSessionRemover } from '@/server/lib/harness/session-delete.server';
+import { SESSION_BATCH_LIMIT } from '@/shared/lib/sessions/batch-limits';
 
-/** One request cannot carry an unbounded selection. */
-const MAX_BATCH = 500;
+/** One request cannot carry an unbounded selection. The client splits a larger
+ *  selection into requests of this size (`chunkIds`), so the bound is a request
+ *  guard rather than a product limit. */
 
 export async function batchDeleteSessions({ request }: ActionFunctionArgs) {
   if (request.method !== 'POST') {
@@ -39,8 +42,8 @@ export async function batchDeleteSessions({ request }: ActionFunctionArgs) {
   }
   const ids = [...new Set(raw as string[])];
   if (ids.length === 0) return json({ error: 'No sessions selected' }, { status: 400 });
-  if (ids.length > MAX_BATCH) {
-    return json({ error: `At most ${MAX_BATCH} sessions can be deleted at once.` }, { status: 400 });
+  if (ids.length > SESSION_BATCH_LIMIT) {
+    return json({ error: `At most ${SESSION_BATCH_LIMIT} sessions can be deleted at once.` }, { status: 400 });
   }
 
   const removed: string[] = [];
@@ -51,15 +54,23 @@ export async function batchDeleteSessions({ request }: ActionFunctionArgs) {
   // and wait for its exit, and running those in parallel would open one
   // transcript writer per session at once for no gain — the work is dominated
   // by process teardown, not by the filesystem.
-  for (const id of ids) {
-    const tree = await removeSessionTree(id);
-    const result = tree.result;
-    if (result.ok) {
-      removed.push(id);
-      removedDependents.push(...tree.removedDependents);
-    } else {
-      refused.push({ id, error: result.error ?? 'Could not delete the session.', code: result.code });
+  //
+  // One agent remover for the request: 300 imported chats on the same harness
+  // must boot that agent once, not 300 times.
+  const remover = createAgentSessionRemover();
+  try {
+    for (const id of ids) {
+      const tree = await removeSessionTree(id, remover);
+      const result = tree.result;
+      if (result.ok) {
+        removed.push(id);
+        removedDependents.push(...tree.removedDependents);
+      } else {
+        refused.push({ id, error: result.error ?? 'Could not delete the session.', code: result.code });
+      }
     }
+  } finally {
+    await remover.dispose();
   }
 
   return json({ success: refused.length === 0, removed, removedDependents, refused });

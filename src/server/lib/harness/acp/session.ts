@@ -320,12 +320,16 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
 
   destroy(): void { void this.destroyAndWait(); }
 
-  /** Remove this chat from the agent's own history, when it offers the method. */
-  async deleteAgentSession(): Promise<void> {
-    if (!this.sessionId || !this.capabilities.deleteSession) return;
-    await this.proc.deleteSession(this.sessionId, 10_000).catch((error: unknown) => {
-      console.error(`[harness] could not delete ${this.harness} session ${this.sessionId}:`, error);
-    });
+  /** Remove this chat from the agent's own history, when it offers the method.
+   *
+   *  `false` means the agent advertises no `session/delete` (or this session has
+   *  no agent id yet) — the caller then falls back to the local store. A failure
+   *  is THROWN: the delete route refuses and shows the agent's words, because a
+   *  swallowed error here is a row that returns on the next import. */
+  async deleteAgentSession(): Promise<boolean> {
+    if (!this.sessionId || !this.capabilities.deleteSession) return false;
+    await this.proc.deleteSession(this.sessionId, 10_000);
+    return true;
   }
 
   async destroyAndWait(): Promise<void> {
