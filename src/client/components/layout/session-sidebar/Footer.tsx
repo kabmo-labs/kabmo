@@ -1,4 +1,5 @@
 import { Info, Keyboard, Settings } from 'lucide-preact';
+import packageJson from '@/../package.json';
 import type { ShellDownload } from '@/client/hooks/ui/updates/shell-download';
 import { ShellUpdateButton } from '@/client/components/common/shell-update-button';
 
@@ -66,15 +67,18 @@ export function SessionSidebarFooter({ onSettings, onKeyBindings, onInfo, update
           <ShellUpdateButton download={shellDownload} variant="icon" />
         )}
       </div>
-      {updateAvailable && (
-        <button
-          type="button"
-          onClick={onUpdateClick}
-          className="px-2 py-0.5 rounded-full border border-ink/20 text-[10px] font-semibold text-ink hover:border-ink/40"
-        >
-          update
-        </button>
-      )}
+      <div className="flex items-center gap-2">
+        <span className="font-mono text-[10px] text-ink/40">v{packageJson.version}</span>
+        {updateAvailable && (
+          <button
+            type="button"
+            onClick={onUpdateClick}
+            className="px-2 py-0.5 rounded-full border border-ink/20 text-[10px] font-semibold text-ink hover:border-ink/40"
+          >
+            update
+          </button>
+        )}
+      </div>
     </div>
   );
 }
