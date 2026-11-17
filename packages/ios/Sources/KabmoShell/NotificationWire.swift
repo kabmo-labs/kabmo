@@ -60,18 +60,51 @@ public enum NotificationWire {
    `scripts/build-ipa.sh`; `UNNotificationSound` looks them up by name, and a
    name that drifts is not a crash — the platform silently falls back to its own
    tone. The test pins both strings for that reason.
+
+   The names are BASE names: the file the bundle carries is versioned (see
+   `soundName(forKind:version:)`), because the platform caches a failed sound
+   lookup by name. A name that was ever missing stays missing even after the file
+   is added, so tying it to the app's own version makes every release a fresh
+   lookup.
    */
-  public static let notificationSound = "kabmo_notification.wav"
-  public static let attentionSound = "kabmo_attention.wav"
+  public static let notificationSound = "kabmo_notification"
+  public static let attentionSound = "kabmo_attention"
 
   /**
-   Which chime an event carries.
+   Which chime an event carries, at the version this bundle declares.
 
    `ask` is the agent blocked on you, and it must not sound like a finished run:
-   that distinction is the whole reason the console has two cues.
+   that distinction is the whole reason the console has two cues. The version
+   comes from `CFBundleShortVersionString` — the same number `build-ipa.sh` puts
+   in the file name — so the two cannot drift.
    */
+  public static func soundName(forKind kind: String, version: String) -> String {
+    let base = kind == "ask" ? attentionSound : notificationSound
+    let suffix = sanitizedVersion(version)
+    return suffix.isEmpty ? "\(base).wav" : "\(base)-\(suffix).wav"
+  }
+
+  /// The chime for an event, at this bundle's own version.
   public static func soundName(forKind kind: String) -> String {
-    kind == "ask" ? attentionSound : notificationSound
+    soundName(forKind: kind, version: bundleVersion())
+  }
+
+  /// `CFBundleShortVersionString`, or `""` when the process has no bundle.
+  static func bundleVersion(bundle: Bundle = .main) -> String {
+    (bundle.infoDictionary?["CFBundleShortVersionString"] as? String) ?? ""
+  }
+
+  /// A version safe to put in a file name: letters, digits, `.`, `-` and `_`
+  /// survive; anything else becomes `_`. An empty version is a process with no
+  /// bundle, which has no versioned file to find.
+  static func sanitizedVersion(_ version: String) -> String {
+    let trimmed = version.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty else { return "" }
+    return String(trimmed.map { character in
+      character.isASCII && (character.isLetter || character.isNumber || character == "." || character == "-" || character == "_")
+        ? character
+        : "_"
+    })
   }
 
   /**

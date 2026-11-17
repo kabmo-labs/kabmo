@@ -89,8 +89,13 @@ chmod +x "$APP/Kabmo"
 # named sound against the bundle, not a subdirectory. The names must match
 # `NotificationWire.soundName(forKind:)`, and the files are the ones every shell
 # reads from `packages/notification-sound/`.
-cp "$REPO/packages/notification-sound/kabmo_notification.wav" "$APP/kabmo_notification.wav"
-cp "$REPO/packages/notification-sound/kabmo_attention.wav" "$APP/kabmo_attention.wav"
+#
+# The name carries the app's version because the platform caches a FAILED sound
+# lookup by name: a name that was ever missing stays missing even after the file
+# is added. A versioned name makes every release a fresh lookup, and the runtime
+# builds the same string from `CFBundleShortVersionString`.
+cp "$REPO/packages/notification-sound/kabmo_notification.wav" "$APP/kabmo_notification-$VERSION.wav"
+cp "$REPO/packages/notification-sound/kabmo_attention.wav" "$APP/kabmo_attention-$VERSION.wav"
 
 # The Info.plist, with the version filled from version.properties. `plutil` is the
 # platform's own editor, so the result is a valid plist by construction — a `sed`

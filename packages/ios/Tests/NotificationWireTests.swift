@@ -37,20 +37,40 @@ enum NotificationWireTests {
       NotificationWire.state("denied"),
       "{\"status\":\"denied\",\"canOpenSettings\":true}"
     )
-    // The bundle copies both files from `packages/notification-sound/` under
-    // these exact names; a drift silently substitutes the platform tone.
-    Harness.equal("the completion chime is the shared asset", NotificationWire.notificationSound, "kabmo_notification.wav")
-    Harness.equal("the attention chime is the shared asset", NotificationWire.attentionSound, "kabmo_attention.wav")
+    // The bundle copies both files from `packages/notification-sound/` under a
+    // VERSIONED name; a drift silently substitutes the platform tone. The
+    // version is part of the name because the platform caches a failed lookup
+    // by name.
+    Harness.equal("the completion chime is the shared asset", NotificationWire.notificationSound, "kabmo_notification")
+    Harness.equal("the attention chime is the shared asset", NotificationWire.attentionSound, "kabmo_attention")
     Harness.equal(
       "an ask sounds like waiting for you, not like a finished run",
-      NotificationWire.soundName(forKind: "ask"),
-      "kabmo_attention.wav"
+      NotificationWire.soundName(forKind: "ask", version: "0.11.4"),
+      "kabmo_attention-0.11.4.wav"
     )
-    Harness.equal("a finish plays the completion chime", NotificationWire.soundName(forKind: "finish"), "kabmo_notification.wav")
-    Harness.equal("an error plays the completion chime", NotificationWire.soundName(forKind: "error"), "kabmo_notification.wav")
+    Harness.equal(
+      "a finish plays the completion chime",
+      NotificationWire.soundName(forKind: "finish", version: "0.11.4"),
+      "kabmo_notification-0.11.4.wav"
+    )
+    Harness.equal(
+      "an error plays the completion chime",
+      NotificationWire.soundName(forKind: "error", version: "0.11.4"),
+      "kabmo_notification-0.11.4.wav"
+    )
     Harness.equal(
       "a console too old to send a kind still gets a chime",
-      NotificationWire.soundName(forKind: ""),
+      NotificationWire.soundName(forKind: "", version: "0.11.4"),
+      "kabmo_notification-0.11.4.wav"
+    )
+    Harness.equal(
+      "a version with a build suffix stays a file name",
+      NotificationWire.soundName(forKind: "finish", version: "0.11.4+build 7"),
+      "kabmo_notification-0.11.4_build_7.wav"
+    )
+    Harness.equal(
+      "a process with no bundle asks for the unversioned name",
+      NotificationWire.soundName(forKind: "finish", version: ""),
       "kabmo_notification.wav"
     )
 

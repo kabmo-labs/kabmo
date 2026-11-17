@@ -45,14 +45,37 @@ public enum NotificationWire {
    files from `packages/notification-sound/` into `Contents/Resources`, and
    `UNNotificationSound` finds them there by name — a name that drifts is not a
    crash, it silently becomes the platform's tone.
-   */
-  public static let notificationSound = "kabmo_notification.wav"
-  public static let attentionSound = "kabmo_attention.wav"
 
-  /// Which chime an event carries. `ask` is the agent blocked on you, and must
-  /// not sound like a finished run.
-  public static func soundName(forKind kind: String) -> String {
-    kind == "ask" ? attentionSound : notificationSound
+   The names are BASE names: the file the bundle carries is versioned (see
+   `soundName(forKind:version:)`), because macOS caches a failed sound lookup by
+   name. A name that was ever missing stays missing even after the file is added,
+   so tying it to the app's own version makes every release a fresh lookup.
+   */
+  public static let notificationSound = "kabmo_notification"
+  public static let attentionSound = "kabmo_attention"
+
+  /// Which chime an event carries, at the version this bundle declares.
+  ///
+  /// `ask` is the agent blocked on you, and must not sound like a finished run.
+  /// The version comes from `CFBundleShortVersionString` — the same number
+  /// `scripts/build-app.sh` puts in the file name — so the two cannot drift.
+  public static func soundName(forKind kind: String, version: String = ShellVersion.current()) -> String {
+    let base = kind == "ask" ? attentionSound : notificationSound
+    let suffix = sanitizedVersion(version)
+    return suffix.isEmpty ? "\(base).wav" : "\(base)-\(suffix).wav"
+  }
+
+  /// A version safe to put in a file name: letters, digits, `.`, `-` and `_`
+  /// survive; anything else becomes `_`. An empty version is the `swift run`
+  /// case, which has no bundle and therefore no versioned file to find.
+  static func sanitizedVersion(_ version: String) -> String {
+    let trimmed = version.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty else { return "" }
+    return String(trimmed.map { character in
+      character.isASCII && (character.isLetter || character.isNumber || character == "." || character == "-" || character == "_")
+        ? character
+        : "_"
+    })
   }
 
   /**

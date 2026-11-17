@@ -36,8 +36,13 @@ cp "$REPO/LICENSE" "$APP/Contents/Resources/LICENSE"
 # asks `UNNotificationSound` for. One shared pair of files for every shell: the
 # Android, iOS, Linux and Windows builds all read `packages/notification-sound/`,
 # never a per-platform copy.
-cp "$REPO/packages/notification-sound/kabmo_notification.wav" "$APP/Contents/Resources/"
-cp "$REPO/packages/notification-sound/kabmo_attention.wav" "$APP/Contents/Resources/"
+#
+# The name carries the app's version because macOS caches a FAILED sound lookup
+# by name: a name that was ever missing stays missing even after the file is
+# added. A versioned name makes every release a fresh lookup, and the runtime
+# builds the same string from `CFBundleShortVersionString`.
+cp "$REPO/packages/notification-sound/kabmo_notification.wav" "$APP/Contents/Resources/kabmo_notification-$VERSION.wav"
+cp "$REPO/packages/notification-sound/kabmo_attention.wav" "$APP/Contents/Resources/kabmo_attention-$VERSION.wav"
 # Belt and braces: the copy is named `Kabmo` and the plist says so, so a launch
 # from Finder, from `open`, and from the binary directly all report one name.
 

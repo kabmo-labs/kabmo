@@ -19,22 +19,38 @@ import KabmoDesktop
 func notificationWireCases() {
   group("NotificationWire")
 
-  // The bundle copies both files from `packages/notification-sound/` under these
-  // exact names; a drift silently substitutes the platform tone.
+  // The bundle copies both files from `packages/notification-sound/` under a
+  // VERSIONED name; a drift silently substitutes the platform tone. The version
+  // is part of the name because macOS caches a failed lookup by name.
   check(
     "the completion chime is the shared asset",
-    NotificationWire.notificationSound == "kabmo_notification.wav"
+    NotificationWire.notificationSound == "kabmo_notification"
   )
-  check("the attention chime is the shared asset", NotificationWire.attentionSound == "kabmo_attention.wav")
+  check("the attention chime is the shared asset", NotificationWire.attentionSound == "kabmo_attention")
   check(
     "an ask sounds like waiting for you, not like a finished run",
-    NotificationWire.soundName(forKind: "ask") == "kabmo_attention.wav"
+    NotificationWire.soundName(forKind: "ask", version: "0.12.4") == "kabmo_attention-0.12.4.wav"
   )
-  check("a finish plays the completion chime", NotificationWire.soundName(forKind: "finish") == "kabmo_notification.wav")
-  check("an error plays the completion chime", NotificationWire.soundName(forKind: "error") == "kabmo_notification.wav")
+  check(
+    "a finish plays the completion chime",
+    NotificationWire.soundName(forKind: "finish", version: "0.12.4") == "kabmo_notification-0.12.4.wav"
+  )
+  check(
+    "an error plays the completion chime",
+    NotificationWire.soundName(forKind: "error", version: "0.12.4") == "kabmo_notification-0.12.4.wav"
+  )
   check(
     "a console too old to send a kind still gets a chime",
-    NotificationWire.soundName(forKind: "") == "kabmo_notification.wav"
+    NotificationWire.soundName(forKind: "", version: "0.12.4") == "kabmo_notification-0.12.4.wav"
+  )
+  check(
+    "a version with a build suffix stays a file name",
+    NotificationWire.soundName(forKind: "finish", version: "0.12.4+build 7")
+      == "kabmo_notification-0.12.4_build_7.wav"
+  )
+  check(
+    "a process with no bundle asks for the unversioned name",
+    NotificationWire.soundName(forKind: "finish", version: "") == "kabmo_notification.wav"
   )
   check("a tag is the identifier", NotificationWire.identifier(tag: "finish:s1") == "finish:s1")
   // The grant names travel verbatim: the page acts only on `denied`, and a
