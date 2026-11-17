@@ -81,6 +81,27 @@ describe('commit modal header', () => {
     expect(graph.querySelector('button[aria-label="Graph view"]')?.getAttribute('aria-pressed')).toBe('true');
   });
 
+  test('the phone drops the rect around the three header controls', async () => {
+    const el = await mount(false);
+    const switcher = el.querySelector('button[aria-label="History view"]')?.parentElement;
+
+    // The segmented-control plate and the refresh border are desktop-only: on
+    // the phone the row is icon-only, and only the active tab keeps a rect.
+    expect(switcher?.classList.contains('bg-ink/5')).toBe(false);
+    expect(switcher?.classList.contains('border')).toBe(false);
+    expect(switcher?.classList.contains('lg:bg-ink/5')).toBe(true);
+
+    const active = el.querySelector('button[aria-label="History view"]');
+    expect(active?.classList.contains('bg-ink/5')).toBe(true);
+    // Centred, so the glyph sits in the middle of the active rect instead of
+    // being pushed left by the (hidden) label's padding.
+    expect(active?.classList.contains('justify-center')).toBe(true);
+
+    const refresh = el.querySelector('button[aria-label="Refresh commit history"]');
+    expect(refresh?.classList.contains('border')).toBe(false);
+    expect(refresh?.classList.contains('lg:border')).toBe(true);
+  });
+
   test('the filter and the close control have accessible names', async () => {
     const el = await mount(false);
     expect(el.querySelector('input[aria-label="Filter commits"]')).toBeTruthy();

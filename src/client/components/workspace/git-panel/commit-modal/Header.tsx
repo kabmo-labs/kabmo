@@ -67,18 +67,22 @@ export function Header({
 
         {/* Action Controls on the Right */}
         <div className="flex items-center gap-1.5 lg:gap-2 flex-shrink-0">
-          {/* Mode Switcher */}
-          <div className="flex items-center bg-ink/5 p-0.5 rounded-lg border border-ink/10 text-xs">
+          {/* Mode Switcher. The phone drops the segmented-control plate: three
+              icon-only controls in a row read as one cluster, and the plate
+              plus the refresh border made them look like three separate
+              widgets. The active tab keeps its own rect, with the glyph
+              centred in it. */}
+          <div className="flex items-center text-xs lg:bg-ink/5 lg:p-0.5 lg:rounded-lg lg:border lg:border-ink/10">
             <button
               type="button"
               onClick={() => onToggleMode(false)}
               title="History view"
               aria-label="History view"
               aria-pressed={!isGraphMode}
-              className={`tap-target flex items-center gap-1.5 px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${
+              className={`tap-target flex items-center justify-center gap-1.5 p-2 rounded-md font-medium transition-colors cursor-pointer lg:px-2.5 lg:py-1 ${
                 !isGraphMode
-                  ? 'bg-paper text-ink shadow-xs'
-                  : 'text-ink/80 hover:text-ink hover:bg-ink/5'
+                  ? 'bg-ink/5 text-ink lg:bg-paper lg:shadow-xs'
+                  : 'text-ink/80 lg:hover:text-ink lg:hover:bg-ink/5'
               }`}
             >
               <History size={13} aria-hidden="true" />
@@ -90,10 +94,10 @@ export function Header({
               title="Graph view"
               aria-label="Graph view"
               aria-pressed={isGraphMode}
-              className={`tap-target flex items-center gap-1.5 px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${
+              className={`tap-target flex items-center justify-center gap-1.5 p-2 rounded-md font-medium transition-colors cursor-pointer lg:px-2.5 lg:py-1 ${
                 isGraphMode
-                  ? 'bg-paper text-ink shadow-xs'
-                  : 'text-ink/80 hover:text-ink hover:bg-ink/5'
+                  ? 'bg-ink/5 text-ink lg:bg-paper lg:shadow-xs'
+                  : 'text-ink/80 lg:hover:text-ink lg:hover:bg-ink/5'
               }`}
             >
               <GitMerge size={13} aria-hidden="true" />
@@ -106,7 +110,7 @@ export function Header({
             type="button"
             onClick={onRefresh}
             disabled={isRefreshing}
-            className="tap-target flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-ink/15 hover:bg-ink/5 text-ink/70 hover:text-ink transition-colors cursor-pointer text-xs disabled:opacity-40"
+            className="tap-target flex items-center justify-center gap-1.5 p-2 rounded-md text-ink/70 transition-colors cursor-pointer text-xs disabled:opacity-40 lg:px-2.5 lg:py-1.5 lg:border lg:border-ink/15 lg:hover:bg-ink/5 lg:hover:text-ink"
             title="Refresh commit history"
             aria-label="Refresh commit history"
           >
