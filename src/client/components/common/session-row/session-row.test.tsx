@@ -207,3 +207,27 @@ describe('modern session row', () => {
     expect(el.textContent).toContain('5m');
   });
 });
+
+/**
+ * The row the menu belongs to must say so. The menu is portaled to `body`, so
+ * without a cue on the row the user has to remember which `⋯` they pressed —
+ * and on a list of identically-titled chats that is the whole question.
+ */
+describe('modern session row menu cue', () => {
+  test('opening the actions menu marks the row it belongs to', async () => {
+    const el = await mount({ onRename: () => {} });
+    const row = el.querySelector('[data-testid="session-item"]') as HTMLElement;
+    expect(row.getAttribute('data-menu-open')).toBeNull();
+
+    const trigger = el.querySelector('[aria-label="Session actions"]') as HTMLElement;
+    await act(async () => {
+      trigger.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    expect(row.getAttribute('data-menu-open')).toBe('true');
+    // The same tint batch selection uses: the ring is what survives a palette
+    // where `bg-ink/10` is nearly invisible.
+    expect(row.className).toContain('ring-1');
+    expect(trigger.getAttribute('aria-expanded')).toBe('true');
+  });
+});

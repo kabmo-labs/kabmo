@@ -52,6 +52,7 @@ import { StatusSlot } from '@/client/components/common/session-row/StatusSlot';
 import { HarnessGlyph, HARNESS_GLYPH_SIZE } from '@/client/components/common/harness-glyph';
 import type { BranchRowStyle } from '@/client/components/common/session-branch/style';
 import { TrailingSlot } from '@/client/components/common/session-row/TrailingSlot';
+import { SESSION_ROW_ATTENTION_CLASS } from '@/client/components/common/session-row/row-state';
 import { WorktreeBadge } from '@/client/components/layout/session-sidebar/WorktreeBadge';
 import type { SessionWorktreeInfo } from '@/shared/lib/workspace/worktree/types';
 
@@ -152,6 +153,7 @@ export function SessionRow({
     handleBlur,
   } = useInlineRename(title, onRename);
   const hasActions = Boolean(onRename || onArchive || onDelete || onCancelWait);
+  const menuOpen = menu.anchor !== null;
   const waiting = Boolean(waitingFor);
   const displayTitle = title.charAt(0).toUpperCase() + title.slice(1);
 
@@ -179,13 +181,14 @@ export function SessionRow({
         data-testid="session-item"
         data-session-id={String(sessionId)}
         data-selected={selectable && selected ? 'true' : undefined}
+        data-menu-open={menuOpen ? 'true' : undefined}
         onClick={selectable ? onToggleSelect : onClick}
         onContextMenu={hasActions && !selectable ? menu.openAtCursor : undefined}
         className={`group/item relative flex w-full items-center rounded-lg text-xs transition-colors select-none cursor-pointer ${
           touch ? 'py-0.5 pl-1 pr-1' : 'py-[7px] pl-1 pr-1'
         } ${
-          selectable && selected
-            ? 'bg-ink/10 text-ink ring-1 ring-inset ring-ink/20'
+          (selectable && selected) || menuOpen
+            ? SESSION_ROW_ATTENTION_CLASS
             : isActive
               ? 'bg-ink/[0.08] font-medium text-ink'
               : 'text-ink/75 hover:bg-ink/[0.04] hover:text-ink'
@@ -241,7 +244,7 @@ export function SessionRow({
           timeTitle={timeTitle}
           runStartedAt={runStartedAt}
           touch={touch}
-          menuOpen={menu.anchor !== null}
+          menuOpen={menuOpen}
           onOpenMenu={hasActions && !selectable ? menu.openBelow : undefined}
         />
       </div>

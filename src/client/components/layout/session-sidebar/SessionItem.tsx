@@ -8,6 +8,7 @@ import { HarnessGlyph, HARNESS_GLYPH_SIZE } from '@/client/components/common/har
 import type { BranchRowStyle } from '@/client/components/common/session-branch/style';
 import { WorktreeBadge } from '@/client/components/layout/session-sidebar/WorktreeBadge';
 import { SessionTimeCell } from '@/client/components/common/session-row/TimeCell';
+import { SESSION_ROW_ATTENTION_CLASS } from '@/client/components/common/session-row/row-state';
 import type { SessionWorktreeInfo } from '@/shared/lib/workspace/worktree/types';
 
 /** What a subagent row under this chrome's rows borrows from it. */
@@ -132,6 +133,7 @@ export function SessionItem({
   } = useInlineRename(title, onRename);
   // One trigger for every row action; also reachable by right-clicking the row.
   const menu = useRowMenu();
+  const menuOpen = menu.anchor !== null;
   const hasActions = Boolean(onRename || onArchive || onDelete || onCancelWait);
 
   return (
@@ -140,11 +142,12 @@ export function SessionItem({
         data-testid="session-item"
         data-session-id={String(sessionId)}
         data-selected={selectable && selected ? 'true' : undefined}
+        data-menu-open={menuOpen ? 'true' : undefined}
         onClick={isEditing ? undefined : selectable ? onToggleSelect : onClick}
         onContextMenu={hasActions && !isEditing && !selectable ? menu.openAtCursor : undefined}
         className={`group/item relative flex items-center w-full rounded-lg px-2 py-1.5 cursor-pointer text-xs transition-colors select-none ${
-          selectable && selected
-            ? 'bg-ink/10 text-ink ring-1 ring-inset ring-ink/20'
+          (selectable && selected) || menuOpen
+            ? SESSION_ROW_ATTENTION_CLASS
             : isActive
               ? 'bg-ink/10 font-medium text-ink'
               : 'text-ink/75 hover:text-ink hover:bg-ink/5'
@@ -317,7 +320,7 @@ export function SessionItem({
             title="Session actions"
             aria-label="Session actions"
             aria-haspopup="menu"
-            aria-expanded={menu.anchor !== null}
+            aria-expanded={menuOpen}
             className="shrink-0 ml-1 p-1 text-ink/40 hover:text-ink hover:bg-ink/10 rounded cursor-pointer"
           >
             <MoreHorizontal size={14} />

@@ -8,6 +8,7 @@ import { HarnessGlyph, HARNESS_GLYPH_SIZE } from '@/client/components/common/har
 import type { BranchRowStyle } from '@/client/components/common/session-branch/style';
 import { WorktreeBadge } from '@/client/components/layout/session-sidebar/WorktreeBadge';
 import { SessionTimeCell } from '@/client/components/common/session-row/TimeCell';
+import { SESSION_ROW_ATTENTION_CLASS } from '@/client/components/common/session-row/row-state';
 
 /** What a subagent row under this chrome's rows borrows from it. */
 export const MOBILE_BRANCH_STYLE: BranchRowStyle = {
@@ -104,6 +105,7 @@ export function MobileSessionRow({
   const renaming = useSessionRenaming(session.id);
   // One trigger for every row action; also reachable by long-press contextmenu.
   const menu = useRowMenu();
+  const menuOpen = menu.anchor !== null;
   const hasActions = Boolean(onRename || onArchive || onDelete || onCancelWait);
   const waiting = Boolean(waitingFor);
 
@@ -140,6 +142,7 @@ export function MobileSessionRow({
       <div
         data-testid="session-item"
         data-session-id={String(session.id)}
+        data-menu-open={menuOpen ? 'true' : undefined}
         onContextMenu={hasActions && !selectable ? menu.openAtCursor : undefined}
         // The tint covers the WHOLE row — the `⋯` included. It is the row that
         // is active, not the part of it left over after the triggers, and a
@@ -151,8 +154,8 @@ export function MobileSessionRow({
         // a row inset would shrink the tint and pull every trailing glyph 6px
         // left of the folder header's chevron.
         className={`w-full rounded-lg flex items-center transition-colors ${
-          selectable && selected
-            ? 'bg-ink/10 ring-1 ring-inset ring-ink/20 text-ink'
+          (selectable && selected) || menuOpen
+            ? SESSION_ROW_ATTENTION_CLASS
             : isActive ? 'bg-ink/10 font-medium text-ink' : 'hover:bg-ink/5 text-ink/85'
         }`}
       >
@@ -252,7 +255,7 @@ export function MobileSessionRow({
             title="Session actions"
             aria-label="Session actions"
             aria-haspopup="menu"
-            aria-expanded={menu.anchor !== null}
+            aria-expanded={menuOpen}
             className="flex-shrink-0 py-1.5 pl-1.5 pr-1 text-ink/35 hover:text-ink rounded-lg cursor-pointer"
           >
             <MoreHorizontal size={16} />

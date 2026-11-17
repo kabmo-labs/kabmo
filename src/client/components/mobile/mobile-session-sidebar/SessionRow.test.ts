@@ -131,3 +131,25 @@ describe('mobile session row rename cue', () => {
     expect(svgClasses(settled)).toContain('lucide-check');
   });
 });
+
+/**
+ * The phone's row must say which chat the open menu belongs to, for the same
+ * reason the desktop rows do: the menu is portaled to `body` and the drawer
+ * lists identically-titled chats.
+ */
+describe('mobile session row menu cue', () => {
+  test('opening the actions menu marks the row it belongs to', async () => {
+    const el = await mount({});
+    const row = el.querySelector('[data-testid="session-item"]') as HTMLElement;
+    expect(row.getAttribute('data-menu-open')).toBeNull();
+
+    const trigger = el.querySelector('[aria-label="Session actions"]') as HTMLElement;
+    await act(async () => {
+      trigger.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    expect(row.getAttribute('data-menu-open')).toBe('true');
+    expect(row.className).toContain('ring-1');
+    expect(trigger.getAttribute('aria-expanded')).toBe('true');
+  });
+});
