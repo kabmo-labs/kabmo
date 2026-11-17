@@ -25,7 +25,9 @@
  */
 
 import { useEffect, useMemo, useState } from 'preact/hooks';
-import { AlertCircle, FileText, Loader2, RefreshCw } from 'lucide-preact';
+import { AlertCircle, FileText, Loader2 } from 'lucide-preact';
+import { PanelHeader } from '@/client/components/workspace/panel-header';
+import { RefreshButton } from '@/client/components/common/header-button';
 import { useSearchParams } from '@/client/lib/router/search-params';
 import { useSessionState } from '@kabmo-labs/kabmo-ui';
 import { PlanNav } from '@/client/components/workspace/plan-panel/Nav';
@@ -111,27 +113,27 @@ export function PlanPanel({ className = '', active = true }: PlanPanelProps) {
 
   return (
     <div className={`@container flex h-full min-h-0 w-full flex-col bg-paper text-xs text-ink ${className}`}>
-      <div className="flex flex-shrink-0 items-center justify-between gap-2 border-b border-ink/10 px-2 py-1.5">
-        <div className="flex min-w-0 items-center gap-1.5">
-          <FileText size={12} className="flex-shrink-0 text-ink/50" />
-          <span className="truncate text-[11px] font-medium text-ink/70">Plan mode</span>
-          {hasPlan && (
-            <span className="flex-shrink-0 rounded border border-ink/15 bg-ink/5 px-1.5 py-0.5 font-mono text-[10px] text-ink/60">
-              {files.length}
-            </span>
-          )}
-        </div>
-        <button
-          type="button"
-          onClick={plan.refresh}
-          disabled={plan.isLoading}
-          title="Re-read the plan"
-          aria-label="Re-read the plan"
-          className="flex-shrink-0 rounded p-1 text-ink/60 transition-colors hover:bg-ink/5 hover:text-ink disabled:opacity-50"
-        >
-          <RefreshCw size={13} className={plan.isLoading || plan.refreshing ? 'animate-spin' : ''} />
-        </button>
-      </div>
+      <PanelHeader
+        left={
+          <>
+            <FileText size={12} className="flex-shrink-0 text-ink/50" />
+            <span className="truncate text-[11px] font-medium text-ink/70">Plan mode</span>
+            {hasPlan && (
+              <span className="flex-shrink-0 rounded border border-ink/15 bg-ink/5 px-1.5 py-0.5 font-mono text-[10px] text-ink/60">
+                {files.length}
+              </span>
+            )}
+          </>
+        }
+        right={
+          <RefreshButton
+            label="Re-read the plan"
+            onClick={plan.refresh}
+            busy={plan.isLoading || plan.refreshing}
+            disabled={plan.isLoading}
+          />
+        }
+      />
 
       {plan.stale && !plan.data ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center">

@@ -21,7 +21,9 @@
  */
 
 import { useMemo } from 'preact/hooks';
-import { AlertCircle, ListTodo, RefreshCw } from 'lucide-preact';
+import { AlertCircle, ListTodo } from 'lucide-preact';
+import { PanelHeader } from '@/client/components/workspace/panel-header';
+import { RefreshButton } from '@/client/components/common/header-button';
 import { useSearchParams } from '@/client/lib/router/search-params';
 import { useSessionState } from '@kabmo-labs/kabmo-ui';
 import { TodoPhaseGroup } from '@/client/components/workspace/todo-panel/PhaseGroup';
@@ -81,31 +83,31 @@ export function TodoPanel({ className = '', active = true }: TodoPanelProps) {
 
   return (
     <div className={`flex h-full w-full min-w-0 flex-col overflow-hidden bg-paper text-ink ${className}`}>
-      <div className="flex flex-shrink-0 items-center justify-between gap-3 border-b border-ink/10 px-3.5 py-2.5">
-        <div className="flex min-w-0 items-center gap-2">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-ink">Todos</h2>
-          {snapshot && (
-            <span className="truncate font-mono text-[10.5px] text-ink/50" title={todoProgressLabel(progress!)}>
-              {todoProgressLabel(progress!)}
-            </span>
-          )}
-          {data?.isMock && (
-            <span className="flex-shrink-0 rounded border border-ink/15 bg-ink/5 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-ink/60">
-              Mock
-            </span>
-          )}
-        </div>
-        <button
-          type="button"
-          onClick={refresh}
-          disabled={isLoading}
-          title="Refresh todos"
-          aria-label="Refresh todos"
-          className="flex-shrink-0 rounded-md border border-ink/15 bg-paper p-1.5 text-ink/80 transition-colors hover:bg-ink/5 disabled:opacity-50"
-        >
-          <RefreshCw size={12} className={isLoading || refreshing ? 'animate-spin text-ink' : ''} />
-        </button>
-      </div>
+      <PanelHeader
+        left={
+          <>
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-ink">Todos</h2>
+            {snapshot && (
+              <span className="truncate font-mono text-[10.5px] text-ink/50" title={todoProgressLabel(progress!)}>
+                {todoProgressLabel(progress!)}
+              </span>
+            )}
+            {data?.isMock && (
+              <span className="flex-shrink-0 rounded border border-ink/15 bg-ink/5 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-ink/60">
+                Mock
+              </span>
+            )}
+          </>
+        }
+        right={
+          <RefreshButton
+            label="Refresh todos"
+            onClick={refresh}
+            busy={isLoading || refreshing}
+            disabled={isLoading}
+          />
+        }
+      />
 
       {progress && progress.total > 0 && (
         <div className="flex-shrink-0 border-b border-ink/10 px-3.5 py-2.5">

@@ -19,8 +19,10 @@
  */
 
 import { useEffect, useMemo, useState } from 'preact/hooks';
-import { AlertCircle, BookOpen, ExternalLink, Loader2, RefreshCw } from 'lucide-preact';
+import { AlertCircle, BookOpen, ExternalLink, Loader2 } from 'lucide-preact';
 import { GitRepoPicker } from '@/client/components/workspace/repo-picker';
+import { PanelHeader } from '@/client/components/workspace/panel-header';
+import { RefreshButton } from '@/client/components/common/header-button';
 import { WikiNav } from '@/client/components/workspace/wiki-panel/Nav';
 import { WikiNavModal, WikiNavTrigger } from '@/client/components/workspace/wiki-panel/NavModal';
 import { WikiPageView } from '@/client/components/workspace/wiki-panel/PageView';
@@ -157,51 +159,50 @@ export function WikiPanel({
 
   return (
     <div className={`@container flex h-full min-h-0 w-full flex-col bg-paper text-xs text-ink ${className}`}>
-      <div className="flex flex-shrink-0 items-center justify-between gap-2 border-b border-ink/10 px-2 py-1.5">
-        <div className="flex min-w-0 items-center gap-1.5">
-          <GitRepoPicker
-            rootPath={rootPath}
-            activeRepo={activeRepo}
-            onSelectRepo={setActiveRepo}
-            repos={repos}
-            scanning={reposScanning}
-            onRefreshRepos={rescanRepos}
-          />
-          {repo && (
-            <span
-              className="flex-shrink-0 rounded border border-ink/15 bg-ink/5 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-ink/60"
-              title={`${repo.host}/${repo.slug} · ${repo.revision.slice(0, 8)}`}
-            >
-              {repo.provider}
-            </span>
-          )}
-        </div>
-
-        <div className="flex flex-shrink-0 items-center gap-0.5">
-          {repo?.webUrl && (
-            <a
-              href={repo.webUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              title="Open the wiki on its host"
-              aria-label="Open the wiki on its host"
-              className="rounded p-1 text-ink/60 hover:bg-ink/5 hover:text-ink"
-            >
-              <ExternalLink size={13} />
-            </a>
-          )}
-          <button
-            type="button"
-            onClick={handleRefresh}
-            disabled={tree.isLoading}
-            title="Re-fetch the wiki"
-            aria-label="Re-fetch the wiki"
-            className="rounded p-1 text-ink/60 transition-colors hover:bg-ink/5 hover:text-ink disabled:opacity-50"
-          >
-            <RefreshCw size={13} className={tree.isLoading || tree.refreshing ? 'animate-spin' : ''} />
-          </button>
-        </div>
-      </div>
+      <PanelHeader
+        left={
+          <>
+            <GitRepoPicker
+              rootPath={rootPath}
+              activeRepo={activeRepo}
+              onSelectRepo={setActiveRepo}
+              repos={repos}
+              scanning={reposScanning}
+              onRefreshRepos={rescanRepos}
+            />
+            {repo && (
+              <span
+                className="flex-shrink-0 rounded border border-ink/15 bg-ink/5 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-ink/60"
+                title={`${repo.host}/${repo.slug} · ${repo.revision.slice(0, 8)}`}
+              >
+                {repo.provider}
+              </span>
+            )}
+          </>
+        }
+        right={
+          <>
+            {repo?.webUrl && (
+              <a
+                href={repo.webUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Open the wiki on its host"
+                aria-label="Open the wiki on its host"
+                className="rounded p-1 text-ink/60 hover:bg-ink/5 hover:text-ink"
+              >
+                <ExternalLink size={13} />
+              </a>
+            )}
+            <RefreshButton
+              label="Re-fetch the wiki"
+              onClick={handleRefresh}
+              busy={tree.isLoading || tree.refreshing}
+              disabled={tree.isLoading}
+            />
+          </>
+        }
+      />
 
       {tree.error && !tree.data ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center">

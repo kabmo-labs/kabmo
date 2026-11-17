@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'preact/hooks';
-import { AlertCircle, Download, Plus, RefreshCw, Search, Trash2, X } from 'lucide-preact';
+import { AlertCircle, Download, Plus, Search, Trash2, X } from 'lucide-preact';
+import { PluginPaneHeader } from '@/client/components/settings/categories/plugin-settings/PaneHeader';
+import { RefreshButton } from '@/client/components/common/header-button';
 import type { PluginCatalogItem, PluginItem, PluginMarketplaceItem } from '@/shared/types';
 
 interface PluginMarketplacePaneProps {
@@ -60,14 +62,16 @@ export function PluginMarketplacePane({
 
   return (
     <div className="flex-1 flex flex-col h-full scrollbar-overlay-container bg-paper text-ink p-6 md:p-8 space-y-6">
-      <div className="pb-4 border-b border-ink/10">
-        <h2 className="text-sm font-bold tracking-tight text-ink">Marketplaces</h2>
-        <p className="text-xs text-ink/60 mt-0.5 leading-relaxed">
-          A marketplace is a git repository (or local directory) publishing a catalog at
-          {' '}<span className="font-mono text-ink/70">.omp-plugin/marketplace.json</span>. Adding one clones it
-          and lets its plugins install by <span className="font-mono text-ink/70">name@marketplace</span>.
-        </p>
-      </div>
+      <PluginPaneHeader
+        title="Marketplaces"
+        description={
+          <>
+            A marketplace is a git repository (or local directory) publishing a catalog at
+            {' '}<span className="font-mono text-ink/70">.omp-plugin/marketplace.json</span>. Adding one clones it
+            and lets its plugins install by <span className="font-mono text-ink/70">name@marketplace</span>.
+          </>
+        }
+      />
 
       {error && (
         <div className="flex items-start gap-1.5 px-3 py-2 rounded-lg border border-error/30 bg-error/5 text-[11px] text-error leading-snug">
@@ -135,20 +139,17 @@ export function PluginMarketplacePane({
                     </p>
                   </div>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <button
-                      type="button"
+                    <RefreshButton
+                      label="Re-fetch this catalog"
                       disabled={isBusy}
+                      busy={updating}
                       onClick={() =>
                         void run(`Updating ${marketplace.name}`, {
                           type: 'update_marketplace',
                           name: marketplace.name,
                         })
                       }
-                      title="Re-fetch this catalog"
-                      className="p-1.5 rounded-lg border border-ink/20 text-ink/60 hover:text-ink hover:border-ink/40 transition-colors cursor-pointer disabled:opacity-40"
-                    >
-                      <RefreshCw size={13} className={updating ? 'animate-spin' : undefined} aria-hidden="true" />
-                    </button>
+                    />
                     {confirmingRemove === marketplace.name ? (
                       <>
                         <button
@@ -179,9 +180,10 @@ export function PluginMarketplacePane({
                         disabled={isBusy}
                         onClick={() => setConfirmingRemove(marketplace.name)}
                         title="Remove this marketplace (installed plugins stay)"
-                        className="p-1.5 rounded-lg border border-ink/20 text-ink/60 hover:border-error hover:text-error transition-colors cursor-pointer disabled:opacity-40"
+                        aria-label="Remove this marketplace"
+                        className="flex-shrink-0 rounded-md border border-ink/15 bg-paper p-1.5 text-ink/80 transition-colors hover:bg-ink/5 hover:border-error hover:text-error disabled:opacity-50"
                       >
-                        <Trash2 size={13} />
+                        <Trash2 size={14} />
                       </button>
                     )}
                   </div>

@@ -235,7 +235,7 @@ describe('PluginToolbar registry refresh', () => {
       }),
     );
     const button = Array.from(el.querySelectorAll('button')).find(
-      (candidate) => candidate.textContent?.trim() === 'Refresh',
+      (candidate) => candidate.getAttribute('aria-label') === 'Re-read the plugin marketplace from disk',
     )!;
     const iconClass = () => button.querySelector('svg')?.getAttribute('class') ?? '';
     expect(iconClass()).not.toContain('animate-spin');

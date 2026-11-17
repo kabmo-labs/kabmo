@@ -1,5 +1,7 @@
 import { Loader2, RotateCw, Terminal } from 'lucide-preact';
 import { GitRepoPicker } from '@/client/components/workspace/repo-picker';
+import { PanelHeader } from '@/client/components/workspace/panel-header';
+import { HeaderButton } from '@/client/components/common/header-button';
 import type { TerminalStatus } from '@/client/hooks/workspace/terminal';
 
 interface TerminalHeaderProps {
@@ -45,46 +47,43 @@ export function TerminalHeader({
 }: TerminalHeaderProps) {
   const shellName = shell ? shell.split('/').pop() : '';
   return (
-    <div className="h-10 px-3 border-b border-ink/10 bg-paper flex items-center justify-between flex-shrink-0 select-none">
-      {/* Left cluster: Title, Status, Repo */}
-      <div className="flex items-center space-x-2 min-w-0">
-        <div className="flex items-center space-x-1.5">
-          <Terminal size={14} className="text-ink/80 flex-shrink-0" />
-          <span className="text-xs font-semibold tracking-wider text-ink uppercase">
-            Terminal
+    <PanelHeader
+      left={
+        <>
+          <div className="flex items-center space-x-1.5">
+            <Terminal size={14} className="text-ink/80 flex-shrink-0" />
+            <span className="text-xs font-semibold tracking-wider text-ink uppercase">
+              Terminal
+            </span>
+          </div>
+
+          <span
+            className={`inline-flex items-center space-x-1 px-1.5 py-0.5 rounded text-[10px] font-mono border ${STATUS_CLASS[status]}`}
+            title={status === 'exited' && exitCode !== null ? `Shell exited with code ${exitCode}` : undefined}
+          >
+            {status === 'connecting' && <Loader2 size={10} className="animate-spin" />}
+            <span>{status === 'exited' && exitCode !== null ? `EXIT ${exitCode}` : STATUS_LABEL[status]}</span>
           </span>
-        </div>
 
-        <span
-          className={`inline-flex items-center space-x-1 px-1.5 py-0.5 rounded text-[10px] font-mono border ${STATUS_CLASS[status]}`}
-          title={status === 'exited' && exitCode !== null ? `Shell exited with code ${exitCode}` : undefined}
-        >
-          {status === 'connecting' && <Loader2 size={10} className="animate-spin" />}
-          <span>{status === 'exited' && exitCode !== null ? `EXIT ${exitCode}` : STATUS_LABEL[status]}</span>
-        </span>
+          <GitRepoPicker
+            rootPath={rootPath}
+            activeRepo={activeRepo}
+            onSelectRepo={onSelectRepo}
+            repos={repos}
+            scanning={reposScanning}
+            onRefreshRepos={onRefreshRepos}
+          />
 
-        <GitRepoPicker
-          rootPath={rootPath}
-          activeRepo={activeRepo}
-          onSelectRepo={onSelectRepo}
-          repos={repos}
-          scanning={reposScanning}
-          onRefreshRepos={onRefreshRepos}
-        />
-
-        <button
-          type="button"
-          onClick={onRestart}
-          title="Kill this shell and start a new one"
-          className="p-1 rounded text-ink/50 hover:text-ink hover:bg-ink/5 transition-colors cursor-pointer flex-shrink-0"
-        >
-          <RotateCw size={12} />
-        </button>
-      </div>
-
-      {shellName && (
-        <span className="hidden sm:block text-[10px] font-mono text-ink/40 flex-shrink-0">{shellName}</span>
-      )}
-    </div>
+          <HeaderButton label="Kill this shell and start a new one" onClick={onRestart}>
+            <RotateCw size={14} />
+          </HeaderButton>
+        </>
+      }
+      right={
+        shellName ? (
+          <span className="hidden sm:block text-[10px] font-mono text-ink/40 flex-shrink-0">{shellName}</span>
+        ) : undefined
+      }
+    />
   );
 }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
-import { RefreshCw } from 'lucide-preact';
 import { useSearchParams } from '@/client/lib/router/search-params';
+import { PanelHeader } from '@/client/components/workspace/panel-header';
+import { RefreshButton } from '@/client/components/common/header-button';
 import type { SessionContextTelemetry } from '@/shared/types';
 import { emptyTelemetry } from '@/client/data/context-data';
 import { ContextWindowCard } from '@/client/components/workspace/context-panel/WindowCard';
@@ -100,30 +101,28 @@ export function ContextPanel({
     <div className={`flex flex-col h-full bg-paper text-ink overflow-hidden select-none ${className}`}>
       {/* Top Header with a refresh affordance: the telemetry rides a topic a
           tool call republishes, and the button spins on that push so the user
-          notices the numbers moved. */}
-      <div className="flex-shrink-0 p-4 border-b border-ink/10 bg-paper">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
+          notices the numbers moved. The title and timestamp share the strip's
+          one line — the shared header is 40px, the same as every other view. */}
+      <PanelHeader
+        left={
+          <>
             <h2 className="text-xs font-medium text-ink tracking-tight truncate">
               {telemetry.sessionTitle}
             </h2>
-            <div className="text-[11px] text-ink/50 mt-1 truncate font-mono">
+            <span className="text-[11px] text-ink/50 truncate font-mono">
               {telemetry.timestamp}
-            </div>
-          </div>
-          <button
-            type="button"
+            </span>
+          </>
+        }
+        right={
+          <RefreshButton
+            label="Refresh context telemetry"
             onClick={() => { topicTelemetry.refresh(); loadTelemetry(); }}
+            busy={topicTelemetry.refreshing}
             disabled={!enabled}
-            title="Refresh context telemetry"
-            aria-label="Refresh context telemetry"
-            aria-busy={topicTelemetry.refreshing}
-            className="flex-shrink-0 rounded-md border border-ink/15 bg-paper p-1.5 text-ink/80 transition-colors hover:bg-ink/5 disabled:opacity-50"
-          >
-            <RefreshCw size={12} className={topicTelemetry.refreshing ? 'animate-spin text-ink' : ''} />
-          </button>
-        </div>
-      </div>
+          />
+        }
+      />
 
       {/* Scrollable Context Body */}
       <div className="flex-1 scrollbar-overlay-container p-4 space-y-4">

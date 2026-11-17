@@ -127,7 +127,7 @@ export function ActivityBar({ side, activePanel, onChangePanel, isPanelOpen, has
         ref={navRef}
         onContextMenu={openMenu}
         aria-label={side === 'left' ? 'Left panel views' : 'Right panel views'}
-        className={`glass-chrome flex-shrink-0 ${side === 'left' ? 'border-r' : 'border-l'} border-ink/10 bg-paper flex flex-col items-center py-3 space-y-2 z-10`}
+        className={`glass-chrome flex-shrink-0 ${side === 'left' ? 'border-r' : 'border-l'} border-ink/10 bg-paper flex flex-col items-center pb-3 space-y-2 z-10`}
         style={{ width: ACTIVITY_BAR_WIDTH_PX }}
       >
         <div className="flex flex-col items-center space-y-1 w-full">

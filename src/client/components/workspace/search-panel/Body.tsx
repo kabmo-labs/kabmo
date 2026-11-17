@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef } from 'preact/hooks';
 import { CaseSensitive, Check, MoreHorizontal, Regex, ReplaceAll, Search, WholeWord, X } from 'lucide-preact';
 import type { RefObject } from 'preact';
 import { GitRepoPicker } from '@/client/components/workspace/repo-picker';
+import { PanelHeader } from '@/client/components/workspace/panel-header';
 import { SearchResults } from '@/client/components/workspace/search-panel/Results';
 import { setSearchReveal } from '@/client/lib/search-reveal';
 import { groupSearchResults, MAX_SEARCH_RESULTS } from '@/shared/lib/fs/search-list';
@@ -138,44 +139,48 @@ export function SearchPanelBody({
 
   return (
     <div className={`flex flex-col h-full bg-paper ${className}`}>
-      <div className="p-3 border-b border-ink/10 flex items-center justify-between">
-        <div className="flex items-center space-x-2 min-w-0">
-          <h2 className="text-xs font-semibold text-ink uppercase tracking-wider">Search</h2>
-          <GitRepoPicker
-            rootPath={rootPath}
-            activeRepo={activeRepo}
-            onSelectRepo={setActiveRepo}
-            repos={repos}
-            scanning={reposScanning}
-            onRefreshRepos={rescanRepos}
-          />
-        </div>
-        <div className="relative" ref={menuRef}>
-          <button
-            onClick={() => setShowMenu(!showMenu)}
-            className={`p-1 rounded hover:bg-ink/5 transition-colors ${showMenu || showIncludeField ? 'text-ink' : 'text-ink/40'}`}
-            title="Search Options"
-          >
-            <MoreHorizontal size={14} />
-          </button>
+      <PanelHeader
+        left={
+          <>
+            <h2 className="text-xs font-semibold text-ink uppercase tracking-wider">Search</h2>
+            <GitRepoPicker
+              rootPath={rootPath}
+              activeRepo={activeRepo}
+              onSelectRepo={setActiveRepo}
+              repos={repos}
+              scanning={reposScanning}
+              onRefreshRepos={rescanRepos}
+            />
+          </>
+        }
+        right={
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={() => setShowMenu(!showMenu)}
+              className={`p-1 rounded hover:bg-ink/5 transition-colors ${showMenu || showIncludeField ? 'text-ink' : 'text-ink/40'}`}
+              title="Search Options"
+            >
+              <MoreHorizontal size={14} />
+            </button>
 
-          {showMenu && (
-            <div className="glass-popover absolute right-0 top-full mt-1 w-48 bg-paper border border-ink/10 rounded shadow-lg z-10 py-1">
-              <button
-                onClick={() => {
-                  setShowIncludeField(!showIncludeField);
-                  if (showIncludeField) setIncludeFiles('');
-                  setShowMenu(false);
-                }}
-                className="w-full px-3 py-1.5 text-left text-xs text-ink hover:bg-ink/5 flex items-center justify-between"
-              >
-                <span>Files to include</span>
-                {showIncludeField && <Check size={12} className="text-ink/60" />}
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
+            {showMenu && (
+              <div className="glass-popover absolute right-0 top-full mt-1 w-48 bg-paper border border-ink/10 rounded shadow-lg z-10 py-1">
+                <button
+                  onClick={() => {
+                    setShowIncludeField(!showIncludeField);
+                    if (showIncludeField) setIncludeFiles('');
+                    setShowMenu(false);
+                  }}
+                  className="w-full px-3 py-1.5 text-left text-xs text-ink hover:bg-ink/5 flex items-center justify-between"
+                >
+                  <span>Files to include</span>
+                  {showIncludeField && <Check size={12} className="text-ink/60" />}
+                </button>
+              </div>
+            )}
+          </div>
+        }
+      />
 
       <div className="p-3 flex flex-col gap-2.5 border-b border-ink/10">
         <div className="relative">

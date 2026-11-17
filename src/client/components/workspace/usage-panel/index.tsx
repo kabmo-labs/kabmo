@@ -1,5 +1,7 @@
 import { useEffect } from 'preact/hooks';
-import { AlertCircle, RefreshCw } from 'lucide-preact';
+import { AlertCircle } from 'lucide-preact';
+import { PanelHeader } from '@/client/components/workspace/panel-header';
+import { RefreshButton } from '@/client/components/common/header-button';
 import { ProviderDetail } from '@/client/components/settings/categories/usage-settings/ProviderDetail';
 import { buildProviders, type UsageProviderId } from '@/client/components/settings/categories/usage-settings/providers';
 import { formatDateTime } from '@/client/components/settings/categories/usage-settings/format';
@@ -72,28 +74,29 @@ export function UsagePanel({ className = '', active = true }: UsagePanelProps) {
 
   return (
     <div className={`flex h-full w-full min-w-0 min-h-0 flex-col overflow-hidden bg-paper text-xs text-ink ${className}`}>
-      <div className="px-3.5 py-2.5 border-b border-ink/10 flex items-center justify-between gap-3 flex-shrink-0 min-w-0">
-        <div className="flex items-center gap-2 min-w-0">
-          <h2 className="text-xs font-semibold text-ink uppercase tracking-wider">Usage</h2>
-          <span className="text-[11px] text-ink/50 truncate">
-            Updated {formatDateTime(report.generatedAt)}
-          </span>
-          {report.isMock && (
-            <span className="text-[10px] font-mono uppercase tracking-wider bg-ink/5 border border-ink/15 rounded px-1.5 py-0.5 text-ink/60">
-              Mock
+      <PanelHeader
+        left={
+          <>
+            <h2 className="text-xs font-semibold text-ink uppercase tracking-wider">Usage</h2>
+            <span className="text-[11px] text-ink/50 truncate">
+              Updated {formatDateTime(report.generatedAt)}
             </span>
-          )}
-        </div>
-        <button
-          type="button"
-          onClick={() => reload({ force: true })}
-          disabled={isLoading}
-          className="p-1.5 bg-paper border border-ink/15 rounded-md hover:bg-ink/5 text-ink/80 transition-colors disabled:opacity-50 flex-shrink-0"
-          title="Refresh usage"
-        >
-          <RefreshCw size={12} className={isLoading || usage.refreshing ? 'animate-spin text-ink' : ''} />
-        </button>
-      </div>
+            {report.isMock && (
+              <span className="text-[10px] font-mono uppercase tracking-wider bg-ink/5 border border-ink/15 rounded px-1.5 py-0.5 text-ink/60">
+                Mock
+              </span>
+            )}
+          </>
+        }
+        right={
+          <RefreshButton
+            label="Refresh usage"
+            onClick={() => reload({ force: true })}
+            busy={isLoading || usage.refreshing}
+            disabled={isLoading}
+          />
+        }
+      />
 
       {providers.length > 0 && (
         <div className="px-3.5 py-2.5 border-b border-ink/10 flex-shrink-0 min-w-0">

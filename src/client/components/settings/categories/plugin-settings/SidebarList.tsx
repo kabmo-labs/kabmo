@@ -1,5 +1,6 @@
 import { useState } from 'preact/hooks';
-import { AlertCircle, ArrowDownToLine, Check, Package, RefreshCw, Store, X } from 'lucide-preact';
+import { AlertCircle, ArrowDownToLine, Check, Package, Store, X } from 'lucide-preact';
+import { RefreshButton } from '@/client/components/common/header-button';
 import type { PluginItem, PluginMarketplaceItem } from '@/shared/types';
 import { ProjectSelectorDropdown, type ProjectOption } from '@/client/components/settings/ProjectSelectorDropdown';
 import { pluginSelectionKey } from '@/client/components/settings/categories/plugin-settings/selection';
@@ -97,10 +98,10 @@ export function PluginSidebarList({
         <span className="text-xs font-semibold text-ink">
           {view === 'installed' ? `${installedCount}/${plugins.length} enabled` : `${catalogCount} available`}
         </span>
-        <button
-          type="button"
+        <RefreshButton
+          label="Re-read omp's plugin registries"
+          busy={Boolean(busy) || refreshing}
           disabled={refreshing}
-          aria-busy={refreshing}
           onClick={async () => {
             setRefreshing(true);
             try {
@@ -109,11 +110,7 @@ export function PluginSidebarList({
               setRefreshing(false);
             }
           }}
-          title="Re-read omp's plugin registries"
-          className="p-1 rounded-md text-ink/60 hover:text-ink hover:bg-ink/5 transition-colors cursor-pointer disabled:opacity-50"
-        >
-          <RefreshCw size={14} className={busy || refreshing ? 'animate-spin' : undefined} />
-        </button>
+        />
       </div>
 
       {/* Install box. The spec grammar is omp's own: `name@marketplace`, an npm

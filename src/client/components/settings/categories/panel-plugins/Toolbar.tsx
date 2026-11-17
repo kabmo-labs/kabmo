@@ -18,6 +18,7 @@
 
 import { useState } from 'preact/hooks';
 import { ArrowDownToLine, CheckSquare, Loader2, RefreshCw, Square } from 'lucide-preact';
+import { RefreshButton } from '@/client/components/common/header-button';
 
 interface PluginToolbarProps {
   autoUpdate: boolean;
@@ -109,17 +110,12 @@ export function PluginToolbar({
         Update all{updateCount > 0 ? ` (${updateCount})` : ''}
       </button>
 
-      <button
-        type="button"
-        onClick={() => void reloadRegistry()}
+      <RefreshButton
+        label="Re-read the plugin marketplace from disk"
+        busy={refreshing}
         disabled={busy !== null || refreshing}
-        aria-busy={refreshing}
-        className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded border border-ink/15 hover:bg-ink/5 disabled:opacity-50"
-        title="Re-read the marketplace from disk"
-      >
-        <RefreshCw size={13} className={refreshing ? 'animate-spin' : undefined} />
-        Refresh
-      </button>
+        onClick={() => void reloadRegistry()}
+      />
 
       <span className="text-[11px] text-ink/45">
         {autoUpdate

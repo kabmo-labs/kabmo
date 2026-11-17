@@ -3,6 +3,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { ExternalLink, RotateCcw, Trash2 } from 'lucide-preact';
 import type { PluginFeatureSpec, PluginItem } from '@/shared/types';
 import { PluginSettingsSection } from '@/client/components/settings/categories/plugin-settings/SettingsSection';
+import { PluginPaneHeader } from '@/client/components/settings/categories/plugin-settings/PaneHeader';
 
 interface PluginDetailPaneProps {
   plugin: PluginItem | null;
@@ -55,51 +56,57 @@ export function PluginDetailPane({
 
   return (
     <div className="flex-1 flex flex-col h-full scrollbar-overlay-container bg-paper text-ink p-6 md:p-8 space-y-6">
-      <div className="flex items-start justify-between gap-4 pb-4 border-b border-ink/10">
-        <div className="min-w-0">
-          <h2 className="text-sm font-bold tracking-tight text-ink truncate">{plugin.name}</h2>
-          <p className="text-xs text-ink/60 mt-0.5 truncate">
+      <PluginPaneHeader
+        title={plugin.name}
+        subtitle={
+          <>
             {plugin.version || 'no version'} · {plugin.scope === 'project' ? 'project scope' : 'user scope'}
             {plugin.marketplace ? ` · ${plugin.marketplace}` : ''}
-          </p>
-          {plugin.description && <p className="text-xs text-ink/70 mt-2 leading-relaxed">{plugin.description}</p>}
-          {plugin.homepage && (
-            <a
-              href={plugin.homepage}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="mt-1 inline-flex items-center gap-1 text-[11px] text-ink/60 hover:text-ink underline decoration-ink/30"
-            >
-              <ExternalLink size={11} /> {plugin.homepage}
-            </a>
-          )}
-        </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <button
-            type="button"
-            disabled={isBusy}
-            aria-pressed={plugin.enabled}
-            onClick={() => onToggleEnabled(plugin, !plugin.enabled)}
-            className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors cursor-pointer disabled:opacity-50 ${
-              plugin.enabled
-                ? 'border-ink/20 text-ink/70 hover:bg-ink/5'
-                : 'border-ink bg-ink text-paper hover:bg-ink/90'
-            }`}
-          >
-            {plugin.enabled ? 'Disable' : 'Enable'}
-          </button>
-          {plugin.updateAvailable && (
+          </>
+        }
+        description={
+          <>
+            {plugin.description && <p>{plugin.description}</p>}
+            {plugin.homepage && (
+              <a
+                href={plugin.homepage}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="mt-1 inline-flex items-center gap-1 text-[11px] text-ink/60 hover:text-ink underline decoration-ink/30"
+              >
+                <ExternalLink size={11} /> {plugin.homepage}
+              </a>
+            )}
+          </>
+        }
+        actions={
+          <>
             <button
               type="button"
               disabled={isBusy}
-              onClick={() => onUpgrade(plugin)}
-              className="px-3 py-1.5 rounded-lg border border-amber-500/40 text-xs font-medium text-ink hover:bg-amber-500/10 transition-colors cursor-pointer disabled:opacity-50"
+              aria-pressed={plugin.enabled}
+              onClick={() => onToggleEnabled(plugin, !plugin.enabled)}
+              className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors cursor-pointer disabled:opacity-50 ${
+                plugin.enabled
+                  ? 'border-ink/20 text-ink/70 hover:bg-ink/5'
+                  : 'border-ink bg-ink text-paper hover:bg-ink/90'
+              }`}
             >
-              Upgrade to {plugin.updateAvailable}
+              {plugin.enabled ? 'Disable' : 'Enable'}
             </button>
-          )}
-        </div>
-      </div>
+            {plugin.updateAvailable && (
+              <button
+                type="button"
+                disabled={isBusy}
+                onClick={() => onUpgrade(plugin)}
+                className="px-3 py-1.5 rounded-lg border border-amber-500/40 text-xs font-medium text-ink hover:bg-amber-500/10 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                Upgrade to {plugin.updateAvailable}
+              </button>
+            )}
+          </>
+        }
+      />
 
       {plugin.shadowedBy === 'project' && (
         <div className="rounded-lg border border-ink/15 bg-ink/5 px-3 py-2 text-[11px] text-ink/70 leading-relaxed">

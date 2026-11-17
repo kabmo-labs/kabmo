@@ -1,5 +1,7 @@
-import { FolderGit2, RotateCcw } from 'lucide-preact';
+import { FolderGit2 } from 'lucide-preact';
 import { GitRepoPicker } from '@/client/components/workspace/repo-picker';
+import { PanelHeader } from '@/client/components/workspace/panel-header';
+import { RefreshButton } from '@/client/components/common/header-button';
 
 interface GitRepoHeaderProps {
   activeRepo: string;
@@ -27,6 +29,9 @@ interface GitRepoHeaderProps {
  * The `GIT •` prefix the trigger used to draw is gone with it: the panel's own
  * title is directly above, so the word named the panel rather than the
  * repository, and the picker's label is the repository's name.
+ *
+ * The strip itself is the shared `PanelHeader`, so this view's picker sits on
+ * the same line as the rail's first mark and every other repo-scoped view.
  */
 export function GitRepoHeader({
   activeRepo,
@@ -39,30 +44,27 @@ export function GitRepoHeader({
   onRefreshRepos,
 }: GitRepoHeaderProps) {
   return (
-    <div className="p-3 border-b border-ink/10 flex items-center justify-between">
-      <div className="flex items-center gap-1.5 min-w-0">
-        <FolderGit2 size={12} className="text-ink/50 flex-shrink-0" aria-hidden />
-        <GitRepoPicker
-          rootPath={rootPath}
-          activeRepo={activeRepo}
-          onSelectRepo={onSelectRepo}
-          repos={repos}
-          scanning={reposScanning}
-          onRefreshRepos={onRefreshRepos}
-        />
-      </div>
-
-      <div className="flex space-x-2 text-ink/40">
-        <button
-          type="button"
+    <PanelHeader
+      left={
+        <>
+          <FolderGit2 size={12} className="text-ink/50 flex-shrink-0" aria-hidden />
+          <GitRepoPicker
+            rootPath={rootPath}
+            activeRepo={activeRepo}
+            onSelectRepo={onSelectRepo}
+            repos={repos}
+            scanning={reposScanning}
+            onRefreshRepos={onRefreshRepos}
+          />
+        </>
+      }
+      right={
+        <RefreshButton
+          label="Refresh"
           onClick={onRefresh}
-          title="Refresh"
-          aria-label="Refresh"
-          className="hover:text-ink cursor-pointer inline-flex"
-        >
-          <RotateCcw size={14} className={isRefreshing ? 'animate-spin' : ''} />
-        </button>
-      </div>
-    </div>
+          busy={isRefreshing}
+        />
+      }
+    />
   );
 }
