@@ -67,6 +67,9 @@ function dockHandle(): LeftDockHandle {
       }
       writeLeftDock({ panels: state.panels.filter((id) => id !== panelId) });
     },
+    setOrder: (panelIds) => {
+      writeLeftDock({ panels: [...panelIds] });
+    },
     widthOf: () => 320,
     commitWidth: () => {},
   };

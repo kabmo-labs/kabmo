@@ -14,8 +14,7 @@ import { usePanelSlotPlugins } from '@/client/components/workspace/plugin-panel/
 import { useAgentStreamStatus } from '@/client/hooks/chat/omp/status';
 import { usePanelWidths } from '@/client/hooks/workspace/panel-widths';
 import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
-import { MIN_LEFT_PANEL_WIDTH } from '@/shared/lib/workspace/sidebar-width';
-import { MIN_LEFT_DOCK_PLUGIN_WIDTH } from '@/shared/lib/workspace/left-dock-width';
+import { resolveLeftDockMinWidth } from '@/shared/lib/workspace/left-dock-width';
 import { SESSIONS_VIEW_ID } from '@/shared/lib/workspace/left-dock';
 import { DEFAULT_RIGHT_PANEL_TYPE } from '@/shared/lib/workspace/right-panels';
 import { useOpenPanelRequest } from '@/client/hooks/workspace/open-panel';
@@ -59,9 +58,11 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
   // all is left for the dock to explain.
   const leftView = useLeftDockView(activeLeftView, dock.enabled);
   const [sidebarWidth, commitSidebarWidth] = useLeftDockWidth(leftView);
-  // A plugin view placed on the dock declares its own floor; the session list
-  // keeps the column's own. Resolved here because the resizer clamps to it.
-  const leftDockMinWidth = leftView === SESSIONS_VIEW_ID ? MIN_LEFT_PANEL_WIDTH : MIN_LEFT_DOCK_PLUGIN_WIDTH;
+  // A view placed on the dock declares its own floor — a plugin's 320, a
+  // built-in's own (the terminal 320, the wiki 420); the session list keeps the
+  // column's own. Resolved through the width module so the resizer, the stored
+  // width and the initial size cannot disagree.
+  const leftDockMinWidth = resolveLeftDockMinWidth(leftView);
 
   const editorPanelRef = useRef<PanelImperativeHandle | null>(null);
   const rightPanelRef = useRef<PanelImperativeHandle | null>(null);
@@ -254,6 +255,7 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
             minWidth={leftDockMinWidth}
             hasActiveContext={hasActiveContext}
             activeProjectPath={activeProjectPath}
+            sessionId={sessionId}
             appSettings={appSettings}
             streamStatus={streamStatus}
             refreshKey={refreshKey}

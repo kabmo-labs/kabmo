@@ -1,7 +1,8 @@
 import { useRef } from 'preact/hooks';
-import { Suspense, lazy } from 'preact/compat';
-import type { ReactNode, RefObject } from 'preact/compat';
+import { lazy } from 'preact/compat';
+import type { RefObject } from 'preact/compat';
 import { Group, Panel, type PanelImperativeHandle } from '@/client/components/layout/desktop-layout/resizer';
+import { PanelSuspense } from '@/client/components/layout/desktop-layout/PanelSuspense';
 import { ChatTimeline } from '@/client/components/workspace/chat-timeline/index';
 import { usePanelCatalog, PluginPanelBody, usePanelSlotPlugins, type PanelBodyProps } from '@/client/components/workspace/plugin-panel/resolve';
 import { EditorPluginRail } from '@/client/components/workspace/editor/PluginRail';
@@ -11,6 +12,8 @@ import { useEditorDrop, type EditorDropResult } from '@/client/hooks/editor/use-
 import { EditorDropOverlay } from '@/client/components/workspace/editor/EditorDropOverlay';
 import { ResizeHandle } from '@/client/components/layout/desktop-layout/ResizeHandle';
 import { useAvailableWidth } from '@/client/hooks/workspace/available-width';
+import { usePanelDropTarget } from '@/client/hooks/workspace/panel-drop-target';
+import { useLeftDock } from '@/client/hooks/workspace/left-dock';
 import { useSessionStateContext } from '@/client/hooks/workspace/session-state/context';
 import {
   HANDLE_WIDTH,
@@ -22,18 +25,6 @@ import {
 import { resolveWorkspacePanelWidths } from '@/shared/lib/workspace/workspace-panel-widths';
 
 const Editor = lazy(() => import('@/client/components/workspace/editor/index').then((m) => ({ default: m.Editor })));
-
-function PanelSuspense({ children }: { children: ReactNode }) {
-  return (
-    <Suspense fallback={
-      <div className="w-full h-full flex items-center justify-center text-ink/40">
-        <span className="text-xs font-mono">Loading…</span>
-      </div>
-    }>
-      {children}
-    </Suspense>
-  );
-}
 
 interface WorkspacePanelsProps {
   appSettings?: Record<string, any>;
@@ -143,8 +134,21 @@ export function WorkspacePanels(props: WorkspacePanelsProps) {
   // (tree expansion, search results, terminal buffer) survives switches and no
   // panel re-fetches its data just because the user looked away.
   const catalog = usePanelCatalog();
+  // The right column is a destination too: a panel dragged from the left rail
+  // must land where it was dropped, not bounce back because only the 44px rail
+  // accepted it. The rail owns ordering; this owns which side receives it.
+  const { setSide } = useLeftDock();
+  const rightDrop = usePanelDropTarget({ onPlace: (id) => setSide(id, 'right') });
   const { sessionId } = useSessionStateContext();
-  const activePanel = catalog.find((panel) => panel.id === activeRightPanel);
+  // A stored selection can name a view the user has just placed on the LEFT
+  // rail — the right column then holds no such panel. Falling back to the first
+  // view it does hold is what the phone's drawer already does, and it keeps a
+  // move from leaving a "not available" notice in a column that has views. A
+  // PANEL THAT DOES NOT EXIST still gets the notice, which is a different fact.
+  const allPanels = usePanelCatalog('all');
+  const movedToLeft = allPanels.some((panel) => panel.id === activeRightPanel && panel.side === 'left');
+  const activePanel = catalog.find((panel) => panel.id === activeRightPanel) ?? (movedToLeft ? catalog[0] : undefined);
+  const shownRightPanel = activePanel?.id ?? activeRightPanel;
   // The EDITOR column's plugin slot (`panel`): a takeover, so it has no tab in
   // the strip and this rail is its only switch. Empty until a plugin registers
   // one, which is why a Kabmo without one looks exactly as it did.
@@ -165,7 +169,7 @@ export function WorkspacePanels(props: WorkspacePanelsProps) {
       available,
       panelWidths,
       editorWidthMode,
-      activeRightPanel,
+      activeRightPanel: shownRightPanel,
       activePanel,
       showEditor,
       showRightPanel,
@@ -195,7 +199,7 @@ export function WorkspacePanels(props: WorkspacePanelsProps) {
     }
     if (right != null && right > 0) {
       patch.right = {
-        [activeRightPanel]: { px: Math.round(right), ...(available ? { fraction: right / available } : {}) },
+        [shownRightPanel]: { px: Math.round(right), ...(available ? { fraction: right / available } : {}) },
       };
     }
     return patch;
@@ -273,6 +277,10 @@ export function WorkspacePanels(props: WorkspacePanelsProps) {
 
         {showRightPanel && <ResizeHandle />}
         <Panel panelRef={rightPanelRef} id="right-panel" defaultSize={rightWidth} minSize={rightPanelMin} maxSize={rightMaxSize} collapsed={!showRightPanel}>
+          <div
+            className={`w-full h-full ${rightDrop.active ? 'ring-1 ring-inset ring-ink/30' : ''}`}
+            {...rightDrop.dropProps}
+          >
           <PanelSuspense>
             {/* ONE renderer for both kinds of panel. Each view stays MOUNTED
                 while another is on screen (hidden with CSS), so a tree's
@@ -281,7 +289,7 @@ export function WorkspacePanels(props: WorkspacePanelsProps) {
                 one: a hidden plugin is a component nobody is looking at, and
                 the host owns no state of its own to preserve. */}
             {catalog.map((panel) => {
-              const isActiveView = activeRightPanel === panel.id;
+              const isActiveView = shownRightPanel === panel.id;
               if (!panel.builtin && !isActiveView) return null;
               const body: PanelBodyProps = {
                 className: 'w-full h-full',
@@ -330,10 +338,11 @@ export function WorkspacePanels(props: WorkspacePanelsProps) {
               </div>
             ) : null}
           </PanelSuspense>
+          </div>
         </Panel>
       </Group>
 
-      <ActivityBar side="right" activePanel={activeRightPanel} onChangePanel={onChangeRightPanel} isPanelOpen={showRightPanel} hasActiveContext={hasActiveContext} activeProjectPath={activeProjectPath} />
+      <ActivityBar side="right" activePanel={shownRightPanel} onChangePanel={onChangeRightPanel} isPanelOpen={showRightPanel} hasActiveContext={hasActiveContext} activeProjectPath={activeProjectPath} />
     </div>
   );
 }

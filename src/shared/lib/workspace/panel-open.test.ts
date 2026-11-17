@@ -26,6 +26,7 @@ import type { LeftDockState } from '@/shared/lib/workspace/left-dock';
 
 const RAIL_ON: LeftDockState = { enabled: true, panels: ['plugin:stats:rightPanel'] };
 const RAIL_OFF: LeftDockState = { enabled: false, panels: ['plugin:stats:rightPanel'] };
+const RAIL_WITH_GIT: LeftDockState = { enabled: true, panels: ['git'] };
 
 describe('phoneDrawerForPanel', () => {
   test('a panel placed on the left, with the rail on, is the left drawer', () => {
@@ -43,9 +44,14 @@ describe('phoneDrawerForPanel', () => {
     expect(phoneDrawerForPanel('plugin:stats:rightPanel', { enabled: true, panels: [] })).toBe('right');
   });
 
-  test('a built-in view is the right drawer, never the left one', () => {
+  test('an unplaced built-in view is the right drawer', () => {
     expect(phoneDrawerForPanel('git', RAIL_ON)).toBe('right');
     expect(phoneDrawerForPanel('files', RAIL_OFF)).toBe('right');
+  });
+
+  test('a built-in view placed on the left follows the same rule as a plugin', () => {
+    expect(phoneDrawerForPanel('git', RAIL_WITH_GIT)).toBe('left');
+    expect(phoneDrawerForPanel('git', { enabled: false, panels: ['git'] })).toBe('right');
   });
 
   test('an editor-slot takeover has no drawer at all', () => {

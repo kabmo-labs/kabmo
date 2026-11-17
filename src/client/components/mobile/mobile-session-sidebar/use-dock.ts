@@ -73,11 +73,14 @@ export function dockBodyProps(input: {
   onRefresh?: () => void;
   onOpenFile?: (file: unknown) => void;
   onClose: () => void;
+  /** The view on screen, so a tree-reading built-in is inert without a folder. */
+  requiresWorkspace?: boolean;
+  hasActiveContext?: boolean;
 }): PanelBodyProps {
   return {
     className: 'w-full h-full',
     sessionId: input.sessionId === null ? null : String(input.sessionId),
-    enabled: true,
+    enabled: input.requiresWorkspace ? input.hasActiveContext === true : true,
     active: true,
     refreshKey: input.refreshKey,
     ...(input.rootPath ? { rootPath: input.rootPath } : {}),

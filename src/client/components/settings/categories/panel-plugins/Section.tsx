@@ -149,7 +149,7 @@ export function PanelPluginsSection() {
       {/* After the built-ins, because it places the panels those rows switch on:
           a placement for a panel that is switched off would be a row for
           nothing. */}
-      <LeftDockSettings dock={dock} plugins={plugins} slots={slots} />
+      <LeftDockSettings dock={dock} plugins={plugins} slots={slots} disabledPanels={disabledPanels} />
 
       {ready && available.length === 0 && plugins.length === 0 && errors.length === 0 ? (
         <div className="text-xs text-ink/60 space-y-1.5">

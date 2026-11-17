@@ -39,6 +39,8 @@ import type { RefObject } from 'preact';
 import { Panel, type PanelImperativeHandle } from '@/client/components/layout/desktop-layout/resizer';
 import { ActivityBar } from '@/client/components/layout/ActivityBar';
 import { LeftDockView } from '@/client/components/layout/LeftDock';
+import { useLeftDock } from '@/client/hooks/workspace/left-dock';
+import { usePanelDropTarget } from '@/client/hooks/workspace/panel-drop-target';
 import { ResizeHandle } from '@/client/components/layout/desktop-layout/ResizeHandle';
 import { AboutModal } from '@/client/components/layout/session-sidebar/about-modal';
 import { UpdatePopup } from '@/client/components/layout/update-popup';
@@ -68,6 +70,8 @@ interface LeftColumnProps {
   minWidth: number;
   hasActiveContext: boolean;
   activeProjectPath?: string | null;
+  /** The active session, for a built-in view the user placed on the dock. */
+  sessionId?: string | null;
   appSettings?: Record<string, any>;
   streamStatus?: AgentStreamStatus;
   refreshKey: number;
@@ -86,6 +90,7 @@ export function LeftColumn({
   minWidth,
   hasActiveContext,
   activeProjectPath,
+  sessionId,
   appSettings = {},
   streamStatus,
   refreshKey,
@@ -94,6 +99,21 @@ export function LeftColumn({
 }: LeftColumnProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
+  // With the rail OFF there is no rail to drop on, so the column BODY is the
+  // destination: dropping a panel anywhere on the session list places it on the
+  // dock and the rail appears with its button. With the rail ON it accepts the
+  // same drop too, because the session list beside the rail is still the left
+  // column; the rail's own handlers own ordering, and a row stops the event.
+  const { setSide } = useLeftDock();
+  const { active: dropActive, dropProps } = usePanelDropTarget({
+    onPlace: (id) => {
+      setSide(id, 'left');
+      // A panel dropped on the session list is the one this column should show;
+      // otherwise the drop reads as "a new button appeared".
+      onSelectView(id);
+    },
+    highlight: !railEnabled,
+  });
   const updates = useUpdates();
   const { pushToast } = useToasts();
   const shellDownload = useShellOffer();
@@ -123,7 +143,12 @@ export function LeftColumn({
             view, then the strip across the whole width again. The rail must not
             start above the title — it would run under the app's own titlebar —
             and the strip must not stop at the view's edge. */}
-        <div className="glass-chrome flex flex-col h-full w-full bg-paper">
+        <div
+          className={`glass-chrome flex flex-col h-full w-full bg-paper ${
+            dropActive ? 'ring-1 ring-inset ring-ink/30' : ''
+          }`}
+          {...dropProps}
+        >
           <SessionSidebarHeader streamStatus={streamStatus} onCollapse={onCollapse} />
           <div className="flex flex-1 min-h-0 w-full">
             {railEnabled ? (
@@ -141,9 +166,13 @@ export function LeftColumn({
               activeView={view}
               onClose={onCollapse}
               appSettings={appSettings}
+              streamStatus={streamStatus}
               refreshKey={refreshKey}
               onRefresh={onRefresh}
               onOpenFile={onOpenFile}
+              sessionId={sessionId ?? null}
+              {...(activeProjectPath ? { rootPath: activeProjectPath } : {})}
+              hasActiveContext={hasActiveContext}
             />
           </div>
           <SessionSidebarFooter

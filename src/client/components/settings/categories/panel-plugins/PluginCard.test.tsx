@@ -55,6 +55,7 @@ const DOCK = {
   panels: [],
   setEnabled: () => {},
   setSide: () => {},
+  setOrder: () => {},
   widthOf: () => 320,
   commitWidth: () => {},
 } satisfies LeftDockHandle;

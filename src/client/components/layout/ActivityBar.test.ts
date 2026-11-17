@@ -24,9 +24,7 @@ import { ActivityBar } from '@/client/components/layout/ActivityBar';
 import { ACTIVITY_BAR_WIDTH_PX } from '@/client/lib/ui/control-plate';
 import { SessionStateProvider } from '@/client/components/common/session-state-provider/index';
 import { useRepoScope } from '@/client/hooks/workspace/repo-scope';
-import { primeKabmoSettings, readKabmoSetting, writeSetting } from '@/shared/lib/settings/client';
-import { PANEL_ORDER_SETTING_KEY } from '@/shared/lib/workspace/panel-order';
-import { RIGHT_PANEL_TYPES } from '@/shared/lib/workspace/right-panels';
+import { primeKabmoSettings } from '@/shared/lib/settings/client';
 import { resetRealtimeClient } from '@/shared/lib/realtime/client';
 import { gitTopic } from '@/shared/lib/realtime/protocol';
 import { startRealtimeTestServer, type RealtimeTestServer } from '@/test-support/realtime-server';
@@ -164,121 +162,5 @@ describe('ActivityBar width', () => {
   });
 });
 
-/** The bar's buttons, in the order they are drawn. */
-const buttonLabels = () =>
-  [...container.querySelectorAll('nav button[aria-label]')].map((el) => el.getAttribute('aria-label') ?? '');
 
-const buttonFor = (label: string) =>
-  [...container.querySelectorAll('nav button[aria-label]')].find(
-    (el) => el.getAttribute('aria-label') === label,
-  ) as HTMLElement;
 
-/**
- * A drag from one button to another, as the browser delivers it.
- *
- * `dataTransfer` is a minimal stand-in: happy-dom has no `DataTransfer`, and
- * the handlers read only `setData`/`dropEffect`/`effectAllowed`.
- */
-async function dragOnto(from: string, to: string) {
-  const transfer = {
-    data: {} as Record<string, string>,
-    effectAllowed: '',
-    dropEffect: 'move',
-    setData(type: string, value: string) {
-      this.data[type] = value;
-    },
-    getData(type: string) {
-      return this.data[type] ?? '';
-    },
-  };
-  const fire = (element: HTMLElement, type: string) => {
-    const event = new window.Event(type, { bubbles: true, cancelable: true });
-    Object.defineProperty(event, 'dataTransfer', { value: transfer });
-    element.dispatchEvent(event);
-  };
-  await act(async () => {
-    fire(buttonFor(from), 'dragstart');
-  });
-  await act(async () => {
-    fire(buttonFor(to), 'dragover');
-  });
-  // The drop is what commits — a `dragend` alone is a cancelled gesture.
-  await act(async () => {
-    fire(buttonFor(to), 'drop');
-  });
-  await act(async () => {
-    fire(buttonFor(from), 'dragend');
-  });
-  for (let i = 0; i < 8; i += 1) await act(async () => {});
-}
-
-describe('ActivityBar panel order', () => {
-  test('a drag reorders the bar and persists the new order', async () => {
-    primeKabmoSettings({});
-    await mount();
-
-    // The shipped order, before anything is dragged.
-    expect(buttonLabels()[0]).toBe('Context & Telemetry');
-
-    // Todos is drawn below Context; drag it onto Context's slot.
-    await dragOnto('Todos', 'Context & Telemetry');
-
-    const drawn = buttonLabels();
-    // Todos was dragged UP onto Context, so it lands just ABOVE it — the
-    // insertion point is the target's own index (the same rule `QueueList`
-    // uses), and every other button keeps its relative order.
-    expect(drawn.slice(0, 3)).toEqual(['Todos', 'Context & Telemetry', 'Files']);
-
-    // The write is what makes the order survive a reload: it goes to the
-    // GLOBAL setting, not to this session's layout state.
-    const stored = readKabmoSetting<string[]>(PANEL_ORDER_SETTING_KEY);
-    expect(stored?.slice(0, 3)).toEqual(['todo', 'context', 'files']);
-    expect(stored).toHaveLength(RIGHT_PANEL_TYPES.length);
-  });
-
-  test('a stored order is drawn on the first render', async () => {
-    primeKabmoSettings({});
-    writeSetting(PANEL_ORDER_SETTING_KEY, ['plan', ...RIGHT_PANEL_TYPES.filter((id) => id !== 'plan')]);
-    await mount();
-
-    expect(buttonLabels()[0]).toBe('Plan (sesi ini)');
-  });
-
-  test('a cancelled drag writes nothing', async () => {
-    primeKabmoSettings({});
-    await mount();
-    const before = buttonLabels();
-
-    // `dragstart` + `dragover` with NO drop is what Esc produces: the preview
-    // moved while the gesture ran, and the stored order must not follow it.
-    const transfer = {
-      data: {} as Record<string, string>,
-      effectAllowed: '',
-      dropEffect: 'none',
-      setData(type: string, value: string) {
-        this.data[type] = value;
-      },
-      getData(type: string) {
-        return this.data[type] ?? '';
-      },
-    };
-    const fire = (element: HTMLElement, type: string) => {
-      const event = new window.Event(type, { bubbles: true, cancelable: true });
-      Object.defineProperty(event, 'dataTransfer', { value: transfer });
-      element.dispatchEvent(event);
-    };
-    await act(async () => {
-      fire(buttonFor('Todos'), 'dragstart');
-    });
-    await act(async () => {
-      fire(buttonFor('Context & Telemetry'), 'dragover');
-    });
-    await act(async () => {
-      fire(buttonFor('Todos'), 'dragend');
-    });
-    for (let i = 0; i < 8; i += 1) await act(async () => {});
-
-    expect(buttonLabels()).toEqual(before);
-    expect(readKabmoSetting<string[]>(PANEL_ORDER_SETTING_KEY)).toBeUndefined();
-  });
-});

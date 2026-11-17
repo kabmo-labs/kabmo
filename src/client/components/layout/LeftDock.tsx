@@ -41,6 +41,12 @@ interface LeftDockViewProps {
   refreshKey?: number;
   onRefresh?: () => void;
   onOpenFile?: (file: unknown) => void;
+  /** The active session, handed to a built-in view placed here. */
+  sessionId?: string | null;
+  /** The active workspace root, handed to a built-in view placed here. */
+  rootPath?: string;
+  /** Whether a workspace folder is open; a view that reads the tree is inert without one. */
+  hasActiveContext?: boolean;
 }
 
 /**
@@ -72,6 +78,9 @@ export function LeftDockView({
   refreshKey = 0,
   onRefresh,
   onOpenFile,
+  sessionId,
+  rootPath,
+  hasActiveContext = false,
 }: LeftDockViewProps) {
   const catalog = usePanelCatalog('left');
   const active = catalog.find((panel) => panel.id === activeView);
@@ -81,6 +90,8 @@ export function LeftDockView({
     enabled: true,
     active: true,
     refreshKey,
+    ...(sessionId !== undefined ? { sessionId } : {}),
+    ...(rootPath ? { rootPath } : {}),
     ...(onRefresh ? { onRefresh } : {}),
     ...(onOpenFile ? { onOpenFile } : {}),
     ...(onClose ? { onClose } : {}),
@@ -99,7 +110,14 @@ export function LeftDockView({
         {catalog.map((panel) => {
           const isActive = panel.id === activeView;
           if (!panel.builtin && !isActive) return null;
-          const viewBody: PanelBodyProps = { ...body, active: isActive, enabled: isActive };
+          // A built-in view that reads the working tree is inert until a folder
+          // is open — the same data rule the right stack applies. A view that
+          // reads the SESSION (todo, plan, usage, either browser) is not gated.
+          const viewBody: PanelBodyProps = {
+            ...body,
+            active: isActive,
+            enabled: isActive && (panel.requiresWorkspace ? hasActiveContext : true),
+          };
           return (
             // `data-panel-chrome`, like the right column's slot: a plugin
             // placed on the LEFT draws its own `bg-paper` root too, and the

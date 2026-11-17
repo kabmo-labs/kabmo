@@ -98,6 +98,8 @@ export function useDrawerState({
     onRefresh,
     onOpenFile,
     onClose,
+    requiresWorkspace: dock.activePanel?.requiresWorkspace ?? false,
+    hasActiveContext: Boolean(rootPath),
   });
 
   return { controller, batch, expandedFolders, toggleFolder, optionsRef, dock, dockBody };

@@ -34,6 +34,7 @@
 import { useCallback, useRef, useState } from 'preact/hooks';
 import type { TargetedDragEvent } from 'preact';
 import { movePanel } from '@/shared/lib/workspace/panel-order';
+import { PANEL_DRAG_MIME } from '@/shared/lib/workspace/panel-drag';
 
 interface DragState {
   /** The row being dragged. */
@@ -74,8 +75,10 @@ export function usePanelReorder(
   const [drag, setDrag] = useState<DragState | null>(null);
 
   const onDragStart = useCallback((event: TargetedDragEvent<HTMLElement>, id: string) => {
-    // The payload is what a drag OUT of the bar reads (an editor, another
-    // surface); the reorder itself reads the ref, for the reason above.
+    // The payload is what a drag OUT of the bar reads (the OTHER rail, an
+    // editor, another surface); the reorder itself reads the ref, for the
+    // reason above.
+    event.dataTransfer?.setData(PANEL_DRAG_MIME, id);
     event.dataTransfer?.setData('text/plain', id);
     if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
     const next = { id, order: null };

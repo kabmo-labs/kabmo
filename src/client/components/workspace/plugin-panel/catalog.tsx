@@ -13,11 +13,12 @@
  *
  * Two axes are decided here and nowhere else:
  *
- * - **SIDE.** A built-in view is `right` by construction; a plugin panel is
- *   `left` only while the user placed it there (`left-dock.ts`). A caller asks
- *   for the column it draws (`usePanelCatalog('left')`), or for everything
- *   (`usePanelCatalog('all')`, which is what the phone's drawer reads — a panel
- *   placed on the left must stay reachable on a phone, which has one drawer).
+ * - **SIDE.** A built-in view and a plugin view are both `right` until the user
+ *   places them on the dock (`left-dock.ts`); a takeover is the editor column's.
+ *   A caller asks for the column it draws (`usePanelCatalog('left')`), or for
+ *   everything (`usePanelCatalog('all')`, which is what the phone's drawer
+ *   reads — a panel placed on the left must stay reachable on a phone, which
+ *   has one drawer).
  * - **ORDER.** The right column keeps the user's dragged order
  *   (`omp_right_panel_order`); the left column is ordered by the placement list
  *   itself, because placing a panel there IS the arrangement.
@@ -117,8 +118,8 @@ function builtinEntry(view: BuiltinPanelView): ResolvedPanel {
   const View = view.Component;
   return {
     id: view.id,
-    // A built-in view is a RIGHT-column view by construction: its floor, width
-    // slot and workspace gate were all declared for that column.
+    // Rewritten by the caller from the placement store: a built-in view rides
+    // either rail, and this value is only the side it has when unplaced.
     side: 'right',
     title: view.title,
     label: view.label,
@@ -150,13 +151,20 @@ export function usePanelCatalog(side: PanelCatalogSide = 'right'): ResolvedPanel
 
   return useMemo(() => {
     const out: ResolvedPanel[] = [];
-
-    if (side !== 'left') {
-      for (const view of enabledBuiltinPanels(disabledPanels)) out.push(builtinEntry(view));
-    }
-
     const placed = new Map(dock.panels.map((id, index) => [id, index]));
     const left: ResolvedPanel[] = [];
+
+    // A built-in view is placed exactly like a plugin's right panel: the user
+    // decides which rail draws it, and the store is the one answer. Reading
+    // `panelSideOf` here is what keeps the two rails from both drawing it.
+    for (const view of enabledBuiltinPanels(disabledPanels)) {
+      const entry = builtinEntry(view);
+      if (panelSideOf(entry.id, dock) === 'left') {
+        if (side !== 'right') left.push({ ...entry, side: 'left' });
+      } else if (side !== 'left') {
+        out.push(entry);
+      }
+    }
 
     for (const panel of panels) {
       const entry = slots.get(panel.pluginId);
@@ -205,7 +213,7 @@ export function usePanelCatalog(side: PanelCatalogSide = 'right'): ResolvedPanel
     }
 
     if (side !== 'right') {
-      // The dock's own view first, then the placed plugins in PLACEMENT order:
+      // The dock's own view first, then the placed panels in PLACEMENT order:
       // on the left, putting a panel there IS the arrangement, so the right
       // column's dragged order would be a second answer to the same question.
       left.sort((a, b) => (placed.get(a.id) ?? 0) - (placed.get(b.id) ?? 0));

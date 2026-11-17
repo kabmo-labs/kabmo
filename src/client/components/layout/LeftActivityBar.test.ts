@@ -107,7 +107,7 @@ afterEach(() => {
   resetPluginSlots();
 });
 
-async function mount() {
+async function mount(side: 'left' | 'right' = 'left') {
   // The registry is a realtime read: the bar draws plugins only once the
   // payload has been adopted, so the mount waits for the client's own value
   // rather than for a duration.
@@ -119,8 +119,8 @@ async function mount() {
       h(SessionStateProvider, {
         sessionId: SESSION,
         children: h(ActivityBar, {
-          side: 'left',
-          activePanel: 'sessions',
+          side,
+          activePanel: side === 'left' ? 'sessions' : 'files',
           onChangePanel: () => {},
           isPanelOpen: true,
           hasActiveContext: true,
@@ -172,11 +172,36 @@ describe('left activity bar', () => {
     // it says the view cannot be put away rather than pretending a click works.
     expect(row.disabled).toBe(true);
     expect(row.getAttribute('aria-checked')).toBe('true');
-    // The built-ins are RIGHT-column views and are not offered here at all.
+    // An UNPLACED built-in is a right-column view, so it is not offered here.
     expect(menu!.textContent).not.toContain('Source Control');
     menu!.parentElement?.remove();
   });
 
+  test('a built-in view placed on the left is drawn here and gone from the right rail', async () => {
+    primeKabmoSettings({ [LEFT_DOCK_SETTING_KEY]: { enabled: true, panels: ['git'] } });
+    await mount();
+    expect(labels()).toEqual(['Sessions', 'Source Control']);
+
+    // The right rail is the same catalog read with the other side: the built-in
+    // moved away must not also be a button there.
+    render(null, container!);
+    container = null;
+    await mount('right');
+    expect(labels()).toContain('Files');
+    expect(labels()).not.toContain('Source Control');
+  });
+
+  test('a placed built-in stays in the left rail menu, so it can be switched off and back on', async () => {
+    primeKabmoSettings({ [LEFT_DOCK_SETTING_KEY]: { enabled: true, panels: ['git'] } });
+    await mount();
+    const nav = container!.querySelector('nav') as HTMLElement;
+    await act(async () => {
+      nav.dispatchEvent(new window.Event('contextmenu', { bubbles: true, cancelable: true }));
+    });
+    const menu = document.querySelector('[role="menu"][aria-label="Panels visibility"]');
+    expect(menu?.textContent).toContain('Source Control');
+    menu?.parentElement?.remove();
+  });
   test('a placed plugin panel is drawn here and gone from the right rail', async () => {
     // One bundle, registered the way a loaded plugin registers it, and a
     // registry that names it — then the placement decides the rail.

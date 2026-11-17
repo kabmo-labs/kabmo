@@ -71,6 +71,14 @@ export interface LeftDockHandle extends LeftDockState {
    * user's switch, and the dock may still be worth showing.
    */
   setSide: (panelId: string, side: PanelSide) => void;
+  /**
+   * Commit the dock's button order after a drag.
+   *
+   * The placement list IS the dock's order, so a reorder is a placement write —
+   * one store, one key, and the same validation that refuses an id the dock
+   * cannot draw.
+   */
+  setOrder: (panelIds: readonly string[]) => void;
   /** The width this view opens at, and the writer a drag commits through. */
   widthOf: (viewId: string) => number;
   commitWidth: (viewId: string, px: number) => void;
@@ -91,6 +99,11 @@ export function useLeftDock(): LeftDockHandle {
     publish();
   }, []);
 
+  const setOrder = useCallback((panelIds: readonly string[]) => {
+    writeLeftDock({ panels: [...panelIds] });
+    publish();
+  }, []);
+
   const commitWidth = useCallback((viewId: string, px: number) => {
     saveLeftDockWidth(viewId, px);
     publish();
@@ -100,6 +113,7 @@ export function useLeftDock(): LeftDockHandle {
     ...state,
     setEnabled,
     setSide,
+    setOrder,
     widthOf: resolveLeftDockWidth,
     commitWidth,
   };

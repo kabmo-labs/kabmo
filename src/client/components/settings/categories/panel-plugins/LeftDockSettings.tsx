@@ -4,18 +4,17 @@
  */
 
 /**
- * Panel placement: which destination each contributed panel is drawn on.
+ * Panel placement: which destination each panel is drawn on.
  *
  * The section was "Left dock", and its one question was "is this plugin's panel
  * on the left or the right?" — which could not be answered for a plugin that
- * contributes TWO panels. `marketplace/plugins/session-info` ships a `rightPanel`
- * and a `panel`, and with one row per plugin, moving its right panel onto the
- * left dock would have had no way to say what happened to the other one.
+ * contributes TWO panels. It now lists every placeable panel: Kabmo's built-in
+ * views first (no install needed), then the plugins'. The row is per PANEL
+ * INSTANCE, and the row's destinations come from the panel itself
+ * (`panelDestinations`), not from a plugin's manifest:
  *
- * So the row is per PANEL INSTANCE, and the row's destinations come from the
- * SLOT rather than from the plugin:
- *
- * - a `rightPanel` is a view — it rides the left dock or the right column;
+ * - a `rightPanel` and a built-in view are views — they ride the left dock or
+ *   the right column;
  * - a `panel` is a takeover — it rides the editor column, and only that, because
  *   a takeover on a rail would be a button that opens a column it is not on.
  *
@@ -26,8 +25,14 @@
 
 import { ArrowLeft, ArrowRight, Columns2, Loader2, PanelLeft, PanelRight } from 'lucide-preact';
 import type { PanelPluginStatus } from '@/shared/types';
+import { BUILTIN_PANELS } from '@/client/components/workspace/panels/builtin';
 import { pluginPanelKey } from '@/shared/lib/workspace/panel-ids';
-import { SESSIONS_VIEW_ID, panelSideOf, ridesSides, type PanelSide } from '@/shared/lib/workspace/left-dock';
+import {
+  SESSIONS_VIEW_ID,
+  panelDestinations,
+  panelSideOf,
+  type PanelSide,
+} from '@/shared/lib/workspace/left-dock';
 import type { PluginSlots } from '@/client/lib/plugins/slots';
 import type { LeftDockHandle } from '@/client/hooks/workspace/left-dock';
 
@@ -35,17 +40,20 @@ interface LeftDockSettingsProps {
   dock: LeftDockHandle;
   plugins: PanelPluginStatus[];
   slots: Map<string, PluginSlots>;
+  /** Built-in view ids switched off, so a placement row is never drawn for one. */
+  disabledPanels: string[];
 }
 
-/** One contributed panel, with the row's own facts resolved. */
+/** One placeable panel, with the row's own facts resolved. */
 interface PlaceablePanel {
-  plugin: PanelPluginStatus;
   key: string;
   /** The slot it was registered for, which decides where it may go. */
-  slot: 'rightPanel' | 'panel';
+  kind: 'view' | 'takeover';
   /** The destination it is on right now. */
   side: PanelSide;
   title: string;
+  /** The plugin's name, or the fact that Kabmo ships the view. */
+  owner: string;
 }
 
 /** The status line's wording, which is a sentence rather than a button label. */
@@ -118,10 +126,25 @@ function DestinationGroup({
   );
 }
 
-export function LeftDockSettings({ dock, plugins, slots }: LeftDockSettingsProps) {
-  // ONE row per contributed panel, not per plugin: a plugin may register both a
-  // view and a takeover, and they are placed independently.
+export function LeftDockSettings({ dock, plugins, slots, disabledPanels }: LeftDockSettingsProps) {
+  // ONE row per PANEL, and the built-in views come first because they need no
+  // install and are what a user moves on their first visit. A switched-off view
+  // gets no row: a placement for a panel that cannot be drawn is a move with no
+  // view, exactly like a plugin's disabled row.
   const placeable: PlaceablePanel[] = [];
+  const off = new Set(disabledPanels);
+  for (const panel of BUILTIN_PANELS) {
+    if (off.has(panel.id)) continue;
+    placeable.push({
+      key: panel.id,
+      kind: 'view',
+      side: panelSideOf(panel.id, dock),
+      title: panel.title,
+      owner: 'Kabmo',
+    });
+  }
+  // Then one row per contributed panel, not per plugin: a plugin may register
+  // both a view and a takeover, and they are placed independently.
   for (const plugin of plugins) {
     const entry = slots.get(plugin.pluginId);
     if (!plugin.enabled || !entry) continue;
@@ -129,11 +152,11 @@ export function LeftDockSettings({ dock, plugins, slots }: LeftDockSettingsProps
       if (!entry.components[slot]) continue;
       const key = pluginPanelKey(plugin.pluginId, slot);
       placeable.push({
-        plugin,
         key,
-        slot,
+        kind: slot === 'panel' ? 'takeover' : 'view',
         side: panelSideOf(key, dock),
         title: entry.titles[slot] ?? plugin.name,
+        owner: plugin.name,
       });
     }
   }
@@ -150,8 +173,10 @@ export function LeftDockSettings({ dock, plugins, slots }: LeftDockSettingsProps
 
       <p className="text-[11px] text-ink/50 mb-2">
         The left column always holds the session list. Turn its rail on to add views beside it — a
-        panel placed there gets its own button and its own width, and leaves the right column. Each
-        contributed panel is placed on its own: a plugin that ships two panels gets two rows.
+        panel placed there gets its own button and its own width, and leaves the right column. Drag a
+        panel's button onto the other rail to move it, or onto the left column to open the dock with
+        it. Every panel is placed on its own: Kabmo's built-in views and a plugin's contributions
+        alike, and a plugin that ships two panels gets two rows.
       </p>
 
       {!dock.enabled ? (
@@ -202,8 +227,8 @@ export function LeftDockSettings({ dock, plugins, slots }: LeftDockSettingsProps
             <span className="text-[10px] font-mono text-ink/40 self-start">{SESSIONS_VIEW_ID}</span>
           </div>
 
-          {placeable.map(({ plugin, key, slot, side, title }) => {
-            const destinations = ridesSides(slot);
+          {placeable.map(({ key, kind, side, title, owner }) => {
+            const destinations = panelDestinations(key);
             // TWO rows, not one. The identity block and the destination buttons
             // shared a line, and two buttons with glyphs and labels (`Left`
             // `Right`) took the width the title needed — so the title was
@@ -213,13 +238,13 @@ export function LeftDockSettings({ dock, plugins, slots }: LeftDockSettingsProps
             return (
               <div key={key} className="flex flex-col gap-1.5 border border-ink/10 rounded-lg px-2.5 py-2">
                 <span className="min-w-0">
-                  <span className="block text-xs text-ink" title={`${title} — ${plugin.name}`}>
+                  <span className="block text-xs text-ink" title={`${title} — ${owner}`}>
                     {title}
-                    <span className="text-ink/40"> · {plugin.name}</span>
+                    <span className="text-ink/40"> · {owner}</span>
                   </span>
                   <span className="block text-[10px] text-ink/40">
                     {SIDE_STATUS[side]}
-                    {slot === 'panel' ? ' · takeover' : ' · view'}
+                    {kind === 'takeover' ? ' · takeover' : ' · view'}
                     {side === 'left' && !dock.enabled ? ' · rail off' : ''}
                   </span>
                 </span>

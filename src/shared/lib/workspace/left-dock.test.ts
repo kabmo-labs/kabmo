@@ -27,6 +27,7 @@ import {
   SESSIONS_VIEW_ID,
   isLeftDockPanelId,
   leftPanelIds,
+  panelDestinations,
   panelSideOf,
   readLeftDock,
   ridesSides,
@@ -50,13 +51,13 @@ describe('readLeftDock', () => {
 
   test('a malformed row is filtered rather than keyed', () => {
     primeKabmoSettings({
-      [LEFT_DOCK_SETTING_KEY]: { enabled: true, panels: ['plugin:a:rightPanel', 3, '', null, 'plugin:a:rightPanel', 'git', 'plugin:b:rightPanel'] },
+      [LEFT_DOCK_SETTING_KEY]: { enabled: true, panels: ['plugin:a:rightPanel', 3, '', null, 'plugin:a:rightPanel', 'git', 'nope', 'plugin:b:rightPanel'] },
     });
-    // Built-in ids and duplicates are dropped: a bare `git` names a view whose
-    // floor and width slot were declared for the RIGHT column.
+    // Unknown ids and duplicates are dropped; a bare `git` now names a built-in
+    // view, which rides the dock like a plugin's view does.
     expect(readLeftDock()).toEqual({
       enabled: true,
-      panels: ['plugin:a:rightPanel', 'plugin:b:rightPanel'],
+      panels: ['plugin:a:rightPanel', 'git', 'plugin:b:rightPanel'],
     });
   });
 
@@ -87,10 +88,17 @@ describe('writeLeftDock / setPanelSide', () => {
     expect(readLeftDock().panels).toEqual([]);
   });
 
-  test('a built-in id and the sessions view are refused', () => {
+  test('a built-in view is placeable, the sessions view is not', () => {
     setPanelSide('git', 'left');
     setPanelSide(SESSIONS_VIEW_ID, 'left');
+    expect(readLeftDock().panels).toEqual(['git']);
+  });
+
+  test('a built-in view moves back to the right column', () => {
+    setPanelSide('files', 'left');
+    setPanelSide('files', 'right');
     expect(readLeftDock().panels).toEqual([]);
+    expect(panelSideOf('files')).toBe('right');
   });
 });
 
@@ -122,18 +130,21 @@ describe('placing a panel turns the rail on', () => {
 });
 
 describe('panelSideOf / leftPanelIds', () => {
-  test('the sessions view is left; a placed plugin is left; everything else right', () => {
+  test('the sessions view is left; a placed panel is left; everything else right', () => {
     setPanelSide('plugin:a:rightPanel', 'left');
+    setPanelSide('git', 'left');
     expect(panelSideOf(SESSIONS_VIEW_ID)).toBe('left');
     expect(panelSideOf('plugin:a:rightPanel')).toBe('left');
+    expect(panelSideOf('git')).toBe('left');
     expect(panelSideOf('plugin:b:rightPanel')).toBe('right');
-    expect(panelSideOf('git')).toBe('right');
+    expect(panelSideOf('files')).toBe('right');
   });
 
   test('the bar order is the sessions view then the placed panels', () => {
     setPanelSide('plugin:b:rightPanel', 'left');
+    setPanelSide('git', 'left');
     setPanelSide('plugin:a:rightPanel', 'left');
-    expect(leftPanelIds()).toEqual([SESSIONS_VIEW_ID, 'plugin:b:rightPanel', 'plugin:a:rightPanel']);
+    expect(leftPanelIds()).toEqual([SESSIONS_VIEW_ID, 'plugin:b:rightPanel', 'git', 'plugin:a:rightPanel']);
   });
 });
 
@@ -158,6 +169,12 @@ describe('slot rules', () => {
     expect(panelSideOf('plugin:x:rightPanel')).toBe('right');
   });
 
+  test('a built-in view has the same two destinations and no third', () => {
+    expect(panelDestinations('files')).toEqual(['left', 'right']);
+    setPanelSide('files', 'editor');
+    expect(panelSideOf('files')).toBe('right');
+  });
+
   test('a takeover is in the editor column by default', () => {
     expect(panelSideOf('plugin:x:panel')).toBe('editor');
   });
@@ -172,11 +189,12 @@ describe('slot rules', () => {
 });
 
 describe('isLeftDockPanelId', () => {
-  test('accepts the sessions view and a plugin key only', () => {
+  test('accepts the sessions view, a plugin key and a built-in view', () => {
     expect(isLeftDockPanelId(SESSIONS_VIEW_ID)).toBe(true);
     expect(isLeftDockPanelId('plugin:a:rightPanel')).toBe(true);
-    expect(isLeftDockPanelId('files')).toBe(false);
+    expect(isLeftDockPanelId('files')).toBe(true);
     expect(isLeftDockPanelId('plugin:')).toBe(false);
+    expect(isLeftDockPanelId('nope')).toBe(false);
   });
 });
 
@@ -188,6 +206,16 @@ describe('left dock widths', () => {
     expect(resolveLeftDockWidth('plugin:a:rightPanel')).toBe(MIN_LEFT_DOCK_PLUGIN_WIDTH);
     saveLeftDockWidth('plugin:a:rightPanel', 10_000);
     expect(resolveLeftDockWidth('plugin:a:rightPanel')).toBe(MAX_LEFT_PANEL_WIDTH);
+  });
+
+  test('a built-in view keeps its own floor and opens at its declared width', () => {
+    // The wiki's two-column reader needs 420, and its declared 600 is capped by
+    // the dock's own ceiling; a plugin's flat 320 would clip it.
+    saveLeftDockWidth('wiki', 300);
+    expect(resolveLeftDockWidth('wiki')).toBe(420);
+    saveLeftDockWidth('terminal', 10);
+    expect(resolveLeftDockWidth('terminal')).toBe(320);
+    expect(resolveLeftDockWidth('browser')).toBe(MAX_LEFT_PANEL_WIDTH);
   });
 
   test('the session list keeps its own floor, and the setting it already had', () => {

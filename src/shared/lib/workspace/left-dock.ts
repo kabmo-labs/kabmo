@@ -32,6 +32,7 @@
 
 import { readKabmoSetting, writeSetting } from '@/shared/lib/settings/client';
 import { pluginKeyOf, pluginSlotOf, type PluginPanelSlot } from '@/shared/lib/workspace/panel-ids';
+import { isRightPanelType } from '@/shared/lib/workspace/right-panels';
 
 /** `app_settings` key holding the dock's own state. */
 export const LEFT_DOCK_SETTING_KEY = 'omp_left_panels';
@@ -77,6 +78,32 @@ export function ridesSides(slot: PluginPanelSlot | null): readonly PanelSide[] {
   return [];
 }
 
+/**
+ * Where ONE panel id may be drawn.
+ *
+ * The single rule the store, the catalogs and both rails read, so a built-in
+ * view and a plugin view cannot disagree about what a move means:
+ *
+ * - `sessions` is the dock's own view and lives on the left only;
+ * - a built-in view is a VIEW like a plugin's `rightPanel` — it rides either
+ *   rail, and a user may move it to the dock;
+ * - a plugin panel follows its slot (`ridesSides`);
+ * - anything else has no destination, and a stored row naming it is dropped.
+ *
+ * The old rule accepted plugin panels only, on the claim that a built-in's
+ * width slot and floor were declared for the right column. That was true of the
+ * bandwidth tables, not of the panel: the dock now resolves a built-in's own
+ * floor and opening width (`left-dock-width.ts`), and the catalog draws it with
+ * the same entry shape it uses on the right.
+ */
+export function panelDestinations(panelId: unknown): readonly PanelSide[] {
+  if (panelId === SESSIONS_VIEW_ID) return ['left'];
+  const slot = pluginSlotOf(panelId);
+  if (slot) return ridesSides(slot);
+  if (isRightPanelType(panelId)) return ['left', 'right'];
+  return [];
+}
+
 /** The dock's stored state, validated. */
 export interface LeftDockState {
   /** Whether the dock's activity bar is drawn at all. OFF unless set. */
@@ -90,14 +117,13 @@ const EMPTY: LeftDockState = { enabled: false, panels: [] };
 /**
  * The ids that may live on the left.
  *
- * The sessions view is the dock's own; anything else must be a plugin panel —
- * a bare built-in id (`git`, `files`) names a view whose width slot, floor and
- * workspace gate were all declared for the RIGHT column, and moving it is a
- * second feature rather than a placement.
+ * The sessions view is the dock's own; every other accepted id is a panel id
+ * whose destinations include the left — a plugin panel or a built-in view. The
+ * destinations rule itself is `panelDestinations`, so this guard can never
+ * accept an id that `setPanelSide` would refuse.
  */
 export function isLeftDockPanelId(value: unknown): value is string {
-  if (value === SESSIONS_VIEW_ID) return true;
-  return pluginKeyOf(value) !== null;
+  return panelDestinations(value).includes('left');
 }
 
 /**
@@ -131,9 +157,7 @@ export function writeLeftDock(patch: Partial<LeftDockState>): LeftDockState {
     panels: patch.panels
       ? [
           ...new Set(
-            patch.panels.filter(
-              (id) => isLeftDockPanelId(id) && ridesSides(pluginSlotOf(id)).includes('left'),
-            ),
+            patch.panels.filter((id) => panelDestinations(id).includes('left') && id !== SESSIONS_VIEW_ID),
           ),
         ]
       : current.panels,
@@ -157,10 +181,10 @@ export function writeLeftDock(patch: Partial<LeftDockState>): LeftDockState {
  */
 export function setPanelSide(panelId: string, side: PanelSide): LeftDockState {
   if (!isLeftDockPanelId(panelId) || panelId === SESSIONS_VIEW_ID) return readLeftDock();
-  // A destination the slot cannot use is refused, not stored: a `panel`
+  // A destination the panel cannot use is refused, not stored: a `panel`
   // takeover on a rail, or a view inside the editor column, is a placement
   // that could never be drawn.
-  if (!ridesSides(pluginSlotOf(panelId)).includes(side)) return readLeftDock();
+  if (!panelDestinations(panelId).includes(side)) return readLeftDock();
   const current = readLeftDock();
   const placed = current.panels.includes(panelId);
   if (side === 'left') {
@@ -175,8 +199,9 @@ export function setPanelSide(panelId: string, side: PanelSide): LeftDockState {
 /**
  * Which side a panel is drawn on.
  *
- * The sessions view is left by construction; a plugin panel is left only while
- * the user has placed it there; a built-in view is always right.
+ * The sessions view is left by construction; a panel — built-in view or plugin
+ * — is left only while the user has placed it there; everything else that is a
+ * view is right, and a takeover's home is the editor column.
  */
 export function panelSideOf(panelId: string, dock: LeftDockState = readLeftDock()): PanelSide {
   if (panelId === SESSIONS_VIEW_ID) return 'left';
@@ -190,7 +215,7 @@ export function panelSideOf(panelId: string, dock: LeftDockState = readLeftDock(
 
 /**
  * The left column's views in bar order: the dock's own view, then every placed
- * plugin in the order they were placed.
+ * panel — built-in or plugin — in the order they were placed.
  */
 export function leftPanelIds(dock: LeftDockState = readLeftDock()): string[] {
   return [SESSIONS_VIEW_ID, ...dock.panels];

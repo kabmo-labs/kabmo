@@ -82,13 +82,20 @@ wins — it is the newer store.
 
 ## The left dock
 
-The left column is a dock too, and a plugin panel can be placed on it — but the
-placement is the USER's, never the plugin's, and the rail is OPTIONAL:
+The left column is a dock too, and any VIEW can be placed on it — a built-in
+view or a plugin's `rightPanel` — but the placement is the USER's, never the
+plugin's, and the rail is OPTIONAL:
 
 - `definePluginApp((app) => app.rightPanel(...))` stays the only registration. A
   placement is a per-install preference (`app_settings.omp_left_panels`), so one
-  id (`plugin:<id>`) keeps meaning one panel for the enablement set, the width
-  map, the stored order and the server's own bundle gate.
+  id (`plugin:<id>` or a bare built-in id such as `git`) keeps meaning one panel
+  for the enablement set, the width map, the stored order and the server's own
+  bundle gate.
+- **A built-in view rides the rails like a plugin's view.** `panelDestinations`
+  accepts a bare `RIGHT_PANEL_TYPES` id for `left`/`right`; the store, the
+  catalogs and both rails read that one rule, so moving `files` to the dock
+  removes it from the right rail and adds it to the left. A takeover is still
+  the editor column's alone.
 - The dock's own view is `sessions` — the session list. It is drawn by the same
   catalog, with the same button and the same visibility menu, and it is the one
   row the menu marks pinned: a chat with no way back to a conversation is a dead
@@ -99,7 +106,9 @@ placement is the USER's, never the plugin's, and the rail is OPTIONAL:
   because there would be no control to switch back.
 - Widths are per VIEW (`omp_left_dock_widths`): a session list reads at 280px and
   a table does not. The session list's fallback stays the width it has always
-  had (`omp_sidebar_width`).
+  had (`omp_sidebar_width`); a built-in view opens at its own declared width and
+  keeps its own floor (the wiki 420, the terminal 320), clamped by the column's
+  ceiling.
 - **One panel on the left, never two.** The dock holds a single view beside the
   list; a plugin that contributes a second panel uses the EDITOR column for it,
   which is what the `panel` slot is for. A second left pane was built and
@@ -115,6 +124,23 @@ placement is the USER's, never the plugin's, and the rail is OPTIONAL:
 - **A slot decides its destinations.** A `rightPanel` is a view: left dock or
   right column. A `panel` is a takeover: the editor column only, because a
   takeover on a rail would be a button that opens a column it is not on.
+- **Every panel moves by DRAG, and the rails are the controls for it.** A panel
+  button dragged onto the other rail moves there (`PANEL_DRAG_MIME` on the
+  `dataTransfer`, read through `carriesPanelDrag`/`droppedPanelId`); dropped on
+  the left column with the rail off it also turns the rail ON, so the move has a
+  button the moment it lands. Both column BODIES accept the same drop
+  (`usePanelDropTarget`), because the session list beside the rail is still the
+  left column and a panel dragged across the window must land where it was
+  dropped. Within a rail, dropping a button on another reorders it; dropping on
+  the rail's background appends it. The right rail's order is
+  `omp_right_panel_order`, the left rail's order IS its placement list
+  (`omp_left_panels`), and the pinned session list is the one button that never
+  drags. Settings → Plugins Kabmo → Panel placement is the same operation
+  without a mouse.
+- When the user moves the view the RIGHT column is showing, the right column
+  falls back to the first view it still holds instead of drawing a "not
+  available" notice; a panel that does not exist still gets that notice, which
+  is a different fact.
 - A phone has ONE drawer, so it reads the `all` catalog and filters the dock's
   own view out — a panel placed on the left must stay reachable there.
 

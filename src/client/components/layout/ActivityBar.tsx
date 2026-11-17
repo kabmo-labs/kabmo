@@ -17,13 +17,19 @@
  *
  * - the CATALOG (`usePanelCatalog(side)`), so the left rail draws the session
  *   list plus whatever the user placed there;
- * - the ORDER, which the right column stores in `omp_right_panel_order`; the
- *   left column is ordered by its placement list, so it is drawn as the catalog
- *   returns it and a drag is not offered there;
+ * - the ORDER, which the right column stores in `omp_right_panel_order` and the
+ *   left column in its placement list (`omp_left_panels`). Both rails drag, and
+ *   the COMMIT goes to the store that owns the order — never to a shared list
+ *   with a per-side branch in it;
  * - the DOT, which belongs to Source Control and therefore to the right rail.
+ *
+ * A drag BETWEEN rails is still one gesture: the payload carries the panel id
+ * (`PANEL_DRAG_MIME`), and a rail that receives a panel it does not draw asks
+ * the placement store to move it here. Dropping a panel on its own rail's
+ * background moves it to the end; dropping it on another row reorders it.
  */
 
-import { useRef, useState } from 'preact/hooks';
+import { useCallback, useRef, useState } from 'preact/hooks';
 import type { TargetedDragEvent, TargetedMouseEvent } from 'preact';
 import { useGitStatus } from '@/client/hooks/workspace/git-status';
 import { useResolvedRepo } from '@/client/hooks/workspace/repo-scope';
@@ -32,15 +38,15 @@ import {
   type PanelCatalogSide,
   type ResolvedPanel,
 } from '@/client/components/workspace/plugin-panel/catalog';
+import { PanelButton } from '@/client/components/layout/PanelButton';
 import { usePanelPluginActions, usePanelRegistry } from '@/client/hooks/workspace/panel-registry';
 import { usePanelOrder } from '@/client/hooks/workspace/panel-order';
 import { usePanelReorder } from '@/client/hooks/workspace/panel-reorder';
-import { pluginEnablementKey } from '@/shared/lib/workspace/panel-ids';
-import { PANEL_MARK_SIZE } from '@/shared/lib/workspace/right-panels';
-import { SESSIONS_VIEW_ID, isLeftDockPanelId } from '@/shared/lib/workspace/left-dock';
-import { BUILTIN_PANELS } from '@/client/components/workspace/panels/builtin';
-import { PanelMark } from '@/client/components/common/panel-mark';
-import { VisibilityMenu, type VisibilityItem } from '@/client/components/layout/VisibilityMenu';
+import { useLeftDock } from '@/client/hooks/workspace/left-dock';
+import { useAllPanelItems } from '@/client/hooks/workspace/panel-menu-items';
+import { carriesPanelDrag, droppedPanelId } from '@/shared/lib/workspace/panel-drag';
+import { SESSIONS_VIEW_ID } from '@/shared/lib/workspace/left-dock';
+import { VisibilityMenu } from '@/client/components/layout/VisibilityMenu';
 import { ACTIVITY_BAR_WIDTH_PX } from '@/client/lib/ui/control-plate';
 
 interface ActivityBarProps {
@@ -56,9 +62,11 @@ interface ActivityBarProps {
 /**
  * One column's rail.
  *
- * The left rail is the DOCK's, so its ordering is the placement list and a drag
- * would have nothing to commit — `draggable` is false there and the reorder hook
- * is never given a commit. Everything else is shared.
+ * Both rails reorder by dragging a button onto another. What differs is the
+ * commit: the right column writes the global panel order, the left column writes
+ * its placement list (`setOrder`), which IS its order. The session list is the
+ * one button that is neither draggable nor a reorder target — it is the dock's
+ * pinned view.
  */
 export function ActivityBar({ side, activePanel, onChangePanel, isPanelOpen, hasActiveContext, activeProjectPath }: ActivityBarProps) {
   // The dot is the Source Control view's, so it follows the repo that view is
@@ -72,15 +80,35 @@ export function ActivityBar({ side, activePanel, onChangePanel, isPanelOpen, has
   const hasGitChanges = changes.length > 0;
 
   const catalog = usePanelCatalog(side);
-  const reorderable = side !== 'left';
+  // Both rails are drag surfaces now: a panel is reordered inside its own rail
+  // and MOVED to the other one by dropping it there. `all` is not a rail, so it
+  // offers no handlers.
+  const railSide = side === 'left' || side === 'right' ? side : null;
+  const reorderable = railSide !== null;
   const { commitReorder } = usePanelOrder();
+  const { setSide, setOrder } = useLeftDock();
   const { disabledPanels } = usePanelRegistry();
   const { setEnabled } = usePanelPluginActions();
   const [anchor, setAnchor] = useState<{ top: number; bottom: number; left: number; right: number } | null>(null);
+  const [dropActive, setDropActive] = useState(false);
   const navRef = useRef<HTMLElement>(null);
 
   const catalogIds = catalog.map((panel) => panel.id);
-  const reorder = usePanelReorder(catalogIds, commitReorder);
+  // The session list is the dock's PINNED view: it never moves and never takes
+  // part in a reorder. Everything else the rail draws is draggable, built-in
+  // and plugin alike.
+  const reorderIds = side === 'left' ? catalogIds.filter((id) => id !== SESSIONS_VIEW_ID) : catalogIds;
+  // One commit for both rails, because the destination decides which store owns
+  // the order: the dock's placement list on the left, the global panel order on
+  // the right.
+  const commitOrder = useCallback(
+    (visibleIds: readonly string[], nextVisible: readonly string[]) => {
+      if (side === 'left') setOrder(nextVisible);
+      else commitReorder(visibleIds, nextVisible);
+    },
+    [side, setOrder, commitReorder],
+  );
+  const reorder = usePanelReorder(reorderIds, commitOrder);
 
   // What the bar draws: the catalog in the order being dragged, which is the
   // stored order until a drag starts. An id in the order that the catalog no
@@ -88,7 +116,9 @@ export function ActivityBar({ side, activePanel, onChangePanel, isPanelOpen, has
   // simply not drawn — the id stays in the stored order, so switching the panel
   // back on returns it where it was.
   const byId = new Map(catalog.map((panel) => [panel.id, panel]));
-  const order = reorderable ? reorder.order : catalogIds;
+  const orderedIds = reorderable ? reorder.order : catalogIds;
+  // The pinned view stays first and outside the drag set, on every frame.
+  const order = side === 'left' ? [SESSIONS_VIEW_ID, ...orderedIds] : orderedIds;
   const drawn = order
     .map((id) => byId.get(id))
     .filter((panel): panel is ResolvedPanel => panel !== undefined);
@@ -121,13 +151,94 @@ export function ActivityBar({ side, activePanel, onChangePanel, isPanelOpen, has
     });
   };
 
+  /**
+   * A file or a URL dropped on a rail is not ours, so the rail never claims it
+   * and never paints a drop state for it.
+   */
+  const handleRailDragOver = (event: TargetedDragEvent<HTMLElement>) => {
+    if (!carriesPanelDrag(event.dataTransfer?.types)) return;
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+    if (!dropActive) setDropActive(true);
+  };
+
+  const handleRailDragLeave = (event: TargetedDragEvent<HTMLElement>) => {
+    if (navRef.current?.contains(event.relatedTarget as Node)) return;
+    setDropActive(false);
+  };
+
+  /**
+   * A drop on the rail's own background moves the panel to the END of this
+   * rail. A row drop is handled by the row itself and stops propagation, so it
+   * never reaches here.
+   */
+  const handleRailDrop = (event: TargetedDragEvent<HTMLElement>) => {
+    if (!carriesPanelDrag(event.dataTransfer?.types)) return;
+    event.preventDefault();
+    setDropActive(false);
+    const id = droppedPanelId(event.dataTransfer);
+    if (!id || !railSide) return;
+    if (!reorderIds.includes(id)) {
+      // From the OTHER rail: the placement store owns the move and turns the
+      // dock's rail on when that is where it landed. On the left the panel is
+      // also SELECTED, because a panel dropped on that rail should be the one
+      // it shows rather than a new button beside the old view.
+      setSide(id, railSide);
+      // The left rail's handler is a plain SELECT; the right rail's is a
+      // TOGGLE (it collapses the active view), so a panel moved back to the
+      // right must not be selected through it — the stored selection can still
+      // name this panel from before the move, and the click semantics would
+      // collapse the column instead of showing it.
+      if (railSide === 'left') onChangePanel(id);
+      return;
+    }
+    if (reorderIds[reorderIds.length - 1] === id) return;
+    commitOrder(reorderIds, [...reorderIds.filter((other) => other !== id), id]);
+  };
+
+  const handleRowDragOver = (event: TargetedDragEvent<HTMLElement>, targetId: string) => {
+    if (!carriesPanelDrag(event.dataTransfer?.types)) return;
+    // The hook first, because its ref — not the rendered state — is the truth
+    // for a drag that started in this bar. A `dragover` can arrive before the
+    // `dragstart` state has re-rendered, and reading `draggingId` here would
+    // classify our own drag as a foreign one and drop the reorder.
+    reorder.onDragOver(event, targetId);
+    if (!event.defaultPrevented) {
+      // A panel from the other rail: this row IS a drop target even though the
+      // reorder hook has no drag state for it.
+      event.preventDefault();
+      if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+    }
+  };
+
+  const handleRowDrop = (event: TargetedDragEvent<HTMLElement>) => {
+    // Always stop here: the rail's own drop would otherwise append the panel
+    // the row just reordered (or a panel dropped on itself).
+    event.stopPropagation();
+    const id = droppedPanelId(event.dataTransfer);
+    if (!id) return;
+    if (!reorderIds.includes(id) && railSide) {
+      event.preventDefault();
+      setSide(id, railSide);
+      if (railSide === 'left') onChangePanel(id);
+      setDropActive(false);
+      return;
+    }
+    reorder.onDrop(event);
+  };
+
   return (
     <>
       <nav
         ref={navRef}
         onContextMenu={openMenu}
+        onDragOver={handleRailDragOver}
+        onDragLeave={handleRailDragLeave}
+        onDrop={handleRailDrop}
         aria-label={side === 'left' ? 'Left panel views' : 'Right panel views'}
-        className={`glass-chrome flex-shrink-0 ${side === 'left' ? 'border-r' : 'border-l'} border-ink/10 bg-paper flex flex-col items-center pb-3 space-y-2 z-10`}
+        className={`glass-chrome flex-shrink-0 ${side === 'left' ? 'border-r' : 'border-l'} border-ink/10 bg-paper flex flex-col items-center pb-3 space-y-2 z-10 ${
+          dropActive ? 'ring-1 ring-inset ring-ink/40 bg-ink/5' : ''
+        }`}
         style={{ width: ACTIVITY_BAR_WIDTH_PX }}
       >
         <div className="flex flex-col items-center space-y-1 w-full">
@@ -136,14 +247,17 @@ export function ActivityBar({ side, activePanel, onChangePanel, isPanelOpen, has
               {index === dividerBefore ? <div className="w-6 mx-auto border-t border-ink/10 my-1" /> : null}
               <PanelButton
                 panel={panel}
-                draggable={reorderable}
+                draggable={reorderable && panel.id !== SESSIONS_VIEW_ID}
                 isActive={isPanelOpen && activePanel === panel.id}
                 isDragging={reorderable && reorder.draggingId === panel.id}
                 onClick={() => onChangePanel(panel.id)}
                 onDragStart={(event) => reorder.onDragStart(event, panel.id)}
-                onDragOver={(event) => reorder.onDragOver(event, panel.id)}
-                onDrop={reorder.onDrop}
-                onDragEnd={reorder.onDragEnd}
+                onDragOver={(event) => handleRowDragOver(event, panel.id)}
+                onDrop={(event) => handleRowDrop(event)}
+                onDragEnd={() => {
+                  setDropActive(false);
+                  reorder.onDragEnd();
+                }}
                 showGitDot={panel.id === 'git' && hasGitChanges}
               />
             </div>
@@ -166,115 +280,3 @@ export function ActivityBar({ side, activePanel, onChangePanel, isPanelOpen, has
   );
 }
 
-/**
- * Every panel the menu can offer, including the ones switched off.
- *
- * A switched-off panel is NOT in the catalog (the catalog is what the bar
- * draws), so reading the menu off the catalog alone would make a hidden view
- * unreachable — the one thing the menu exists to prevent. The built-ins are a
- * static list, so they are always listed; a plugin is listed while it is
- * INSTALLED, read from `plugins` rather than from `panels`, because `panels`
- * holds only the enabled ones and a disabled plugin would lose its row.
- *
- * The list is per SIDE: the left rail offering eleven built-in views it cannot
- * draw would be a menu of controls that do nothing.
- */
-function useAllPanelItems(side: PanelCatalogSide): VisibilityItem[] {
-  const { plugins } = usePanelRegistry();
-  const items: VisibilityItem[] = [];
-  if (side !== 'right') {
-    // The session list is the dock's own view and cannot be switched off: it is
-    // the only way back to a conversation.
-    items.push({ id: SESSIONS_VIEW_ID, title: 'Sessions', removable: false });
-  }
-  if (side !== 'left') {
-    for (const panel of BUILTIN_PANELS) items.push({ id: panel.id, title: panel.title, removable: true });
-  }
-  for (const plugin of plugins) {
-    const id = pluginEnablementKey(plugin.pluginId);
-    // A plugin is offered on both rails: its placement decides which one draws
-    // it, and the switch is the same switch on either.
-    if (side === 'left' && !isLeftDockPanelId(id)) continue;
-    items.push({ id, title: plugin.name, removable: true });
-  }
-  return items;
-}
-
-/**
- * One activity-bar button, drawn from the catalog entry it belongs to.
- *
- * It is both a drag SOURCE and a drop TARGET: the drop is what moves the
- * button, and `dragover` is the only moment a target can accept it.
- */
-function PanelButton({
-  panel,
-  draggable,
-  isActive,
-  isDragging,
-  onClick,
-  onDragStart,
-  onDragOver,
-  onDrop,
-  onDragEnd,
-  showGitDot,
-}: {
-  panel: ResolvedPanel;
-  draggable: boolean;
-  isActive: boolean;
-  isDragging: boolean;
-  onClick: () => void;
-  onDragStart: (event: TargetedDragEvent<HTMLElement>) => void;
-  onDragOver: (event: TargetedDragEvent<HTMLElement>) => void;
-  onDrop: (event: TargetedDragEvent<HTMLElement>) => void;
-  onDragEnd: () => void;
-  showGitDot: boolean;
-}) {
-  return (
-    <button
-      className={`relative w-full h-10 flex items-center justify-center transition-colors ${
-        panel.side === 'left' ? 'border-r-2' : 'border-l-2'
-      } ${
-        isActive ? 'text-ink border-ink bg-ink/5' : 'text-ink/40 border-transparent hover:text-ink hover:bg-ink/5'
-      } ${isDragging ? 'opacity-40 cursor-grabbing' : 'cursor-pointer'}`}
-      onClick={onClick}
-      draggable={draggable}
-      onDragStart={onDragStart}
-      onDragOver={onDragOver}
-      onDrop={onDrop}
-      onDragEnd={onDragEnd}
-      title={panel.title}
-      aria-label={panel.title}
-      // A rail button is a TOGGLE: it says which view the column is showing.
-      // Without this the state existed only as a border colour, which assistive
-      // tech cannot read and measured as `aria-pressed: null` on all six marks.
-      aria-pressed={isActive}
-    >
-      {/* The mark's wrapper carries the state as OPACITY, not as a text colour:
-          a `text-ink/40` here outranks the colour mode's hue rule, which is what
-          kept this rail monochrome while the panels behind it were tinted. In
-          the monochrome mode nothing dims the ink twice — `[data-idle]` is only
-          read under `[data-icon-style="color"]`.
-
-          The colour itself is NOT decided here: `PanelMark` stamps the same
-          `--panel-hue` the phone's chip strip and Settings read, so this button
-          cannot disagree with them about what `Files` looks like. */}
-      <PanelMark
-        className="panel-rail-mark inline-flex"
-        panelId={panel.id}
-        builtin={panel.builtin}
-        icon={panel.builtin ? panel.icon : undefined}
-        name={panel.builtin ? panel.label : panel.name}
-        {...(panel.iconUrl ? { iconUrl: panel.iconUrl } : {})}
-        {...(panel.color ? { color: panel.color } : {})}
-        size={PANEL_MARK_SIZE}
-        idle={!isActive}
-      />
-      {showGitDot ? (
-        <span
-          className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-info"
-          title="Ada perubahan git"
-        />
-      ) : null}
-    </button>
-  );
-}

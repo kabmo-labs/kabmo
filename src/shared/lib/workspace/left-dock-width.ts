@@ -25,6 +25,11 @@
 import { readKabmoSetting, writeSetting } from '@/shared/lib/settings/client';
 import { SESSIONS_VIEW_ID } from '@/shared/lib/workspace/left-dock';
 import {
+  DEFAULT_RIGHT_PANEL_WIDTHS,
+  MIN_RIGHT_PANEL_WIDTHS,
+  isRightPanelType,
+} from '@/shared/lib/workspace/right-panels';
+import {
   DEFAULT_LEFT_PANEL_WIDTH,
   MAX_LEFT_PANEL_WIDTH,
   MIN_LEFT_PANEL_WIDTH,
@@ -43,9 +48,22 @@ export const LEFT_DOCK_WIDTHS_SETTING_KEY = 'omp_left_dock_widths';
  */
 export const MIN_LEFT_DOCK_PLUGIN_WIDTH = 320;
 
+/**
+ * The floor a view needs in the dock.
+ *
+ * A built-in view keeps the floor it declared for the right column: moving the
+ * terminal to the left must not clip its 320px shell, and the wiki's two-column
+ * reader still needs 420. The session list and a plugin keep the dock's own
+ * floors above.
+ */
+export function resolveLeftDockMinWidth(viewId: string): number {
+  if (viewId === SESSIONS_VIEW_ID) return MIN_LEFT_PANEL_WIDTH;
+  if (isRightPanelType(viewId)) return MIN_RIGHT_PANEL_WIDTHS[viewId];
+  return MIN_LEFT_DOCK_PLUGIN_WIDTH;
+}
+
 function clamped(viewId: string, px: number): number {
-  const floor = viewId === SESSIONS_VIEW_ID ? MIN_LEFT_PANEL_WIDTH : MIN_LEFT_DOCK_PLUGIN_WIDTH;
-  return Math.min(MAX_LEFT_PANEL_WIDTH, Math.max(floor, Math.round(px)));
+  return Math.min(MAX_LEFT_PANEL_WIDTH, Math.max(resolveLeftDockMinWidth(viewId), Math.round(px)));
 }
 
 function readMap(): Record<string, number> {
@@ -63,12 +81,14 @@ function readMap(): Record<string, number> {
  *
  * A remembered width wins; otherwise the session list falls back to the width
  * `sidebar-width.ts` has always resolved (setting, then the retired global blob,
- * then the session slot), and a plugin view opens at the dock's plugin default.
+ * then the session slot), a built-in view opens at the width it declares for
+ * the right column, and a plugin view opens at the dock's plugin default.
  */
 export function resolveLeftDockWidth(viewId: string): number {
   const stored = readMap()[viewId];
   if (stored !== undefined) return clamped(viewId, stored);
   if (viewId === SESSIONS_VIEW_ID) return resolveSidebarWidth();
+  if (isRightPanelType(viewId)) return clamped(viewId, DEFAULT_RIGHT_PANEL_WIDTHS[viewId]);
   return clamped(viewId, DEFAULT_LEFT_PANEL_WIDTH);
 }
 
