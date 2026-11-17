@@ -4,19 +4,22 @@
  */
 
 /**
- * Generate the tray's monochrome glyphs.
+ * Generate the tray's monochrome icons.
  *
  * The tray host is a separate process and cannot read the page's CSS, so the
- * monochrome icon has to be a FILE. Two are shipped because a single ink cannot
- * be visible on both a light and a dark panel: `-light` is the black glyph for a
- * light panel, `-dark` the white one for a dark panel. macOS ignores the colour
- * (it draws the image as a template and paints it in the menu bar's own ink);
- * Windows and Linux use the variant that matches the active theme.
+ * icon has to be a FILE. The monochrome icon is a GREYSCALE conversion of the
+ * app icon, not a black-and-white silhouette:
  *
- * The geometry is the K mark from `public/icon.svg`, read from that file rather
- * than restated here — the same rule `scripts/shell-wordmark.mjs` follows. The
- * plate is deliberately absent: a monochrome tray icon is the glyph, not a
- * filled square.
+ * - the green plate becomes dark on a light theme and light on a dark one;
+ * - the cream K strokes become light on a light theme and dark on a dark one;
+ * - the orange arm becomes the middle grey in both.
+ *
+ * That is what keeps the mark readable on either panel without turning the
+ * plate into a solid square. Two files are shipped because the plate and the
+ * strokes swap luminance with the theme; the orange arm does not.
+ *
+ * The geometry is read from `public/icon.svg` rather than restated here — the
+ * same rule `scripts/shell-wordmark.mjs` follows.
  *
  *   bun run scripts/tray-icon.mjs           # write
  *   bun run scripts/tray-icon.mjs --check   # exit 1 when stale
@@ -31,28 +34,53 @@ const SVG = join(ROOT, 'public/icon.svg');
 const SIZE = 64;
 const SUPERSAMPLE = 4;
 
-/** The K's three segments, read from the icon SVG's own path data. */
-function readSegments() {
+/** The three grey levels, per theme variant. */
+const GREYS = {
+  light: { plate: '#3f3f3f', cream: '#ededed', orange: '#9e9e9e' },
+  dark: { plate: '#d6d6d6', cream: '#2b2b2b', orange: '#9e9e9e' },
+};
+
+/** The K's three segments and the plate, read from the icon SVG's own markup. */
+function readArtwork() {
   const svg = readFileSync(SVG, 'utf8');
   const group = svg.match(/<g fill="none" stroke-width="([\d.]+)"[^>]*>/);
   if (!group) throw new Error('the icon SVG has no stroke group');
   const width = Number(group[1]);
-  const paths = [...svg.matchAll(/<path d="([^"]+)"/g)].map((match) => match[1]);
-  if (paths.length !== 3) throw new Error(`expected three K strokes, found ${paths.length}`);
+  const pathTags = [...svg.matchAll(/<path\b([^>]*)\/>/g)].map((match) => match[1]);
+  if (pathTags.length !== 3) throw new Error(`expected three K strokes, found ${pathTags.length}`);
 
-  const segments = paths.map((d) => {
+  const segments = pathTags.map((body) => {
+    const d = body.match(/\bd="([^"]+)"/)?.[1];
+    if (!d) throw new Error('a K stroke has no path data');
+    const stroke = body.match(/\bstroke="(#[0-9a-fA-F]{6})"/)?.[1];
+    if (!stroke) throw new Error(`a K stroke has no colour: ${body}`);
     const numbers = d.match(/-?[\d.]+/g)?.map(Number) ?? [];
     if (numbers.length === 4) {
       // `M20 15v34` → M x y v dy, and `M20 32 42 15` → M x y L x y.
-      return { x1: numbers[0], y1: numbers[1], x2: numbers[2], y2: numbers[3] };
+      return { x1: numbers[0], y1: numbers[1], x2: numbers[2], y2: numbers[3], stroke };
     }
     if (numbers.length === 3) {
       // `M20 15v34` is M x y v dy: the second point shares x.
-      return { x1: numbers[0], y1: numbers[1], x2: numbers[0], y2: numbers[1] + numbers[2] };
+      return { x1: numbers[0], y1: numbers[1], x2: numbers[0], y2: numbers[1] + numbers[2], stroke };
     }
     throw new Error(`unexpected path data: ${d}`);
   });
-  return { width, segments };
+
+  const rect = svg.match(/<rect width="([\d.]+)" height="([\d.]+)" rx="([\d.]+)"/);
+  if (!rect) throw new Error('the icon SVG has no plate <rect>');
+  const plate = { width: Number(rect[1]), height: Number(rect[2]), radius: Number(rect[3]) };
+  return { width, segments, plate };
+}
+
+/** Whether a point is inside a rounded rectangle anchored at the origin. */
+function insideRoundedRect(px, py, plate) {
+  const halfWidth = plate.width / 2;
+  const halfHeight = plate.height / 2;
+  const radius = plate.radius;
+  const dx = Math.abs(px - halfWidth) - (halfWidth - radius);
+  const dy = Math.abs(py - halfHeight) - (halfHeight - radius);
+  const outside = Math.hypot(Math.max(dx, 0), Math.max(dy, 0));
+  return outside + Math.min(Math.max(dx, dy), 0) - radius <= 0;
 }
 
 /** Distance from a point to a segment. */
@@ -68,26 +96,55 @@ function distanceToSegment(px, py, segment) {
   return Math.hypot(px - x, py - y);
 }
 
-/** One channel of the glyph, supersampled into an alpha mask. */
-function alphaMask(segments, halfWidth) {
-  const mask = new Uint8Array(SIZE * SIZE);
+/** `#rrggbb` as `[r, g, b]`. */
+function hexToRgb(hex) {
+  const value = Number.parseInt(hex.slice(1), 16);
+  return [(value >> 16) & 0xff, (value >> 8) & 0xff, value & 0xff];
+}
+
+/**
+ * The plate and the K strokes, each in its own grey, supersampled into RGBA.
+ *
+ * The strokes are drawn ON TOP of the plate, exactly as the SVG's document
+ * order does; the plate is opaque, so the only partial coverage is its own
+ * rounded edge.
+ */
+function renderGreyscale(segments, halfWidth, plate, plateGrey, strokeGreys) {
+  const pixels = new Uint8Array(SIZE * SIZE * 4);
   const step = 1 / SUPERSAMPLE;
   const samples = SUPERSAMPLE * SUPERSAMPLE;
+  const plateRgb = hexToRgb(plateGrey);
+  const strokeRgb = strokeGreys.map(hexToRgb);
   for (let y = 0; y < SIZE; y += 1) {
     for (let x = 0; x < SIZE; x += 1) {
-      let hits = 0;
+      let r = 0;
+      let g = 0;
+      let b = 0;
+      let covered = 0;
       for (let sy = 0; sy < SUPERSAMPLE; sy += 1) {
         for (let sx = 0; sx < SUPERSAMPLE; sx += 1) {
           const px = x + (sx + 0.5) * step;
           const py = y + (sy + 0.5) * step;
-          const inside = segments.some((segment) => distanceToSegment(px, py, segment) <= halfWidth);
-          if (inside) hits += 1;
+          if (!insideRoundedRect(px, py, plate)) continue;
+          let rgb = plateRgb;
+          for (let index = 0; index < segments.length; index += 1) {
+            if (distanceToSegment(px, py, segments[index]) <= halfWidth) rgb = strokeRgb[index];
+          }
+          r += rgb[0];
+          g += rgb[1];
+          b += rgb[2];
+          covered += 1;
         }
       }
-      mask[y * SIZE + x] = Math.round((hits / samples) * 255);
+      if (covered === 0) continue;
+      const offset = (y * SIZE + x) * 4;
+      pixels[offset] = Math.round(r / covered);
+      pixels[offset + 1] = Math.round(g / covered);
+      pixels[offset + 2] = Math.round(b / covered);
+      pixels[offset + 3] = Math.round((covered / samples) * 255);
     }
   }
-  return mask;
+  return pixels;
 }
 
 /** CRC32, for the PNG chunks. */
@@ -116,8 +173,8 @@ function chunk(type, data) {
   return Buffer.concat([length, body, crc]);
 }
 
-/** Encode an RGBA PNG from a mask and a single ink colour. */
-function encodePng(mask, [r, g, b]) {
+/** Encode an RGBA PNG from a full pixel buffer. */
+function encodeRgba(pixels) {
   const header = Buffer.alloc(13);
   header.writeUInt32BE(SIZE, 0);
   header.writeUInt32BE(SIZE, 4);
@@ -132,12 +189,12 @@ function encodePng(mask, [r, g, b]) {
     const row = y * (SIZE * 4 + 1);
     raw[row] = 0; // filter: none
     for (let x = 0; x < SIZE; x += 1) {
-      const alpha = mask[y * SIZE + x];
-      const offset = row + 1 + x * 4;
-      raw[offset] = r;
-      raw[offset + 1] = g;
-      raw[offset + 2] = b;
-      raw[offset + 3] = alpha;
+      const source = (y * SIZE + x) * 4;
+      const target = row + 1 + x * 4;
+      raw[target] = pixels[source];
+      raw[target + 1] = pixels[source + 1];
+      raw[target + 2] = pixels[source + 2];
+      raw[target + 3] = pixels[source + 3];
     }
   }
 
@@ -149,17 +206,18 @@ function encodePng(mask, [r, g, b]) {
   ]);
 }
 
-const { width, segments } = readSegments();
-const mask = alphaMask(segments, width / 2);
-const targets = [
-  { file: join(ROOT, 'public/tray-monochrome-light.png'), ink: [0, 0, 0] },
-  { file: join(ROOT, 'public/tray-monochrome-dark.png'), ink: [255, 255, 255] },
-];
+const { width, segments, plate } = readArtwork();
+const targets = Object.entries(GREYS).map(([variant, greys]) => {
+  const strokeGreys = segments.map((segment) =>
+    segment.stroke.toLowerCase() === '#f26522' ? greys.orange : greys.cream,
+  );
+  const pixels = renderGreyscale(segments, width / 2, plate, greys.plate, strokeGreys);
+  return { file: join(ROOT, `public/tray-monochrome-${variant}.png`), png: encodeRgba(pixels) };
+});
 
 const check = process.argv.includes('--check');
 let stale = false;
 for (const target of targets) {
-  const png = encodePng(mask, target.ink);
   if (check) {
     let current = null;
     try {
@@ -167,13 +225,13 @@ for (const target of targets) {
     } catch {
       // Missing is stale.
     }
-    if (!current || !current.equals(png)) {
+    if (!current || !current.equals(target.png)) {
       console.error(`stale: ${target.file}`);
       stale = true;
     }
     continue;
   }
-  writeFileSync(target.file, png);
+  writeFileSync(target.file, target.png);
   console.log(`wrote ${target.file}`);
 }
 

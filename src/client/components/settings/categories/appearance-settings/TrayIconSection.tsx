@@ -20,6 +20,7 @@
 
 import type { ComponentType } from 'preact/compat';
 import type { SettingsState } from '@/shared/types';
+import { resolveTheme } from '@/shared/lib/theme/catalog';
 import {
   TRAY_ICON_STYLES,
   TRAY_ICON_STYLE_COPY,
@@ -41,35 +42,27 @@ function ColorMiniature() {
   );
 }
 
-/** The K mark alone, in the palette ink — what a monochrome host draws. */
-function MonochromeMiniature() {
+/** The greyscale plate for the active theme's variant — the file the tray loads. */
+function MonochromeMiniature({ variant }: { variant: 'light' | 'dark' }) {
   return (
     <span className="flex h-full items-center justify-center rounded-md border border-ink/10 bg-canvas/60">
-      <svg
-        viewBox="0 0 64 64"
+      <img
+        src={`/tray-monochrome-${variant}.png`}
+        alt=""
         width={26}
         height={26}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={7}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className="text-ink"
         aria-hidden="true"
-      >
-        <path d="M20 15v34" />
-        <path d="M20 32 42 15" />
-        <path d="M20 32 42 49" />
-      </svg>
+      />
     </span>
   );
 }
 
 export function TrayIconSection({ settings, onUpdate }: TrayIconSectionProps) {
   const selected = resolveTrayIconStyle(settings.trayIconStyle);
+  const variant = resolveTheme(settings.theme).variant;
   const MINIATURES: Record<TrayIconStyle, ComponentType> = {
     color: ColorMiniature,
-    monochrome: MonochromeMiniature,
+    monochrome: () => <MonochromeMiniature variant={variant} />,
   };
 
   return (
@@ -78,9 +71,10 @@ export function TrayIconSection({ settings, onUpdate }: TrayIconSectionProps) {
         <h4 className="text-xs font-semibold text-ink">Tray icon</h4>
         <p className="mt-0.5 text-[11px] text-ink/50">
           The menu-bar (macOS) or notification-area (Windows, Linux) icon. Full colour is the
-          shipped app icon; monochrome is the K mark alone, drawn in the menu bar’s own ink on
-          macOS and in a black or white glyph for the active theme elsewhere. Applies the next
-          time the tray starts, or immediately when it is already running.
+          shipped app icon, orange arm and all; monochrome is a greyscale conversion: the green
+          plate and the cream strokes swap luminance with the theme, and the orange arm becomes
+          the middle grey. Applies the next time the tray starts, or immediately when it is
+          already running.
         </p>
       </div>
 

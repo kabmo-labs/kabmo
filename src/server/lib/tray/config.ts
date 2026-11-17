@@ -60,9 +60,8 @@ export interface TrayConfig {
    */
   iconStyle: TrayIconStyle;
   /**
-   * The monochrome glyph for the active theme's variant: black on a light
-   * panel, white on a dark one. macOS ignores the colour (it draws the image as
-   * a template), but Windows and Linux use it as-is.
+   * The greyscale plate for the active theme's variant: the green plate and
+   * the cream strokes swap luminance, and the orange arm is the middle grey.
    */
   iconMono: string;
   logFile: string;

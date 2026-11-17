@@ -14,10 +14,9 @@
  *
  *  - `color`      — the shipped app icon, plate and all. The default, so an
  *    upgrade changes nothing.
- *  - `monochrome` — the K mark alone, with no plate. macOS draws it as a
- *    TEMPLATE image, so the system paints it in the menu bar's own ink and it
- *    follows light/dark appearance. Windows and Linux get a glyph tinted with
- *    the palette's ink, chosen for the active theme's variant.
+ *  - `monochrome` — a greyscale conversion of the app icon: the green plate
+ *    and the cream strokes swap luminance with the theme, and the orange arm
+ *    becomes the middle grey.
  *
  * The value is stored in the `kabmo_settings` blob and read by the SERVER when
  * it writes the tray config, because the tray host is a separate process that
@@ -64,7 +63,7 @@ export const TRAY_ICON_STYLE_COPY: Record<TrayIconStyle, TrayIconStyleCopy> = {
   },
   monochrome: {
     label: 'Monochrome',
-    description: 'The K mark alone, in the menu bar’s own ink. macOS draws it as a template image, so it follows light and dark appearance; Windows and Linux use a black glyph on a light theme and a white one on a dark theme.',
-    caption: 'Menu-bar ink',
+    description: 'A greyscale conversion of the app icon: the green plate and the cream strokes swap luminance with the theme, and the orange arm becomes the middle grey.',
+    caption: 'Greyscale',
   },
 };

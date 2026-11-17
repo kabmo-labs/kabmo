@@ -58,7 +58,7 @@ interface TrayRuntime {
 /** The two facts the tray icon needs from the stored settings. */
 export interface TrayAppearance {
   iconStyle: TrayIconStyle;
-  /** Absolute path to the monochrome glyph for the active theme's variant. */
+  /** Absolute path to the greyscale plate for the active theme's variant. */
   iconMono: string;
 }
 
@@ -78,11 +78,10 @@ export async function readTrayAppearance(pkgRoot: string): Promise<TrayAppearanc
     // Fall through to the defaults below.
   }
   const blob = readSettingsBlob(settings);
-  const iconStyle = resolveTrayIconStyle(blob[TRAY_ICON_STYLE_SETTING_KEY]);
   const theme = typeof blob.theme === 'string' ? blob.theme : undefined;
   const variant = resolveTheme(theme).variant;
   return {
-    iconStyle,
+    iconStyle: resolveTrayIconStyle(blob[TRAY_ICON_STYLE_SETTING_KEY]),
     iconMono: canonicalizeTrayPath(`${packageDir(pkgRoot)}/public/tray-monochrome-${variant}.png`),
   };
 }

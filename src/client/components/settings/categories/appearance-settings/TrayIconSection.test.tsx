@@ -61,10 +61,10 @@ describe('tray icon section', () => {
     expect(pressed?.textContent).toContain('Monochrome');
   });
 
-  test('the colour card shows the shipped app icon, the monochrome card the glyph', () => {
+  test('the colour card shows the shipped app icon, the monochrome card the greyscale plate', () => {
     const el = mount('color');
     expect(el.querySelector('img[src="/icon.svg"]')).not.toBeNull();
-    expect(el.querySelector('svg path')).not.toBeNull();
+    expect(el.querySelector('img[src="/tray-monochrome-light.png"]')).not.toBeNull();
   });
 
   test('picking the other card reports the new style', () => {

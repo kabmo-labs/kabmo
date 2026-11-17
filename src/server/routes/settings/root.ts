@@ -43,9 +43,9 @@ export async function action({ request, params }: ActionFunctionArgs) {
     }
 
     // The tray host is a separate process that reads its config once, so a
-    // change to the icon style (or the theme that picks the monochrome glyph's
-    // ink) has to be pushed to it. A tray that is not running is a no-op, and a
-    // failed refresh must not fail the settings write.
+    // change to the icon style (or the theme that picks which greyscale plate
+    // the host draws) has to be pushed to it. A tray that is not running is a
+    // no-op, and a failed refresh must not fail the settings write.
     const blob = data[SETTINGS_BLOB_KEY];
     if (isPlainObject(blob) && (TRAY_ICON_STYLE_SETTING_KEY in blob || 'theme' in blob)) {
       await refreshTrayIcon({ pkgRoot: packageDir() }).catch(() => {});
