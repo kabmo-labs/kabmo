@@ -32,13 +32,12 @@
  */
 
 import fs from 'node:fs';
-import { homedir } from 'node:os';
-import { join } from 'node:path';
 import { AcpProcess } from '@/server/lib/harness/acp/client';
 import { withGatewayCompatibility } from '@/server/lib/harness/acp/gateway-env';
 import { loadHarnessConfig, resolveLaunch } from '@/server/lib/harness/config.server';
 import { customHarness, ensureCustomHarnesses } from '@/server/lib/harness/custom.server';
 import { isSinglePathSegment } from '@/server/lib/fs/path-segment';
+import { dshStoreDirs } from '@/server/lib/harness/session-transcript.server';
 import type { HarnessLaunch } from '@/server/lib/harness/launch-table';
 import type { HarnessSessionRecord } from '@/server/lib/harness/session-store.server';
 import type { AcpInitializeResult } from '@/server/lib/harness/acp/protocol';
@@ -71,36 +70,6 @@ function advertisesDelete(init: AcpInitializeResult): boolean {
   const sessionCaps = init.agentCapabilities?.sessionCapabilities;
   const value = sessionCaps?.delete;
   return value !== undefined && value !== null;
-}
-
-/**
- * The session directories an agent keeps for one id, for the agents whose store
- * Kabmo can name.
- *
- * `dsh` derives its project directory from the cwd, so the id alone is not a
- * path — the project level is scanned instead of re-encoding a cwd the row may
- * no longer have. Ten directories on this machine; a missing root answers empty.
- */
-async function dshStoreDirs(agentSessionId: string): Promise<string[]> {
-  const home = Bun.env.DSH_HOME?.trim() || join(homedir(), '.dsh');
-  const root = join(home, 'sessions');
-  let projects: string[];
-  try {
-    projects = await fs.promises.readdir(root);
-  } catch {
-    return [];
-  }
-  const found: string[] = [];
-  for (const project of projects) {
-    const candidate = join(root, project, agentSessionId);
-    try {
-      if ((await fs.promises.stat(candidate)).isDirectory()) found.push(candidate);
-    } catch {
-      // Not this project: the id lives in one project directory, and the rest
-      // are ordinary misses.
-    }
-  }
-  return found;
 }
 
 /** The local-store lookup every deletion uses. A harness with no entry keeps no
