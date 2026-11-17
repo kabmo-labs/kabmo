@@ -105,6 +105,50 @@ describe('session menu fork chat', () => {
   });
 });
 
+describe('session menu copy id', () => {
+  test('copies the row id to the clipboard', async () => {
+    stubHarnesses([]);
+    const written: string[] = [];
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: async (text: string) => void written.push(text) },
+    });
+    // happy-dom leaves `isSecureContext` undefined, and the clipboard helper
+    // refuses the async API without it.
+    Object.defineProperty(window, 'isSecureContext', { configurable: true, value: true });
+
+    const el = await mount('claude');
+    const item = [...el.querySelectorAll('[role="menuitem"]')]
+      .find((node) => node.textContent?.trim() === 'Copy session ID') as HTMLElement | undefined;
+    expect(item).toBeDefined();
+    await act(async () => {
+      item!.click();
+      for (let i = 0; i < 5; i += 1) await Promise.resolve();
+    });
+    expect(written).toEqual(['s1']);
+  });
+
+  test('a pending row has no id to copy', async () => {
+    stubHarnesses([]);
+    render(null, container);
+    await act(async () => {
+      render(
+        h(SessionActionsMenu, {
+          anchor,
+          sessionId: 'new-123',
+          harness: 'claude',
+          folderId: 1,
+          onClose: () => {},
+        }),
+        container,
+      );
+    });
+    const labels = [...document.body.querySelectorAll('[role="menuitem"]')]
+      .map((node) => node.textContent?.trim());
+    expect(labels).not.toContain('Copy session ID');
+  });
+});
+
 describe('session menu placement', () => {
   test('the panel hangs below the trigger it was opened from', async () => {
     // A trailing `⋯` in the middle of a phone drawer: below it is where the

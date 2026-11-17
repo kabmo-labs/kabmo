@@ -29,7 +29,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'preac
 import type { TargetedMouseEvent } from 'preact';
 import { createPortal } from 'preact/compat';
 import { placeMenu, type MenuPlacement } from '@/shared/lib/ui/menu-anchor';
-import { Archive, ArchiveRestore, GitBranch, GitFork, Hourglass, Pencil, Trash2, WandSparkles } from 'lucide-preact';
+import { Archive, ArchiveRestore, Copy, GitBranch, GitFork, Hourglass, Pencil, Trash2, WandSparkles } from 'lucide-preact';
 import { useSearchParams } from '@/client/lib/router/search-params';
 import { clearBranchParams } from '@/client/lib/router/branch-params';
 import { startPendingSession } from '@/client/hooks/chat/omp/pending-sessions';
@@ -39,6 +39,9 @@ import { formatNewSessionTitle } from '@/shared/lib/omp/session/default-title';
 import { canForkChat } from '@/shared/lib/harness/fork';
 import { openForkSession } from '@/client/hooks/chat/timeline/fork-open';
 import { useHarnesses } from '@/client/hooks/models/use-harnesses';
+import { copyToClipboard } from '@/client/hooks/ui/clipboard';
+import { useToasts } from '@/client/hooks/ui/toasts';
+import { MenuItem } from '@/client/components/common/session-actions-menu/MenuItem';
 
 /** Viewport coordinates the menu hangs off, plus which edge it aligns to. */
 export interface MenuAnchor {
@@ -133,10 +136,14 @@ export function SessionActionsMenu({
   const [pos, setPos] = useState<MenuPlacement | null>(null);
   const [, setSearchParams] = useSearchParams();
   const { harnesses } = useHarnesses();
+  const { pushToast } = useToasts();
   const canSpawnChild =
     sessionId !== undefined &&
     !String(sessionId).startsWith('new-') &&
     !isArchived;
+  // A pending `new-…` row has no omp id yet: copying it would hand the user a
+  // string that stops existing the moment the chat spawns.
+  const canCopyId = sessionId !== undefined && !String(sessionId).startsWith('new-');
   // The probe is authoritative when it has an answer; without one the
   // harness's expected capability decides. A harness that cannot fork at all
   // (qwen, dsh, antigravity, pi, command-code) gets no item.
@@ -191,6 +198,22 @@ export function SessionActionsMenu({
       folderId: numericFolderId !== null && Number.isFinite(numericFolderId) ? numericFolderId : null,
       anchorEntryId: null,
       setSearchParams,
+    });
+  };
+
+  /**
+   * "Copy session ID" puts the row's omp id on the clipboard so it can be
+   * pasted into the sidebar search (which matches ids as well as titles) or
+   * into a bug report. The toast is the only feedback: the menu closes on the
+   * click, exactly like every other item.
+   */
+  const copySessionId = () => {
+    if (sessionId === undefined) return;
+    void copyToClipboard(String(sessionId)).then((ok) => {
+      pushToast(
+        ok ? 'Session ID copied' : 'Could not copy session ID',
+        ok ? 'success' : 'error',
+      );
     });
   };
 
@@ -256,91 +279,38 @@ export function SessionActionsMenu({
         onClick={(e) => e.stopPropagation()}
       >
         {canSpawnChild && (
-          <button
-            type="button"
-            role="menuitem"
-            onClick={run(startChildSession)}
-            className="w-full text-left px-3 py-1.5 hover:bg-ink/5 flex items-center gap-2 transition-colors cursor-pointer"
-          >
-            <GitBranch size={12} className="text-ink/60" />
-            <span>New child session</span>
-          </button>
+          <MenuItem icon={GitBranch} label="New child session" onClick={run(startChildSession)} />
         )}
         {canForkChatHere && (
-          <button
-            type="button"
-            role="menuitem"
-            onClick={run(startForkChat)}
-            className="w-full text-left px-3 py-1.5 hover:bg-ink/5 flex items-center gap-2 transition-colors cursor-pointer"
-          >
-            <GitFork size={12} className="text-ink/60" />
-            <span>Fork chat</span>
-          </button>
+          <MenuItem icon={GitFork} label="Fork chat" onClick={run(startForkChat)} />
         )}
-        {onRename && (
-          <button
-            type="button"
-            role="menuitem"
-            onClick={run(onRename)}
-            className="w-full text-left px-3 py-1.5 hover:bg-ink/5 flex items-center gap-2 transition-colors cursor-pointer"
-          >
-            <Pencil size={12} className="text-ink/60" />
-            <span>Rename</span>
-          </button>
-        )}
+        {onRename && <MenuItem icon={Pencil} label="Rename" onClick={run(onRename)} />}
         {/* Next to Rename because it is the same intent, done for you: omp
             reads the transcript and names the session itself. It replaces an
             existing name, which is why it is an explicit click and never
             something that happens on its own. */}
         {onRenameWithAi && (
-          <button
-            type="button"
-            role="menuitem"
-            onClick={run(onRenameWithAi)}
-            className="w-full text-left px-3 py-1.5 hover:bg-ink/5 flex items-center gap-2 transition-colors cursor-pointer"
-          >
-            <WandSparkles size={12} className="text-ink/60" />
-            <span>Rename with AI</span>
-          </button>
+          <MenuItem icon={WandSparkles} label="Rename with AI" onClick={run(onRenameWithAi)} />
+        )}
+        {/* The id is the one handle that survives a rename, and the sidebar
+            search matches it — so it belongs beside the naming verbs. */}
+        {canCopyId && (
+          <MenuItem icon={Copy} label="Copy session ID" onClick={run(copySessionId)} />
         )}
         {/* A held prompt is the row's whole content, so dropping it belongs in
             the same menu as the row's other verbs rather than on the row face. */}
         {onCancelWait && (
-          <button
-            type="button"
-            role="menuitem"
-            onClick={run(onCancelWait)}
-            className="w-full text-left px-3 py-1.5 hover:bg-ink/5 flex items-center gap-2 transition-colors cursor-pointer"
-          >
-            <Hourglass size={12} className="text-ink/60" />
-            <span>Cancel waiting prompt</span>
-          </button>
+          <MenuItem icon={Hourglass} label="Cancel waiting prompt" onClick={run(onCancelWait)} />
         )}
         {onArchive && (
-          <button
-            type="button"
-            role="menuitem"
+          <MenuItem
+            icon={isArchived ? ArchiveRestore : Archive}
+            label={isArchived ? 'Unarchive' : 'Archive'}
             onClick={run(onArchive)}
-            className="w-full text-left px-3 py-1.5 hover:bg-ink/5 flex items-center gap-2 transition-colors cursor-pointer"
-          >
-            {isArchived
-              ? <ArchiveRestore size={12} className="text-ink/60" />
-              : <Archive size={12} className="text-ink/60" />}
-            <span>{isArchived ? 'Unarchive' : 'Archive'}</span>
-          </button>
+          />
         )}
         {(onRename || onRenameWithAi || onArchive || onCancelWait) && onDelete && <div className="my-1 border-t border-ink/10" />}
-        {onDelete && (
-          <button
-            type="button"
-            role="menuitem"
-            onClick={run(onDelete)}
-            className="w-full text-left px-3 py-1.5 hover:bg-error/10 text-error flex items-center gap-2 transition-colors cursor-pointer"
-          >
-            <Trash2 size={12} className="text-error" />
-            <span>Delete</span>
-          </button>
-        )}
+        {onDelete && <MenuItem icon={Trash2} label="Delete" onClick={run(onDelete)} danger />}
       </div>
     </div>
     </>,

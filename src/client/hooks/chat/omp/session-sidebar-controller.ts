@@ -276,27 +276,29 @@ export function useSessionSidebarController(
       titleFor: titleHint,
     });
 
-    // Search filter
+    // Search filter. A session matches on its title OR its id: the id is what
+    // "Copy session ID" puts on the clipboard, and a search that could not find
+    // the string it just handed the user would be a dead end.
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
+      const matchesSession = (s: { id: number | string; title: string }) =>
+        s.title.toLowerCase().includes(q) || String(s.id).toLowerCase().includes(q);
       if (expandSearchMatches) {
         result = result.filter(folder => {
           const matchFolder = folder.name.toLowerCase().includes(q);
-          const matchSession = folder.sessions?.some((s) => s.title.toLowerCase().includes(q));
+          const matchSession = folder.sessions?.some(matchesSession);
           return matchFolder || matchSession;
         }).map(folder => {
           // If we are searching, we also filter the sessions within the folder
           const filteredSessions = folder.sessions?.filter((s) =>
-            folder.name.toLowerCase().includes(q) || s.title.toLowerCase().includes(q)
+            folder.name.toLowerCase().includes(q) || matchesSession(s)
           );
           return { ...folder, sessions: filteredSessions, isExpanded: true };
         });
       } else {
         result = result.map(folder => {
           const matchesFolderName = folder.name.toLowerCase().includes(q);
-          const filteredSessions = (folder.sessions || []).filter(s =>
-            s.title.toLowerCase().includes(q)
-          );
+          const filteredSessions = (folder.sessions || []).filter(matchesSession);
           if (matchesFolderName) return folder;
           return { ...folder, sessions: filteredSessions };
         }).filter(f => f.sessions && f.sessions.length > 0);

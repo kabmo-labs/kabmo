@@ -233,6 +233,26 @@ describe('a new chat shows in the sidebar before omp writes its transcript', () 
   });
 });
 
+describe('the sidebar search finds a session by its id', () => {
+  test('a pasted id narrows the list to that row', async () => {
+    const harness = await mountController('?sessionId=real-1');
+    await act(async () => {
+      harness.holder.api?.setSearchQuery('real-1');
+      for (let i = 0; i < 8; i += 1) await Promise.resolve();
+    });
+    expect(renderedIds(harness.holder.api)).toEqual(['real-1']);
+
+    // A title that does not contain the id is still found by the id alone.
+    await act(async () => {
+      harness.holder.api?.setSearchQuery('REAL-1');
+      for (let i = 0; i < 8; i += 1) await Promise.resolve();
+    });
+    expect(renderedIds(harness.holder.api)).toEqual(['real-1']);
+
+    harness.server.stop();
+  });
+});
+
 describe('a folder opens when a row inside it needs to be seen', () => {
   /** Capture the expand writes the controller issues, and answer them. */
   function stubToggleWrites(): { toggles: string[]; restore: () => void } {
