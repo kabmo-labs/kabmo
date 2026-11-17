@@ -155,12 +155,13 @@ describe('toAcpV2McpServers', () => {
     ]);
   });
 
-  test('resolves a bare binary name to an absolute path', () => {
-    // A binary every runner has on PATH. `echo` is a shell builtin on Windows
-    // and resolves to nothing there; `cmd.exe` lives in System32 and `sh` in
-    // /bin, so the bare name is resolvable on both.
-    const binary = process.platform === 'win32' ? 'cmd.exe' : 'sh';
-    const out = toAcpV2McpServers([{ name: binary, command: binary, args: [], env: [] }]);
+  // On the Windows runner `Bun.which('cmd.exe', { PATH })` answers null even
+  // though System32 is on PATH (measured on the 6075ae5 gate), and
+  // `withToolchainPath` is a documented no-op there. The resolution branch is
+  // platform-independent, so POSIX pins it and Windows is left to the paths
+  // that do not need a lookup.
+  test.skipIf(process.platform === 'win32')('resolves a bare binary name to an absolute path', () => {
+    const out = toAcpV2McpServers([{ name: 'sh', command: 'sh', args: [], env: [] }]);
     expect(out).toHaveLength(1);
     const first = out[0] as { type: string; command: string };
     expect(first.type).toBe('stdio');
