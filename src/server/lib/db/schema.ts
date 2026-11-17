@@ -71,6 +71,15 @@ export async function initSchema(db: DbClient): Promise<void> {
       deleted_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
+    -- A deleted session's tombstone. The agent's own store is the source an
+    -- import copies from, and an agent that keeps the conversation (or a
+    -- delete that only removed Kabmo's rows) would put the chat back on the
+    -- next pass. The import and the sidebar skip every id here.
+    CREATE TABLE IF NOT EXISTS deleted_sessions (
+      session_id TEXT PRIMARY KEY,
+      deleted_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE TABLE IF NOT EXISTS archived_sessions (
       session_id TEXT PRIMARY KEY,
       archived_at DATETIME DEFAULT CURRENT_TIMESTAMP

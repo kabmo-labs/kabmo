@@ -68,7 +68,7 @@ describe('one pass', () => {
       importFn: async (id) => {
         calls.push(id);
         if (id === 'claude') throw new Error('Authentication required');
-        return { harness: id, imported: 2, known: 1, outside: 0, empty: 0 };
+        return { harness: id, imported: 2, known: 1, outside: 0, empty: 0, deleted: 0 };
       },
     });
     expect(calls).toEqual(['codex', 'claude']);
@@ -83,7 +83,7 @@ describe('one pass', () => {
       targets: [],
       importFn: async (id) => {
         called = true;
-        return { harness: id, imported: 0, known: 0, outside: 0, empty: 0 };
+        return { harness: id, imported: 0, known: 0, outside: 0, empty: 0, deleted: 0 };
       },
     });
     expect(called).toBe(false);

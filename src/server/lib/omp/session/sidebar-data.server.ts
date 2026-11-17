@@ -29,6 +29,7 @@ import { sessionWorktreeMap } from '@/server/lib/fs/worktree/topology';
 import { DEFAULT_HARNESS_ID, HARNESS_IDS } from '@/shared/lib/harness/catalog';
 import { knownHarness, loadAcpSessions, loadHarnessBySession } from '@/server/lib/harness/session-store.server';
 import { sessionsWithoutTranscript } from '@/server/lib/harness/session-transcript.server';
+import { loadDeletedSessionIds } from '@/server/lib/sessions/deleted-sessions.server';
 import { loadSidebarStatus } from '@/server/lib/omp/session/sidebar-status.server';
 import { canonicalPath } from '@/server/lib/fs/canonical';
 import { acpRowsFor } from '@/server/lib/omp/session/acp-rows.server';
@@ -201,7 +202,12 @@ async function buildRealFolders(folderRows: FolderRow[], archivedIds: Set<string
   const withoutTranscript = await sessionsWithoutTranscript(
     acpSessions.filter((row) => row.origin === 'imported'),
   );
-  const visibleAcpSessions = acpSessions.filter((row) => !withoutTranscript.has(row.sessionId));
+  // A deleted chat stays deleted: the purge writes the tombstone, and neither
+  // the agent's store nor a re-created JSONL may put the row back.
+  const deletedSessionIds = await loadDeletedSessionIds();
+  const visibleAcpSessions = acpSessions.filter(
+    (row) => !withoutTranscript.has(row.sessionId) && !deletedSessionIds.has(row.sessionId),
+  );
 
   return Promise.all(folderRows.map(async (folder) => {
     const root = folder.project_path ?? '';
@@ -220,7 +226,7 @@ async function buildRealFolders(folderRows: FolderRow[], archivedIds: Set<string
     // rows that open an empty transcript.
     const rootSessions: OmpSession[] = root
       ? (sessionsByRoot.get(rootKey) ?? sessionsByRoot.get(root) ?? [])
-        .filter((session) => session.messageCount > 0)
+        .filter((session) => session.messageCount > 0 && !deletedSessionIds.has(String(session.id)))
       : [];
     // One topology read per repository, however many sessions it has. A chat in
     // the checkout itself is absent from this map, which is exactly what the row

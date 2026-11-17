@@ -262,6 +262,22 @@ describe('deleting an ACP chat', () => {
     }
   });
 
+  test('a deleted chat is tombstoned, so a re-listed record cannot bring it back', async () => {
+    const id = 'ses_acp_tombstone';
+    await saveHarnessSession({ sessionId: id, harness: 'opencode', agentSessionId: id, cwd: project });
+    expect(await sidebarRow(id)).toBeDefined();
+
+    expect((await deleteSessionRoute(id)).status).toBe(200);
+
+    const db = await getDb();
+    expect(await db.get('SELECT session_id FROM deleted_sessions WHERE session_id = ?', [id])).not.toBeNull();
+    // The agent still lists the chat (its store is the source an import copies
+    // from), so the record is written again — the tombstone is what keeps the
+    // row out of the sidebar and out of the next import.
+    await saveHarnessSession({ sessionId: id, harness: 'opencode', agentSessionId: id, cwd: project });
+    expect(await sidebarRow(id)).toBeUndefined();
+  });
+
   test('an agent that cannot delete its own session refuses, and the row stays', async () => {
     // A refusal is the honest answer: purging the row would only bring it back
     // on the next import, and the user would believe the chat was gone.

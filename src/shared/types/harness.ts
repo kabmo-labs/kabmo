@@ -224,6 +224,9 @@ export function capabilitiesOf(
  * `empty` is the same kind of answer for a session the agent created and never
  * used: its own store holds no transcript, so the sidebar would draw a row that
  * opens an empty chat. It is skipped, and counted rather than hidden.
+ *
+ * `deleted` is the tombstone: a chat the user deleted stays deleted even though
+ * the agent's store still lists it.
  */
 export interface HarnessSessionImport {
   harness: string;
@@ -231,4 +234,5 @@ export interface HarnessSessionImport {
   known: number;
   outside: number;
   empty: number;
+  deleted: number;
 }

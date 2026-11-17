@@ -43,6 +43,7 @@ function describeImport(result: HarnessSessionImport): string {
     `${result.known} already listed`,
     ...(result.outside > 0 ? [`${result.outside} outside your workspaces`] : []),
     ...(result.empty > 0 ? [`${result.empty} without a transcript`] : []),
+    ...(result.deleted > 0 ? [`${result.deleted} deleted`] : []),
   ].join(' · ');
 }
 

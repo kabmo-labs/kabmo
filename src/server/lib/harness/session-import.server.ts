@@ -34,6 +34,7 @@ import { loadHarnessConfig, resolveLaunch } from '@/server/lib/harness/config.se
 import { ensureCustomHarnesses } from '@/server/lib/harness/custom.server';
 import { harnessSessionKnown, importHarnessSession } from '@/server/lib/harness/session-store.server';
 import { sessionsWithoutTranscript } from '@/server/lib/harness/session-transcript.server';
+import { loadDeletedSessionIds } from '@/server/lib/sessions/deleted-sessions.server';
 import { canonicalPath } from '@/server/lib/fs/canonical';
 import { resolveProjectRoot } from '@/server/lib/omp/core/worktree';
 import { getDb } from '@/server/db.server';
@@ -122,12 +123,21 @@ export async function importHarnessSessions(id: HarnessId): Promise<HarnessSessi
   const withoutTranscript = await sessionsWithoutTranscript(
     sessions.map((session) => ({ harness: id, sessionId: session.sessionId })),
   );
+  // A deleted chat stays deleted. The agent's store is the source this pass
+  // copies from, so without the tombstone a delete that only removed Kabmo's
+  // rows (or an agent that kept its copy) put the chat back on the next pass.
+  const deleted = await loadDeletedSessionIds();
 
   let imported = 0;
   let known = 0;
   let outside = 0;
   let empty = 0;
+  let tombstoned = 0;
   for (const session of sessions) {
+    if (deleted.has(session.sessionId)) {
+      tombstoned += 1;
+      continue;
+    }
     if (withoutTranscript.has(session.sessionId)) {
       empty += 1;
       continue;
@@ -163,5 +173,5 @@ export async function importHarnessSessions(id: HarnessId): Promise<HarnessSessi
     else known += 1;
   }
   if (imported > 0) emitRealtimeSignal('sidebar-structure');
-  return { harness: id, imported, known, outside, empty };
+  return { harness: id, imported, known, outside, empty, deleted: tombstoned };
 }

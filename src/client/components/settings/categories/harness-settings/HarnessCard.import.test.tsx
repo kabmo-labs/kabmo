@@ -111,7 +111,7 @@ describe('import controls', () => {
       h(HarnessCard, {
         summary: summary(),
         onProbe: async () => null,
-        onImportSessions: async () => ({ result: { harness: 'codex', imported: 2, known: 1, outside: 0, empty: 0 }, error: null }),
+        onImportSessions: async () => ({ result: { harness: 'codex', imported: 2, known: 1, outside: 0, empty: 0, deleted: 0 }, error: null }),
       }),
       container,
     );

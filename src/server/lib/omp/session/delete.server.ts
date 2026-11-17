@@ -44,6 +44,7 @@ import { isSinglePathSegment } from '@/server/lib/fs/path-segment';
 import { deleteSessionRelations } from '@/server/lib/sessions/relations.server';
 import { removeSessionMcpOverlay } from '@/server/lib/mcp/session-overlay.server';
 import { purgeChangeJournal } from '@/server/lib/changes/purge.server';
+import { markSessionDeleted } from '@/server/lib/sessions/deleted-sessions.server';
 
 export interface SessionPurgeResult {
   /** Something keyed to this id existed — a transcript, a mock session row, or
@@ -145,6 +146,11 @@ export async function purgeSessionData(sessionId: string): Promise<SessionPurgeR
 
   const db = await getDb();
   const rowChanges = await purgeKabmoRows(db, sessionId);
+  // The tombstone is written HERE, with the purge, not by the route: a future
+  // caller that removes a session must not be able to skip it. Without it an
+  // imported chat returns on the next pass, because the agent's store is the
+  // source the import copies from.
+  await markSessionDeleted(sessionId);
   // The overlay is a temp directory, not a row: a deleted session must not
   // leave one behind for a future id to inherit.
   await removeSessionMcpOverlay(sessionId);
