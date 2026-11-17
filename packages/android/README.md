@@ -379,9 +379,11 @@ Two halves, and neither is optional:
   there is one decision and two transports.
 - **The shell holds its own connection** (`NotificationWatchService`) to
   `GET /api/notifications/stream?platform=mobile&after=<id>`. Android keeps a
-  background network connection alive only as a FOREGROUND service, so the app
-  shows an ongoing row while the switches are on. Its type is `specialUse`, not
-  `dataSync`: Android 15 cuts a `dataSync` service off after six hours a day,
+  background network connection alive only as a FOREGROUND service, and a
+  foreground service must show a notification — so this one is opt-in: the
+  ongoing row appears only while the shell's own **Notify while closed** switch
+  (Server settings) is on, and it is off by default. Its type is `specialUse`,
+  not `dataSync`: Android 15 cuts a `dataSync` service off after six hours a day,
   and this one has to outlive a working day. The cookie
   comes from the WebView's own jar (the stream is behind the same session), the
   cursor is persisted per server URL, and the first run sends no cursor at all —
@@ -390,12 +392,21 @@ Two halves, and neither is optional:
 
 `notification_watch` arms it: the console pushes its own switches on boot and on
 every change (`client/lib/notifications/watch.ts`), because the shell has no page
-to ask once it is backgrounded. The service is started from THAT command, while
-the console is visible — Android 12+ refuses a foreground-service start from the
-background, so starting it in `onStop` would fail exactly when it is needed.
-Disarming stops it.
+to ask once it is backgrounded. "Armed" is the console's half only: the service
+starts when the console's switches AND the shell's **Notify while closed** switch
+(`AndroidWatch.backgroundWanted`, default off) agree. It is started from THAT
+command, while the console is visible — Android 12+ refuses a foreground-service
+start from the background, so starting it in `onStop` would fail exactly when it
+is needed. Disarming, or turning the shell's switch off, stops it.
 
-Four rules keep it from being background work with nothing to show for it:
+Five rules keep it from being background work with nothing to show for it:
+
+- **The ongoing row is the user's decision, not the console's.** Android does not
+  let a foreground service hide its notification, so the service used to put a
+  permanent "Agent notifications are on" row on every install that had any
+  notification switch on. `backgroundWanted` defaults to false and is written
+  only from the app's own Settings screen; a grant refusal flips it back and says
+  why, rather than leaving a switch that delivers nothing.
 
 - **The heartbeat is 60 s, and the shell times the read out at 150 s.** The
   stream is idle between events, so liveness is the server's comment frame

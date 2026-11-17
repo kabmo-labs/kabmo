@@ -5,6 +5,7 @@ import android.app.AlertDialog
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
+import android.os.Build
 import android.os.Bundle
 import android.text.InputType
 import android.util.TypedValue
@@ -15,7 +16,9 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
+import android.widget.Switch
 import android.widget.TextView
+import android.widget.Toast
 
 /**
  * The native server-settings screen.
@@ -44,8 +47,14 @@ class SettingsActivity : Activity() {
     /** The pasted pairing link; see `pairSection`. */
     private lateinit var pairField: EditText
 
+    /** The background-delivery switch; see `backgroundSection`. */
+    private lateinit var backgroundSwitch: Switch
+
     /** The scanner's request code. */
     private val REQUEST_SCAN = 0x4b45
+
+    /** Asking for `POST_NOTIFICATIONS` on behalf of the background switch. */
+    private val REQUEST_NOTIFICATIONS = 0x4b46
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -81,6 +90,11 @@ class SettingsActivity : Activity() {
         // no reload), so it is not part of "connect to a server" and must not
         // read as a field the Connect button submits.
         column.addView(zoomSection())
+
+        // Background delivery sits with the other device-local switches, not
+        // with "connect to a server": it is this shell's opt-in to an ongoing
+        // notification, and the console's own switches cannot turn it on.
+        column.addView(backgroundSection())
 
         // The APP's own update, above the actions: it is not part of "connect to
         // a server", and it is the one answer this screen can give that the
@@ -208,6 +222,97 @@ class SettingsActivity : Activity() {
                 value.text = getString(R.string.zoom_value, ServerConfig.ZOOM_DEFAULT)
             }.apply { setPadding(0, dp(10), 0, 0) },
         )
+    }
+
+    /**
+     * The opt-in for background delivery, and the row it costs.
+     *
+     * Android requires a foreground service to show an ongoing notification, so
+     * the watcher that keeps banners arriving while Kabmo is closed cannot hide
+     * its own row. It used to run whenever the console's notification switches
+     * were on, which put a permanent "Agent notifications are on" notification
+     * on every install; the switch is now the user's, it is off by default, and
+     * the hint states the row as the price rather than discovering it later.
+     *
+     * `setBackgroundWanted` starts or stops the service itself, so the visible
+     * result is immediate — and a switch that could not post (no permission)
+     * flips back rather than reading "on" over a row that will never appear.
+     */
+    private fun backgroundSection(): LinearLayout = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        setPadding(0, dp(20), 0, 0)
+
+        val header = LinearLayout(this@SettingsActivity).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        val label = label(getString(R.string.background_label))
+        label.setPadding(0, 0, 0, 0)
+        header.addView(label, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+
+        backgroundSwitch = Switch(this@SettingsActivity).apply {
+            isChecked = AndroidWatch.backgroundWanted(this@SettingsActivity)
+            setOnCheckedChangeListener { _, checked -> onBackgroundToggled(checked) }
+        }
+        header.addView(backgroundSwitch)
+        addView(header)
+
+        addView(hint(getString(R.string.background_help)))
+    }
+
+    /**
+     * The switch's one effect, in the order the two gates are met.
+     *
+     * A switch that is on but silent is the failure this screen must not show,
+     * so both reasons are reported: the OS grant is asked for (and its refusal
+     * flips the switch back), and a console with no event switched on is named
+     * rather than left as a row that never arrives.
+     */
+    private fun onBackgroundToggled(checked: Boolean) {
+        AndroidWatch.setBackgroundWanted(this, checked)
+        if (!checked) return
+        if (askNotificationPermission()) return
+        if (!AndroidWatch.armed(this)) {
+            Toast.makeText(this, getString(R.string.background_needs_events), Toast.LENGTH_LONG).show()
+        }
+    }
+
+    /**
+     * The watch cannot post without `POST_NOTIFICATIONS`, and a switch that is
+     * on while the system drops every banner is the failure this screen exists
+     * to prevent. The request belongs on the switch that needs it; true means a
+     * prompt is coming and `onRequestPermissionsResult` will report the answer.
+     */
+    private fun askNotificationPermission(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return false
+        if (NotificationPoster.isGranted(this)) return false
+        requestPermissions(
+            arrayOf(android.Manifest.permission.POST_NOTIFICATIONS),
+            REQUEST_NOTIFICATIONS,
+        )
+        return true
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode != REQUEST_NOTIFICATIONS) return
+        if (NotificationPoster.isGranted(this)) {
+            // A grant is the one moment the start can succeed, and nothing else
+            // retries it until the next resume.
+            AndroidWatch.rearm(this)
+            if (!AndroidWatch.armed(this)) {
+                Toast.makeText(this, getString(R.string.background_needs_events), Toast.LENGTH_LONG).show()
+            }
+            return
+        }
+        // A refusal is reported and the switch returns to off: an on switch with
+        // no row and no banner is the silent failure this screen must not show.
+        backgroundSwitch.isChecked = false
+        Toast.makeText(this, getString(R.string.background_denied), Toast.LENGTH_LONG).show()
     }
 
     /**

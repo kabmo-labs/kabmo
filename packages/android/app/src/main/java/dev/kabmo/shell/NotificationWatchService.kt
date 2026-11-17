@@ -32,10 +32,9 @@ import kotlin.concurrent.thread
  *
  * Android only lets a process keep a network connection alive in the background
  * as a FOREGROUND service, so this one shows an ongoing row while it runs and
- * exists for as long as the console's notification switches are on
- * (`AndroidWatch`). It is started while the console is in the foreground
- * (Android 12+ refuses a foreground-service start from the background) and
- * stopped the moment the switches are turned off.
+ * exists for as long as the console's notification switches are on AND the shell
+ * has been opted in (`AndroidWatch.backgroundWanted`, default off). The row is
+ * the reason the opt-in exists: Android requires it, and it cannot be hidden.
  *
  * A banner posted here and one posted by the open page share the notification
  * tag and id, so the same event never shows twice — whichever posts first wins
@@ -141,6 +140,7 @@ class NotificationWatchService : Service() {
             // socket and a foreground row posting nothing at all.
             if (!WatchPolicy.shouldRun(
                     armed = AndroidWatch.armed(this),
+                    background = AndroidWatch.backgroundWanted(this),
                     canPost = NotificationPoster.isGranted(this),
                     hasServer = baseUrl != null,
                 )

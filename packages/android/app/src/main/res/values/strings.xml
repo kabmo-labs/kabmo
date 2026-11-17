@@ -12,15 +12,22 @@
     <string name="attention_channel">Waiting for you</string>
     <string name="attention_channel_description">An agent is blocked on a question or an approval.</string>
     <!--
-      The background watcher's ongoing row. It is shown while the notification
-      switches are on, and its wording names the promise it keeps (banners
-      arrive even when the app is closed) rather than the fact that a service is
-      running.
+      The background watcher's ongoing row. It is shown only while the shell's
+      own "Notify while closed" switch is on, and its wording names the promise
+      it keeps (banners arrive even when the app is closed) rather than the fact
+      that a service is running.
     -->
     <string name="watch_channel">Notification watch</string>
     <string name="watch_channel_description">Keeps agent notifications arriving while Kabmo is closed.</string>
     <string name="watch_title">Agent notifications are on</string>
-    <string name="watch_body">They arrive even while Kabmo is closed. Turn them off in Settings → Notifications.</string>
+    <string name="watch_body">They arrive even while Kabmo is closed. Turn that off under Server settings → Notify while closed.</string>
+    <!-- The shell's own opt-in for the row above. Off by default: Android forces
+         a foreground service to show an ongoing notification, so a watch nobody
+         switched on is a notification nobody asked for. -->
+    <string name="background_label">Notify while closed</string>
+    <string name="background_help">Keeps agent notifications arriving while Kabmo is closed. Android shows an ongoing notification for as long as this is on, so it is off by default; turning it on asks for the notification permission if it is missing.</string>
+    <string name="background_denied">Android is not allowing Kabmo to post notifications, so nothing would arrive while the app is closed. Allow notifications for Kabmo in Android Settings, then turn this on again.</string>
+    <string name="background_needs_events">Nothing is switched on to announce yet. Turn on Run finished, Waiting for you or Run failed in Kabmo\'s Notifications settings, and the ongoing notification appears then.</string>
     <string name="settings_title">Server settings</string>
     <string name="settings_short">Settings</string>
 
