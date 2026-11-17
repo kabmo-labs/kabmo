@@ -31,7 +31,7 @@ import { hashPassword, deriveCredentialKey, readSessionSecret, writeSessionSecre
 import { readSessionCookie, verifySessionToken } from '@/server/lib/auth/token';
 import { agentGate } from '@/server/lib/auth/agent-gate.server';
 import { bearerToken } from '@/server/lib/sessions/agent-token.server';
-import { verifyDeviceToken, readDeviceCookie } from '@/server/lib/connect/devices.server';
+import { markDeviceConnected, verifyDeviceToken, readDeviceCookie } from '@/server/lib/connect/devices.server';
 import { rememberClientAddress } from '@/server/lib/auth/client-address';
 import type { CredentialHandover } from '@/shared/lib/auth/handover';
 
@@ -332,7 +332,13 @@ export async function authGate(request: Request, clientAddress?: string): Promis
   // the device removes the hash from the cache, so the next request fails here.
   // The cookie form is what a webview can actually send — it cannot attach a
   // header to its own page requests or to a WebSocket upgrade.
-  if (verifyDeviceToken(bearerToken(request)) || verifyDeviceToken(readDeviceCookie(request))) {
+  //
+  // Verification is also the only reliable "last connect" signal: no shell
+  // reports after pairing, so a timestamp written by the claim route alone
+  // would show the pairing date. Throttled to one write per device per minute.
+  const deviceId = verifyDeviceToken(bearerToken(request)) ?? verifyDeviceToken(readDeviceCookie(request));
+  if (deviceId) {
+    await markDeviceConnected(deviceId);
     return undefined;
   }
 

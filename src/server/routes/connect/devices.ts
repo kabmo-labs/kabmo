@@ -8,10 +8,11 @@
  * `DELETE /api/connect/devices?id=…` — revoke one.
  * `POST /api/connect/devices` — a device reports the route it is using.
  *
- * The report is a POST rather than a side effect of every request: the auth gate
- * runs on every call and is synchronous, so writing a row there would put a
- * database write in front of every frame. A device reports once when it
- * connects, which is exactly the fact the page displays.
+ * The route report is a POST rather than a side effect of every request: the
+ * auth gate runs on every call, and the fact it records is only that the device
+ * connected (throttled to one write per minute per device). A device reports its
+ * route and round trip once when it chooses one, because the server cannot
+ * measure either.
  */
 
 import { json, NO_STORE_HEADERS, type ActionFunctionArgs } from '@/server/lib/remix-compat';

@@ -36,11 +36,49 @@ interface DeviceRow {
 declare global {
   // eslint-disable-next-line no-var
   var __kabmoDeviceTokens: Map<string, string> | undefined;
+  // eslint-disable-next-line no-var
+  var __kabmoDeviceMarks: Map<string, number> | undefined;
 }
 
 function tokenCache(): Map<string, string> {
   globalThis.__kabmoDeviceTokens ??= new Map();
   return globalThis.__kabmoDeviceTokens;
+}
+
+/**
+ * How often one device's connect timestamp is written.
+ *
+ * The gate runs on every request — pages, frames, WebSocket upgrades — so the
+ * timestamp is throttled in memory: the first request after the window records,
+ * and the next minute of traffic is free of writes.
+ */
+const CONNECT_MARK_INTERVAL_MS = 60_000;
+
+function connectMarks(): Map<string, number> {
+  globalThis.__kabmoDeviceMarks ??= new Map();
+  return globalThis.__kabmoDeviceMarks;
+}
+
+/**
+ * Record that `id` just used its token.
+ *
+ * This is the "last connect" the Settings page shows, and it is deliberately a
+ * report of USE rather than of pairing: a device that paired last week and is
+ * open right now must not read "last seen: last week". Never throws — the
+ * request is already authorized and the timestamp is a display fact, not a
+ * credential — and a failed write is retried by the next allowed window.
+ */
+export async function markDeviceConnected(id: string): Promise<void> {
+  const marks = connectMarks();
+  const now = Date.now();
+  if (now - (marks.get(id) ?? 0) < CONNECT_MARK_INTERVAL_MS) return;
+  marks.set(id, now);
+  try {
+    const db = await getDb();
+    await db.run('UPDATE paired_devices SET last_seen_at = ? WHERE id = ?', [now, id]);
+  } catch {
+    // The device stays authorized; the next connection retries.
+  }
 }
 
 export async function ensureConnectSchema(db: DbClient): Promise<void> {
@@ -167,6 +205,7 @@ export async function revokeDevice(id: string): Promise<boolean> {
   if (!row) return false;
   await db.run('UPDATE paired_devices SET revoked_at = ? WHERE id = ?', [Date.now(), id]);
   tokenCache().delete(row.token_hash);
+  connectMarks().delete(id);
   return true;
 }
 
@@ -182,10 +221,13 @@ export async function touchDevice(
 ): Promise<void> {
   try {
     const db = await getDb();
+    const now = Date.now();
     await db.run(
       'UPDATE paired_devices SET last_seen_at = ?, route = COALESCE(?, route), rtt_ms = COALESCE(?, rtt_ms) WHERE id = ?',
-      [Date.now(), report?.route ?? null, report?.rttMs ?? null, id],
+      [now, report?.route ?? null, report?.rttMs ?? null, id],
     );
+    // The gate would otherwise write the same timestamp immediately after.
+    connectMarks().set(id, now);
   } catch {
     // See above: a display fact, not a credential.
   }

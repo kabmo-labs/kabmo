@@ -15,6 +15,10 @@
  * A table on a desktop, stacked rows on a phone. The columns are the same facts
  * in both; only the arrangement changes, because a horizontally scrolling table
  * on a phone hides the revoke button off-screen.
+ *
+ * "Last connect" is when the server last accepted this device's token, not when
+ * it paired. A phone left open for a week reads "just now"; a device that was
+ * paired but never came back reads "Never connected".
  */
 
 import { Trash2 } from 'lucide-preact';
@@ -37,6 +41,19 @@ function relative(iso: string | null): string {
   const hours = Math.round(minutes / 60);
   if (hours < 24) return `${hours} h ago`;
   return `${Math.round(hours / 24)} d ago`;
+}
+
+/**
+ * "2 h ago · 18 Nov 2026, 14:32" — the recency at a glance, and the exact
+ * moment on record. A relative label on its own is unanswerable once it reads
+ * "3 d ago": the user checking whether a device connected today needs the date.
+ */
+function connectLabel(iso: string | null): string {
+  if (!iso) return 'Never connected';
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return 'Never connected';
+  const exact = at.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+  return `${relative(iso)} · ${exact}`;
 }
 
 export interface DeviceTableProps {
@@ -77,7 +94,7 @@ export function DeviceTable({ devices, busy, onRevoke, onAdd }: DeviceTableProps
                 <th className="px-2 py-2 font-bold">Platform</th>
                 <th className="px-2 py-2 font-bold">Route</th>
                 <th className="px-2 py-2 font-bold">RTT</th>
-                <th className="px-2 py-2 font-bold">Last seen</th>
+                <th className="px-2 py-2 font-bold">Last connect</th>
                 <th className="px-4 py-2" />
               </tr>
             </thead>
@@ -92,7 +109,9 @@ export function DeviceTable({ devices, busy, onRevoke, onAdd }: DeviceTableProps
                   <td className="px-2 py-2 font-mono text-[11px] tabular-nums text-ink/70">
                     {device.rttMs === null ? '—' : `${device.rttMs} ms`}
                   </td>
-                  <td className="px-2 py-2 text-[11px] text-ink/60">{relative(device.lastSeenAt)}</td>
+                  <td className="px-2 py-2 text-[11px] text-ink/60">
+                    <time dateTime={device.lastSeenAt ?? undefined}>{connectLabel(device.lastSeenAt)}</time>
+                  </td>
                   <td className="px-4 py-2 text-right">
                     <button
                       type="button"
@@ -119,7 +138,7 @@ export function DeviceTable({ devices, busy, onRevoke, onAdd }: DeviceTableProps
                     {device.platform}
                     {device.route ? ` · ${ROUTE_LABEL[device.route]}` : ''}
                     {device.rttMs === null ? '' : ` · ${device.rttMs} ms`}
-                    {` · ${relative(device.lastSeenAt)}`}
+                    {` · ${connectLabel(device.lastSeenAt)}`}
                   </div>
                 </div>
                 <button

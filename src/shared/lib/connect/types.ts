@@ -62,6 +62,7 @@ export interface PairedDevice {
   route: ConnectRouteKind | null;
   /** The device's own measurement of that route, in milliseconds. */
   rttMs: number | null;
+  /** When the server last accepted this device's token — its last connect. */
   lastSeenAt: string | null;
   createdAt: string;
 }
