@@ -40,7 +40,8 @@ import { PANEL_MARK_SIZE } from '@/shared/lib/workspace/right-panels';
 import { SESSIONS_VIEW_ID, isLeftDockPanelId } from '@/shared/lib/workspace/left-dock';
 import { BUILTIN_PANELS } from '@/client/components/workspace/panels/builtin';
 import { PanelMark } from '@/client/components/common/panel-mark';
-import { PanelVisibilityMenu, type PanelVisibilityItem } from '@/client/components/layout/PanelVisibilityMenu';
+import { VisibilityMenu, type VisibilityItem } from '@/client/components/layout/VisibilityMenu';
+import { ACTIVITY_BAR_WIDTH_PX } from '@/client/lib/ui/control-plate';
 
 interface ActivityBarProps {
   side: PanelCatalogSide;
@@ -126,7 +127,8 @@ export function ActivityBar({ side, activePanel, onChangePanel, isPanelOpen, has
         ref={navRef}
         onContextMenu={openMenu}
         aria-label={side === 'left' ? 'Left panel views' : 'Right panel views'}
-        className={`glass-chrome w-11 flex-shrink-0 ${side === 'left' ? 'border-r' : 'border-l'} border-ink/10 bg-paper flex flex-col items-center py-3 space-y-2 z-10`}
+        className={`glass-chrome flex-shrink-0 ${side === 'left' ? 'border-r' : 'border-l'} border-ink/10 bg-paper flex flex-col items-center py-3 space-y-2 z-10`}
+        style={{ width: ACTIVITY_BAR_WIDTH_PX }}
       >
         <div className="flex flex-col items-center space-y-1 w-full">
           {drawn.map((panel, index) => (
@@ -152,7 +154,7 @@ export function ActivityBar({ side, activePanel, onChangePanel, isPanelOpen, has
       </nav>
 
       {anchor ? (
-        <PanelVisibilityMenu
+        <VisibilityMenu
           anchor={anchor}
           items={allItems}
           hidden={disabledPanels}
@@ -177,9 +179,9 @@ export function ActivityBar({ side, activePanel, onChangePanel, isPanelOpen, has
  * The list is per SIDE: the left rail offering eleven built-in views it cannot
  * draw would be a menu of controls that do nothing.
  */
-function useAllPanelItems(side: PanelCatalogSide): PanelVisibilityItem[] {
+function useAllPanelItems(side: PanelCatalogSide): VisibilityItem[] {
   const { plugins } = usePanelRegistry();
-  const items: PanelVisibilityItem[] = [];
+  const items: VisibilityItem[] = [];
   if (side !== 'right') {
     // The session list is the dock's own view and cannot be switched off: it is
     // the only way back to a conversation.

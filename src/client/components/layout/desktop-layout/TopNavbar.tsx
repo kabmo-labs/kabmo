@@ -1,16 +1,20 @@
 import { Loader2, MoreHorizontal, PanelLeft } from 'lucide-preact';
+import { useRef, useState } from 'preact/hooks';
+import type { TargetedMouseEvent } from 'preact';
 import { HeaderControls } from '@/client/components/common/header-controls';
 import { BrandWordmark } from '@/client/components/common/brand-wordmark';
 import { StreamStatusDot } from '@/client/components/common/StreamStatusDot';
 import { SessionActionsMenu, useRowMenu } from '@/client/components/common/session-actions-menu';
+import { VisibilityMenu, type MenuAnchor } from '@/client/components/layout/VisibilityMenu';
+import { NAVBAR_CONTROL, NAVBAR_CONTROLS, useNavbarControls } from '@/client/hooks/ui/navbar-controls';
 import { useInlineRename } from '@/client/hooks/ui/inline-rename';
 import { useSessionRenaming } from '@/client/hooks/workspace/renaming-sessions';
 import type { AgentStreamStatus } from '@/shared/lib/chat/omp/status';
 import { withChord } from '@/client/lib/ui/with-chord';
-import { CONTROL_BOX, CONTROL_CLUSTER_GAP } from '@/client/lib/ui/control-plate';
+import { CONTROL_BOX, CONTROL_BOX_PX, CONTROL_CLUSTER_GAP, ACTIVITY_BAR_WIDTH_PX, navbarEdgeInsets } from '@/client/lib/ui/control-plate';
 import { titlebarPaddingLeft, titlebarPaddingRight } from '@/shared/lib/ui/titlebar';
 import { ServerControl } from '@/client/components/common/server-control';
-import { dragRegionProps, titlebarInsetLeft } from '@/client/lib/desktop/titlebar';
+import { dragRegionProps, drawsWindowControls, titlebarInsetLeft } from '@/client/lib/desktop/titlebar';
 
 interface TopNavbarProps {
   sessionTitle: string | null;
@@ -61,17 +65,49 @@ export function TopNavbar({
   const hasSessionActions = Boolean(
     sessionActions && (sessionActions.onRename || sessionActions.onRenameWithAi || sessionActions.onArchive || sessionActions.onDelete)
   );
+  // The rightmost control is the caption cluster in a Windows/Linux shell
+  // window and the right-panel toggle everywhere else. The activity rail below
+  // the navbar shares this right edge, so the inset is derived from whichever
+  // control actually ends the row — a flat `1rem` left the toggle's centre 8px
+  // off the rail's axis.
+  const lastControlPx = drawsWindowControls() ? ACTIVITY_BAR_WIDTH_PX : CONTROL_BOX_PX.desktop;
+  const insets = navbarEdgeInsets(showLeftPanel, lastControlPx);
+  // The navbar's own right-click menu: the same switch the activity rails
+  // have, for the row of controls above them. A hidden control stays a row of
+  // this menu, so it is never lost.
+  const { hidden, setHidden } = useNavbarControls();
+  const [menuAnchor, setMenuAnchor] = useState<MenuAnchor | null>(null);
+  const headerRef = useRef<HTMLElement>(null);
+  const openMenu = (event: TargetedMouseEvent<HTMLElement>) => {
+    // A right-click inside the rename field is the browser's own menu (copy,
+    // paste); taking it over would remove the only way to paste a title.
+    if ((event.target as HTMLElement).closest('input, textarea, [contenteditable="true"]')) return;
+    event.preventDefault();
+    const rect = headerRef.current?.getBoundingClientRect();
+    setMenuAnchor({
+      top: rect?.top ?? 0,
+      bottom: rect?.bottom ?? 0,
+      left: rect?.left ?? event.clientX,
+      right: rect?.right ?? event.clientX,
+    });
+  };
   return (
     <header
+      ref={headerRef}
+      onContextMenu={openMenu}
       className="glass-chrome h-10 flex-shrink-0 border-b border-ink/10 bg-paper flex items-center justify-between z-20 titlebar-drag-region select-none"
       {...dragRegionProps()}
       style={{
-        // The sidebar's own header carries the left inset while it is open.
-        paddingLeft: !showLeftPanel ? titlebarInsetLeft(titlebarPaddingLeft('1rem')) : undefined,
-        paddingRight: titlebarPaddingRight('1rem'),
+        // The sidebar's own header carries the left inset while it is open;
+        // when it is closed the navbar is the window's left edge and carries it
+        // itself. The expand button then sits on the left rail's axis, so it
+        // does not jump when the dock opens. The group below carries no padding
+        // of its own — the two used to add up, putting the button 24px off.
+        paddingLeft: showLeftPanel ? insets.left : titlebarInsetLeft(titlebarPaddingLeft(insets.left)),
+        paddingRight: titlebarPaddingRight(insets.right),
       }}
     >
-      <div className="flex items-center space-x-2 px-4 min-w-0">
+      <div className="flex items-center space-x-2 min-w-0">
         {!showLeftPanel && (
           <>
             <button
@@ -160,6 +196,7 @@ export function TopNavbar({
           showEditor={showEditor}
           onToggleEditor={onToggleEditor}
           onSwitchToMobile={onSwitchToMobile}
+          hidden={hidden}
         />
         {/* The Windows/Linux caption buttons come from `HeaderControls` itself:
             a desktop shell window can be narrower than the mobile breakpoint,
@@ -178,6 +215,25 @@ export function TopNavbar({
           onClose={menu.close}
         />
       )}
+
+      {menuAnchor ? (
+        <VisibilityMenu
+          anchor={menuAnchor}
+          title="Navbar"
+          align="right"
+          // A control this build does not draw has no row: the dev-only layout
+          // switch is absent in a production build, and a checkbox for it would
+          // hide nothing.
+          items={NAVBAR_CONTROLS.filter((item) => {
+            if (item.id === NAVBAR_CONTROL.mobile) return Boolean(onSwitchToMobile);
+            if (item.id === NAVBAR_CONTROL.editor) return Boolean(onToggleEditor);
+            return true;
+          }).map((item) => ({ ...item, removable: true }))}
+          hidden={hidden}
+          onToggle={setHidden}
+          onClose={() => setMenuAnchor(null)}
+        />
+      ) : null}
     </header>
   );
 }

@@ -63,3 +63,45 @@ export const CONTROL_CLUSTER_GAP = 'gap-1';
  * two surfaces share, not the glyph.
  */
 export const CONTROL_GLYPH_PX: Record<ControlLayout, number> = { desktop: 16, mobile: 18 };
+
+/**
+ * The activity rail's width in px — `ActivityBar`'s `w-11`.
+ *
+ * The top navbar spans the same right edge as the rail, so its last control is
+ * centred on the rail's axis by insetting it by half the difference. The two
+ * numbers are one alignment fact and are stated together here; the navbar used
+ * to carry a flat `1rem`, which put the right-panel toggle's centre 8px to the
+ * left of every rail mark.
+ */
+export const ACTIVITY_BAR_WIDTH_PX = 44;
+
+/** The control box's width in px — the `w-7`/`w-9` in `CONTROL_BOX`. */
+export const CONTROL_BOX_PX: Record<ControlLayout, number> = { desktop: 28, mobile: 36 };
+
+/**
+ * The right padding that centres a `lastControlPx`-wide control on the activity
+ * rail below it: `(rail - control) / 2`.
+ *
+ * A control as wide as the rail needs no inset; the Windows/Linux caption
+ * cluster is exactly that, which is why the caller passes the width of whatever
+ * control actually ends the row rather than assuming the icon box.
+ */
+export function railAlignedInset(lastControlPx: number): string {
+  return `${(ACTIVITY_BAR_WIDTH_PX - lastControlPx) / 2}px`;
+}
+
+/**
+ * The navbar's two edge insets, before the titlebar's own insets are applied.
+ *
+ * The right edge is always the activity rail's, so the last control is centred
+ * on it. The left edge is the rail's only while the sidebar is collapsed: an
+ * open sidebar puts the navbar's left edge at the sidebar's right edge, where
+ * the title takes the ordinary `1rem` inset and the sidebar's own header
+ * carries the window's left inset.
+ */
+export function navbarEdgeInsets(showLeftPanel: boolean, lastControlPx: number): { left: string; right: string } {
+  return {
+    left: showLeftPanel ? '1rem' : railAlignedInset(CONTROL_BOX_PX.desktop),
+    right: railAlignedInset(lastControlPx),
+  };
+}

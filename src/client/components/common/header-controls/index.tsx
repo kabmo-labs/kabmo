@@ -11,6 +11,7 @@ import { drawsWindowControls } from '@/client/lib/desktop/titlebar';
 import { useAuthEnabled, useAuthState } from '@/client/hooks/ui/auth';
 import { useViewportAtLeast } from '@/client/hooks/ui/media-query';
 import { CONTROL_BOX, CONTROL_GLYPH_PX, CONTROL_ROW_GAP } from '@/client/lib/ui/control-plate';
+import { NAVBAR_CONTROL, type NavbarControlId } from '@/client/hooks/ui/navbar-controls';
 import { withChord } from '@/client/lib/ui/with-chord';
 
 export type HeaderLayout = 'desktop' | 'mobile';
@@ -41,6 +42,13 @@ interface HeaderControlsProps {
   onToggleEditor?: () => void;
   /** Desktop only: the dev-only layout switch, drawn after every listed control. */
   onSwitchToMobile?: () => void;
+  /**
+   * Control ids the user switched off in the navbar's right-click menu.
+   *
+   * Only the desktop navbar passes this: the phone header has no context menu,
+   * so a control hidden there would have no way back.
+   */
+  hidden?: string[];
 }
 
 /**
@@ -106,9 +114,11 @@ export function HeaderControls({
   showEditor = false,
   onToggleEditor,
   onSwitchToMobile,
+  hidden = [],
 }: HeaderControlsProps) {
   const iconClass = ICON_BUTTON_CLASS[layout];
   const size = ICON_SIZE[layout];
+  const isHidden = (id: NavbarControlId) => hidden.includes(id);
   const authEnabled = useAuthEnabled();
   const authState = useAuthState();
   const signOutShown = authEnabled && authState !== 'required';
@@ -135,16 +145,16 @@ export function HeaderControls({
     // own click. Stating it on the cluster is what makes the next layout that
     // draws it correct by construction.
     <div className={`flex items-center ${CONTROL_ROW_GAP} titlebar-no-drag`}>
-      {layout === 'desktop' && <PWAInstallButton />}
+      {layout === 'desktop' && !isHidden(NAVBAR_CONTROL.install) && <PWAInstallButton />}
       <HeaderPanelButtons layout={layout} entries={headerEntries.inline} />
       {/* The cluster's ORDER is fixed; what changes on a narrow phone is that
           reload and sign-out move behind `⋯`, which sits in the slot they
           left. Nothing is hidden at a width that can hold it: measured, the
           row fits every control at 400px open and 436px with the lock. */}
-      {(layout === 'desktop' || !folded) && <ReloadPageButton size={size} className={iconClass} />}
-      <ContextUsageButton sessionId={sessionId} layout={layout} />
-      {(layout === 'desktop' || !folded) && <SignOutButton size={size} className={iconClass} />}
-      {layout === 'desktop' && onToggleEditor && (
+      {(layout === 'desktop' || !folded) && !isHidden(NAVBAR_CONTROL.reload) && <ReloadPageButton size={size} className={iconClass} />}
+      {!isHidden(NAVBAR_CONTROL.context) && <ContextUsageButton sessionId={sessionId} layout={layout} />}
+      {(layout === 'desktop' || !folded) && !isHidden(NAVBAR_CONTROL.signout) && <SignOutButton size={size} className={iconClass} />}
+      {layout === 'desktop' && onToggleEditor && !isHidden(NAVBAR_CONTROL.editor) && (
         <button
           type="button"
           onClick={onToggleEditor}
@@ -156,7 +166,7 @@ export function HeaderControls({
           <LayoutTemplate size={size} />
         </button>
       )}
-      {layout === 'mobile' ? (
+      {!isHidden(NAVBAR_CONTROL.rightPanel) && (layout === 'mobile' ? (
         <button
           type="button"
           onClick={onToggleRightPanel}
@@ -177,11 +187,11 @@ export function HeaderControls({
         >
           {showRightPanel ? <PanelRightClose size={size} /> : <PanelRight size={size} />}
         </button>
-      )}
+      ))}
       {(folded || headerEntries.folded.length > 0) && (
         <HeaderMoreMenu entries={headerEntries.folded} />
       )}
-      {layout === 'desktop' && onSwitchToMobile && (
+      {layout === 'desktop' && onSwitchToMobile && !isHidden(NAVBAR_CONTROL.mobile) && (
         <button
           type="button"
           onClick={onSwitchToMobile}

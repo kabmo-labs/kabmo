@@ -17,10 +17,14 @@
 
 import { describe, expect, test } from 'bun:test';
 import {
+  ACTIVITY_BAR_WIDTH_PX,
   CONTROL_BOX,
+  CONTROL_BOX_PX,
   CONTROL_CLUSTER_GAP,
   CONTROL_GLYPH_PX,
   CONTROL_ROW_GAP,
+  navbarEdgeInsets,
+  railAlignedInset,
   type ControlLayout,
 } from '@/client/lib/ui/control-plate';
 
@@ -72,5 +76,30 @@ describe('control plate', () => {
     const gap = GAPS[CONTROL_ROW_GAP as keyof typeof GAPS];
     expect(px(CONTROL_BOX.desktop, 'w') + gap).toBe(30);
     expect(px(CONTROL_BOX.mobile, 'w') + gap).toBe(38);
+  });
+
+  test('the navbar inset centres its last control on the activity rail', () => {
+    // The navbar and the rail share the right edge, so the inset is half the
+    // difference between the rail and the control that ends the row. A flat
+    // `1rem` put the right-panel toggle's centre 8px off the rail's axis.
+    expect(ACTIVITY_BAR_WIDTH_PX).toBe(44);
+    expect(CONTROL_BOX_PX.desktop).toBe(px(CONTROL_BOX.desktop, 'w'));
+    expect(CONTROL_BOX_PX.mobile).toBe(px(CONTROL_BOX.mobile, 'w'));
+    expect(railAlignedInset(CONTROL_BOX_PX.desktop)).toBe('8px');
+    const inset = Number.parseFloat(railAlignedInset(CONTROL_BOX_PX.desktop));
+    expect(inset * 2 + CONTROL_BOX_PX.desktop).toBe(ACTIVITY_BAR_WIDTH_PX);
+    // A control as wide as the rail — the Windows/Linux caption cluster — needs
+    // no inset at all.
+    expect(railAlignedInset(ACTIVITY_BAR_WIDTH_PX)).toBe('0px');
+  });
+
+  test('the navbar insets put each edge control on its rail axis', () => {
+    // Collapsed sidebar: the navbar is the window's left edge, so the expand
+    // button takes the left rail's axis. Open: the title keeps the ordinary
+    // inset, and the sidebar's own header carries the window's left inset.
+    expect(navbarEdgeInsets(false, CONTROL_BOX_PX.desktop)).toEqual({ left: '8px', right: '8px' });
+    expect(navbarEdgeInsets(true, CONTROL_BOX_PX.desktop)).toEqual({ left: '1rem', right: '8px' });
+    // A caption cluster as wide as the rail needs no right inset.
+    expect(navbarEdgeInsets(false, ACTIVITY_BAR_WIDTH_PX)).toEqual({ left: '8px', right: '0px' });
   });
 });

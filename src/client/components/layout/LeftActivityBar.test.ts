@@ -162,7 +162,7 @@ describe('left activity bar', () => {
     await act(async () => {
       nav.dispatchEvent(new window.Event('contextmenu', { bubbles: true, cancelable: true }));
     });
-    const menu = document.querySelector('[role="menu"][aria-label="Panel visibility"]');
+    const menu = document.querySelector('[role="menu"][aria-label="Panels visibility"]');
     expect(menu).not.toBeNull();
     const row = [...menu!.querySelectorAll('[role="menuitemcheckbox"]')].find(
       (el) => el.textContent?.includes('Sessions'),

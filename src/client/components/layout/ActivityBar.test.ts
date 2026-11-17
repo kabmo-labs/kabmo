@@ -21,6 +21,7 @@ import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { ActivityBar } from '@/client/components/layout/ActivityBar';
+import { ACTIVITY_BAR_WIDTH_PX } from '@/client/lib/ui/control-plate';
 import { SessionStateProvider } from '@/client/components/common/session-state-provider/index';
 import { useRepoScope } from '@/client/hooks/workspace/repo-scope';
 import { primeKabmoSettings, readKabmoSetting, writeSetting } from '@/shared/lib/settings/client';
@@ -149,6 +150,17 @@ describe('ActivityBar git dot', () => {
     // The picker moved to the root: the dot follows to that topic and clears.
     expect(subscribedScopes).toContain(gitTopic(`${ROOT}\u0000.`));
     expect(dot()).toBe(false);
+  });
+});
+
+describe('ActivityBar width', () => {
+  test('the rail is the width the navbar aligns its last control to', async () => {
+    // The navbar derives its right inset from this constant, so the rail must
+    // actually be that wide — a class that drifted from it would put the
+    // toggle's centre off the rail's axis with nothing failing.
+    await mount();
+    const nav = container.querySelector('nav') as HTMLElement;
+    expect(nav.style.width).toBe(`${ACTIVITY_BAR_WIDTH_PX}px`);
   });
 });
 
