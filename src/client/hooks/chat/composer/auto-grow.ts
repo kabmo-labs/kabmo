@@ -21,7 +21,7 @@
  * the hook clears its inline height instead of fighting that layout.
  */
 
-import { useEffect, useRef } from 'preact/hooks';
+import { useLayoutEffect, useRef } from 'preact/hooks';
 
 /**
  * The docked chat composer's ceiling, in text lines. Seven is what fits above
@@ -52,7 +52,10 @@ export interface UseAutoGrowOptions {
  * padding, no border).
  */
 function linesCeilingPx(el: HTMLTextAreaElement, lines: number): number {
-  const style = getComputedStyle(el);
+  // The element's own view, not the bare global: a test DOM installs `window`
+  // without installing `getComputedStyle` on `globalThis`, and a layout effect
+  // runs synchronously there (a passive one used to swallow the ReferenceError).
+  const style = el.ownerDocument.defaultView?.getComputedStyle(el) ?? getComputedStyle(el);
   const lineHeight = Number.parseFloat(style.lineHeight);
   const fontSize = Number.parseFloat(style.fontSize);
   // `line-height: normal` is not a number. The browser's own factor for it is
@@ -75,7 +78,14 @@ export function useAutoGrow({
 }: UseAutoGrowOptions) {
   const ref = useRef<HTMLTextAreaElement>(null);
 
-  useEffect(() => {
+  // A LAYOUT effect, not a passive one: the height this writes changes the
+  // enclosing card, and the timeline above it is pinned to its tail. Written
+  // after paint, the growth is painted one frame before the pin that follows
+  // it — measured while typing: the composer grew 22 px, the scroller shrank
+  // 22, and the last row's bottom sat 22 px past the scroller's edge for a
+  // frame. Before paint, the ResizeObserver delivery that re-pins the timeline
+  // runs in the SAME frame.
+  useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
     // A layout that owns the height must not be fighting an inline one, and it

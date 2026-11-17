@@ -40,6 +40,8 @@
 import type { RefObject } from 'preact/compat';
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { createJumpLanding, type JumpLanding } from '@/client/hooks/chat/timeline/jump-landing';
+import { useReaderInputStamp } from '@/client/hooks/chat/timeline/reader-input';
+import { useTimelineGeometryPin } from '@/client/hooks/chat/timeline/scroll-geometry';
 
 /** Distance from the tail, in pixels, that still counts as "at the bottom". */
 const FOLLOW_BOTTOM_THRESHOLD_PX = 100;
@@ -112,6 +114,18 @@ export interface ChatTimelineScrollResult {
    *  window writes a position under it. Released once the viewport has SAT at
    *  the tail (see `createJumpLanding`), never on a fixed timer. */
   jumpActiveRef: RefObject<boolean>;
+  /**
+   * The motion of the jump in flight (`jumpToBottom`'s own argument).
+   *
+   * The row window's correction is INSTANT, so it may write under an instant
+   * jump — both writers aim at the same tail, and the correction lands in the
+   * commit that measured the rows, before the browser paints. Under a SMOOTH
+   * jump it must stand down, or the correction replaces the animation with a
+   * snap. Without this distinction the open jump painted one frame at the
+   * estimate's bottom (measured: 2 044 px short) and only the next frame's
+   * rAF reached the tail.
+   */
+  jumpBehaviorRef: RefObject<ScrollBehavior>;
   handleScroll: () => void;
   scrollToBottom: (behavior?: ScrollBehavior) => void;
   /** Jump to the tail and re-engage follow mode (scroll-bottom button, the
@@ -152,6 +166,8 @@ export function useChatTimelineScroll(options: ChatTimelineScrollOptions = {}): 
   // Bottom-jump bookkeeping; see ChatTimelineScrollResult for each ref.
   const jumpCountRef = useRef(0);
   const jumpActiveRef = useRef(false);
+  // The motion of the jump in flight; see ChatTimelineScrollResult.
+  const jumpBehaviorRef = useRef<ScrollBehavior>('smooth');
   // The landing watch: owns the viewport until the jump has landed.
   const landingRef = useRef<JumpLanding | null>(null);
   // Last time the READER touched the scroller (wheel, touch, pointer, key).
@@ -238,85 +254,28 @@ export function useChatTimelineScroll(options: ChatTimelineScrollOptions = {}): 
     if (!scrollRef.current) return;
     followRef.current = true;
     jumpActiveRef.current = true;
+    jumpBehaviorRef.current = behavior;
     jumpCountRef.current += 1;
     // The click that starts a jump is not a scroll input: the reader has not
     // taken the viewport back, so a clamp right after this must not cancel it.
     readerInputAtRef.current = Number.NEGATIVE_INFINITY;
-    landing().start();
+    landing().start(behavior);
     pinToBottom(behavior);
   }, [landing, pinToBottom]);
 
-  // Geometry, not events: content that grows without the user scrolling
-  // (history prepending, an accordion expanding, an image decoding, a late
-  // Shiki/mermaid layout, the panel resizing) never fires `scroll`, so nothing
-  // else notices the tail moving away. While the viewport is pinned that growth
-  // is exactly when to re-pin it — a prepended window shifts the tail down by
-  // its own height, which strands a jump target measured a frame earlier (and
-  // a one-shot open jump by anything that lays out late). Unpinned (the user
-  // reading back) nothing is touched: the prepend anchor owns the position.
-  //
-  // `contentNode` is a dep so the observer is rebuilt when the timeline mounts
-  // — a session picked from the workspace picker swaps the whole subtree in,
-  // and the callback ref fires before this effect, so the node is always
-  // available here.
-  //
-  // The pin is DEFERRED to the next frame, and that is a correctness
-  // requirement, not a tuning choice. `pinToBottom` assigns `scrollTop`, which
-  // is a layout write — and a layout write made from INSIDE a delivery is what
-  // makes the browser re-run the observers within the same frame. It does that
-  // until it hits its per-frame depth limit, then reports
-  // "ResizeObserver loop completed with undelivered notifications." — measured
-  // here: a panel-width transition burst delivered 34 times over 18 frames with
-  // 18 of those deliveries writing `scrollTop`, and 13 frames saw the observer
-  // run twice. The report is not cosmetic: an uncaught page error raises Bun's
-  // dev-client "Runtime Error" overlay (z-index 2147483647) over the whole app,
-  // so resizing a panel could cover the UI with a warning about the timeline's
-  // own auto-scroll. Deferring also coalesces a burst into ONE write instead of
-  // one per delivery. The delay is invisible: the growth this reacts to is a
-  // layout that has already been painted, and the rAF runs before the next
-  // paint.
-  //
-  // `syncFollowBottom` only sets state, but it runs in the same deferred tick
-  // so the affordance and the pin always describe the same geometry.
-  useEffect(() => {
-    syncFollowBottom();
-    if (typeof ResizeObserver === 'undefined') return;
-    const container = scrollNode;
-    let frame: number | null = null;
-    const observer = new ResizeObserver(() => {
-      if (frame !== null) return;
-      frame = requestAnimationFrame(() => {
-        frame = null;
-        // A jump in flight owns the position: its watch re-aims at the tail
-        // itself, and a pin from here would replace a smooth landing with an
-        // instant snap on every measurement along the way.
-        if (followRef.current && !jumpActiveRef.current) pinToBottom('instant');
-        syncFollowBottom();
-      });
-    });
-    if (container) observer.observe(container);
-    if (contentNode) observer.observe(contentNode);
-    return () => {
-      observer.disconnect();
-      if (frame !== null) cancelAnimationFrame(frame);
-    };
-  }, [contentNode, scrollNode, pinToBottom, syncFollowBottom]);
+  // Geometry, not events: see `scroll-geometry.ts` for the two timings.
+  useTimelineGeometryPin({
+    scrollNode,
+    contentNode,
+    followRef,
+    jumpActiveRef,
+    pinToBottom,
+    syncFollowBottom,
+  });
 
   // What counts as the reader having taken the viewport back, for
-  // `handleScroll`'s upward-scroll test. Wired on the scroller NODE (state, not
-  // the ref — the surface is swapped in a commit late), because a wheel, a
-  // finger or a key only ever arrives there.
-  useEffect(() => {
-    if (!scrollNode) return;
-    const note = () => {
-      readerInputAtRef.current = performance.now();
-    };
-    const types = ['wheel', 'touchstart', 'touchmove', 'pointerdown', 'keydown'] as const;
-    for (const type of types) scrollNode.addEventListener(type, note, { passive: true });
-    return () => {
-      for (const type of types) scrollNode.removeEventListener(type, note);
-    };
-  }, [scrollNode]);
+  // `handleScroll`'s upward-scroll test (see `reader-input.ts`).
+  useReaderInputStamp(scrollNode, readerInputAtRef);
 
   useEffect(() => () => {
     landingRef.current?.stop();
@@ -332,6 +291,7 @@ export function useChatTimelineScroll(options: ChatTimelineScrollOptions = {}): 
     followRef,
     jumpCountRef,
     jumpActiveRef,
+    jumpBehaviorRef,
     handleScroll,
     scrollToBottom,
     jumpToBottom,

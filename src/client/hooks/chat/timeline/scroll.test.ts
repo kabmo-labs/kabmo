@@ -205,6 +205,59 @@ describe('timeline scroll', () => {
     await p.unmountProbe(probe);
   });
 
+  test('an instant jump re-aims instantly when a measurement moves the tail', async () => {
+    p.scrolled.length = 0;
+    p.geometry.top = 0;
+    p.geometry.height = 5000;
+    p.geometry.viewport = 500;
+    const probe = await p.mountProbe('a', [p.message('a1')]);
+    const scroll = () => probe.holder.current!;
+    await p.updateProbe(probe, 'a', [p.message('a1')]);
+    expect(probe.el.scrollTop).toBe(4500);
+    expect(scroll().jumpActiveRef.current).toBe(false);
+
+    // The open jump is issued against an ESTIMATE; the first window's
+    // measurements move the tail down before the landing watch has settled.
+    p.scrolled.length = 0;
+    await p.act(() => { scroll().jumpToBottom('instant'); });
+    expect(scroll().jumpActiveRef.current).toBe(true);
+    p.geometry.height += 800;
+    await p.flushFrames(4);
+
+    // Every re-aim repeats the jump's OWN motion. A smooth re-aim here is the
+    // ~700 ms animated open measured in the browser (scrollTop 14 109 → 16 033
+    // over 21 frames, the mounted window sliding the whole way).
+    expect(p.scrolled.length).toBeGreaterThan(0);
+    expect(p.scrolled.every((record) => record.behavior === 'instant')).toBe(true);
+    expect(probe.el.scrollTop).toBe(5800 - 500);
+    await p.unmountProbe(probe);
+  });
+
+  test('the composer growing under the timeline re-pins the tail in the same delivery', async () => {
+    p.scrolled.length = 0;
+    p.geometry.top = 0;
+    p.geometry.height = 5000;
+    p.geometry.viewport = 500;
+    const probe = await p.mountProbe('a', [p.message('a1')]);
+    await p.updateProbe(probe, 'a', [p.message('a1')]);
+    expect(probe.el.scrollTop).toBe(4500);
+
+    // The composer grows by 22px: the scroller shrinks, the content does not.
+    // Deferring this pin painted one frame with the last row's bottom 22px past
+    // the scroller's edge (measured while typing), so the delivery itself must
+    // land it — a `scrollTop` write cannot resize the container, so it cannot
+    // re-trigger this observer.
+    p.geometry.viewport = 478;
+    p.scrolled.length = 0;
+    await p.act(() => { p.StubResizeObserver.latest().fireContainer(); });
+    expect(p.scrolled.length).toBe(1);
+    expect(p.scrolled[0].behavior).toBe('instant');
+    expect(probe.el.scrollTop).toBe(5000 - 478);
+
+    p.geometry.viewport = 500;
+    await p.unmountProbe(probe);
+  });
+
   test('a delivery storm collapses to one pin, and none of them writes inside the delivery', async () => {
     p.scrolled.length = 0;
     p.geometry.top = 0;

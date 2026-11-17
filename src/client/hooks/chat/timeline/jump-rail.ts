@@ -59,6 +59,7 @@ export function useTimelineJumpRail(deps: UseTimelineJumpRailDeps): TimelineJump
     scrollRef: scroll.scrollRef,
     scrollNode: scroll.scrollNode,
     jumpActiveRef: scroll.jumpActiveRef,
+    jumpBehaviorRef: scroll.jumpBehaviorRef,
     jumpCountRef: scroll.jumpCountRef,
   });
   const { turns: userTurns, jumping: jumpingTurn, jumpToTurn: pagedJumpToTurn } = useUserTurns({

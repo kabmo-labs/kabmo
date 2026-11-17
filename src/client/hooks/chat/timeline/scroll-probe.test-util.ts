@@ -59,14 +59,27 @@ export class StubResizeObserver {
   static latest(): StubResizeObserver {
     return StubResizeObserver.instances[StubResizeObserver.instances.length - 1];
   }
-  constructor(private readonly callback: () => void) {
+  /** Observed targets, in `observe()` order: the scroller, then the content. */
+  private readonly targets: Element[] = [];
+  constructor(private readonly callback: (entries: ResizeObserverEntry[]) => void) {
     StubResizeObserver.instances.push(this);
   }
-  observe() {}
+  observe(target: Element) {
+    this.targets.push(target);
+  }
   unobserve() {}
   disconnect() {}
-  fire() {
-    this.callback();
+  /**
+   * Deliver one entry. Defaults to the CONTENT node (the last observed target),
+   * which is the deferred path; `fireContainer()` is the scroller's own resize,
+   * which the hook pins synchronously.
+   */
+  fire(target?: Element) {
+    const node = target ?? this.targets[this.targets.length - 1];
+    this.callback([{ target: node } as unknown as ResizeObserverEntry]);
+  }
+  fireContainer() {
+    this.fire(this.targets[0]);
   }
 }
 

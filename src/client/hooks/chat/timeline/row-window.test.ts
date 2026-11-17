@@ -84,19 +84,25 @@ function installScroller(top: number): HTMLDivElement {
   return el;
 }
 
-function Probe({ node }: { node: HTMLDivElement | null }) {
+interface JumpStub {
+  active: { current: boolean };
+  behavior: { current: ScrollBehavior };
+}
+
+function Probe({ node, jump }: { node: HTMLDivElement | null; jump?: JumpStub }) {
   rowWindow = useTimelineRowWindow({
     ids: Array.from({ length: ROWS }, (_, i) => `r-${i}`),
     scrollRef: { current: node },
     scrollNode: node,
+    ...(jump ? { jumpActiveRef: jump.active, jumpBehaviorRef: jump.behavior } : {}),
   });
   return null;
 }
 
-async function mount(node: HTMLDivElement | null): Promise<void> {
+async function mount(node: HTMLDivElement | null, jump?: JumpStub): Promise<void> {
   container = document.createElement('div');
   document.body.appendChild(container);
-  await act(async () => { render(h(Probe, { node }), container); });
+  await act(async () => { render(h(Probe, { node, ...(jump ? { jump } : {}) }), container); });
   drainFrames();
 }
 
@@ -220,6 +226,33 @@ describe('useTimelineRowWindow', () => {
     await Promise.all([first, second]);
 
     expect(scroller.scrollTop).toBe(soloTop);
+  });
+
+  test('an instant jump shares the correction; a smooth one owns the viewport', async () => {
+    // The open jump is INSTANT and is issued against an estimate, so the first
+    // window's measurements move the tail before it lands. The correction here
+    // is instant too and aims at the same tail, so it may write under it — that
+    // is what lands the open in the commit that measured the rows instead of
+    // one rAF later (measured in the browser: one painted frame 2 044 px short).
+    const scroller = installScroller(20_000);
+    for (let i = 0; i < ROWS; i += 1) {
+      const node = document.createElement('div');
+      node.dataset.rowId = `r-${i}`;
+      node.getBoundingClientRect = () => ({ height: ROW_HEIGHT }) as DOMRect;
+      scroller.appendChild(node);
+    }
+    const tail = ROWS * ROW_HEIGHT - VIEWPORT;
+    await mount(scroller, { active: { current: true }, behavior: { current: 'instant' } });
+    await act(async () => {});
+    expect(scrollWrites.some((write) => write.top === tail)).toBe(true);
+    await unmount();
+
+    // A SMOOTH jump is an animation: a correction written under it replaces the
+    // landing with a snap, so the row window stands down.
+    scrollWrites.length = 0;
+    await mount(scroller, { active: { current: true }, behavior: { current: 'smooth' } });
+    await act(async () => {});
+    expect(scrollWrites.length).toBe(0);
   });
 
   test('a row growing above the viewport keeps the mounted window and the reader', async () => {

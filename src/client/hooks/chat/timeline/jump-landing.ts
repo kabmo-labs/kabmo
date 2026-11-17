@@ -58,8 +58,19 @@ export interface JumpLandingDeps {
 }
 
 export interface JumpLanding {
-  /** Take the viewport: releases the guard when the tail is reached. */
-  start: () => void;
+  /**
+   * Take the viewport: releases the guard when the tail is reached.
+   *
+   * `behavior` is the jump's OWN motion, and every re-aim repeats it. An
+   * `instant` jump (opening a session) must never be finished by a smooth
+   * animation: the open jump is issued against an estimate that the first
+   * window's measurements invalidate within a frame, so the watch re-aims —
+   * and re-aiming smoothly turned "open at the tail" into a ~700 ms animated
+   * scroll through the whole session, with the mounted window sliding and rows
+   * mounting/unmounting every frame (measured: `scrollTop` 14 109 → 16 033 over
+   * 21 frames, mounted rows 16 → 19 → 7).
+   */
+  start: (behavior?: ScrollBehavior) => void;
   /** Abandon the current landing (unmount, or a new jump replacing it). */
   stop: () => void;
 }
@@ -75,7 +86,7 @@ export function createJumpLanding({ scrollRef, jumpActiveRef, pinToBottom }: Jum
     frame = null;
   };
 
-  const start = (): void => {
+  const start = (behavior: ScrollBehavior = 'smooth'): void => {
     stop();
     deadline = performance.now() + JUMP_DEADLINE_MS;
     let lastTop = -1;
@@ -98,12 +109,19 @@ export function createJumpLanding({ scrollRef, jumpActiveRef, pinToBottom }: Jum
       } else {
         still = 0;
         stalled = moved ? 0 : stalled + 1;
-        // Still for a few frames with the tail out of reach: the animation is
-        // not running (a browser drops a smooth programmatic scroll when the
-        // content it scrolls through is replaced), or it landed against a
-        // target the measurements have since outgrown. Re-aim — smooth, so a
-        // continuation never reads as a second, separate jump.
-        if (stalled >= JUMP_STALL_FRAMES) {
+        // An INSTANT jump has no animation to protect: the tail is out of reach
+        // because a measurement moved it, so re-aim now, in this frame, before
+        // the browser paints. Waiting for the stall counter here is what let
+        // the open jump be finished by a smooth animation instead.
+        if (behavior === 'instant') {
+          stalled = 0;
+          pinToBottom('instant');
+        } else if (stalled >= JUMP_STALL_FRAMES) {
+          // Still for a few frames with the tail out of reach: the animation is
+          // not running (a browser drops a smooth programmatic scroll when the
+          // content it scrolls through is replaced), or it landed against a
+          // target the measurements have since outgrown. Re-aim — smooth, so a
+          // continuation never reads as a second, separate jump.
           stalled = 0;
           pinToBottom('smooth');
         }

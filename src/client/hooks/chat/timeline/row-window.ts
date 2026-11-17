@@ -83,6 +83,11 @@ export interface UseTimelineRowWindowDeps {
    *  the animation drags the viewport back and the jump has to be re-aimed,
    *  which is what reads as the button "jumping in pieces". */
   jumpActiveRef?: RefObject<boolean>;
+  /** The motion of the jump in flight. An INSTANT jump and this hook's
+   *  correction aim at the same tail, so the correction may write under it —
+   *  which is what lands the open jump in the commit that measured the rows
+   *  instead of one rAF later. A SMOOTH jump still owns the position. */
+  jumpBehaviorRef?: RefObject<ScrollBehavior>;
   /** The scroll hook's bottom-jump counter. A new value means the reader asked
    *  for the TAIL, so this hook claims the tail pin: without it the very next
    *  measurement wrote the OLD reading anchor back over the landing (measured:
@@ -98,6 +103,7 @@ export function useTimelineRowWindow({
   scrollRef,
   scrollNode,
   jumpActiveRef,
+  jumpBehaviorRef,
   jumpCountRef,
   enabled = true,
 }: UseTimelineRowWindowDeps): TimelineRowWindow {
@@ -261,7 +267,10 @@ export function useTimelineRowWindow({
       // reveal and the restore alternated `0` and its target for the whole
       // animation). A bottom JUMP owns it for the same reason. The measurement
       // is still adopted; only the position waits.
-      if (!revealingRef.current && !jumpActiveRef?.current) {
+      // A SMOOTH jump owns the position while it animates; an INSTANT one does
+      // not, because this correction is instant too and aims at the same tail.
+      const smoothJump = Boolean(jumpActiveRef?.current) && jumpBehaviorRef?.current !== 'instant';
+      if (!revealingRef.current && !smoothJump) {
         setScrollTop(target);
         writeScrollTop(el, target);
       }
@@ -295,14 +304,14 @@ export function useTimelineRowWindow({
     // A jump to the tail owns the position while it lands; its own watch is
     // what puts the viewport at the bottom, and a second writer here is a
     // second animation.
-    if (jumpActiveRef?.current) return;
+    if (jumpActiveRef?.current && jumpBehaviorRef?.current !== 'instant') return;
     // The tail pin outlives a commit: the rows above it are estimates until
     // they mount, so every measurement can move the bottom by its own error.
     // The bottom edge is the anchor. `writeScrollTop`, because the container
     // carries `scroll-smooth`: a bare `scrollTop` assignment animates, and a
     // correction that animates is a correction that arrives late.
     writeScrollTop(el, Math.max(0, el.scrollHeight - el.clientHeight));
-  }, [layout, element, jumpActiveRef]);
+  }, [layout, element, jumpActiveRef, jumpBehaviorRef]);
 
   const revealRow = useMemo(
     () => createRevealRow({ scrollRef, idsRef, layoutRef, viewportRef, tailPinRef, revealingRef, generationRef: revealGenerationRef }),
