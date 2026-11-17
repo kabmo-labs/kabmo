@@ -175,6 +175,11 @@ reads `stopped (SIGTERM)` — never `exit 0`, which is what a null exit code wou
 look like. A build larger than the 256 KB buffer says `last 64 KB of 3.1 MB`
 rather than presenting a window as the whole log.
 
+A live log follows its tail: the box is capped in height, so the newest line is
+what a run is watched for. Scrolling up disengages the follow (the reader is
+looking at something earlier), scrolling back to the bottom resumes it, and a new
+run of the same command starts following again.
+
 ## The repo picker
 
 The panel header carries the same nested-repo picker the Files, Search, Source

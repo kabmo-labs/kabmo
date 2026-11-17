@@ -28,10 +28,30 @@
  * is why this is not just `exit ${code}`: a killed child reports `exitCode: null`
  * with a signal, so rendering the null code as `exit 0` would report a `SIGTERM`ed
  * run as a success.
+ *
+ * ## The log follows its tail, until the reader scrolls up
+ *
+ * A live run's useful line is the last one, and the box is capped at `max-h-72`:
+ * without a follow the reader sees only the first 72 units of a build and has to
+ * drag the scrollbar after every publish. So the element sticks to the bottom
+ * while the run prints — and STOPS sticking the moment the reader scrolls up,
+ * because a view that yanks itself back down while someone reads an earlier
+ * failure is worse than one that stops following. Scrolling back to the bottom
+ * resumes it. A new run (a re-run of the same command) starts following again:
+ * the old tail is gone, and the new run's output is what the reader asked for.
  */
+
+import { useLayoutEffect, useRef } from 'preact/hooks';
 
 import type { RunLog, RunSummary } from '../protocol';
 import { formatBytes, formatElapsed } from './format';
+
+/**
+ * How close to the bottom still counts as "following": a `scrollTop` offset by
+ * a sub-pixel layout rounding must not read as a deliberate scroll up. One line
+ * of the log (`10px * 1.35`) is comfortably above the noise.
+ */
+const FOLLOW_SLACK_PX = 16;
 
 export interface RunOutputProps {
   run: RunSummary | null;
@@ -49,6 +69,30 @@ export function describeOutcome(run: RunSummary, log: RunLog | null): string {
 }
 
 export function RunOutput({ run, log, onStop }: RunOutputProps) {
+  const preRef = useRef<HTMLPreElement>(null);
+  /** True while the box is pinned to the tail; false once the reader scrolls up. */
+  const followingRef = useRef(true);
+  /** Run the box last followed, so a re-run starts following from scratch. */
+  const followedRunRef = useRef<string | null>(null);
+
+  const runId = run?.id ?? null;
+  const text = log?.text ?? '';
+
+  // Layout effect, not effect: `scrollHeight` is read after the rows are
+  // committed and the jump lands before paint, so a streamed line never renders
+  // one frame at its old position.
+  useLayoutEffect(() => {
+    const element = preRef.current;
+    if (!element) return;
+    if (followedRunRef.current !== runId) {
+      followedRunRef.current = runId;
+      followingRef.current = true;
+    }
+    if (!followingRef.current) return;
+    // Assigning past the maximum is clamped to the exact tail by the browser.
+    element.scrollTop = element.scrollHeight;
+  }, [runId, text]);
+
   // Unreachable through the row (its disclosure is disabled without a run), and
   // still honest if a caller renders it directly.
   if (!run) {
@@ -58,7 +102,6 @@ export function RunOutput({ run, log, onStop }: RunOutputProps) {
   const bytes = log?.bytes ?? run.bytes;
   const ringBytes = log?.ringBytes ?? run.ringBytes;
   const truncated = log?.truncated ?? run.bytes > run.ringBytes;
-  const text = log?.text ?? '';
 
   return (
     <div className="px-3 pb-2 pt-0.5">
@@ -101,7 +144,15 @@ export function RunOutput({ run, log, onStop }: RunOutputProps) {
           output of a command rather than on the command.) The line box is a ratio
           of the size (`leading-[1.35]`) so a wrapped log line stays readable at
           any zoom the editor's font control applies. */}
-      <pre className="mt-1 mb-0 rounded-lg border border-ink/15 bg-canvas font-mono text-[10px] leading-[1.35] whitespace-pre-wrap break-all px-3 py-2 max-h-72 overflow-y-auto scrollbar-overlay-container">
+      <pre
+        ref={preRef}
+        onScroll={(event) => {
+          const element = event.currentTarget;
+          followingRef.current =
+            element.scrollHeight - element.scrollTop - element.clientHeight <= FOLLOW_SLACK_PX;
+        }}
+        className="mt-1 mb-0 rounded-lg border border-ink/15 bg-canvas font-mono text-[10px] leading-[1.35] whitespace-pre-wrap break-all px-3 py-2 max-h-72 overflow-y-auto scrollbar-overlay-container"
+      >
         {text || (run.status === 'running' ? '(running, no output yet)' : '(no output)')}
       </pre>
     </div>
