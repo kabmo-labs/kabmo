@@ -16,7 +16,7 @@
  * is answering).
  */
 
-import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
+import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
@@ -42,6 +42,14 @@ afterAll(() => {
     if (nativeGlobals[key] === undefined) delete target[key];
     else target[key] = nativeGlobals[key];
   }
+});
+
+afterEach(() => {
+  // The indicator owns a verb-cycling interval. A detached tree keeps that
+  // interval and re-renders after this file restores the globals, which throws
+  // in Preact's `document.createElementNS` between later suites' tests.
+  if (container) render(null, container);
+  container?.remove();
 });
 
 async function mount(props: Record<string, unknown>): Promise<HTMLElement> {

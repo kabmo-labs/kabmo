@@ -38,8 +38,21 @@ const nativeGlobals: Partial<Record<(typeof DOM_GLOBALS)[number], unknown>> = {}
 
 let container: HTMLElement;
 
+let pristineClientWidth: PropertyDescriptor | undefined;
+let pristineScrollWidth: PropertyDescriptor | undefined;
+let pristineRect: typeof Element.prototype.getBoundingClientRect;
+
 beforeAll(() => {
   configureUiKit(makeUiKitServices());
+  // happy-dom shares `HTMLElement.prototype` across windows, so a suite that
+  // stubs layout must capture the REAL descriptors before any window's patch.
+  // Capturing per test would then capture the previous test's getter and call
+  // it from inside itself — measured as `Maximum call stack size exceeded` in a
+  // later file, because the shared prototype kept the recursive getter.
+  const win = new Window({ url: 'http://localhost' });
+  pristineClientWidth = Object.getOwnPropertyDescriptor(win.HTMLElement.prototype, 'clientWidth');
+  pristineScrollWidth = Object.getOwnPropertyDescriptor(win.HTMLElement.prototype, 'scrollWidth');
+  pristineRect = win.Element.prototype.getBoundingClientRect;
 });
 
 beforeEach(() => {
@@ -140,9 +153,6 @@ describe('PanelChips reveal', () => {
   // the arithmetic is asserted here rather than in a browser.
   const STRIP_W = 300;
   const CHIP_W = 80;
-  let rect: typeof Element.prototype.getBoundingClientRect;
-  let clientWidth: PropertyDescriptor | undefined;
-  let scrollWidth: PropertyDescriptor | undefined;
 
   const isStrip = (el: Element) => el instanceof HTMLElement && el.className.includes('overflow-x-auto');
 
@@ -151,9 +161,6 @@ describe('PanelChips reveal', () => {
   }
 
   beforeEach(() => {
-    rect = Element.prototype.getBoundingClientRect;
-    clientWidth = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'clientWidth');
-    scrollWidth = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollWidth');
     Element.prototype.getBoundingClientRect = function (this: Element) {
       if (isStrip(this)) return box(STRIP_W, 0);
       const siblings = [...(this.parentElement?.querySelectorAll('button') ?? [])];
@@ -163,21 +170,21 @@ describe('PanelChips reveal', () => {
     Object.defineProperty(HTMLElement.prototype, 'clientWidth', {
       configurable: true,
       get(this: HTMLElement) {
-        return isStrip(this) ? STRIP_W : (clientWidth?.get?.call(this) ?? 0);
+        return isStrip(this) ? STRIP_W : (pristineClientWidth?.get?.call(this) ?? 0);
       },
     });
     Object.defineProperty(HTMLElement.prototype, 'scrollWidth', {
       configurable: true,
       get(this: HTMLElement) {
-        return isStrip(this) ? CHIP_W * 6 : (scrollWidth?.get?.call(this) ?? 0);
+        return isStrip(this) ? CHIP_W * 6 : (pristineScrollWidth?.get?.call(this) ?? 0);
       },
     });
   });
 
   afterEach(() => {
-    Element.prototype.getBoundingClientRect = rect;
-    if (clientWidth) Object.defineProperty(HTMLElement.prototype, 'clientWidth', clientWidth);
-    if (scrollWidth) Object.defineProperty(HTMLElement.prototype, 'scrollWidth', scrollWidth);
+    if (pristineRect) Element.prototype.getBoundingClientRect = pristineRect;
+    if (pristineClientWidth) Object.defineProperty(HTMLElement.prototype, 'clientWidth', pristineClientWidth);
+    if (pristineScrollWidth) Object.defineProperty(HTMLElement.prototype, 'scrollWidth', pristineScrollWidth);
   });
 
   const six = () => Array.from({ length: 6 }, (_, index) => panel(`p${index}`));

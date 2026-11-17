@@ -26,6 +26,7 @@ import {
   loadStreamStates,
   markStreamStatus,
   type SessionRunModel,
+  type SessionStreamState,
 } from '@/shared/lib/omp/session/stream-state.server';
 
 /**
@@ -163,17 +164,27 @@ describe('the stream row names the run model', () => {
     frame: AgentEvent,
     runModel: SessionRunModel | null,
   ) {
-    const { promise, resolve } = Promise.withResolvers<void>();
+    // The signal is process-wide, so a sibling write can raise one before THIS
+    // frame's write lands. Every signal re-reads the row, and the promise
+    // settles on the first read that finds it — no clock, no guessed delay.
+    // A bound keeps a missing write a failing assertion rather than a hang.
+    const { promise, resolve } = Promise.withResolvers<SessionStreamState | undefined>();
+    let signals = 0;
     const off = onRealtimeSignal((event) => {
-      if (event.signal === 'stream-status') resolve();
+      if (event.signal !== 'stream-status') return;
+      signals += 1;
+      void loadStreamStates().then((states) => {
+        const row = states[sessionId];
+        if (row) resolve(row);
+        else if (signals >= 5) resolve(undefined);
+      });
     });
     try {
       foldSessionFrame(makeHost({ sessionId, runModel }), frame);
-      await promise;
+      return await promise;
     } finally {
       off();
     }
-    return (await loadStreamStates())[sessionId];
   }
 
   test('agent_start writes the host model into the row it opens', async () => {

@@ -156,9 +156,11 @@ describe('toAcpV2McpServers', () => {
   });
 
   test('resolves a bare binary name to an absolute path', () => {
-    // `bun` is the one executable every runner of this suite has on PATH;
-    // `echo` is a shell builtin on Windows and resolves to nothing there.
-    const out = toAcpV2McpServers([{ name: 'bun', command: 'bun', args: [], env: [] }]);
+    // A binary every runner has on PATH. `echo` is a shell builtin on Windows
+    // and resolves to nothing there; `cmd.exe` lives in System32 and `sh` in
+    // /bin, so the bare name is resolvable on both.
+    const binary = process.platform === 'win32' ? 'cmd.exe' : 'sh';
+    const out = toAcpV2McpServers([{ name: binary, command: binary, args: [], env: [] }]);
     expect(out).toHaveLength(1);
     const first = out[0] as { type: string; command: string };
     expect(first.type).toBe('stdio');

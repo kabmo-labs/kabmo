@@ -47,6 +47,10 @@ afterAll(() => {
 let container: HTMLElement | null = null;
 
 beforeEach(() => {
+  // Unmount, not just detach: the AI row renders Markdown directives and the
+  // plugin message actions, whose list-slot subscriptions outlive a detached
+  // tree and re-render after this file restores the DOM globals.
+  if (container) render(null, container);
   container?.remove();
   container = null;
 });

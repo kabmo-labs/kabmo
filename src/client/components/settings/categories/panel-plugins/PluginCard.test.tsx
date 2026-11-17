@@ -43,6 +43,9 @@ afterAll(() => {
 });
 
 function mount(node: h.JSX.Element): HTMLElement {
+  // A case that renders twice used to leave the first tree mounted, and its
+  // `usePluginContributions` subscription outlived the file's DOM globals.
+  if (container) render(null, container);
   container = document.createElement('div');
   document.body.append(container);
   act(() => render(node, container));
