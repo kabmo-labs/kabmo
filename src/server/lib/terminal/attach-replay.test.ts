@@ -26,27 +26,33 @@ import { attachTerminal, forgetTerminal, writeTerminalInput } from '@/server/lib
 import type { TerminalViewer } from '@/server/lib/terminal/session.server';
 
 const dec = new TextDecoder();
-const TOTAL = 30_000;
 
 interface Collected {
   viewer: TerminalViewer;
   frames: Uint8Array[];
+  /** Bytes delivered so far; the mid-flood attach trigger reads this. */
+  bytes: number;
   text: () => string;
 }
 
 function collector(): Collected {
   const frames: Uint8Array[] = [];
-  return {
+  const collected: Collected = {
     viewer: {
       send(frame) {
-        if (typeof frame !== 'string') frames.push(frame);
+        if (typeof frame !== 'string') {
+          frames.push(frame);
+          collected.bytes += frame.length;
+        }
         return true;
       },
       drop() {},
     },
     frames,
+    bytes: 0,
     text: () => dec.decode(join(frames)),
   };
+  return collected;
 }
 
 function join(parts: Uint8Array[]): Uint8Array {
@@ -70,12 +76,24 @@ function join(parts: Uint8Array[]): Uint8Array {
  * `gap(replayed)` with `5135 -> 51 at 5134` on a terminal that was working. The
  * same rule makes the live collectors safe for the same reason: a line counts
  * once the shell has finished writing it.
+ *
+ * `dropFirst` applies the same rule to the START of the text: the retained
+ * scrollback is capped at 512 KiB, so a long flood's replay begins inside a
+ * line, and its prefix is a number that happens to parse. The caller says the
+ * text does not start at a line boundary.
  */
-function numbers(text: string): number[] {
-  const complete = text.endsWith('\n') ? text : text.slice(0, text.lastIndexOf('\n') + 1);
+function numbers(text: string, dropFirst = false): number[] {
+  let complete = text.endsWith('\n') ? text : text.slice(0, text.lastIndexOf('\n') + 1);
+  if (dropFirst) {
+    const firstNewline = complete.indexOf('\n');
+    complete = firstNewline === -1 ? '' : complete.slice(firstNewline + 1);
+  }
   return complete
     .split('\n')
-    .map((line) => line.replace(/\r$/, '').trim())
+    // The terminal echoes Ctrl-C as `^C` at the cursor, which lands in front of
+    // the line `seq` was writing when the test stopped it. Strip that echo so
+    // the interrupted line still counts as the number it is.
+    .map((line) => line.replace(/\r$/, '').replace(/^\^C/, '').trim())
     .filter((line) => /^\d+$/.test(line))
     .map(Number);
 }
@@ -97,6 +115,30 @@ async function until(predicate: () => boolean, timeoutMs = 20_000): Promise<bool
   return false;
 }
 
+/**
+ * True once `read()` has stopped changing for `quietMs`.
+ *
+ * Real time on purpose: this is an integration test against a real PTY, and
+ * what it waits for is the shell's own output stopping after Ctrl-C. There is
+ * no promise or event to await — the PTY is the clock.
+ */
+async function settle(read: () => number, quietMs = 200, timeoutMs = 30_000): Promise<boolean> {
+  let last = read();
+  let quietSince = Date.now();
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    await Bun.sleep(20);
+    const now = read();
+    if (now !== last) {
+      last = now;
+      quietSince = Date.now();
+    } else if (Date.now() - quietSince >= quietMs) {
+      return true;
+    }
+  }
+  return false;
+}
+
 const ids: string[] = [];
 
 afterAll(() => {
@@ -110,25 +152,36 @@ test('a viewer attaching mid-stream sees the replay and live output exactly once
   const first = collector();
   await attachTerminal(first.viewer, { id, cols: 100, rows: 30, theme: 'dark' });
 
-  writeTerminalInput(id, new TextEncoder().encode(`seq 1 ${TOTAL}\r`));
+  // A flood long enough that the poll below cannot be delayed past its end.
+  // The original 30,000-line flood took ~30 ms, and under load the poll was
+  // delayed past it: the late viewer then had no live output at all and the
+  // test timed out waiting for a line the replay already held. That is exactly
+  // how it failed on the Linux gate. 2,000,000 lines is ~13 MB, seconds of
+  // output, so the attach lands mid-flood even on a loaded runner.
+  writeTerminalInput(id, new TextEncoder().encode('seq 1 2000000\r'));
   expect(await until(() => numbers(first.text()).length > 2_000)).toBe(true);
 
   // Mid-flood by construction: the shell is emitting, the first viewer is
   // receiving, and the coalescer holds bytes that history already has.
-  const second = collector();
-  const attachment = await attachTerminal(second.viewer, { id, cols: 100, rows: 30, theme: 'dark' });
-  const replayed = numbers(dec.decode(attachment.replay));
+  const late = collector();
+  const attachment = await attachTerminal(late.viewer, { id, cols: 100, rows: 30, theme: 'dark' });
+  const replayed = numbers(dec.decode(attachment.replay), true);
 
-  expect(await until(() => numbers(first.text()).at(-1) === TOTAL)).toBe(true);
-  expect(await until(() => numbers(second.text()).at(-1) === TOTAL)).toBe(true);
+  // The late viewer must receive live output: that is what proves the attach
+  // landed mid-flood and the boundary below is real.
+  expect(await until(() => numbers(late.text()).length > 0)).toBe(true);
+
+  // The flood ends on its own; wait for both streams to go quiet.
+  expect(await settle(() => first.bytes)).toBe(true);
+  expect(await settle(() => late.bytes)).toBe(true);
 
   const firstLines = numbers(first.text());
-  const secondLines = numbers(second.text());
+  const lateLines = numbers(late.text(), true);
 
   // The viewer there from the start saw every line once, in order.
+  expect(firstLines.length).toBeGreaterThan(0);
   expect(gap(firstLines)).toBeNull();
   expect(firstLines.length).toBe(new Set(firstLines).size);
-  expect(firstLines.at(-1)).toBe(TOTAL);
 
   // The late viewer's replay is the retained scrollback, contiguous…
   expect(replayed.length).toBeGreaterThan(0);
@@ -136,15 +189,16 @@ test('a viewer attaching mid-stream sees the replay and live output exactly once
 
   // …and the replay plus its live stream is ONE seamless rendering: no line
   // twice, none skipped. Asserted on the CONCATENATION rather than by comparing
-  // `secondLines[0]` to the replay's last line, because the boundary is allowed
+  // `lateLines[0]` to the replay's last line, because the boundary is allowed
   // to land inside a line — the replay is captured mid-flood, and measured on
   // the Linux gate it ended two bytes into `5135`. A per-side comparison then
   // reads that fragment as its own line and reports a gap on a working
   // terminal; the concatenation is what the viewer actually renders, so a
   // duplicate or a hole still fails here.
-  const combined = numbers(dec.decode(attachment.replay) + second.text());
-  expect(secondLines.length).toBeGreaterThan(0);
+  const combined = numbers(dec.decode(attachment.replay) + late.text(), true);
+  expect(lateLines.length).toBeGreaterThan(0);
   expect(gap(combined)).toBeNull();
   expect(new Set(combined).size).toBe(combined.length);
-  expect(combined.at(-1)).toBe(TOTAL);
+  // Both viewers saw the same tail, so the late one lost nothing.
+  expect(combined.at(-1)).toBe(firstLines.at(-1));
 }, 60_000);
