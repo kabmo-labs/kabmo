@@ -88,12 +88,25 @@ describe('sessionsWithoutTranscript', () => {
     expect(absent.size).toBe(0);
   });
 
-  test('dsh: the session directory must hold a non-empty transcript', async () => {
+  test('dsh: a header-only session is empty even though the file is not', async () => {
     const project = join(root, 'dsh', 'sessions', '--project--');
-    await fs.promises.mkdir(join(project, 'used'), { recursive: true });
-    await Bun.write(join(project, 'used', 'session.v4.jsonl.zstd'), 'x');
-    await fs.promises.mkdir(join(project, 'empty'), { recursive: true });
-    await Bun.write(join(project, 'empty', 'session.v4.jsonl.zstd'), '');
+    const write = async (id: string, lines: string[]) => {
+      await fs.promises.mkdir(join(project, id), { recursive: true });
+      const body = new TextEncoder().encode(`${lines.join('\n')}\n`);
+      await Bun.write(join(project, id, 'session.v4.jsonl.zstd'), Bun.zstdCompressSync(body));
+    };
+    await write('used', [
+      '{"type":"session","version":4,"id":"used"}',
+      '{"type":"turn/start","turn":0}',
+    ]);
+    // The shape dsh writes before the first prompt: a header and its setup
+    // events, no turn and no message.
+    await write('empty', [
+      '{"type":"session","version":4,"id":"empty"}',
+      '{"type":"permission/preset","seq":0}',
+      '{"type":"sandbox/mode","seq":1}',
+      '{"type":"approval/policy","seq":2}',
+    ]);
     const absent = await sessionsWithoutTranscript([
       { harness: 'dsh', sessionId: 'used' },
       { harness: 'dsh', sessionId: 'empty' },

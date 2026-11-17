@@ -116,6 +116,17 @@ export async function dshStoreDirs(agentSessionId: string): Promise<string[]> {
   return found;
 }
 
+/**
+ * The dsh events that mean a conversation happened. A session directory is
+ * created with a header and its setup events (`permission/preset`,
+ * `sandbox/mode`, `approval/policy`) before the first prompt, so a non-empty
+ * file is not a transcript: measured on this machine, every dsh session held
+ * those four lines and nothing else, and the sidebar listed them as empty
+ * chats. The file is zstd-compressed JSONL, so the check decompresses it and
+ * looks for a turn or a message.
+ */
+const DSH_CONVERSATION_MARKERS = ['"type":"turn/start"', '"type":"user/message"', '"type":"assistant/message"'];
+
 /** dsh writes one compressed transcript per session directory. */
 async function dshTranscripts(ids: readonly string[]): Promise<Set<string> | null> {
   const root = dshSessionsRoot();
@@ -130,13 +141,17 @@ async function dshTranscripts(ids: readonly string[]): Promise<Set<string> | nul
     if (!isSinglePathSegment(id)) continue;
     for (const project of projects) {
       try {
-        const stat = await fs.promises.stat(join(root, project, id, 'session.v4.jsonl.zstd'));
-        if (stat.isFile() && stat.size > 0) {
+        const bytes = new Uint8Array(
+          await Bun.file(join(root, project, id, 'session.v4.jsonl.zstd')).arrayBuffer(),
+        );
+        if (bytes.length === 0) continue;
+        const text = new TextDecoder().decode(Bun.zstdDecompressSync(bytes));
+        if (DSH_CONVERSATION_MARKERS.some((marker) => text.includes(marker))) {
           present.add(id);
           break;
         }
       } catch {
-        // Not this project.
+        // Not this project, or not a readable zstd transcript.
       }
     }
   }
