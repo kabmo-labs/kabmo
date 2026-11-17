@@ -1,4 +1,5 @@
 import { Suspense } from 'preact/compat';
+import { useCallback, useEffect } from 'preact/hooks';
 import { X } from 'lucide-preact';
 import { usePanelCatalog, type PanelBodyProps } from '@/client/components/workspace/plugin-panel/resolve';
 import { PanelHostProvider } from '@kabmo-labs/kabmo-ui';
@@ -9,6 +10,11 @@ import { useLeftDock } from '@/client/hooks/workspace/left-dock';
 import { SESSIONS_VIEW_ID } from '@/shared/lib/workspace/left-dock';
 import { phoneRightPanels } from '@/shared/lib/workspace/mobile-dock';
 import { DEFAULT_RIGHT_PANEL_TYPE } from '@/shared/lib/workspace/right-panels';
+import {
+  armTerminalSoftKeyboard,
+  panelWantsSoftKeyboard,
+} from '@/client/components/workspace/terminal-panel/soft-keyboard';
+import { releaseSoftKeyboard } from '@/client/lib/ui/soft-keyboard';
 import { PanelChips } from '@/client/components/mobile/panel-chips';
 import { titlebarPaddingLeft, titlebarPaddingRight } from '@/shared/lib/ui/titlebar';
 import { dragRegionProps, titlebarInsetLeft } from '@/client/lib/desktop/titlebar';
@@ -72,6 +78,24 @@ export function MobileRightSidebar({
   const { changes } = useGitStatus(rootPath, activeRepo, enabled);
   const hasGitChanges = changes.length > 0;
 
+  // A tap on a chip is the gesture that can open the soft keyboard, and the
+  // terminal's view mounts after it — so the keyboard is armed here, before the
+  // panel exists (`soft-keyboard.ts`). Tapping the chip that is already active
+  // must not arm it: the terminal is mounted and focused, and the bridge would
+  // take the keyboard away from it.
+  const handleSelectTab = useCallback((id: string) => {
+    if (id !== activePanel?.id) armTerminalSoftKeyboard(id);
+    setActiveTab(id);
+  }, [activePanel?.id, setActiveTab]);
+
+  // The drawer can open on a stored tab that is no longer the terminal (the
+  // view was disabled, moved to the left rail, or the session has no
+  // workspace). The tap that opened the drawer armed the keyboard optimistically;
+  // drop it when the view that actually mounted is not the one that types.
+  useEffect(() => {
+    if (!panelWantsSoftKeyboard(activePanel?.id)) releaseSoftKeyboard();
+  }, [activePanel?.id]);
+
   // ONE props object per render, handed to the view AND published on the host
   // context, so a component nested inside the view reads exactly what its
   // top-level one was given.
@@ -115,7 +139,7 @@ export function MobileRightSidebar({
           <PanelChips
             panels={catalog}
             activeId={activePanel?.id ?? activeTab}
-            onSelect={setActiveTab}
+            onSelect={handleSelectTab}
             hasGitChanges={hasGitChanges}
           />
         </div>

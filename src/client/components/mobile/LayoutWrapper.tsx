@@ -24,7 +24,9 @@ import { PluginBootstrap } from '@/client/lib/plugins/bootstrap';
 import { mobileEditorFileFrom, mobileProbeTabs, type MobileEditorFile } from '@/client/components/mobile/open-file-payload';
 import { useLeftDock } from '@/client/hooks/workspace/left-dock';
 import { useSessionStateContext } from '@/client/hooks/workspace/session-state/context';
-import { setSessionKey } from '@/shared/lib/workspace/session-state/store';
+import { setSessionKey, getSessionValue } from '@/shared/lib/workspace/session-state/store';
+import { DEFAULT_RIGHT_PANEL_TYPE } from '@/shared/lib/workspace/right-panels';
+import { armTerminalSoftKeyboard } from '@/client/components/workspace/terminal-panel/soft-keyboard';
 import { startWorktreeSession } from '@/client/components/mobile/worktree-session';
 import { OPEN_PANEL_EVENT, phoneDrawerForPanel, type OpenPanelDetail } from '@/shared/lib/workspace/panel-open';
 
@@ -161,6 +163,12 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
     if (!panelKey) return;
     const drawer = phoneDrawerForPanel(panelKey, dock);
     if (!drawer) return;
+    // Same gesture rule as the header's button: arm the keyboard before the
+    // terminal mounts, but never for the view already on screen (it is focused).
+    const stored = getSessionValue<string>(stateSessionId, 'layout.mobileRightPanel');
+    if (drawer === 'right' && (currentScreen !== 'right' || stored !== panelKey)) {
+      armTerminalSoftKeyboard(panelKey);
+    }
     // The phone's two drawers are SCREENS, not columns: the session screen
     // draws the left dock and the right screen draws the panel drawer.
     setSessionKey(stateSessionId, drawer === 'left' ? 'layout.mobileLeftPanel' : 'layout.mobileRightPanel', panelKey);
@@ -227,6 +235,15 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
     if (next) setMobileEditorFile(next);
   }, [activeProjectPath]);
 
+  // The right drawer is a SCREEN: opening it is the tap that can summon the
+  // keyboard, but the terminal mounts after it. Arm it for the tab the drawer
+  // will open on; the drawer releases it if another view resolves.
+  const handleOpenRightSidebar = useCallback(() => {
+    const stored = getSessionValue<string>(stateSessionId, 'layout.mobileRightPanel') ?? DEFAULT_RIGHT_PANEL_TYPE;
+    armTerminalSoftKeyboard(stored);
+    setCurrentScreen('right');
+  }, [stateSessionId]);
+
   return (
     <div
       data-testid="app-root"
@@ -258,7 +275,7 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
           onSelectSession={handleSelectSession}
           onNewSession={handleNewSession}
           onOpenSessionSidebar={() => setCurrentScreen('session')}
-          onOpenRightSidebar={() => setCurrentScreen('right')}
+          onOpenRightSidebar={handleOpenRightSidebar}
           appSettings={appSettings}
         />
       </div>

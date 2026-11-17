@@ -24,18 +24,23 @@ import { useEffect, useState } from 'preact/hooks';
 const COARSE_POINTER_QUERY = '(pointer: coarse)';
 const NO_HOVER_QUERY = '(hover: none)';
 
-function detectSoftKeyboardDevice(): boolean {
+/**
+ * The same verdict the hook reports, for code that runs outside a render — the
+ * terminal's focus target and the soft-keyboard bridge both need it at the
+ * moment of a tap, not at the moment of a render.
+ */
+export function isSoftKeyboardDevice(): boolean {
   if (typeof window === 'undefined') return false;
   if (window.matchMedia(COARSE_POINTER_QUERY).matches) return true;
   return navigator.maxTouchPoints > 0 && window.matchMedia(NO_HOVER_QUERY).matches;
 }
 
 export function useTouchDevice(): boolean {
-  const [isTouch, setIsTouch] = useState(detectSoftKeyboardDevice);
+  const [isTouch, setIsTouch] = useState(isSoftKeyboardDevice);
 
   useEffect(() => {
     const queries = [COARSE_POINTER_QUERY, NO_HOVER_QUERY].map((q) => window.matchMedia(q));
-    const update = () => setIsTouch(detectSoftKeyboardDevice());
+    const update = () => setIsTouch(isSoftKeyboardDevice());
     for (const query of queries) query.addEventListener('change', update);
     return () => {
       for (const query of queries) query.removeEventListener('change', update);

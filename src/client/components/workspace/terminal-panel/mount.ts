@@ -37,24 +37,28 @@
  * pages and can hand a fresh terminal the previous screen's cells.
  */
 
-import type { FitAddon, Ghostty, Terminal } from 'ghostty-web';
+import type { Ghostty } from 'ghostty-web';
 import { terminalInputFrame } from '@/shared/lib/workspace/terminal/input';
 import {
-  installCellMetrics,
   remeasureTerminal,
   waitForTerminalFonts,
   watchTerminalFonts,
 } from '@/client/components/workspace/terminal-panel/fonts';
-import { installFullWidthFit } from '@/client/components/workspace/terminal-panel/fit';
 import { createGridAnnouncer } from '@/client/components/workspace/terminal-panel/grid';
-import { attachTouchScroll, handleKeyNavigation } from '@/client/components/workspace/terminal-panel/navigation';
+import {
+  attachTouchScroll,
+  handleKeyNavigation,
+} from '@/client/components/workspace/terminal-panel/navigation';
 import { holdAcrossWrite, watchPointerPress } from '@/client/components/workspace/terminal-panel/scroll-hold';
 import {
-  getTerminalTheme,
-  TERMINAL_FONT_FAMILY,
-  TERMINAL_FONT_SIZE,
-  TERMINAL_SCROLLBACK_BYTES,
-} from '@/client/data/theme/terminal';
+  focusTerminal,
+  redirectSoftKeyboardFocus,
+} from '@/client/components/workspace/terminal-panel/focus-target';
+import {
+  createTerminalInstance,
+  disposeTerminalInstance,
+  type TerminalInstance,
+} from '@/client/components/workspace/terminal-panel/instance';
 
 export interface TerminalMountCallbacks {
   /** Keystrokes, paste, mouse reports — straight to the PTY. */
@@ -95,12 +99,6 @@ export interface TerminalMount {
   dispose: () => void;
 }
 
-interface TerminalInstance {
-  term: Terminal;
-  fitAddon: FitAddon;
-  disposables: { dispose(): void }[];
-}
-
 /**
  * Mount the terminal inside `container`. Resolves to null when the module could
  * not be loaded or the component unmounted while importing.
@@ -134,6 +132,9 @@ export async function mountTerminal(
     // one.
     term.attachCustomKeyEventHandler((event: globalThis.KeyboardEvent) => handleKeyNavigation(term, event));
     instance.disposables.push(
+      // ghostty's own `open()` re-focuses the container on a timer; see
+      // `focus-target.ts` for why a phone's textarea needs this redirect.
+      { dispose: redirectSoftKeyboardFocus(container, term) },
       term.onScroll((viewportY: number) => callbacks.onScrolledUpChange(viewportY > 0)),
       term.onData((data: string) => {
         const frame = terminalInputFrame(data);
@@ -151,49 +152,6 @@ export async function mountTerminal(
         grid.schedule();
       }),
     );
-  };
-
-  const create = (nextThemeId: string): TerminalInstance => {
-    const term = new module.Terminal({
-      cursorBlink: true,
-      cursorStyle: 'block',
-      fontSize: TERMINAL_FONT_SIZE,
-      fontFamily: TERMINAL_FONT_FAMILY,
-      theme: getTerminalTheme(nextThemeId),
-      // A byte budget, not xterm's line count. See `theme/terminal.ts`.
-      scrollback: TERMINAL_SCROLLBACK_BYTES,
-      // No `convertEol`: the PTY already emits CRLF, and converting a lone LF
-      // would re-introduce the line-feed doubling a real terminal avoids.
-      smoothScrollDuration: 0,
-      ghostty: ghostty as Ghostty,
-    });
-    term.open(container);
-    installCellMetrics(term);
-    // The WASM allocator reuses pages: a fresh terminal can inherit the previous
-    // screen's cells until something overwrites them. Clear before the first
-    // byte is shown.
-    term.clear();
-    const fitAddon = new module.FitAddon();
-    term.loadAddon(fitAddon);
-    installFullWidthFit(fitAddon, term);
-    const instance: TerminalInstance = { term, fitAddon, disposables: [] };
-    wire(instance);
-    return instance;
-  };
-
-  const disposeInstance = (instance: TerminalInstance | null): void => {
-    if (!instance) return;
-    for (const disposable of instance.disposables) {
-      try {
-        disposable.dispose();
-      } catch {}
-    }
-    try {
-      instance.fitAddon.dispose();
-    } catch {}
-    try {
-      instance.term.dispose();
-    } catch {}
   };
 
   /**
@@ -259,7 +217,7 @@ export async function mountTerminal(
 
   const pointer = watchPointerPress(container);
 
-  current = create(currentThemeId);
+  current = createTerminalInstance(module, ghostty as Ghostty, container, currentThemeId, wire);
   safeFit();
   grid.schedule();
 
@@ -309,7 +267,8 @@ export async function mountTerminal(
       safeFit();
     },
     focus() {
-      current?.term.focus();
+      const term = current?.term;
+      if (term) focusTerminal(term);
     },
     applicationCursorKeys() {
       return current?.term.wasmTerm?.getMode(1, false) ?? false;
@@ -326,8 +285,8 @@ export async function mountTerminal(
     setTheme(nextThemeId: string) {
       if (disposed || nextThemeId === currentThemeId) return;
       currentThemeId = nextThemeId;
-      disposeInstance(current);
-      current = create(nextThemeId);
+      disposeTerminalInstance(current);
+      current = createTerminalInstance(module, ghostty as Ghostty, container, nextThemeId, wire);
       safeFit();
     },
     dispose() {
@@ -339,7 +298,7 @@ export async function mountTerminal(
       touch();
       pointer.stop();
       resizeObserver.disconnect();
-      disposeInstance(current);
+      disposeTerminalInstance(current);
       current = null;
     },
   };

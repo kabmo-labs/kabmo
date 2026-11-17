@@ -810,4 +810,26 @@ test.describe('mobile layout', () => {
       .evaluate((element) => Math.round(element.getBoundingClientRect().width));
     expect(glyph.width).toBe(neighbour);
   });
+
+  /**
+   * The phone's terminal takes the TEXTAREA, not the container.
+   *
+   * ghostty focuses its container (the hardware `keydown` surface) and focuses
+   * it AGAIN on a 0 ms timer; a phone's input is `beforeinput` on the renderer's
+   * textarea, so the container focus opened no keyboard and swallowed the first
+   * characters. Measured on this layout: the textarea held focus at mount and
+   * the container owned it 12 ms later. The assertion is the element, not the
+   * keyboard — a device emulation has no soft keyboard to observe.
+   */
+  test('the terminal takes the phone textarea focus when the drawer opens on it', async ({ harness, page }) => {
+    const server = await harness('real');
+    const workspace = await seedWorkspace(server, 'e2e-mobile-terminal-focus');
+    await openApp(page, `${server.baseURL}/?folderId=${workspace.id}`);
+
+    await page.getByRole('button', { name: 'Open Right Panel' }).click();
+    await page.getByRole('button', { name: 'Terminal (Bun)' }).click();
+    const root = page.locator('[data-terminal-root]');
+    await expect(root).toBeVisible({ timeout: 20_000 });
+    await expect(root.locator('textarea')).toBeFocused();
+  });
 });

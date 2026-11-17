@@ -9,6 +9,7 @@ import { TerminalHeader } from '@/client/components/workspace/terminal-panel/Hea
 import { TerminalQuickActions } from '@/client/components/workspace/terminal-panel/QuickActions';
 import { TerminalKeyBar } from '@/client/components/workspace/terminal-panel/KeyBar';
 import { RealtimeTerminalView, type RealtimeTerminalHandle } from '@/client/components/workspace/terminal-panel/RealtimeTerminalView';
+import { releaseSoftKeyboard } from '@/client/lib/ui/soft-keyboard';
 import {
   NO_MODIFIERS,
   applyModifiers,
@@ -62,7 +63,12 @@ export function TerminalPanel({ className = '', enabled = true, rootPath, showHe
    * renderer's async mount (`focus.ts`).
    */
   useEffect(() => {
-    if (!active || !enabled) return;
+    if (!active || !enabled) {
+      // The drawer armed the keyboard for a terminal that will not take focus
+      // (no workspace, a hidden view); do not leave it up over the placeholder.
+      releaseSoftKeyboard();
+      return;
+    }
     terminalRef.current?.focus();
   }, [active, enabled]);
 
