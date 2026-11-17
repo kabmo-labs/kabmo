@@ -1027,25 +1027,36 @@ html[data-theme-variant="dark"] .shiki span { color: var(--shiki-dark); }
   color: var(--theme-error);
 }
 
-/* Full-screen mermaid viewer (`common/diagram-viewer/`): a chart opened from
-   the timeline. The stage is the fixed-size pan surface, the canvas child
-   carries the zoom/pan transform, so the SVG keeps its natural pixel size and
-   `100%` on it always means "the size mermaid rendered". */
-.diagram-viewer-stage {
+/* Full-screen viewer (`common/fullscreen-viewer/`): a drawing opened from the
+   timeline — a mermaid chart or a tool result's picture. The stage is the
+   pan surface, the canvas carries the zoom/pan transform so the drawing keeps
+   its natural pixel size and its own `100%` always means "the size it was
+   rendered at". */
+.fullscreen-viewer-stage {
   touch-action: none;
   overscroll-behavior: contain;
 }
-.diagram-viewer-canvas {
+.fullscreen-viewer-canvas {
   transform-origin: center center;
   will-change: transform;
   background: var(--theme-paper);
   box-shadow: 0 25px 50px -12px color-mix(in srgb, var(--theme-ink) 45%, transparent);
 }
-.diagram-viewer-canvas > svg {
+/* The diagram's own box is the size read from its markup; the SVG fills it so
+   the transform scales the drawing, never a `100%` attribute. */
+.diagram-viewer-diagram > svg {
   display: block;
   width: 100% !important;
   height: 100% !important;
   max-width: none !important;
+}
+/* A picture is measured at its NATURAL size: Tailwind's `img { max-width: 100% }`
+   would clamp it to the stage and then the fit scale would compound on top of
+   that, so a wide screenshot opened smaller than the viewport allows. */
+.fullscreen-viewer-canvas > img {
+  display: block;
+  max-width: none;
+  max-height: none;
 }
 
 /* Image viewer surface (`common/image-viewer/`): the stage is the pan surface,

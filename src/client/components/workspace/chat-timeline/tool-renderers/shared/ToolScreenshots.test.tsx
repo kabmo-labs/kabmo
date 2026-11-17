@@ -74,11 +74,20 @@ describe('ToolScreenshots', () => {
       (thumbnails[1] as HTMLButtonElement).click();
     });
 
+    // The SAME full-screen surface a mermaid diagram opens into: a dialog with
+    // the zoom/pan pill, not a boxed modal of its own.
     const dialog = document.querySelector('[role="dialog"]');
     expect(dialog).not.toBeNull();
     expect(dialog?.getAttribute('aria-label')).toBe('Screenshot 2 of 2');
+    expect(dialog?.querySelector('button[title="Fit to view (0)"]')).not.toBeNull();
+    expect(dialog?.querySelector('button[title="Zoom in (+)"]')).not.toBeNull();
     const full = dialog?.querySelector('img');
     expect(full?.getAttribute('src')).toBe(INLINE_SRC);
+
+    act(() => {
+      window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape' }));
+    });
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
   });
 
   test('one picture is a plain thumbnail, with no carousel chrome', () => {

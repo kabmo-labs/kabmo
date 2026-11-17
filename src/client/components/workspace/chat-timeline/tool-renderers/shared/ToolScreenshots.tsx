@@ -19,17 +19,17 @@
  * scroll-snap, so a phone swipes it and a desktop gets the same motion from the
  * arrows; the counter is the only thing that says where in the set you are.
  *
- * The full-size view is the app's existing picture surface (`ImageViewer`,
- * zoom/pan and fit) inside the existing dialog shell (`Modal`), not a third
- * lightbox: a second copy of that interaction is how two viewers drift.
+ * The full-size view is the same surface a rendered diagram opens into
+ * (`FullscreenViewer`: full-bleed, fit, zoom/pan, control pill, Esc), not a
+ * second lightbox of its own: a picture and a diagram are one interaction, and
+ * a dialog shell for one of them is how two previews drift apart.
  */
 
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { Camera, ChevronLeft, ChevronRight } from 'lucide-preact';
 import type { ToolImageRef } from '@/shared/types/chat';
 import { toolImageSrc } from '@/shared/lib/omp/session/tool-images';
-import { Modal } from '@/client/components/common/Modal';
-import { ImageViewer } from '@/client/components/common/image-viewer';
+import { ImageFullscreen } from '@/client/components/common/image-viewer/fullscreen';
 
 interface ToolScreenshotsProps {
   /** Every image block the result carried, in result order. */
@@ -178,20 +178,11 @@ export function ToolScreenshots({ images }: ToolScreenshotsProps) {
       )}
 
       {open && (
-        <Modal
+        <ImageFullscreen
+          src={open.src}
+          name={`Screenshot ${open.position} of ${pictures.length}`}
           onClose={() => setOpenAt(null)}
-          maxWidthClass="max-w-4xl"
-          ariaLabel={`Screenshot ${open.position} of ${pictures.length}`}
-          header={
-            <span className="font-mono text-[11px] text-ink/70">
-              Screenshot {open.position} of {pictures.length}
-            </span>
-          }
-        >
-          <div className="h-[70vh] w-full">
-            <ImageViewer src={open.src} name={`Screenshot ${open.position}`} />
-          </div>
-        </Modal>
+        />
       )}
     </div>
   );
