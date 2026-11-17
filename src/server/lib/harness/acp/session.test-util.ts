@@ -18,6 +18,7 @@
  * (`markStream`, `onNotification`, `onClientRequest`, `proc`).
  */
 
+import { AcpReplay } from '@/server/lib/harness/acp/replay';
 import { AcpSession } from '@/server/lib/harness/acp/session';
 import { AcpUsageMeter } from '@/server/lib/harness/acp/session-usage';
 import { AcpFrameMapper } from '@/server/lib/harness/acp/frames';
@@ -171,6 +172,7 @@ export function mountSession(): MountedSession {
     idle,
     destroyed: false,
     background,
+    replay: new AcpReplay(),
   });
   return {
     session,

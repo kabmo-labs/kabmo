@@ -20,6 +20,7 @@
 
 import { getDb } from '@/server/db.server';
 import { startHarnessAutoProbe } from '@/server/lib/harness/auto-probe.server';
+import { startHarnessAutoImport } from '@/server/lib/harness/auto-import.server';
 import { ensureCustomHarnesses } from '@/server/lib/harness/custom.server';
 import { pumpUpdateQueue } from '@/server/lib/harness/update-queue.server';
 import { compactChatOverlayRows } from '@/server/lib/db/compact-chat-overlay';
@@ -82,7 +83,10 @@ export async function runAfterListenTasks(target: AfterListenTarget): Promise<vo
   // and never awaited: a probe spawns an agent that may take a minute, and the
   // listener is already serving tabs and chats. The pass is per PROCESS, so a
   // `bun --hot` reload does not start every agent again — see the module header.
-  startHarnessAutoProbe();
+  // The sessions the agents already hold run AFTER the probe pass: its cache is
+  // what says an agent can answer `session/list`, and sequencing avoids two
+  // agents per harness competing at boot. Never awaited: one spawn per harness.
+  startHarnessAutoProbe(() => startHarnessAutoImport(0));
 
   // The harness-update queue. A run accepted before a restart (or one harness
   // waiting behind an install) must not need a browser tab to move: this pass

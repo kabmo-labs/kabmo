@@ -24,7 +24,8 @@ import { harnessStatus, type HarnessState } from '@/shared/lib/harness/status';
 import { HarnessConfigForm } from '@/client/components/settings/categories/harness-settings/ConfigForm';
 import { EMPTY_HARNESS_CONFIG, type HarnessConfig } from '@/shared/lib/harness/config';
 import { HarnessProviderPanel } from '@/client/components/settings/categories/harness-settings/ProviderPanel';
-import type { HarnessImportOutcome, HarnessProviderSupport, HarnessSummary } from '@/shared/types/harness';
+import type { HarnessImportOutcome, HarnessProviderSupport, HarnessSessionImport, HarnessSummary } from '@/shared/types/harness';
+import { HarnessImportControls } from '@/client/components/settings/categories/harness-settings/HarnessImportControls';
 import type { AddProviderInput } from '@/client/components/settings/categories/harness-settings/AddProviderForm';
 
 interface HarnessCardProps {
@@ -50,6 +51,15 @@ interface HarnessCardProps {
   ) => Promise<HarnessImportOutcome>;
   /** Add a provider by typing its endpoint and key into this harness's card. */
   onAddProvider?: (id: string, input: AddProviderInput) => Promise<HarnessImportOutcome>;
+  /** Copy the sessions the agent already holds into the sidebar. Offered only
+   *  where the probe reported `list` — a button that can only fail is worse
+   *  than no button. */
+  onImportSessions?: (id: string) => Promise<{ result: HarnessSessionImport | null; error: string | null }>;
+  /** Enable/disable the automatic pass; enabling imports once immediately. */
+  onSetAutoImport?: (
+    id: string,
+    enabled: boolean,
+  ) => Promise<{ autoImport: boolean | null; result: HarnessSessionImport | null; error: string | null }>;
 }
 
 /** One capability row: a label and a yes/no/never-probed answer. */
@@ -75,7 +85,7 @@ function Capability({ label, value, detail }: { label: string; value: boolean | 
 
 export function HarnessCard({
   summary, onProbe, install, config, onSaveConfig, providerSupport, onImportProvider, onAddProvider,
-  onSetEnabled, busy = false,
+  onSetEnabled, busy = false, onImportSessions, onSetAutoImport,
 }: HarnessCardProps) {
   const [probing, setProbing] = useState(false);
   const [problem, setProblem] = useState<string | null>(summary.probe?.capabilities.blocked ?? null);
@@ -222,6 +232,15 @@ export function HarnessCard({
             />
           </div>
         </div>
+
+        <HarnessImportControls
+          summary={summary}
+          listSessions={caps ? caps.listSessions : null}
+          probing={probing}
+          busy={busy}
+          onImportSessions={onImportSessions}
+          onSetAutoImport={onSetAutoImport}
+        />
 
         {/* The config form is per-harness and only for a launchable one: a
             built-in transport has nothing to launch, and an uninstalled harness

@@ -33,7 +33,7 @@ import { ACP_ERROR } from '@/server/lib/harness/acp/protocol';
 import type {
   AcpId,
   AcpInitializeResult,
-  AcpMcpServer,
+  AcpMcpServerWire,
   AcpNotification,
   AcpProtocolVersion,
   AcpRequest,
@@ -162,16 +162,22 @@ export class AcpProcess {
   // Thin delegates to `verbs.ts`: the transport owns framing, the verbs own the
   // wire shape. Callers keep using `proc.newSession(...)`.
 
-  newSession(cwd: string, timeoutMs?: number, mcpServers?: AcpMcpServer[]) {
+  newSession(cwd: string, timeoutMs?: number, mcpServers?: AcpMcpServerWire[]) {
     return verbs.newSession(this.call, cwd, timeoutMs, this.protocolVersion, mcpServers);
   }
 
-  loadSession(sessionId: string, cwd: string, timeoutMs?: number, mcpServers?: AcpMcpServer[]) {
+  loadSession(sessionId: string, cwd: string, timeoutMs?: number, mcpServers?: AcpMcpServerWire[]) {
     return verbs.loadSession(this.call, sessionId, cwd, timeoutMs, mcpServers);
   }
 
-  resumeSession(sessionId: string, cwd: string, timeoutMs?: number, mcpServers?: AcpMcpServer[]) {
-    return verbs.resumeSession(this.call, sessionId, cwd, timeoutMs, this.protocolVersion, mcpServers);
+  resumeSession(
+    sessionId: string,
+    cwd: string,
+    timeoutMs?: number,
+    mcpServers?: AcpMcpServerWire[],
+    replayFrom?: { type: 'start' },
+  ) {
+    return verbs.resumeSession(this.call, sessionId, cwd, timeoutMs, this.protocolVersion, mcpServers, replayFrom);
   }
 
   forkSession(
@@ -180,7 +186,7 @@ export class AcpProcess {
     timeoutMs?: number,
     target?: Record<string, unknown>,
     meta?: Record<string, unknown>,
-    mcpServers?: AcpMcpServer[],
+    mcpServers?: AcpMcpServerWire[],
   ) {
     return verbs.forkSession(this.call, sessionId, cwd, timeoutMs, target, meta, mcpServers);
   }

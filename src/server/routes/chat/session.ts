@@ -9,6 +9,9 @@ import { loadSessionMessages, loadSessionModel, loadSessionThinkingLevel, loadSe
 import { mergeOmpAttachments, overlayRowsForOmpSession } from '@/server/lib/omp/session/merge-stored';
 import { readRawHeaderLine } from '@/server/lib/omp/session/files';
 import { formatNewSessionTitle } from '@/shared/lib/omp/session/default-title';
+import { importedChat } from '@/server/routes/chat/imported';
+import { windowMessages } from '@/server/routes/chat/window';
+import { readCodexRolloutTranscript } from '@/server/lib/harness/codex/transcript.server';
 import { getLiveRunSessionIds, getLiveSession, harnessOfSession } from '@/server/lib/omp/rpc/session-registry';
 import { loadStreamStates } from '@/shared/lib/omp/session/stream-state.server';
 import { configByCategory, selectValues } from '@/server/lib/harness/launch';
@@ -20,24 +23,6 @@ import type { LiveHarnessModels } from '@/shared/types/harness';
  *  enough to cover every realistic chat turn, small enough to keep the JSON
  *  payload (and the mobile parse+mount cost) bounded. */
 const DEFAULT_MESSAGE_WINDOW = 120;
-
-/** Slice a fully loaded message list into the requested tail window. */
-function windowMessages<T>(
-  messages: T[],
-  limit: number | null,
-  before: number | null,
-): { messages: T[]; total: number; hasMore: boolean; oldestIndex: number } {
-  const total = messages.length;
-  if (limit === null || total <= limit) {
-    return { messages, total, hasMore: false, oldestIndex: 0 };
-  }
-  // `before` is an exclusive upper bound into the full list; the window is the
-  // `limit` messages ending just before it. A pending "new-…" session or a
-  // fresh spawn has no index to continue from — the tail is the only window.
-  const end = before !== null && before > 0 && before <= total ? before : total;
-  const start = Math.max(0, end - limit);
-  return { messages: messages.slice(start, end), total, hasMore: start > 0, oldestIndex: start };
-}
 
 /** What a LIVE non-omp session adds to the session payload: its resolved model,
  *  its thinking level, and the selector lists it published. */
@@ -189,6 +174,19 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
       }
     }
 
+    // An IMPORTED chat has a sidebar row but no transcript here: the agent holds
+    // it. The payload says so, and the client asks the restore command to copy it
+    // in. A chat Kabmo spawned has `origin = ''` and never takes this path.
+    const { imported, title: harnessTitle, harness: recordedHarness } = mock
+      ? { imported: false, title: '', harness: '' }
+      : await importedChat(sessionId);
+    // A Codex session open in another client refuses `session/resume`, so a
+    // restore cannot show it. The rollout is readable while that client holds
+    // the thread, and it is only consulted when the local transcript is empty.
+    const codexMessages = imported && recordedHarness === 'codex'
+      ? await readCodexRolloutTranscript(sessionId)
+      : [];
+
     const db = await getDb();
     // No live session (a restart, a closed tab): the last run's model is still
     // in `session_stream_state`, and it is the only truthful identity for an
@@ -222,11 +220,20 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
       const firstUserContent = Array.isArray(parsedMessages)
         ? parsedMessages.find((m: { role?: string; content?: string }) => m?.role === 'user')?.content
         : undefined;
+      const messages = parsedMessages.length > 0 ? parsedMessages : codexMessages;
+      const localTitle = hasDefaultTitle && firstUserContent ? firstUserContent.slice(0, 120) : existing.title;
+      // The imported row's name is in `harness_sessions`; the empty local row
+      // an earlier open created carries the UUID stamp instead, which put a
+      // second spelling of the chat's name in the header.
+      const title = imported && (!localTitle || String(localTitle).startsWith('Session '))
+        ? harnessTitle || localTitle || `Session ${sessionId}`
+        : localTitle || `Session ${sessionId}`;
       return json({
         session: {
           id: existing.session_id,
-          title: (hasDefaultTitle && firstUserContent ? firstUserContent.slice(0, 120) : existing.title) || `Session ${sessionId}`,
-          messages: parsedMessages,
+          title,
+          messages,
+          ...(imported && messages.length === 0 ? { restore: true } : {}),
           ...liveMetaFields(liveMeta, recordedModel),
         },
         isMock: mock,
@@ -240,14 +247,19 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
       messages: [],
     };
 
+    const seedTitle = harnessTitle || initial.title;
+    const seededMessages = codexMessages.length > 0 ? codexMessages : initial.messages;
     await db.run(
       'INSERT OR REPLACE INTO chat_sessions (session_id, title, messages, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)',
-      [sessionId, initial.title, JSON.stringify(initial.messages)]
+      [sessionId, seedTitle, JSON.stringify(initial.messages)]
     );
 
     return json({
       session: {
         ...initial,
+        title: seedTitle,
+        messages: seededMessages,
+        ...(imported && seededMessages.length === 0 ? { restore: true } : {}),
         ...liveMetaFields(liveMeta, recordedModel),
       },
       isMock: mock,

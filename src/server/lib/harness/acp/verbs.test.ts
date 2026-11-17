@@ -11,7 +11,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { forkSession, loadSession, newSession, resumeSession } from '@/server/lib/harness/acp/verbs';
+import { forkSession, listAllSessions, loadSession, newSession, resumeSession } from '@/server/lib/harness/acp/verbs';
 
 function recorder() {
   const calls: Array<{ method: string; params: unknown }> = [];
@@ -93,5 +93,41 @@ describe('MCP servers on the session verbs', () => {
     expect(calls).toEqual([
       { method: 'session/fork', params: { sessionId: 'src', cwd: '/tmp/project', mcpServers: servers } },
     ]);
+  });
+});
+
+describe('listAllSessions', () => {
+  test('the first page carries no cwd and each next page carries its cursor', async () => {
+    const calls: unknown[] = [];
+    const invoke = async <T>(_method: string, params: unknown): Promise<T> => {
+      calls.push(params);
+      const cursor = (params as { cursor?: string }).cursor;
+      return (cursor
+        ? { sessions: [{ sessionId: 'b', cwd: '/p/b' }], nextCursor: null }
+        : { sessions: [{ sessionId: 'a', cwd: '/p/a' }], nextCursor: 'c1' }) as T;
+    };
+    const sessions = await listAllSessions(invoke);
+    expect(sessions.map((s) => s.sessionId)).toEqual(['a', 'b']);
+    expect(calls).toEqual([{}, { cursor: 'c1' }]);
+  });
+
+  test('a repeated cursor ends the walk instead of looping', async () => {
+    let pages = 0;
+    const invoke = async <T>(): Promise<T> => {
+      pages += 1;
+      return { sessions: [], nextCursor: 'same' } as T;
+    };
+    await listAllSessions(invoke);
+    expect(pages).toBe(2);
+  });
+
+  test('maxPages bounds a peer that keeps minting fresh cursors', async () => {
+    let pages = 0;
+    const invoke = async <T>(): Promise<T> => {
+      pages += 1;
+      return { sessions: [], nextCursor: `c${pages}` } as T;
+    };
+    await listAllSessions(invoke, 1000, 3);
+    expect(pages).toBe(3);
   });
 });

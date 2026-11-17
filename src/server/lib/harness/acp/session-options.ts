@@ -46,4 +46,13 @@ export interface AcpSessionOptions {
    * also what an audit reader passes.
    */
   mcpServers?: AcpMcpServer[];
+  /**
+   * Restore the retained history as frames while the session attaches.
+   *
+   * v2's `session/resume` replays nothing unless `replayFrom` asks, and a chat
+   * Kabmo never spawned has no local transcript to draw. This is the only path
+   * that can show one, so the flag is opt-in: a chat that already has Kabmo's
+   * stored transcript must not replay and duplicate it.
+   */
+  replay?: boolean;
 }

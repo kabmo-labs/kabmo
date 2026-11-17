@@ -40,6 +40,7 @@ import { ensureCustomHarnesses } from '@/server/lib/harness/custom.server';
 import type { HarnessConfig } from '@/shared/lib/harness/config';
 import type { AcpProcess } from '@/server/lib/harness/acp/client';
 import type { HarnessSession } from '@/server/lib/harness/session';
+import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
 import type { SelectedModel } from '@/shared/types/models';
 import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 
@@ -62,6 +63,8 @@ export interface AcpSpawnRequest {
   /** The composer's access pick, applied to the ACP session's own approval
    *  gate (this transport has no `--approval-mode` spawn flag). */
   accessMode?: ApprovalMode | null;
+  /** Restore retained history as frames; see `AcpSessionOptions.replay`. */
+  replay?: boolean;
   /** Extra environment for this child only (the agent token and server URL). */
   env?: Record<string, string>;
   /** A prewarmed (spawned + initialized) agent to adopt instead of spawning. */
@@ -152,6 +155,7 @@ export async function openAcpSession(
       mode: picks.mode,
       accessMode: request.accessMode ?? null,
       mcpServers,
+      ...(request.replay ? { replay: true } : {}),
     },
     request.cwd,
   );
@@ -197,6 +201,11 @@ export async function openAcpSession(
     });
   }
   return { session, realSessionId };
+}
+
+/** The frames a restore replayed, and only from an ACP session. */
+export function takeAcpReplayEvents(session: HarnessSession): AgentEvent[] {
+  return session instanceof AcpSession ? session.replay.take() : [];
 }
 
 export async function startAcpSession(

@@ -14,9 +14,13 @@
  */
 
 import { freshProbe } from '@/server/lib/harness/probe-cache.server';
-import { startAcpSession } from '@/server/lib/harness/spawn.server';
+import { startAcpSession, takeAcpReplayEvents } from '@/server/lib/harness/spawn.server';
 import { mintAgentEnvironment, rememberAgentToken } from '@/server/lib/sessions/agent-token.server';
-import { knownHarness, loadHarnessSession, repointHarnessSession } from '@/server/lib/harness/session-store.server';
+import {
+  knownHarness, loadHarnessSession, loadHarnessSessionTitle, repointHarnessSession,
+} from '@/server/lib/harness/session-store.server';
+import { transcriptFromReplay } from '@/server/lib/harness/acp/replay-transcript';
+import { getDb } from '@/server/db.server';
 import { selectValues } from '@/server/lib/harness/launch';
 import { harnessOfSession } from '@/server/lib/omp/rpc/session-registry';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
@@ -64,7 +68,10 @@ export async function resumeRecordedHarnessSession(
 
   const label = harnessDescriptor(harness)?.label ?? harness;
   const probe = await freshProbe(harness);
-  if (probe && !probe.capabilities.loadSession && !probe.capabilities.resumeSession) {
+  // A BLOCKED probe is not evidence about capabilities: it was measured in a
+  // different auth state (`codex` answered "Authentication required" before the
+  // user logged in). Refusing on it locked a chat that could already resume.
+  if (probe && !probe.capabilities.blocked && !probe.capabilities.loadSession && !probe.capabilities.resumeSession) {
     throw new Error(`${label} cannot restore this chat: it supports neither session/load nor session/resume.`);
   }
   const { token, env } = mintAgentEnvironment();
@@ -91,6 +98,73 @@ export async function resumeRecordedHarnessSession(
   await repointHarnessSession(sessionId, realSessionId).catch(() => {});
   if (realSessionId !== sessionId) emitRealtimeSignal('sidebar-structure');
   return session;
+}
+
+/**
+ * Replay an IMPORTED chat's retained history into Kabmo's own transcript.
+ *
+ * The sidebar shows an imported row because `harness_sessions` lists it, but
+ * the agent holds the conversation: Kabmo never received those turns, so the
+ * open tab would be empty. A v2 agent replays its history when
+ * `session/resume` carries `replayFrom`; the frames are collected before the
+ * session is usable and reduced to the rows the timeline reads. Persisting the
+ * result is the point of the exercise — every later open is an ordinary read.
+ *
+ * Only an `origin = 'imported'` row is eligible: a chat Kabmo spawned already
+ * has its transcript (the client wrote every turn), and replaying it would
+ * duplicate the conversation.
+ */
+export async function restoreRecordedHarnessSession(
+  sessionId: string,
+  accessMode: ApprovalMode | null,
+): Promise<{ session: HarnessSession; harness: string; messages: number } | null> {
+  const record = await loadHarnessSession(sessionId);
+  const harness = knownHarness(record?.harness, HARNESS_IDS);
+  if (!record || record.origin !== 'imported' || !harness || harness === 'omp-rpc' || !record.cwd) return null;
+
+  const db = await getDb();
+  const existing = (await db.get('SELECT messages FROM chat_sessions WHERE session_id = ?', [sessionId])) as {
+    messages?: string;
+  } | null;
+  if (existing?.messages) {
+    try {
+      const parsed: unknown = JSON.parse(existing.messages);
+      if (Array.isArray(parsed) && parsed.length > 0) return null;
+    } catch {
+      // A corrupt local copy is not a transcript: replay and replace it.
+    }
+  }
+
+  const probe = await freshProbe(harness);
+  const label = harnessDescriptor(harness)?.label ?? harness;
+  if (probe && !probe.capabilities.blocked && !probe.capabilities.loadSession && !probe.capabilities.resumeSession) {
+    throw new Error(`${label} cannot replay this chat: it supports neither session/load nor session/resume.`);
+  }
+  const { token, env } = mintAgentEnvironment();
+  const { session, realSessionId } = await startAcpSession({
+    harness,
+    sessionId,
+    resumeAgentSessionId: record.agentSessionId || sessionId,
+    cwd: record.cwd,
+    accessMode,
+    env,
+    replay: true,
+  });
+  await rememberAgentToken(sessionId, token).catch((cause: unknown) => {
+    console.error(`[sessions] could not record the agent token for ${sessionId}:`, cause);
+  });
+  await repointHarnessSession(sessionId, realSessionId).catch(() => {});
+  if (realSessionId !== sessionId) emitRealtimeSignal('sidebar-structure');
+
+  const messages = transcriptFromReplay(takeAcpReplayEvents(session));
+  if (messages.length > 0) {
+    const title = (await loadHarnessSessionTitle(sessionId).catch(() => '')) || `Session ${sessionId}`;
+    await db.run(
+      'INSERT OR REPLACE INTO chat_sessions (session_id, title, messages, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)',
+      [sessionId, title, JSON.stringify(messages)],
+    );
+  }
+  return { session, harness, messages: messages.length };
 }
 
 /**

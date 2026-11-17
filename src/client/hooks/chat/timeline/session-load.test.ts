@@ -251,3 +251,28 @@ function LiveModelsRead({ sink }: { sink: Record<string, unknown> }) {
   sink.liveModels = liveModels;
   return null;
 }
+
+describe('an imported chat with no local transcript', () => {
+  test('asks the restore command once and renders the replayed transcript', async () => {
+    stubChatFetch();
+    const api = makeApi();
+    await mount('sess-1', api);
+
+    // The loader says the history lives in the agent.
+    await resolveLoad([], 0, { restore: true });
+    const restoreCall = gates.find((gate) => gate.url === '/api/agent/sess-1');
+    expect(restoreCall).toBeDefined();
+
+    // The server replayed and persisted; the client re-reads through the normal
+    // loader instead of inventing a second transcript path.
+    await act(async () => {
+      restoreCall!.resolve({ success: true, data: { restored: true, harness: 'codex', messages: 1 } });
+    });
+    for (let i = 0; i < 3; i += 1) await act(async () => {});
+
+    const reread = gates.findIndex((gate) => gate.url === '/api/chat/sess-1' && gate !== gates[0]);
+    expect(reread).toBeGreaterThan(0);
+    await resolveLoad([{ id: 'restored-user', role: 'user', content: 'hello' }], reread);
+    expect(api.messages.map((message) => message.id)).toContain('restored-user');
+  });
+});

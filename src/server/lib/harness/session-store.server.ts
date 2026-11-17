@@ -25,6 +25,9 @@ export interface HarnessSessionRecord {
   /** The id the AGENT reported, when it differs from Kabmo's. */
   agentSessionId: string;
   cwd: string;
+  /** '' for a chat Kabmo spawned; 'imported' for one copied from the agent's
+   *  own history. Optional on INPUT (a spawn writes no marker). */
+  origin?: string;
 }
 
 /** Record which harness owns a session. Idempotent: a re-spawn of the same id
@@ -42,6 +45,65 @@ export async function saveHarnessSession(record: HarnessSessionRecord): Promise<
        updated_at = excluded.updated_at`,
     [record.sessionId, record.harness, record.agentSessionId, record.cwd, now, now],
   );
+}
+
+/**
+ * Copy one session an agent reported into the index the sidebar reads.
+ *
+ * `DO NOTHING` on a known id, and never a bump of `updated_at`: an import is a
+ * DISCOVERY, and re-running it must not reorder a chat Kabmo already lists (or
+ * overwrite a title its own first prompt wrote). The agent-side dedupe
+ * (`agent_session_id`) is checked by the caller, because a chat that was
+ * resumed and forked keeps Kabmo's id in `session_id`.
+ *
+ * Returns whether a row was inserted, so the result can say `imported` versus
+ * `known` instead of reporting a no-op as success.
+ */
+export async function importHarnessSession(record: {
+  sessionId: string;
+  harness: string;
+  agentSessionId: string;
+  cwd: string;
+  title: string;
+  createdAt: number;
+  updatedAt: number;
+}): Promise<boolean> {
+  const db = await getDb();
+  const result = await db.run(
+    `INSERT INTO harness_sessions
+       (session_id, harness, agent_session_id, cwd, title, origin, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, 'imported', ?, ?)
+     ON CONFLICT(session_id) DO NOTHING`,
+    [
+      record.sessionId,
+      record.harness,
+      record.agentSessionId,
+      record.cwd,
+      record.title,
+      record.createdAt,
+      record.updatedAt,
+    ],
+  );
+  return (result.changes ?? 0) > 0;
+}
+
+/**
+ * Whether this database already lists a session, by EITHER id.
+ *
+ * A resumed chat whose load forked keeps Kabmo's id in `session_id` and the
+ * agent's in `agent_session_id`; an import that checked only `session_id`
+ * inserted a second row for the same conversation (measured).
+ */
+export async function harnessSessionKnown(sessionId: string): Promise<boolean> {
+  if (!sessionId) return false;
+  const db = await getDb();
+  const row = await db.get(
+    `SELECT 1 AS present FROM harness_sessions
+      WHERE session_id = ? OR (agent_session_id <> '' AND agent_session_id = ?)
+      LIMIT 1`,
+    [sessionId, sessionId],
+  );
+  return row != null;
 }
 
 /**
@@ -109,6 +171,8 @@ export interface HarnessSessionRow {
   harness: string;
   agentSessionId: string;
   cwd: string;
+  /** See {@link HarnessSessionRecord.origin}. */
+  origin: string;
   /** What the chat is called: the agent's own title, else the first prompt.
    *  Empty when neither exists yet. */
   title: string;
@@ -137,7 +201,7 @@ export interface HarnessSessionRow {
 export async function loadAcpSessions(): Promise<HarnessSessionRow[]> {
   const db = await getDb();
   const rows = (await db.all(
-    `SELECT session_id, harness, agent_session_id, cwd, title, created_at, updated_at
+    `SELECT session_id, harness, agent_session_id, cwd, title, origin, created_at, updated_at
        FROM harness_sessions
       WHERE harness <> 'omp-rpc'
       ORDER BY updated_at DESC`,
@@ -147,6 +211,7 @@ export async function loadAcpSessions(): Promise<HarnessSessionRow[]> {
     agent_session_id: string;
     cwd: string;
     title: string | null;
+    origin: string | null;
     created_at: number;
     updated_at: number;
   }[];
@@ -156,6 +221,7 @@ export async function loadAcpSessions(): Promise<HarnessSessionRow[]> {
     agentSessionId: row.agent_session_id,
     cwd: row.cwd,
     title: row.title ?? '',
+    origin: row.origin ?? '',
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }));
@@ -195,15 +261,16 @@ export async function loadHarnessSessionTitle(sessionId: string): Promise<string
 export async function loadHarnessSession(sessionId: string): Promise<HarnessSessionRecord | null> {
   const db = await getDb();
   const row = (await db.get(
-    'SELECT session_id, harness, agent_session_id, cwd FROM harness_sessions WHERE session_id = ?',
+    'SELECT session_id, harness, agent_session_id, cwd, origin FROM harness_sessions WHERE session_id = ?',
     [sessionId],
-  )) as { session_id: string; harness: string; agent_session_id: string; cwd: string } | null;
+  )) as { session_id: string; harness: string; agent_session_id: string; cwd: string; origin: string | null } | null;
   if (!row) return null;
   return {
     sessionId: row.session_id,
     harness: row.harness,
     agentSessionId: row.agent_session_id,
     cwd: row.cwd,
+    origin: row.origin ?? '',
   };
 }
 

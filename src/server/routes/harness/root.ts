@@ -26,6 +26,8 @@ import { forgetProbe, loadProbes, rememberProbe } from '@/server/lib/harness/pro
 import { loadDisabledHarnesses, saveHarnessEnabled } from '@/server/lib/harness/enabled.server';
 import { harnessEnabled } from '@/shared/lib/harness/enabled';
 import { commandAvailable, probeWithConfig } from '@/server/lib/harness/auto-probe.server';
+import { autoImportEnabled, loadAutoImportDisabled } from '@/server/lib/harness/auto-import.server';
+import { autoImportAction, importSessionsAction } from '@/server/routes/harness/session-actions';
 import { loadHarnessConfig, probeInvalidatedBy, saveHarnessConfig } from '@/server/lib/harness/config.server';
 import { importableProvidersFor, readRegistryProviders } from '@/server/lib/harness/provider-sources.server';
 import { addProviderAction, importProviderAction, importSourceOf, isImportBody } from '@/server/routes/harness/import-action';
@@ -64,6 +66,8 @@ export interface HarnessSummary {
   command?: string;
   note?: string;
   probe: HarnessProbe | null;
+  /** Whether the boot/refresh pass imports this agent's own sessions. */
+  autoImport: boolean;
   /** Why it cannot run, without probing: the launch command is missing. */
   unavailable?: string;
 }
@@ -81,6 +85,7 @@ export async function listHarnesses(): Promise<HarnessSummary[]> {
   // the composer's picker. Read in the same pass as the probes for the reason
   // above — this is the one catalog answer.
   const disabled = await loadDisabledHarnesses();
+  const autoImportDisabled = new Set(await loadAutoImportDisabled());
   const configs: Record<string, HarnessConfig> = {};
   for (const id of harnessIds()) configs[id] = await loadHarnessConfig(id);
   return harnessIds().map((id) => {
@@ -101,6 +106,7 @@ export async function listHarnesses(): Promise<HarnessSummary[]> {
       initial: descriptor?.initial ?? id.charAt(0).toUpperCase(),
       canLaunch: available,
       enabled: harnessEnabled(id, disabled),
+      autoImport: autoImportEnabled(id, autoImportDisabled),
       ...(descriptor?.builtIn ? { builtIn: true as const } : {}),
       ...(isBuiltinHarness(id) ? {} : { custom: true as const }),
       ...(launch?.install ? { install: launch.install } : {}),
@@ -215,7 +221,11 @@ export async function action({ request, params }: ActionFunctionArgs) {
     await removeCustomHarness(target);
     return json({ removed: target });
   }
-  const id = typeof body.probe === 'string' ? body.probe : null;
+  // `probe` is the id for every other branch; a SESSION import names its
+  // harness in `importSessions` instead, so that id is accepted here too
+  // (otherwise the request was refused as "no probe" before its branch ran).
+  const importId = typeof body.importSessions === 'string' ? body.importSessions : null;
+  const id = typeof body.probe === 'string' ? body.probe : importId;
   if (!id || !harnessDescriptor(id)) {
     return json({ error: 'probe must name a known harness id' }, { status: 400 });
   }
@@ -268,11 +278,17 @@ export async function action({ request, params }: ActionFunctionArgs) {
       );
     }
   }
+  // AUTO-IMPORT: `{ probe: id, autoImport: boolean }`. The switch is persisted
+  // and always succeeds; turning it ON also imports once now (see the action).
+  if (typeof body.autoImport === 'boolean') return autoImportAction(id as HarnessId, body.autoImport);
+  if (body.importSessions === true || body.importSessions === id) return importSessionsAction(id as HarnessId);
+
   // Same refusal as the loader: no agent exists behind a built-in transport, so
   // its "probe" would only cache a `blocked` record over the default tab.
   if (harnessDescriptor(id)?.builtIn) {
     return json({ error: `${id} is built in and has no agent to probe`, code: 'builtin_not_probeable' }, { status: 400 });
   }
+
   // An IMPORT: copy one provider out of another registry into this harness's.
   // `{ importProvider: { from, id, env? } }`. The credential is read HERE, from
   // the source file, so the list the browser holds never carries one.

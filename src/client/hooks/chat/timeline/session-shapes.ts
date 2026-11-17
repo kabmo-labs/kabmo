@@ -23,6 +23,9 @@ export interface SessionDataShape {
    *  published. Only a live non-omp session reports them. */
   harness?: string;
   liveModels?: LiveHarnessModels;
+  /** An IMPORTED chat whose transcript lives in the agent: the client must ask
+   *  the restore command to copy it in before the timeline can show anything. */
+  restore?: boolean;
 }
 
 /** Session identity a spawn established before omp's JSONL is readable. */

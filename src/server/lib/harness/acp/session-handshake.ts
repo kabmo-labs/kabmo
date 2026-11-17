@@ -26,12 +26,14 @@
 
 import { newSessionAfterActivation } from '@/server/lib/harness/acp/activation';
 import { applyLaunchSelections, configOption, modelFromOption } from '@/server/lib/harness/acp/prompt';
+import { toAcpV2McpServers } from '@/server/lib/harness/acp/v2';
 import { capabilitiesFrom } from '@/server/lib/harness/launch';
 import type {
   AcpAgentCommand,
   AcpConfigOption,
   AcpInitializeResult,
   AcpMcpServer,
+  AcpMcpServerWire,
   AcpProtocolVersion,
   AcpSessionModeState,
   AcpSessionNewResult,
@@ -42,12 +44,12 @@ import type { HarnessId } from '@/shared/lib/harness/catalog';
 /** The process slice a handshake drives; `AcpProcess` satisfies it as-is. */
 export interface AcpHandshakeProcess {
   initialize(params?: Record<string, unknown>, timeoutMs?: number): Promise<AcpInitializeResult>;
-  loadSession(sessionId: string, cwd: string, timeoutMs?: number, mcpServers?: AcpMcpServer[]): Promise<unknown>;
-  newSession(cwd: string, timeoutMs?: number, mcpServers?: AcpMcpServer[]): Promise<AcpSessionNewResult>;
+  loadSession(sessionId: string, cwd: string, timeoutMs?: number, mcpServers?: AcpMcpServerWire[]): Promise<unknown>;
+  newSession(cwd: string, timeoutMs?: number, mcpServers?: AcpMcpServerWire[]): Promise<AcpSessionNewResult>;
   /** The negotiated major; absent on a test double, which is a v1 double. */
   readonly protocolVersion?: AcpProtocolVersion;
   /** `session/resume`; absent on a process double used by older tests. */
-  resumeSession?(sessionId: string, cwd: string, timeoutMs?: number, mcpServers?: AcpMcpServer[]): Promise<unknown>;
+  resumeSession?(sessionId: string, cwd: string, timeoutMs?: number, mcpServers?: AcpMcpServerWire[], replayFrom?: unknown): Promise<unknown>;
   /** `session/fork`; absent on a process double used by older tests. */
   forkSession?(
     sessionId: string,
@@ -55,7 +57,7 @@ export interface AcpHandshakeProcess {
     timeoutMs?: number,
     target?: Record<string, unknown>,
     meta?: Record<string, unknown>,
-    mcpServers?: AcpMcpServer[],
+    mcpServers?: AcpMcpServerWire[],
   ): Promise<AcpSessionNewResult>;
 }
 
@@ -97,12 +99,22 @@ export async function handshakeAcpSession(
   sessionIdToLoad?: string,
   forkFromSessionId?: string,
   forkMeta?: Record<string, unknown>,
+  /** Restore history as frames (`replayFrom` on a v2 peer, `session/load` on a
+   *  v1 peer). Off for every ordinary resume: Kabmo's own transcript is on
+   *  screen and a replay would duplicate it. */
+  replay = false,
 ): Promise<void> {
   const init = await proc.initialize(undefined, 60_000);
   target.onProtocol?.(init.protocolVersion === 2 ? 2 : 1);
   /** opencode's plugin activation gate: the first `session/new`s refuse with
    *  `ServiceUnavailableError` until the agent's plugins finish booting. */
-  const mcpServers = target.mcpServers ?? [];
+  const requestedMcp = target.mcpServers ?? [];
+  // A v2 peer validates `mcpServers` strictly (tagged entries, absolute stdio
+  // command) and rejects the whole setup request otherwise. The conversion is
+  // here because this is the first point the negotiated major is known.
+  const mcpServers: AcpMcpServerWire[] = init.protocolVersion === 2
+    ? toAcpV2McpServers(requestedMcp)
+    : requestedMcp;
   const newSession = (cwd: string, timeoutMs?: number) =>
     newSessionAfterActivation(target.harness, cwd, (dir, ms) => proc.newSession(dir, ms, mcpServers), {
       ...(timeoutMs !== undefined ? { perAttemptMs: timeoutMs } : {}),
@@ -142,13 +154,25 @@ export async function handshakeAcpSession(
       // nothing unless `replayFrom` asks, which is exactly what Kabmo wants —
       // its own transcript is already on screen.
       ? await (proc.resumeSession
-          ? proc.resumeSession(sessionIdToLoad, target.cwd, 120_000, mcpServers)
+          ? proc.resumeSession(
+              sessionIdToLoad,
+              target.cwd,
+              120_000,
+              mcpServers,
+              replay ? { type: 'start' } : undefined,
+            )
           : Promise.reject(new Error(`${target.harness} cannot resume a session`)))
       : caps.loadSession === true
         ? await loadReplacement(proc, newSession, sessionIdToLoad, target.cwd, mcpServers)
         : caps.sessionCapabilities?.resume != null
           ? await (proc.resumeSession
-              ? proc.resumeSession(sessionIdToLoad, target.cwd, 120_000, mcpServers)
+              ? proc.resumeSession(
+              sessionIdToLoad,
+              target.cwd,
+              120_000,
+              mcpServers,
+              replay ? { type: 'start' } : undefined,
+            )
               : Promise.reject(new Error(`${target.harness} cannot resume a session`)))
           : null;
     if (restored === null) {
@@ -187,7 +211,7 @@ async function loadReplacement(
   create: (cwd: string, timeoutMs?: number) => Promise<AcpSessionNewResult>,
   sessionId: string,
   cwd: string,
-  mcpServers: AcpMcpServer[],
+  mcpServers: AcpMcpServerWire[],
 ): Promise<unknown> {
   await proc.loadSession(sessionId, cwd, 120_000, mcpServers);
   return (await create(cwd).catch(() => null)) ?? { sessionId };

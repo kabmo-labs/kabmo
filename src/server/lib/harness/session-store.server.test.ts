@@ -20,6 +20,8 @@ import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:tes
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { getDb } from '@/server/db.server';
 import {
+  harnessSessionKnown,
+  importHarnessSession,
   knownHarness,
   loadAcpSessions,
   loadHarnessBySession,
@@ -171,5 +173,88 @@ describe('harness session store', () => {
     await saveHarnessSession({ sessionId: 'chat-2', harness: 'claude', agentSessionId: 'chat-2', cwd: '/p' });
     await repointHarnessSession('chat-2', 'chat-2');
     expect((await loadAcpSessions()).map((row) => row.sessionId)).toEqual(['chat-2']);
+  });
+});
+
+describe('session import rows', () => {
+  test('an imported row carries its marker, title and timestamps', async () => {
+    const inserted = await importHarnessSession({
+      sessionId: 'codex-1',
+      harness: 'codex',
+      agentSessionId: '',
+      cwd: '/work/app',
+      title: 'Fix the parser',
+      createdAt: 1_700_000_000_000,
+      updatedAt: 1_700_000_500_000,
+    });
+    expect(inserted).toBe(true);
+    const row = await loadHarnessSession('codex-1');
+    expect(row).toEqual({
+      sessionId: 'codex-1',
+      harness: 'codex',
+      agentSessionId: '',
+      cwd: '/work/app',
+      origin: 'imported',
+    });
+    const rows = await loadAcpSessions();
+    expect(rows[0]).toMatchObject({
+      sessionId: 'codex-1',
+      origin: 'imported',
+      title: 'Fix the parser',
+      createdAt: 1_700_000_000_000,
+      updatedAt: 1_700_000_500_000,
+    });
+  });
+
+  test('re-importing an existing row changes nothing', async () => {
+    await importHarnessSession({
+      sessionId: 'codex-1',
+      harness: 'codex',
+      agentSessionId: '',
+      cwd: '/work/app',
+      title: 'First name',
+      createdAt: 1,
+      updatedAt: 10,
+    });
+    const inserted = await importHarnessSession({
+      sessionId: 'codex-1',
+      harness: 'codex',
+      agentSessionId: '',
+      cwd: '/work/other',
+      title: 'Second name',
+      createdAt: 20,
+      updatedAt: 30,
+    });
+    expect(inserted).toBe(false);
+    const row = await loadAcpSessions();
+    expect(row[0]).toMatchObject({ title: 'First name', cwd: '/work/app', updatedAt: 10 });
+  });
+
+  test('a drained spawn does not erase the import marker', async () => {
+    await importHarnessSession({
+      sessionId: 'codex-1',
+      harness: 'codex',
+      agentSessionId: '',
+      cwd: '/work/app',
+      title: 'Imported',
+      createdAt: 1,
+      updatedAt: 10,
+    });
+    await saveHarnessSession({ sessionId: 'codex-1', harness: 'codex', agentSessionId: 'agent-1', cwd: '/work/app' });
+    const row = await loadHarnessSession('codex-1');
+    expect(row?.origin).toBe('imported');
+    expect(row?.agentSessionId).toBe('agent-1');
+  });
+
+  test('a session is known by EITHER id, which is what stops a fork duplicate', async () => {
+    await saveHarnessSession({
+      sessionId: 'kabmo-chat',
+      harness: 'codex',
+      agentSessionId: 'agent-1',
+      cwd: '/work/app',
+    });
+    expect(await harnessSessionKnown('agent-1')).toBe(true);
+    expect(await harnessSessionKnown('kabmo-chat')).toBe(true);
+    expect(await harnessSessionKnown('someone-else')).toBe(false);
   });
 });

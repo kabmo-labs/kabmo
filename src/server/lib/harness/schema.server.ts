@@ -38,6 +38,11 @@ const HARNESS_SESSIONS_SQL = `
     -- first line sat unused. Holds the agent's own title when it published one,
     -- else the first prompt; see harness/session-title.server.ts.
     title TEXT NOT NULL DEFAULT '',
+    -- '' for a chat Kabmo spawned; 'imported' for one discovered in the
+    -- agent's own history. The marker decides two behaviours that must not be
+    -- guessed: a restore is allowed only for an imported chat, and Delete must
+    -- never remove the agent's own transcript behind the user's back.
+    origin TEXT NOT NULL DEFAULT '',
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
   );
@@ -52,9 +57,10 @@ const HARNESS_SESSIONS_SQL = `
  * by an older build would miss the column and every read of it would fail —
  * including the sidebar's, which selects the whole table.
  */
-const HARNESS_SESSIONS_MIGRATIONS = `
-  ALTER TABLE harness_sessions ADD COLUMN title TEXT NOT NULL DEFAULT '';
-`;
+const HARNESS_SESSIONS_MIGRATIONS = [
+  `ALTER TABLE harness_sessions ADD COLUMN title TEXT NOT NULL DEFAULT '';`,
+  `ALTER TABLE harness_sessions ADD COLUMN origin TEXT NOT NULL DEFAULT '';`,
+];
 
 /**
  * What each agent reported, persisted.
@@ -142,9 +148,11 @@ export async function ensureHarnessSchema(db: DbClient): Promise<void> {
   await db.exec(HARNESS_PROBES_SQL);
   await db.exec(HARNESS_GOAL_STATE_SQL);
   await db.exec(HARNESS_USAGE_STATE_SQL);
-  try {
-    await db.exec(HARNESS_SESSIONS_MIGRATIONS);
-  } catch {
-    // Already present — a fresh install gets the column from the DDL above.
+  for (const migration of HARNESS_SESSIONS_MIGRATIONS) {
+    try {
+      await db.exec(migration);
+    } catch {
+      // Already present — a fresh install gets the column from the DDL above.
+    }
   }
 }

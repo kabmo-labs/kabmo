@@ -169,6 +169,35 @@ export interface AcpMcpServerSse {
 
 export type AcpMcpServer = AcpMcpServerStdio | AcpMcpServerHttp | AcpMcpServerSse;
 
+/**
+ * The same servers on a v2 request.
+ *
+ * v2 tags every entry with `type` and requires an ABSOLUTE stdio `command`,
+ * where v1 inferred stdio from the absence of `type` and accepted a bare
+ * binary name. A v2 peer validates the list strictly: a v1 stdio entry answers
+ * `Invalid params` and no session is created at all (measured on codex and
+ * claude), which is why the handshake converts once, right after `initialize`.
+ */
+export interface AcpMcpServerV2Stdio {
+  type: 'stdio';
+  name: string;
+  command: string;
+  args: string[];
+  env: Array<{ name: string; value: string }>;
+}
+
+export interface AcpMcpServerV2Http {
+  type: 'http' | 'sse';
+  name: string;
+  url: string;
+  headers: Array<{ name: string; value: string }>;
+}
+
+export type AcpMcpServerV2 = AcpMcpServerV2Stdio | AcpMcpServerV2Http;
+
+/** What a session request carries: v1 on a v1 peer, v2 on a v2 peer. */
+export type AcpMcpServerWire = AcpMcpServer | AcpMcpServerV2;
+
 export interface AcpSessionNewResult {
   sessionId: string;
   configOptions?: AcpConfigOption[];

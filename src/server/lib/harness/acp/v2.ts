@@ -19,12 +19,17 @@
  * ended the turn.
  */
 
+import { isAbsolute } from 'node:path';
 import type {
   AcpAgentCommand,
   AcpConfigOption,
   AcpInitializeResult,
+  AcpMcpServer,
+  AcpMcpServerV2,
+  AcpMcpServerWire,
   AcpSessionNewResult,
 } from '@/server/lib/harness/acp/protocol';
+import { whichOnToolchainPath } from '@/server/lib/fs/toolchain-path';
 
 /** A parsed JSON object, or undefined when the value is not one. */
 export function asRecord(value: unknown): Record<string, unknown> | undefined {
@@ -217,4 +222,37 @@ export function planEntries(update: Record<string, unknown>): unknown[] {
   const plan = asRecord(update.plan);
   if (!plan || plan.type !== 'items' || !Array.isArray(plan.entries)) return [];
   return plan.entries;
+}
+
+
+/**
+ * The MCP list a v2 peer accepts.
+ *
+ * v1 inferred stdio from a missing `type`; v2 tags every entry and validates
+ * the stdio `command` as an absolute path. A v1 entry is rejected with
+ * `Invalid params` and the whole `session/new|load|resume` fails, so this
+ * conversion is the difference between "the agent starts" and "no chat at all"
+ * on every v2 harness with an MCP server configured.
+ *
+ * A stdio command that cannot be resolved on the toolchain PATH is SKIPPED with
+ * a log line rather than failing the session: the agent's MCP list is not the
+ * conversation, and a missing optional server must not block the chat.
+ */
+export function toAcpV2McpServers(servers: readonly AcpMcpServer[]): AcpMcpServerWire[] {
+  const out: AcpMcpServerV2[] = [];
+  for (const server of servers) {
+    if ('type' in server) {
+      out.push({ type: server.type, name: server.name, url: server.url, headers: server.headers });
+      continue;
+    }
+    const command = isAbsolute(server.command)
+      ? server.command
+      : whichOnToolchainPath(server.command);
+    if (!command) {
+      console.warn(`[harness] MCP server ${server.name} skipped: ${server.command} is not on the toolchain PATH`);
+      continue;
+    }
+    out.push({ type: 'stdio', name: server.name, command, args: server.args, env: server.env });
+  }
+  return out;
 }

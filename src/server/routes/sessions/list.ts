@@ -16,8 +16,13 @@
 import { json, NO_STORE_HEADERS } from '@/server/lib/remix-compat';
 import type { LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { loadSidebarData } from '@/server/lib/omp/session/sidebar-data.server';
+import { requestAutoImport } from '@/server/lib/harness/auto-import.server';
 
 export async function loader(_args: LoaderFunctionArgs) {
+  // Opening the sidebar is the moment a terminal chat should appear. The pass is
+  // throttled (one per minute) and fire-and-forget: this response carries the
+  // list it has, and the import publishes `sidebar-structure` when it lands.
+  requestAutoImport();
   const data = await loadSidebarData();
   return json(data, { headers: NO_STORE_HEADERS });
 }

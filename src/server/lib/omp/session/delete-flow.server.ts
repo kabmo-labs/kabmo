@@ -28,6 +28,7 @@
  */
 
 import { getLiveSession } from '@/server/lib/omp/rpc/session-registry';
+import { loadHarnessSession } from '@/server/lib/harness/session-store.server';
 import { purgeSessionData } from '@/server/lib/omp/session/delete.server';
 import { dependentsDeepestFirst } from '@/server/lib/sessions/lifecycle.server';
 import { purgeBtwForSession } from '@/server/lib/btw/purge.server';
@@ -80,7 +81,15 @@ export async function removeSession(sessionId: string): Promise<SessionRemoval> 
           error: 'This session is working. Stop the run before deleting it.',
         };
       }
-      if ('deleteAgentSession' in live && live.deleteAgentSession) await live.deleteAgentSession();
+      // An IMPORTED chat's transcript belongs to the user's agent, not to this
+      // row. Removing it from Kabmo's sidebar must not delete the conversation
+      // they ran in a terminal: the row is a discovery, so Delete forgets it
+      // here and leaves the agent's store alone. A chat Kabmo spawned uses the
+      // agent's own delete, as before.
+      const record = await loadHarnessSession(sessionId).catch(() => null);
+      if (record?.origin !== 'imported' && 'deleteAgentSession' in live && live.deleteAgentSession) {
+        await live.deleteAgentSession();
+      }
       await live.destroyAndWait();
     }
 

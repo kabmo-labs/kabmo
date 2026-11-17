@@ -15,6 +15,7 @@ import { mintAgentEnvironment, rememberAgentToken } from '@/server/lib/sessions/
 import { resetGoalDriverState } from '@/server/lib/omp/session/goal-driver.server';
 import { forwardToPeer, isPeerRelayed, peerOriginForSession } from '@/server/lib/omp/rpc/peer-proxy.server';
 import { applyHarnessMode, resumeRecordedHarnessSession } from '@/server/routes/agent/harness-command';
+import { restoreChatResponse } from '@/server/routes/agent/restore';
 import { asHarnessSession } from '@/server/lib/harness/registry';
 import { asOmpSession, getLiveSession } from '@/server/lib/omp/rpc/session-registry';
 import { recordPrompt } from '@/server/lib/chat/prompt-history.server';
@@ -53,6 +54,9 @@ export async function sendCommand({ params, request }: ActionFunctionArgs) {
     // without repeating accessMode). Only a real spawn uses the persisted
     // default. omp has no RPC to change the mode after spawn.
     const explicitMode = isApprovalMode(body.accessMode) ? body.accessMode : null;
+
+    // RESTORE: an imported chat's history lives in the agent, not in Kabmo.
+    if (body.type === 'restore') return restoreChatResponse(sessionId, explicitMode);
 
     // A command that moves the conversation is refused while a side question is
     // in flight on this session — the question's snapshot describes the

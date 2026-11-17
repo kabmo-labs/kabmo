@@ -22,7 +22,7 @@
  */
 
 import { useEffect, useState } from 'preact/hooks';
-import type { HarnessConfig, HarnessSummary, LiveHarnessModels } from '@/shared/types/harness';
+import type { HarnessConfig, HarnessSessionImport, HarnessSummary, LiveHarnessModels } from '@/shared/types/harness';
 import type { HarnessesController } from '@/client/hooks/models/use-harnesses-controller';
 import {
   emit, invalidateCatalog, listeners, loadCatalog, store,
@@ -174,6 +174,71 @@ async function setHarnessEnabled(id: string, enabled: boolean): Promise<string |
   }
 }
 
+/**
+ * Ask the agent for its own session list and copy it into the sidebar index.
+ *
+ * The server spawns the agent once and reports what landed; a refusal is the
+ * agent's own sentence (no login, a dead adapter), never a zero that reads as
+ * "nothing to import".
+ */
+async function importSessions(
+  id: string,
+): Promise<{ result: HarnessSessionImport | null; error: string | null }> {
+  try {
+    const response = await fetch('/api/harness', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ importSessions: id }),
+    });
+    const payload = (await response.json()) as {
+      importSessions?: HarnessSessionImport;
+      error?: string;
+    };
+    if (!response.ok || !payload.importSessions) {
+      return { result: null, error: payload.error ?? `Import failed (HTTP ${response.status})` };
+    }
+    return { result: payload.importSessions, error: null };
+  } catch (cause) {
+    return { result: null, error: cause instanceof Error ? cause.message : 'Import failed' };
+  }
+}
+
+/**
+ * Flip one harness's auto-import switch.
+ *
+ * Switching ON also runs one import server-side, so the card gets the counts
+ * back immediately; a failed import is reported beside the switch and does not
+ * undo it. The store is updated from the SERVER's answer, never the draft.
+ */
+async function setAutoImport(
+  id: string,
+  enabled: boolean,
+): Promise<{ autoImport: boolean | null; result: HarnessSessionImport | null; error: string | null }> {
+  try {
+    const response = await fetch('/api/harness', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ probe: id, autoImport: enabled }),
+    });
+    const payload = (await response.json()) as {
+      autoImport?: boolean;
+      importSessions?: HarnessSessionImport;
+      error?: string;
+    };
+    if (!response.ok || typeof payload.autoImport !== 'boolean') {
+      return { autoImport: null, result: null, error: payload.error ?? `Switch failed (HTTP ${response.status})` };
+    }
+    emit({
+      harnesses: store.harnesses.map((entry) => (
+        entry.id === id ? { ...entry, autoImport: payload.autoImport as boolean } : entry
+      )),
+    });
+    return { autoImport: payload.autoImport, result: payload.importSessions ?? null, error: payload.error ?? null };
+  } catch (cause) {
+    return { autoImport: null, result: null, error: cause instanceof Error ? cause.message : 'Switch failed' };
+  }
+}
+
 export interface UseHarnessesOptions {
   /**
    * Read `/api/harness` and follow its changes. Defaults to true.
@@ -223,6 +288,8 @@ export function useHarnesses({ enabled = true }: UseHarnessesOptions = {}): Harn
       void invalidateCatalog();
     },
     probe: probeHarness,
+    importSessions,
+    setAutoImport,
     setEnabled: setHarnessEnabled,
   };
 }

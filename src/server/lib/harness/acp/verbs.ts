@@ -16,7 +16,7 @@
  * `session/prompt` answer (`stopReason: "cancelled"`).
  */
 
-import type { AcpMcpServer, AcpSessionInfo, AcpSessionNewResult } from '@/server/lib/harness/acp/protocol';
+import type { AcpMcpServerWire, AcpSessionInfo, AcpSessionNewResult } from '@/server/lib/harness/acp/protocol';
 import { normalizeConfigOptions, normalizeSessionResult } from '@/server/lib/harness/acp/v2';
 
 /** One request/response round trip against an ACP agent. Implemented by
@@ -33,7 +33,7 @@ export async function newSession(
   cwd: string,
   timeoutMs = 120_000,
   dialect: AcpDialect = 1,
-  mcpServers: AcpMcpServer[] = [],
+  mcpServers: AcpMcpServerWire[] = [],
 ): Promise<AcpSessionNewResult> {
   const result = await invoke<Record<string, unknown>>('session/new', { cwd, mcpServers }, timeoutMs);
   return dialect === 2 ? normalizeSessionResult(result) : (result as unknown as AcpSessionNewResult);
@@ -44,7 +44,7 @@ export async function loadSession(
   sessionId: string,
   cwd: string,
   timeoutMs = 120_000,
-  mcpServers: AcpMcpServer[] = [],
+  mcpServers: AcpMcpServerWire[] = [],
 ): Promise<unknown> {
   return invoke('session/load', { sessionId, cwd, mcpServers }, timeoutMs);
 }
@@ -55,9 +55,17 @@ export async function resumeSession(
   cwd: string,
   timeoutMs = 120_000,
   dialect: AcpDialect = 1,
-  mcpServers: AcpMcpServer[] = [],
+  mcpServers: AcpMcpServerWire[] = [],
+  /** v2 only: `{ type: 'start' }` replays the retained history as ordinary
+   *  `session/update` frames before the reply. v1 peers replay through
+   *  `session/load` instead. */
+  replayFrom?: { type: 'start' },
 ): Promise<unknown> {
-  const result = await invoke<Record<string, unknown>>('session/resume', { sessionId, cwd, mcpServers }, timeoutMs);
+  const result = await invoke<Record<string, unknown>>(
+    'session/resume',
+    { sessionId, cwd, mcpServers, ...(dialect === 2 && replayFrom ? { replayFrom } : {}) },
+    timeoutMs,
+  );
   return dialect === 2 ? normalizeSessionResult(result) : result;
 }
 
@@ -68,7 +76,7 @@ export async function forkSession(
   timeoutMs = 120_000,
   target?: Record<string, unknown>,
   meta?: Record<string, unknown>,
-  mcpServers: AcpMcpServer[] = [],
+  mcpServers: AcpMcpServerWire[] = [],
 ): Promise<AcpSessionNewResult> {
   return invoke<AcpSessionNewResult>(
     'session/fork',
@@ -80,6 +88,44 @@ export async function forkSession(
 export async function listSessions(invoke: AcpInvoke, cwd?: string, timeoutMs = 60_000): Promise<AcpSessionInfo[]> {
   const result = await invoke<{ sessions?: AcpSessionInfo[] }>('session/list', cwd ? { cwd } : {}, timeoutMs);
   return Array.isArray(result?.sessions) ? result.sessions : [];
+}
+
+/**
+ * Every session an agent reports, following `nextCursor`.
+ *
+ * `listSessions` drops the cursor, so an agent with more than one page answered
+ * a truncated list. That is not an acceptable import: a chat the user ran in a
+ * terminal would simply be missing. `maxPages` bounds a broken agent that keeps
+ * repeating the same cursor, and a repeated cursor ends the walk rather than
+ * looping forever.
+ *
+ * The caller passes NO `cwd`: codex's cwd-filtered list tears its app-server
+ * down before answering (measured, 2.5.0 and 2.7.0), and the import files each
+ * row by its own cwd anyway.
+ */
+export async function listAllSessions(
+  invoke: AcpInvoke,
+  timeoutMs = 60_000,
+  maxPages = 20,
+): Promise<AcpSessionInfo[]> {
+  const out: AcpSessionInfo[] = [];
+  const seen = new Set<string>();
+  let cursor: string | null = null;
+  for (let page = 0; page < maxPages; page += 1) {
+    const result: { sessions?: AcpSessionInfo[]; nextCursor?: string | null } = await invoke(
+      'session/list',
+      cursor ? { cursor } : {},
+      timeoutMs,
+    );
+    if (Array.isArray(result?.sessions)) out.push(...result.sessions);
+    const next: string | null = typeof result?.nextCursor === 'string' && result.nextCursor
+      ? result.nextCursor
+      : null;
+    if (!next || seen.has(next)) break;
+    seen.add(next);
+    cursor = next;
+  }
+  return out;
 }
 
 /** One prompt turn. Resolves when the agent answers `session/prompt`, which is

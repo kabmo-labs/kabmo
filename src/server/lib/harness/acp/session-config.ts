@@ -30,7 +30,7 @@
  */
 
 import { configOption, modelFromOption } from '@/server/lib/harness/acp/prompt';
-import type { AcpConfigOption } from '@/server/lib/harness/acp/protocol';
+import type { AcpConfigOption, AcpSessionModeState } from '@/server/lib/harness/acp/protocol';
 import type { PendingPermissions } from '@/server/lib/harness/acp/permissions';
 import { markStreamModel } from '@/shared/lib/omp/session/stream-state.server';
 import type { HarnessId } from '@/shared/lib/harness/catalog';
@@ -145,4 +145,39 @@ export function settlePermissionDialog(
   responder.respond(entry.id, {
     outcome: chosen ? { outcome: 'selected', optionId: chosen.optionId } : { outcome: 'cancelled' },
   });
+}
+
+/** The process slice a config write drives; `AcpProcess` satisfies it. */
+export interface AcpConfigWriter extends AcpConfigNotice {
+  modes: AcpSessionModeState | null;
+  writeConfigOption(configId: string, value: string | boolean): Promise<unknown>;
+  writeMode(modeId: string): Promise<unknown>;
+}
+
+/**
+ * Write one config selector and adopt the agent's answer.
+ *
+ * The synthesized `mode` selector an agent that speaks only `modes` publishes
+ * has no config option to write, so that one value goes through `session/set_mode`.
+ */
+export async function setAcpConfig(
+  target: AcpConfigWriter,
+  configId: string,
+  value: string | boolean,
+): Promise<unknown> {
+  if (configId === 'mode' && typeof value === 'string' && !target.configOptions.some((option) => option.id === 'mode') && target.modes) {
+    return setAcpMode(target, value);
+  }
+  const result = await target.writeConfigOption(configId, value);
+  adoptConfigAnswer(target, result, { configId, value });
+  publishConfigChange(target, configId);
+  return result;
+}
+
+/** `session/set_mode`: the pre-config-options way to move a mode. */
+export async function setAcpMode(target: AcpConfigWriter, modeId: string): Promise<unknown> {
+  const result = await target.writeMode(modeId);
+  if (target.modes) target.modes = { ...target.modes, currentModeId: modeId };
+  target.emit({ type: 'mode_changed', modeId });
+  return result;
 }

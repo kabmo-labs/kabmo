@@ -11,7 +11,7 @@
  */
 
 import type {
-  HarnessConfig, HarnessImportOutcome, HarnessProviderSupport, HarnessSummary, LiveHarnessModels,
+  HarnessConfig, HarnessImportOutcome, HarnessProviderSupport, HarnessSessionImport, HarnessSummary, LiveHarnessModels,
 } from '@/shared/types/harness';
 import type { AddProviderInput } from '@/client/components/settings/categories/harness-settings/AddProviderForm';
 
@@ -54,4 +54,11 @@ export interface HarnessesController {
   /** Switch one harness on or off. Switching ON also probes it once, server-side,
    *  so its models are ready for the composer. Resolves to the refusal, or null. */
   setEnabled: (id: string, enabled: boolean) => Promise<string | null>;
+  /** Copy the sessions this agent already holds into the sidebar. */
+  importSessions: (id: string) => Promise<{ result: HarnessSessionImport | null; error: string | null }>;
+  /** Enable/disable the boot-and-refresh import; enabling imports once now. */
+  setAutoImport: (
+    id: string,
+    enabled: boolean,
+  ) => Promise<{ autoImport: boolean | null; result: HarnessSessionImport | null; error: string | null }>;
 }

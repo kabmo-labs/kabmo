@@ -26,6 +26,7 @@ import { publishLiveModels } from '@/client/hooks/models/use-harnesses';
 import { SESSION_META_RETRY_SCHEDULE_MS } from '@/shared/lib/workspace/refresh-cadence';
 import { useSessionPagination } from '@/client/hooks/chat/timeline/session-pagination';
 import { useLostRunRecovery } from '@/client/hooks/chat/timeline/lost-run';
+import { useRestoreHistory } from '@/client/hooks/chat/timeline/restore-history';
 import { isOwnSpawn, isSpawnArrival } from '@/client/hooks/chat/timeline/session-switch';
 
 export interface UseSessionLoadDeps {
@@ -122,6 +123,7 @@ export function useSessionLoad(deps: UseSessionLoadDeps) {
    *  real session title instead of the default. Retries on a front-loaded
    *  backoff until the JSONL actually carries messages (omp writes the user
    *  turn on agent start). */
+
   const refreshSessionMeta = useCallback((sid: string) => {
     // The URL lags the adopted id right after a fresh spawn, so accept either.
     const isActive = () => sessionIdRef.current === sid || adoptedSessionIdRef.current === sid;
@@ -215,6 +217,8 @@ export function useSessionLoad(deps: UseSessionLoadDeps) {
     cancelStreamingCoalescer,
   });
 
+  const restoreHistory = useRestoreHistory({ reloadMessages, setLocalMessages });
+
   // Fetch session messages and details from API
   useEffect(() => {
     let active = true;
@@ -288,6 +292,9 @@ export function useSessionLoad(deps: UseSessionLoadDeps) {
           setSessionLoading(false);
           if (data?.session) {
             applySessionData(data.session);
+            if (data.session.restore === true) {
+              void restoreHistory(String(data.session.id ?? sessionId));
+            }
             const fetched = data.session.messages || [];
             // Never replace, never merge, never empty while the stream owns the
             // rows: a committed fetch is a lagging snapshot and applying one
@@ -322,7 +329,7 @@ export function useSessionLoad(deps: UseSessionLoadDeps) {
     // sessionModel identity flows through applySessionData; the effect only
     // re-runs on session switches by design.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId, applySessionData, timelineOwnedByLiveRun, seededSessionData, setLocalMessages, setGenerating]);
+  }, [sessionId, applySessionData, timelineOwnedByLiveRun, seededSessionData, setLocalMessages, setGenerating, restoreHistory]);
 
   return {
     sessionData,

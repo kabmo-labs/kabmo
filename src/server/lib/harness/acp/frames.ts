@@ -51,10 +51,24 @@ export class AcpFrameMapper {
   private turnStartedAt: number | null = null;
   /** When the open message's first frame arrived, its timeline stamp. */
   private openedAt: number | null = null;
+  /** True only while a restore is replaying retained history. User turns then
+   *  become rows: live `user_message` frames are receipts for a bubble the
+   *  composer already drew, but a replay is the first time the client sees
+   *  them. */
+  private replaying = false;
+  /** The user turn currently being replayed, if any. */
+  private replayUser: { id: string; text: string; timestamp: number } | null = null;
   private readonly tools = new AcpToolCalls({
     pushBlock: (block) => this.blocks.push(block),
     snapshot: () => this.snapshot(),
   });
+
+  /** Enter or leave replay mode. Leaving drops the half-accumulated user turn so
+   *  a later live frame cannot append to the restored row. */
+  setReplaying(on: boolean): void {
+    this.replaying = on;
+    if (!on) this.replayUser = null;
+  }
 
   /** Forget per-turn state (an aborted run, a fresh load) and start its clock. */
   reset(startedAt: number = Date.now()): void {
@@ -91,9 +105,10 @@ export class AcpFrameMapper {
         return this.upsertMessage(update, 'thinking');
       case 'user_message':
       case 'user_message_chunk':
-        // Live user chunks only arrive on replay/steering; the composer already
-        // drew the optimistic bubble, so this is a receipt, not a new row.
-        return [];
+        // Live user chunks only arrive on steering; the composer already drew
+        // the optimistic bubble, so this is a receipt, not a new row. During a
+        // RESTORE it is the only copy of the user turn, so it becomes one.
+        return this.replaying ? this.replayUserFrames(update) : [];
       case 'tool_call':
         return this.tools.open(update);
       case 'tool_call_update':
@@ -177,6 +192,33 @@ export class AcpFrameMapper {
       timestamp,
       content: this.blocks.map((block) => ({ ...block })),
     };
+  }
+
+  /** Turn a replayed user turn into a row.
+   *
+   *  The adapter sends the first `user_message` with empty content and the text
+   *  in `user_message_chunk` (measured on codex and claude), so the row is
+   *  opened on the first non-empty text and updated by later chunks of the same
+   *  `messageId`. The assistant accumulator is deliberately untouched: a user
+   *  turn must not close or reopen the answer's message. */
+  private replayUserFrames(update: Record<string, unknown>): AgentEvent[] {
+    const text = acpContentText(update.content);
+    const id = typeof update.messageId === 'string' && update.messageId
+      ? `user-${update.messageId}`
+      : this.replayUser?.id ?? `user-${crypto.randomUUID()}`;
+    if (!this.replayUser || this.replayUser.id !== id) {
+      this.replayUser = { id, text: '', timestamp: Date.now() };
+    }
+    if (!text) return [];
+    const opened = this.replayUser.text.length > 0;
+    this.replayUser.text += text;
+    const message: Record<string, unknown> = {
+      role: 'user',
+      id: this.replayUser.id,
+      timestamp: this.replayUser.timestamp,
+      content: [{ type: 'text', text: this.replayUser.text }],
+    };
+    return [{ type: opened ? 'message_update' : 'message_start', message }];
   }
 
   private appendChunk(update: Record<string, unknown>, kind: 'text' | 'thinking'): AgentEvent[] {

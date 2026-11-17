@@ -47,7 +47,7 @@ interface HarnessSettingsProps {
 export function HarnessSettings({ only }: HarnessSettingsProps = {}) {
   const {
     harnesses, configs, providerSupport, isLoading, error, reload, probe, saveConfig, importProvider, addProvider,
-    setEnabled,
+    setEnabled, importSessions, setAutoImport,
   } = useHarnesses();
   const [query, setQuery] = useState('');
   // Which switch, or which Check, is in flight. ONE field for both because both
@@ -184,6 +184,8 @@ export function HarnessSettings({ only }: HarnessSettingsProps = {}) {
               {...(providerSupport[summary.id] ? { providerSupport: providerSupport[summary.id] } : {})}
               onImportProvider={importProvider}
               onAddProvider={addProvider}
+              onImportSessions={importSessions}
+              onSetAutoImport={setAutoImport}
             />
           ))}
           {filtered.length === 0 && (

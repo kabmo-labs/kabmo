@@ -164,8 +164,13 @@ export async function runAutoProbe(options: AutoProbeOptions = {}): Promise<Auto
  * not spawn the agents again — and never awaited, because boot does not wait for
  * an agent to answer.
  */
-export function startHarnessAutoProbe(): void {
-  if (globalThis.__kabmoHarnessAutoProbePid === process.pid) return;
+export function startHarnessAutoProbe(onDone?: () => void): void {
+  if (globalThis.__kabmoHarnessAutoProbePid === process.pid) {
+    // A `--hot` reload re-runs the boot wiring but keeps this process: the
+    // probe already ran, and its DEPENDENT clocks still need their start.
+    onDone?.();
+    return;
+  }
   globalThis.__kabmoHarnessAutoProbePid = process.pid;
   void runAutoProbe()
     .then(({ probed, failed }) => {
@@ -176,5 +181,6 @@ export function startHarnessAutoProbe(): void {
     })
     .catch((error) => {
       console.error('[harness] boot probe skipped:', error);
-    });
+    })
+    .finally(() => onDone?.());
 }

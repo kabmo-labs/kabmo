@@ -19,6 +19,7 @@ import {
   normalizePermissionParams,
   normalizeSessionResult,
   planEntries,
+  toAcpV2McpServers,
 } from '@/server/lib/harness/acp/v2';
 
 const v2Init = {
@@ -140,5 +141,42 @@ describe('planEntries', () => {
     expect(planEntries({ plan: { type: 'items', planId: 'p1', entries: [{ content: 'a' }] } })).toEqual([{ content: 'a' }]);
     expect(planEntries({ plan: { type: '_future', planId: 'p2', entries: [{ content: 'a' }] } })).toEqual([]);
     expect(planEntries({})).toEqual([]);
+  });
+});
+
+describe('toAcpV2McpServers', () => {
+  test('tags stdio, keeps an absolute command, and carries the env pairs', () => {
+    const out = toAcpV2McpServers([
+      { name: 'echo', command: '/bin/echo', args: ['hi'], env: [{ name: 'A', value: 'B' }] },
+    ]);
+    expect(out).toEqual([
+      { type: 'stdio', name: 'echo', command: '/bin/echo', args: ['hi'], env: [{ name: 'A', value: 'B' }] },
+    ]);
+  });
+
+  test('resolves a bare binary name to an absolute path', () => {
+    const out = toAcpV2McpServers([{ name: 'echo', command: 'echo', args: [], env: [] }]);
+    expect(out).toHaveLength(1);
+    const first = out[0] as { type: string; command: string };
+    expect(first.type).toBe('stdio');
+    expect(first.command.startsWith('/')).toBe(true);
+  });
+
+  test('keeps http and sse tagged as the peer expects', () => {
+    const out = toAcpV2McpServers([
+      { type: 'http', name: 'web', url: 'http://127.0.0.1/mcp', headers: [{ name: 'X', value: 'Y' }] },
+      { type: 'sse', name: 'stream', url: 'http://127.0.0.1/sse', headers: [] },
+    ]);
+    expect(out).toEqual([
+      { type: 'http', name: 'web', url: 'http://127.0.0.1/mcp', headers: [{ name: 'X', value: 'Y' }] },
+      { type: 'sse', name: 'stream', url: 'http://127.0.0.1/sse', headers: [] },
+    ]);
+  });
+
+  test('skips a command nothing can resolve instead of failing the session', () => {
+    const out = toAcpV2McpServers([
+      { name: 'missing', command: 'kabmo-definitely-missing-xyz', args: [], env: [] },
+    ]);
+    expect(out).toEqual([]);
   });
 });

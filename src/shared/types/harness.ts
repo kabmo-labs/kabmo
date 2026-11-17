@@ -71,6 +71,9 @@ export interface HarnessSummary {
    *  someone actually runs. Always true for the built-in transport, which has no
    *  switch. */
   enabled: boolean;
+  /** Whether the boot/refresh pass copies this agent's own sessions. On by the
+   *  user's switch only: the pass spawns an agent per enabled harness. */
+  autoImport?: boolean;
   /** The live probe, or null when this harness has never been probed. */
   probe: {
     harness: string;
@@ -209,4 +212,18 @@ export function capabilitiesOf(
 ): HarnessCapabilities {
   if (!id) return UNKNOWN_CAPABILITIES;
   return harnesses.find((entry) => entry.id === id)?.probe?.capabilities ?? UNKNOWN_CAPABILITIES;
+}
+
+/**
+ * What one `session/list` import did, in words the card can repeat.
+ *
+ * `outside` is not a failure: the agent holds sessions whose cwd is not a
+ * workspace Kabmo knows, so the sidebar has no folder to file them under. The
+ * count exists so a reader can tell "nothing found" from "found, but elsewhere".
+ */
+export interface HarnessSessionImport {
+  harness: string;
+  imported: number;
+  known: number;
+  outside: number;
 }
