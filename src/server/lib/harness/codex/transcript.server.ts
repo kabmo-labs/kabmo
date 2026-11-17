@@ -27,7 +27,7 @@ import { loadHarnessConfig } from '@/server/lib/harness/config.server';
 import type { ChatMessageData, ToolCallData, ToolType } from '@/shared/types/chat';
 
 /** The Codex data root, from the harness config's `CODEX_HOME` or `~/.codex`. */
-async function codexHome(): Promise<string> {
+export async function codexHome(): Promise<string> {
   const configured = await loadHarnessConfig('codex').catch(() => null);
   const env = configured?.env ?? '';
   const line = /^\s*(?:export\s+)?CODEX_HOME\s*=\s*(.+?)\s*$/m.exec(env)?.[1];

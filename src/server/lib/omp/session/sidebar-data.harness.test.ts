@@ -23,6 +23,7 @@
  */
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, setDefaultTimeout, test } from 'bun:test';
+import { Database } from 'bun:sqlite';
 import fs from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -31,7 +32,7 @@ import { getDb } from '@/server/db.server';
 import { loadSidebarStructure } from '@/server/lib/omp/session/sidebar-data.server';
 import { invalidateOmpSidebarData } from '@/server/lib/omp/session/reader';
 import { clearSessionFileCaches } from '@/server/lib/omp/session/files';
-import { saveHarnessSession } from '@/server/lib/harness/session-store.server';
+import { importHarnessSession, saveHarnessSession } from '@/server/lib/harness/session-store.server';
 import { noteAgentTitle, notePromptTitle } from '@/server/lib/harness/session-title.server';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { removeDir } from '@/test-support/remove-dir';
@@ -100,6 +101,14 @@ async function writeOmpSession(id: string, timestamp: string): Promise<void> {
     }),
   ];
   await Bun.write(join(dir, `${id}.jsonl`), `${lines.join('\n')}\n`);
+}
+
+/** One omp session file with a header and no message — the empty-session shape. */
+async function writeEmptyOmpSession(id: string, timestamp: string): Promise<void> {
+  const dir = join(sessionsRoot, 'project');
+  await fs.promises.mkdir(dir, { recursive: true });
+  const header = JSON.stringify({ type: 'session', id, cwd: project, timestamp });
+  await Bun.write(join(dir, `${id}.jsonl`), `${header}\n`);
 }
 
 async function registerFolder(projectPath: string): Promise<number> {
@@ -246,5 +255,46 @@ describe('a sidebar row names its harness', () => {
     // and resume it against the wrong agent. The MARK is what stays absent:
     // `HarnessGlyph` renders nothing when no descriptor exists.
     expect(row?.harness).toBe('some-future-agent');
+  });
+});
+
+describe('a row without a transcript is not listed', () => {
+  test('an omp session file with a header and no message is skipped', async () => {
+    const folderId = await registerFolder(project);
+    await writeOmpSession('omp-used', '2026-11-06T00:00:00.000Z');
+    await writeEmptyOmpSession('omp-empty', '2026-11-06T00:00:01.000Z');
+
+    const ids = (await folderSessions(folderId)).map((entry) => String(entry.id));
+    expect(ids).toContain('omp-used');
+    expect(ids).not.toContain('omp-empty');
+  });
+
+  test('an imported session the agent store proves empty is skipped', async () => {
+    const folderId = await registerFolder(project);
+    const xdg = join(root, 'xdg');
+    const savedXdg = Bun.env.XDG_DATA_HOME;
+    Bun.env.XDG_DATA_HOME = xdg;
+    try {
+      const dir = join(xdg, 'opencode');
+      await fs.promises.mkdir(dir, { recursive: true });
+      const db = new Database(join(dir, 'opencode.db'), { create: true });
+      db.exec('CREATE TABLE message (id TEXT PRIMARY KEY, session_id TEXT NOT NULL)');
+      db.run('INSERT INTO message (id, session_id) VALUES (?, ?)', ['m1', 'ses_used']);
+      db.close();
+
+      for (const id of ['ses_used', 'ses_empty']) {
+        await importHarnessSession({
+          sessionId: id, harness: 'opencode', agentSessionId: '', cwd: project,
+          title: '', createdAt: Date.now(), updatedAt: Date.now(),
+        });
+      }
+
+      const ids = (await folderSessions(folderId)).map((entry) => String(entry.id));
+      expect(ids).toContain('ses_used');
+      expect(ids).not.toContain('ses_empty');
+    } finally {
+      if (savedXdg === undefined) delete Bun.env.XDG_DATA_HOME;
+      else Bun.env.XDG_DATA_HOME = savedXdg;
+    }
   });
 });

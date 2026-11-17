@@ -33,7 +33,8 @@ import {
 import type { SidebarActivityPayload, SidebarPayload, SidebarStatusPayload } from '@/shared/types/realtime';
 import { isValidPluginId } from '@/shared/lib/plugins/protocol';
 import type { TopicDescriptor } from '@/server/lib/realtime/hub.types';
-import { loadSidebarStatus, loadSidebarStructure } from '@/server/lib/omp/session/sidebar-data.server';
+import { loadSidebarStructure } from '@/server/lib/omp/session/sidebar-data.server';
+import { loadSidebarStatus } from '@/server/lib/omp/session/sidebar-status.server';
 import { loadSidebarActivity } from '@/server/lib/omp/session/sidebar-activity.server';
 import { sessionDescriptor } from '@/server/lib/realtime/topics/session.server';
 import { btwDescriptor } from '@/server/lib/realtime/topics/btw.server';

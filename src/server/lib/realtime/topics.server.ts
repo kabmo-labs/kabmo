@@ -29,7 +29,8 @@ import {
 import { getRealtimeHub, registerTopics, type TopicDescriptor } from '@/server/lib/realtime/hub.server';
 import { onRealtimeSignal } from '@/server/lib/realtime/signals.server';
 import { invalidateOmpSidebarData } from '@/server/lib/omp/session/reader';
-import { loadSidebarStatus, loadSidebarStructure } from '@/server/lib/omp/session/sidebar-data.server';
+import { loadSidebarStructure } from '@/server/lib/omp/session/sidebar-data.server';
+import { loadSidebarStatus } from '@/server/lib/omp/session/sidebar-status.server';
 import { loadSidebarActivity } from '@/server/lib/omp/session/sidebar-activity.server';
 import { EXACT_TOPICS, descriptorFor, isKnownTopicName } from '@/server/lib/realtime/topics/catalog.server';
 

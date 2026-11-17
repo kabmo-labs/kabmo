@@ -4,8 +4,10 @@
  */
 
 /**
- * Single source of truth for the sidebar session list (folders + sessions +
- * live stream statuses). Shared by:
+ * The sidebar's STRUCTURE: folders, their sessions, and the sort order. The
+ * volatile half (stream status, run model, blocked-on-dialog) lives in
+ * `sidebar-status.server.ts`; `loadSidebarData` merges the two for the one
+ * endpoint that still wants both. Shared by:
  *
  *   - GET /api/sessions/list — the client-side fetch endpoint the session
  *     sidebars refresh through (`useSidebarData`), skeleton-first.
@@ -22,14 +24,12 @@ import { DEFAULT_SESSION_SORT_OPTION, isValidSessionSortOption, sortFolders } fr
 import { groupSessionsByRoot, sessionTitleFor } from '@/shared/lib/omp/session/sidebar';
 import { loadOmpSidebarData } from '@/server/lib/omp/session/reader';
 import { sessionHasSubagents } from '@/server/lib/omp/session/subagent-presence';
-import { loadStreamStates } from '@/shared/lib/omp/session/stream-state.server';
-import { healStaleStreamStatuses } from '@/shared/lib/omp/session/stream-heal.server';
-import { getAwaitingInputSessionIds, getLiveRunSessionIds, listRpcSessions } from '@/server/lib/omp/rpc/session-registry';
 import type { SessionItemData, SessionSortOption, WorkspaceFolderData } from '@/shared/types';
-import type { SidebarStatusEntry } from '@/shared/types/realtime';
 import { sessionWorktreeMap } from '@/server/lib/fs/worktree/topology';
 import { DEFAULT_HARNESS_ID, HARNESS_IDS } from '@/shared/lib/harness/catalog';
 import { knownHarness, loadAcpSessions, loadHarnessBySession } from '@/server/lib/harness/session-store.server';
+import { sessionsWithoutTranscript } from '@/server/lib/harness/session-transcript.server';
+import { loadSidebarStatus } from '@/server/lib/omp/session/sidebar-status.server';
 import { canonicalPath } from '@/server/lib/fs/canonical';
 import { acpRowsFor } from '@/server/lib/omp/session/acp-rows.server';
 import { decorateSidebarSessions } from '@/server/lib/sessions/sidebar-relations.server';
@@ -137,68 +137,6 @@ export async function loadSidebarStructure(): Promise<SessionListPayload> {
 }
 
 /**
- * The sidebar's VOLATILE fields, keyed by session id: live stream status, the
- * model serving the run, and whether the session is blocked on a dialog.
- *
- * `repair` runs the two self-heal halves, because this is where a stale spinner
- * is actually looked at:
- *
- *   - a `stream` row whose owning Kabmo process is gone (judged from the row
- *     alone, so every instance agrees);
- *   - a `stream` row THIS process owns with no live run behind it — an orphan,
- *     which only this process can see (see `healStaleStreamStatuses`), plus a
- *     `get_state` reconcile for the rows this process owns.
- *
- * The realtime publisher passes `repair: false`: it runs on every stream-status
- * WRITE, and a write is already the truth for the run it describes. The repair
- * belongs to the subscribe-time snapshot, which is the moment the old sidebar
- * poll used to provide it.
- */
-/** One session's volatile sidebar fields, as the status topic carries them. */
-export async function loadSidebarStatus(
-  options: { repair?: boolean } = {},
-): Promise<Record<string, SidebarStatusEntry>> {
-  // No MOCK short-circuit: the simulated stream writes the same `stream` row a
-  // real run does (`routes/chat/stream.ts`), so the sidebar spinner and the
-  // chat's generating indicator have one source in every mode. Returning `{}`
-  // here is what kept the two from ever agreeing under `MOCK=true`.
-  if (options.repair !== false) {
-    // The database is shared by every Kabmo instance on the machine, so a
-    // `stream` row may belong to a process this one cannot see. Ownership is
-    // read from the row itself (its `owner_pid`) against OS liveness — never
-    // against this process's own runtime registry, which would make two
-    // instances report different statuses for the same run.
-    //
-    // The live-run set is passed for the OTHER half only: the rows this process
-    // owns. It is deliberately not the staleness rule, which must stay
-    // instance-independent.
-    await healStaleStreamStatuses(getLiveRunSessionIds());
-    // The heal judges a row from its owner pid alone; a row this process owns
-    // while no run is behind it needs the OWNER's view of the child, which only
-    // a `get_state` can give (see `run-settle.server.ts`). Fire-and-forget: the
-    // list never waits on a probe, and the next read carries the settled status.
-    for (const session of listRpcSessions()) void session.runSettle.reconcile('request');
-  }
-
-  const status: Record<string, SidebarStatusEntry> = {};
-  for (const [id, state] of Object.entries(await loadStreamStates())) {
-    status[id] = {
-      streamStatus: state.status,
-      ...(state.model ? { runModel: state.model } : {}),
-      ...(state.failure ? { runFailure: state.failure } : {}),
-      ...(state.startedAt !== undefined ? { runStartedAt: state.startedAt } : {}),
-    };
-  }
-  // Sessions blocked on a dialog nobody has answered yet. Read live from the
-  // process registry (never persisted): the child that owns the question is the
-  // same thing that owns the flag, so a restart cannot leave a stale badge.
-  for (const id of getAwaitingInputSessionIds()) {
-    status[id] = { ...(status[id] ?? {}), awaitingInput: true };
-  }
-  return status;
-}
-
-/**
  * The two halves merged into one payload — what `GET /api/sessions/list`
  * answers and what the sidebar rendered before the realtime transport existed.
  */
@@ -255,6 +193,15 @@ async function buildRealFolders(folderRows: FolderRow[], archivedIds: Set<string
     harnessBySession = new Map();
     acpSessions = [];
   }
+  // An imported row is a promise that the agent holds a transcript. opencode
+  // reports every session it ever created, and 114 of 131 on this machine held
+  // no message — the sidebar drew them as `New session - <timestamp>` rows that
+  // open an empty chat. A SPAWNED row is kept: the user created it, and the
+  // client draws its pending row until the first message lands.
+  const withoutTranscript = await sessionsWithoutTranscript(
+    acpSessions.filter((row) => row.origin === 'imported'),
+  );
+  const visibleAcpSessions = acpSessions.filter((row) => !withoutTranscript.has(row.sessionId));
 
   return Promise.all(folderRows.map(async (folder) => {
     const root = folder.project_path ?? '';
@@ -267,8 +214,13 @@ async function buildRealFolders(folderRows: FolderRow[], archivedIds: Set<string
     // worktree badge could never appear because the session was not even in the
     // folder it belongs to.
     const rootKey = root ? await canonicalPath(root) : '';
+    // A session file with a header and no message is not a chat: omp writes the
+    // file when the session is created, and 208 of 1793 files on this machine
+    // held no message at all. Listing them drew `New Session - <timestamp>`
+    // rows that open an empty transcript.
     const rootSessions: OmpSession[] = root
       ? (sessionsByRoot.get(rootKey) ?? sessionsByRoot.get(root) ?? [])
+        .filter((session) => session.messageCount > 0)
       : [];
     // One topology read per repository, however many sessions it has. A chat in
     // the checkout itself is absent from this map, which is exactly what the row
@@ -311,7 +263,7 @@ async function buildRealFolders(folderRows: FolderRow[], archivedIds: Set<string
     // their cwd, resolved the same way the discovery scan resolves it — a chat
     // started in a subdirectory belongs to the folder that owns it, not to none.
     const folderAcp = rootKey
-      ? await acpRowsFor(acpSessions, rootKey, folder.id, archivedIds)
+      ? await acpRowsFor(visibleAcpSessions, rootKey, folder.id, archivedIds)
       : [];
     // ONE CHAT, ONE ROW. The two producers overlap whenever the agent writes a
     // session file AND has a `harness_sessions` record, and that is not a

@@ -33,6 +33,7 @@ import { withGatewayCompatibility } from '@/server/lib/harness/acp/gateway-env';
 import { loadHarnessConfig, resolveLaunch } from '@/server/lib/harness/config.server';
 import { ensureCustomHarnesses } from '@/server/lib/harness/custom.server';
 import { harnessSessionKnown, importHarnessSession } from '@/server/lib/harness/session-store.server';
+import { sessionsWithoutTranscript } from '@/server/lib/harness/session-transcript.server';
 import { canonicalPath } from '@/server/lib/fs/canonical';
 import { resolveProjectRoot } from '@/server/lib/omp/core/worktree';
 import { getDb } from '@/server/db.server';
@@ -114,11 +115,23 @@ export async function importHarnessSessions(id: HarnessId): Promise<HarnessSessi
   }
   const sessions = await listSessions(launch.command, withGatewayCompatibility(id, launch.env));
   const roots = await workspaceRoots();
+  // A session the agent created and never used has no transcript in its own
+  // store. Importing it would draw a sidebar row that opens an empty chat, so
+  // the pass skips it and reports the count. A store Kabmo cannot read yields
+  // no verdict, and the row is imported as before.
+  const withoutTranscript = await sessionsWithoutTranscript(
+    sessions.map((session) => ({ harness: id, sessionId: session.sessionId })),
+  );
 
   let imported = 0;
   let known = 0;
   let outside = 0;
+  let empty = 0;
   for (const session of sessions) {
+    if (withoutTranscript.has(session.sessionId)) {
+      empty += 1;
+      continue;
+    }
     const cwd = typeof session.cwd === 'string' ? session.cwd.trim() : '';
     if (!cwd) {
       outside += 1;
@@ -150,5 +163,5 @@ export async function importHarnessSessions(id: HarnessId): Promise<HarnessSessi
     else known += 1;
   }
   if (imported > 0) emitRealtimeSignal('sidebar-structure');
-  return { harness: id, imported, known, outside };
+  return { harness: id, imported, known, outside, empty };
 }

@@ -42,6 +42,7 @@ function describeImport(result: HarnessSessionImport): string {
     `${result.imported} imported`,
     `${result.known} already listed`,
     ...(result.outside > 0 ? [`${result.outside} outside your workspaces`] : []),
+    ...(result.empty > 0 ? [`${result.empty} without a transcript`] : []),
   ].join(' · ');
 }
 

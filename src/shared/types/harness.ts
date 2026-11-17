@@ -220,10 +220,15 @@ export function capabilitiesOf(
  * `outside` is not a failure: the agent holds sessions whose cwd is not a
  * workspace Kabmo knows, so the sidebar has no folder to file them under. The
  * count exists so a reader can tell "nothing found" from "found, but elsewhere".
+ *
+ * `empty` is the same kind of answer for a session the agent created and never
+ * used: its own store holds no transcript, so the sidebar would draw a row that
+ * opens an empty chat. It is skipped, and counted rather than hidden.
  */
 export interface HarnessSessionImport {
   harness: string;
   imported: number;
   known: number;
   outside: number;
+  empty: number;
 }
