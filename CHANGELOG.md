@@ -4,6 +4,12 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.39.1](https://github.com/kabmo-labs/kabmo/compare/v0.39.0...v0.39.1) — 2026-11-17
+
+### Fixed
+
+* **shells:** keep the splash up when the console never starts ([370cb40](https://github.com/kabmo-labs/kabmo/commit/370cb40854a87ad7a37017d7aa1721e44c885b42)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.39.0](https://github.com/kabmo-labs/kabmo/compare/v0.38.2...v0.39.0) — 2026-11-17
 
 ### Added
