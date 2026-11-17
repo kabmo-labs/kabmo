@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+import AppKit
 import Foundation
 import UserNotifications
 
@@ -31,6 +32,40 @@ enum ShellNotifications {
         continuation.resume(returning: granted)
       }
     }
+  }
+
+  /**
+   The current grant, WITHOUT prompting.
+
+   The page reads this at boot and whenever the Notifications page is focused:
+   a denied grant means the platform drops every banner and its chime, so the
+   console must keep its own cue and say that the system is blocking it. Asking
+   here would be wrong — a prompt nobody requested is exactly what the
+   shipped-false preferences exist to avoid.
+   */
+  static func state() async -> [String: Any] {
+    let status = await withCheckedContinuation { (continuation: CheckedContinuation<String, Never>) in
+      UNUserNotificationCenter.current().getNotificationSettings { settings in
+        continuation.resume(
+          returning: NotificationWire.statusName(forRawValue: settings.authorizationStatus.rawValue)
+        )
+      }
+    }
+    return ["status": status, "canOpenSettings": true]
+  }
+
+  /**
+   Open the pane that owns this app's grant.
+
+   The Notifications pane, not the app's own page: macOS lists Kabmo there, and
+   that is the switch the user has to flip. A refusal is reported so the button
+   that calls this is never a silent no-op.
+   */
+  static func openSettings() -> Bool {
+    guard let url = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension") else {
+      return false
+    }
+    return NSWorkspace.shared.open(url)
   }
 
   /// Post one notification, replacing the earlier one with the same tag.

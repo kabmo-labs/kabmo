@@ -9,6 +9,9 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
 
 import {
+  notificationPermission,
+  openNotificationSettings,
+  readNotificationGrant,
   requestNotificationPermission,
   showOsNotification,
 } from '@/client/lib/notifications/os';
@@ -34,6 +37,14 @@ afterEach(() => {
 describe('a browser without the Notification API', () => {
   test('refuses permission instead of throwing', async () => {
     expect(await requestNotificationPermission()).toBe(false);
+  });
+
+  test('reports an unknown grant and has no settings screen', async () => {
+    // Not `denied`: nothing refused anything, and a guess would either silence
+    // the page's own chime or show an unfixable warning.
+    expect(await readNotificationGrant()).toEqual({ status: 'unknown', canOpenSettings: false });
+    expect(notificationPermission()).toBe('unknown');
+    expect(await openNotificationSettings()).toBe(false);
   });
 
   test('drops the banner instead of throwing', async () => {
@@ -125,5 +136,43 @@ describe('inside a Kabmo shell', () => {
     expect(await requestNotificationPermission()).toBe(false);
     // The refusal must not escape as an unhandled rejection.
     await expect(showOsNotification({ title: 'Kabmo', body: 'Done.', kind: 'finish' })).resolves.toBeUndefined();
+  });
+
+  test('the grant is read without prompting', async () => {
+    const calls = installShell(({ method }) =>
+      method === 'notification_state' ? { status: 'denied', canOpenSettings: true } : null);
+
+    expect(await readNotificationGrant()).toEqual({ status: 'denied', canOpenSettings: true });
+    // What `nativeBannerPlaysSound` reads synchronously, with no second IPC.
+    expect(notificationPermission()).toBe('denied');
+    expect(calls.map((call) => call.method)).toEqual(['notification_state']);
+  });
+
+  test('a malformed answer is unknown, not a refusal', async () => {
+    installShell(() => ({ status: 'maybe', canOpenSettings: 'yes' }));
+    expect(await readNotificationGrant()).toEqual({ status: 'unknown', canOpenSettings: false });
+  });
+
+  test('a shell that does not answer the command is unknown', async () => {
+    window.__kabmoCall = () => Promise.reject(new Error('This shell does not support notification_state.'));
+    expect(await readNotificationGrant()).toEqual({ status: 'unknown', canOpenSettings: false });
+    expect(notificationPermission()).toBe('unknown');
+  });
+
+  test('a refused prompt is remembered as denied', async () => {
+    installShell(() => ({ granted: false }));
+    expect(await requestNotificationPermission()).toBe(false);
+    expect(notificationPermission()).toBe('denied');
+  });
+
+  test('opening the system settings goes through the shell', async () => {
+    const calls = installShell(() => null);
+    expect(await openNotificationSettings()).toBe(true);
+    expect(calls).toEqual([{ method: 'notification_settings_open', params: {} }]);
+  });
+
+  test('a refused settings command is reported as false', async () => {
+    window.__kabmoCall = () => Promise.reject(new Error('This shell does not support notification_settings_open.'));
+    expect(await openNotificationSettings()).toBe(false);
   });
 });

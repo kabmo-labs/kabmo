@@ -28,6 +28,30 @@ public enum NotificationWire {
   }
 
   /**
+   The platform's grant, in the console's vocabulary.
+
+   `UNAuthorizationStatus` raw values ARE the wire: 0 notDetermined, 1 denied,
+   2 authorized, 3 provisional, 4 ephemeral. Only `denied` changes behaviour —
+   the page keeps its own chime and says the system is blocking it — but the
+   names travel verbatim so the two sides cannot disagree about which number
+   meant what. Provisional and ephemeral deliver quietly rather than not at all,
+   so they are `granted` here.
+   */
+  public static func statusName(forRawValue raw: Int) -> String {
+    switch raw {
+    case 0: return "notDetermined"
+    case 1: return "denied"
+    case 2, 3, 4: return "granted"
+    default: return "unknown"
+    }
+  }
+
+  /// The answer `notification_state` settles to. iOS has its own Settings page.
+  public static func state(_ status: String) -> String {
+    "{\"status\":\(ServerWire.jsString(status)),\"canOpenSettings\":true}"
+  }
+
+  /**
    The chime a banner plays: the console's own two cues.
 
    The console stops playing its Web Audio cue inside a shell, so these names ARE

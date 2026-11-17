@@ -482,8 +482,14 @@ install (`src/client/lib/shell/transport.ts`). Commands: `servers_state`,
 `servers_add`, `servers_remove`, `servers_activate`, `notification_request`
 (`POST_NOTIFICATIONS` on API 33+, asked only when a notification preference is
 switched on), `notification_show` (the agent's finished/waiting/failed banner; a
-tap opens that session) and `notification_watch` (arms the background watcher
-from the console's own switches). There is deliberately no
+tap opens that session), `notification_state` (the grant WITHOUT prompting:
+`areNotificationsEnabled()` plus the runtime permission, answered
+`granted`/`denied` with `canOpenSettings: true`), `notification_settings_open`
+(the app's notification screen, where a per-app toggle that is off can be turned
+back on) and `notification_watch` (arms the background watcher
+from the console's own switches). The state command is what lets the console
+state "the system is blocking Kabmo" instead of leaving a switch reading "on"
+while every banner is dropped. There is deliberately no
 `servers_start` / `servers_stop` — a phone has no child process to own — and the
 state answers `startable: false`, so the panel never draws the control. The list
 is `server_list` in SharedPreferences, migrated once from the single

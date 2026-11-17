@@ -709,6 +709,13 @@ public sealed class ShellHost
                 // the OS's own "notifications from apps" setting still applies,
                 // and the shell cannot query it. `granted` therefore means "this
                 // shell is able to ask", which is the only truthful answer.
+                //
+                // `notification_state` and `notification_settings_open` are
+                // deliberately NOT answered: an unpackaged WPF/WebView2 app has
+                // no API that reads its own grant, so the console keeps `unknown`
+                // and shows no "the system is blocking us" dialog — a warning it
+                // could neither prove nor let the user fix would be worse than
+                // silence. Only macOS and iOS can answer that question.
                 case "notification_request":
                     return new { granted = true };
 

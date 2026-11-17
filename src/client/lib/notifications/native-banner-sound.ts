@@ -23,11 +23,17 @@
  * - the event switch ON, because the server does not even record a silenced
  *   event, so no banner (and no chime) would arrive.
  *
+ * A fourth condition is the platform's own grant: a DENIED grant means the shell
+ * posts a banner the system drops, sound included, so the page must keep its
+ * cue. `unknown` (a shell with no permission model, or an older build) keeps the
+ * previous behaviour rather than guessing.
+ *
  * The event switches ship FALSE, which is why the page still plays its cue on a
  * fresh install: nothing has been switched on, so nothing else is making sound.
  */
 
 import { hasShellBridge } from '@/client/lib/shell/transport';
+import { notificationPermission } from '@/client/lib/notifications/os';
 import { notificationPlatformForClient } from '@/client/lib/notifications/platform';
 import {
   isNotificationEnabled,
@@ -41,6 +47,7 @@ export function nativeBannerPlaysSound(
 ): boolean {
   if (typeof window === 'undefined') return false;
   if (!hasShellBridge()) return false;
+  if (notificationPermission() === 'denied') return false;
   if (!isNotificationPlatformEnabled(notificationPlatformForClient(), appSettings)) return false;
   return isNotificationEnabled(event, appSettings);
 }

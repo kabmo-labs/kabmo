@@ -17,6 +17,7 @@ import { installPalettePublisher } from '@/client/lib/native/palette';
 import { installShellTransport } from '@/client/lib/shell/transport';
 import { installResumeDispatcher } from '@/client/lib/native/resume';
 import { syncNativeNotificationWatch } from '@/client/lib/notifications/watch';
+import { readNotificationGrant } from '@/client/lib/notifications/os';
 import { installOpenSessionDispatcher } from '@/client/lib/native/open-session';
 import { installFileLaunchHandler } from '@/client/lib/launch/file-handlers';
 import { installOpenPaths } from '@/client/lib/native/open-paths';
@@ -112,6 +113,12 @@ installResumeDispatcher();
 // cannot post a banner. It needs the console's own switches to know whether to
 // watch at all, and this is the only moment a page is guaranteed to exist.
 syncNativeNotificationWatch();
+
+// The platform's grant decides whether the page keeps its own chime when a shell
+// posts a banner (a DENIED grant means the system drops the banner, sound
+// included). Read it at boot, before the first event can arrive, and let the
+// Notifications page refresh it when the user comes back from system settings.
+void readNotificationGrant();
 
 // A file the OS handed to Kabmo (PWA File Handling) arrives as a
 // `FileSystemFileHandle` on `launchQueue`, and the consumer must be installed

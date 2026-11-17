@@ -12,6 +12,7 @@ import android.content.pm.PackageManager
 import android.media.AudioAttributes
 import android.net.Uri
 import android.os.Build
+import android.provider.Settings
 
 /**
  * System notifications for the console: a run finished, an agent is blocked on
@@ -32,6 +33,14 @@ import android.os.Build
 interface ShellNotifier {
     fun isGranted(): Boolean
     fun requestPermission()
+    /**
+     * Open the screen where this app's notification grant lives.
+     *
+     * The console offers the button only when the grant is DENIED, so this is
+     * the way out of that state: a shell that cannot open such a screen must not
+     * answer `canOpenSettings: true`.
+     */
+    fun openSettings()
     /**
      * Post one banner. `whenMs` is the event's own moment (0 = now) and
      * `durationMs` how long the run took (0 = not known, e.g. an `ask`).
@@ -77,6 +86,29 @@ object NotificationCommands {
                 if (notifier.isGranted()) "{\"granted\":true}" else "{\"granted\":false}"
             }
 
+            /**
+             * The grant, WITHOUT prompting.
+             *
+             * The console reads this at boot and whenever the Notifications page
+             * is focused: a denied grant means every `show` is a no-op — banner
+             * and chime both — so the page must keep its own cue and say that the
+             * system is blocking it. `areNotificationsEnabled()` is the Android
+             * answer (it covers both the runtime POST_NOTIFICATIONS grant and the
+             * per-app toggle in system settings); `isGranted()` is that question.
+             */
+            "notification_state" ->
+                if (notifier.isGranted()) {
+                    "{\"status\":\"granted\",\"canOpenSettings\":true}"
+                } else {
+                    "{\"status\":\"denied\",\"canOpenSettings\":true}"
+                }
+
+            /** The screen that fixes a denial. The page ignores the answer. */
+            "notification_settings_open" -> {
+                notifier.openSettings()
+                "{}"
+            }
+
             else -> null
         }
     }
@@ -99,7 +131,25 @@ object NotificationPoster {
         .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
         .build()
 
+    /**
+     * Whether a banner posted now would actually be shown.
+     *
+     * Two gates, and the second is why this is not just a permission check: on
+     * API 33+ `POST_NOTIFICATIONS` can be GRANTED while the user has switched
+     * Kabmo's notifications off in system settings, and Android then drops every
+     * `notify()` without an error — the same silent failure macOS reports as
+     * `authorizationStatus: Denied`. `areNotificationsEnabled()` (API 24+, this
+     * app's floor) is the platform's own answer, so a `granted` here matches what
+     * the shade will do, which is also what the console's awareness dialog reads.
+     */
     fun isGranted(context: Context): Boolean {
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+        if (manager != null && !manager.areNotificationsEnabled()) return false
+        return hasPostPermission(context)
+    }
+
+    /** The runtime permission alone — what a prompt must not re-ask. */
+    fun hasPostPermission(context: Context): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return true
         return context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) ==
             PackageManager.PERMISSION_GRANTED
@@ -228,9 +278,27 @@ class AndroidNotifier(private val activity: Activity) : ShellNotifier {
 
     override fun isGranted(): Boolean = NotificationPoster.isGranted(activity)
 
+    /**
+     * The app's notification screen, where the switch that is blocking banners
+     * lives. API 26+ has a per-app page; 24–25 only the app's details page, which
+     * still carries the notification toggle in the same place a user looks.
+     */
+    override fun openSettings() {
+        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                .putExtra(Settings.EXTRA_APP_PACKAGE, activity.packageName)
+        } else {
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                .setData(Uri.parse("package:${activity.packageName}"))
+        }
+        activity.runOnUiThread { activity.startActivity(intent) }
+    }
+
     override fun requestPermission() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
-        if (isGranted()) return
+        // Only the RUNTIME permission is askable; the per-app toggle is a
+        // settings screen, which `openSettings` handles.
+        if (NotificationPoster.hasPostPermission(activity)) return
         // The permission dialog is an Activity/UI-thread API, and this arrives on
         // the WebView's JS thread.
         activity.runOnUiThread {

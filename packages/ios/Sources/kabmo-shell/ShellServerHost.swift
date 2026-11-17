@@ -79,6 +79,11 @@ final class ShellServerHost: NSObject, WKScriptMessageHandler {
       await activate(id, params: params)
     case "notification_request":
       requestNotifications(id)
+    case "notification_state":
+      stateNotifications(id)
+    case "notification_settings_open":
+      ShellNotifications.openSettings()
+      reply(id, ok: true, payload: "null")
     case "notification_show":
       showNotification(id, params: params)
     default:
@@ -132,6 +137,14 @@ final class ShellServerHost: NSObject, WKScriptMessageHandler {
   private func requestNotifications(_ id: Int) {
     ShellNotifications.request { [weak self] granted in
       self?.reply(id, ok: true, payload: NotificationWire.granted(granted))
+    }
+  }
+
+  /// The current grant, without prompting. The page uses it to keep its own
+  /// chime and to say that the system is blocking banners.
+  private func stateNotifications(_ id: Int) {
+    ShellNotifications.state { [weak self] status in
+      self?.reply(id, ok: true, payload: NotificationWire.state(status))
     }
   }
 

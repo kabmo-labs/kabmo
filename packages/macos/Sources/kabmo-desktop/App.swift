@@ -933,6 +933,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
       return ["granted": await ShellNotifications.request()]
 
     /**
+     The current grant, without prompting.
+
+     The page needs it before any event: a denied grant means the platform drops
+     every banner AND its chime, so the console must keep its own cue and say
+     that the system is blocking it. `canOpenSettings` is answered here rather
+     than assumed, because the button that fixes a denial must not be drawn on a
+     platform that has nowhere to send the user.
+     */
+    case "notification_state":
+      return await ShellNotifications.state()
+
+    /**
+     Open the screen where this app's grant lives. A refusal is a sentence, not
+     a silent no-op: the button that calls this exists to fix a denial.
+     */
+    case "notification_settings_open":
+      guard ShellNotifications.openSettings() else {
+        throw ServerError("Could not open the system notification settings.")
+      }
+      return nil
+
+    /**
      Post one notification. A platform refusal is a thrown sentence, which the
      bridge turns into the reply the page shows.
      */

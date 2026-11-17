@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-import { useEffect, useState } from 'preact/hooks';
+import { useCallback, useEffect, useState } from 'preact/hooks';
 import {
   BellRing,
   CircleCheck,
@@ -17,7 +17,13 @@ import {
 } from 'lucide-preact';
 import type { SettingsState } from '@/shared/types';
 import { playNotificationSound } from '@/client/hooks/ui/notification-sound';
-import { requestNotificationPermission } from '@/client/lib/notifications/os';
+import {
+  notificationPermission,
+  readNotificationGrant,
+  requestNotificationPermission,
+  type NotificationPermission,
+} from '@/client/lib/notifications/os';
+import { PermissionNotice } from '@/client/components/settings/categories/notification-settings/PermissionNotice';
 import { syncNativeNotificationWatch } from '@/client/lib/notifications/watch';
 import { notificationPlatformForClient } from '@/client/lib/notifications/platform';
 
@@ -119,6 +125,8 @@ type NotificationEventKey = 'notifyOnFinish' | 'notifyOnAsk' | 'notifyOnError';
 
 export function NotificationSettings({ settings, onUpdate }: NotificationSettingsProps) {
   const [isPlayingTest, setIsPlayingTest] = useState(false);
+  const [permission, setPermission] = useState<NotificationPermission>(notificationPermission);
+  const [canOpenSettings, setCanOpenSettings] = useState(false);
 
   const handleTestSound = () => {
     setIsPlayingTest(true);
@@ -134,14 +142,39 @@ export function NotificationSettings({ settings, onUpdate }: NotificationSetting
     || settings.notifyOnError === true;
   const currentPlatform = notificationPlatformForClient();
 
+  /**
+   * Re-read the platform's grant.
+   *
+   * The answer is what makes a denial visible: the switches are the app's own
+   * preference and stay on, while the system can still drop every banner. It is
+   * also re-read on focus, because the fix happens in the system settings and
+   * the user comes straight back to this page.
+   */
+  const refreshPermission = useCallback(async () => {
+    const grant = await readNotificationGrant();
+    setPermission(grant.status);
+    setCanOpenSettings(grant.canOpenSettings);
+  }, []);
+
+  useEffect(() => {
+    void refreshPermission();
+  }, [refreshPermission]);
+
+  useEffect(() => {
+    const onFocus = () => void refreshPermission();
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [refreshPermission]);
+
   // A preference can be turned on in another tab, a browser, or before this
   // shell was installed — and the OS permission belongs to THIS shell. Opening
   // the page that owns the preference is the honest moment to ask, and the
   // shell answers immediately when permission is already granted.
   useEffect(() => {
     const enabledHere = currentPlatform === 'mobile' ? mobileEnabled : desktopEnabled;
-    if (anySystemNotification && enabledHere) void requestNotificationPermission();
-  }, [anySystemNotification, desktopEnabled, mobileEnabled, currentPlatform]);
+    if (!anySystemNotification || !enabledHere) return;
+    void requestNotificationPermission().then(() => refreshPermission());
+  }, [anySystemNotification, desktopEnabled, mobileEnabled, currentPlatform, refreshPermission]);
 
   // A phone shell watches the server's notification stream while the console is
   // closed (a backgrounded WebView is frozen), and it needs to know when that
@@ -155,12 +188,12 @@ export function NotificationSettings({ settings, onUpdate }: NotificationSetting
   // "on" without the shell having had its chance to prompt.
   const setPlatform = (platform: keyof typeof PLATFORM_KEYS, next: boolean) => {
     onUpdate({ [PLATFORM_KEYS[platform]]: next });
-    if (next) void requestNotificationPermission();
+    if (next) void requestNotificationPermission().then(() => refreshPermission());
   };
 
   const setSystemNotification = (key: NotificationEventKey, next: boolean) => {
     onUpdate({ [key]: next });
-    if (next) void requestNotificationPermission();
+    if (next) void requestNotificationPermission().then(() => refreshPermission());
   };
 
   return (
@@ -239,6 +272,13 @@ export function NotificationSettings({ settings, onUpdate }: NotificationSetting
             </p>
           </div>
         </div>
+
+        {/* The switches are the app's preference; the OS grant is the other half,
+            and a denial is invisible unless this page says so. Without it the
+            setting reads "on" while every banner — and its chime — is dropped. */}
+        {permission === 'denied' && anySystemNotification && (
+          <PermissionNotice canOpenSettings={canOpenSettings} />
+        )}
 
         {/* Two delivery sections: each master switch silences its own device class. */}
         <div className="grid gap-3 sm:grid-cols-2">

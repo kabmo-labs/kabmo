@@ -119,6 +119,12 @@ nothing to answer). There is no capability file and no per-origin allowance: the
 shell owns the webview, so the page cannot be anything but one this window chose
 to load.
 
+`notification_state` and `notification_settings_open` are deliberately **not**
+answered here: the freedesktop spec exposes no queryable grant and no portable
+screen for it (GNOME, KDE and XFCE each spell it differently), so the console
+keeps `unknown` — no "the system is blocking us" dialog, no chime hand-off. Only
+macOS and iOS can answer that question.
+
 The transport is the **same contract the macOS and Windows shells install**, so
 `src/client/lib/shell/transport.ts` is shared verbatim. Verified against a real
 page in the running shell: `servers_state` answered, and the `servers_add` that

@@ -19,6 +19,7 @@ class NotificationCommandsTest {
         var shown: Boolean = true,
     ) : ShellNotifier {
         var requests = 0
+        var settingsOpened = 0
         var last: Triple<String, String, String>? = null
         var lastKind: String? = null
         var lastSession: String? = null
@@ -29,6 +30,10 @@ class NotificationCommandsTest {
 
         override fun requestPermission() {
             requests += 1
+        }
+
+        override fun openSettings() {
+            settingsOpened += 1
         }
 
         override fun show(
@@ -126,5 +131,39 @@ class NotificationCommandsTest {
     @Test
     fun anotherCommandIsNotAnsweredHere() {
         assertNull(NotificationCommands.answer("servers_state", emptyMap(), FakeNotifier()))
+    }
+
+    /**
+     * The console's awareness dialog reads this pair. A `denied` here is the only
+     * thing that keeps the Web Audio cue alive and sends the user to system
+     * settings, so the exact text matters as much as `granted`'s did.
+     */
+    @Test
+    fun theStateReportsTheGrantWithoutPrompting() {
+        val allowed = FakeNotifier(granted = true)
+        assertEquals(
+            "{\"status\":\"granted\",\"canOpenSettings\":true}",
+            NotificationCommands.answer("notification_state", emptyMap(), allowed),
+        )
+        assertEquals(0, allowed.requests)
+
+        val blocked = FakeNotifier(granted = false)
+        assertEquals(
+            "{\"status\":\"denied\",\"canOpenSettings\":true}",
+            NotificationCommands.answer("notification_state", emptyMap(), blocked),
+        )
+        // Reading the state must never raise the runtime prompt: the console asks
+        // only when the user turns a preference on.
+        assertEquals(0, blocked.requests)
+    }
+
+    @Test
+    fun openingTheSettingsScreenUsesTheActivity() {
+        val notifier = FakeNotifier(granted = false)
+        assertEquals(
+            "{}",
+            NotificationCommands.answer("notification_settings_open", emptyMap(), notifier),
+        )
+        assertEquals(1, notifier.settingsOpened)
     }
 }

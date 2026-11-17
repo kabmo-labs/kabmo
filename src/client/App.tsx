@@ -8,6 +8,7 @@ import { Suspense, lazy } from 'preact/compat';
 import { useSearchParams } from '@/client/lib/router/search-params';
 import { DesktopLayout } from '@/client/components/layout/desktop-layout/index';
 import { ToastStack } from '@/client/components/common/ToastStack';
+import { NotificationPermissionDialog } from '@/client/components/common/NotificationPermissionDialog';
 import { SessionStateProvider } from '@/client/components/common/session-state-provider';
 import { LoginScreen } from '@/client/components/auth/login-screen';
 import { useAuthState } from '@/client/hooks/ui/auth';
@@ -148,6 +149,9 @@ export function App({ initialIsMobile = false, production = false, appSettings =
       <SidebarDataProvider>
         {shell}
         <ToastStack />
+        {/* One host, outside the layout switch: a denial is page-level state, and
+            a layout change must not open a second copy or drop the open one. */}
+        <NotificationPermissionDialog />
         <CommandPalette />
         <KeyBindingCheatsheet open={overlays.help} onClose={closeKeyBindingHelp} />
         <ChordHint />

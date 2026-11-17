@@ -1,5 +1,6 @@
 #if canImport(UIKit)
 import Foundation
+import UIKit
 import UserNotifications
 import KabmoShell
 
@@ -23,6 +24,24 @@ enum ShellNotifications {
     UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
       DispatchQueue.main.async { completion(granted) }
     }
+  }
+
+  /// The current grant, WITHOUT prompting.
+  ///
+  /// The page reads this at boot and whenever the Notifications page is focused:
+  /// a denied grant means the platform drops every banner and its chime, so the
+  /// console must keep its own cue and say that the system is blocking it.
+  static func state(_ completion: @escaping (String) -> Void) {
+    UNUserNotificationCenter.current().getNotificationSettings { settings in
+      let name = NotificationWire.statusName(forRawValue: settings.authorizationStatus.rawValue)
+      DispatchQueue.main.async { completion(name) }
+    }
+  }
+
+  /// Open this app's page in Settings, where the grant is changed.
+  static func openSettings() {
+    guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+    UIApplication.shared.open(url)
   }
 
   /// Post one notification, replacing the earlier one with the same tag.

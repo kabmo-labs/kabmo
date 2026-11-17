@@ -37,6 +37,20 @@ func notificationWireCases() {
     NotificationWire.soundName(forKind: "") == "kabmo_notification.wav"
   )
   check("a tag is the identifier", NotificationWire.identifier(tag: "finish:s1") == "finish:s1")
+  // The grant names travel verbatim: the page acts only on `denied`, and a
+  // renamed string would make a blocked app look like a working one.
+  check(
+    "notDetermined is the never-asked state",
+    NotificationWire.statusName(forRawValue: 0) == "notDetermined"
+  )
+  check("denied is the state the page acts on", NotificationWire.statusName(forRawValue: 1) == "denied")
+  check("authorized is granted", NotificationWire.statusName(forRawValue: 2) == "granted")
+  check("provisional still delivers", NotificationWire.statusName(forRawValue: 3) == "granted")
+  check("ephemeral still delivers", NotificationWire.statusName(forRawValue: 4) == "granted")
+  check(
+    "an unknown raw value is not a refusal",
+    NotificationWire.statusName(forRawValue: 99) == "unknown"
+  )
   check(
     "a padded tag is trimmed",
     NotificationWire.identifier(tag: "  ask:s2 \n") == "ask:s2"

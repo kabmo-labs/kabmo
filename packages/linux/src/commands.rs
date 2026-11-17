@@ -157,6 +157,13 @@ pub fn handle_command(
         // There is no runtime permission for a freedesktop notification; the
         // desktop's own notification settings govern it, and the shell cannot
         // query them. `granted` therefore means "this shell can ask".
+        //
+        // `notification_state` and `notification_settings_open` are deliberately
+        // NOT answered: the freedesktop spec exposes no queryable grant and no
+        // portable screen for it (GNOME, KDE and XFCE each spell it differently),
+        // so the console keeps `unknown` and shows no "the system is blocking us"
+        // dialog. A warning that cannot be proven — or acted on — is worse than
+        // silence. Only macOS and iOS can answer that question.
         "notification_request" => Ok(serde_json::json!({ "granted": true })),
 
         // Notifications are STARTED by `main.rs`: the banner has to wait for a

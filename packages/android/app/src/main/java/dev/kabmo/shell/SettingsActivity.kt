@@ -285,7 +285,10 @@ class SettingsActivity : Activity() {
      */
     private fun askNotificationPermission(): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return false
-        if (NotificationPoster.isGranted(this)) return false
+        // Only the runtime permission is askable here. A per-app toggle that is
+        // off is a settings screen, not a prompt — `notification_state` reports
+        // it as denied and the console sends the user there.
+        if (NotificationPoster.hasPostPermission(this)) return false
         requestPermissions(
             arrayOf(android.Manifest.permission.POST_NOTIFICATIONS),
             REQUEST_NOTIFICATIONS,

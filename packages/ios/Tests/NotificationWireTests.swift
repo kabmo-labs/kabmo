@@ -16,6 +16,27 @@ enum NotificationWireTests {
     Harness.equal("granted false", NotificationWire.granted(false), "{\"granted\":false}")
     Harness.equal("shown true", NotificationWire.shown(true), "{\"shown\":true}")
     Harness.equal("shown false", NotificationWire.shown(false), "{\"shown\":false}")
+    // The grant names travel verbatim: the page acts only on `denied`, and a
+    // renamed string would make a blocked app look like a working one.
+    Harness.equal(
+      "notDetermined is the never-asked state",
+      NotificationWire.statusName(forRawValue: 0),
+      "notDetermined"
+    )
+    Harness.equal("denied is the state the page acts on", NotificationWire.statusName(forRawValue: 1), "denied")
+    Harness.equal("authorized is granted", NotificationWire.statusName(forRawValue: 2), "granted")
+    Harness.equal("provisional still delivers", NotificationWire.statusName(forRawValue: 3), "granted")
+    Harness.equal("ephemeral still delivers", NotificationWire.statusName(forRawValue: 4), "granted")
+    Harness.equal(
+      "an unknown raw value is not a refusal",
+      NotificationWire.statusName(forRawValue: 99),
+      "unknown"
+    )
+    Harness.equal(
+      "the state answer carries the grant and the settings screen",
+      NotificationWire.state("denied"),
+      "{\"status\":\"denied\",\"canOpenSettings\":true}"
+    )
     // The bundle copies both files from `packages/notification-sound/` under
     // these exact names; a drift silently substitutes the platform tone.
     Harness.equal("the completion chime is the shared asset", NotificationWire.notificationSound, "kabmo_notification.wav")
