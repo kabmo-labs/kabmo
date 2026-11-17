@@ -67,12 +67,16 @@
   </ItemGroup>
 
   <!--
-    WinForms is here for ONE type — `NotifyIcon`, which is how an unpackaged WPF
-    app posts a notification. Turning it on also brings its implicit usings
-    (`System.Windows.Forms`, `System.Drawing`) into EVERY file, and those collide
-    with WPF's: `Button`, `ProgressBar` and `Color` are ambiguous against
-    `System.Windows.Controls` / `System.Windows.Media` in `Splash.cs`. Measured
-    on the Release build, as four CS0104 errors.
+    WinForms is kept for its Windows Desktop framework reference, which is where
+    `System.Drawing.Icon` lives for the tray icon. `Notifications.cs` no longer
+    uses `NotifyIcon`: it calls `Shell_NotifyIcon` directly so `NIIF_NOSOUND` can
+    suppress the platform tone and the Kabmo chime plays instead.
+
+    Turning WinForms on also brings its implicit usings (`System.Windows.Forms`,
+    `System.Drawing`) into EVERY file, and those collide with WPF's: `Button`,
+    `ProgressBar` and `Color` are ambiguous against `System.Windows.Controls` /
+    `System.Windows.Media` in `Splash.cs`. Measured on the Release build, as four
+    CS0104 errors.
 
     The only file that needs them, `Notifications.cs`, imports them itself.
   -->
@@ -122,6 +126,12 @@
          WebView2 on Windows has no `BarcodeDetector` — see that package's
          build script. -->
     <EmbeddedResource Include="..\..\..\qr-scanner\qr-scanner.html" LogicalName="qr-scanner.html" />
+    <!-- The notification chimes, the same files every shell reads from
+         `packages/notification-sound/`. Embedded because a single-file publish
+         has no data directory to install them into; `Notifications.cs` writes
+         them to `%TEMP%` at first play. -->
+    <EmbeddedResource Include="..\..\..\notification-sound\kabmo_notification.wav" LogicalName="kabmo_notification.wav" />
+    <EmbeddedResource Include="..\..\..\notification-sound\kabmo_attention.wav" LogicalName="kabmo_attention.wav" />
   </ItemGroup>
 
 </Project>

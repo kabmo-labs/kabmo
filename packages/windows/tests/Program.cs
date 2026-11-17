@@ -589,6 +589,14 @@ Check("a padded title is trimmed", NotificationText.Title("  Build \n") == "Buil
 Check("an empty title names the app", NotificationText.Title("   ") == "Kabmo");
 Check("a missing title names the app", NotificationText.Title(null) == "Kabmo");
 
+Group("NotificationChime");
+Check("the completion asset is the shared one", NotificationChime.Completion == "kabmo_notification.wav");
+Check("the attention asset is the shared one", NotificationChime.Attention == "kabmo_attention.wav");
+Check("a finish plays the completion chime", NotificationChime.FileNameFor("finish") == NotificationChime.Completion);
+Check("an error plays the completion chime", NotificationChime.FileNameFor("error") == NotificationChime.Completion);
+Check("an ask sounds like waiting for you, not a finished run", NotificationChime.FileNameFor("ask") == NotificationChime.Attention);
+Check("a console too old to send a kind still gets a chime", NotificationChime.FileNameFor(null) == NotificationChime.Completion);
+
 Group("OpenSessionScript");
 Check(
     "the tap script calls the page's opener with a plain id",

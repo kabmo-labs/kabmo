@@ -756,15 +756,16 @@ public sealed class ShellHost
                 case "notification_request":
                     return new { granted = true };
 
-                // The banner must be posted from the UI thread: NotifyIcon is a
-                // WinForms object, and this handler runs on the bridge's own.
-                // `kind` is read and ignored: this platform has no per-notification
-                // sound slot, so Windows plays its own (see `Notifications.cs`).
+                // The banner must be posted from the UI thread: `Shell_NotifyIcon`
+                // is called from the window's message source, and this handler runs
+                // on the bridge's own. `kind` selects the chime (`ask` is the
+                // attention cue, the others the completion chime).
                 case "notification_show":
                     await _host._window.Dispatcher.InvokeAsync(() =>
                         _host._notifications.Show(
                             Text(parameters, "title"),
                             Text(parameters, "body"),
+                            Text(parameters, "kind"),
                             Text(parameters, "sessionId")));
                     return new { shown = true };
 

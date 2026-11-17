@@ -19,6 +19,7 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::mpsc::{self, Receiver};
+use std::sync::OnceLock;
 
 use crate::store::ShellError;
 use crate::system::which;
@@ -47,7 +48,12 @@ const ATTENTION_SOUND_NAME: &str = "kabmo_attention.wav";
 /// `sound` is the freedesktop `sound-file` hint: the daemon plays that file
 /// instead of its own event sound. Passing it is what makes the banner carry the
 /// Kabmo chime — the console stops playing its Web Audio cue inside a shell.
-pub fn args(title: &str, body: &str, sound: Option<&Path>) -> Vec<String> {
+///
+/// `suppress_sound` is the other half of the same decision: when the daemon
+/// advertises no `sound` capability the shell plays the chime itself, and asks
+/// the daemon not to add its own. Sending both a `sound-file` and a suppression
+/// would be two sounds for one banner.
+pub fn args(title: &str, body: &str, sound: Option<&Path>, suppress_sound: bool) -> Vec<String> {
     let summary = if title.trim().is_empty() {
         crate::APP_NAME
     } else {
@@ -63,6 +69,9 @@ pub fn args(title: &str, body: &str, sound: Option<&Path>) -> Vec<String> {
     if let Some(sound) = sound {
         arguments.push(format!("--hint=string:sound-file:{}", sound.display()));
     }
+    if suppress_sound {
+        arguments.push("--hint=boolean:suppress-sound:true".to_string());
+    }
     arguments.extend([
         // Stay alive until the user clicks or dismisses: without `--wait` the
         // process exits after posting, so there is nobody left to read the
@@ -77,6 +86,80 @@ pub fn args(title: &str, body: &str, sound: Option<&Path>) -> Vec<String> {
         body.to_string(),
     ]);
     arguments
+}
+
+/// The daemon's `sound` capability, asked once: it does not change under a
+/// running shell, and a notification should not pay for a D-Bus call every time.
+///
+/// `OnceLock` rather than `LazyLock`: `LazyLock` is Rust 1.80 and this crate's
+/// declared floor is 1.75 (`Cargo.toml`), which is the toolchain Ubuntu 22.04
+/// ships.
+static SOUND_CAPABILITY: OnceLock<Option<bool>> = OnceLock::new();
+
+/// Whether the notification daemon advertises the freedesktop `sound` capability.
+///
+/// `None` is "could not ask" (no `gdbus`/`dbus-send`, or a failed call): keep
+/// the `sound-file` hint, which is what every daemon that plays it needs.
+/// `Some(false)` means the daemon will not play the hint, so the shell plays the
+/// chime itself and asks the daemon to suppress its own sound.
+fn daemon_supports_sound() -> Option<bool> {
+    *SOUND_CAPABILITY.get_or_init(query_sound_capability)
+}
+
+fn query_sound_capability() -> Option<bool> {
+    let output = Command::new("gdbus")
+        .args([
+            "call",
+            "--session",
+            "--dest",
+            "org.freedesktop.Notifications",
+            "--object-path",
+            "/org/freedesktop/Notifications",
+            "--method",
+            "org.freedesktop.Notifications.GetCapabilities",
+        ])
+        .output()
+        .or_else(|_| {
+            Command::new("dbus-send")
+                .args([
+                    "--session",
+                    "--print-reply",
+                    "--dest=org.freedesktop.Notifications",
+                    "/org/freedesktop/Notifications",
+                    "org.freedesktop.Notifications.GetCapabilities",
+                ])
+                .output()
+        })
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let text = String::from_utf8_lossy(&output.stdout);
+    if text.trim().is_empty() {
+        return None;
+    }
+    Some(text.contains("'sound'") || text.contains("\"sound\""))
+}
+
+/// Play the chime ourselves, for a daemon that advertises no `sound` capability.
+///
+/// The first player that exists wins; PulseAudio/PipeWire's own clients are
+/// preferred over ALSA and ffplay because they go through the session mixer the
+/// user actually controls. A missing player is silence, not a failure: the
+/// banner has already been posted.
+fn play_chime(path: &Path) {
+    for player in ["paplay", "pw-play", "aplay", "ffplay"] {
+        if which(player).is_none() {
+            continue;
+        }
+        let mut command = Command::new(player);
+        if player == "ffplay" {
+            command.args(["-nodisp", "-autoexit", "-loglevel", "quiet"]);
+        }
+        if command.arg(path).spawn().is_ok() {
+            return;
+        }
+    }
 }
 
 /// Where the embedded chime for `kind` is written for the daemon to read, or None.
@@ -149,8 +232,20 @@ pub fn start(
     // deferring it buys nothing.
     let sound = sound_file(kind);
     std::thread::spawn(move || {
+        // A daemon that advertises no `sound` capability ignores the
+        // `sound-file` hint, so the shell plays the chime and asks the daemon not
+        // to add its own. `None` (no `gdbus`/`dbus-send`, or a failed call) keeps
+        // the hint: a daemon that could play it still gets the file.
+        let supports = daemon_supports_sound();
+        let play_ourselves = supports == Some(false);
+        if play_ourselves {
+            if let Some(path) = sound.as_deref() {
+                play_chime(path);
+            }
+        }
+        let hint = if play_ourselves { None } else { sound.as_deref() };
         let Ok(output) = Command::new("notify-send")
-            .args(args(&title, &body, sound.as_deref()))
+            .args(args(&title, &body, hint, play_ourselves))
             .output()
         else {
             return;

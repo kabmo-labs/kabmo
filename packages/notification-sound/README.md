@@ -29,8 +29,8 @@ is bound to a channel or a path, not to a cached lookup.
 |---|---|---|
 |Android|`NotificationChannel.setSound`|a `res/raw` resource URI (one channel per sound)|
 |iOS / macOS|`UNNotificationSound(named:)`|a file in the app bundle|
-|Linux|`notify-send --hint=string:sound-file:`|a path the daemon can read|
-|Windows|*(notification-area balloon)*|no per-notification sound slot; the OS sound is the platform's|
+|Linux|`notify-send --hint=string:sound-file:` (or a local player when `GetCapabilities` has no `sound`)|a path the daemon can read|
+|Windows|`Shell_NotifyIcon` with `NIIF_NOSOUND`, then `PlaySound`|an embedded WAV written to `%TEMP%`|
 
 `generate.mjs` renders both envelopes from the same numbers as
 `src/client/hooks/ui/notification-sound.ts`

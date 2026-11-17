@@ -185,7 +185,10 @@ anything but one this window chose to load.
 `notification_state` and `notification_settings_open` are deliberately **not**
 answered here: an unpackaged WPF/WebView2 app has no API that reads its own
 notification grant, so the console keeps `unknown` — no "the system is blocking
-us" dialog, no chime hand-off. Only macOS and iOS can answer that question.
+us" dialog. The banner itself carries the Kabmo chime: `Shell_NotifyIcon` is
+called with `NIIF_NOSOUND` (the platform tone is suppressed) and the embedded WAV
+is played with `PlaySound`, selected by `kind`. Only macOS and iOS can answer the
+grant question.
 
 The transport is the **same contract the macOS shell installs** over
 `WKScriptMessageHandler`, so `src/client/lib/shell/transport.ts` is shared

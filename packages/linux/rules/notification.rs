@@ -19,7 +19,7 @@ use crate::support::Runner;
 pub fn cases(r: &mut Runner) {
     r.group("notification");
     let sound = Path::new("/run/user/1000/kabmo_notification.wav");
-    let ordinary = args("Build", "The run finished.", Some(sound));
+    let ordinary = args("Build", "The run finished.", Some(sound), false);
     r.check(
         "the application identity is stated",
         ordinary.iter().any(|arg| arg == "--app-name=Kabmo"),
@@ -45,7 +45,16 @@ pub fn cases(r: &mut Runner) {
     );
     r.check(
         "a notification with no readable sound file still posts",
-        !args("Build", "body", None).iter().any(|arg| arg.starts_with("--hint=")),
+        !args("Build", "body", None, false).iter().any(|arg| arg.starts_with("--hint=")),
+    );
+    let suppressed = args("Build", "body", None, true);
+    r.check(
+        "a daemon with no sound capability is asked to stay silent",
+        suppressed.iter().any(|arg| arg == "--hint=boolean:suppress-sound:true"),
+    );
+    r.check(
+        "the shell never sends both a sound file and a suppression",
+        !suppressed.iter().any(|arg| arg.starts_with("--hint=string:sound-file:")),
     );
     r.check(
         "the process waits so a click can be read",
@@ -65,13 +74,13 @@ pub fn cases(r: &mut Runner) {
             && ordinary.last().map(String::as_str) == Some("The run finished."),
     );
 
-    let untitled = args("   ", "body", None);
+    let untitled = args("   ", "body", None, false);
     r.check(
         "an empty title still has a summary",
         untitled.get(untitled.len() - 2).map(String::as_str) == Some("Kabmo"),
     );
 
-    let flagged = args("  --help  ", "body", None);
+    let flagged = args("  --help  ", "body", None, false);
     r.check(
         "a title is trimmed and cannot be mistaken for a flag",
         flagged.get(flagged.len() - 2).map(String::as_str) == Some("--help")
