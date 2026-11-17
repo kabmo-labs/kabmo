@@ -132,7 +132,7 @@ export function ModernSidebarView({
                 activeSessionId={activeSessionId}
                 sessionStatus={sessionStatus}
                 showArchived={showArchived}
-                forceExpanded={Boolean(searchQuery)}
+                forceExpanded={searchQuery.trim().length > 0}
                 density={touch ? 'touch' : 'compact'}
                 batch={batch}
                 onSelectSession={onSelectSession}

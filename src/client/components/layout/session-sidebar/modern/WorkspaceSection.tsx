@@ -291,7 +291,9 @@ export function WorkspaceSection({
             );
           })}
 
-          {!forceExpanded && !sessionCheckboxes && (
+          {/* A search force-opens the workspace but still windows its matches,
+              so the reveal row stays: hiding it made the rest unreachable. */}
+          {!sessionCheckboxes && (
             <WorkspaceRevealRow
               hiddenCount={hiddenCount}
               canShowLess={canShowLess}

@@ -268,8 +268,10 @@ export function Category({
               collapse on the right. They are not a toggle: the list is
               truncated for height, so after a partial reveal the user needs to
               keep revealing AND to start over, which is what two controls say
-              and one alternating control cannot. */}
-          {(hasMore || canShowLess) && !forceExpanded && !sessionCheckboxes && (
+              and one alternating control cannot. A SEARCH keeps them: the
+              folder is force-opened, but the matches are still windowed, and
+              hiding the control left the rest of the results unreachable. */}
+          {(hasMore || canShowLess) && !sessionCheckboxes && (
             <div className="flex items-center gap-1">
               {hasMore && (
                 <button
