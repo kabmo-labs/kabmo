@@ -271,6 +271,14 @@ async function buildRealFolders(folderRows: FolderRow[], archivedIds: Set<string
     const folderAcp = rootKey
       ? await acpRowsFor(visibleAcpSessions, rootKey, folder.id, archivedIds)
       : [];
+    // A recorded row is still a chat with a working directory. An ACP agent
+    // writes no session file for the scan to read, and an RPC chat exists in
+    // the record before its first turn is on disk — without this the chip
+    // vanished from exactly the rows the scan could not supply.
+    const acpWorktrees = await sessionWorktreeMap(
+      root,
+      folderAcp.flatMap((row) => (row.cwd ? [{ id: String(row.id), cwd: row.cwd }] : [])),
+    );
     // ONE CHAT, ONE ROW. The two producers overlap whenever the agent writes a
     // session file AND has a `harness_sessions` record, and that is not a
     // corner case: `omp-acp` launches `omp acp`, so its chats are ordinary
@@ -280,7 +288,12 @@ async function buildRealFolders(folderRows: FolderRow[], archivedIds: Set<string
     // title, timestamps and subagent state), so a recorded row whose id the
     // scan already listed is dropped rather than replaced.
     const discoveredIds = new Set(folderSessions.map((session) => String(session.id)));
-    const uniqueAcp = folderAcp.filter((row) => !discoveredIds.has(String(row.id)));
+    const uniqueAcp = folderAcp
+      .filter((row) => !discoveredIds.has(String(row.id)))
+      .map((row) => {
+        const worktree = acpWorktrees.get(String(row.id));
+        return worktree ? { ...row, worktree } : row;
+      });
     // MERGED, then ordered as ONE list. Appending the ACP rows after omp's
     // already-sorted bucket put them at the bottom of a 240-row folder, which is
     // why a chat just spawned on `opencode2` never appeared above "Show more".

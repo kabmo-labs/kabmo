@@ -40,9 +40,17 @@ afterAll(async () => {
 describe('takeScan', () => {
   test('a nested repo is scanned and its root is recorded', async () => {
     const scan = await takeScan(parent);
-    // The git root is a realpath; the caller's cwd may be a symlinked spelling.
-    const realNested = await fsp.realpath(nested);
-    expect(scan?.dirty.has(path.join(realNested, 'a.txt'))).toBe(true);
-    expect(scan?.roots?.has(realNested)).toBe(true);
+    // Compare canonical spellings: git may answer with the short (8.3) path on
+    // Windows and the caller spells the same directory through `realpath`, so a
+    // literal string comparison fails on one platform only.
+    const realNested = await fsp.realpath(nested).catch(() => path.resolve(nested));
+    const dirty = await Promise.all(
+      [...(scan?.dirty.keys() ?? [])].map((value) => fsp.realpath(value).catch(() => path.resolve(value))),
+    );
+    expect(dirty).toContain(path.join(realNested, 'a.txt'));
+    const roots = await Promise.all(
+      [...(scan?.roots?.keys() ?? [])].map((value) => fsp.realpath(value).catch(() => path.resolve(value))),
+    );
+    expect(roots).toContain(realNested);
   });
 });

@@ -13,6 +13,7 @@ import {
   openNotificationSettings,
   readNotificationGrant,
   requestNotificationPermission,
+  resetNotificationPermission,
   showOsNotification,
 } from '@/client/lib/notifications/os';
 
@@ -32,6 +33,9 @@ beforeEach(() => {
 afterEach(() => {
   const target = globalThis as unknown as Record<string, unknown>;
   for (const key of DOM_GLOBALS) target[key] = nativeGlobals[key];
+  // The grant is module state: a denial measured here must not silence the
+  // next suite's chime.
+  resetNotificationPermission();
 });
 
 describe('a browser without the Notification API', () => {

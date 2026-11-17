@@ -47,6 +47,12 @@ async function listWorktrees(baseURL: string, root: string): Promise<WorktreeRow
 }
 
 test.describe('worktree', () => {
+  // The chip is read from the session's SCANNED transcript. A header-only
+  // `.jsonl` is not a chat the sidebar lists — it draws the pending row instead,
+  // which has no worktree — so the scripted child has to write its turn for the
+  // scan to produce the row this spec is about.
+  test.use({ serverEnv: { FAKE_OMP_PERSIST: '1' } });
+
   test('quick worktree: the picker creates one and the send runs inside it', async ({ harness, page }) => {
     const server = await harness('real');
     const workspace = await seedRepoWorkspace(server, 'e2e-worktree-quick');
@@ -95,12 +101,13 @@ test.describe('worktree', () => {
     await input.press('Enter');
     await expect(page.getByText('Response to: where am I').first()).toBeVisible({ timeout: 30_000 });
 
-    // The chip is derived from the SESSION's cwd, so it is the proof the spawn
-    // used the worktree rather than the project root.
-    // The row's chip is derived from the SCANNED transcript, which lags the
-    // stream: omp writes the session file as the run proceeds and the sidebar
-    // re-scans on the turn boundary. Poll the payload the sidebar reads, so the
-    // assertion waits on the fact rather than on a duration.
+    // The chip under the row is derived from the SESSION's cwd, so it is the
+    // proof the spawn used the worktree rather than the project root. The row
+    // itself may come from the transcript scan or from the harness record (a
+    // header-only transcript is not listed), and both carry the same worktree
+    // fact. The scan lags the stream — omp writes the session file as the run
+    // proceeds and the sidebar re-scans on the turn boundary — so poll the
+    // payload the sidebar reads and wait on the fact, not on a duration.
     await expect
       .poll(
         async () => {

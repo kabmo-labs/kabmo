@@ -17,6 +17,7 @@ import { act } from 'preact/test-utils';
 import { SessionActionsMenu } from '@/client/components/common/session-actions-menu';
 import { resetHarnessesStore } from '@/client/hooks/models/harness-catalog';
 import { pendingEntryFor } from '@/client/hooks/chat/omp/pending-sessions';
+import { resetToasts } from '@/client/hooks/ui/toasts';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
 
 const anchor = { top: 0, right: 0, bottom: 0, left: 0, align: 'end' as const };
@@ -34,6 +35,10 @@ afterEach(() => {
   render(null, container);
   container.remove();
   globalThis.fetch = nativeFetch;
+  // The copy action reports through the shared toast queue. A suite that
+  // pushes a toast owns clearing it, or the next file's first assertion sees
+  // "Session ID copied" beside its own.
+  resetToasts();
 });
 
 afterAll(() => restoreDomGlobals());

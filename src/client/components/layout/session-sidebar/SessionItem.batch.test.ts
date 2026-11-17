@@ -48,6 +48,9 @@ afterAll(() => {
 });
 
 afterEach(() => {
+  // Detaching a container does not unmount the tree; its effects (and any
+  // portal) would outlive the file's DOM globals.
+  if (container) render(null, container);
   container?.remove();
 });
 

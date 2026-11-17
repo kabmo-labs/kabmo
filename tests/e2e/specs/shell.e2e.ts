@@ -100,9 +100,11 @@ test.describe('shell', () => {
     expect(geometry.inline).toContain('env(titlebar-area-x');
     expect(geometry.inline).toContain('env(titlebar-area-width');
 
-    // A tab has no overlay, so only the base padding is left — and that is
-    // exactly what the last control must clear.
-    expect(geometry.computed).toBe('16px');
-    expect(geometry.gap).toBe(16);
+    // A tab has no overlay, so only the rail-aligned inset is left: the last
+    // control is centred on the 44px activity rail's axis, so its right edge
+    // clears `(44 - 28) / 2 = 8px`. A flat `1rem` is what put the toggle's
+    // centre 8px off that axis, and that is the mistake this pins against.
+    expect(geometry.computed).toBe('8px');
+    expect(geometry.gap).toBe(8);
   });
 });

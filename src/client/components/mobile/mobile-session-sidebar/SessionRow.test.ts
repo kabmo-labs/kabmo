@@ -44,6 +44,15 @@ afterAll(() => {
   }
 });
 
+afterEach(() => {
+  // Unmount, not just detach: the row's actions menu portals to `body` and
+  // subscribes to the harness catalog. A tree left mounted re-renders after
+  // this file restores the globals — the measured "document is not defined"
+  // between tests in a later file.
+  if (container) render(null, container);
+  container?.remove();
+});
+
 const session: SessionItemData = { id: 's1', folder_id: 1, title: 'hello world' };
 
 async function mount(overrides: Partial<MobileSessionRowProps>) {

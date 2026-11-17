@@ -111,6 +111,25 @@ async function writeEmptyOmpSession(id: string, timestamp: string): Promise<void
   await Bun.write(join(dir, `${id}.jsonl`), `${header}\n`);
 }
 
+/** Run git in `cwd`, failing the test with git's own sentence. */
+function git(cwd: string, ...args: string[]): void {
+  const result = Bun.spawnSync(['git', ...args], { cwd, stdout: 'ignore', stderr: 'pipe' });
+  if (result.exitCode !== 0) {
+    throw new Error(`git ${args.join(' ')} failed: ${result.stderr.toString().trim()}`);
+  }
+}
+
+/** A repository with one commit and one linked worktree, for the chip cases. */
+async function makeWorktreeRepo(name: string, branch: string): Promise<{ repo: string; worktree: string }> {
+  const repo = join(root, name);
+  const worktree = join(root, `${name}-wt`);
+  await fs.promises.mkdir(repo, { recursive: true });
+  git(repo, 'init');
+  git(repo, '-c', 'user.email=e2e@kabmo.test', '-c', 'user.name=Kabmo', 'commit', '--allow-empty', '-m', 'init');
+  git(repo, 'worktree', 'add', '-b', branch, worktree);
+  return { repo, worktree };
+}
+
 async function registerFolder(projectPath: string): Promise<number> {
   const db = await getDb();
   await db.run('INSERT INTO workspace_folders (name, project_path) VALUES (?, ?)', ['ws', projectPath]);
@@ -138,6 +157,22 @@ describe('a sidebar row names its harness', () => {
     // The mark's own key: `opencode2` draws opencode's art, and the label names
     // which of the two it is.
     expect(row?.harness).toBe('opencode');
+  });
+
+  test('a recorded chat in a worktree carries the chip the scan cannot supply', async () => {
+    const { repo, worktree } = await makeWorktreeRepo('wt-recorded', 'wt/chip');
+    const folderId = await registerFolder(repo);
+    // An ACP agent writes no session file, so this record is the ONLY row the
+    // chat gets. The chip is derived from the row's own cwd, and it used to be
+    // attached only to scanned rows — a worktree chat on an ACP harness drew no
+    // badge at all.
+    await saveHarnessSession({
+      sessionId: 'ses_worktree', harness: 'opencode', agentSessionId: 'ses_worktree', cwd: worktree,
+    });
+
+    const row = (await folderSessions(folderId)).find((entry) => String(entry.id) === 'ses_worktree');
+    expect(row?.worktree?.branch).toBe('wt/chip');
+    expect(row?.worktree?.status).toBe('ready');
   });
 
   test('a recorded chat is named by its first prompt, not left Untitled', async () => {

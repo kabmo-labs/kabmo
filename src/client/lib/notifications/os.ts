@@ -88,6 +88,18 @@ export function notificationPermission(): NotificationPermission {
   return permission;
 }
 
+/**
+ * Forget the cached grant.
+ *
+ * The grant is module state, so a suite that measured a denial would otherwise
+ * silence the next suite's chime — the sound decision reads this cache
+ * synchronously. Tests that install a shell bridge start from `unknown`, which
+ * is the same state a fresh page has.
+ */
+export function resetNotificationPermission(): void {
+  permission = 'unknown';
+}
+
 function remember(status: NotificationPermission): NotificationPermission {
   permission = status;
   return status;

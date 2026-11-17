@@ -17,6 +17,7 @@ import {
   playNotificationSound,
   triggerChatCompletionSound,
 } from '@/client/hooks/ui/notification-sound';
+import { resetNotificationPermission } from '@/client/lib/notifications/os';
 import { primeKabmoSettings } from '@/shared/lib/settings/client';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator'] as const;
@@ -39,6 +40,9 @@ afterEach(() => {
   FakeAudioContext.instances.length = 0;
   (win as unknown as Record<string, unknown>).AudioContext = FakeAudioContext;
   delete window.__kabmoCall;
+  // The shell/chime decision reads the cached grant synchronously; a denial
+  // measured by an earlier suite must not silence this one.
+  resetNotificationPermission();
 });
 /** The alert mounts the real hook, so every constructed context is a cue. */
 

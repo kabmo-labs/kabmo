@@ -89,6 +89,10 @@ export function notePong(id: number): void {
 }
 
 function scheduleReconnect(): void {
+  // A socket's `onclose` can land after the page's window is gone (a test that
+  // restored the DOM, a document being torn down). There is nothing to retry
+  // then, and `window.setTimeout` would throw.
+  if (typeof window === 'undefined') return;
   const host = state();
   if (!host.wanted || host.retryTimer !== undefined) return;
   // Past the fast budget the channel keeps trying — it does not give up. A tab

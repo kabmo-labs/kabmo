@@ -12,6 +12,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
+import { isAbsolute } from 'node:path';
 import {
   normalizeCommands,
   normalizeConfigOptions,
@@ -155,11 +156,13 @@ describe('toAcpV2McpServers', () => {
   });
 
   test('resolves a bare binary name to an absolute path', () => {
-    const out = toAcpV2McpServers([{ name: 'echo', command: 'echo', args: [], env: [] }]);
+    // `bun` is the one executable every runner of this suite has on PATH;
+    // `echo` is a shell builtin on Windows and resolves to nothing there.
+    const out = toAcpV2McpServers([{ name: 'bun', command: 'bun', args: [], env: [] }]);
     expect(out).toHaveLength(1);
     const first = out[0] as { type: string; command: string };
     expect(first.type).toBe('stdio');
-    expect(first.command.startsWith('/')).toBe(true);
+    expect(isAbsolute(first.command)).toBe(true);
   });
 
   test('keeps http and sse tagged as the peer expects', () => {
