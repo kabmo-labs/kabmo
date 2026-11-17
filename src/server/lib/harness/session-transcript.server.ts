@@ -200,12 +200,76 @@ async function codexTranscripts(ids: readonly string[]): Promise<Set<string> | n
   return present;
 }
 
+/** zcode keeps its history in one SQLite file, like opencode. */
+async function zcodeTranscripts(ids: readonly string[]): Promise<Set<string> | null> {
+  const home = Bun.env.ZCODE_HOME?.trim() || join(homedir(), '.zcode');
+  const path = join(home, 'cli', 'db', 'db.sqlite');
+  try {
+    if (!(await fs.promises.stat(path)).isFile()) return null;
+  } catch {
+    return null;
+  }
+  let db: Database | null = null;
+  try {
+    db = new Database(path, { readonly: true });
+    db.exec('PRAGMA busy_timeout = 500');
+    const placeholders = ids.map(() => '?').join(',');
+    const rows = db
+      .query(`SELECT DISTINCT session_id FROM message WHERE session_id IN (${placeholders})`)
+      .all(...ids) as { session_id: string }[];
+    return new Set(rows.map((row) => row.session_id));
+  } catch {
+    return null;
+  } finally {
+    db?.close();
+  }
+}
+
+/**
+ * antigravity writes one SQLite conversation per session, under the CLI's
+ * `conversations/` (the ACP adapter's store) or the IDE's. A conversation with
+ * no `steps` row is a session that was opened and never used.
+ */
+async function antigravityTranscripts(ids: readonly string[]): Promise<Set<string> | null> {
+  const home = Bun.env.ANTIGRAVITY_HOME?.trim() || join(homedir(), '.gemini');
+  const roots = [
+    join(home, 'antigravity-cli', 'conversations'),
+    join(home, 'antigravity', 'conversations'),
+  ];
+  let readable = false;
+  const present = new Set<string>();
+  for (const id of ids) {
+    if (!isSinglePathSegment(id)) continue;
+    for (const root of roots) {
+      const path = join(root, `${id}.db`);
+      try {
+        if (!(await fs.promises.stat(path)).isFile()) continue;
+        readable = true;
+        const db = new Database(path, { readonly: true });
+        try {
+          db.exec('PRAGMA busy_timeout = 500');
+          const row = db.query('SELECT 1 AS present FROM steps LIMIT 1').get() as { present?: number } | null;
+          if (row) present.add(id);
+        } finally {
+          db.close();
+        }
+        break;
+      } catch {
+        // Not this root, or a conversation this build cannot read.
+      }
+    }
+  }
+  return readable ? present : null;
+}
+
 /** The stores Kabmo can read. A harness absent here has no verdict. */
 const STORE_CHECKS: Record<string, StoreCheck> = {
   opencode: opencodeTranscripts,
   dsh: dshTranscripts,
   claude: claudeTranscripts,
   codex: codexTranscripts,
+  zcode: zcodeTranscripts,
+  antigravity: antigravityTranscripts,
 };
 
 /**

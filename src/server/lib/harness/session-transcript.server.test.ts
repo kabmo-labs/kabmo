@@ -27,6 +27,8 @@ const saved = {
   dsh: Bun.env.DSH_HOME,
   claude: Bun.env.CLAUDE_CONFIG_DIR,
   codex: Bun.env.CODEX_HOME,
+  zcode: Bun.env.ZCODE_HOME,
+  antigravity: Bun.env.ANTIGRAVITY_HOME,
 };
 
 let root = '';
@@ -41,6 +43,8 @@ afterAll(() => {
     ['DSH_HOME', saved.dsh],
     ['CLAUDE_CONFIG_DIR', saved.claude],
     ['CODEX_HOME', saved.codex],
+    ['ZCODE_HOME', saved.zcode],
+    ['ANTIGRAVITY_HOME', saved.antigravity],
   ] as const) {
     if (value === undefined) delete Bun.env[key];
     else Bun.env[key] = value;
@@ -50,13 +54,15 @@ afterAll(() => {
 
 beforeEach(async () => {
   await isolateDb();
-  for (const dir of ['xdg', 'dsh', 'claude', 'codex']) {
+  for (const dir of ['xdg', 'dsh', 'claude', 'codex', 'zcode', 'antigravity']) {
     await fs.promises.rm(join(root, dir), { recursive: true, force: true });
   }
   Bun.env.XDG_DATA_HOME = join(root, 'xdg');
   Bun.env.DSH_HOME = join(root, 'dsh');
   Bun.env.CLAUDE_CONFIG_DIR = join(root, 'claude');
   Bun.env.CODEX_HOME = join(root, 'codex');
+  Bun.env.ZCODE_HOME = join(root, 'zcode');
+  Bun.env.ANTIGRAVITY_HOME = join(root, 'antigravity');
 });
 
 afterEach(async () => {
@@ -136,10 +142,41 @@ describe('sessionsWithoutTranscript', () => {
     expect([...absent]).toEqual(['empty']);
   });
 
+  test('zcode: a session with no message row is empty', async () => {
+    const dir = join(root, 'zcode', 'cli', 'db');
+    await fs.promises.mkdir(dir, { recursive: true });
+    const db = new Database(join(dir, 'db.sqlite'), { create: true });
+    db.exec('CREATE TABLE message (id TEXT PRIMARY KEY, session_id TEXT NOT NULL)');
+    db.run('INSERT INTO message (id, session_id) VALUES (?, ?)', ['m1', 'sess_used']);
+    db.close();
+    const absent = await sessionsWithoutTranscript([
+      { harness: 'zcode', sessionId: 'sess_used' },
+      { harness: 'zcode', sessionId: 'sess_empty' },
+    ]);
+    expect([...absent]).toEqual(['sess_empty']);
+  });
+
+  test('antigravity: a conversation with no steps is empty', async () => {
+    const dir = join(root, 'antigravity', 'antigravity-cli', 'conversations');
+    await fs.promises.mkdir(dir, { recursive: true });
+    const used = new Database(join(dir, 'used.db'), { create: true });
+    used.exec('CREATE TABLE steps (id TEXT PRIMARY KEY)');
+    used.run('INSERT INTO steps (id) VALUES (?)', ['s1']);
+    used.close();
+    const empty = new Database(join(dir, 'empty.db'), { create: true });
+    empty.exec('CREATE TABLE steps (id TEXT PRIMARY KEY)');
+    empty.close();
+    const absent = await sessionsWithoutTranscript([
+      { harness: 'antigravity', sessionId: 'used' },
+      { harness: 'antigravity', sessionId: 'empty' },
+    ]);
+    expect([...absent]).toEqual(['empty']);
+  });
+
   test('a harness with no readable store is never called empty', async () => {
     const absent = await sessionsWithoutTranscript([
-      { harness: 'antigravity', sessionId: 'ses_unknown' },
-      { harness: 'zcode', sessionId: 'sess_unknown' },
+      { harness: 'pi', sessionId: 'ses_unknown' },
+      { harness: 'qwen', sessionId: 'sess_unknown' },
     ]);
     expect(absent.size).toBe(0);
   });
