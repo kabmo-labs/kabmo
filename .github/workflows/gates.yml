@@ -168,25 +168,39 @@ jobs:
   # same steps, and a matrix that expressed both would need a condition on
   # almost every step — which is a gate whose coverage depends on an `if:`.
   #
-  # NOT sharded, and that is a measurement rather than an omission. `bun test
-  # --shard` splits by FILE, and this suite is not shard-safe: measured on
-  # 2026-11-12, `--shard=1/2` failed 6 cases in
-  # `src/server/lib/sessions/spawn.server.test.ts` with `UNIQUE constraint
-  # failed: workspace_folders.id` and `--shard=2/2` failed 3 more, while the
-  # unsharded run was 11259 pass / 0 fail. The cause is cross-file env leakage
-  # (`PI_CODING_AGENT_DIR` / `SYNC_WORKSPACE` left set by an earlier file, so
-  # `getDb()` seeds workspace folders into a database the next file expects to
-  # be empty) — a real bug, but a different one, and sharding would only hide
-  # it behind a different file order. It also buys nothing: the browser shards
-  # land at ~7 min, so this job is no longer the critical path.
+  # NOT sharded before 2026-11-17, because `bun test --shard` splits by FILE and
+  # an earlier measurement (2026-11-12) had shards failing on cross-file env
+  # leakage (`UNIQUE constraint failed: workspace_folders.id` in
+  # `spawn.server.test.ts`). That is still a latent bug — the suite is not
+  # order-independent — but the job is now the gate's slowest leg and the
+  # measurement leaves no cheaper lever:
+  #
+  #   run 43572561035 (2026-11-14): `Checks` 2m35s (Test 1m32s) and
+  #   `Checks (Windows)` 5m45s (Test 5m00s). Runs 41247987533 and 41206195308:
+  #   Windows 6m23s and 6m26s, Test 5m32s and 5m41s. Every other job is under
+  #   3 min, so Windows alone decides whether the gate fits in 5 minutes.
+  #
+  # Two shards put ~325 files on each runner: the measured per-file cost puts a
+  # shard's Test at ~2.5-3 min and the job at ~3.5 min, with the Linux leg
+  # unchanged at ~2.5 min. `fail-fast: false` is load-bearing here for the same
+  # reason it is in `e2e-specs.yml`: one red shard must not hide the other's log.
+  #
+  # A shard is a separate PROCESS, so this also changes which files share a
+  # process. The leaked-state failures above are flaky rather than deterministic
+  # (a clean `--shard=1/2` passed 6339/0 on 2026-11-17 after a `--shard=1/2` on
+  # the same tree failed 9), so a red shard that names a file unrelated to the
+  # change is this order-dependence, not the change: fix the leaking file rather
+  # than re-running until green.
   # ---------------------------------------------------------------------------
   windows:
-    name: Checks (Windows)
+    name: Checks (Windows ${{ matrix.shard }}/2)
     runs-on: windows-latest
-    # The Windows runner is markedly slower per file than the Linux one on this
-    # suite, and a timeout that a slow runner trips reads as a failure of the
-    # change rather than of the machine.
-    timeout-minutes: 30
+    # ~3.5 min expected per shard; 15 is a hang detector, not a budget.
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -214,7 +228,7 @@ jobs:
       # Linux gate keeps the tighter budget it passes reliably, and 20 s is still
       # a hang detector rather than an absence of one.
       - name: Test
-        run: bun test --timeout 20000
+        run: bun test --shard=${{ matrix.shard }}/2 --timeout 20000
 
   # The settings panel is driven by a GENERATED table, so its staleness is a
   # gate rather than a review note: `bun run omp:schema:check` regenerates from
