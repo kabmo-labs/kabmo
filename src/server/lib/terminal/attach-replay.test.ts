@@ -27,6 +27,15 @@ import type { TerminalViewer } from '@/server/lib/terminal/session.server';
 
 const dec = new TextDecoder();
 
+/**
+ * Lines the flood prints. Windows' PTY is roughly two orders of magnitude
+ * slower than Linux's — the 30,000-line flood took ~3.3 s there and ~30 ms
+ * here — so the flood is sized per platform: long enough on Linux that the
+ * poll below cannot be delayed past its end, short enough on Windows that the
+ * test stays bounded.
+ */
+const TOTAL = process.platform === 'win32' ? 30_000 : 2_000_000;
+
 interface Collected {
   viewer: TerminalViewer;
   frames: Uint8Array[];
@@ -153,12 +162,12 @@ test('a viewer attaching mid-stream sees the replay and live output exactly once
   await attachTerminal(first.viewer, { id, cols: 100, rows: 30, theme: 'dark' });
 
   // A flood long enough that the poll below cannot be delayed past its end.
-  // The original 30,000-line flood took ~30 ms, and under load the poll was
-  // delayed past it: the late viewer then had no live output at all and the
-  // test timed out waiting for a line the replay already held. That is exactly
-  // how it failed on the Linux gate. 2,000,000 lines is ~13 MB, seconds of
-  // output, so the attach lands mid-flood even on a loaded runner.
-  writeTerminalInput(id, new TextEncoder().encode('seq 1 2000000\r'));
+  // The original 30,000-line flood took ~30 ms on Linux, and under load the
+  // poll was delayed past it: the late viewer then had no live output at all
+  // and the test timed out waiting for a line the replay already held. That is
+  // exactly how it failed on the Linux gate. `TOTAL` is sized per platform for
+  // that reason.
+  writeTerminalInput(id, new TextEncoder().encode(`seq 1 ${TOTAL}\r`));
   expect(await until(() => numbers(first.text()).length > 2_000)).toBe(true);
 
   // Mid-flood by construction: the shell is emitting, the first viewer is
