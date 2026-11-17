@@ -7,7 +7,7 @@
  * Both Usage surfaces draw the provider's own mark.
  *
  * There are two of them — Settings → Usage (a sidebar list plus a card header)
- * and the right-panel Usage view (a dropdown) — and both drew
+ * and the right-panel Usage view (one card per provider) — and both drew
  * `ProviderIcon` alone, which resolves against the built-in glyph table. That
  * table cannot know a `models.yml` gateway, so a provider whose site favicon
  * had already been fetched and stored showed its logo in Settings → Providers
@@ -25,7 +25,6 @@ import { Window } from 'happy-dom';
 import { render } from 'preact';
 import { act } from 'preact/test-utils';
 import { UsageSidebarList } from '@/client/components/settings/categories/usage-settings/SidebarList';
-import { ProviderSelect } from '@/client/components/workspace/usage-panel/ProviderSelect';
 import { ProviderCard } from '@/client/components/settings/categories/usage-settings/ProviderCard';
 import type { UsageReport } from '@/shared/types';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
@@ -100,29 +99,6 @@ describe('Settings → Usage sidebar', () => {
     expect(dom.querySelectorAll('img')).toHaveLength(1);
     expect(dom.querySelectorAll('svg').length).toBeGreaterThan(0);
     expect(dom.textContent).toContain('p.');
-  });
-});
-
-describe('right-panel Usage dropdown', () => {
-  const providers = [
-    { id: 'localtest', name: 'Local Test', iconUrl: ICON, hint: 'Connected', limits: [], tracked: true, summary: report.providers[0]! },
-    { id: 'plain', name: 'Plain', hint: 'Connected', limits: [], tracked: false, summary: report.providers[2]! },
-  ];
-
-  test('the trigger and its option rows both carry the web icon', () => {
-    const dom = mount(<ProviderSelect providers={providers} value="localtest" onChange={() => {}} />);
-    const trigger = dom.querySelector('button[aria-haspopup="listbox"]');
-    const triggerImage = trigger?.querySelector('img');
-    expect(triggerImage?.getAttribute('src')).toBe(ICON);
-    expect(triggerImage?.parentElement?.style.width).toBe('16px');
-
-    act(() => (trigger as HTMLButtonElement).click());
-    const option = dom.querySelector('[role="option"]');
-    const optionImage = option?.querySelector('img');
-    expect(optionImage?.getAttribute('src')).toBe(ICON);
-    expect(optionImage?.parentElement?.style.width).toBe('18px');
-    // The second option has no icon URL, so only one row draws an image.
-    expect(dom.querySelectorAll('[role="option"] img')).toHaveLength(1);
   });
 });
 

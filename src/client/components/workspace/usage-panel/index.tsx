@@ -1,15 +1,12 @@
-import { useEffect } from 'preact/hooks';
 import { AlertCircle } from 'lucide-preact';
 import { PanelHeader } from '@/client/components/workspace/panel-header';
 import { RefreshButton } from '@/client/components/common/header-button';
 import { ProviderDetail } from '@/client/components/settings/categories/usage-settings/ProviderDetail';
-import { buildProviders, type UsageProviderId } from '@/client/components/settings/categories/usage-settings/providers';
+import { buildProviders } from '@/client/components/settings/categories/usage-settings/providers';
 import { formatDateTime } from '@/client/components/settings/categories/usage-settings/format';
-import { ProviderSelect } from '@/client/components/workspace/usage-panel/ProviderSelect';
 import { SavedResetsSection } from '@/client/components/settings/categories/usage-settings/SavedResetsSection';
 import { newestUsageReport } from '@/client/components/workspace/usage-panel/report';
 import { useUsageReport } from '@/client/hooks/settings/useUsageReport';
-import { useSessionState } from '@/client/hooks/workspace/session-state';
 import { useRealtimeTopic } from '@/client/hooks/ui/realtime';
 import { TOPIC_USAGE } from '@/shared/lib/realtime/protocol';
 import type { UsageReport } from '@/shared/types';
@@ -21,13 +18,9 @@ interface UsagePanelProps {
   active?: boolean;
 }
 
-/** Right-panel Usage: the selected provider's quota and balance via a dropdown. */
+/** Right-panel Usage: every provider's quota and balance, one card each. */
 export function UsagePanel({ className = '', active = true }: UsagePanelProps) {
   const { report: fetched, isLoading, error, reload } = useUsageReport();
-  const [selectedProviderId, setSelectedProviderId] = useSessionState<UsageProviderId>(
-    'usage.selectedProviderId',
-    '',
-  );
 
   // The topic is the read path: it re-resolves on subscribe, so switching to
   // this panel reads fresh state, and no poll is needed while it is open. The
@@ -37,16 +30,7 @@ export function UsagePanel({ className = '', active = true }: UsagePanelProps) {
   const usage = useRealtimeTopic<UsageReport>(TOPIC_USAGE, { enabled: active });
   const report = newestUsageReport(usage.data, fetched);
 
-  // Derived before every early return: a hook must not sit behind a conditional
-  // return, or the hook count changes between the loading and loaded renders.
   const providers = report ? buildProviders(report) : [];
-  const selected = providers.find((provider) => provider.id === selectedProviderId) ?? providers[0];
-
-  // A provider can disappear from the report (its key was removed) or a new one
-  // can take the first slot; keep the persisted selection valid.
-  useEffect(() => {
-    if (selected && selected.id !== selectedProviderId) setSelectedProviderId(selected.id);
-  }, [selected, selectedProviderId, setSelectedProviderId]);
 
   if (error && !report) {
     return (
@@ -98,23 +82,12 @@ export function UsagePanel({ className = '', active = true }: UsagePanelProps) {
         }
       />
 
-      {providers.length > 0 && (
-        <div className="px-3.5 py-2.5 border-b border-ink/10 flex-shrink-0 min-w-0">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="text-[11px] font-semibold text-ink/60 flex-shrink-0">Provider</span>
-            <ProviderSelect
-              providers={providers}
-              value={selected?.id ?? ''}
-              onChange={setSelectedProviderId}
-            />
-          </div>
-        </div>
-      )}
-
       <div className="flex-1 min-w-0 min-h-0 w-full overflow-y-auto scrollbar-overlay-container p-3.5 space-y-4">
         {error && <p className="text-error text-xs">{error}</p>}
-        {selected ? (
-          <ProviderDetail summary={selected.summary} />
+        {providers.length > 0 ? (
+          providers.map((provider) => (
+            <ProviderDetail key={provider.id} summary={provider.summary} />
+          ))
         ) : (
           <p className="text-[11px] text-ink/50 leading-relaxed">
             No provider credentials detected. Add an API key in Settings → Providers and it will appear here.

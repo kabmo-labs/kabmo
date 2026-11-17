@@ -64,7 +64,6 @@
  * - search.showIncludeField   boolean
  * - context.rawExpandedIds    Record<string, boolean>
  * - context.rawFilterRole     'all' | 'assistant' | 'user'
- * - usage.selectedProviderId  'kenari' | 'deepseek'
  * - plan.selectedFile         { sessionId, path } — the plan artifact the Plan
  *                             panel shows, stored with its session so a path
  *                             from another conversation is never restored
