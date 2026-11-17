@@ -228,6 +228,7 @@ export function SessionsView({
         count={deleteRun.pending.length}
         scopeLabel={scopeFolder?.name}
         isDeleting={deleteRun.isDeleting}
+        progress={deleteRun.progress}
         outcome={deleteRun.outcome}
         onClose={() => {
           // A run that finished cleanly also ends the mode; one that refused

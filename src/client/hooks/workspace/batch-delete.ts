@@ -28,6 +28,13 @@ export interface BatchDeleteOutcome {
   error?: string;
 }
 
+/** How much of a batch has SETTLED: every id in a finished chunk is either
+ *  removed or refused, so `done` is a truthful count, not a guess. */
+export interface BatchProgress {
+  done: number;
+  total: number;
+}
+
 const EMPTY: BatchDeleteOutcome = { removed: [], refused: [] };
 
 async function postBatch(url: string, ids: readonly string[]): Promise<BatchDeleteOutcome> {
@@ -55,10 +62,12 @@ async function postInChunks(
   url: string,
   ids: readonly string[],
   limit: number,
+  onProgress?: (progress: BatchProgress) => void,
 ): Promise<BatchDeleteOutcome> {
   const removed: string[] = [];
   const refused: BatchDeleteRefusal[] = [];
   let error: string | undefined;
+  let done = 0;
   for (const chunk of chunkIds(ids, limit)) {
     const outcome = await postBatch(url, chunk);
     removed.push(...outcome.removed);
@@ -66,6 +75,8 @@ async function postInChunks(
     // First failure is the one reported: a later chunk's identical network
     // error adds nothing, and the dialog names the reason once.
     error ??= outcome.error;
+    done += chunk.length;
+    onProgress?.({ done, total: ids.length });
   }
   return { removed, refused, ...(error ? { error } : {}) };
 }
@@ -74,10 +85,14 @@ async function postInChunks(
  *
  *  The selection is split into `SESSION_BATCH_LIMIT` requests rather than
  *  refused as a whole: the sidebar lets the user select every row, and an
- *  imported history is routinely larger than one request's bound. */
-export function deleteSessionsBatch(ids: readonly string[]): Promise<BatchDeleteOutcome> {
+ *  imported history is routinely larger than one request's bound. `onProgress`
+ *  fires after each chunk settles, which is what the dialog's bar draws. */
+export function deleteSessionsBatch(
+  ids: readonly string[],
+  onProgress?: (progress: BatchProgress) => void,
+): Promise<BatchDeleteOutcome> {
   if (ids.length === 0) return Promise.resolve({ ...EMPTY });
-  return postInChunks('/api/sessions/batch-delete', ids, SESSION_BATCH_LIMIT);
+  return postInChunks('/api/sessions/batch-delete', ids, SESSION_BATCH_LIMIT, onProgress);
 }
 
 /**
@@ -85,7 +100,10 @@ export function deleteSessionsBatch(ids: readonly string[]): Promise<BatchDelete
  * action — the transcript files on disk are NOT touched, only the sidebar
  * registration (and the tombstone that stops the sync re-adding it).
  */
-export function deleteWorkspacesBatch(ids: readonly string[]): Promise<BatchDeleteOutcome> {
+export function deleteWorkspacesBatch(
+  ids: readonly string[],
+  onProgress?: (progress: BatchProgress) => void,
+): Promise<BatchDeleteOutcome> {
   if (ids.length === 0) return Promise.resolve({ ...EMPTY });
-  return postInChunks('/api/folders/batch-delete', ids, WORKSPACE_BATCH_LIMIT);
+  return postInChunks('/api/folders/batch-delete', ids, WORKSPACE_BATCH_LIMIT, onProgress);
 }

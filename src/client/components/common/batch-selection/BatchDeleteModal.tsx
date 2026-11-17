@@ -21,7 +21,8 @@
 import { useEffect } from 'preact/hooks';
 import { AlertTriangle, Loader2, Trash2 } from 'lucide-preact';
 import { Modal } from '@/client/components/common/Modal';
-import type { BatchDeleteOutcome } from '@/client/hooks/workspace/batch-delete';
+import { ProgressBar } from '@/client/components/common/progress-bar';
+import type { BatchDeleteOutcome, BatchProgress } from '@/client/hooks/workspace/batch-delete';
 import type { BatchMode } from '@/shared/lib/workspace/batch-select';
 
 export interface BatchDeleteModalProps {
@@ -31,6 +32,8 @@ export interface BatchDeleteModalProps {
   /** The scope's name, so the sentence names the workspace. */
   scopeLabel?: string;
   isDeleting: boolean;
+  /** Chunks settled so far while the run is in flight; null when idle. */
+  progress?: BatchProgress | null;
   /** The settled outcome, once the run finished. Null while running. */
   outcome: BatchDeleteOutcome | null;
   onClose: () => void;
@@ -42,6 +45,7 @@ export function BatchDeleteModal({
   count,
   scopeLabel,
   isDeleting,
+  progress = null,
   outcome,
   onClose,
   onConfirm,
@@ -114,6 +118,21 @@ export function BatchDeleteModal({
       }
     >
       <div className="px-5 py-4 space-y-3">
+        {isDeleting && (
+          <div className="space-y-1.5" data-testid="batch-delete-progress">
+            <div className="flex items-center justify-between text-[11px] text-ink/60">
+              <span>
+                Deleting {progress?.done ?? 0} of {count}…
+              </span>
+              <span>{Math.round(((progress?.done ?? 0) / Math.max(1, count)) * 100)}%</span>
+            </div>
+            <ProgressBar
+              percent={((progress?.done ?? 0) / Math.max(1, count)) * 100}
+              label={`Deleting ${count} ${plural}`}
+              tone="error"
+            />
+          </div>
+        )}
         {sessions ? (
           <ul className="text-[11.5px] leading-relaxed text-ink/70 space-y-1.5">
             <li>

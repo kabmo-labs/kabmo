@@ -80,6 +80,7 @@ export function MobileDrawerDialogs({
         count={batchDelete.pending.length}
         scopeLabel={scopeLabel}
         isDeleting={batchDelete.isDeleting}
+        progress={batchDelete.progress}
         outcome={batchDelete.outcome}
         onClose={() => {
           const refusedCount = batchDelete.outcome?.refused.length ?? 0;

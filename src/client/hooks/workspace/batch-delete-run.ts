@@ -28,6 +28,7 @@ import {
   deleteSessionsBatch,
   deleteWorkspacesBatch,
   type BatchDeleteOutcome,
+  type BatchProgress,
 } from '@/client/hooks/workspace/batch-delete';
 import type { BatchMode } from '@/shared/lib/workspace/batch-select';
 
@@ -37,6 +38,8 @@ export interface BatchDeleteRun {
   isDeleting: boolean;
   /** The settled result, or null while the request runs. */
   outcome: BatchDeleteOutcome | null;
+  /** Chunks settled so far while a run is in flight; null when idle. */
+  progress: BatchProgress | null;
   /** Open the confirmation for these ids. */
   request: (ids: readonly string[]) => void;
   /** Close it without deleting. */
@@ -49,15 +52,18 @@ export function useBatchDeleteRun(refresh: () => void): BatchDeleteRun {
   const [pending, setPending] = useState<string[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
   const [outcome, setOutcome] = useState<BatchDeleteOutcome | null>(null);
+  const [progress, setProgress] = useState<BatchProgress | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
 
   const request = useCallback((ids: readonly string[]) => {
     setOutcome(null);
+    setProgress(null);
     setPending([...ids]);
   }, []);
 
   const cancel = useCallback(() => {
     setOutcome(null);
+    setProgress(null);
     setPending([]);
   }, []);
 
@@ -66,9 +72,14 @@ export function useBatchDeleteRun(refresh: () => void): BatchDeleteRun {
     setIsDeleting(true);
     setOutcome(null);
     const ids = pending;
+    // The bar starts at zero rather than at the first chunk's answer: a 500-id
+    // request can take seconds, and an empty track is the honest state until it
+    // settles.
+    setProgress({ done: 0, total: ids.length });
+    const onProgress = (next: BatchProgress) => setProgress(next);
     const result = mode === 'workspace'
-      ? await deleteWorkspacesBatch(ids)
-      : await deleteSessionsBatch(ids);
+      ? await deleteWorkspacesBatch(ids, onProgress)
+      : await deleteSessionsBatch(ids, onProgress);
 
     if (mode === 'session' && result.removed.length > 0) {
       for (const id of result.removed) forgetSession(id);
@@ -88,6 +99,7 @@ export function useBatchDeleteRun(refresh: () => void): BatchDeleteRun {
 
     if (result.removed.length > 0) refresh();
     setOutcome(result);
+    setProgress(null);
     setIsDeleting(false);
     // The dialog STAYS open on a refusal so the reason can be read; a fully
     // successful run closes itself, because the rows it named are gone.
@@ -95,5 +107,5 @@ export function useBatchDeleteRun(refresh: () => void): BatchDeleteRun {
     return result;
   }, [pending, isDeleting, searchParams, setSearchParams, refresh]);
 
-  return { pending, isDeleting, outcome, request, cancel, confirm };
+  return { pending, isDeleting, outcome, progress, request, cancel, confirm };
 }

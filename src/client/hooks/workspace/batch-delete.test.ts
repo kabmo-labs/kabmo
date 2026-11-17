@@ -93,6 +93,17 @@ describe('deleteSessionsBatch', () => {
     expect(outcome.removed).toEqual([`session-${SESSION_BATCH_LIMIT}`]);
   });
 
+  test('progress reports each settled chunk, cumulatively', async () => {
+    const seen: { done: number; total: number }[] = [];
+    await deleteSessionsBatch(ids(SESSION_BATCH_LIMIT + 115), (progress) => seen.push(progress));
+    // One report per request, and `done` counts ids that SETTLED — a chunk's
+    // answer covers every id it carried, removed or refused.
+    expect(seen).toEqual([
+      { done: SESSION_BATCH_LIMIT, total: SESSION_BATCH_LIMIT + 115 },
+      { done: SESSION_BATCH_LIMIT + 115, total: SESSION_BATCH_LIMIT + 115 },
+    ]);
+  });
+
   test('an empty selection sends nothing', async () => {
     const outcome = await deleteSessionsBatch([]);
     expect(sent).toEqual([]);

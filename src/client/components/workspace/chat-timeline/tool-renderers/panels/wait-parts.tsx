@@ -12,6 +12,7 @@
  */
 
 import { useEffect, useState } from 'preact/hooks';
+import { ProgressBar } from '@/client/components/common/progress-bar';
 
 /**
  * The stopwatch for a wait that is still blocking.
@@ -53,24 +54,18 @@ export function useStopwatch(startedAt: number | undefined, baseMs: number | und
 /** A progress track. `percent` null means "no number to show" — the band sweeps
  *  instead of pretending to be half done. */
 export function ProgressTrack({ percent, active }: { percent: number | null; active: boolean }) {
-  const clamped = percent === null ? null : Math.max(0, Math.min(100, percent));
+  if (percent !== null) {
+    return <ProgressBar percent={percent} label="Wait progress" tone={active ? 'ink' : 'success'} />;
+  }
   return (
     <div
       className="relative h-1.5 overflow-hidden rounded-full bg-ink/8"
       role="progressbar"
       aria-valuemin={0}
       aria-valuemax={100}
-      aria-valuenow={clamped ?? undefined}
-      aria-label={clamped === null ? 'Waiting' : 'Wait progress'}
+      aria-label="Waiting"
     >
-      {clamped === null ? (
-        active && <span className="wait-bar-sweep absolute inset-y-0 w-1/3 rounded-full bg-ink/45" />
-      ) : (
-        <span
-          className={`absolute inset-y-0 left-0 rounded-full ${active ? 'bg-ink/60' : 'bg-success/70'}`}
-          style={{ width: `${clamped}%` }}
-        />
-      )}
+      {active && <span className="wait-bar-sweep absolute inset-y-0 w-1/3 rounded-full bg-ink/45" />}
     </div>
   );
 }
