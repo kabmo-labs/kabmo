@@ -63,6 +63,17 @@ beforeAll(async () => {
     displayPath: 'dist/x.js', before: null, after: 'x', source: 'scan',
   });
   await journal.flush();
+
+  const gone = new ChangeJournal('sess-gone', '/repo');
+  await gone.recordChange({
+    at: 1, agent: 'Main', tool: 'write', op: 'create', path: '/repo/gone.ts',
+    displayPath: 'gone.ts', before: null, after: 'x', source: 'tool',
+  });
+  await gone.recordChange({
+    at: 2, agent: 'Main', tool: 'bash', op: 'delete', path: '/repo/gone.ts',
+    displayPath: 'gone.ts', before: 'x', after: null, source: 'trace',
+  });
+  await gone.flush();
 });
 
 afterAll(async () => {
@@ -87,6 +98,13 @@ describe('temp paths', () => {
   test('a temp path is not listed', async () => {
     const records = await readSessionChangeIndex(SESSION);
     expect(records.some((record) => record.displayPath === 'tmp.txt')).toBe(false);
+  });
+});
+
+describe('net-zero paths', () => {
+  test('a create-then-delete path is not listed', async () => {
+    expect(await readSessionChangeList('sess-gone')).toEqual([]);
+    expect((await readSessionChangeIndex('sess-gone')).length).toBe(2);
   });
 });
 

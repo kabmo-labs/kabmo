@@ -278,7 +278,22 @@ export async function readSessionChangeList(sessionId: string): Promise<SessionC
         if (!(await pathExists(record.path))) gone.add(record.path);
       }),
   );
-  return records.filter((record) => !gone.has(record.path)).map(toSessionChangeRecord);
+  // A path that did not exist before the session, was created, and was then
+  // deleted has no net change. The client drops the same-run pair; this drops
+  // the cross-run pair too, so the file never appears in the session's list.
+  const spans = new Map<string, { first: MergedRecord; last: MergedRecord }>();
+  for (const record of records) {
+    const span = spans.get(record.path);
+    if (span) span.last = record;
+    else spans.set(record.path, { first: record, last: record });
+  }
+  const netZero = new Set<string>();
+  for (const [absolute, { first, last }] of spans) {
+    if (first.before === null && last.after === null) netZero.add(absolute);
+  }
+  return records
+    .filter((record) => !gone.has(record.path) && !netZero.has(record.path))
+    .map(toSessionChangeRecord);
 }
 
 /** The net change of `absolutePath` inside `[from, to]`. */
