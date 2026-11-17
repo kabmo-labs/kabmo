@@ -58,6 +58,10 @@ beforeAll(async () => {
     at: 400, agent: 'Main', tool: 'bash', op: 'update', path: path.join(os.tmpdir(), 'tmp.txt'),
     displayPath: 'tmp.txt', before: 'a', after: 'b', source: 'trace',
   });
+  await journal.recordChange({
+    at: 500, agent: 'Main', tool: 'bash', op: 'create', path: '/repo/dist/x.js',
+    displayPath: 'dist/x.js', before: null, after: 'x', source: 'scan',
+  });
   await journal.flush();
 });
 
@@ -83,6 +87,13 @@ describe('temp paths', () => {
   test('a temp path is not listed', async () => {
     const records = await readSessionChangeIndex(SESSION);
     expect(records.some((record) => record.displayPath === 'tmp.txt')).toBe(false);
+  });
+});
+
+describe('build paths', () => {
+  test('a build path is not listed', async () => {
+    const records = await readSessionChangeIndex(SESSION);
+    expect(records.some((record) => record.displayPath === 'dist/x.js')).toBe(false);
   });
 });
 

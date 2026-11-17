@@ -48,7 +48,7 @@ import type {
   ShellTrace,
 } from '@/server/lib/changes/capture-types';
 import { readHeadContent, takeScan, type GitScan } from '@/server/lib/changes/scan.server';
-import { isExcludedTempPath } from '@/server/lib/changes/temp-path';
+import { isBuildPath, isExcludedTempPath } from '@/server/lib/changes/temp-path';
 import { reconstructEdit, resolveRacedWrite } from '@/server/lib/changes/capture-write.server';
 import { MAX_BLOB_BYTES } from '@/server/lib/changes/blobs.server';
 
@@ -305,7 +305,7 @@ export class ChangeCapture {
     source: ChangeSource,
     extra: ChangeExtra = {},
   ): Promise<void> {
-    if (isExcludedTempPath(absolute, this.deps.cwd)) return;
+    if (isExcludedTempPath(absolute, this.deps.cwd) || isBuildPath(absolute, this.deps.cwd)) return;
     // Two unknown sides are not proof of no change; only two known equal sides are.
     if (before === after && before !== undefined) return;
     const op = before === null ? 'create' : after === null ? 'delete' : 'update';

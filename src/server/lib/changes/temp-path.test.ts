@@ -14,7 +14,7 @@
 import { describe, expect, test } from 'bun:test';
 import os from 'node:os';
 import path from 'node:path';
-import { isExcludedTempPath, isTempPath } from '@/server/lib/changes/temp-path';
+import { isBuildPath, isExcludedTempPath, isTempPath } from '@/server/lib/changes/temp-path';
 
 describe('isTempPath', () => {
   test('excludes /tmp and the OS temp dir', () => {
@@ -33,5 +33,13 @@ describe('isTempPath', () => {
 
   test('a temp path outside the session cwd is excluded', () => {
     expect(isExcludedTempPath('/tmp/other/a.txt', '/repo')).toBe(true);
+  });
+
+  test('a build path under the cwd is excluded', () => {
+    expect(isBuildPath('/repo/dist/client/a.js', '/repo')).toBe(true);
+    expect(isBuildPath('/repo/packages/foo/dist/a.js', '/repo')).toBe(true);
+    expect(isBuildPath('/repo/node_modules/x/a.js', '/repo')).toBe(true);
+    expect(isBuildPath('/repo/src/a.ts', '/repo')).toBe(false);
+    expect(isBuildPath('/other/dist/a.js', '/repo')).toBe(false);
   });
 });

@@ -385,7 +385,8 @@ routes read the new reader; `purgeSessionData` removes the journal directory.
 | Run separation | `run` records on `agent_start` / terminal `agent_end`; every `call`/`change`/`note` carries `runId` + `runAt`; a non-terminal `agent_end` is a continuation and reuses the id; a late subagent change keeps the closed run's id |
 | Session spanning the feature | omp records older than the first Kabmo line are merged in; each merged record carries its blob store, so a diff straddling the boundary reads the omp `before` and the Kabmo `after` |
 | Concurrent sessions in one cwd | the exact layers are per tool call; the scan skips a path another session in the same cwd recorded in the window, and `git status` runs with `--no-optional-locks` so two scans do not fight over the index |
-| Temp paths | `/tmp` and the OS temp dir are dropped by both the writer and the reader **when outside the session cwd**; a workspace that itself lives under `/tmp` keeps its files |
+| Temp and build paths | `/tmp` and the OS temp dir are dropped **when outside the session cwd**; a path under a build/output directory (`dist`, `build`, `node_modules`, `target`, …) is dropped too, so a build in a run does not add every emitted chunk to that run's list |
+| Nested repos | the scan asks each nested git repo under the cwd (bounded 20 repos / 200 dirs) and records its root, so a project checkout's changes are seen and its clean files read `HEAD` from its own repo |
 
 ### 10.2 Run separation
 

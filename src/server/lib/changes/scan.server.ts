@@ -21,11 +21,13 @@
 import { readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { childEnv } from '@/server/lib/fs/child-env';
-import { isExcludedTempPath } from '@/server/lib/changes/temp-path';
+import { isBuildPath, isExcludedTempPath } from '@/server/lib/changes/temp-path';
 
 const SCAN_BUDGET_FILES = 200;
 const GIT_TIMEOUT_MS = 5_000;
 const DIR_SCAN_MAX_BYTES = 10 * 1024 * 1024;
+const MAX_NESTED_REPOS = 20;
+const MAX_WALK_DIRS = 200;
 
 export interface GitScan {
   root: string;
@@ -33,6 +35,8 @@ export interface GitScan {
   dirty: Map<string, string | null>;
   /** The budget cut the dirty set; the caller says so rather than pretending. */
   truncated: boolean;
+  /** Path prefix → repo root, so a nested repo's `readHead` uses its own HEAD. */
+  roots?: Map<string, string>;
 }
 
 async function runGit(cwd: string, args: string[]): Promise<string | null> {
@@ -72,19 +76,20 @@ async function readText(absolute: string): Promise<string | null> {
 export async function takeGitScan(cwd: string): Promise<GitScan | null> {
   const root = (await runGit(cwd, ['rev-parse', '--show-toplevel']))?.trim();
   if (!root) return null;
-  // `--no-optional-locks` keeps a concurrent scan from taking the index lock:
-  // two sessions in one repo must not make each other's `git status` fail.
-  const status = await runGit(root, ['status', '--porcelain=v1', '-z', '--no-optional-locks']);
+  // `--no-optional-locks` is a GLOBAL git option, so it must precede the
+  // subcommand: `git status --no-optional-locks` is an unknown option and made
+  // every scan fall back to the directory walk.
+  const status = await runGit(root, ['--no-optional-locks', 'status', '--porcelain=v1', '-z']);
   if (status === null) return null;
 
   const entries = parseStatus(status);
   const dirty = new Map<string, string | null>();
   for (const relative of entries.slice(0, SCAN_BUDGET_FILES)) {
     const absolute = path.resolve(root, relative);
-    if (isExcludedTempPath(absolute, cwd)) continue;
+    if (isExcludedTempPath(absolute, cwd) || isBuildPath(absolute, cwd)) continue;
     dirty.set(absolute, await readText(absolute));
   }
-  return { root, dirty, truncated: entries.length > SCAN_BUDGET_FILES };
+  return { root, dirty, truncated: entries.length > SCAN_BUDGET_FILES, roots: new Map([[root, root]]) };
 }
 
 /**
@@ -112,7 +117,7 @@ export async function takeDirScan(cwd: string): Promise<GitScan | null> {
     bytes += info.size;
     dirty.set(absolute, text);
   }
-  return { root: cwd, dirty, truncated };
+  return { root: cwd, dirty, truncated, roots: new Map([[cwd, cwd]]) };
 }
 
 /** Recursive file walk, bounded; `node_modules` and `.git` are skipped. */
@@ -122,7 +127,7 @@ async function walkFiles(dir: string, out: string[], budget: number, cwd: string
     if (out.length >= budget) return true;
     if (entry.name === 'node_modules' || entry.name === '.git') continue;
     const absolute = path.join(dir, entry.name);
-    if (isExcludedTempPath(absolute, cwd)) continue;
+    if (isExcludedTempPath(absolute, cwd) || isBuildPath(absolute, cwd)) continue;
     if (entry.isDirectory()) {
       if (await walkFiles(absolute, out, budget, cwd)) return true;
     } else if (entry.isFile()) {
@@ -132,11 +137,77 @@ async function walkFiles(dir: string, out: string[], budget: number, cwd: string
   return false;
 }
 
-/** Git first (exact for tracked files), then the directory scan. */
+/**
+ * Nested git repos under `cwd`.
+ *
+ * A workspace can be a parent repo whose projects are their own checkouts
+ * (`Workspace/projects/<project>`). The parent's `git status` does not show a
+ * nested repo's files, so a scan that only asks the parent misses every change
+ * an opaque command made inside a project. The walk stops at the first `.git`
+ * it finds and asks that repo directly; it is bounded so a large workspace
+ * cannot turn one scan into a full-tree crawl.
+ */
+async function takeNestedGitScans(cwd: string): Promise<{ scans: GitScan[]; truncated: boolean }> {
+  const scans: GitScan[] = [];
+  let dirs = 0;
+  let truncated = false;
+
+  const walk = async (dir: string): Promise<void> => {
+    if (scans.length >= MAX_NESTED_REPOS || dirs >= MAX_WALK_DIRS) {
+      truncated = true;
+      return;
+    }
+    const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
+    for (const entry of entries) {
+      if (scans.length >= MAX_NESTED_REPOS) {
+        truncated = true;
+        return;
+      }
+      if (!entry.isDirectory()) continue;
+      if (entry.name === 'node_modules' || entry.name === '.git') continue;
+      const absolute = path.join(dir, entry.name);
+      if (isExcludedTempPath(absolute, cwd) || isBuildPath(absolute, cwd)) continue;
+      dirs++;
+      if (dirs > MAX_WALK_DIRS) {
+        truncated = true;
+        return;
+      }
+      const gitEntry = await stat(path.join(absolute, '.git')).catch(() => null);
+      if (gitEntry) {
+        const scan = await takeGitScan(absolute);
+        if (scan) scans.push(scan);
+        continue;
+      }
+      await walk(absolute);
+    }
+  };
+
+  await walk(cwd);
+  return { scans, truncated };
+}
+
+/** Git first (the parent and its nested repos), then the directory scan. */
 export async function takeScan(cwd: string): Promise<GitScan | null> {
-  const git = await takeGitScan(cwd);
-  if (git) return git;
-  return takeDirScan(cwd);
+  const parent = await takeGitScan(cwd);
+  const nested = await takeNestedGitScans(cwd);
+  if (!parent && nested.scans.length === 0) return takeDirScan(cwd);
+
+  const dirty = new Map<string, string | null>();
+  const roots = new Map<string, string>();
+  if (parent) {
+    for (const [absolute, content] of parent.dirty) dirty.set(absolute, content);
+    for (const [prefix, root] of parent.roots ?? []) roots.set(prefix, root);
+  }
+  for (const scan of nested.scans) {
+    for (const [absolute, content] of scan.dirty) dirty.set(absolute, content);
+    for (const [prefix, root] of scan.roots ?? []) roots.set(prefix, root);
+  }
+  return {
+    root: parent?.root ?? cwd,
+    dirty,
+    truncated: (parent?.truncated ?? false) || nested.truncated || nested.scans.some((scan) => scan.truncated),
+    roots,
+  };
 }
 
 /** The content at HEAD for a path that was clean; `null` when it did not exist. */

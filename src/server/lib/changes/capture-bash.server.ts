@@ -13,6 +13,7 @@
  * the two git snapshots, and a command the scan could not cover is a note.
  */
 
+import path from 'node:path';
 import {
   classifyArgv,
   classifyCommand,
@@ -141,13 +142,26 @@ async function reconcileScan(
     for (const path of await readSessionChangePaths(sessionId, from, to)) claimed.add(path);
   }
 
+  // A nested repo's clean file must read HEAD from ITS repo, not the parent's.
+  const rootFor = (absolute: string): string => {
+    let best = start.root;
+    let bestLength = -1;
+    for (const [prefix, root] of start.roots ?? []) {
+      if ((absolute === prefix || absolute.startsWith(prefix + path.sep)) && prefix.length > bestLength) {
+        best = root;
+        bestLength = prefix.length;
+      }
+    }
+    return best;
+  };
+
   const paths = new Set([...start.dirty.keys(), ...after.dirty.keys()]);
   for (const absolute of paths) {
     if (skip.has(absolute)) continue;
     if (claimed.has(absolute)) continue;
     const before = start.dirty.has(absolute)
       ? start.dirty.get(absolute) ?? null
-      : await host.readHead(start.root, absolute);
+      : await host.readHead(rootFor(absolute), absolute);
     const afterText = after.dirty.has(absolute)
       ? after.dirty.get(absolute) ?? null
       : await host.readFile(absolute);

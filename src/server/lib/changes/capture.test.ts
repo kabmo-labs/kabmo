@@ -115,6 +115,26 @@ describe('temp paths', () => {
   });
 });
 
+describe('build paths', () => {
+  test('a write under a build directory is not journaled', async () => {
+    const file = path.join(REPO, 'dist', 'x.js');
+    const files = new Map([[file, 'x']]);
+    const capture = makeCapture('cap-build', files);
+    capture.onFrame({
+      type: 'tool_execution_start',
+      toolCallId: 'c1',
+      toolName: 'write',
+      args: { path: file, content: 'x' },
+    });
+    await capture.flush();
+    capture.onFrame({ type: 'tool_execution_end', toolCallId: 'c1', toolName: 'write' });
+    await capture.flush();
+
+    const lines = await records('cap-build');
+    expect(lines.some((line) => line.type === 'change')).toBe(false);
+  });
+});
+
 describe('bash capture', () => {
   test('rm is a delete, from the trace argv', async () => {
     const files = new Map([[at('c.ts'), 'C']]);
