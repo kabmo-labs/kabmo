@@ -4,6 +4,54 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.39.0](https://github.com/kabmo-labs/kabmo/compare/v0.38.2...v0.39.0) — 2026-11-17
+
+### Added
+
+* **command-runner:** follow a live run's log tail until the reader scrolls up ([f9b3e3d](https://github.com/kabmo-labs/kabmo/commit/f9b3e3d394ac01b37fb3e00094eaec3b604a2faf)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **context-usage:** show session token totals in the context popover ([e6276c0](https://github.com/kabmo-labs/kabmo/commit/e6276c001b283d9ec516a50cf529a296d204799c)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** guard zcode and antigravity sessions by their transcript ([48bc6e1](https://github.com/kabmo-labs/kabmo/commit/48bc6e1d51ecbb9042c6e48cb1f9e1754a4ef326)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** imported and reopened agent-owned terminal sessions ([e79f870](https://github.com/kabmo-labs/kabmo/commit/e79f87054031df975c15ed81d56f5090bd197996)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **navbar:** hide controls from a right-click menu ([71fae44](https://github.com/kabmo-labs/kabmo/commit/71fae44db0317209d488c913f6833dfe576e2b25)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **panels:** place built-in panels on the left dock and move any panel by drag ([9abd9fc](https://github.com/kabmo-labs/kabmo/commit/9abd9fc120168314f996bff3745bf98a7d24118b)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **session-sidebar:** copy a session id and find it in search ([df3d821](https://github.com/kabmo-labs/kabmo/commit/df3d8215e7fc21ecd96e813a072d85e4519a5c8b)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **session-sidebar:** mark the row whose action menu is open ([1207684](https://github.com/kabmo-labs/kabmo/commit/12076842d384bd45ff55e3c38f72c9e21e927846)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **sessions:** export a session transcript as markdown ([9ed83a4](https://github.com/kabmo-labs/kabmo/commit/9ed83a48e7bf16cc0edd6a57336fa1da3039f304)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **sessions:** tombstone a deleted session so an import cannot restore it ([d81aeea](https://github.com/kabmo-labs/kabmo/commit/d81aeea636fadbd9f9808e3dff7cad279c96f901)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **settings:** adopt omp 18.21.0's embed row and Phonon TTS ladder ([e8a2220](https://github.com/kabmo-labs/kabmo/commit/e8a2220e8ecdfb301560cdc236c655b739ee9983)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **settings:** adopt omp 18.22.0's disassembler rows ([e0e368b](https://github.com/kabmo-labs/kabmo/commit/e0e368b8e3729115e8cc6a2a88d926e245bf5195)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **sidebar:** show batch delete progress ([5686534](https://github.com/kabmo-labs/kabmo/commit/56865347e36a73593292934f4cf86f06e1c5aef2)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **sidebar:** show the build version in the desktop footer ([8ed45bd](https://github.com/kabmo-labs/kabmo/commit/8ed45bdfa59360cad09b68546f0b3694b74a1e5e)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **tool-renderers:** open eval screenshots in the shared fullscreen viewer ([4eb4fa5](https://github.com/kabmo-labs/kabmo/commit/4eb4fa581e213be83577230d5318f7268c089df9)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **tray:** added a colour or monochrome tray icon choice ([33d3d15](https://github.com/kabmo-labs/kabmo/commit/33d3d15e05e1b6aee76692051fc91270b56dfd2b)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **usage:** show every provider as a card in the right panel ([d5ff9fb](https://github.com/kabmo-labs/kabmo/commit/d5ff9fb5a44e87e0349aa9c05cc83dc06831dcaa)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Changed
+
+* **git-panel:** tidy commit history and graph modals ([80d493d](https://github.com/kabmo-labs/kabmo/commit/80d493d587dfba18f8cbf78c692682a66b01f92f)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** share the dsh store lookup with the transcript guard ([c83edf9](https://github.com/kabmo-labs/kabmo/commit/c83edf983baf14d2a4c5b458bcb3b043bb3263a9)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **android:** made background notifications an opt-in switch ([9fcc5ef](https://github.com/kabmo-labs/kabmo/commit/9fcc5efe9d8ff2868e9a2e5d9464ccf2da935fad)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **changes:** drop a create-then-delete path from the list ([4a5b105](https://github.com/kabmo-labs/kabmo/commit/4a5b105b9e298918b18e6d54a5f890838ed18806)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **changes:** exclude temp paths outside the session cwd ([d8b1cd5](https://github.com/kabmo-labs/kabmo/commit/d8b1cd572495ac3bcfc55002d6587f3cc30412e0)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **changes:** scan nested repos and drop build artifacts ([e4d1514](https://github.com/kabmo-labs/kabmo/commit/e4d151436153264baa3d436b84348553e8fa0710)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **chat:** open the timeline at the tail without animating, and pin it as the composer grows ([8663d23](https://github.com/kabmo-labs/kabmo/commit/8663d23b3d5450d45a1f82730e53401fee0bc9d7)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **ci:** make the release gates green again ([250c502](https://github.com/kabmo-labs/kabmo/commit/250c502866d7dfd26a2149e37224e6579d152881)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **composer:** keep the @ picker above the generating indicator ([374ad15](https://github.com/kabmo-labs/kabmo/commit/374ad15cdd41986fbc839edec57cbc01b9a3fd6f)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** treat a dsh header-only session as empty ([8d37129](https://github.com/kabmo-labs/kabmo/commit/8d371296badf9a6384e1a20e307d9461a4b2fbf3)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **layout:** keep the panel-edge hover from sticking ([b4ceeb2](https://github.com/kabmo-labs/kabmo/commit/b4ceeb2687f7867f447d78e2d7f083eca6ba346f)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **notifications:** state a blocked OS grant instead of failing silently ([1a960ba](https://github.com/kabmo-labs/kabmo/commit/1a960ba3834fff4563c713e03d977a4133d0ed65)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **session-sidebar:** brightened the live run clock in session rows ([47f250a](https://github.com/kabmo-labs/kabmo/commit/47f250acb338fce56bd46ce1cf6645db625ca811)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **sessions:** delete the agent's own copy and split oversized batches ([18c0d13](https://github.com/kabmo-labs/kabmo/commit/18c0d13ccc2398c6e575f62d7642a43932e4e879)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **sidebar:** keep the reveal control while a search owns the list ([8f31ce6](https://github.com/kabmo-labs/kabmo/commit/8f31ce602fbca7c097b5ed3e3710df26bcb20255)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **sidebar:** list only sessions that have a transcript ([bc96dcc](https://github.com/kabmo-labs/kabmo/commit/bc96dcc21a31789b502f3150c65076eb28ba6443)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **terminal:** keep the selection when a late font re-measures the grid ([b19ba35](https://github.com/kabmo-labs/kabmo/commit/b19ba35565c069bb856545b633358e01205ef4d9)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **test:** stop suites leaking prototype patches and mounted trees ([6075ae5](https://github.com/kabmo-labs/kabmo/commit/6075ae50e27326bb7262e23e1de4ca0d5dd44dae)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **tray:** made the monochrome icon a greyscale conversion ([99ab006](https://github.com/kabmo-labs/kabmo/commit/99ab00651f382369999e0896f0605c9e81a9564f)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **ui:** align panel headers and unify the reload button ([2ae5c4c](https://github.com/kabmo-labs/kabmo/commit/2ae5c4c194c4b4d3df1543ebcefd393c7285e1a3)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.38.2](https://github.com/kabmo-labs/kabmo/compare/v0.38.1...v0.38.2) — 2026-11-16
 
 ### Fixed
