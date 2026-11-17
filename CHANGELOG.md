@@ -4,6 +4,21 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.40.0](https://github.com/kabmo-labs/kabmo/compare/v0.39.1...v0.40.0) — 2026-11-17
+
+### Added
+
+* **connect:** record and show when a paired device last connected ([eb205dc](https://github.com/kabmo-labs/kabmo/commit/eb205dc67a953e3d9da54cd6339741de1d783cd7)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **mobile:** open the panel and navbar switches on long press ([ea8b760](https://github.com/kabmo-labs/kabmo/commit/ea8b76092b2ab50881f3436f13fd17c09e5376a2)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **command-runner:** hide command files that declare nothing to run ([0836f77](https://github.com/kabmo-labs/kabmo/commit/0836f77538e9ee714bfbd17066c984096b69a2af)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **git-panel:** drop mobile rects from history modal header controls ([8b84417](https://github.com/kabmo-labs/kabmo/commit/8b84417b4ce772ab5c421de185a537aa1bafcbb2)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **mobile:** keep the active panel chip label on one line ([271d0ef](https://github.com/kabmo-labs/kabmo/commit/271d0efcec2ebc8c0759ff0c4f9f25deec4cbf0d)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **shells:** version the Apple notification chime names ([44a89ee](https://github.com/kabmo-labs/kabmo/commit/44a89eea3a8ad2e5f240d9c55b8c2e69a27bb279)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **terminal:** focus the phone's textarea and open its keyboard on panel open ([f7625f1](https://github.com/kabmo-labs/kabmo/commit/f7625f113d7c3ef89e651a262931c207041123ff)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.39.1](https://github.com/kabmo-labs/kabmo/compare/v0.39.0...v0.39.1) — 2026-11-17
 
 ### Fixed
