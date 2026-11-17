@@ -25,6 +25,18 @@ export function GitCommitModal({
   rootPath,
   activeRepo,
 }: GitCommitModalProps) {
+  // Escape closes the dialog, as every other dialog in the app does. The
+  // listener lives on `document` because the card itself is not focusable and
+  // the scrim click is mouse-only.
+  useEffect(() => {
+    if (!output) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [output, onClose]);
+
   if (!output) return null;
 
   /**
@@ -228,6 +240,7 @@ export function GitCommitModal({
       onClick={onClose}
       role="dialog"
       aria-modal="true"
+      aria-label={output.title}
     >
       <div
         className="glass-overlay bg-paper border-ink/20 shadow-2xl flex flex-col overflow-hidden
@@ -251,13 +264,18 @@ export function GitCommitModal({
           hasMore={hasMore}
         />
 
-        {/* Commits Container with Unified Continuous SVG Canvas */}
+        {/* Commits Container with Unified Continuous SVG Canvas.
+            The horizontal padding matches the header's (`px-3 lg:px-5` plus the
+            safe-area insets), so the rows and the graph column line up with the
+            title and search field instead of hugging the card's edge. */}
         <div
           ref={containerRef}
-          className="flex-1 overflow-y-auto scrollbar-overlay-container relative select-text"
+          className="flex-1 overflow-y-auto scrollbar-overlay-container relative select-text
+            px-3 lg:px-5
+            pl-[max(0.75rem,env(safe-area-inset-left,0px))] pr-[max(0.75rem,env(safe-area-inset-right,0px))]"
         >
           {filteredCommits.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-ink/40 font-mono text-xs">
+            <div className="flex flex-col items-center justify-center py-20 text-muted font-mono text-xs">
               {searchQuery.trim() ? 'No matching commits found.' : 'No commits in this branch.'}
             </div>
           ) : (
@@ -284,7 +302,6 @@ export function GitCommitModal({
                     key={commit.hash}
                     commit={commit}
                     isSelected={selectedHash === commit.hash}
-                    isGraphMode={isGraphMode}
                     onSelect={(c) => setSelectedHash(c.hash)}
                     onAction={handleCommitAction}
                     onToggleFile={handleToggleFile}
@@ -302,8 +319,8 @@ export function GitCommitModal({
                 {/* Lazy Load Sentinel & Controls */}
                 <div ref={sentinelRef} className="pt-3 pb-4 px-4 flex items-center justify-center">
                   {isLoadingMore ? (
-                    <div className="flex items-center gap-2 text-xs text-ink/60 font-mono py-2">
-                      <Loader2 size={14} className="animate-spin text-info" />
+                    <div className="flex items-center gap-2 text-xs text-muted font-mono py-2">
+                      <Loader2 size={14} className="animate-spin text-info-text" aria-hidden="true" />
                       <span>Loading more commits...</span>
                     </div>
                   ) : hasMore && !searchQuery.trim() ? (
@@ -315,7 +332,7 @@ export function GitCommitModal({
                       Load more commits...
                     </button>
                   ) : filteredCommits.length > 10 ? (
-                    <div className="text-[11px] font-mono text-ink/40 py-2">
+                    <div className="text-[11px] font-mono text-muted py-2">
                       End of commit history ({typeof totalCount === 'number' && totalCount > 0 ? totalCount : commits.length} commits)
                     </div>
                   ) : null}

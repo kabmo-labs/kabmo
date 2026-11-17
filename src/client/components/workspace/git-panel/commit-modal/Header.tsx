@@ -54,12 +54,14 @@ export function Header({
             <h2 className="text-base font-semibold text-ink tracking-tight">
               {isGraphMode ? 'Graph' : 'History'}
             </h2>
-            <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-ink/5 text-ink/50 border border-ink/10 whitespace-nowrap">
+            <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-ink/5 text-ink/80 border border-ink/10 whitespace-nowrap">
               {badge}
             </span>
           </div>
-          <p className="text-xs text-ink/50 mt-0.5 hidden lg:block">
-            Browse recent commits and inspect changed files.
+          <p className="text-xs text-muted mt-0.5 hidden lg:block">
+            {isGraphMode
+              ? 'Follow branch topology and inspect commits.'
+              : 'Browse recent commits and inspect changed files.'}
           </p>
         </div>
 
@@ -71,26 +73,30 @@ export function Header({
               type="button"
               onClick={() => onToggleMode(false)}
               title="History view"
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${
+              aria-label="History view"
+              aria-pressed={!isGraphMode}
+              className={`tap-target flex items-center gap-1.5 px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${
                 !isGraphMode
                   ? 'bg-paper text-ink shadow-xs'
-                  : 'text-ink/60 hover:text-ink hover:bg-ink/5'
+                  : 'text-ink/80 hover:text-ink hover:bg-ink/5'
               }`}
             >
-              <History size={13} />
+              <History size={13} aria-hidden="true" />
               <span className="hidden lg:inline">History</span>
             </button>
             <button
               type="button"
               onClick={() => onToggleMode(true)}
               title="Graph view"
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${
+              aria-label="Graph view"
+              aria-pressed={isGraphMode}
+              className={`tap-target flex items-center gap-1.5 px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${
                 isGraphMode
                   ? 'bg-paper text-ink shadow-xs'
-                  : 'text-ink/60 hover:text-ink hover:bg-ink/5'
+                  : 'text-ink/80 hover:text-ink hover:bg-ink/5'
               }`}
             >
-              <GitMerge size={13} />
+              <GitMerge size={13} aria-hidden="true" />
               <span className="hidden lg:inline">Graph</span>
             </button>
           </div>
@@ -100,42 +106,46 @@ export function Header({
             type="button"
             onClick={onRefresh}
             disabled={isRefreshing}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-ink/15 hover:bg-ink/5 text-ink/70 hover:text-ink transition-colors cursor-pointer text-xs disabled:opacity-40"
+            className="tap-target flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-ink/15 hover:bg-ink/5 text-ink/70 hover:text-ink transition-colors cursor-pointer text-xs disabled:opacity-40"
             title="Refresh commit history"
+            aria-label="Refresh commit history"
           >
-            <RotateCw size={13} className={isRefreshing ? 'animate-spin text-ink' : ''} />
-            <span className="hidden lg:inline">refresh</span>
+            <RotateCw size={13} className={isRefreshing ? 'animate-spin text-ink' : ''} aria-hidden="true" />
+            <span className="hidden lg:inline">Refresh</span>
           </button>
 
           {/* Close Button */}
           <button
             type="button"
             onClick={onClose}
-            className="p-2 -mr-1 rounded-md hover:bg-ink/5 text-ink/60 hover:text-ink transition-colors cursor-pointer"
+            className="tap-target p-2 -mr-1 rounded-md hover:bg-ink/5 text-muted hover:text-ink transition-colors cursor-pointer"
             title="Close modal"
+            aria-label="Close commit history"
           >
-            <X size={16} />
+            <X size={16} aria-hidden="true" />
           </button>
         </div>
       </div>
 
       {/* Search Input Filter */}
       <div className="relative mt-1">
-        <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink/40" />
+        <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink/55" aria-hidden="true" />
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => onSearchChange(e.currentTarget.value)}
           placeholder="Filter commits by message, author, or hash..."
-          className="w-full bg-ink/[0.03] border border-ink/15 rounded-md pl-8 pr-3 py-1.5 text-xs text-ink placeholder-ink/40 focus:outline-none focus:border-ink/40 transition-colors font-mono"
+          aria-label="Filter commits"
+          className="w-full bg-ink/[0.03] border border-ink/15 rounded-md pl-8 pr-3 py-1.5 text-xs text-ink placeholder-ink/40 focus:outline-none focus:border-ink/40 focus-visible:ring-2 focus-visible:ring-ink/20 transition-colors font-mono"
         />
         {searchQuery && (
           <button
             type="button"
             onClick={() => onSearchChange('')}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink/40 hover:text-ink cursor-pointer"
+            aria-label="Clear filter"
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink/55 hover:text-ink cursor-pointer"
           >
-            <X size={12} />
+            <X size={12} aria-hidden="true" />
           </button>
         )}
       </div>

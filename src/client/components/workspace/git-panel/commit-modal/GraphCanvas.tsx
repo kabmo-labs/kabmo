@@ -75,17 +75,12 @@ export function GraphCanvas({
     <div
       className="absolute top-0 left-0 pointer-events-none z-10"
       style={{ width: canvasWidth, height: totalHeight }}
+      aria-hidden="true"
     >
       <svg
         className="w-full h-full overflow-visible"
         style={{ width: canvasWidth, height: totalHeight }}
       >
-        <defs>
-          <filter id="node-glow" x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="0" dy="0" stdDeviation="2" floodOpacity="0.35" />
-          </filter>
-        </defs>
-
         {/* 1. Continuous Connecting Lines */}
         {links.map((link) => {
           const x1 = isGraphMode ? paddingLeft + link.fromLane * laneWidth : 16;
@@ -146,7 +141,6 @@ export function GraphCanvas({
                 fill={isGraphMode ? 'var(--theme-paper)' : laneColor}
                 stroke={laneColor}
                 strokeWidth={isGraphMode ? 2.5 : 1.5}
-                filter="url(#node-glow)"
               />
 
               {/* Inner dot for Graph Mode */}

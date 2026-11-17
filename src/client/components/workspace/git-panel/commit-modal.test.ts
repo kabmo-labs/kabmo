@@ -192,4 +192,20 @@ describe('GitPanel commit modal', () => {
     await rerender({ rootPath: ROOT, enabled: true });
     expect(container.querySelector('[role="dialog"]')).toBeNull();
   });
+
+  test('Escape closes the modal', async () => {
+    await mountHistory();
+
+    const historyButton = container.querySelector('button[title="Commit History"]') as HTMLButtonElement | null;
+    expect(historyButton).toBeTruthy();
+    await act(async () => { historyButton?.click(); });
+    await settle();
+    expect(container.querySelector('[role="dialog"]')).toBeTruthy();
+
+    await act(async () => {
+      document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    });
+    await settle(5);
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+  });
 });

@@ -41,7 +41,7 @@ afterAll(() => {
   }
 });
 
-const commit = (body?: string): GitCommit => ({
+const commit = (body?: string, files: GitCommit['files'] = []): GitCommit => ({
   hash: 'a'.repeat(40),
   shortHash: 'aaaaaaaa',
   author: 'Ada',
@@ -49,18 +49,17 @@ const commit = (body?: string): GitCommit => ({
   message: 'feat(scope): the subject line',
   body,
   parents: [],
-  files: [],
+  files,
 });
 
-async function mount(commitRow: GitCommit): Promise<HTMLElement> {
+async function mount(commitRow: GitCommit, options: { isSelected?: boolean } = {}): Promise<HTMLElement> {
   const container = document.createElement('div');
   document.body.appendChild(container);
   await act(async () => {
     render(
       h(CommitRow, {
         commit: commitRow,
-        isSelected: false,
-        isGraphMode: false,
+        isSelected: options.isSelected ?? false,
         onSelect: () => {},
         onAction: () => {},
         onToggleFile: () => {},
@@ -124,5 +123,80 @@ describe('CommitRow message expansion', () => {
     selection.removeAllRanges();
     await click(el.firstElementChild!);
     expect(el.textContent).not.toContain('selectable text');
+  });
+});
+
+describe('CommitRow changed-file list', () => {
+  const files: GitCommit['files'] = [
+    { file: 'src/one.ts', status: 'M', additions: 3, deletions: 1 },
+    { file: 'src/two.ts', status: 'A', additions: 9, deletions: 0 },
+  ];
+
+  test('the file list is hidden until the row is expanded', async () => {
+    const el = await mount(commit(undefined, files));
+    expect(el.textContent).toContain('feat(scope): the subject line');
+    expect(el.textContent).not.toContain('src/one.ts');
+    expect(el.textContent).not.toContain('src/two.ts');
+
+    await click(el.firstElementChild!);
+    expect(el.textContent).toContain('src/one.ts');
+    expect(el.textContent).toContain('src/two.ts');
+  });
+
+  test('a commit with files but no body still expands', async () => {
+    const el = await mount(commit(undefined, files));
+    // The chevron is the affordance: without it the file list would be
+    // unreachable on a one-line commit.
+    expect(el.querySelectorAll('svg').length).toBe(2); // copy-hash + chevron
+    await click(el.firstElementChild!);
+    expect(el.textContent).toContain('src/one.ts');
+  });
+
+  test('the collapsed row states how many files the commit touched', async () => {
+    const el = await mount(commit(undefined, files));
+    expect(el.textContent).toContain('2 files');
+  });
+
+  test('clicking again collapses the file list', async () => {
+    const el = await mount(commit(undefined, files));
+    await click(el.firstElementChild!);
+    await click(el.firstElementChild!);
+    expect(el.textContent).not.toContain('src/one.ts');
+  });
+
+  test('the subject is a button that reports and toggles the expanded state', async () => {
+    const el = await mount(commit(undefined, files));
+    const subject = Array.from(el.querySelectorAll('button[aria-expanded]')).find((button) =>
+      button.textContent?.includes('feat(scope): the subject line')
+    ) as HTMLButtonElement | undefined;
+    expect(subject).toBeTruthy();
+    expect(subject?.getAttribute('aria-expanded')).toBe('false');
+
+    await click(subject!);
+    expect(el.textContent).toContain('src/one.ts');
+    expect(subject?.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  test('a file row is a button that reports its own expanded state', async () => {
+    const el = await mount(commit(undefined, files));
+    await click(el.firstElementChild!);
+    const fileRow = Array.from(el.querySelectorAll('button[aria-expanded]')).find((button) =>
+      button.textContent?.includes('src/one.ts')
+    ) as HTMLButtonElement | undefined;
+    expect(fileRow).toBeTruthy();
+    expect(fileRow?.getAttribute('aria-expanded')).toBe('false');
+  });
+});
+
+describe('CommitRow action strip', () => {
+  test('an unselected row renders no action buttons', async () => {
+    const el = await mount(commit(undefined, []));
+    expect(el.textContent).not.toContain('checkout');
+  });
+
+  test('a selected row renders the action buttons', async () => {
+    const el = await mount(commit(undefined, []), { isSelected: true });
+    expect(el.textContent).toContain('checkout');
+    expect(el.textContent).toContain('cherry-pick');
   });
 });

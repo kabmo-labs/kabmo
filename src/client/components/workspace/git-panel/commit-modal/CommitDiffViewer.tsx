@@ -152,7 +152,7 @@ export function CommitDiffViewer({ diffText, isLoading, filePath, fullContext = 
 
   if (isLoading) {
     return (
-      <div className="my-2 p-4 rounded bg-canvas border border-ink/10 text-ink/40 font-mono text-xs flex items-center justify-center">
+      <div className="my-2 p-4 rounded bg-canvas border border-ink/10 text-muted font-mono text-xs flex items-center justify-center">
         Loading commit diff...
       </div>
     );
@@ -160,7 +160,7 @@ export function CommitDiffViewer({ diffText, isLoading, filePath, fullContext = 
 
   if (!diffText || lines.length === 0) {
     return (
-      <div className="my-2 p-3 rounded bg-canvas border border-ink/10 text-ink/40 font-mono text-xs text-center">
+      <div className="my-2 p-3 rounded bg-canvas border border-ink/10 text-muted font-mono text-xs text-center">
         No diff content available for this file.
       </div>
     );
@@ -168,9 +168,9 @@ export function CommitDiffViewer({ diffText, isLoading, filePath, fullContext = 
 
   // Segment lines into blocks of context / changes
   return (
-    <div className="my-2 rounded border border-ink/15 bg-paper overflow-hidden text-[11px] font-mono leading-relaxed shadow-xs text-ink">
+    <div className="my-2 rounded border border-ink/15 bg-paper overflow-hidden text-[11px] font-mono leading-relaxed text-ink">
       <div className="flex items-center justify-between px-3 py-1.5 bg-canvas border-b border-ink/10 text-ink/70 text-[10.5px]">
-        <span className="font-semibold text-meta">Diff preview</span>
+        <span className="font-semibold text-muted">Diff preview</span>
         <button
           type="button"
           onClick={onToggleContext}
@@ -181,11 +181,11 @@ export function CommitDiffViewer({ diffText, isLoading, filePath, fullContext = 
         >
           {fullContext ? (
             <>
-              <ChevronUp size={12} /> Collapse context
+              <ChevronUp size={12} aria-hidden="true" /> Collapse context
             </>
           ) : (
             <>
-              <ChevronDown size={12} /> Expand all context
+              <ChevronDown size={12} aria-hidden="true" /> Expand all context
             </>
           )}
         </button>
@@ -198,7 +198,7 @@ export function CommitDiffViewer({ diffText, isLoading, filePath, fullContext = 
               return (
                 <div
                   key={`elided-${position}`}
-                  className="px-3 py-1 bg-canvas text-ink/40 text-[10px] text-center select-none"
+                  className="px-3 py-1 bg-canvas text-muted text-[10px] text-center select-none"
                   title={`${row.count} unchanged line(s) hidden`}
                 >
                   ⋯ {row.count} unchanged line{row.count === 1 ? '' : 's'} hidden ⋯
@@ -212,7 +212,7 @@ export function CommitDiffViewer({ diffText, isLoading, filePath, fullContext = 
               return (
                 <div
                   key={idx}
-                  className="flex items-center gap-2 px-3 py-1 bg-canvas border-y border-ink/10 text-meta text-[10px] font-semibold"
+                  className="flex items-center gap-2 px-3 py-1 bg-canvas border-y border-ink/10 text-muted text-[10px] font-semibold"
                 >
                   <span>↕</span>
                   <span>{line.text}</span>
@@ -238,10 +238,10 @@ export function CommitDiffViewer({ diffText, isLoading, filePath, fullContext = 
                 <div
                   className={`w-10 flex-shrink-0 text-right pr-2 py-0.5 select-none border-r border-ink/10 text-[10px] tabular-nums font-mono ${
                     isDel
-                      ? 'bg-error/15 text-error font-semibold'
+                      ? 'bg-error/15 text-ink/80 font-semibold'
                       : isAdd
-                      ? 'bg-success/15 text-success/70'
-                      : 'bg-canvas/50 text-ink/40'
+                      ? 'bg-success/15 text-ink/80'
+                      : 'bg-canvas/50 text-muted'
                   }`}
                 >
                   {line.oldNum ?? (isAdd ? '+' : '')}
@@ -249,10 +249,10 @@ export function CommitDiffViewer({ diffText, isLoading, filePath, fullContext = 
                 <div
                   className={`w-10 flex-shrink-0 text-right pr-2 py-0.5 select-none border-r border-ink/10 text-[10px] tabular-nums font-mono ${
                     isAdd
-                      ? 'bg-success/15 text-success font-semibold'
+                      ? 'bg-success/15 text-ink/80 font-semibold'
                       : isDel
-                      ? 'bg-error/15 text-error/70'
-                      : 'bg-canvas/50 text-ink/40'
+                      ? 'bg-error/15 text-ink/80'
+                      : 'bg-canvas/50 text-muted'
                   }`}
                 >
                   {line.newNum ?? (isDel ? '-' : '')}
@@ -261,7 +261,7 @@ export function CommitDiffViewer({ diffText, isLoading, filePath, fullContext = 
                 {/* Diff marker */}
                 <div
                   className={`w-4 flex-shrink-0 text-center py-0.5 select-none font-bold ${
-                    isAdd ? 'text-success' : isDel ? 'text-error' : 'opacity-0'
+                    isAdd || isDel ? 'text-ink/80' : 'opacity-0'
                   }`}
                 >
                   {isAdd ? '+' : isDel ? '-' : ' '}
