@@ -6,7 +6,7 @@
 /**
  What the launch splash is showing, as a value.
 
- The same four phases and the same five failure reasons as the Android and iOS
+ The same four phases and the same six failure reasons as the Android and iOS
  shells (`LoadingState`), because the three surfaces answer one question and a
  user who moves between them should not have to read a different sentence. Pure
  on purpose: every rule below is an ordering `WKWebView` really produces, and each
@@ -38,6 +38,10 @@ public struct SplashState: Equatable {
     case connect
     case timeout
     case ssl
+    /// The document loaded, but the client bundle never ran: the server answered
+    /// with a shell whose hashed script is missing (a stale build), or with
+    /// something that is not a console at all.
+    case notConsole
     case other
   }
 
@@ -106,6 +110,22 @@ public struct SplashState: Equatable {
     SplashState(phase: .failed, percent: percent, failure: failure)
   }
 
+  /// The document finished loading; `alive` says whether the console actually
+  /// started.
+  ///
+  /// `didFinish` fires for a document whose module script never executed — a
+  /// stale build whose hashed chunk 404s, a MIME mismatch, a crash before the
+  /// first render — and hiding the splash there is the blank white window this
+  /// state machine exists to prevent. The page answers `window.__kabmoPalette`
+  /// only after its bundle has run, so that answer is the readiness signal.
+  ///
+  /// A real load failure is never overwritten: `didFail` already put the reason
+  /// on screen, and the error page WebKit renders still reports `didFinish`.
+  public func pageSettled(alive: Bool) -> SplashState {
+    if phase == .failed { return self }
+    return alive ? finished() : failedBecause(.notConsole)
+  }
+
   /// Whether a navigation that just started is the user asking for the page
   /// again.
   ///
@@ -157,6 +177,8 @@ public struct SplashState: Equatable {
       return "The server did not answer in time. It may still be starting."
     case .ssl:
       return "The certificate is not trusted. Check the server address and its certificate."
+    case .notConsole:
+      return "The server answered, but the console did not start. It may be running an older build — restart the server, then Retry."
     case .other:
       return "The console could not be loaded. Retry, or check the server address."
     }

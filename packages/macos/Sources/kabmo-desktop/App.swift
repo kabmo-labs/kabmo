@@ -563,22 +563,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
     // `didStartProvisionalNavigation` arrives the view already points at the
     // incoming document, so the comparison would match every navigation.
     shownURL = webView.url?.absoluteString
-    // 100% is not a finish: the server's shell is still fetching the client
-    // bundle when the estimate reaches 1.0, so only this call closes the splash.
-    // The view stays MOUNTED and hidden — `render(.done)` is what hides it — so a
-    // later Reload shows it again with no second instance.
-    applyLoading(loading.finished())
     // A page can take the files the OS handed over only once it exists. The
     // launch batch was queued before the window was built, and a warm open can
     // land before the current navigation settles — both are drained here.
     pageReady = true
     flushOpenPaths()
     flushNotificationSession()
-    // The console has painted, so `window.__kabmoPalette()` answers the ACTIVE
-    // theme. Stored for the next cold start — the only launch where the splash
-    // has no page to ask — and applied to the live splash too, because a theme
-    // changed in Settings is exactly the case where the stored palette is stale
-    // and the splash it describes is on screen.
+    // The splash is NOT closed here. `didFinish` also fires for a document whose
+    // module script never executed — a stale build whose hashed chunk 404s, a
+    // MIME mismatch, a crash before the first render — and hiding the splash
+    // there is the blank white window this whole path exists to prevent.
+    // `readPalette` asks the page whether its bundle ran and settles the splash
+    // on the answer; the palette it returns is also what the next cold start
+    // paints, so one round trip does both jobs.
     readPalette()
   }
 
@@ -624,16 +621,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
   }
 
   /**
-   Ask the page which palette it is painting, and keep the answer.
+   Ask the page which palette it is painting, keep the answer, and settle the
+   splash on whether the page answered at all.
 
    The property is installed by `src/client/lib/native/palette.ts` before the
-   first render, so it exists by the time a load finishes. An older build answers
-   `undefined`, the parse returns nil, and the stored palette is left exactly as
-   it was rather than replaced with a colour no theme chose.
+   first render, so it exists by the time a load finishes — and a page whose
+   bundle never ran answers `null`. That is the readiness signal: a document
+   that loaded but never booted must keep the splash with a reason, not hide it
+   over a blank window. An older build answers `undefined`, the parse returns
+   nil, and the stored palette is left exactly as it was rather than replaced
+   with a colour no theme chose.
+
+   The address is captured before the round trip: a navigation that replaced the
+   document while the answer was in flight must not settle the new load's splash
+   with the old document's verdict.
    */
   private func readPalette() {
+    let address = shownURL
     webView.evaluateJavaScript("window.__kabmoPalette ? window.__kabmoPalette() : null") { [weak self] value, _ in
-      guard let self, let wire = value as? String, let next = ShellPalette.parse(wire) else { return }
+      // The CURRENT address, not the latched one: a navigation that started
+      // while the answer was in flight already points `webView.url` at the new
+      // document, and its verdict must not settle the new load's splash.
+      guard let self, self.webView.url?.absoluteString == address else { return }
+      let wire = value as? String
+      self.applyLoading(self.loading.pageSettled(alive: wire != nil))
+      guard let wire, let next = ShellPalette.parse(wire) else { return }
       Task { await self.store?.setPalette(wire) }
       self.splash?.applyPalette(next)
     }

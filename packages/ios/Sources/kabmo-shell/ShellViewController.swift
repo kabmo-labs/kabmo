@@ -309,7 +309,6 @@ final class ShellViewController: UIViewController {
     navigation.onLoadFinished = { [weak self] in
       self?.fallbackAttempted = false
       guard let self else { return }
-      self.applyLoading(self.loading.finished())
       // A document that arrived before the console did — a cold start by "Open
       // in Kabmo" — has been waiting since `viewDidLoad`, and this is the first
       // moment a page can take it.
@@ -457,8 +456,20 @@ final class ShellViewController: UIViewController {
   /// answers `undefined`, the parse returns nil, and the stored palette is left
   /// exactly as it was rather than replaced with a colour no theme chose.
   private func readPalette() {
+    // The URL the load finished on. The probe's answer only settles the overlay
+    // if the web view is STILL showing that document when the callback runs: a
+    // slow answer from a load the user has since navigated away from must not
+    // hide a failure on the current one.
+    let shownURL = webView.url?.absoluteString
     webView.evaluateJavaScript("window.__kabmoPalette ? window.__kabmoPalette() : null") { [weak self] result, _ in
-      guard let self, let wire = result as? String, let next = ShellPalette.parse(wire) else { return }
+      guard let self else { return }
+      let wire = result as? String
+      // A non-empty string means the client bundle ran, so the page is alive.
+      // The palette read below reuses the SAME evaluation.
+      if self.webView.url?.absoluteString == shownURL {
+        self.applyLoading(self.loading.pageSettled(alive: !(wire?.isEmpty ?? true)))
+      }
+      guard let wire, let next = ShellPalette.parse(wire) else { return }
       self.settings.write(palette: next)
       Palette.active = next
       self.overlay.applyPalette()

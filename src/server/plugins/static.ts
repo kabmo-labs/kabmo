@@ -169,6 +169,21 @@ export async function servePublicAsset(
   return null;
 }
 
+/**
+ * A build asset that is not on disk.
+ *
+ * Never the shell: a `<script type="module">` answered with HTML is refused by
+ * the browser's MIME check, so the page loads and then paints nothing — the
+ * blank window this route exists to prevent. A 404 names the missing file in
+ * the network panel instead.
+ */
+function missingAsset(): Response {
+  return new Response('Not found', {
+    status: 404,
+    headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' },
+  });
+}
+
 /** A file for `pathname`, or null when the request should reach the app. */
 export async function tryServeStatic(pathname: string, request?: Request): Promise<Response | null> {
   // The production bundle's own assets. `scripts/build-client.ts` emits the
@@ -177,9 +192,17 @@ export async function tryServeStatic(pathname: string, request?: Request): Promi
   // makes that `/static/...`, which is this branch. In development the same
   // files are served by Bun's own routing table (`/_bun/asset/*`,
   // `/_bun/client/*`) and never reach here.
+  //
+  // A miss is a 404, NOT a fall-through to the shell. The shell's own script
+  // tag is a `/static/` URL, so a stale build (a cached shell whose hashed
+  // chunk was replaced) used to answer that script with HTML: the document
+  // loaded, the module never executed, and the window stayed blank with no
+  // error anywhere. The SPA's own routes are not under `/static/`, so they
+  // still reach the shell below.
   if (pathname.startsWith('/static/')) {
     const filePath = resolveWithin(CLIENT_ROOT, pathname);
-    return filePath ? serveFile(filePath, ASSET_CACHE, request) : null;
+    if (!filePath) return missingAsset();
+    return (await serveFile(filePath, ASSET_CACHE, request)) ?? missingAsset();
   }
   // The assembled `@font-face` stylesheet and the files it names. Bun's CSS
   // loader cannot carry either — every local `url()` is resolved, so a bundled

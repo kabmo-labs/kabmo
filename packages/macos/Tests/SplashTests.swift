@@ -73,8 +73,22 @@ func splashCases() {
           SplashState.sentence(for: .connect),
           SplashState.sentence(for: .timeout),
           SplashState.sentence(for: .ssl),
+          SplashState.sentence(for: .notConsole),
           SplashState.sentence(for: .other),
-        ]).count == 5)
+        ]).count == 6)
+
+  // `didFinish` fires for a document whose module script never executed. The
+  // page answers `window.__kabmoPalette` only after its bundle ran, so that
+  // answer is what decides whether the splash may close.
+  let alive = SplashState.connecting.progressed(80).pageSettled(alive: true)
+  check("a page that booted closes the splash",
+        alive.phase == .done && !alive.visible)
+  let dead = SplashState.connecting.progressed(80).pageSettled(alive: false)
+  check("a document that never booted keeps the splash",
+        dead.phase == .failed && dead.visible)
+  check("the reason names the stale build", dead.failure == .notConsole)
+  check("a real load failure is not overwritten by the probe",
+        failed.pageSettled(alive: true).failure == .connect)
 
   // A fraction is what `estimatedProgress` reports; `Int(nan)` traps in Swift, so
   // the guard is not decorative.

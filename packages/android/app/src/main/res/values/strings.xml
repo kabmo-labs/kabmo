@@ -95,6 +95,7 @@
     <string name="load_err_connect">Could not connect. Check that Kabmo is running and the port is right.</string>
     <string name="load_err_timeout">The server did not answer in time. It may still be starting.</string>
     <string name="load_err_ssl">The certificate is not trusted. See Server settings for the certificate details.</string>
+    <string name="load_err_not_console">The server answered, but the console did not start. It may be running an older build — restart the server, then Retry.</string>
     <string name="load_err_other">The console could not be loaded. Retry, or check the server address.</string>
 
     <string name="ssl_title">Certificate not trusted</string>

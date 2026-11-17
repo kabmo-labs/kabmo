@@ -206,6 +206,8 @@ final class LoadingOverlay: UIView {
       return "The certificate is not trusted. See Server settings for the certificate details."
     case .other:
       return "The console could not be loaded. Retry, or check the server address."
+    case .notConsole:
+      return "The server answered, but the console did not start. It may be running an older build — restart the server, then Retry."
     }
   }
 

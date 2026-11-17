@@ -24,7 +24,7 @@ data class LoadingState(
     enum class Phase { CONNECTING, LOADING, DONE, FAILED }
 
     /** Why a load failed. The overlay maps each to one sentence. */
-    enum class Failure { HOST_LOOKUP, CONNECT, TIMEOUT, SSL, OTHER }
+    enum class Failure { HOST_LOOKUP, CONNECT, TIMEOUT, SSL, NOT_CONSOLE, OTHER }
 
     /** `DONE` is the only state that draws nothing. */
     val visible: Boolean get() = phase != Phase.DONE
@@ -74,6 +74,27 @@ data class LoadingState(
     /** A main-frame load failed; the overlay stays up with the reason and actions. */
     fun failedBecause(failure: Failure): LoadingState =
         copy(phase = Phase.FAILED, failure = failure)
+
+    /**
+     * The document finished loading; `alive` says whether the console actually
+     * started.
+     *
+     * `onPageFinished` also fires for a document whose module script never
+     * executed — a stale build whose hashed chunk 404s, a MIME mismatch, a
+     * crash before the first render — and hiding the overlay there is the blank
+     * window this state machine exists to prevent. The page installs
+     * `window.__kabmoPalette` before its first render, so the probe's answer is
+     * the readiness signal.
+     *
+     * A real load failure is never overwritten: `onReceivedError` already put
+     * the reason on screen, and the error page the WebView renders still
+     * reports `onPageFinished`.
+     */
+    fun pageSettled(alive: Boolean): LoadingState = when {
+        phase == Phase.FAILED -> this
+        alive -> finished()
+        else -> failedBecause(Failure.NOT_CONSOLE)
+    }
 
     companion object {
         /**

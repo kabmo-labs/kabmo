@@ -46,6 +46,10 @@ pub enum Failure {
     Connect,
     Timeout,
     Ssl,
+    /// The document loaded, but the client bundle never ran: the server answered
+    /// with a shell whose hashed script is missing (a stale build), or with
+    /// something that is not a console at all.
+    NotConsole,
     Other,
 }
 
@@ -139,6 +143,29 @@ impl Progress {
         }
     }
 
+    /// The document finished loading; `alive` says whether the console actually
+    /// started.
+    ///
+    /// `Finished` fires for a document whose module script never executed — a
+    /// stale build whose hashed chunk 404s, a MIME mismatch, a crash before the
+    /// first render — and hiding the splash there is the blank window this state
+    /// machine exists to prevent. The page answers `window.__kabmoPalette`
+    /// only after its bundle has run, so that answer is the readiness signal.
+    ///
+    /// A real load failure is never overwritten: the load-failure handler
+    /// already put the reason on screen, and the error page the engine renders
+    /// still reports `Finished`.
+    pub fn page_settled(self, alive: bool) -> Self {
+        if self.phase == Phase::Failed {
+            return self;
+        }
+        if alive {
+            self.finish()
+        } else {
+            self.failed_because(Failure::NotConsole)
+        }
+    }
+
     pub fn fail(self) -> Self {
         self.failed_because(Failure::Other)
     }
@@ -199,6 +226,9 @@ pub fn sentence_for(failure: Failure) -> &'static str {
         Failure::Connect => "Could not connect. Check that Kabmo is running and the port is right.",
         Failure::Timeout => "The server did not answer in time. It may still be starting.",
         Failure::Ssl => "The certificate is not trusted. Check the server address and its certificate.",
+        Failure::NotConsole => {
+            "The server answered, but the console did not start. It may be running an older build — restart the server, then Retry."
+        }
         Failure::Other => "The console could not be loaded. Retry, or check the server address.",
     }
 }

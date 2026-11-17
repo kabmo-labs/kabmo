@@ -488,10 +488,10 @@ public sealed class ShellHost
             _splash.SetDetail(DescribeFailure(args.WebErrorStatus));
             return;
         }
-        // Latched for the next reload decision, and the splash closes only HERE:
-        // the navigation completing is the first moment the document is real.
+        // Latched for the next reload decision, and for the palette probe's stale
+        // guard: the splash settles only when the probe confirms the client bundle
+        // actually ran, which the navigation completing alone cannot prove.
         _shownUrl = _window.WebView.CoreWebView2?.Source;
-        RenderSplash(_splashState.Finished());
         // A page can take the files the OS handed over only once it exists. The
         // launch batch was queued in the constructor, from the command line, and
         // this is the first moment there is a document to hand it to.
@@ -543,12 +543,25 @@ public sealed class ShellHost
     {
         var core = _window.WebView.CoreWebView2;
         if (core is null || _store is null) return;
+        // Latched before the await so a navigation that started while the script
+        // ran cannot settle the splash for a different page. The CURRENT source,
+        // not `_shownUrl`: a navigation that started already points `Source` at
+        // the new document, while `_shownUrl` only moves on completion.
+        var settledUrl = CurrentSource(core);
+        if (settledUrl is null) return;
         try
         {
             var result = await core.ExecuteScriptAsync("window.__kabmoPalette ? window.__kabmoPalette() : null");
             // WebView2 answers a JS string as JSON — a quoted string — so it is
             // unwrapped here rather than in the parser.
             var wire = System.Text.Json.JsonSerializer.Deserialize<string?>(result);
+            if (CurrentSource(core) == settledUrl)
+            {
+                // The page ran only if the property answered with a string; a null
+                // answer means the client bundle never executed, so the splash must
+                // say so instead of closing over a blank window.
+                RenderSplash(_splashState.PageSettled(alive: wire is not null));
+            }
             var next = ShellPalette.Parse(wire);
             if (next is null) return;
             await _store.SetPaletteAsync(wire);
@@ -557,7 +570,31 @@ public sealed class ShellHost
         catch (Exception)
         {
             // A page that navigated away mid-script, or a webview that went away:
-            // the stored palette is still the previous one, which is correct.
+            // the stored palette is still the previous one, which is correct. A
+            // failed evaluation is still a dead page, so it settles as not alive.
+            if (CurrentSource(core) == settledUrl)
+            {
+                RenderSplash(_splashState.PageSettled(alive: false));
+            }
+        }
+    }
+
+    /// <summary>
+    /// The webview's current address, or null when it is already gone.
+    ///
+    /// `CoreWebView2.Source` throws once the control is disposed, and the catch
+    /// above is exactly the path where that is likely — a second throw there
+    /// would escape the method instead of settling the splash.
+    /// </summary>
+    private static string? CurrentSource(CoreWebView2? core)
+    {
+        try
+        {
+            return core?.Source;
+        }
+        catch (Exception)
+        {
+            return null;
         }
     }
 

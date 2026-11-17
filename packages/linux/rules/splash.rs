@@ -51,6 +51,30 @@ pub fn cases(r: &mut Runner) {
         progress.advance(0.5).phase == Phase::Finished,
     );
 
+    // A document can finish loading while its bundle never ran (a stale build's
+    // hashed chunk 404s, a MIME mismatch, a crash before the first render); the
+    // splash must settle on whether the page answered, not on `Finished` alone.
+    r.check(
+        "a live page settles the splash to finished",
+        Progress::connecting().page_settled(true).phase == Phase::Finished,
+    );
+    let not_console = Progress::connecting().page_settled(false);
+    r.check(
+        "a dead page fails with the stale-build reason",
+        not_console.phase == Phase::Failed && not_console.failure == Some(Failure::NotConsole),
+    );
+    let connect_failed = Progress::connecting().failed_because(Failure::Connect);
+    r.check(
+        "settling does not overwrite a real failure",
+        connect_failed.page_settled(true).phase == Phase::Failed
+            && connect_failed.page_settled(true).failure == Some(Failure::Connect),
+    );
+    r.check(
+        "the stale-build sentence is the shared wording",
+        sentence_for(Failure::NotConsole)
+            == "The server answered, but the console did not start. It may be running an older build — restart the server, then Retry.",
+    );
+
     // A failed main-frame load still reports `Finished` for the error page the
     // engine renders; adopting that would hide the explanation behind a blank
     // window.
@@ -78,12 +102,13 @@ pub fn cases(r: &mut Runner) {
             sentence_for(Failure::Connect),
             sentence_for(Failure::Timeout),
             sentence_for(Failure::Ssl),
+            sentence_for(Failure::NotConsole),
             sentence_for(Failure::Other),
         ]
         .iter()
         .collect::<std::collections::HashSet<_>>()
         .len()
-            == 5,
+            == 6,
     );
 
     // The fill's two properties are the ones a toolkit fails at SILENTLY: the

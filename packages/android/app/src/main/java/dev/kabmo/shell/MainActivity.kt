@@ -52,6 +52,8 @@ class MainActivity : Activity() {
     private var fallbackAttempted = false
     private var loading = LoadingState.done()
     private var loadedUrl: String? = null
+    /** The address the WebView is showing, latched at `onLoadFinished`; see [readPalette]. */
+    private var shownUrl: String? = null
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -424,20 +426,37 @@ class MainActivity : Activity() {
     }
 
     /**
-     * Ask the page which palette it is painting, and keep the answer.
+     * Ask the page which palette it is painting, keep the answer, and settle
+     * the overlay on whether the page answered at all.
      *
      * The property is installed by `src/client/lib/native/palette.ts` before the
-     * first render, so it exists by the time a load finishes. An older build
-     * answers `undefined` — the callback then hands back `null`, the parse
-     * returns null, and the stored palette is left exactly as it was rather than
-     * being replaced with a colour no theme chose.
+     * first render, so it exists by the time a load finishes — and a page whose
+     * bundle never ran answers `null`. That is the readiness signal: a document
+     * that loaded but never booted must keep the overlay with a reason, not hide
+     * it over a blank window. An older build answers `undefined` — the callback
+     * then hands back `null`, the parse returns null, and the stored palette is
+     * left exactly as it was rather than being replaced with a colour no theme
+     * chose.
      *
      * `evaluateJavascript`, not `evaluateJavascript(…, null)` with a side effect
      * inside a string: the answer is a value we need back, and it is returned as
      * JSON — a quoted string — which is what `fromJavascript` unwraps.
+     *
+     * The address is captured before the round trip: a navigation that replaced
+     * the document while the answer was in flight must not settle the new load's
+     * overlay with the old document's verdict. The CURRENT `webView.url` is the
+     * comparison, not the latched `shownUrl`: a navigation that started already
+     * points the view at the new document, while `shownUrl` only moves on
+     * `onPageFinished`.
      */
     private fun readPalette() {
+        val address = shownUrl
         webView.evaluateJavascript("window.__kabmoPalette ? window.__kabmoPalette() : null") { result ->
+            if (webView.url != address) return@evaluateJavascript
+            // The page ran only if the property answered a non-empty JSON string;
+            // a null/"null"/empty answer means the client bundle never executed.
+            val alive = result != null && result != "null" && result.trim().isNotEmpty()
+            applyLoading(loading.pageSettled(alive = alive))
             val next = ShellPalette.fromJavascript(result) ?: return@evaluateJavascript
             ServerConfig.writePalette(this, next)
             overlay.applyPalette(next)
@@ -574,18 +593,27 @@ class MainActivity : Activity() {
             },
             onLoadFinished = {
                 fallbackAttempted = false
-                applyLoading(loading.finished())
+                // Latched HERE, not read from `webView.url` later: by the time
+                // the palette probe answers, a navigation may have replaced the
+                // document, and the probe must not settle that new load with
+                // this one's verdict.
+                shownUrl = webView.url
                 // A document that arrived before the console did — a cold start
                 // by "Open with" — has been waiting since `onCreate`, and this
                 // is the first moment a page can take it.
                 pageReady = true
                 flushPendingScripts()
-                // The console has painted, so `window.__kabmoPalette()` answers
-                // the ACTIVE theme. Stored for the next cold start — which is
-                // the only launch where the overlay has no page to ask — and
+                // The overlay is NOT closed here. `onPageFinished` also fires
+                // for a document whose module script never executed — a stale
+                // build whose hashed chunk 404s, a MIME mismatch, a crash before
+                // the first render — and hiding the overlay there is the blank
+                // window this whole path exists to prevent. `readPalette` asks
+                // the page whether its bundle ran and settles the overlay on the
+                // answer; the palette it returns is also what the next cold
+                // start paints (the only launch with no page to ask), and it is
                 // applied to the live overlay too, because a theme changed in
-                // Settings is exactly the case where the stored palette is
-                // stale and the overlay it describes is still on screen.
+                // Settings is exactly the case where the stored palette is stale
+                // and the overlay it describes is still on screen.
                 readPalette()
                 // A successful login is a NAVIGATION, so this is the first
                 // moment the new session cookie exists. Chromium would write it

@@ -69,6 +69,36 @@ class LoadingStateTest {
     }
 
     @Test
+    fun aLivePageSettlesTheOverlayAsDone() {
+        // `onPageFinished` no longer closes the overlay itself: the probe's
+        // answer does, and a page whose bundle ran settles DONE (invisible).
+        val settled = LoadingState.connecting().pageSettled(alive = true)
+        assertEquals(LoadingState.Phase.DONE, settled.phase)
+        assertFalse(settled.visible)
+    }
+
+    @Test
+    fun aDeadPageKeepsTheOverlayWithNotConsole() {
+        // A document that loaded but never booted — a stale build whose hashed
+        // chunk 404s — must keep the overlay up, naming the stale build rather
+        // than closing over a blank window.
+        val settled = LoadingState.connecting().pageSettled(alive = false)
+        assertEquals(LoadingState.Phase.FAILED, settled.phase)
+        assertEquals(LoadingState.Failure.NOT_CONSOLE, settled.failure)
+        assertTrue(settled.visible)
+    }
+
+    @Test
+    fun aFailureSurvivesTheReadinessProbe() {
+        // The error page a failed load renders still fires `onPageFinished`, so
+        // the probe runs too; its answer must not overwrite the real reason.
+        val failed = LoadingState.connecting().failedBecause(LoadingState.Failure.CONNECT)
+        val settled = failed.pageSettled(alive = true)
+        assertEquals(LoadingState.Phase.FAILED, settled.phase)
+        assertEquals(LoadingState.Failure.CONNECT, settled.failure)
+    }
+
+    @Test
     fun progressAfterFinishedIsIgnored() {
         // A compositor frame can land after the page finished; adopting it
         // would re-open an overlay the user has already moved past.

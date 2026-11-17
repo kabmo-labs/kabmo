@@ -61,6 +61,25 @@ enum LoadingStateTests {
     Harness.check("a new load starts indeterminate", reload.indeterminate)
     Harness.equal("…at 0", reload.percent, 0)
 
+    Harness.group("LoadingState — the readiness probe")
+
+    // `didFinish` fires for the error page AND for a stale client bundle whose
+    // hashed chunk 404s, so the probe is what tells them apart.
+    let live = LoadingState.connecting.pageSettled(alive: true)
+    Harness.equal("a live page settles done", live.phase, .done)
+    Harness.check("…and hides the overlay", !live.visible)
+
+    let stale = LoadingState.connecting.pageSettled(alive: false)
+    Harness.equal("a page whose bundle never ran fails with notConsole", stale.phase, .failed)
+    Harness.equal("…with its reason", stale.failure, .notConsole)
+    Harness.check("…and stays visible", stale.visible)
+
+    // A REAL navigation error must not be overwritten by the probe, which also
+    // answers on the error page the web view renders.
+    let realFailure = LoadingState.connecting.failedBecause(.connect).pageSettled(alive: true)
+    Harness.equal("a real load failure survives the probe", realFailure.phase, .failed)
+    Harness.equal("…with its reason", realFailure.failure, .connect)
+
     Harness.group("LoadingState — a fraction from the web view")
 
     Harness.equal("0.42 becomes 42%", LoadingState.connecting.progressed(fraction: 0.42).percent, 42)

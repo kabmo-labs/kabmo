@@ -441,18 +441,22 @@ impl Shell {
                     // incoming document, so the comparison would match every
                     // navigation.
                     *shown_uri.borrow_mut() = view.uri().map(|uri| uri.to_string());
-                    // Read and write in two statements: `*x.borrow_mut() = x.borrow().f()`
-                    // holds both borrows at once and panics at run time.
-                    let finished = progress.borrow().finish();
-                    *progress.borrow_mut() = finished;
-                    splash.show_progress(finished);
                     // The console has painted, so `window.__kabmoPalette()`
                     // answers the ACTIVE theme. Stored for the next cold start —
                     // the only launch where the splash has no page to ask — and
                     // applied to the live splash too, because a theme changed in
                     // Settings is exactly the case where the stored palette is
-                    // stale and the splash it describes is on screen.
-                    read_palette(view, &store_for_palette, &splash_for_palette);
+                    // stale and the splash it describes is on screen. The same
+                    // answer settles the splash: a page whose bundle never ran
+                    // answers null, and that must keep the splash with a reason
+                    // rather than hide it over a blank window.
+                    read_palette(
+                        view,
+                        &store_for_palette,
+                        &splash_for_palette,
+                        &progress,
+                        &shown_uri,
+                    );
                     // A page can take the files the OS handed over only once it
                     // exists. The launch batch was queued before the window was
                     // built, and a warm open can land before the current
@@ -936,35 +940,69 @@ fn start_server(
     });
 }
 
-/// Ask the page which palette it is painting, and keep the answer.
+/// Ask the page which palette it is painting, keep the answer, and settle the
+/// splash on whether the page answered at all.
 ///
 /// The property is installed by `src/client/lib/native/palette.ts` before the
-/// first render, so it exists by the time a load finishes. An older build answers
-/// `undefined`, the parse returns `None`, and the stored palette is left exactly
-/// as it was rather than replaced with a colour no theme chose.
+/// first render, so it exists by the time a load finishes — and a page whose
+/// bundle never ran answers `null`. That is the readiness signal: a document
+/// that loaded but never booted must keep the splash with a reason, not hide it
+/// over a blank window. An older build answers `undefined`, the parse returns
+/// `None`, and the stored palette is left exactly as it was rather than replaced
+/// with a colour no theme chose.
 ///
 /// `run_javascript` is asynchronous and its answer arrives as a `JSCValue` — a
 /// JSON string for a JS string — so it is unwrapped here rather than in the
 /// parser.
+///
+/// The shown URI is captured before the round trip: a navigation that replaced
+/// the document while the answer was in flight must not settle the new load's
+/// splash with the old document's verdict. The comparison is the view's CURRENT
+/// URI, not the latched one: a navigation that started already points the view
+/// at the new document, while the latch only moves on `Finished`.
 fn read_palette(
     view: &WebView,
     store: &Rc<RefCell<ServerStore<SystemDeps>>>,
     splash: &Rc<Splash>,
+    progress: &Rc<RefCell<Progress>>,
+    shown_uri: &Rc<RefCell<Option<String>>>,
 ) {
     let store = store.clone();
     let splash = splash.clone();
+    let progress = progress.clone();
+    let view_for_probe = view.clone();
+    let settled_uri = shown_uri.borrow().clone();
     view.run_javascript(
         "window.__kabmoPalette ? window.__kabmoPalette() : null",
         None::<&gtk::gio::Cancellable>,
         move |result| {
+            let settle = |alive: bool| {
+                if view_for_probe.uri().map(|uri| uri.to_string()).as_deref()
+                    == settled_uri.as_deref()
+                {
+                    let next = progress.borrow().page_settled(alive);
+                    *progress.borrow_mut() = next;
+                    splash.show_progress(next);
+                }
+            };
             // `run_javascript` answers ONE argument — `Result<JavascriptResult,
             // glib::Error>` — not `(view, result)`. Measured against
             // `webkit2gtk 2.0.2`: the two-argument form is a compile error
             // (`E0593: closure is expected to take 1 argument`), which only the
             // RELEASE workflow sees because the Linux shell is compiled nowhere
             // else.
-            let Ok(result) = result else { return };
-            let Some(value) = result.js_value() else { return };
+            let Ok(result) = result else {
+                settle(false);
+                return;
+            };
+            let Some(value) = result.js_value() else {
+                settle(false);
+                return;
+            };
+            // Settle before the early returns: a null, a non-string or an empty
+            // answer all mean the bundle never ran, and the splash must say so
+            // rather than hang on "Connecting…".
+            settle(value.is_string() && !value.to_str().is_empty());
             // `is_string` first: `to_str` answers `undefined` for a null, and a
             // page with no publisher must leave the stored palette alone rather
             // than parse the word "undefined".

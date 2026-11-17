@@ -27,6 +27,7 @@ public struct LoadingState: Equatable {
     case timeout
     case ssl
     case other
+    case notConsole
   }
 
   public let phase: Phase
@@ -91,6 +92,24 @@ public struct LoadingState: Equatable {
   /// A main-frame load failed; the overlay stays up with the reason and actions.
   public func failedBecause(_ failure: Failure) -> LoadingState {
     LoadingState(phase: .failed, percent: percent, failure: failure)
+  }
+
+  /// The page finished loading AND answered the readiness probe.
+  ///
+  /// `didFinish` fires for the error page the web view renders after a failed
+  /// main-frame load, and it fires just as readily for a stale client bundle
+  /// whose hashed chunk 404s or whose JS crashed — so "finished" alone cannot
+  /// distinguish a live console from a blank paper screen. The probe
+  /// (`window.__kabmoPalette`) answers a non-empty string only when the client
+  /// bundle actually ran, so it is the readiness signal this transition closes
+  /// the overlay on.
+  ///
+  /// A REAL load failure is never overwritten: the probe also answers on the
+  /// error page, so adopting it would hide the explanation behind a blank
+  /// screen — the exact silent state the overlay exists to remove.
+  public func pageSettled(alive: Bool) -> LoadingState {
+    if phase == .failed { return self }
+    return alive ? finished() : failedBecause(.notConsole)
   }
 
   /// Nothing to draw: the overlay starts hidden and returns here.

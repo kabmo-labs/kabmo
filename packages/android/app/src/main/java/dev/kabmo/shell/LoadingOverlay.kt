@@ -200,6 +200,7 @@ class LoadingOverlay(context: Context) : FrameLayout(context) {
         LoadingState.Failure.CONNECT -> R.string.load_err_connect
         LoadingState.Failure.TIMEOUT -> R.string.load_err_timeout
         LoadingState.Failure.SSL -> R.string.load_err_ssl
+        LoadingState.Failure.NOT_CONSOLE -> R.string.load_err_not_console
         LoadingState.Failure.OTHER -> R.string.load_err_other
     }
 

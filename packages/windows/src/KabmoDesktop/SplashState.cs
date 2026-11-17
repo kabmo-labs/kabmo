@@ -8,7 +8,7 @@ namespace KabmoDesktop;
 /// <summary>
 /// What the launch splash is showing, as a value.
 ///
-/// The same four phases and the same five failure reasons as the Android, iOS and
+/// The same four phases and the same six failure reasons as the Android, iOS and
 /// macOS shells, because the four surfaces answer one question and a user who moves
 /// between them should not have to read a different sentence. Pure on purpose:
 /// every rule below is an ordering WebView2 really produces, and each one fails as
@@ -40,6 +40,7 @@ public sealed class SplashState : IEquatable<SplashState>
         Timeout,
         Ssl,
         Other,
+        NotConsole,
     }
 
     public SplashPhase Phase { get; }
@@ -107,6 +108,20 @@ public sealed class SplashState : IEquatable<SplashState>
         new(SplashPhase.Failed, Percent, failure);
 
     /// <summary>
+    /// Settle the splash once the page is known to have run (or not).
+    ///
+    /// A real load failure is never overwritten: the error page the webview renders
+    /// still reports completion, and adopting it would hide the explanation behind a
+    /// blank window. Only a live page closes the splash; a page that never ran keeps
+    /// it up with <see cref="SplashFailure.NotConsole"/>.
+    /// </summary>
+    public SplashState PageSettled(bool alive)
+    {
+        if (Phase == SplashPhase.Failed) return this;
+        return alive ? Finished() : FailedBecause(SplashFailure.NotConsole);
+    }
+
+    /// <summary>
     /// Whether a navigation that just started is the user asking for the page again.
     ///
     /// The console's own Reload control calls <c>location.reload()</c>, which
@@ -148,6 +163,8 @@ public sealed class SplashState : IEquatable<SplashState>
         SplashFailure.Connect => "Could not connect. Check that Kabmo is running and the port is right.",
         SplashFailure.Timeout => "The server did not answer in time. It may still be starting.",
         SplashFailure.Ssl => "The certificate is not trusted. Check the server address and its certificate.",
+        SplashFailure.NotConsole =>
+            "The server answered, but the console did not start. It may be running an older build — restart the server, then Retry.",
         _ => "The console could not be loaded. Retry, or check the server address.",
     };
 

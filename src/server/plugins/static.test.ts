@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 
-import { servePublicAsset } from '@/server/plugins/static';
+import { servePublicAsset, tryServeStatic } from '@/server/plugins/static';
 
 // `public/` is the only asset root now: the client bundle is served by Bun's own
 // routing table (`/_bun/*` in dev, `/chunk-*` in production), so there is no
@@ -118,5 +118,27 @@ describe('servePublicAsset compression', () => {
     );
     expect(second?.status).toBe(304);
     expect(second?.headers.get('vary')).toBe('accept-encoding');
+  });
+});
+
+describe('tryServeStatic', () => {
+  // The shell's own `<script type="module">` is a `/static/` URL. Answering a
+  // missing one with the HTML shell is a MIME mismatch the browser refuses, so
+  // the document loads and paints nothing — the blank window this route exists
+  // to prevent. A 404 names the missing file instead.
+  test('a missing build asset is a 404, not the shell', async () => {
+    const response = await tryServeStatic('/static/js/does-not-exist.js');
+    expect(response?.status).toBe(404);
+    expect(response?.headers.get('content-type')).toContain('text/plain');
+  });
+
+  test('a traversal attempt under /static/ is a 404 too', async () => {
+    expect((await tryServeStatic('/static/../secret.txt'))?.status).toBe(404);
+  });
+
+  // The SPA's own routes are not under `/static/`, so they must still reach the
+  // shell — the 404 above is scoped to build assets.
+  test('a missing public asset still reaches the app', async () => {
+    expect(await tryServeStatic('/nope.svg')).toBeNull();
   });
 });

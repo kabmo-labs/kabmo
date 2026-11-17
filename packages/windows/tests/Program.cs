@@ -427,8 +427,29 @@ Check("each reason has its own sentence",
         SplashState.SentenceFor(SplashState.SplashFailure.Connect),
         SplashState.SentenceFor(SplashState.SplashFailure.Timeout),
         SplashState.SentenceFor(SplashState.SplashFailure.Ssl),
+        SplashState.SentenceFor(SplashState.SplashFailure.NotConsole),
         SplashState.SentenceFor(SplashState.SplashFailure.Other),
-    }.Distinct().Count() == 5);
+    }.Distinct().Count() == 6);
+
+// The readiness gate: a navigation completing proves the document, not the
+// client bundle. Only the palette probe can say whether the page ran, and a dead
+// bundle keeps the splash up with NotConsole instead of a blank window.
+var settledLive = SplashState.Connecting.PageSettled(true);
+Check("a live page settles Done and invisible",
+    settledLive.Phase == SplashState.SplashPhase.Done && !settledLive.Visible);
+var settledDead = SplashState.Connecting.PageSettled(false);
+Check("a dead page settles Failed with NotConsole and visible",
+    settledDead.Phase == SplashState.SplashPhase.Failed
+        && settledDead.Failure == SplashState.SplashFailure.NotConsole
+        && settledDead.Visible);
+var settledAfterFail = SplashState.Connecting
+    .FailedBecause(SplashState.SplashFailure.Connect).PageSettled(true);
+Check("settling never overwrites a real failure",
+    settledAfterFail.Phase == SplashState.SplashPhase.Failed
+        && settledAfterFail.Failure == SplashState.SplashFailure.Connect);
+Check("NotConsole has the exact sentence",
+    SplashState.SentenceFor(SplashState.SplashFailure.NotConsole)
+        == "The server answered, but the console did not start. It may be running an older build — restart the server, then Retry.");
 
 Group("ShellPalette");
 
