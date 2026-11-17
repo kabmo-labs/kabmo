@@ -138,6 +138,7 @@ export function PanelView({
                 onEdit={onEdit}
                 onRemove={onRemove}
                 truncated={listing?.truncated ?? false}
+                empty={listing?.empty ?? []}
                 sources={listing?.sources ?? []}
               />
             )}

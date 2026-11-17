@@ -103,6 +103,16 @@ export interface CommandListing {
   /** The walk hit its file or depth cap, so the list is a prefix. */
   truncated: boolean;
   /**
+   * Command files the walk found that declare nothing to run.
+   *
+   * They are NOT in `groups`: a `package.json` with no `scripts` is a header
+   * with no rows under it, and a repository with a dozen workspace packages
+   * buries the files that do have commands. They are named here so the empty
+   * panel can say what the repository actually has instead of claiming no
+   * command file exists.
+   */
+  empty: string[];
+  /**
    * Every filename the detector table claims, for the panel's "looked for" note.
    *
    * Carried on the payload rather than imported by the panel: the table reads

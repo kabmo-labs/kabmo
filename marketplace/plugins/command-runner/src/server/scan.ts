@@ -285,6 +285,14 @@ function groupFor(
  * Groups are ordered by the detector table's kind and then by path, so two scans
  * of one tree render the same list — a list that reorders between reads is a list
  * nobody can scan.
+ *
+ * A file that declares NOTHING is not a group. A `package.json` with no
+ * `scripts` (every workspace package in a monorepo has one) would otherwise be a
+ * header with no rows, and enough of them push the files that do have commands
+ * off the panel. The file is still NAMED in `empty`, so the panel can say the
+ * file was found and declares nothing rather than "no command file found".
+ * A group with an `error` is kept: a file that could not be read is a fact the
+ * reader needs, not an empty list.
  */
 export function scanScope(scope: Scope): CommandListing | { error: string } {
   const dir = resolveScope(scope);
@@ -292,9 +300,14 @@ export function scanScope(scope: Scope): CommandListing | { error: string } {
 
   const { files, truncated } = collectFiles(dir);
   const listings = listingCache();
-  const groups = files
-    .map((entry) => groupFor(dir, entry, listings))
+  const scanned = files.map((entry) => groupFor(dir, entry, listings));
+  const groups = scanned
+    .filter((group) => group.error !== undefined || group.commands.length > 0)
     .sort((a, b) => (a.kind === b.kind ? a.file.localeCompare(b.file) : kindRank(a.kind) - kindRank(b.kind)));
+  const empty = scanned
+    .filter((group) => group.error === undefined && group.commands.length === 0)
+    .map((group) => group.file)
+    .sort((a, b) => a.localeCompare(b));
 
-  return { groups, truncated, sources: claimedFilenames() };
+  return { groups, empty, truncated, sources: claimedFilenames() };
 }

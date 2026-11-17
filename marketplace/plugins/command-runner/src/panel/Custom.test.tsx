@@ -128,6 +128,7 @@ async function mountGroups(
     onEdit: (command: { label: string }) => calls.push(`edit:${command.label}`),
     onRemove: (command: { label: string }) => calls.push(`remove:${command.label}`),
     truncated: false,
+    empty: [] as string[],
     sources: ['Makefile', 'package.json'],
     ...overrides,
   };

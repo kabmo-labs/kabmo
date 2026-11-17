@@ -59,6 +59,8 @@ export interface CommandGroupsProps {
   onRemove?: (command: Command) => void;
   /** The walk hit its cap, so the list is a prefix and says so. */
   truncated: boolean;
+  /** Command files the scan found that declare nothing to run. */
+  empty: string[];
   /** Every filename the server's table claims, for the empty note. */
   sources: string[];
 }
@@ -245,17 +247,20 @@ export function CommandGroups({
   onEdit,
   onRemove,
   truncated,
+  empty,
   sources,
 }: CommandGroupsProps) {
   const latest = latestRunByCommand(runs);
 
   /**
-   * Whether the walk found anything.
+   * Whether the walk found anything to run.
    *
    * Not `groups.length === 0`: the user's own group is always present, so the
    * list is never empty — and the note below is the thing that has to survive,
    * because "no command file found" is a real answer and the reader needs to know
-   * WHICH files were looked for.
+   * WHICH files were looked for. A file that was found but declares nothing is
+   * not in `groups` (see `scanScope`), so it is `empty` that decides which note
+   * is true.
    */
   const foundFiles = groups.some((group) => group.customGroup !== true);
 
@@ -283,7 +288,7 @@ export function CommandGroups({
         />
       ))}
 
-      {!foundFiles ? <NoSourcesNote sources={sources} /> : null}
+      {!foundFiles ? (empty.length > 0 ? <DeclaresNothingNote files={empty} /> : <NoSourcesNote sources={sources} />) : null}
 
       {truncated ? (
         <p className="px-3 py-2 text-[11px] text-ink/45">
@@ -291,6 +296,22 @@ export function CommandGroups({
         </p>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * The command files that were found, but declare nothing to run.
+ *
+ * This case exists because such a file is NOT a group any more: a `package.json`
+ * with no `scripts` would be a header with no rows. Saying "no command file
+ * found" instead would be false — the file is right there — so the note names it
+ * and leaves the reader to add `scripts` or their own command.
+ */
+function DeclaresNothingNote({ files }: { files: string[] }) {
+  return (
+    <p className="px-3 py-2 text-[11px] text-ink/45">
+      No commands declared by {files.join(', ')}. Add a script to the file, or use + for your own.
+    </p>
   );
 }
 

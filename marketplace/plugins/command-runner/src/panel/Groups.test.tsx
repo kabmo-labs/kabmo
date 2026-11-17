@@ -120,6 +120,7 @@ async function mount(overrides: Partial<Parameters<typeof CommandGroups>[0]> = {
     onStop: (id: string) => calls.push(`stop:${id}`),
     onReadLog: (id: string) => calls.push(`read:${id}`),
     truncated: false,
+    empty: [] as string[],
     sources: ['Makefile', 'package.json'],
     ...overrides,
   };
@@ -291,6 +292,15 @@ describe('CommandGroups', () => {
     expect(text).toContain('No command file found');
     expect(text).toContain('package.json');
     expect(text).toContain('Makefile');
+  });
+
+  test('a file that declares nothing is named, not claimed missing', async () => {
+    // The scan drops an empty group, so this note is the only thing telling the
+    // reader the file exists — "No command file found" here would be false.
+    await mount({ groups: [], empty: ['package.json', 'packages/sdk/package.json'] });
+    const text = container.textContent ?? '';
+    expect(text).toContain('No commands declared by package.json, packages/sdk/package.json');
+    expect(text).not.toContain('No command file found');
   });
 
   test('a truncated scan says so', async () => {

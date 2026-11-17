@@ -158,6 +158,10 @@ describe('scanScope', () => {
     mkdirSync(join(root, 'packages', 'web'), { recursive: true });
     writeFileSync(join(root, 'packages', 'web', 'package.json'), JSON.stringify({ scripts: { build: 'y' } }));
     writeFileSync(join(root, 'packages', 'web', 'package-lock.json'), '{}');
+    // A workspace package with no `scripts` at all — the shape every monorepo's
+    // library packages have. It must not become a group with no rows.
+    mkdirSync(join(root, 'packages', 'sdk'), { recursive: true });
+    writeFileSync(join(root, 'packages', 'sdk', 'package.json'), JSON.stringify({ name: 'sdk' }));
     mkdirSync(join(root, 'node_modules', 'dep'), { recursive: true });
     writeFileSync(join(root, 'node_modules', 'dep', 'package.json'), JSON.stringify({ scripts: { evil: 'z' } }));
   });
@@ -203,6 +207,32 @@ describe('scanScope', () => {
     // at the root, and what lets a script's relative path resolve.
     expect(listing.groups.find((group) => group.file === 'Makefile')!.cwd).toBe('.');
     expect(listing.groups.find((group) => group.file === 'packages/web/package.json')!.cwd).toBe('packages/web');
+  });
+
+  test('a package.json with no scripts is not a group, and is named instead', () => {
+    const listing = scanScope({ root, repo: '.' });
+    if ('error' in listing) throw new Error(listing.error);
+    // The measured noise: a monorepo's library packages each carry a
+    // `package.json` with no `scripts`, and each one used to be a header with no
+    // rows under it.
+    expect(listing.groups.some((group) => group.file === 'packages/sdk/package.json')).toBe(false);
+    expect(listing.empty).toEqual(['packages/sdk/package.json']);
+  });
+
+  test('a file that cannot be read stays listed, with its reason', () => {
+    // The other side of the filter: an unreadable file is a fact, not an empty
+    // list, so it must survive as a group that says why.
+    const broken = mkdtempSync(join(tmpdir(), 'cr-broken-'));
+    try {
+      writeFileSync(join(broken, 'package.json'), '{ not json');
+      const listing = scanScope({ root: broken, repo: '.' });
+      if ('error' in listing) throw new Error(listing.error);
+      expect(listing.groups).toHaveLength(1);
+      expect(listing.groups[0]!.error).toContain('Could not read package.json');
+      expect(listing.empty).toEqual([]);
+    } finally {
+      rmSync(broken, { recursive: true, force: true });
+    }
   });
 
   test('a scope that escapes the root is refused, not scanned', () => {
