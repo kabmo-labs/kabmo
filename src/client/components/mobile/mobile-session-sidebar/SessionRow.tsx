@@ -233,7 +233,8 @@ export function MobileSessionRow({
             timeAgo={timeAgo}
             timeTitle={timeTitle}
             runStartedAt={runStartedAt}
-            className="text-[11px] text-ink/45 font-mono flex-shrink-0 ml-2"
+            className="text-[11px] font-mono flex-shrink-0 ml-2"
+            restingClassName="text-ink/45"
           />
         </button>
 

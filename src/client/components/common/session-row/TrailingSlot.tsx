@@ -58,7 +58,7 @@ export function TrailingSlot({
   );
 
   if (!onOpenMenu) {
-    return timeNode('ml-2 shrink-0 font-mono text-[10px] text-ink/40');
+    return timeNode('ml-2 shrink-0 font-mono text-[10px]');
   }
 
   const trigger = (
@@ -82,7 +82,7 @@ export function TrailingSlot({
   if (touch) {
     return (
       <span className="ml-1 flex shrink-0 items-center gap-0.5">
-        {timeNode('font-mono text-[10px] text-ink/40')}
+        {timeNode('font-mono text-[10px]')}
         {trigger}
       </span>
     );
@@ -95,7 +95,7 @@ export function TrailingSlot({
     // stays in flow so the title truncates before it instead of under it.
     <span className="relative ml-2 flex h-4 min-w-8 shrink-0 items-center justify-end pr-1">
       {timeNode(
-        'whitespace-nowrap font-mono text-[10px] leading-none text-ink/40 transition-opacity group-hover/item:opacity-0 group-focus-within/item:opacity-0',
+        'whitespace-nowrap font-mono text-[10px] leading-none transition-opacity group-hover/item:opacity-0 group-focus-within/item:opacity-0',
       )}
       {/* `-my-1`: the glyph's 22px hit area is larger than the row's trailing
           box, and negative margin keeps that height out of the row's own — the

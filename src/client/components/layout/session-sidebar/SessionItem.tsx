@@ -297,7 +297,7 @@ export function SessionItem({
             timeAgo={timeAgo}
             timeTitle={timeTitle}
             runStartedAt={runStartedAt}
-            className="shrink-0 ml-2 font-mono text-[10px] text-ink/40"
+            className="shrink-0 ml-2 font-mono text-[10px]"
           />
         )}
 
