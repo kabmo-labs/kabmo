@@ -20,6 +20,7 @@ import { spawnSession } from '@/server/routes/sessions/spawn';
 import { getSessionRelations, updateSessionParent } from '@/server/routes/sessions/relations';
 import { forkSessionRoute } from '@/server/routes/sessions/fork';
 import { getSessionAnswer } from '@/server/routes/sessions/answer';
+import { exportSessionMarkdown } from '@/server/routes/sessions/export';
 import { getSessionMcp, probeSessionMcp, setSessionMcp } from '@/server/routes/sessions/mcp';
 import { getSessionChangeDiff, getSessionChanges, getSessionChangeStats } from '@/server/routes/sessions/changes';
 
@@ -43,6 +44,9 @@ export const sessionsBindings: HandlerBinding[] = [
   { method: 'POST', path: '/api/sessions/:sessionId/parent', handler: updateSessionParent },
   { method: 'POST', path: '/api/sessions/:sessionId/fork', handler: forkSessionRoute },
   { method: 'GET', path: '/api/sessions/:sessionId/answer', handler: getSessionAnswer },
+  // The transcript as a Markdown download. A real response, not a Blob: a
+  // native shell's download path only sees an HTTP URL.
+  { method: 'GET', path: '/api/sessions/:sessionId/export', handler: exportSessionMarkdown },
   // The agent's own change journal: the per-run file list and one file's net
   // diff. Static suffixes under the same `:sessionId` position, so the
   // parameter name must stay `sessionId`.

@@ -29,7 +29,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'preac
 import type { TargetedMouseEvent } from 'preact';
 import { createPortal } from 'preact/compat';
 import { placeMenu, type MenuPlacement } from '@/shared/lib/ui/menu-anchor';
-import { Archive, ArchiveRestore, Copy, GitBranch, GitFork, Hourglass, Pencil, Trash2, WandSparkles } from 'lucide-preact';
+import { Archive, ArchiveRestore, Copy, Download, GitBranch, GitFork, Hourglass, Pencil, Trash2, WandSparkles } from 'lucide-preact';
 import { useSearchParams } from '@/client/lib/router/search-params';
 import { clearBranchParams } from '@/client/lib/router/branch-params';
 import { startPendingSession } from '@/client/hooks/chat/omp/pending-sessions';
@@ -40,6 +40,7 @@ import { canForkChat } from '@/shared/lib/harness/fork';
 import { openForkSession } from '@/client/hooks/chat/timeline/fork-open';
 import { useHarnesses } from '@/client/hooks/models/use-harnesses';
 import { copyToClipboard } from '@/client/hooks/ui/clipboard';
+import { exportSessionMarkdown } from '@/client/lib/session-export';
 import { useToasts } from '@/client/hooks/ui/toasts';
 import { MenuItem } from '@/client/components/common/session-actions-menu/MenuItem';
 
@@ -144,6 +145,9 @@ export function SessionActionsMenu({
   // A pending `new-…` row has no omp id yet: copying it would hand the user a
   // string that stops existing the moment the chat spawns.
   const canCopyId = sessionId !== undefined && !String(sessionId).startsWith('new-');
+  // A pending `new-…` row has no transcript on disk, so there is nothing to
+  // export yet — the same reason it has no id to copy.
+  const canExport = canCopyId;
   // The probe is authoritative when it has an answer; without one the
   // harness's expected capability decides. A harness that cannot fork at all
   // (qwen, dsh, antigravity, pi, command-code) gets no item.
@@ -213,6 +217,22 @@ export function SessionActionsMenu({
       pushToast(
         ok ? 'Session ID copied' : 'Could not copy session ID',
         ok ? 'success' : 'error',
+      );
+    });
+  };
+
+  /**
+   * "Export markdown" writes the whole transcript to a `.md` file. The menu
+   * closes on the click, so the toast is the only feedback — and a refusal
+   * (no transcript, a failed read) is reported in words rather than leaving
+   * the user with a download that never happened.
+   */
+  const exportMarkdown = () => {
+    if (sessionId === undefined) return;
+    void exportSessionMarkdown(String(sessionId)).then((result) => {
+      pushToast(
+        result.ok ? `Exported ${result.name}` : result.error,
+        result.ok ? 'success' : 'error',
       );
     });
   };
@@ -296,6 +316,9 @@ export function SessionActionsMenu({
             search matches it — so it belongs beside the naming verbs. */}
         {canCopyId && (
           <MenuItem icon={Copy} label="Copy session ID" onClick={run(copySessionId)} />
+        )}
+        {canExport && (
+          <MenuItem icon={Download} label="Export markdown" onClick={run(exportMarkdown)} />
         )}
         {/* A held prompt is the row's whole content, so dropping it belongs in
             the same menu as the row's other verbs rather than on the row face. */}

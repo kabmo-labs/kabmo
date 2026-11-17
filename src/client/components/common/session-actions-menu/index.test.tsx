@@ -149,6 +149,36 @@ describe('session menu copy id', () => {
   });
 });
 
+describe('session menu export markdown', () => {
+  test('a real session offers Export markdown', async () => {
+    stubHarnesses([]);
+    const el = await mount('claude');
+    const labels = [...el.querySelectorAll('[role="menuitem"]')]
+      .map((node) => node.textContent?.trim());
+    expect(labels).toContain('Export markdown');
+  });
+
+  test('a pending row has no transcript to export', async () => {
+    stubHarnesses([]);
+    render(null, container);
+    await act(async () => {
+      render(
+        h(SessionActionsMenu, {
+          anchor,
+          sessionId: 'new-123',
+          harness: 'claude',
+          folderId: 1,
+          onClose: () => {},
+        }),
+        container,
+      );
+    });
+    const labels = [...document.body.querySelectorAll('[role="menuitem"]')]
+      .map((node) => node.textContent?.trim());
+    expect(labels).not.toContain('Export markdown');
+  });
+});
+
 describe('session menu placement', () => {
   test('the panel hangs below the trigger it was opened from', async () => {
     // A trailing `⋯` in the middle of a phone drawer: below it is where the
