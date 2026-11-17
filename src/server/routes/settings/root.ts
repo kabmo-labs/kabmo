@@ -4,6 +4,10 @@ import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { getDb } from '@/server/db.server';
 import { isMockMode } from '@/server/mock.server';
 import { isPlainObject, mergeSettingsJson, readAllSettingsJson, writeSettingsJson, writeSettingsRaw } from '@/server/lib/db/settings-store';
+import { packageDir } from '@/server/lib/fs/package-root';
+import { refreshTrayIcon } from '@/server/lib/tray/runtime.server';
+import { SETTINGS_BLOB_KEY } from '@/shared/lib/settings/keys';
+import { TRAY_ICON_STYLE_SETTING_KEY } from '@/shared/lib/theme/tray-icon-style';
 
 export async function loader({ request: _request }: LoaderFunctionArgs) {
   try {
@@ -36,6 +40,15 @@ export async function action({ request, params }: ActionFunctionArgs) {
       } else {
         await writeSettingsRaw(db, key, String(value));
       }
+    }
+
+    // The tray host is a separate process that reads its config once, so a
+    // change to the icon style (or the theme that picks the monochrome glyph's
+    // ink) has to be pushed to it. A tray that is not running is a no-op, and a
+    // failed refresh must not fail the settings write.
+    const blob = data[SETTINGS_BLOB_KEY];
+    if (isPlainObject(blob) && (TRAY_ICON_STYLE_SETTING_KEY in blob || 'theme' in blob)) {
+      await refreshTrayIcon({ pkgRoot: packageDir() }).catch(() => {});
     }
 
     return json({ success: true });

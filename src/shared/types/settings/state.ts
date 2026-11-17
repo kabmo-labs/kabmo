@@ -5,6 +5,7 @@ import type { SidebarStyle } from '@/shared/lib/workspace/sidebar-style';
 import type { ComposerStyle } from '@/shared/lib/chat/composer/style';
 import type { SurfaceStyle } from '@/shared/lib/theme/surface-style';
 import type { IconStyle } from '@/shared/lib/theme/icon-style';
+import type { TrayIconStyle } from '@/shared/lib/theme/tray-icon-style';
 import type { SettingsSection } from '@/shared/lib/settings/sections';
 
 /** Wire protocol for the live agent event stream (chat timeline). */
@@ -194,6 +195,14 @@ export interface SettingsState {
    * and `shared/lib/icons/icon-paint-css.ts`.
    */
   iconStyle: IconStyle;
+  /**
+   * How the menu-bar / notification-area icon is painted (`color` |
+   * `monochrome`). A separate fact from `iconStyle`: the tray is a SYSTEM
+   * surface, and a monochrome menu-bar glyph beside full-colour in-app marks is
+   * the macOS convention. Read by the SERVER when it writes the tray config,
+   * because the host is a separate process that never sees the page.
+   */
+  trayIconStyle: TrayIconStyle;
   followUpBehavior: 'queue' | 'steering';
   keybindingSend: 'Enter' | 'Shift + Enter' | 'Ctrl / Cmd + Enter';
   keybindingNewLine: 'Enter' | 'Shift + Enter' | 'Ctrl / Cmd + Enter';

@@ -142,11 +142,18 @@ function run(argv) {
 
   // The bundled icon when it loads; the name otherwise, so a missing asset
   // leaves a visible tray rather than an invisible zero-width item.
+  //
+  // Monochrome is a TEMPLATE image: the system paints it in the menu bar's own
+  // ink, so it follows light/dark appearance and sits beside the system's other
+  // status items. The glyph has no plate, which is what makes the template
+  // usable — a template of the full app icon would be a solid square.
   let drew = false;
+  const iconPath = config.iconStyle === 'monochrome' ? config.iconMono : config.icon;
   try {
-    const image = $.NSImage.alloc.initWithContentsOfFile($.NSString.alloc.initWithUTF8String(config.icon));
+    const image = $.NSImage.alloc.initWithContentsOfFile($.NSString.alloc.initWithUTF8String(iconPath));
     if (image && image.size && image.size.width > 0) {
       image.setSize($.NSMakeSize(18, 18));
+      if (config.iconStyle === 'monochrome') image.setTemplate(true);
       statusItem.setImage(image);
       drew = true;
     }

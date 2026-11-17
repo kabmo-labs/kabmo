@@ -35,7 +35,13 @@ function Invoke-Cli([string[]]$extra) {
 }
 
 $notify = New-Object System.Windows.Forms.NotifyIcon
-$notify.Icon = New-Object System.Drawing.Icon($config.icon)
+# The shipped assets are PNGs, and `System.Drawing.Icon` only reads .ico files —
+# constructing it from a PNG throws. A Bitmap plus `GetHicon()` is the documented
+# way to turn a PNG into a NotifyIcon icon. Monochrome uses the glyph tinted for
+# the active theme's variant; colour uses the app icon.
+$iconPath = if ($config.iconStyle -eq 'monochrome') { $config.iconMono } else { $config.icon }
+$iconBitmap = [System.Drawing.Bitmap]::FromFile($iconPath)
+$notify.Icon = [System.Drawing.Icon]::FromHandle($iconBitmap.GetHicon())
 $notify.Text = "$($config.label) - $($config.url)"
 $notify.Visible = $true
 

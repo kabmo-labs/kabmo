@@ -29,9 +29,19 @@
 import { getDataDir } from '@/server/lib/lifecycle/paths';
 import { resolveBunBin } from '@/server/lib/lifecycle/bun';
 import { packageDir } from '@/server/lib/fs/package-root';
+import { getDb } from '@/server/db.server';
+import { readAllSettingsJson } from '@/server/lib/db/settings-store';
+import { readSettingsBlob } from '@/shared/lib/settings/keys';
+import { resolveTheme } from '@/shared/lib/theme/catalog';
+import {
+  resolveTrayIconStyle,
+  TRAY_ICON_STYLE_SETTING_KEY,
+  type TrayIconStyle,
+} from '@/shared/lib/theme/tray-icon-style';
 import { isAutostartInstalled } from '@/server/lib/tray/autostart';
 import {
   buildTrayConfig,
+  canonicalizeTrayPath,
   getTrayConfigPath,
   writeTrayConfig,
   type TrayConfig,
@@ -43,6 +53,38 @@ import { childEnv } from '@/server/lib/fs/child-env';
 interface TrayRuntime {
   child: Bun.Subprocess;
   config: TrayConfig;
+}
+
+/** The two facts the tray icon needs from the stored settings. */
+export interface TrayAppearance {
+  iconStyle: TrayIconStyle;
+  /** Absolute path to the monochrome glyph for the active theme's variant. */
+  iconMono: string;
+}
+
+/**
+ * Read the tray's appearance from `app_settings`.
+ *
+ * A failed read is the shipped default (colour, light glyph) rather than a
+ * thrown error: the tray is a convenience over the console, and a database
+ * hiccup must not stop the server from raising its icon.
+ */
+export async function readTrayAppearance(pkgRoot: string): Promise<TrayAppearance> {
+  let settings: Record<string, unknown> = {};
+  try {
+    const db = await getDb();
+    settings = await readAllSettingsJson(db);
+  } catch {
+    // Fall through to the defaults below.
+  }
+  const blob = readSettingsBlob(settings);
+  const iconStyle = resolveTrayIconStyle(blob[TRAY_ICON_STYLE_SETTING_KEY]);
+  const theme = typeof blob.theme === 'string' ? blob.theme : undefined;
+  const variant = resolveTheme(theme).variant;
+  return {
+    iconStyle,
+    iconMono: canonicalizeTrayPath(`${packageDir(pkgRoot)}/public/tray-monochrome-${variant}.png`),
+  };
 }
 
 /**
@@ -63,11 +105,12 @@ export function isTrayRunning(): boolean {
 }
 
 /** Resolve every path a host needs and write the config document for `port`. */
-export function writeTrayConfigFor({ port, host, tls, pkgRoot }: {
+export function writeTrayConfigFor({ port, host, tls, pkgRoot, appearance }: {
   port: number;
   host: string;
   tls: boolean;
   pkgRoot: string;
+  appearance: TrayAppearance;
 }): TrayConfig {
   const config = buildTrayConfig({
     pkgRoot,
@@ -77,6 +120,8 @@ export function writeTrayConfigFor({ port, host, tls, pkgRoot }: {
     dataDir: getDataDir(),
     bun: resolveBunBin(),
     icon: `${packageDir(pkgRoot)}/public/icon-192x192.png`,
+    iconStyle: appearance.iconStyle,
+    iconMono: appearance.iconMono,
     pidFile: `${getDataDir()}/tray/host/tray-${port}.pid`,
     loginInstalled: isAutostartInstalled(),
   });
@@ -95,11 +140,12 @@ export function writeTrayConfigFor({ port, host, tls, pkgRoot }: {
  * on Linux, a JXA error) writes its reason into the server's own log instead of
  * vanishing. A host that starts successfully prints nothing.
  */
-export function ensureTray({ port, host, tls, pkgRoot, platform = process.platform }: {
+export function ensureTray({ port, host, tls, pkgRoot, appearance, platform = process.platform }: {
   port: number;
   host: string;
   tls: boolean;
   pkgRoot: string;
+  appearance: TrayAppearance;
   platform?: NodeJS.Platform;
 }): { started: boolean; reason?: string } {
   if (isTrayRunning()) return { started: false, reason: 'already running' };
@@ -108,7 +154,7 @@ export function ensureTray({ port, host, tls, pkgRoot, platform = process.platfo
   if (!hostScript.available()) return { started: false, reason: hostScript.unavailableReason };
 
   try {
-    const config = writeTrayConfigFor({ port, host, tls, pkgRoot });
+    const config = writeTrayConfigFor({ port, host, tls, pkgRoot, appearance });
     installHostScript(platform);
     const child = Bun.spawn({
       cmd: hostScript.interpreter(getTrayConfigPath(port)),
@@ -129,4 +175,37 @@ export function ensureTray({ port, host, tls, pkgRoot, platform = process.platfo
   } catch (error) {
     return { started: false, reason: error instanceof Error ? error.message : String(error) };
   }
+}
+
+/**
+ * Re-apply the stored appearance to a RUNNING tray.
+ *
+ * The host is a separate process that reads its config once, so a settings edit
+ * cannot reach it any other way. The old child is stopped and a new one started
+ * with the same listener facts; when nothing moved this is a no-op, which is
+ * what makes it safe to call after every settings write.
+ */
+export async function refreshTrayIcon({ pkgRoot }: { pkgRoot: string }): Promise<{ updated: boolean; reason?: string }> {
+  const runtime = slot().current;
+  if (!runtime) return { updated: false, reason: 'not running' };
+
+  const appearance = await readTrayAppearance(pkgRoot);
+  if (appearance.iconStyle === runtime.config.iconStyle && appearance.iconMono === runtime.config.iconMono) {
+    return { updated: false, reason: 'unchanged' };
+  }
+
+  try {
+    runtime.child.kill();
+  } catch {
+    // The host is already gone; starting the replacement is all that is left.
+  }
+  slot().current = null;
+  const result = ensureTray({
+    port: runtime.config.port,
+    host: runtime.config.host,
+    tls: runtime.config.tls,
+    pkgRoot,
+    appearance,
+  });
+  return { updated: result.started, reason: result.reason };
 }

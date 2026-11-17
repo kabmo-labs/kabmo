@@ -117,12 +117,13 @@ async function main() {
     );
   }
 
+  const iconPath = config.iconStyle === 'monochrome' ? config.iconMono : config.icon;
   const proc = Bun.spawn({
     cmd: [
       client.bin,
       '--notification',
       '--listen',
-      `--image=${config.icon}`,
+      `--image=${iconPath}`,
       `--text=${config.label} · ${config.url}`,
       `--menu=${menuPayload(buildMenuModel(config))}`,
       '--no-middle',

@@ -33,7 +33,7 @@ import { loadPluginServers } from '@/server/lib/plugins/loader.server';
 import { disposeAllPluginsOnShutdown } from '@/server/lib/plugins/shutdown.server';
 import { startPluginScheduleRuntime, stopPluginScheduleRuntime } from '@/server/lib/plugins/schedule-runner.server';
 import { startScheduleRuntime, stopScheduleRuntime } from '@/server/lib/schedule/runtime.server';
-import { ensureTray } from '@/server/lib/tray/runtime.server';
+import { ensureTray, readTrayAppearance } from '@/server/lib/tray/runtime.server';
 import { startWaitingRuntime, stopWaitingRuntime } from '@/server/lib/waiting/runtime.server';
 
 /** What the tray needs from the listener that is already up. */
@@ -73,7 +73,7 @@ export async function runAfterListenTasks(target: AfterListenTarget): Promise<vo
   // After the halves: a schedule exists only once its plugin's factory ran.
   startPluginScheduleRuntime();
   startPanelAutoUpdate();
-  startTray(target);
+  await startTray(target);
 
   // A full collection past the ceiling, never a schedule (`lifecycle/memory.ts`).
   installMemoryMaintenance();
@@ -197,9 +197,11 @@ async function loadPluginServerHalves(): Promise<void> {
  * carries the URL the icon opens. Never throws: a machine with no tray client
  * (Linux without yad/zenity) reports why and keeps serving.
  */
-function startTray(target: AfterListenTarget): void {
+async function startTray(target: AfterListenTarget): Promise<void> {
   if (!isTrayEnabledByArgv()) return;
-  const result = ensureTray({ ...target, pkgRoot: packageDir() });
+  const pkgRoot = packageDir();
+  const appearance = await readTrayAppearance(pkgRoot);
+  const result = ensureTray({ ...target, pkgRoot, appearance });
   if (result.started) console.log('[kabmo] tray:            icon shown');
   else console.log(`[kabmo] tray:            not shown — ${result.reason}`);
 }

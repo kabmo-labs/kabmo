@@ -5,6 +5,7 @@ import { ThemeGrid } from '@/client/components/settings/categories/appearance-se
 import { SidebarStyleSection } from '@/client/components/settings/categories/appearance-settings/SidebarStyleSection';
 import { SurfaceStyleSection } from '@/client/components/settings/categories/appearance-settings/SurfaceStyleSection';
 import { IconStyleSection } from '@/client/components/settings/categories/appearance-settings/IconStyleSection';
+import { TrayIconSection } from '@/client/components/settings/categories/appearance-settings/TrayIconSection';
 import { EditorFontSection } from '@/client/components/settings/categories/appearance-settings/EditorFontSection';
 import { EditorThemeSection } from '@/client/components/settings/categories/appearance-settings/EditorThemeSection';
 import { EditorIndentSection } from '@/client/components/settings/categories/appearance-settings/EditorIndentSection';
@@ -42,6 +43,8 @@ export function AppearanceSettings({ settings, onUpdate }: AppearanceSettingsPro
         <SurfaceStyleSection settings={settings} onUpdate={onUpdate} />
 
         <IconStyleSection settings={settings} onUpdate={onUpdate} />
+
+        <TrayIconSection settings={settings} onUpdate={onUpdate} />
       </section>
 
       <EditorFontSection settings={settings} onUpdate={onUpdate} />

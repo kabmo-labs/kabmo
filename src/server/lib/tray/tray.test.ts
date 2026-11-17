@@ -107,6 +107,8 @@ describe('buildTrayConfig', () => {
       dataDir: '/data',
       bun: '/bun',
       icon: join(process.cwd(), 'public', 'icon-192x192.png'),
+      iconStyle: 'color',
+      iconMono: join(process.cwd(), 'public', 'tray-monochrome-light.png'),
       pidFile: '/data/tray/host/tray-3999.pid',
       loginInstalled: false,
     });
@@ -115,6 +117,24 @@ describe('buildTrayConfig', () => {
     expect(config.url).toBe('http://127.0.0.1:3999');
     expect(config.logFile).toBe('/data/logs/kabmo-3999.log');
     expect(config.loginInstalled).toBe(false);
+  });
+
+  test('carries the icon style and the monochrome glyph the host draws', () => {
+    const config = buildTrayConfig({
+      pkgRoot: process.cwd(),
+      port: 3999,
+      host: '127.0.0.1',
+      tls: false,
+      dataDir: '/data',
+      bun: '/bun',
+      icon: join(process.cwd(), 'public', 'icon-192x192.png'),
+      iconStyle: 'monochrome',
+      iconMono: join(process.cwd(), 'public', 'tray-monochrome-dark.png'),
+      pidFile: '/data/tray/host/tray-3999.pid',
+      loginInstalled: false,
+    });
+    expect(config.iconStyle).toBe('monochrome');
+    expect(config.iconMono).toContain('tray-monochrome-dark.png');
   });
 });
 

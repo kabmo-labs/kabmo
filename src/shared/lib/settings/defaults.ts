@@ -26,6 +26,7 @@ import { DEFAULT_SIDEBAR_STYLE } from '@/shared/lib/workspace/sidebar-style';
 import { DEFAULT_COMPOSER_STYLE } from '@/shared/lib/chat/composer/style';
 import { DEFAULT_SURFACE_STYLE } from '@/shared/lib/theme/surface-style';
 import { DEFAULT_ICON_STYLE } from '@/shared/lib/theme/icon-style';
+import { DEFAULT_TRAY_ICON_STYLE } from '@/shared/lib/theme/tray-icon-style';
 import { EDITOR_DEFAULT_FONT_FAMILY } from '@/shared/lib/code/editor/typography';
 import { EDITOR_DEFAULT_THEME_ID } from '@/shared/lib/code/editor/themes';
 
@@ -51,6 +52,7 @@ export const DEFAULT_SETTINGS = {
   composerStyle: DEFAULT_COMPOSER_STYLE,
   surfaceStyle: DEFAULT_SURFACE_STYLE,
   iconStyle: DEFAULT_ICON_STYLE,
+  trayIconStyle: DEFAULT_TRAY_ICON_STYLE,
   followUpBehavior: 'queue',
   keybindingSend: 'Enter',
   keybindingNewLine: 'Shift + Enter',

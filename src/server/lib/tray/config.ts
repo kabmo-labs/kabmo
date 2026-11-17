@@ -16,6 +16,7 @@
 import fs from 'node:fs';
 
 import { getDataDir } from '@/server/lib/lifecycle/paths';
+import type { TrayIconStyle } from '@/shared/lib/theme/tray-icon-style';
 
 /** The tray's own name, shown in the menu and the tooltip. */
 export const TRAY_LABEL = 'Kabmo';
@@ -53,6 +54,17 @@ export interface TrayConfig {
   cli: string;
   /** Packaged icon; falls back to the title when it does not load. */
   icon: string;
+  /**
+   * Which icon the host draws (`color` | `monochrome`). The host is a separate
+   * process and cannot read the page, so the choice travels in the config.
+   */
+  iconStyle: TrayIconStyle;
+  /**
+   * The monochrome glyph for the active theme's variant: black on a light
+   * panel, white on a dark one. macOS ignores the colour (it draws the image as
+   * a template), but Windows and Linux use it as-is.
+   */
+  iconMono: string;
   logFile: string;
   dataDir: string;
   pidFile: string;
@@ -76,7 +88,7 @@ export function trayUrl(port: number, host: string, tls: boolean): string {
 }
 
 /** Resolve `..`/symlinks; fall back to the input when it does not exist. */
-function canonicalize(value: string): string {
+export function canonicalizeTrayPath(value: string): string {
   try {
     return fs.realpathSync(value);
   } catch {
@@ -85,7 +97,7 @@ function canonicalize(value: string): string {
 }
 
 /** Build the config for a server on `port`. */
-export function buildTrayConfig({ pkgRoot, port, host, tls, dataDir, bun, icon, pidFile, loginInstalled }: {
+export function buildTrayConfig({ pkgRoot, port, host, tls, dataDir, bun, icon, iconStyle, iconMono, pidFile, loginInstalled }: {
   pkgRoot: string;
   port: number;
   host: string;
@@ -93,6 +105,8 @@ export function buildTrayConfig({ pkgRoot, port, host, tls, dataDir, bun, icon, 
   dataDir: string;
   bun: string;
   icon: string;
+  iconStyle: TrayIconStyle;
+  iconMono: string;
   pidFile: string;
   loginInstalled: boolean;
 }): TrayConfig {
@@ -108,8 +122,10 @@ export function buildTrayConfig({ pkgRoot, port, host, tls, dataDir, bun, icon, 
     // segment, so a path assembled from a `..`-bearing root would carry it into
     // a login entry's argv, where it is interpreted much later. Measured: a
     // generated LaunchAgent held `<pkg>/src/cli/../../src/cli/kabmo.js`.
-    cli: canonicalize(`${pkgRoot}/src/cli/kabmo.js`),
-    icon: canonicalize(icon),
+    cli: canonicalizeTrayPath(`${pkgRoot}/src/cli/kabmo.js`),
+    icon: canonicalizeTrayPath(icon),
+    iconStyle,
+    iconMono: canonicalizeTrayPath(iconMono),
     logFile: `${dataDir}/logs/kabmo-${port}.log`,
     dataDir,
     pidFile,
