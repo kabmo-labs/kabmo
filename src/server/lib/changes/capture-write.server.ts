@@ -21,8 +21,8 @@ import { readOmpBefore } from '@/server/lib/changes/omp-fallback.server';
 /** The before side of an `edit` whose write landed before the snapshot. */
 export function reconstructEdit(pending: PendingCall, after: string | null | undefined): string | null {
   if (after === null || after === undefined) return null;
-  const oldString = pending.args.old_string;
-  const newString = pending.args.new_string;
+  const oldString = pending.args.old_string ?? pending.args.oldString;
+  const newString = pending.args.new_string ?? pending.args.newString;
   if (typeof oldString !== 'string' || typeof newString !== 'string' || !newString) return null;
   if (!after.includes(newString)) return null;
   return after.replace(newString, oldString);

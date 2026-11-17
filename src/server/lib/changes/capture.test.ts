@@ -135,6 +135,101 @@ describe('build paths', () => {
   });
 });
 
+describe('ACP shell tools', () => {
+  test('exec_command with a command is captured as a shell call', async () => {
+    const files = new Map<string, string>();
+    const capture = makeCapture('cap-acp-exec', files);
+    capture.onFrame({
+      type: 'tool_execution_start',
+      toolCallId: 'c1',
+      toolName: 'exec_command',
+      args: { command: 'printf hello > a.txt', cwd: REPO },
+    });
+    await capture.flush();
+    files.set(at('a.txt'), 'hello');
+    capture.onFrame({ type: 'tool_execution_end', toolCallId: 'c1', toolName: 'exec_command' });
+    await capture.flush();
+
+    const change = (await records('cap-acp-exec')).find((line) => line.type === 'change');
+    expect(change?.type).toBe('change');
+    if (change?.type !== 'change') throw new Error('expected a change');
+    expect(change.op).toBe('create');
+    expect(change.path).toBe(at('a.txt'));
+  });
+
+  test('a shell tool named after the command is captured', async () => {
+    const files = new Map([[at('rm.txt'), 'hello']]);
+    const scans = [
+      { root: REPO, dirty: new Map([[at('rm.txt'), 'hello']]), truncated: false },
+      { root: REPO, dirty: new Map<string, string | null>(), truncated: false },
+    ];
+    const capture = makeCapture('cap-acp-rm', files, {
+      takeScan: async () => scans.shift() ?? null,
+      readHead: async () => null,
+    });
+    capture.onFrame({
+      type: 'tool_execution_start',
+      toolCallId: 'c1',
+      toolName: 'rm -f rm.txt',
+      args: { command: "/bin/zsh -lc 'rm -f rm.txt'", cwd: REPO },
+    });
+    await capture.flush();
+    files.delete(at('rm.txt'));
+    capture.onFrame({ type: 'tool_execution_end', toolCallId: 'c1', toolName: 'rm -f rm.txt' });
+    await capture.flush();
+
+    const change = (await records('cap-acp-rm')).find((line) => line.type === 'change');
+    expect(change?.type).toBe('change');
+    if (change?.type !== 'change') throw new Error('expected a change');
+    expect(change.op).toBe('delete');
+    expect(change.path).toBe(at('rm.txt'));
+  });
+});
+
+describe('ACP arg spellings', () => {
+  test('a write with filePath is recorded', async () => {
+    const files = new Map<string, string>();
+    const capture = makeCapture('cap-acp-write', files);
+    capture.onFrame({
+      type: 'tool_execution_start',
+      toolCallId: 'c1',
+      toolName: 'write',
+      args: { filePath: 'a.txt', content: 'hello' },
+    });
+    await capture.flush();
+    files.set(at('a.txt'), 'hello');
+    capture.onFrame({ type: 'tool_execution_end', toolCallId: 'c1', toolName: 'write' });
+    await capture.flush();
+
+    const change = (await records('cap-acp-write')).find((line) => line.type === 'change');
+    expect(change?.type).toBe('change');
+    if (change?.type !== 'change') throw new Error('expected a change');
+    expect(change.op).toBe('create');
+    expect(change.path).toBe(at('a.txt'));
+  });
+
+  test('an edit with oldString/newString is reconstructed', async () => {
+    const files = new Map([[at('b.txt'), 'old']]);
+    const capture = makeCapture('cap-acp-edit', files);
+    capture.onFrame({
+      type: 'tool_execution_start',
+      toolCallId: 'c1',
+      toolName: 'edit',
+      args: { filePath: 'b.txt', oldString: 'old', newString: 'new' },
+    });
+    await capture.flush();
+    files.set(at('b.txt'), 'new');
+    capture.onFrame({ type: 'tool_execution_end', toolCallId: 'c1', toolName: 'edit' });
+    await capture.flush();
+
+    const change = (await records('cap-acp-edit')).find((line) => line.type === 'change');
+    expect(change?.type).toBe('change');
+    if (change?.type !== 'change') throw new Error('expected a change');
+    expect(change.op).toBe('update');
+    expect(change.path).toBe(at('b.txt'));
+  });
+});
+
 describe('bash capture', () => {
   test('rm is a delete, from the trace argv', async () => {
     const files = new Map([[at('c.ts'), 'C']]);

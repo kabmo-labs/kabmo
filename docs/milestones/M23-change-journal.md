@@ -376,7 +376,7 @@ routes read the new reader; `purgeSessionData` removes the journal directory.
 | Parallel subagents | one promise chain per journal; `ChangeCapture.flush()` awaits every in-flight capture |
 | Redirects are not in the trace | the script is tokenized at start; `>`, `>>`, `2>`, `&>` become mutations |
 | A multi-line script | a newline is a command separator, so `printf > a` and `python3 - <<PY` on separate lines are classified separately |
-| ACP has no trace | `onEvent` fallback; tool adapters still read `args`; an opaque command is a `note` |
+| ACP has no trace | `onEvent` fallback; tool adapters read `args` with the agent's own spellings (`filePath`, `oldString`/`newString`); a tool whose `args.command` is a string is captured as a shell call whatever its name (`exec_command`, `shell`, or the command itself), so codex's shell tools land as trace/scan records; a tool with no path and no command is a `note` |
 | Opaque commands | the git scan pass: `git status` + `git show HEAD:path`, bounded to 200 files, with a `scan-budget` note when cut; a non-git cwd falls back to a bounded **recursive** directory scan (200 files, 10 MB); a file created before the start scan is caught by its birth time, and a path the current session already recorded with the same content is skipped |
 | Storage growth | 20 MB journal rotation, 32 MB blob cap, per-session directory deleted with the session |
 | Contents on disk | `0700` on the journal and blob directories |

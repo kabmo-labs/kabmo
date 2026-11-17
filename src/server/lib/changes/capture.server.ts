@@ -48,7 +48,7 @@ import type {
   ShellTrace,
 } from '@/server/lib/changes/capture-types';
 import { readHeadContent, takeScan, type GitScan } from '@/server/lib/changes/scan.server';
-import { isBuildPath, isExcludedTempPath } from '@/server/lib/changes/temp-path';
+import { isBuildPath, isExcludedTempPath, isInside } from '@/server/lib/changes/temp-path';
 import { reconstructEdit, resolveRacedWrite } from '@/server/lib/changes/capture-write.server';
 import { MAX_BLOB_BYTES } from '@/server/lib/changes/blobs.server';
 
@@ -166,10 +166,15 @@ export class ChangeCapture {
   }
 
   async #snapshotBefore(pending: PendingCall): Promise<void> {
-    if (pending.tool === 'bash') {
-      const command = typeof pending.args.command === 'string' ? pending.args.command : '';
+    // ACP agents name their shell tool `exec_command`, `shell`, or even the
+    // command itself; the `command` argument is the one stable signal.
+    const command = typeof pending.args.command === 'string' ? pending.args.command : '';
+    if (pending.tool === 'bash' || command) {
       pending.command = command;
-      pending.plan = classifyCommand(command, this.deps.cwd, this.deps.home);
+      const commandCwd = typeof pending.args.cwd === 'string' && isInside(pending.args.cwd, this.deps.cwd)
+        ? pending.args.cwd
+        : this.deps.cwd;
+      pending.plan = classifyCommand(command, commandCwd, this.deps.home);
       if (pending.plan.scan) {
         pending.scan = await this.#takeScan(this.deps.cwd);
       }
@@ -192,7 +197,9 @@ export class ChangeCapture {
       return paths;
     }
     const args = pending.args;
-    const raw: unknown[] = [args.path, args.file_path, args.moveTo, args.destination];
+    // `filePath` is the ACP/opencode spelling; `path`/`file_path` are the
+    // omp and Claude ones. A tool whose args use none of them is a note.
+    const raw: unknown[] = [args.path, args.file_path, args.filePath, args.moveTo, args.destination];
     if (Array.isArray(args.paths)) raw.push(...args.paths);
     if (Array.isArray(args.files)) raw.push(...args.files);
     const paths: string[] = [];
@@ -214,7 +221,8 @@ export class ChangeCapture {
     // resumes later.
     const trace = extractTrace(event);
     await pending.ready;
-    if (pending.tool === 'bash') await this.#endBash(pending, trace);
+    const isShell = pending.tool === 'bash' || typeof pending.args.command === 'string';
+    if (isShell) await this.#endBash(pending, trace);
     else await this.#endFileTool(pending);
   }
 
