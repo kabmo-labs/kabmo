@@ -37,13 +37,9 @@ export function SessionStats({ turns, steps, timing }: SessionStatsProps) {
   const ttft = formatSpan(timing?.ttftAvgMs);
   const lastRate = timing?.lastTps === undefined ? undefined : timing.lastTps.toFixed(1);
   const avgRate = timing?.avgTps === undefined ? undefined : timing.avgTps.toFixed(1);
-  const rateLabel = lastRate && avgRate
-    ? `${lastRate} / ${avgRate}`
-    : lastRate
-      ? `${lastRate} last`
-      : avgRate
-        ? `${avgRate} avg`
-        : undefined;
+  // The row is drawn only when at least one rate was measured; the missing
+  // side prints `—` rather than a zero, which would claim a measurement.
+  const rateLabel = lastRate || avgRate ? `${avgRate ?? '—'}t/s / ${lastRate ?? '—'}t/s` : undefined;
 
   return (
     <div className="pt-2 mt-2 border-t border-ink/10 space-y-1.5">
@@ -71,7 +67,7 @@ export function SessionStats({ turns, steps, timing }: SessionStatsProps) {
       )}
       {rateLabel && (
         <div className={ROW}>
-          <span className={LABEL}>Tok/s:</span>
+          <span className={LABEL}>Avg / Last:</span>
           <span>{rateLabel}</span>
         </div>
       )}

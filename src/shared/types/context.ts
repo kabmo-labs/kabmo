@@ -63,6 +63,24 @@ export interface SessionTimingStats {
   avgTps?: number;
 }
 
+/**
+ * Session-wide token totals, summed over every call that reported usage.
+ *
+ * `total` is what the provider billed as processed tokens (omp's own
+ * `totalTokens`, falling back to the four parts); `input` is the fresh prompt
+ * side, `cacheRead`/`cacheWrite` the cached side, `output` the generated side.
+ * Absent when the source reports no per-call usage at all (an ACP chat), so a
+ * zero here is never mistaken for a measured zero.
+ */
+export interface ContextTokenTotals {
+  total: number;
+  input: number;
+  cacheRead: number;
+  cacheWrite: number;
+  output: number;
+  reasoning: number;
+}
+
 export interface SessionContextTelemetry {
   sessionId: string;
   sessionTitle: string;
@@ -83,6 +101,8 @@ export interface SessionContextTelemetry {
   cacheHitAverage?: number;
   /** Per-category cost breakdown for the cost detail popup. */
   costBreakdown?: ContextCostBreakdown;
+  /** Session-wide token totals; absent when the source reports no usage. */
+  totals?: ContextTokenTotals;
   lastMessage: {
     input: number;
     output: number;

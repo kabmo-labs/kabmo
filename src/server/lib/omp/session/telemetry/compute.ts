@@ -54,6 +54,8 @@ export async function computeRealSessionTelemetry(
   let sumOutput = 0;
   let sumCacheRead = 0;
   let sumCacheWrite = 0;
+  let sumTotal = 0;
+  let sumReasoning = 0;
   // Cache-hit average only counts warmed calls — any assistant call that read
   // zero cache tokens (cold request) is excluded, not just the very first one.
   let cacheAvgInput = 0;
@@ -153,6 +155,8 @@ export async function computeRealSessionTelemetry(
       sumOutput += tokens.output;
       sumCacheRead += tokens.cacheRead;
       sumCacheWrite += tokens.cacheWrite;
+      sumTotal += tokens.total;
+      sumReasoning += tokens.reasoning;
       if (msg.role === 'assistant' && tokens.cacheRead > 0) {
         cacheAvgInput += tokens.input;
         cacheAvgCacheRead += tokens.cacheRead;
@@ -262,6 +266,20 @@ export async function computeRealSessionTelemetry(
     },
     cacheHitAverage,
     costBreakdown: { input: costInput, output: costOutput, cacheRead: costCacheRead, cacheWrite: costCacheWrite, total: totalCost },
+    // Only when a call actually reported usage: a transcript with messages but
+    // no usage has no measured totals, and zeros would read as "nothing ran".
+    ...(hasUsage
+      ? {
+          totals: {
+            total: sumTotal,
+            input: sumInput,
+            cacheRead: sumCacheRead,
+            cacheWrite: sumCacheWrite,
+            output: sumOutput,
+            reasoning: sumReasoning,
+          },
+        }
+      : {}),
     lastMessage: {
       input: lastTokens.input,
       output: lastTokens.output,

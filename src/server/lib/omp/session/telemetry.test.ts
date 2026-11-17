@@ -150,6 +150,27 @@ describe('computeRealSessionTelemetry context anchor', () => {
     expect(telemetry.distribution.otherTokens).toBe(350);
     expect(telemetry.totalCost).toBeCloseTo(0.03, 5);
     expect(telemetry.contextUsed).toBe(2200);
+    // Session-wide totals, summed over both calls: the provider's own
+    // processed count plus the four parts the popover splits out.
+    expect(telemetry.totals).toEqual({
+      total: 3700,
+      input: 3000,
+      cacheRead: 350,
+      cacheWrite: 50,
+      output: 300,
+      reasoning: 0,
+    });
+  });
+
+  test('omits totals when no call reported usage', async () => {
+    const file = await writeSession([
+      header,
+      userMessage('u1', 'no usage here'),
+      assistantMessage('a1', {}),
+    ]);
+
+    const telemetry = await computeRealSessionTelemetry(file, 'ses_telemetry');
+    expect(telemetry.totals).toBeUndefined();
   });
 });
 

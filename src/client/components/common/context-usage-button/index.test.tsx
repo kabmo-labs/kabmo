@@ -61,6 +61,7 @@ function telemetryAt(percent: number): SessionContextTelemetry {
     costFormatted: '$0.02',
     timing: { llmMs: 5000, toolMs: 1500, ttftAvgMs: 750, lastTps: 50, avgTps: 48.2 },
     cacheHitAverage: 91.5,
+    totals: { total: 1_200_000, input: 12_000, cacheRead: 1_100_000, cacheWrite: 3_000, output: 85_000, reasoning: 4_000 },
     lastMessage: { input: 10, output: 4, reasoning: 0, cacheRead: 2, cacheWrite: 0, cacheHitPercent: 16.6 },
     distribution: { userTokens: 1, userPercent: 25, assistantTokens: 1, assistantPercent: 25, toolTokens: 1, toolPercent: 25, otherTokens: 1, otherPercent: 25 },
     rawMessages: [],
@@ -205,6 +206,14 @@ describe('ContextUsageButton', () => {
     expect(panel?.textContent).toContain('DeepSeek V4-1-Flash');
     expect(panel?.textContent).toContain('42%');
     expect(panel?.textContent).toContain('$0.02');
+    expect(panel?.textContent).toContain('Total tokens:');
+    expect(panel?.textContent).toContain('1.2M');
+    expect(panel?.textContent).toContain('Uncached:');
+    expect(panel?.textContent).toContain('12K');
+    expect(panel?.textContent).toContain('Cache:');
+    expect(panel?.textContent).toContain('1.1M');
+    expect(panel?.textContent).toContain('Output:');
+    expect(panel?.textContent).toContain('85K');
     expect(panel?.textContent).toContain('Turns / steps:');
     expect(panel?.textContent).toContain('1 / 3');
     expect(panel?.textContent).toContain('LLM time:');
@@ -213,8 +222,8 @@ describe('ContextUsageButton', () => {
     expect(panel?.textContent).toContain('1.5s');
     expect(panel?.textContent).toContain('TTFT avg:');
     expect(panel?.textContent).toContain('0.8s');
-    expect(panel?.textContent).toContain('Tok/s:');
-    expect(panel?.textContent).toContain('50.0 / 48.2');
+    expect(panel?.textContent).toContain('Avg / Last:');
+    expect(panel?.textContent).toContain('48.2t/s / 50.0t/s');
 
     await act(async () => {
       document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape' }));
@@ -234,7 +243,21 @@ describe('ContextUsageButton', () => {
     expect(panel?.textContent).not.toContain('LLM time:');
     expect(panel?.textContent).not.toContain('Tool time:');
     expect(panel?.textContent).not.toContain('TTFT avg:');
-    expect(panel?.textContent).not.toContain('Tok/s:');
+    expect(panel?.textContent).not.toContain('Avg / Last:');
+  });
+
+  test('omits token totals the source never reported', async () => {
+    // An ACP chat reports no per-call usage; zeros would read as a measured
+    // "nothing ran" instead of "not reported".
+    await mount({ ...telemetryAt(42), totals: undefined });
+    await act(async () => {
+      trigger().click();
+    });
+    const panel = dialog();
+    expect(panel?.textContent).not.toContain('Total tokens:');
+    expect(panel?.textContent).not.toContain('Uncached:');
+    expect(panel?.textContent).not.toContain('Cache:');
+    expect(panel?.textContent).not.toContain('Output:');
   });
 
   test('a session with no turn says so instead of printing zeros', async () => {

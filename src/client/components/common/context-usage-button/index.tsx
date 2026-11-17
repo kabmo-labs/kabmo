@@ -43,6 +43,7 @@ import { CONTEXT_BAND_TONES, contextUsageBand } from '@/shared/lib/chat/context/
 import { ContextRing } from '@/client/components/common/context-usage-button/Ring';
 import { McpSection } from '@/client/components/common/context-usage-button/McpSection';
 import { SessionStats } from '@/client/components/common/context-usage-button/SessionStats';
+import { TokenTotals } from '@/client/components/common/context-usage-button/TokenTotals';
 import { CONTROL_BOX } from '@/client/lib/ui/control-plate';
 
 interface ContextUsageButtonProps {
@@ -159,6 +160,7 @@ export function ContextUsageButton({ sessionId, layout = 'desktop' }: ContextUsa
                   </div>
                 )}
               </div>
+              {telemetry.totals && <TokenTotals totals={telemetry.totals} />}
               <SessionStats
                 turns={telemetry.userCount}
                 steps={telemetry.assistantCount}

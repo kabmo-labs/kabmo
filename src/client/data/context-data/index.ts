@@ -175,6 +175,14 @@ export function computeSessionContextTelemetry(
       cacheWrite: 0,
       total: totalCostVal,
     },
+    totals: {
+      total: totalInput + totalOutput + totalCacheRead + totalCacheWrite,
+      input: totalInput,
+      cacheRead: totalCacheRead,
+      cacheWrite: totalCacheWrite,
+      output: totalOutput,
+      reasoning: totalReasoning,
+    },
     lastMessage: {
       input: lastMsgInput,
       output: lastMsgOutput,
@@ -242,6 +250,14 @@ export function getDefaultMockTelemetry(sessionId: string, sessionTitle: string)
       cacheRead: 0.000914,
       cacheWrite: 0,
       total: 0.01
+    },
+    totals: {
+      total: 450 + 3500 + 2900 + 600,
+      input: 450,
+      cacheRead: 2900,
+      cacheWrite: 600,
+      output: 3500,
+      reasoning: 152
     },
     lastMessage: {
       input: 1013,
