@@ -110,6 +110,14 @@ public struct ShellUpdater {
     try verifySignature(staged)
 
     try swap(staged: staged, installed: installedBundle)
+    // The notification daemon caches the bundle it built its app record from;
+    // without this an update kept playing the platform tone until a reboot.
+    if NotificationRegistration.heal(installedBundle: installedBundle) {
+      UserDefaults.standard.set(
+        stagedVersion ?? expectedVersion,
+        forKey: NotificationRegistration.healedVersionKey
+      )
+    }
     return Installed(version: stagedVersion ?? expectedVersion)
   }
 
@@ -170,20 +178,12 @@ public struct ShellUpdater {
 
   @discardableResult
   private func run(_ program: String, _ arguments: [String], allowFailure: Bool = false) throws -> Int32 {
-    let process = Process()
-    process.executableURL = URL(fileURLWithPath: program)
-    process.arguments = arguments
-    // Both streams are drained: a tool that writes more than a pipe buffer
-    // would otherwise block forever while this waits for it to exit.
-    let pipe = Pipe()
-    process.standardOutput = pipe
-    process.standardError = pipe
-    try process.run()
-    _ = pipe.fileHandleForReading.readDataToEndOfFile()
-    process.waitUntilExit()
-    if process.terminationStatus != 0 && !allowFailure {
+    guard let status = ShellProcess.run(program, arguments) else {
       throw ShellUpdateError.refused("The update could not be unpacked.")
     }
-    return process.terminationStatus
+    if status != 0 && !allowFailure {
+      throw ShellUpdateError.refused("The update could not be unpacked.")
+    }
+    return status
   }
 }

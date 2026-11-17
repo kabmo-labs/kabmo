@@ -720,6 +720,8 @@ downloadCases()
 WebProcessRecoveryTests.run()
 // The identifiers that keep one session's banner from replacing another's.
 notificationWireCases()
+// When an update rebuilds the notification daemon's app record.
+notificationRegistrationCases()
 
 print("\n\(checks - failures)/\(checks) checks passed")
 exit(failures == 0 ? 0 : 1)

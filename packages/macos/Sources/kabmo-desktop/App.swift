@@ -230,6 +230,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
     // keeps only a weak delegate — the delegate is this AppDelegate, which the
     // process holds for its lifetime.
     UNUserNotificationCenter.current().delegate = self
+    // A manual update (a drag from the DMG) never runs `ShellUpdater`, so the
+    // notification daemon can keep an app record from the previous bundle. One
+    // heal per version rebuilds it; every later launch on the same version is a
+    // no-op.
+    let healedVersion = UserDefaults.standard.string(forKey: NotificationRegistration.healedVersionKey)
+    if NotificationRegistration.shouldHeal(installedVersion: Self.desktopInfo.shellVersion, lastHealed: healedVersion),
+       NotificationRegistration.heal(installedBundle: Bundle.main.bundleURL) {
+      UserDefaults.standard.set(Self.desktopInfo.shellVersion, forKey: NotificationRegistration.healedVersionKey)
+    }
     terminator = TerminateCoordinator(supervisor: supervisor)
     // The window is up on a splash until the first probe answers; this is what
     // moves it to the server the user was last on.
