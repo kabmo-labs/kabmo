@@ -107,7 +107,17 @@ export function composerExpansion({
   if (!expanded) {
     return {
       cardClass: `border rounded-xl bg-paper shadow-sm ${border}`,
-      cardPositionClass: 'relative',
+      // `z-30`, not a bare `relative`. The dock's generating indicator is a
+      // SIBLING above this card, and its spun mark (`.generating-mark-ring`,
+      // `animate-spin`) is promoted to a compositor layer that painted ABOVE
+      // the open `@` popover even though the popover is `z-50`: measured with
+      // the `glass` composer style in Chromium at 1440×900, the list covered
+      // the indicator's text while its 16px ring sat on the last option's row.
+      // A sibling can only be outranked by the ancestor's stacking level, and
+      // containing the mark (`relative z-0` on the indicator) did NOT fix it.
+      // 30 rather than 10 because the transcript's scroll-to-bottom chip is
+      // `z-20`; at 10 the chip would paint over the popup instead.
+      cardPositionClass: 'relative z-30',
       cardLayoutClass: '',
       // The phone's compact state does not render a textarea at all (see
       // `ChatInput`), so there is no size to return here. The class below is
@@ -158,7 +168,10 @@ export function composerExpansion({
 
   return {
     cardClass: `border rounded-xl bg-paper shadow-md ${border}`,
-    cardPositionClass: 'relative',
+    // Same stacking level as the docked card — see the note there: the open
+    // popover must outrank the generating indicator's composited ring, and the
+    // transcript's scroll chip (z-20) must stay below it.
+    cardPositionClass: 'relative z-30',
     cardLayoutClass: '',
     // A share of the viewport, not of the panel: the dock sits at the bottom of
     // a column whose height is the window's, so this is the same proportion at

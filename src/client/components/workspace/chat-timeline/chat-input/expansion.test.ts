@@ -28,7 +28,7 @@ const base = { expanded: false, isDragging: false, keyboardInset: 0 } as const;
 describe('composerExpansion docked', () => {
   test('a phone keeps its touch-sized box and opens the popup upward', () => {
     const layout = composerExpansion({ ...base, variant: 'mobile' });
-    expect(layout.cardPositionClass).toBe('relative');
+    expect(layout.cardPositionClass).toBe('relative z-30');
     expect(layout.textareaClass).toContain('min-h-[68px]');
     // The transcript's own size, not a larger one: a draft read at 16px beside
     // 13px messages looked like a different document pasted underneath.
@@ -120,6 +120,26 @@ describe('composerExpansion has no compact size', () => {
   });
 });
 
+describe('the popup outranks the docked generating indicator', () => {
+  test('a non-fullscreen card is the stacking level above the indicator and the jump chip', () => {
+    // Reported as the generating ring painted over the `@` file list while a
+    // run streamed. The indicator is a SIBLING above this card and its spun
+    // mark is a composited layer; only the card's own stacking level can put
+    // the popup above it in Chromium (containing the mark with `z-0` on the
+    // indicator did not). 30 outranks the transcript's scroll chip (`z-20`),
+    // which would otherwise paint over the open popup at 10.
+    const layouts = [
+      composerExpansion({ ...base, variant: 'desktop' }),
+      composerExpansion({ ...base, variant: 'mobile' }),
+      composerExpansion({ ...base, expanded: true, variant: 'desktop' }),
+    ];
+    for (const layout of layouts) {
+      expect(layout.cardPositionClass).toBe('relative z-30');
+      expect(layout.pickerPlacement).toBe('up');
+    }
+  });
+});
+
 describe('composerExpansion stretched', () => {
   test('a phone takes the viewport, and its popup opens over the draft', () => {
     const layout = composerExpansion({ ...base, expanded: true, variant: 'mobile' });
@@ -138,7 +158,7 @@ describe('composerExpansion stretched', () => {
 
   test('a desktop grows in place and keeps the dock width', () => {
     const layout = composerExpansion({ ...base, expanded: true, variant: 'desktop' });
-    expect(layout.cardPositionClass).toBe('relative');
+    expect(layout.cardPositionClass).toBe('relative z-30');
     expect(layout.textareaClass).toContain('min-h-[38vh]');
     expect(layout.wrapperClass).toBe('');
     // The popup still has the chat above it.
