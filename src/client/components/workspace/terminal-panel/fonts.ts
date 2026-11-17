@@ -162,3 +162,30 @@ export function installCellMetrics(term: Terminal): void {
     );
   renderer.remeasureFont();
 }
+
+/**
+ * Re-measure the cell box and repaint after a face lands late, WITHOUT
+ * clearing the selection.
+ *
+ * ghostty-web's own route for this is a `term.options.fontSize` round-trip
+ * (`size + 0.1` then `size`), whose `handleOptionChange` calls
+ * `handleFontChange` — and `handleFontChange` starts with
+ * `selectionManager.clearSelection()`. A face that finishes loading while the
+ * reader is selecting therefore wiped the selection, and the copy that
+ * followed (mouseup's automatic copy included) copied nothing. Measured: a
+ * full-canvas drag selected 38×37 cells, the symbols face landed, and
+ * `selectionStart`/`selectionEnd` were both null by the time the mouse was
+ * released.
+ *
+ * `CanvasRenderer.setFontSize` re-measures through the installed
+ * `measureFont` without touching the options proxy, so the cell box is still
+ * corrected and nothing is cleared. `resize` re-applies the metric to the
+ * canvas, and the forced `render` paints the new cell size.
+ */
+export function remeasureTerminal(term: Terminal): void {
+  const renderer = term.renderer;
+  if (!renderer || !term.wasmTerm) return;
+  renderer.setFontSize(term.options.fontSize ?? TERMINAL_FONT_SIZE);
+  renderer.resize(term.cols, term.rows);
+  renderer.render(term.wasmTerm, true, term.viewportY, term);
+}

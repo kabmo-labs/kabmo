@@ -41,6 +41,7 @@ import type { FitAddon, Ghostty, Terminal } from 'ghostty-web';
 import { terminalInputFrame } from '@/shared/lib/workspace/terminal/input';
 import {
   installCellMetrics,
+  remeasureTerminal,
   waitForTerminalFonts,
   watchTerminalFonts,
 } from '@/client/components/workspace/terminal-panel/fonts';
@@ -276,11 +277,7 @@ export async function mountTerminal(
   const stopFontWatch = watchTerminalFonts(() => {
     const term = current?.term;
     if (!term) return;
-    const size = term.options.fontSize ?? TERMINAL_FONT_SIZE;
-    // ghostty-web measures once; a font-size round-trip is its public way to
-    // re-measure and resize the canvas.
-    term.options.fontSize = size + 0.1;
-    term.options.fontSize = size;
+    remeasureTerminal(term);
     safeFit();
     grid.schedule();
   });

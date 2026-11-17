@@ -4,8 +4,10 @@
  */
 
 import { afterEach, describe, expect, test } from 'bun:test';
+import type { Terminal } from 'ghostty-web';
 import {
   measureTerminalCell,
+  remeasureTerminal,
   waitForTerminalFonts,
   watchTerminalFonts,
 } from '@/client/components/workspace/terminal-panel/fonts';
@@ -77,6 +79,44 @@ describe('watchTerminalFonts', () => {
 
     dispose();
     expect(listeners.size).toBe(0);
+  });
+});
+
+describe('remeasureTerminal', () => {
+  test('re-measures and repaints without going through the options proxy', () => {
+    const calls: string[] = [];
+    const term = {
+      cols: 80,
+      rows: 24,
+      viewportY: 3,
+      wasmTerm: { id: 'wasm' },
+      // The library's options proxy is what runs `handleFontChange`, and that
+      // clears the selection. A write here is the regression this pins.
+      options: new Proxy(
+        { fontSize: 12 },
+        {
+          set: () => {
+            calls.push('options.set');
+            return true;
+          },
+        },
+      ),
+      renderer: {
+        setFontSize: (size: number) => calls.push(`setFontSize:${size}`),
+        resize: (cols: number, rows: number) => calls.push(`resize:${cols}x${rows}`),
+        render: (_buffer: unknown, forceAll?: boolean, viewportY?: number) =>
+          calls.push(`render:${forceAll}:${viewportY}`),
+      },
+    };
+
+    remeasureTerminal(term as unknown as Terminal);
+
+    expect(calls).toEqual(['setFontSize:12', 'resize:80x24', 'render:true:3']);
+  });
+
+  test('does nothing before the renderer exists', () => {
+    const term = { cols: 80, rows: 24, viewportY: 0, options: { fontSize: 12 } };
+    expect(() => remeasureTerminal(term as unknown as Terminal)).not.toThrow();
   });
 });
 
