@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'preact/compat';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'preact/compat';
 import { useRef as useRefBase } from 'preact/hooks';
 import type { ComponentChildren, RefObject } from 'preact';
 import type { CSSProperties } from 'preact';
@@ -275,10 +275,23 @@ export function Panel(props: {
  * importantly the browser panel's iframe, which would otherwise swallow
  * pointermove events mid-drag.
  */
-export function Separator(props: { className?: string; style?: CSSProperties; children?: ComponentChildren }) {
-  const { className, style, children } = props;
+export function Separator(props: {
+  className?: string;
+  style?: CSSProperties;
+  children?: ComponentChildren;
+  /** The host element, for a caller that needs to observe it (hover, measurement). */
+  hostRef?: RefObject<HTMLDivElement | null>;
+}) {
+  const { className, style, children, hostRef: externalHostRef } = props;
   const group = useContext(GroupContext);
   const hostRef = useRef<HTMLDivElement | null>(null);
+  const setHost = useCallback(
+    (node: HTMLDivElement | null) => {
+      hostRef.current = node;
+      if (externalHostRef) externalHostRef.current = node;
+    },
+    [externalHostRef],
+  );
 
   if (!group) {
     throw new Error('<Separator> must be rendered inside a <Group>');
@@ -288,7 +301,7 @@ export function Separator(props: { className?: string; style?: CSSProperties; ch
 
   return (
     <div
-      ref={hostRef}
+      ref={setHost}
       data-separator=""
       role="separator"
       aria-orientation={orientation === 'horizontal' ? 'vertical' : 'horizontal'}

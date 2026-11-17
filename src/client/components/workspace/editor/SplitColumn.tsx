@@ -28,6 +28,7 @@ import { useRef } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
 
 import { SplitPane } from '@/client/components/workspace/editor/SplitPane';
+import { usePointerHover } from '@/client/hooks/ui/pointer-hover';
 import { clampSplitFraction } from '@/shared/lib/workspace/split-editor';
 
 interface SplitColumnProps {
@@ -50,6 +51,8 @@ export function SplitColumn({
   children,
 }: SplitColumnProps) {
   const columnRef = useRef<HTMLDivElement | null>(null);
+  const handleRef = useRef<HTMLDivElement | null>(null);
+  const hovered = usePointerHover(handleRef);
 
   const startDrag = (event: PointerEvent) => {
     const handle = event.currentTarget as HTMLElement | null;
@@ -82,7 +85,8 @@ export function SplitColumn({
         {children}
       </div>
       <div
-        className="w-[3px] flex-shrink-0 cursor-col-resize bg-ink/10 hover:bg-ink/40 transition-colors"
+        ref={handleRef}
+        className={`w-[3px] flex-shrink-0 cursor-col-resize transition-colors active:bg-ink/40 ${hovered ? 'bg-ink/40' : 'bg-ink/10'}`}
         role="separator"
         aria-orientation="vertical"
         aria-label="Resize split panes"
