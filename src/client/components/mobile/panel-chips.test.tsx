@@ -133,6 +133,19 @@ describe('PanelChips', () => {
     expect(picked).toEqual(['plugin:demo:rightPanel']);
   });
 
+  test('the active label is one line, and the chip refuses to shrink', async () => {
+    // A two-word label ("Pull Requests") wrapped inside the chip and made the
+    // active chip taller than the rest of the strip. The strip scrolls; it
+    // must never squeeze a chip into a wrap.
+    await mountStrip([panel('plugin:demo:rightPanel', { builtin: false, name: 'demo', label: 'Pull Requests' })], 'plugin:demo:rightPanel');
+    const chip = container.querySelector('button') as HTMLButtonElement;
+    const label = [...chip.querySelectorAll('span')].at(-1) as HTMLElement;
+    expect(label.textContent).toBe('Pull Requests');
+    expect(label.className).toContain('whitespace-nowrap');
+    expect(label.className).toContain('shrink-0');
+    expect(chip.className).toContain('shrink-0');
+  });
+
   test('the Source Control dot is drawn only where it is asked for', async () => {
     // The left catalog never holds a built-in view, so the left drawer passes
     // nothing and must not grow a dot it can never mean.

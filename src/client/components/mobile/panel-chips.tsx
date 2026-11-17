@@ -133,7 +133,7 @@ export function PanelChips({ panels, activeId, onSelect, hasGitChanges = false }
             // "Resources" after it — a control that renames itself when used is
             // unusable to a screen reader and unfindable to a spec.
             aria-label={panel.title}
-            className={`relative flex items-center transition-all cursor-pointer ${
+            className={`relative flex shrink-0 items-center transition-all cursor-pointer ${
               active
                 ? 'space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-ink text-canvas shadow-sm'
                 : 'p-2 rounded-lg text-ink/70 hover:bg-ink/5'
@@ -150,7 +150,14 @@ export function PanelChips({ panels, activeId, onSelect, hasGitChanges = false }
               size={PANEL_MARK_SIZE}
             />
             {active && (
-              <span className={panel.id === 'git' ? 'tracking-wide' : undefined}>{panel.label}</span>
+              // One line, always: a two-word label ("Pull Requests") wrapped
+              // inside the chip and made the active chip taller than every
+              // other one on the strip. `shrink-0` keeps the flex row from
+              // squeezing the text into a wrap instead of letting the strip
+              // scroll.
+              <span className={`shrink-0 whitespace-nowrap ${panel.id === 'git' ? 'tracking-wide' : ''}`}>
+                {panel.label}
+              </span>
             )}
             {panel.id === 'git' && hasGitChanges && (
               <span
