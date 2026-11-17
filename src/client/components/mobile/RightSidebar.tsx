@@ -16,6 +16,8 @@ import {
 } from '@/client/components/workspace/terminal-panel/soft-keyboard';
 import { releaseSoftKeyboard } from '@/client/lib/ui/soft-keyboard';
 import { PanelChips } from '@/client/components/mobile/panel-chips';
+import { VisibilityMenu } from '@/client/components/layout/VisibilityMenu';
+import { usePanelVisibilityMenu } from '@/client/hooks/workspace/panel-visibility-menu';
 import { titlebarPaddingLeft, titlebarPaddingRight } from '@/shared/lib/ui/titlebar';
 import { dragRegionProps, titlebarInsetLeft } from '@/client/lib/desktop/titlebar';
 
@@ -96,6 +98,16 @@ export function MobileRightSidebar({
     if (!panelWantsSoftKeyboard(activePanel?.id)) releaseSoftKeyboard();
   }, [activePanel?.id]);
 
+  // The phone's right-click: a long press on the drawer's header opens the same
+  // panel switch the desktop right rail has. The list follows the drawer's own
+  // rule — with the left rail on, a panel placed there is not in this drawer,
+  // so it is not offered here either; with the rail off this drawer is the
+  // catch-all and lists everything but the session list.
+  const panelMenu = usePanelVisibilityMenu(dock.enabled ? 'right' : 'all');
+  const menuItems = dock.enabled
+    ? panelMenu.items
+    : panelMenu.items.filter((item) => item.id !== SESSIONS_VIEW_ID);
+
   // ONE props object per render, handed to the view AND published on the host
   // context, so a component nested inside the view reads exactly what its
   // top-level one was given.
@@ -124,6 +136,7 @@ export function MobileRightSidebar({
       <div
         className="border-b border-ink/10 flex items-center justify-between px-3 flex-shrink-0 bg-canvas titlebar-drag-region select-none"
         {...dragRegionProps()}
+        {...panelMenu.surfaceProps}
         style={{
           height: 'calc(3.5rem + env(safe-area-inset-top, 0px))',
           paddingTop: 'env(safe-area-inset-top, 0px)',
@@ -154,6 +167,17 @@ export function MobileRightSidebar({
           <X size={20} strokeWidth={1.8} />
         </button>
       </div>
+
+      {panelMenu.anchor ? (
+        <VisibilityMenu
+          anchor={panelMenu.anchor}
+          align="right"
+          items={menuItems}
+          hidden={panelMenu.hidden}
+          onToggle={panelMenu.toggle}
+          onClose={panelMenu.close}
+        />
+      ) : null}
 
       {/* Main Tab Content — the same catalog entries the desktop stack draws,
           through the same `render`, so the two layouts cannot hand a view

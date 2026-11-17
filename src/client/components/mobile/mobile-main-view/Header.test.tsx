@@ -20,6 +20,7 @@ import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { MobileHeader } from '@/client/components/mobile/mobile-main-view/Header';
 import { SessionStateProvider } from '@/client/components/common/session-state-provider/index';
+import { primeKabmoSettings } from '@/shared/lib/settings/client';
 import { silenceRealtime, restoreRealtime } from '@/test-support/silent-socket';
 
 const DOM_GLOBALS = [
@@ -51,6 +52,7 @@ afterAll(() => {
 
 beforeEach(async () => {
   silenceRealtime();
+  primeKabmoSettings({});
   container = document.createElement('div');
   document.body.appendChild(container);
   await act(async () => {
@@ -76,6 +78,7 @@ afterEach(() => {
     render(null, container);
     container.remove();
   }
+  primeKabmoSettings({});
   restoreRealtime();
 });
 
@@ -118,5 +121,45 @@ describe('phone session picker', () => {
 
     expect(panel()).toBeNull();
     expect(trigger().getAttribute('aria-expanded')).toBe('false');
+  });
+});
+
+describe('phone header visibility menu', () => {
+  const header = () => container.querySelector('header') as HTMLElement;
+  const menu = () => document.querySelector('[role="menu"][aria-label="Navbar visibility"]') as HTMLElement | null;
+
+  test('a right-click on the header opens the control switch', () => {
+    act(() => {
+      header().dispatchEvent(new win.MouseEvent('contextmenu', { bubbles: true, cancelable: true }) as unknown as Event);
+    });
+
+    const list = menu();
+    expect(list).not.toBeNull();
+    // The controls this header draws are offered; desktop-only furniture is not.
+    expect(list!.textContent).toContain('Right panel');
+    expect(list!.textContent).toContain('Reload page');
+    expect(list!.textContent).not.toContain('Editor layout');
+    expect(list!.textContent).not.toContain('Install app');
+    list!.parentElement?.remove();
+  });
+
+  test('switching a control off removes it from the row and keeps its row in the menu', () => {
+    act(() => {
+      header().dispatchEvent(new win.MouseEvent('contextmenu', { bubbles: true, cancelable: true }) as unknown as Event);
+    });
+    const list = menu() as HTMLElement;
+    const row = [...list.querySelectorAll('[role="menuitemcheckbox"]')].find(
+      (el) => el.textContent?.includes('Right panel'),
+    ) as HTMLButtonElement;
+    expect(row).toBeDefined();
+
+    act(() => {
+      row.dispatchEvent(new win.MouseEvent('click', { bubbles: true }) as unknown as Event);
+    });
+
+    expect(container.querySelector('button[aria-label="Open Right Panel"]')).toBeNull();
+    // The row stays, unchecked: the menu is the only way back.
+    expect(row.getAttribute('aria-checked')).toBe('false');
+    list.parentElement?.remove();
   });
 });

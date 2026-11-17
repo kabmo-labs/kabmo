@@ -1,6 +1,7 @@
 import { X } from 'lucide-preact';
 import { BrandWordmark } from '@/client/components/common/brand-wordmark';
 import { ServerControl } from '@/client/components/common/server-control';
+import type { VisibilityMenuSurfaceProps } from '@/client/hooks/ui/visibility-menu-trigger';
 import { titlebarPaddingLeft, titlebarPaddingRight } from '@/shared/lib/ui/titlebar';
 import { dragRegionProps, titlebarInsetLeft } from '@/client/lib/desktop/titlebar';
 
@@ -25,11 +26,21 @@ import { dragRegionProps, titlebarInsetLeft } from '@/client/lib/desktop/titleba
  * `viewLabel` says what the drawer is showing (Sessions, or a panel's name), so
  * the chip is available in every view the drawer has.
  */
-export function MobileSessionHeader({ onClose, viewLabel = 'Sessions' }: { onClose: () => void; viewLabel?: string }) {
+export function MobileSessionHeader({
+  onClose,
+  viewLabel = 'Sessions',
+  menuProps,
+}: {
+  onClose: () => void;
+  viewLabel?: string;
+  /** The drawer's right-click surface: a long press opens the panel switch. */
+  menuProps?: VisibilityMenuSurfaceProps;
+}) {
   return (
     <div 
       className="border-b border-ink/10 flex items-center justify-between px-3 flex-shrink-0 bg-canvas titlebar-drag-region select-none"
       {...dragRegionProps()}
+      {...menuProps}
       style={{
         height: 'calc(3.5rem + env(safe-area-inset-top, 0px))',
         // `px-3`, the toolbar's own inset: the wordmark above and the New

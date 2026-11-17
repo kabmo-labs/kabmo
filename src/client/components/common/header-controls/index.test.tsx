@@ -319,4 +319,26 @@ describe('HeaderControls', () => {
     expect(menu!.textContent).toContain('Sign out');
     expect(trigger.getAttribute('aria-expanded')).toBe('true');
   });
+
+  test('a control switched off is gone from the ⋯ menu too', async () => {
+    await mount('mobile', { width: 360, hidden: ['reload'] });
+
+    const trigger = container.querySelector('button[aria-label="More actions"]') as HTMLElement;
+    await act(async () => {
+      trigger.click();
+    });
+
+    const menu = container.querySelector('[role="menu"]');
+    expect(menu!.textContent).not.toContain('Reload page');
+    // Sign out is still off the row, so the menu keeps its row and the trigger
+    // still has something to offer.
+    expect(menu!.textContent).toContain('Sign out');
+
+    render(null, container);
+    container.remove();
+    await mount('mobile', { width: 360, hidden: ['reload', 'signout'] });
+    // Nothing folded and nothing left in the menu: the trigger is not drawn,
+    // rather than opening an empty panel.
+    expect(container.querySelector('button[aria-label="More actions"]')).toBeNull();
+  });
 });

@@ -132,6 +132,12 @@ export function HeaderControls({
   // the row (inline) and the `⋯` menu (folded). Asking twice would be two media
   // queries deciding one row, and the two halves could disagree mid-resize.
   const headerEntries = useHeaderEntries(layout);
+  // The `⋯` trigger is drawn only while it has a row to offer: with both
+  // folded controls switched off and no plugin entry folded, an empty menu is
+  // a button that opens nothing.
+  const moreRows =
+    (folded && (!isHidden(NAVBAR_CONTROL.reload) || (signOutShown && !isHidden(NAVBAR_CONTROL.signout)))) ||
+    headerEntries.folded.length > 0;
 
   return (
     // `titlebar-no-drag` belongs HERE, on the cluster's own root, not on each
@@ -188,8 +194,8 @@ export function HeaderControls({
           {showRightPanel ? <PanelRightClose size={size} /> : <PanelRight size={size} />}
         </button>
       ))}
-      {(folded || headerEntries.folded.length > 0) && (
-        <HeaderMoreMenu entries={headerEntries.folded} />
+      {moreRows && (
+        <HeaderMoreMenu entries={headerEntries.folded} hidden={hidden} />
       )}
       {layout === 'desktop' && onSwitchToMobile && !isHidden(NAVBAR_CONTROL.mobile) && (
         <button

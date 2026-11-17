@@ -9,6 +9,9 @@ import { StreamStatusDot } from '@/client/components/common/StreamStatusDot';
 import { BrandWordmark } from '@/client/components/common/brand-wordmark';
 import { HeaderControls } from '@/client/components/common/header-controls';
 import { AnchoredMenu } from '@/client/components/common/anchored-menu';
+import { VisibilityMenu } from '@/client/components/layout/VisibilityMenu';
+import { NAVBAR_CONTROL, NAVBAR_CONTROLS, useNavbarControls } from '@/client/hooks/ui/navbar-controls';
+import { useVisibilityMenuTrigger } from '@/client/hooks/ui/visibility-menu-trigger';
 import { anchorRectOf, type AnchorRect } from '@/shared/lib/ui/menu-anchor';
 import { titlebarPaddingLeft, titlebarPaddingRight } from '@/shared/lib/ui/titlebar';
 import { dragRegionProps, titlebarInsetLeft } from '@/client/lib/desktop/titlebar';
@@ -51,6 +54,11 @@ export function MobileHeader({
   // disagree about whether a rename is running.
   const renaming = useSessionRenaming(activeSessionId);
   const [pickerAnchor, setPickerAnchor] = useState<AnchorRect | null>(null);
+  // The phone's right-click: a long press on the header opens the same control
+  // switch the desktop navbar has, so a button the user never presses can be
+  // put away — and the menu keeps its row, which is the way back.
+  const { hidden, setHidden } = useNavbarControls();
+  const visibility = useVisibilityMenuTrigger();
 
   // Recent sessions: archived rows are hidden. A session the user actually
   // opened in this tab within the last 10 minutes ranks by that open time
@@ -92,6 +100,7 @@ export function MobileHeader({
     <header
       className={`flex-shrink-0 bg-canvas border-b border-ink/10 flex items-center justify-between ${CONTROL_CLUSTER_GAP} px-3 z-20 titlebar-drag-region select-none`}
       {...dragRegionProps()}
+      {...visibility.surfaceProps}
       style={{
         height: 'calc(3.5rem + env(safe-area-inset-top, 0px))',
         // The shell's own inset, not only the PWA's. `titlebarPaddingLeft` reads
@@ -231,7 +240,28 @@ export function MobileHeader({
         sessionId={activeSessionId == null ? null : String(activeSessionId)}
         showRightPanel={false}
         onToggleRightPanel={onOpenRightSidebar}
+        hidden={hidden}
       />
+
+      {visibility.anchor ? (
+        <VisibilityMenu
+          anchor={visibility.anchor}
+          title="Navbar"
+          align="right"
+          // Only the controls this header actually draws: install, the editor
+          // toggle and the dev-only layout switch are desktop furniture, and a
+          // checkbox for one would hide nothing.
+          items={NAVBAR_CONTROLS.filter(
+            (item) =>
+              item.id !== NAVBAR_CONTROL.install &&
+              item.id !== NAVBAR_CONTROL.editor &&
+              item.id !== NAVBAR_CONTROL.mobile,
+          ).map((item) => ({ ...item, removable: true }))}
+          hidden={hidden}
+          onToggle={setHidden}
+          onClose={visibility.close}
+        />
+      ) : null}
     </header>
   );
 }

@@ -23,19 +23,23 @@ import type { ResolvedPanel } from '@/client/components/workspace/plugin-panel/c
 import { PluginPanelBody } from '@/client/components/workspace/plugin-panel/resolve';
 import type { PanelBodyProps } from '@/client/components/workspace/panels/builtin';
 import { PanelChips } from '@/client/components/mobile/panel-chips';
+import type { VisibilityMenuSurfaceProps } from '@/client/hooks/ui/visibility-menu-trigger';
 
 /** The strip row, drawn under the drawer's title. */
 export function MobileDockStrip({
   panels,
   activeId,
   onSelect,
+  menuProps,
 }: {
   panels: readonly ResolvedPanel[];
   activeId: string;
   onSelect: (id: string) => void;
+  /** The strip is the phone's rail, so it carries the rail's right-click too. */
+  menuProps?: VisibilityMenuSurfaceProps;
 }) {
   return (
-    <div className="px-3 py-1.5 border-b border-ink/10 bg-canvas flex-shrink-0">
+    <div className="px-3 py-1.5 border-b border-ink/10 bg-canvas flex-shrink-0" {...menuProps}>
       <PanelChips panels={panels} activeId={activeId} onSelect={onSelect} />
     </div>
   );

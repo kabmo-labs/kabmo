@@ -20,6 +20,8 @@ import { MobileDrawerDialogs } from '@/client/components/mobile/mobile-session-s
 import { useDrawerState } from '@/client/components/mobile/mobile-session-sidebar/use-drawer';
 import { archiveOutcomeMessage } from '@/client/hooks/workspace/batch-archive';
 import { BatchActionBar } from '@/client/components/common/batch-selection/BatchActionBar';
+import { VisibilityMenu } from '@/client/components/layout/VisibilityMenu';
+import { usePanelVisibilityMenu } from '@/client/hooks/workspace/panel-visibility-menu';
 import type { SessionSidebarVariantProps } from '@/client/components/layout/session-sidebar/variant-props';
 
 /**
@@ -102,6 +104,12 @@ export function MobileSessionSidebar({
   } = controller;
   const { selection, deleteRun, archiveRun, binding: batchBinding, scopeFolder, available, selected } = batch;
   const sidebarStyle = useSidebarStyle();
+
+  // The phone's right-click: a long press on the drawer's title or its chip
+  // strip opens the same panel switch the desktop left rail has. The strip IS
+  // the rail here, so the menu lists exactly what the rail can draw — the
+  // session list pinned, plus every placed panel, off or on.
+  const panelMenu = usePanelVisibilityMenu('left');
 
   // Modals state (matching desktop)
   const [newWorkspaceOpen, setNewWorkspaceOpen] = useState(false);
@@ -210,6 +218,7 @@ export function MobileSessionSidebar({
       <MobileSessionHeader
         onClose={onClose}
         viewLabel={dock.showingSessions ? 'Sessions' : dock.activePanel?.label ?? 'Panel'}
+        menuProps={panelMenu.surfaceProps}
       />
 
       {/* The strip is the phone's RAIL, so it follows the switch: with the rail
@@ -217,7 +226,22 @@ export function MobileSessionSidebar({
           always holds Sessions). Requiring a second destination made the
           Settings switch a no-op on a phone with nothing placed. */}
       {phoneLeftStripVisible(dock.enabled) ? (
-        <MobileDockStrip panels={dock.catalog} activeId={dock.activeView} onSelect={dock.setActiveView} />
+        <MobileDockStrip
+          panels={dock.catalog}
+          activeId={dock.activeView}
+          onSelect={dock.setActiveView}
+          menuProps={panelMenu.surfaceProps}
+        />
+      ) : null}
+
+      {panelMenu.anchor ? (
+        <VisibilityMenu
+          anchor={panelMenu.anchor}
+          items={panelMenu.items}
+          hidden={panelMenu.hidden}
+          onToggle={panelMenu.toggle}
+          onClose={panelMenu.close}
+        />
       ) : null}
 
       {/* The list is HIDDEN, never unmounted, while a panel is on screen — the

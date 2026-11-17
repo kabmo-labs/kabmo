@@ -34,6 +34,7 @@ import { logout, useAuthEnabled, useAuthState } from '@/client/hooks/ui/auth';
 import { PluginIdProvider } from '@kabmo-labs/kabmo-ui';
 import { requestOpenPanel } from '@/shared/lib/workspace/panel-open';
 import { CONTROL_BOX } from '@/client/lib/ui/control-plate';
+import { NAVBAR_CONTROL } from '@/client/hooks/ui/navbar-controls';
 import type { HeaderEntry } from '@/client/components/common/header-panel-buttons/entries';
 
 const ROW_CLASS =
@@ -47,7 +48,14 @@ const ROW_CLASS =
  * action is the same one the row would have performed: the panel key travels on
  * the same event, and the layout opens it wherever the user placed it.
  */
-export function HeaderMoreMenu({ entries = [] }: { entries?: HeaderEntry[] }) {
+export function HeaderMoreMenu({
+  entries = [],
+  hidden = [],
+}: {
+  entries?: HeaderEntry[];
+  /** Controls the user switched off; their rows are gone from this menu too. */
+  hidden?: string[];
+}) {
   const authEnabled = useAuthEnabled();
   const authState = useAuthState();
   const [open, setOpen] = useState(false);
@@ -114,18 +122,20 @@ export function HeaderMoreMenu({ entries = [] }: { entries?: HeaderEntry[] }) {
           role="menu"
           className="glass-popover absolute right-0 top-full mt-1 w-44 bg-paper border border-ink/15 rounded-xl shadow-lg z-50 py-1 text-xs"
         >
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              setOpen(false);
-              window.location.reload();
-            }}
-            className={ROW_CLASS}
-          >
-            <RefreshCw size={14} />
-            <span>Reload page</span>
-          </button>
+          {!hidden.includes(NAVBAR_CONTROL.reload) && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                window.location.reload();
+              }}
+              className={ROW_CLASS}
+            >
+              <RefreshCw size={14} />
+              <span>Reload page</span>
+            </button>
+          )}
 
           {entries.map((entry) => (
             <button
@@ -153,7 +163,7 @@ export function HeaderMoreMenu({ entries = [] }: { entries?: HeaderEntry[] }) {
             </button>
           ))}
 
-          {canSignOut && (
+          {canSignOut && !hidden.includes(NAVBAR_CONTROL.signout) && (
             <button
               type="button"
               role="menuitem"

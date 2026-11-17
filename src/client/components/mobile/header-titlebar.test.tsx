@@ -154,6 +154,23 @@ describe('phone headers as a shell title bar', () => {
     expect(close.className).toContain('titlebar-no-drag');
   });
 
+  test('a right-click on the right drawer header opens the panel switch', async () => {
+    await mountAsMacShell(() =>
+      h(MobileRightSidebar, { enabled: false, onClose: () => {} }),
+    );
+    const drag = container.querySelector('[data-drag-region]') as HTMLElement;
+    act(() => {
+      drag.dispatchEvent(new win.MouseEvent('contextmenu', { bubbles: true, cancelable: true }) as unknown as Event);
+    });
+    const menu = document.querySelector('[role="menu"][aria-label="Panels visibility"]');
+    expect(menu).not.toBeNull();
+    // The drawer's own catalog: a built-in view is offered, and the session
+    // list is not — it is the LEFT drawer's screen, not a panel here.
+    expect(menu!.textContent).toContain('Files');
+    expect(menu!.textContent).not.toContain('Sessions');
+    menu!.parentElement?.remove();
+  });
+
   /** A browser tab has no shell, so nothing is reserved and nothing is marked. */
   test('a browser marks no drag region and reserves nothing', async () => {
     await act(async () => {
