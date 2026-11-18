@@ -4,6 +4,23 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.41.0](https://github.com/kabmo-labs/kabmo/compare/v0.40.0...v0.41.0) — 2026-11-18
+
+### Added
+
+* **changes:** name an apply_patch payload's paths ([aa7f1b6](https://github.com/kabmo-labs/kabmo/commit/aa7f1b651c6309dc232953608c75e6d18fefb16d)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **shells:** carry the Kabmo chime on Windows and Linux ([5a556d3](https://github.com/kabmo-labs/kabmo/commit/5a556d33d8b69df9b0a5a94d9d6801386fab409a)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **shells:** complete the macOS menu bar and give it a page-command bridge ([5708b27](https://github.com/kabmo-labs/kabmo/commit/5708b27f7d5d2bc1bd208e602e3e432bb09e674a)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Changed
+
+* **changes:** split the capture path targets and the shell half of its suite ([b86b290](https://github.com/kabmo-labs/kabmo/commit/b86b2907443cff77cb45ebe9fd1ffc24d79c5dbb)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **changes:** capture an ACP agent's shell tools and arg spellings ([c966cc9](https://github.com/kabmo-labs/kabmo/commit/c966cc9589cfb183b05544b70a34bb3cfbb591be)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **shells:** heal a stale macOS notification record on update ([13ef9ca](https://github.com/kabmo-labs/kabmo/commit/13ef9ca383d14ec83beb64471328f602e8e0347b)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.40.0](https://github.com/kabmo-labs/kabmo/compare/v0.39.1...v0.40.0) — 2026-11-17
 
 ### Added
