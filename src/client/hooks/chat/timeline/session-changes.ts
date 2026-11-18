@@ -6,10 +6,14 @@
 /**
  * The session's agent change journal, for the chat's per-run file list.
  *
- * Read once per settled run: the journal is written while the agent works, so
- * asking mid-run would show a partial list that then changes under the reader.
- * A failed read keeps the previous list — a transient 500 is not a reason to
- * blank a summary the reader is looking at.
+ * Read on mount and again when a run settles. The mid-run read is deliberate:
+ * the journal is written while the agent works, so the CURRENT run's records
+ * are partial — but the settled runs' records are complete, and a reader who
+ * opens a live session must still see their file lists. The current run's
+ * partial records are bucketed into a run whose footer is not rendered yet, so
+ * they do not show until the settle read. A failed read keeps the previous
+ * list — a transient 500 is not a reason to blank a summary the reader is
+ * looking at.
  */
 
 import { useEffect, useState } from 'preact/hooks';
@@ -31,7 +35,6 @@ export function useSessionChanges(
       setRecords([]);
       return;
     }
-    if (isGenerating) return;
     let cancelled = false;
     void (async () => {
       try {
