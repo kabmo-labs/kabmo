@@ -18,6 +18,7 @@
 
 import type { AgentActionData, ChatMessageData, ToolCallData } from '@/shared/types';
 import { isNoticeRow, messageAnswerText } from '@/shared/lib/chat/notice-row';
+import { parseOrchestrationBlock } from '@/shared/lib/chat/orchestration/notice';
 
 export interface SessionMarkdownInput {
   id: string;
@@ -84,9 +85,27 @@ function toolCallBlock(call: ToolCallData | AgentActionData): string[] {
   return lines;
 }
 
+/** The heading an injected prompt exports under. Kabmo wrote it, so it is not
+ *  filed as the operator's own turn — the same distinction the timeline draws
+ *  with a card. */
+const ORCHESTRATION_HEADING: Record<string, string> = {
+  contract: '## Orchestration',
+  worker: '## Worker brief',
+  outcome: '## Worker outcome',
+};
+
 function messageBlock(msg: ChatMessageData): string[] {
   if (isNoticeRow(msg)) {
     return ['## System notice', '', quote(msg.notice)];
+  }
+
+  const injected = msg.role === 'user' ? parseOrchestrationBlock(messageAnswerText(msg)) : null;
+  if (injected) {
+    const lines = [ORCHESTRATION_HEADING[injected.kind] ?? '## Orchestration', '', injected.body];
+    // The operator's own words stay their turn, exactly as the timeline keeps
+    // their bubble beside the card.
+    if (injected.rest) lines.push('', '## User', '', injected.rest);
+    return lines;
   }
 
   const heading = msg.role === 'user' ? '## User' : '## Assistant';

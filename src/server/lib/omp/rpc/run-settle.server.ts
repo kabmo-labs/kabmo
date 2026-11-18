@@ -46,6 +46,7 @@
  */
 
 import type { RpcProcess } from '@/server/lib/omp/rpc/process';
+import { noteRunEndedWithoutFrame } from '@/server/lib/omp/rpc/terminal-settle';
 import { buildWebState, type WebStateHost } from '@/server/lib/omp/rpc/web-state';
 import { GET_STATE_TIMEOUT_MS, SUBAGENT_STALE_MS, type AgentEvent, type RpcSessionState } from '@/server/lib/omp/rpc/constants';
 import { markStreamStatus } from '@/shared/lib/omp/session/stream-state.server';
@@ -76,6 +77,8 @@ export interface RunSettleHost extends WebStateHost {
   awaitingAgentStartDeadline: number;
   continuationGraceUntil: number;
   restarting: boolean;
+  /** Set once this run has told its coordinator how it ended. */
+  runOutcomeReported: boolean;
   proc: RpcProcess;
   isAlive(): boolean;
   isRunning(): boolean;
@@ -95,6 +98,8 @@ export interface ChildExitHost {
   restarting: boolean;
   streaming: boolean;
   promptRunning: boolean;
+  /** Set once this run has told its coordinator how it ended. */
+  runOutcomeReported: boolean;
   isAlive(): boolean;
   emit(event: AgentEvent): void;
   destroy(): void;
@@ -120,6 +125,9 @@ export class RunSettle {
   /** Epoch ms until which omp announced it is waiting (a provider retry). */
   #quietUntil = 0;
   #probing = false;
+  /** The reconcile this clock started on its own. A caller that must observe
+   *  the settle — a test, a shutdown — awaits it instead of guessing at ticks. */
+  #pending: Promise<boolean> | null = null;
   readonly #host: RunSettleHost;
   readonly #silenceMs: number;
   readonly #retrySlackMs: number;
@@ -145,6 +153,11 @@ export class RunSettle {
       this.#quietUntil = 0;
     }
     this.#arm();
+  }
+
+  /** Await the reconcile this clock started, if one is still running. */
+  async whenSettled(): Promise<void> {
+    await this.#pending?.catch(() => false);
   }
 
   /** Stop watching (the run ended, or the wrapper is going away). */
@@ -208,7 +221,7 @@ export class RunSettle {
         this.#arm();
         return false;
       }
-      this.#settle(state);
+      await this.#settle(state);
       return true;
     } catch {
       // A wedged child (or a probe that queued behind a long handler and timed
@@ -251,7 +264,7 @@ export class RunSettle {
    * Land the settle: reconcile the flags from omp's truth, write the terminal
    * badge, and hand every attached client the terminal frame a real end sends.
    */
-  #settle(state: RpcSessionState): void {
+  async #settle(state: RpcSessionState): Promise<void> {
     const host = this.#host;
     const sessionId = host.sessionId;
     buildWebState(host, state);
@@ -270,6 +283,15 @@ export class RunSettle {
     // footer armed forever; the terminal frame is what releases them, and
     // nothing else will ever send one.
     host.emit({ type: 'agent_end', isTerminal: true, messages: [] });
+    // The frame above reaches CLIENTS only — it never passes through the frame
+    // fold, so the child outcome a real `agent_end` reports would be lost and
+    // the coordinator would wait for a worker that has already stopped. Report
+    // it here, as an interruption: nothing observed this run finish.
+    await noteRunEndedWithoutFrame(
+      host,
+      'interrupted',
+      'The run stopped reporting progress; open the session to read its output.',
+    );
   }
 
   /** (Re-)arm the deadline. Never keeps the event loop alive on its own. */
@@ -280,7 +302,7 @@ export class RunSettle {
     const delayMs = Math.max(this.#silenceMs, this.#quietUntil - Date.now());
     const timer = setTimeout(() => {
       this.#timer = undefined;
-      void this.reconcile('idle');
+      this.#pending = this.reconcile('idle');
     }, delayMs);
     timer.unref?.();
     this.#timer = timer;
@@ -292,9 +314,10 @@ export class RunSettle {
  * its terminal frame, so the row and the clients are settled here. Moved out of
  * the wrapper (which is at the repo's per-file ceiling) with behavior unchanged.
  */
-export function handleChildExit(host: ChildExitHost, stderrTail: string): void {
-  if (!host.isAlive() || host.restarting) return;
+export function handleChildExit(host: ChildExitHost, stderrTail: string): Promise<void> {
+  if (!host.isAlive() || host.restarting) return Promise.resolve();
   const detail = stderrTail.trim().split('\n').pop() ?? '';
+  let reported: Promise<void> = Promise.resolve();
   host.emit({
     type: 'notice',
     level: 'error',
@@ -302,6 +325,15 @@ export function handleChildExit(host: ChildExitHost, stderrTail: string): void {
   });
   if (host.streaming || host.promptRunning) {
     host.emit({ type: 'agent_end', isTerminal: true, messages: [] });
+    // Same reason as the reconcile settle: this frame bypasses the fold, so the
+    // outcome is reported explicitly. A dead process is a FAILURE, and the
+    // stderr tail is the only detail anyone has. Started, not awaited: the
+    // latch is set synchronously and the wrapper still gets torn down now.
+    reported = noteRunEndedWithoutFrame(
+      host,
+      'failed',
+      `The omp process for this session exited unexpectedly${detail ? `: ${detail}` : '.'}`,
+    );
     // The run's own process died mid-flight: that is a failure, not a normal
     // finish, and the reason the notification shows is the one above.
     if (host.sessionId) {
@@ -314,4 +346,5 @@ export function handleChildExit(host: ChildExitHost, stderrTail: string): void {
     }
   }
   host.destroy();
+  return reported;
 }

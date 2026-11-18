@@ -18,6 +18,7 @@
  */
 
 import { harnessDescriptor, harnessIdForName, type HarnessId } from '@/shared/lib/harness/catalog';
+import { ORCHESTRATION_CONTRACT } from '@/shared/lib/chat/orchestration/notice';
 
 export interface HarnessDelegation {
   harness: HarnessId;
@@ -158,12 +159,14 @@ export function delegationCommand(delegation: HarnessDelegation, index: number):
  */
 export function formatDelegationPrompt(plan: DelegationPlan): string {
   const lines = [
-    '[kabmo orchestration contract]',
+    ORCHESTRATION_CONTRACT.open,
     'You are the orchestrator for this message. Start each worker below with the exact command,',
     'then end your turn. A worker sees nothing of this conversation: its TASK is the whole brief.',
-    'Kabmo adds the dispatched-worker preamble and sends each worker outcome back as a new',
-    'message. Do not poll, do not resend the same task, and do not delegate work that is not',
-    'listed here unless the user asks.',
+    '',
+    'Kabmo sends a worker outcome back as ONE message, when that worker is done. A worker that',
+    'is still retrying a provider error reports nothing until it stops, so silence is not a',
+    'result. Do not poll, do not resend a task, and do not delegate work that is not listed',
+    'here unless the user asks.',
     '',
     'Workers:',
   ];
@@ -177,9 +180,10 @@ export function formatDelegationPrompt(plan: DelegationPlan): string {
   });
   lines.push(
     '',
-    'When a worker finishes, read its output with `kabmo session output <id>` and report the',
-    'result to the user. Reconcile conflicting reports; do not relay one verbatim.',
-    '[/kabmo orchestration contract]',
+    'When an outcome arrives, report it to the user. A completed worker carries its report; a',
+    'failed one carries the reason it gave — report that failure, never resend the task.',
+    'Reconcile conflicting reports; do not relay one verbatim.',
+    ORCHESTRATION_CONTRACT.close,
   );
   if (plan.orchestratorText) lines.push('', plan.orchestratorText);
   return lines.join('\n');

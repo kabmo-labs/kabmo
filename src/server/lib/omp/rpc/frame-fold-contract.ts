@@ -26,6 +26,27 @@ export interface SessionFrameHost extends AutoTitleHost, QueueDeliveryHost {
   compacting: boolean;
   /** Abort verdict of the current run — see `endedAborted` in `terminal-settle.ts`. */
   runAborted: boolean;
+  /**
+   * The provider failure the run's last settled assistant message carried, in
+   * omp's own words (`errorMessage` / `errorStatus`).
+   *
+   * Captured at `message_end` for the same reason `runAborted` is: omp compacts
+   * an oversized terminal frame by dropping the messages it already delivered,
+   * so the reason a run failed is routinely absent from `agent_end.messages`.
+   * Cleared by a later assistant message that did not fail — that is the proof
+   * the run recovered.
+   */
+  runFailure: string | null;
+  /** True between `auto_retry_start` and `auto_retry_end`. omp keeps the RUN
+   *  open across a retry saga, so nothing may report an outcome while this is
+   *  set. */
+  retrySagaOpen: boolean;
+  /** The reason the last retry saga closed with, when it closed as a failure
+   *  (`Retry budget exhausted after 3 retries: …`). */
+  retryFinalError: string | null;
+  /** Set once this run has told its coordinator how it ended; cleared at
+   *  `agent_start` so a queued follow-up run reports its own outcome. */
+  runOutcomeReported: boolean;
   awaitingAgentStart: boolean;
   awaitingAgentStartDeadline: number;
   continuationGraceUntil: number;

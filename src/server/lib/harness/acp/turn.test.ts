@@ -1,10 +1,13 @@
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test, vi } from 'bun:test';
 import { AcpRequestError } from '@/server/lib/harness/acp/calls';
 import { AcpTurns, type AcpTurnSeams } from '@/server/lib/harness/acp/turn';
 
 type TurnEnd = Parameters<AcpTurnSeams['onTurnEnd']>[0];
 
-function harness(overrides: Partial<AcpTurnSeams> = {}): {
+function harness(
+  overrides: Partial<AcpTurnSeams> = {},
+  options: { silenceMs?: number } = {},
+): {
   turns: AcpTurns;
   events: { type: string; errorMessage?: string }[];
   ended: Promise<TurnEnd>;
@@ -21,7 +24,7 @@ function harness(overrides: Partial<AcpTurnSeams> = {}): {
     openCalls: () => [],
     onTurnEnd: (info) => resolveEnd(info),
     ...overrides,
-  });
+  }, options);
   return { turns, events, ended };
 }
 
@@ -66,6 +69,30 @@ describe('AcpTurns failure classification', () => {
     expect(info.closedMessage).toBe(true);
   });
 
+  test('a v1 error stop is failed even when the agent streamed a partial answer', async () => {
+    // Measured shape: a provider failure mid-answer still closes the message,
+    // so "did it answer" is true — and reading only that reported the turn as
+    // completed, which told a delegated worker's coordinator it had finished.
+    const { promise, resolve } = Promise.withResolvers<{ stopReason?: string }>();
+    const { turns, ended } = harness({
+      prompt: () => promise,
+      closeMessage: () => [
+        {
+          type: 'message_end',
+          message: { role: 'assistant', content: [{ type: 'text', text: 'partial' }] },
+        },
+      ] as never,
+    });
+    turns.start('do the work', undefined);
+    await Promise.resolve();
+    await Promise.resolve();
+    resolve({ stopReason: 'error' });
+
+    const info = await ended;
+    expect(info.failed).toBe(true);
+    expect(info.failure).toContain('with an error');
+  });
+
   test('an ACP -32800 answer is a cancelled turn, not a prompt error', async () => {
     const { turns, events, ended } = harness({
       prompt: async () => {
@@ -92,6 +119,61 @@ describe('AcpTurns failure classification', () => {
     const info = await ended;
     expect(info.cancelled).toBe(true);
     expect(info.failed).toBeUndefined();
+  });
+});
+
+describe('AcpTurns silence ceiling', () => {
+  test('a turn the agent stops reporting on is closed as stranded', async () => {
+    vi.useFakeTimers();
+    try {
+      const { turns, ended } = harness({ prompt: () => new Promise(() => {}) }, { silenceMs: 1_000 });
+      turns.start('do the work', undefined);
+      await Promise.resolve();
+      await Promise.resolve();
+      vi.advanceTimersByTime(1_000);
+
+      const info = await ended;
+      expect(info.stranded).toBe(true);
+      expect(info.failed).toBe(true);
+      expect(info.failure).toContain('stopped reporting');
+      expect(turns.isStreaming).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test('a frame from the agent defers the ceiling', async () => {
+    vi.useFakeTimers();
+    try {
+      const { turns } = harness({ prompt: () => new Promise(() => {}) }, { silenceMs: 1_000 });
+      turns.start('do the work', undefined);
+      await Promise.resolve();
+      await Promise.resolve();
+      vi.advanceTimersByTime(900);
+      turns.noteActivity();
+      vi.advanceTimersByTime(900);
+      // 1.8s of wall clock, but never 1s of SILENCE.
+      expect(turns.isStreaming).toBe(true);
+      vi.advanceTimersByTime(200);
+      expect(turns.isStreaming).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test('a settled turn cannot strand a later one', async () => {
+    vi.useFakeTimers();
+    try {
+      const { turns, events, ended } = harness({}, { silenceMs: 1_000 });
+      turns.start('do the work', undefined);
+      await ended;
+      const before = events.length;
+      vi.advanceTimersByTime(5_000);
+      expect(events.length).toBe(before);
+      expect(turns.isStreaming).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

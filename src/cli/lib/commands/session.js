@@ -205,7 +205,18 @@ async function output(options, sessionId) {
   // ACP keeps its history with the agent; Kabmo stores the last closed answer
   // precisely so this command still has something to print.
   const stored = await call(`/api/sessions/${encodeURIComponent(sessionId)}/answer`);
-  log(stored?.answer ?? 'No assistant answer recorded.');
+  if (stored?.answer) {
+    log(stored.answer);
+    return;
+  }
+  // A FAILED run has no answer at all, and the reason is the only thing worth
+  // printing: "No assistant answer recorded." told a coordinator nothing about
+  // a worker whose provider had said exactly why it stopped.
+  if (stored?.failure) {
+    log(`Run failed: ${stored.failure}`);
+    return;
+  }
+  log('No assistant answer recorded.');
 }
 
 export async function run(options) {

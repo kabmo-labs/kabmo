@@ -36,6 +36,7 @@ import { startPluginScheduleRuntime, stopPluginScheduleRuntime } from '@/server/
 import { startScheduleRuntime, stopScheduleRuntime } from '@/server/lib/schedule/runtime.server';
 import { ensureTray, readTrayAppearance } from '@/server/lib/tray/runtime.server';
 import { startWaitingRuntime, stopWaitingRuntime } from '@/server/lib/waiting/runtime.server';
+import { drainPendingNotices } from '@/server/lib/sessions/notify.server';
 
 /** What the tray needs from the listener that is already up. */
 export interface AfterListenTarget {
@@ -68,6 +69,15 @@ export async function runAfterListenTasks(target: AfterListenTarget): Promise<vo
   // The waiting-prompt clock: a prompt held until another session finishes.
   // Same shape and placement — its first sweep may spawn an omp child.
   startWaitingRuntime();
+
+  // A child outcome is staged in `session_notices` and delivered by a 2s timer
+  // that dies with the process. Anything a previous process staged — a child
+  // that finished during a restart, or across a `bun --hot` reload — is still
+  // there, and without this pass its coordinator never hears from the worker
+  // it delegated to. Cheap: one query that is usually empty.
+  await drainPendingNotices().catch((error) => {
+    console.error('[sessions] stranded child outcomes skipped:', error);
+  });
 
   await syncBundledPluginsAndReport();
   await loadPluginServerHalves();

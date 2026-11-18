@@ -21,6 +21,10 @@
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
 import { AcpRequestError } from '@/server/lib/harness/acp/calls';
 import { turnEndFrame } from '@/server/lib/harness/acp/frames';
+import { TurnSilence } from '@/server/lib/harness/acp/turn-silence';
+import { deriveTurnError } from '@/shared/lib/omp/session/turn-error';
+
+const STRANDED_REASON = 'The agent stopped reporting progress; the turn was closed after a long silence.';
 
 /** What a closed turn reports to its session and the parent notice. */
 export interface AcpTurnEndInfo {
@@ -30,6 +34,8 @@ export interface AcpTurnEndInfo {
   cancelled?: boolean;
   failed?: boolean;
   failure?: string | null;
+  /** Closed by the silence ceiling, not by the agent. */
+  stranded?: boolean;
 }
 
 export interface AcpTurnSeams {
@@ -75,8 +81,27 @@ export class AcpTurns {
   private promptText = '';
   /** Set by a local cancel: non-idle states are the cancelled run, not new work. */
   private awaitingCancellation = false;
+  /** The silence ceiling for the open turn — see `turn-silence.ts`. */
+  readonly #silence: TurnSilence;
 
-  constructor(private readonly seams: AcpTurnSeams) {}
+  constructor(private readonly seams: AcpTurnSeams, options: { silenceMs?: number } = {}) {
+    this.#silence = new TurnSilence(() => this.strand(), options.silenceMs);
+  }
+
+  /** Any frame from the agent defers the silence ceiling. */
+  noteActivity(): void {
+    if (this.open !== null) this.#silence.arm();
+  }
+
+  /**
+   * Close a turn the agent stopped reporting on. Public so a caller that has
+   * its own evidence (a probe, a shutdown) can settle it the same way.
+   */
+  strand(): void {
+    if (this.open === null) return;
+    const turnId = this.open;
+    this.settle(turnId, () => this.finish(undefined, false, STRANDED_REASON, true));
+  }
 
   /** The same field omp puts on its ack, so a client that inspects it reads one
    *  vocabulary whichever transport served the chat. */
@@ -90,6 +115,7 @@ export class AcpTurns {
     this.awaitingCancellation = false;
     this.isPromptRunning = true;
     this.isStreaming = true;
+    this.#silence.arm();
     this.seams.emit({ type: 'agent_start' });
     this.seams.emit({ type: 'turn_start' });
 
@@ -152,6 +178,7 @@ export class AcpTurns {
       return;
     }
     this.open = null;
+    this.#silence.stop();
     this.seams.cancelAgent();
     this.seams.abandonPrompt();
     this.finish({ stopReason: 'cancelled' });
@@ -210,6 +237,7 @@ export class AcpTurns {
     this.promptText = '';
     this.isPromptRunning = true;
     this.isStreaming = true;
+    this.#silence.arm();
     this.seams.resetMapper();
     this.seams.emit({ type: 'agent_start' });
     this.seams.emit({ type: 'turn_start' });
@@ -228,7 +256,13 @@ export class AcpTurns {
    *  going to report an end for work it abandoned. `reported` says the caller
    *  already emitted the failure reason, so only this module's generic silent
    *  verdict is suppressed. */
-  private finish(result: { stopReason?: string } | undefined, reported = false, failure?: string): void {
+  private finish(
+    result: { stopReason?: string } | undefined,
+    reported = false,
+    failure?: string,
+    stranded = false,
+  ): void {
+    this.#silence.stop();
     const flushed = this.seams.closeMessage();
     for (const event of flushed) this.seams.emit(event);
     const closed = flushed.find((event) => event.type === 'message_end')?.message;
@@ -249,10 +283,19 @@ export class AcpTurns {
     const slash = this.promptText.trimStart().startsWith('/');
     // v2 says clients cannot infer failure from an idle without a stop reason;
     // the "silent answer is a failure" rule is a v1 agent behaviour (pi-acp).
+    // `stopReason: 'error'` is a failure even when the agent DID send a partial
+    // message: a v1 agent answers `{stopReason: 'error'}` with whatever it had
+    // streamed, and reading only "did it answer" reported that turn as
+    // completed — so a delegated worker whose provider failed mid-answer told
+    // its coordinator it had finished.
     const failed = !cancelled && !slash
-      && (reported || (this.completion === 'response' && !answered));
+      && (stranded || reported || result?.stopReason === 'error' || (this.completion === 'response' && !answered));
     const reason = failed
-      ? failure ?? 'The agent ended the turn without sending an answer'
+      ? failure ?? (stranded
+        ? STRANDED_REASON
+        : closedFailure(closed) ?? (result?.stopReason === 'error'
+          ? 'The agent ended the turn with an error'
+          : 'The agent ended the turn without sending an answer'))
       : null;
     if (failed && !reported && !slash) {
       this.seams.emit({
@@ -268,9 +311,24 @@ export class AcpTurns {
       closedMessage: flushed.some((event) => event.type === 'message_end'),
       ...(closed ? { message: closed } : {}),
       ...(cancelled ? { cancelled: true } : {}),
+      ...(stranded ? { stranded: true } : {}),
       ...(failed ? { failed: true, failure: reason } : {}),
     });
   }
+}
+
+/**
+ * The reason the CLOSED message names, when it named one.
+ *
+ * The same rule as omp's: an agent records `stopReason` / `errorMessage` flat on
+ * the assistant message, and reading only the envelope's stop reason threw the
+ * provider's own words away — a coordinator was told "the agent ended the turn
+ * with an error" over a transcript that said which.
+ */
+function closedFailure(message: unknown): string | null {
+  if (!message || typeof message !== 'object' || Array.isArray(message)) return null;
+  const error = deriveTurnError(message as Record<string, unknown>);
+  return error?.message?.trim() || null;
 }
 
 /** Does the closed message carry anything the timeline draws? A whitespace-only

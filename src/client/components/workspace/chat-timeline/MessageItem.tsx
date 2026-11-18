@@ -1,22 +1,17 @@
-import type { TargetedMouseEvent } from 'preact';
 import { useMemo } from 'preact/hooks';
 import { memo } from 'preact/compat';
-import { AlertCircle, Bot, GitFork, Info, MessageSquarePlus, Undo2, User } from 'lucide-preact';
+import { AlertCircle, Info } from 'lucide-preact';
 import type { Attachment, ChatMessageData } from '@/shared/types';
 import { canForkAt, type ForkAnchorRole } from '@/shared/lib/chat/timeline/fork-anchor';
-import { toAttachmentList } from '@/shared/lib/chat/attachments';
 import { ThinkingSection } from '@/client/components/workspace/chat-timeline/ThinkingSection';
 import { ToolCallingSection } from '@/client/components/workspace/chat-timeline/ToolCallingSection';
 import { SystemNotice } from '@/client/components/workspace/chat-timeline/SystemNotice';
 import { IrcNotice } from '@/client/components/workspace/chat-timeline/IrcNotice';
 import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
-import { AttachmentChips } from '@/client/components/workspace/chat-timeline/AttachmentChips';
-import { CopyButton } from '@/client/components/common/CopyButton';
-import { PluginMessageActions } from '@/client/components/workspace/chat-timeline/PluginMessageActions';
+import { UserTurn } from '@/client/components/workspace/chat-timeline/UserTurn';
 import { capitalizeFirstLetter } from '@/shared/lib/chat/capitalize';
 import { isNoticeRow, messageAnswerText } from '@/shared/lib/chat/notice-row';
-import { formatMessageStamp } from '@/shared/lib/format/time';
-import { transcriptBlockPadding, transcriptGutter } from '@/shared/lib/chat/timeline/gutter';
+import { transcriptGutter } from '@/shared/lib/chat/timeline/gutter';
 import { traceInset } from '@/shared/lib/chat/timeline/block-chrome';
 import { useToolRenderMode } from '@/client/hooks/chat/timeline/tool-render-mode';
 
@@ -78,7 +73,6 @@ export const ChatMessageItem = memo(function ChatMessageItem({
   /** Stable string references for MarkdownRenderer so its internal
    *  useMemo([content]) holds across parent re-renders (streaming frames
    *  replace the timeline array identity every frame). */
-  const userContent = useMemo(() => (typeof effectiveContent === 'string' ? effectiveContent.trim() : effectiveContent), [effectiveContent]);
   const assistantContent = useMemo(() => (typeof effectiveContent === 'string' ? capitalizeFirstLetter(effectiveContent) : effectiveContent), [effectiveContent]);
 
   /** Content is not worth rendering when it is empty or only punctuation
@@ -86,122 +80,19 @@ export const ChatMessageItem = memo(function ChatMessageItem({
    *  lone dot while the real payload lives in tool calls / thinking. */
   const hasRenderableContent = typeof effectiveContent === 'string' && /[A-Za-z0-9]/.test(effectiveContent);
 
-  const handleNewChat = (e?: TargetedMouseEvent<HTMLElement>) => {
-    if (e) e.preventDefault();
-    if (!onNewChat) return;
-    // Committed rows carry the persisted display fields only (no `File`), which
-    // is what the composer and the send path both expect on a replay.
-    const attachments = toAttachmentList(msg.attachments);
-    onNewChat(msg.content, attachments.length ? attachments : undefined);
-  };
-
-  const handleUndo = () => {
-    if (onUndo) {
-      onUndo(msg.id, msg.content);
-    }
-  };
-
   if (isUser) {
-    const isAgentAttributed = msg.attribution === 'agent';
-
     return (
-      <div id={msg.id} className={`flex flex-col items-end space-y-1.5 w-full max-w-full ${className}`}>
-        {/* User bubble - standardized to text-[13px] with markdown support */}
-        <div className={`bg-paper ${transcriptBlockPadding(isMobile)} sm:p-4 rounded-xl border border-ink/15 text-[13px] text-ink shadow-xs max-w-[92%] sm:max-w-[85%] break-words overflow-hidden flex flex-col space-y-2 font-sans select-text ${transcriptGutter(isMobile)}`} style={{ lineHeight: 'var(--markdown-body-line-height)' }}>
-          {isAgentAttributed && (
-            <div className="flex items-center space-x-1.5 pb-1.5 mb-1 border-b border-ink/10 text-[11px] font-mono text-ink/70">
-              <Bot size={12} className="text-ink shrink-0" />
-              <span className="font-semibold text-ink">Subagent Assignment</span>
-              <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-ink/5 text-ink/60">Delegated</span>
-            </div>
-          )}
-          <MarkdownRenderer content={userContent} />
-          
-          <AttachmentChips
-            attachments={msg.attachments || []}
-            onOpenFile={(att: { name?: string; content?: string }) => {
-              window.dispatchEvent(new CustomEvent('omp:open-file', {
-                detail: { path: att.name ?? 'attachment', content: att.content }
-              }));
-            }}
-          />
-        </div>
-        
-        {/* User Metadata & Toolbar (Undo on the left of Copy) */}
-        <div className="flex items-center space-x-2.5 text-[11px] text-ink/60 px-1 font-mono">
-          <div className="flex items-center space-x-1.5 border-r border-ink/15 pr-2.5">
-            {isAgentAttributed ? (
-              <>
-                <Bot size={11} className="text-ink/70 shrink-0" />
-                <span className="text-[10px] uppercase font-semibold tracking-wider text-ink/60">Agent</span>
-              </>
-            ) : (
-              <User size={11} className="text-ink/70 shrink-0" />
-            )}
-            {formatMessageStamp(msg) && <span>{formatMessageStamp(msg)}</span>}
-          </div>
-          
-          <div className="flex items-center space-x-1">
-            {/* Undo Button (to the left of copy button) */}
-            {userActions && (
-              <button 
-                type="button"
-                className="flex items-center hover:text-ink transition-colors p-1 rounded hover:bg-ink/5 cursor-pointer" 
-                title="Undo / Edit message"
-                aria-label="Undo this message"
-                onClick={handleUndo}
-              >
-                <Undo2 size={12} />
-              </button>
-            )}
-
-            {/* Copy Button */}
-            <CopyButton
-              text={msg.content}
-              className="flex items-center hover:text-ink transition-colors p-1 rounded hover:bg-ink/5 cursor-pointer"
-              iconSize={12}
-              title="Copy prompt"
-              ariaLabel="Copy prompt"
-              emptyTitle="Nothing to copy — attachment-only prompt"
-            />
-
-            {/* Fork Button — branches the session at this row, leaving the
-                source untouched. Separate from New Chat: a fork carries the
-                history, a new chat does not. */}
-            {userActions && canFork && (
-              <button
-                type="button"
-                className="flex items-center hover:text-ink transition-colors p-1 rounded hover:bg-ink/5 cursor-pointer"
-                title="Fork from here"
-                aria-label="Fork this session from this message"
-                onClick={(e) => {
-                  e.preventDefault();
-                  onFork?.(msg.id, 'user');
-                }}
-              >
-                <GitFork size={12} />
-              </button>
-            )}
-
-            {/* New Chat Button */}
-            {userActions && (
-              <button 
-                type="button"
-                className="flex items-center hover:text-ink transition-colors p-1 rounded hover:bg-ink/5 cursor-pointer" 
-                title="New Chat from here"
-                aria-label="Start a new chat from this message"
-                onClick={handleNewChat}
-              >
-                <MessageSquarePlus size={12} />
-              </button>
-            )}
-
-            {/* Plugin contributions, in store order. The empty slot renders
-                nothing, so a Kabmo with no plugins keeps this strip intact. */}
-            <PluginMessageActions messageId={String(msg.id)} role="user" text={typeof msg.content === 'string' ? msg.content : ''} />
-          </div>
-        </div>
-      </div>
+      <UserTurn
+        msg={msg}
+        content={effectiveContent}
+        isMobile={isMobile}
+        userActions={userActions}
+        canFork={canFork}
+        className={className}
+        onUndo={onUndo}
+        onNewChat={onNewChat}
+        onFork={onFork}
+      />
     );
   }
 

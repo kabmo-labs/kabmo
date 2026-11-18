@@ -16,6 +16,10 @@
  * Only a delegated child notifies. A fork has no parent edge; a child whose
  * `parentNotifications` is `off` or whose outcome is filtered by `stuck` writes
  * nothing.
+ *
+ * The TEXT is built by `renderChildOutcomeNotice` in shared code, because the
+ * timeline parses the same envelope back into a card. A second copy of the
+ * format here would drift the moment either side changed.
  */
 
 import { getDb } from '@/server/db.server';
@@ -24,21 +28,19 @@ import { deliverQueueNow } from '@/server/lib/queue/delivery.server';
 import { getSessionRelation } from '@/server/lib/sessions/relations.server';
 import { isSessionArchived } from '@/server/lib/sessions/resolve.server';
 import { ensureSessionLive } from '@/server/lib/sessions/dispatch.server';
+import { findSessionFileById } from '@/server/lib/omp/session/locator';
+import { loadSessionTitle } from '@/server/lib/omp/session/messages';
+import {
+  renderChildOutcomeNotice,
+  type ChildOutcomeEntry,
+} from '@/shared/lib/chat/orchestration/notice';
 
 export const NOTICE_WINDOW_MS = 2_000;
 const OUTPUT_EXCERPT_LIMIT = 4_000;
 const TRUNCATION_MARKER = '\n\n[... output truncated ...]';
 const COALESCE_KEY = 'child-outcomes';
 
-export interface ChildOutcomeNotice {
-  sessionId: string;
-  title?: string | null;
-  status: 'completed' | 'failed' | 'interrupted';
-  /** The child's final assistant text, when the transport could read it. */
-  output?: string | null;
-  /** Why it failed or was interrupted, when known. */
-  failure?: string | null;
-}
+export type ChildOutcomeNotice = ChildOutcomeEntry;
 
 interface NoticeRow {
   id: string;
@@ -66,38 +68,23 @@ function excerpt(text: string | null | undefined): string {
   return `${trimmed.slice(0, keep).trimEnd()}${TRUNCATION_MARKER}`;
 }
 
-function describe(item: ChildOutcomeNotice): string {
-  const title = item.title?.trim();
-  return title ? `"${title}" (${item.sessionId})` : item.sessionId;
-}
-
-function oneLine(text: string): string {
-  return text.replace(/\s+/g, ' ').trim();
-}
-
-function renderOutcome(item: ChildOutcomeNotice): string {
-  const label = describe(item);
-  if (item.status === 'completed') {
-    return `Child session ${label} completed:\n\n${excerpt(item.output)}`;
+/** The child's own title, so the coordinator reads a name instead of a UUID.
+ *  Best-effort: an ACP child has no omp file, and a missing title is not a
+ *  reason to withhold the outcome. */
+async function titleOf(sessionId: string): Promise<string | null> {
+  try {
+    const file = await findSessionFileById(sessionId);
+    if (!file) return null;
+    const title = (await loadSessionTitle(file))?.trim();
+    // A worker's first prompt is Kabmo's own brief, so an auto-title derived
+    // from it is the brief's first line — measured as
+    // `title: [kabmo dispatched worker]` in a real coordinator's notice. That
+    // names nothing; the session id below it already identifies the worker.
+    if (!title || /^\[kabmo /.test(title)) return null;
+    return title;
+  } catch {
+    return null;
   }
-  const reason =
-    item.status === 'interrupted'
-      ? item.failure || 'it was interrupted'
-      : item.failure || 'it failed';
-  return `Child session ${label} ${reason}.\n\nReview the session before deciding the next step.`;
-}
-
-/** One notice body, for one child or a coalesced batch. */
-export function renderChildOutcomeNotice(items: readonly ChildOutcomeNotice[]): string {
-  if (items.length === 1 && items[0]) return renderOutcome(items[0]);
-  const lines = items.map((item) => {
-    const label = describe(item);
-    if (item.status === 'completed') {
-      return `- ${label} completed: ${oneLine(excerpt(item.output))}`;
-    }
-    return `- ${label} ${item.failure || item.status}.`;
-  });
-  return `Child session updates:\n\n${lines.join('\n')}`;
 }
 
 function mergeOutcome(
@@ -142,7 +129,12 @@ export async function noteChildOutcome(outcome: ChildOutcomeNotice): Promise<voi
   const previous = existing
     ? (JSON.parse(existing.state) as ChildOutcomeNotice[])
     : [];
-  const state = JSON.stringify(mergeOutcome(previous, outcome));
+  const entry: ChildOutcomeNotice = {
+    ...outcome,
+    title: outcome.title ?? (await titleOf(outcome.sessionId)),
+    output: outcome.status === 'completed' ? excerpt(outcome.output) : null,
+  };
+  const state = JSON.stringify(mergeOutcome(previous, entry));
   await db.run(
     `INSERT INTO session_notices
        (id, parent_session_id, coalesce_key, state, send_at, created_at, updated_at)
@@ -208,5 +200,38 @@ export async function flushNotice(parentSessionId: string): Promise<void> {
   const text = await materializeNotice(parentSessionId);
   if (text === null) return;
   const session = await ensureSessionLive(parentSessionId);
-  if (session) await deliverQueueNow(session);
+  if (!session) {
+    // The row is durable and the parent's queue panel shows it, but nothing
+    // will deliver it until that session can be resumed. Say so: a coordinator
+    // that never hears from a worker is otherwise indistinguishable from one
+    // that is still working.
+    console.error(
+      `[sessions] child outcomes for ${parentSessionId} are queued but the session could not be resumed`,
+    );
+    return;
+  }
+  await deliverQueueNow(session);
+}
+
+/**
+ * Deliver every notice a PREVIOUS process left behind.
+ *
+ * The window lives in a timer, and a timer dies with the process: a child that
+ * finished during a restart (or a `bun --hot` reload) left its outcome in
+ * `session_notices` with nothing to flush it, so the coordinator waited for a
+ * message that was already written. Runs once, after the listener is up.
+ */
+export async function drainPendingNotices(): Promise<void> {
+  const db = await getDb();
+  const rows = await db.all<{ parent_session_id: string }>(
+    'SELECT DISTINCT parent_session_id FROM session_notices',
+  );
+  for (const row of rows) {
+    await flushNotice(row.parent_session_id).catch((error) => {
+      console.error(
+        `[sessions] could not deliver a stranded child outcome to ${row.parent_session_id}:`,
+        error instanceof Error ? error.message : error,
+      );
+    });
+  }
 }

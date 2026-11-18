@@ -40,7 +40,12 @@ import { saveAcpUsage } from '@/server/lib/harness/acp/acp-telemetry.server';
 import { lastAssistantText } from '@/server/lib/omp/session/goal-driver.server';
 import { noteChildOutcome } from '@/server/lib/sessions/notify.server';
 import { saveSessionAnswer } from '@/server/lib/sessions/answers.server';
+import { transcriptFailure } from '@/server/lib/harness/acp/turn-outcome.server';
+import type { HarnessId } from '@/shared/lib/harness/catalog';
 import type { AcpTurns, AcpTurnEndInfo } from '@/server/lib/harness/acp/turn';
+import { driveAcpGoalAfterTurn } from '@/server/lib/harness/acp/acp-goal-driver.server';
+import type { AcpGoalHost } from '@/server/lib/harness/acp/acp-goal.server';
+import { assistantTextOf, spawnsBackgroundWork } from '@/server/lib/harness/acp/background-work';
 
 /** What a turn reads and moves on the session. */
 export interface AcpTurnTarget {
@@ -59,6 +64,35 @@ export interface AcpTurnTarget {
   send(command: Record<string, unknown>): Promise<unknown>;
 }
 
+/** What the turn-end bookkeeping moves on the session. */
+export interface AcpTurnEndHost
+  extends Omit<AcpTurnTarget, 'runModel' | 'sessionId' | 'isAlive' | 'isBusy' | 'send'>, AcpGoalHost {
+  assistantCount: number;
+  usage: { endTurn(): void };
+  background: { start(baseline: string): void };
+}
+
+/**
+ * Everything a turn's END moves: the closed message, the durable marker, the
+ * queue, the child outcome, the background probe and the goal driver.
+ *
+ * A turn closed by the SILENCE CEILING is interrupted, not failed — nothing
+ * observed it fail — and its reason still travels so a coordinator can act.
+ */
+export function endAcpTurn(host: AcpTurnEndHost, info: AcpTurnEndInfo): Promise<void> {
+  if (info.closedMessage) host.assistantCount += 1;
+  host.usage.endTurn();
+  const reported = settleAcpTurn(host, info);
+  // A subagent outlives the turn that spawned it: antigravity answers
+  // `end_turn` right after `invoke_subagent`, and its completion is held until
+  // the next request (upstream #1461). Probe the transcript instead.
+  if (!info.cancelled && info.failed !== true && spawnsBackgroundWork(info.message)) {
+    host.background.start(assistantTextOf(info.message));
+  }
+  void driveAcpGoalAfterTurn(host, info.message, { cancelled: info.cancelled === true }).catch(() => {});
+  return reported;
+}
+
 /** Open a turn and mark the run live. Returns the ACK, never the turn. */
 export function beginAcpTurn(
   target: AcpTurnTarget,
@@ -73,7 +107,10 @@ export function beginAcpTurn(
 }
 
 /** Turn-end bookkeeping: the closed message, the badge, then the queue. */
-export function settleAcpTurn(target: AcpTurnTarget, info: AcpTurnEndInfo): void {
+export async function settleAcpTurn(
+  target: AcpTurnTarget & { harness: HarnessId },
+  info: AcpTurnEndInfo,
+): Promise<void> {
   if (info.closedMessage) target.messageCount += 1;
   // ACP has no transcript to re-read, so the last usage snapshot is what lets
   // the Context ring answer after a reload or a restart.
@@ -86,30 +123,48 @@ export function settleAcpTurn(target: AcpTurnTarget, info: AcpTurnEndInfo): void
     totalCost: target.totalCost,
     runModel: target.runModel,
   });
+  // A turn the envelope calls COMPLETED may still have failed: `omp-acp` answers
+  // a provider error as ordinary text and ends the turn normally, so its own
+  // transcript is the only record of the failure (see `turn-outcome.server.ts`).
+  const recorded = info.failed === true || info.cancelled === true || info.stranded === true
+    ? null
+    : await transcriptFailure(target.harness, target.sessionId);
+  // A turn closed by the silence ceiling is INTERRUPTED, not failed: nothing
+  // observed it fail, and the reason still travels so the coordinator can act.
+  const status = info.cancelled === true || info.stranded === true
+    ? 'interrupted'
+    : info.failed === true || recorded !== null
+      ? 'failed'
+      : 'completed';
   // A cancelled turn is an `abort` badge; every other ending a `finish` — and a
   // failed turn carries the agent's own reason, which is the only copy a tab
   // that never opened the session can read.
-  const failure = info.failed === true
-    ? (info.failure?.trim() || 'The agent ended the turn without an answer')
+  const failure = status === 'failed'
+    ? (info.failure?.trim() || recorded || 'The agent ended the turn without an answer')
     : null;
   target.markStream(info.stopReason === 'cancelled' ? 'abort' : 'finish', failure);
   // Todo/plan/telemetry panels read their own topics; without this signal an
   // ACP turn's usage and titles never republished (the RPC settle path does it).
   emitRealtimeSignal('session-data-dirty', target.sessionId);
   const finalText = lastAssistantText([info.message]);
-  if (finalText) void saveSessionAnswer(target.sessionId, finalText).catch(() => {});
-  const status = info.cancelled === true
-    ? 'interrupted'
-    : info.failed === true
-      ? 'failed'
-      : 'completed';
-  void noteChildOutcome({
+  // Only a real answer is stored as one: on a failed turn the text IS the
+  // error, and `session_answers` is what `kabmo session output` prints.
+  if (finalText && status === 'completed') {
+    void saveSessionAnswer(target.sessionId, finalText).catch(() => {});
+  }
+  const reported = noteChildOutcome({
     sessionId: target.sessionId,
     status,
-    output: finalText,
-    ...(status === 'failed' ? { failure: info.failure ?? 'The agent ended the turn without an answer' } : {}),
+    // A failed turn's text is the error, not a report: the reason is the detail.
+    output: status === 'completed' ? finalText : null,
+    ...(status === 'failed'
+      ? { failure: failure as string }
+      : status === 'interrupted' && info.stranded === true
+        ? { failure: info.failure ?? 'The agent stopped reporting progress.' }
+        : {}),
   }).catch((error: unknown) => {
     console.error('[sessions] could not record an ACP child outcome:', error);
   });
   scheduleQueueDelivery(target);
+  return reported;
 }

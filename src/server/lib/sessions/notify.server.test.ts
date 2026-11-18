@@ -25,6 +25,10 @@ import {
   noteChildOutcome,
 } from '@/server/lib/sessions/notify.server';
 import { listQueue } from '@/server/lib/queue/store.server';
+import {
+  parseChildOutcomeNotice,
+  parseOrchestrationBlock,
+} from '@/shared/lib/chat/orchestration/notice';
 
 const parents = new Set<string>();
 
@@ -57,9 +61,13 @@ describe('child outcome notices', () => {
     await noteChildOutcome({ sessionId: 'c2', status: 'completed', output: 'second done' });
 
     const text = await materializeNotice('p');
-    expect(text).toContain('Child session updates');
-    expect(text).toContain('c1');
-    expect(text).toContain('c2');
+    expect(text).not.toBeNull();
+    // The body is the shared envelope, so the coordinator's message and the
+    // timeline card are built from the same text.
+    const block = parseOrchestrationBlock(text ?? '');
+    const entries = parseChildOutcomeNotice(block?.body ?? '');
+    expect(entries.map((entry) => entry.sessionId)).toEqual(['c1', 'c2']);
+    expect(entries[0]?.output).toBe('first done');
     expect(await listQueue('p')).toHaveLength(1);
   });
 

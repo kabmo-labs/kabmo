@@ -16,6 +16,7 @@ import type { Dispatch, SetStateAction } from 'preact/compat';
 import type { ChatMessageData, ExtensionUiDialogRequest, IncomingExtensionUiRequest, OmpAgentCallbacks } from '@/shared/types';
 import { triggerChatCompletionSound } from '@/client/hooks/ui/notification-sound';
 import { isNoticeRow } from '@/shared/lib/chat/notice-row';
+import { parseOrchestrationBlock } from '@/shared/lib/chat/orchestration/notice';
 import {
   bindStreamingCoalescer,
   disposeStreamingCoalescer,
@@ -150,10 +151,14 @@ export function createOmpAgentCallbacks(deps: OmpAgentCallbacksDeps): OmpAgentCa
               // user frame (a genuine steering delivery) appends normally
               // instead of reconciling into a row that is already final.
               optimisticUserIdRef.current = null;
+              // A delegating turn echoes the CONTRACT (the card), not the
+              // operator's sentence: keeping the optimistic text hid the card
+              // until a reload. See `orchestration/notice.ts`.
+              const echoed = typeof msg.content === 'string' ? msg.content : '';
               const reconciled: ChatMessageData = {
                 ...msg,
                 id: msg.id,
-                content: prev[pIdx].content,
+                content: parseOrchestrationBlock(echoed) ? msg.content : prev[pIdx].content,
                 date: prev[pIdx].date,
                 attachments: msg.attachments?.length ? msg.attachments : prev[pIdx].attachments,
               };

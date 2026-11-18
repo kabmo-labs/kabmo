@@ -29,22 +29,19 @@ import { startAcpSession } from '@/server/lib/harness/acp/session-start';
 import type { AcpConfigOption, AcpId, AcpProtocolVersion, AcpSessionModeState } from '@/server/lib/harness/acp/protocol';
 import { promptBlocks } from '@/server/lib/harness/acp/prompt';
 import { setAcpConfig, setAcpMode, settlePermissionDialog, stampMessageModel } from '@/server/lib/harness/acp/session-config';
-import { beginAcpTurn, settleAcpTurn } from '@/server/lib/harness/acp/session-turns';
-import { driveAcpGoalAfterTurn } from '@/server/lib/harness/acp/acp-goal-driver.server';
+import { beginAcpTurn, endAcpTurn } from '@/server/lib/harness/acp/session-turns';
 import { capabilitiesFrom } from '@/server/lib/harness/launch';
 import { PendingPermissions } from '@/server/lib/harness/acp/permissions';
 import { cancelAllAcpPermissions } from '@/server/lib/harness/acp/session-permissions';
 import { handleSessionNotification } from '@/server/lib/harness/acp/session-notifications';
 import { AcpUsageMeter, type AcpContextUsage } from '@/server/lib/harness/acp/session-usage';
 import { handleAcpClientRequest, handleAcpCancelRequest, type AcpClientRequestAnswer } from '@/server/lib/harness/acp/session-requests';
-import { acpExitFailureFrames } from '@/server/lib/harness/acp/session-exit';
+import { reportAcpExit } from '@/server/lib/harness/acp/session-exit';
 import { SessionListeners } from '@/server/lib/harness/acp/session-listeners';
 import {
   AcpBackgroundProbe,
   BACKGROUND_LOAD_TIMEOUT_MS,
-  assistantTextOf,
   deliverBackgroundNotice,
-  spawnsBackgroundWork,
 } from '@/server/lib/harness/acp/background-work';
 import { acpWebState } from '@/server/lib/harness/acp/session-web-state';
 import { acpIdleReaper } from '@/server/lib/harness/acp/session-idle';
@@ -79,7 +76,7 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
   /** Assistant messages the mapper closed, for the same panel. */
   assistantCount = 0;
   /** The last `usage_update` the agent reported, or null when it never did. */
-  private readonly usage = new AcpUsageMeter();
+  readonly usage = new AcpUsageMeter();
   get contextUsage(): AcpContextUsage | null { return this.usage.contextUsage; }
   get totalCost(): number { return this.usage.totalCost; }
   get usageTokens(): number { return this.usage.usageTokens; }
@@ -97,7 +94,7 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
   /** The quiet-window reclaim; the rules live in `session-idle.ts`. */
   readonly idle: IdleReaper;
   /** Watches for work that finishes after `end_turn`; see `background-work.ts`. */
-  private readonly background: AcpBackgroundProbe;
+  readonly background: AcpBackgroundProbe;
   private readonly mapper = new AcpFrameMapper();
   private readonly events = new SessionListeners();
   readonly permissions = new PendingPermissions();
@@ -210,20 +207,10 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
     void markStreamStatus(this.sessionId, status, status === 'stream' ? this.runModel : undefined, failure).catch(() => {});
   };
 
-  /** Turn-end bookkeeping the panels read — see `session-turns.ts`. A cancelled
-   *  turn closes the marker as an `abort` badge, every other ending a `finish`.
-   *  The goal driver then audits the closed message and may open the next turn. */
-  onTurnEnded(info: AcpTurnEndInfo): void {
-    if (info.closedMessage) this.assistantCount += 1;
-    this.usage.endTurn();
-    settleAcpTurn(this, info);
-    // A subagent outlives the turn that spawned it: antigravity answers
-    // `end_turn` right after `invoke_subagent`, and its completion is held
-    // until the next request (upstream #1461). Probe the transcript instead.
-    if (!info.cancelled && info.failed !== true && spawnsBackgroundWork(info.message)) {
-      this.background.start(assistantTextOf(info.message));
-    }
-    void driveAcpGoalAfterTurn(this, info.message, { cancelled: info.cancelled === true }).catch(() => {});
+  /** Turn-end bookkeeping the panels read — see `endAcpTurn`. Returns the
+   *  child-outcome write, so a caller that must observe it can await it. */
+  onTurnEnded(info: AcpTurnEndInfo): Promise<void> {
+    return endAcpTurn(this, info);
   }
 
   /** Dispatcher seam: stop the turn and answer every parked approval. */
@@ -292,6 +279,9 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
   private onNotification(method: string, params: Record<string, unknown>): void {
     // A long turn emits no commands but plenty of `session/update` frames.
     this.idle.reset();
+    // The same frames are the only evidence a turn is still alive: ACP has no
+    // probe, so the silence ceiling is what bounds a wedged agent.
+    this.turns.noteActivity();
     // `$/cancel_request` names an agent→client request the agent no longer
     // wants; the approval it parks is answered `cancelled`.
     if (handleAcpCancelRequest(this, method, params)) return;
@@ -313,14 +303,14 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
     return handleAcpClientRequest(this, id, method, params);
   }
 
-  private onExit(info: { code: number | null; stderrTail: string }): void {
+  /** The agent's process is gone — see `reportAcpExit`; returns its notice write. */
+  private onExit(info: { code: number | null; stderrTail: string }): Promise<void> {
     this.destroyed = true;
     this.background.stop();
     this.idle.stop();
-    if (!this.closing) {
-      for (const event of acpExitFailureFrames(this.harness, info)) this.emit(event);
-    }
+    const reported = this.closing ? Promise.resolve() : reportAcpExit(this, info);
     this.destroyHook?.();
+    return reported;
   }
 
   destroy(): void { void this.destroyAndWait(); }

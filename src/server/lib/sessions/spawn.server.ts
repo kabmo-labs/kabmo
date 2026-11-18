@@ -30,6 +30,7 @@ import { getLiveSession, harnessOfSession, startNewRpcSession } from '@/server/l
 import { harnessProbeModels } from '@/server/lib/harness/probe-cache.server';
 import { getDb } from '@/server/db.server';
 import { harnessDescriptor, type HarnessId } from '@/shared/lib/harness/catalog';
+import { WORKER_BRIEF } from '@/shared/lib/chat/orchestration/notice';
 import type { SelectedModel } from '@/shared/types/models';
 import type { AgentImage } from '@/shared/types/omp/agent';
 import { MAX_SESSION_DEPTH } from '@/server/lib/sessions/relation-types';
@@ -205,10 +206,14 @@ async function resolveSpawnModel(
 }
 
 /** What a child receives before its task: identity, the one control verb, and
- *  the completion rule. Kabmo, not the orchestrator, writes this. */
+ *  the completion rule. Kabmo, not the orchestrator, writes this.
+ *
+ *  The TASK rides INSIDE the envelope: the whole opening turn is Kabmo's
+ *  framing, so the timeline draws one card for it instead of a user bubble
+ *  quoting a preamble the operator never typed. */
 function dispatchedWorkerPrompt(parentSessionId: string, sessionId: string, task: string): string {
   return [
-    '[kabmo dispatched worker]',
+    WORKER_BRIEF.open,
     `You are session ${sessionId}; your coordinator is session ${parentSessionId}.`,
     'The coordinator cannot see this chat.',
     '',
@@ -219,10 +224,10 @@ function dispatchedWorkerPrompt(parentSessionId: string, sessionId: string, task
     '',
     'Do only this task. When you finish, your final message is your report: what you did,',
     'what you found, what is left. Do not send a separate acknowledgement.',
-    '[/kabmo dispatched worker]',
     '',
     'TASK',
     task,
+    WORKER_BRIEF.close,
   ].join('\n');
 }
 

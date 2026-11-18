@@ -87,6 +87,7 @@ function makeHost(state: RpcSessionState | (() => Promise<RpcSessionState>)) {
     continuationGraceUntil: 0,
     fastModeEnabled: false,
     restarting: false,
+    runOutcomeReported: false,
     proc: {
       isAlive: true,
       sendCommand(command: { type: string }) {
@@ -204,7 +205,9 @@ describe('settling a run omp no longer owns', () => {
       const clock = settle(host, { silenceMs: 10 });
       clock.noteFrame({ type: 'turn_start' } as AgentEvent);
       vi.advanceTimersByTime(50);
-      await flushMicrotasks();
+      // Await the settle the clock started, not a guessed number of ticks: the
+      // outcome write is a database round trip.
+      await clock.whenSettled();
       expect(host.streaming).toBe(false);
       expect(emitted).toEqual([{ type: 'agent_end', isTerminal: true, messages: [] }]);
       clock.stop();
@@ -225,7 +228,7 @@ describe('settling a run omp no longer owns', () => {
       const clock = settle(host, { silenceMs: 10 });
       clock.arm();
       vi.advanceTimersByTime(50);
-      await flushMicrotasks();
+      await clock.whenSettled();
       expect(host.streaming).toBe(false);
       expect(host.promptRunning).toBe(false);
       expect(emitted).toEqual([{ type: 'agent_end', isTerminal: true, messages: [] }]);

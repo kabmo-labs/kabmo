@@ -59,6 +59,11 @@ export class AgentSessionWrapper {
   streaming = false;
   compacting = false;
   runAborted = false;
+  // How this run ended, documented once on `SessionFrameHost`.
+  runFailure: string | null = null;
+  retrySagaOpen = false;
+  retryFinalError: string | null = null;
+  runOutcomeReported = false;
   fastModeEnabled = false;
   runModel: SessionRunModel | null = null;
   private onDestroyCallback: (() => void) | null = null;
@@ -172,12 +177,8 @@ export class AgentSessionWrapper {
     );
   }
 
-  /**
-   * Watchdog for a dispatch whose turn never opened. The clock lives in its own
-   * object (`AgentStartWatchdog`) because "did it actually settle?" is a
-   * question only this wrapper can answer; this method only feeds it the flags.
-   * See that module for the failure it exists to close.
-   */
+  /** Feed the dispatch watchdog its flags; it owns the deadline and the
+   *  answer to "did the turn actually open?" (`agent-start-watchdog.ts`). */
   armAgentStartWatchdog(): void {
     this.agentStartWatchdog.arm();
   }
@@ -221,7 +222,7 @@ export class AgentSessionWrapper {
   }
 
   handleProcessExit(stderrTail: string): void {
-    handleChildExit(this, stderrTail);
+    void handleChildExit(this, stderrTail);
   }
 
   /** SessionFrameHost adapter: remember a blocking dialog for reattaching clients. */
@@ -242,7 +243,7 @@ export class AgentSessionWrapper {
     // The fold owns the state machine; this method only bookkeeps around it.
     const { suppressForward } = foldSessionFrame(this, event);
     // A refused prompt opens no turn; no agent_end will settle it.
-    noteRefusedPrompt(event, this.sessionId);
+    void noteRefusedPrompt(event, this.sessionId);
     // The run-settle clock reads every frame: it is what tells a quiet run from
     // one whose event stream stopped, and it is fed the retry waits omp
     // announces. See `run-settle.server.ts`.

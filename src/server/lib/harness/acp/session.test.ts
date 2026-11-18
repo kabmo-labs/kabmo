@@ -14,6 +14,12 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { mountSession, notify } from '@/server/lib/harness/acp/session.test-util';
+import { createSessionRelation } from '@/server/lib/sessions/relations.server';
+import { materializeNotice } from '@/server/lib/sessions/notify.server';
+import {
+  parseChildOutcomeNotice,
+  parseOrchestrationBlock,
+} from '@/shared/lib/chat/orchestration/notice';
 import type { AcpConfigOption } from '@/server/lib/harness/acp/protocol';
 
 // A prompt reaches the title writer (`harness/session-title.server.ts`), which
@@ -229,5 +235,60 @@ describe('ACP model identity', () => {
       model: 'qwen3-8-27b:free',
       provider: 'kenari',
     });
+  });
+});
+
+describe('a delegated ACP worker reports its outcome', () => {
+  /** The exit hook is private; the suite drives it the way the process does. */
+  function exit(
+    session: ReturnType<typeof mountSession>['session'],
+    stderrTail: string,
+  ): Promise<void> {
+    return (session as unknown as { onExit: (info: { code: number | null; stderrTail: string }) => Promise<void> })
+      .onExit({ code: 1, stderrTail });
+  }
+
+  test('a process that dies mid-turn tells its coordinator, with the stderr tail', async () => {
+    const { session, turn } = mountSession();
+    await createSessionRelation({ sessionId: 'acp-1', parentSessionId: 'parent-acp' });
+    await session.send({ type: 'prompt', message: 'do the work' });
+    await turn.started;
+
+    await exit(session, 'Error: provider exploded');
+
+    const text = await materializeNotice('parent-acp');
+    expect(text).not.toBeNull();
+    const block = parseOrchestrationBlock(text ?? '');
+    const [entry] = parseChildOutcomeNotice(block?.body ?? '');
+    expect(entry?.status).toBe('failed');
+    expect(entry?.failure).toContain('provider exploded');
+  });
+
+  test('a turn closed by the silence ceiling is interrupted, with its reason', async () => {
+    const { session } = mountSession();
+    await createSessionRelation({ sessionId: 'acp-1', parentSessionId: 'parent-acp' });
+
+    await session.onTurnEnded({
+      closedMessage: false,
+      stranded: true,
+      failed: true,
+      failure: 'The agent stopped reporting progress; the turn was closed after a long silence.',
+    });
+
+    const text = await materializeNotice('parent-acp');
+    const block = parseOrchestrationBlock(text ?? '');
+    const [entry] = parseChildOutcomeNotice(block?.body ?? '');
+    // Nothing observed it fail, so it is not reported as a failure.
+    expect(entry?.status).toBe('interrupted');
+    expect(entry?.failure).toContain('stopped reporting');
+  });
+
+  test('a process that exits between turns reports nothing', async () => {
+    const { session } = mountSession();
+    await createSessionRelation({ sessionId: 'acp-1', parentSessionId: 'parent-acp' });
+
+    await exit(session, 'Error: idle crash');
+
+    expect(await materializeNotice('parent-acp')).toBeNull();
   });
 });

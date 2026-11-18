@@ -98,9 +98,13 @@ describe('spawnChildSession', () => {
     });
     expect(child.sent).toHaveLength(1);
     expect(child.sent[0]).toMatchObject({ type: 'prompt' });
+    // The whole opening turn is Kabmo's framing, so the TASK rides INSIDE the
+    // envelope: the timeline draws one card for it instead of a user bubble
+    // quoting a preamble the operator never typed.
     expect(String(child.sent[0].message)).toStartWith('[kabmo dispatched worker]');
     expect(String(child.sent[0].message)).toContain('your coordinator is session parent');
-    expect(String(child.sent[0].message)).toEndWith('TASK\nreview this');
+    expect(String(child.sent[0].message)).toContain('TASK\nreview this');
+    expect(String(child.sent[0].message)).toEndWith('[/kabmo dispatched worker]');
     expect(await getSessionRelation('child')).toMatchObject({
       parentSessionId: 'parent',
       lifecycleOwnerSessionId: 'parent',

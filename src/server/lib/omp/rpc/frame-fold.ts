@@ -29,7 +29,8 @@ import { releasesStreamRowOnPromptResult } from '@/shared/lib/omp/session/stream
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
 import { publishSidebarStructure } from '@/server/lib/realtime/topics.server';
 import { NON_TERMINAL_CONTINUATION_GRACE_MS, type AgentEvent } from '@/server/lib/omp/rpc/constants';
-import { settleTerminalRun } from '@/server/lib/omp/rpc/terminal-settle';
+import { assistantFailure, settleTerminalRun } from '@/server/lib/omp/rpc/terminal-settle';
+import { noteRetryFrame } from '@/server/lib/omp/rpc/retry-saga';
 import { parseModeMarker } from '@/shared/lib/omp/mode/markers';
 import { SKILL_PROMPT_CUSTOM_TYPE } from '@/shared/lib/omp/session/operator-title';
 import type { FrameFoldResult, SessionFrameHost } from '@/server/lib/omp/rpc/frame-fold-contract';
@@ -61,6 +62,15 @@ import type { FrameFoldResult, SessionFrameHost } from '@/server/lib/omp/rpc/fra
 function handleMessageEnd(host: SessionFrameHost, event: AgentEvent): void {
   const message = event.message as Record<string, unknown> | undefined;
   if (message?.role === 'assistant' && message.stopReason === 'aborted') host.runAborted = true;
+  // The failure is captured HERE, not at `agent_end`: omp compacts an oversized
+  // terminal frame by dropping what it already delivered through
+  // `message_end`, and the failed assistant message is one of them (see
+  // `endedAborted` for the same measurement). An assistant message that ended
+  // normally CLEARS the capture — a retried run that recovered must not report
+  // the reason its first attempt died.
+  if (message?.role === 'assistant') {
+    host.runFailure = assistantFailure(message);
+  }
   if (message?.role === 'user') void triggerAutoSessionTitle(host, 'opening');
   else if (message?.role === 'custom' && message.customType === SKILL_PROMPT_CUSTOM_TYPE) {
     void triggerAutoSessionTitle(host, 'opening');
@@ -164,6 +174,13 @@ export function foldSessionFrame(host: SessionFrameHost, event: AgentEvent): Fra
       host.promptRunning = true;
       host.streaming = true;
       host.runAborted = false;
+      // A new run owns its own outcome. A retry's `agent_start` also lands
+      // here, and that is correct: the attempt that follows either fails again
+      // (its `message_end` re-captures the reason) or succeeds (which clears
+      // it), so nothing from the previous attempt can be reported as this
+      // run's ending.
+      host.runFailure = null;
+      host.runOutcomeReported = false;
       host.awaitingAgentStart = false;
       host.awaitingAgentStartDeadline = 0;
       host.continuationGraceUntil = 0;
@@ -216,7 +233,7 @@ export function foldSessionFrame(host: SessionFrameHost, event: AgentEvent): Fra
         host.awaitingAgentStartDeadline = 0;
         host.continuationGraceUntil = 0;
         clearSessionFileCaches();
-        settleTerminalRun(host, event.messages);
+        void settleTerminalRun(host, event.messages);
       } else {
         host.continuationGraceUntil = Date.now() + NON_TERMINAL_CONTINUATION_GRACE_MS;
       }
@@ -252,6 +269,12 @@ export function foldSessionFrame(host: SessionFrameHost, event: AgentEvent): Fra
       // asked for, and the second would be pure noise. The frame carries no
       // correlation id, so attribution is by the request window.
       result.suppressForward = consumeAutoTitleOutput(host);
+      break;
+    // omp keeps the RUN open across a retry saga, so the run's outcome must not
+    // be reported until the saga closes — see `retry-saga.ts`.
+    case 'auto_retry_start':
+    case 'auto_retry_end':
+      noteRetryFrame(host, event);
       break;
     case 'model_changed':
       // omp swapped the model under us: a retry under `retry.fallbackChains`

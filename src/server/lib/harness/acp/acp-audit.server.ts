@@ -72,7 +72,7 @@ export async function runAcpGoalAudit(request: AcpGoalAuditRequest): Promise<Goa
   );
   // A disposable reader: no stream row, no turn settle, no queue, no title.
   session.markStream = () => {};
-  session.onTurnEnded = () => {};
+  session.onTurnEnded = async () => {};
 
   const events: AgentEvent[] = [];
   session.onEvent((event) => events.push(event));
