@@ -23,9 +23,12 @@ export interface ImportedChat {
 
 export async function importedChat(sessionId: string): Promise<ImportedChat> {
   const record = await loadHarnessSession(sessionId).catch(() => null);
-  if (record?.origin !== 'imported') return { imported: false, title: '', harness: '' };
+  if (!record) return { imported: false, title: '', harness: '' };
+  // The title and the harness are facts about the ROW, not about how it got
+  // here: a spawned child needs both to name its header and to decide whether
+  // its agent can replay a transcript Kabmo never received.
   return {
-    imported: true,
+    imported: record.origin === 'imported',
     title: await loadHarnessSessionTitle(sessionId).catch(() => ''),
     harness: record.harness,
   };

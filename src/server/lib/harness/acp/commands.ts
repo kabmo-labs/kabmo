@@ -46,6 +46,8 @@ export interface AcpCommandHost {
   isAlive(): boolean;
   destroyAndWait(): Promise<void>;
   steer(blocks: unknown[], queue: 'steering' | 'followUp'): Promise<unknown>;
+  /** Record a mid-turn user message in the session's own transcript. */
+  recordUserTurn(message: string, images: unknown): void;
   cancelTurn(): void;
   /** Adopt the composer's approval tier. ACP decides approvals in-process. */
   setAccessMode(mode: ApprovalMode): void;
@@ -87,17 +89,23 @@ export interface AcpCommandHost {
       }
 
       case 'steer': {
-        const blocks = promptBlocks(String(command.message ?? ''), command.images);
+        const message = String(command.message ?? '');
+        const blocks = promptBlocks(message, command.images);
         if (host.capabilities.steerMode !== 'steer') {
           throw new Error(`This harness has no mid-turn steering (${host.harness})`);
         }
-        return host.steer(blocks, 'steering');
+        const result = await host.steer(blocks, 'steering');
+        host.recordUserTurn(message, command.images);
+        return result;
       }
 
       case 'follow_up': {
-        const blocks = promptBlocks(String(command.message ?? ''), command.images);
+        const message = String(command.message ?? '');
+        const blocks = promptBlocks(message, command.images);
         if (!host.capabilities.steerMode) throw new Error(`This harness cannot queue a follow-up (${host.harness})`);
-        return host.steer(blocks, 'followUp');
+        const result = await host.steer(blocks, 'followUp');
+        host.recordUserTurn(message, command.images);
+        return result;
       }
 
       case 'abort':

@@ -70,6 +70,10 @@ const SESSION_ROW_DELETES: readonly (readonly [string, string])[] = [
   ['queued_messages', 'session_id'],
   ['prompt_history', 'session_id'],
   ['chat_sessions', 'session_id'],
+  // The server-side recorder's fallback for a chat no tab ever wrote. It is a
+  // second copy of the same conversation, so a delete that left it behind would
+  // resurrect the transcript on the next open.
+  ['acp_transcripts', 'session_id'],
   ['files', 'session_id'],
   // An ACP chat has no transcript for the scan to lose: `harness_sessions` IS
   // its row, so leaving it behind both refused the delete as "not found" (nothing

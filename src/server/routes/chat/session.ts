@@ -10,46 +10,22 @@ import { mergeOmpAttachments, overlayRowsForOmpSession } from '@/server/lib/omp/
 import { readRawHeaderLine } from '@/server/lib/omp/session/files';
 import { formatNewSessionTitle } from '@/shared/lib/omp/session/default-title';
 import { importedChat } from '@/server/routes/chat/imported';
+import { loadAcpTranscript } from '@/server/lib/harness/acp/session-transcript.server';
+import { getSessionRelation } from '@/server/lib/sessions/relations.server';
 import { windowMessages } from '@/server/routes/chat/window';
 import { readCodexRolloutTranscript } from '@/server/lib/harness/codex/transcript.server';
 import { getLiveRunSessionIds, getLiveSession, harnessOfSession } from '@/server/lib/omp/rpc/session-registry';
 import { loadStreamStates } from '@/shared/lib/omp/session/stream-state.server';
 import { configByCategory, selectValues } from '@/server/lib/harness/launch';
 import type { AcpConfigOption } from '@/server/lib/harness/acp/protocol';
-import type { LiveHarnessModels } from '@/shared/types/harness';
+import { liveMetaFields, type LiveSessionMeta } from '@/server/routes/chat/live-meta';
+import { hasAssistantRow } from '@/shared/lib/chat/transcript-rows';
 
 /** Newest-message window served by default for omp JSONL sessions; the client
  *  pages further back via `?before=` when the user scrolls to the top. Large
  *  enough to cover every realistic chat turn, small enough to keep the JSON
  *  payload (and the mobile parse+mount cost) bounded. */
 const DEFAULT_MESSAGE_WINDOW = 120;
-
-/** What a LIVE non-omp session adds to the session payload: its resolved model,
- *  its thinking level, and the selector lists it published. */
-interface LiveSessionMeta {
-  model?: { provider: string; modelId: string };
-  thinkingLevel?: string;
-  harness?: string;
-  liveModels?: LiveHarnessModels;
-}
-
-/** Spread into the `session` payload so every branch states these fields once.
- *  `recorded` is the last run's model from `session_stream_state`, used only
- *  when no live session can answer. */
-function liveMetaFields(
-  liveMeta: LiveSessionMeta | null,
-  recorded?: { provider: string; modelId: string },
-  recordedThinkingLevel?: string,
-): Record<string, unknown> {
-  const model = liveMeta?.model ?? recorded;
-  const thinkingLevel = liveMeta?.thinkingLevel ?? recordedThinkingLevel;
-  return {
-    ...(model ? { model } : {}),
-    ...(thinkingLevel ? { thinkingLevel } : {}),
-    ...(liveMeta?.harness ? { harness: liveMeta.harness } : {}),
-    ...(liveMeta?.liveModels?.models.length ? { liveModels: liveMeta.liveModels } : {}),
-  };
-}
 
 export async function loader({ params, request }: LoaderFunctionArgs) {
   const { sessionId } = params;
@@ -180,6 +156,14 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     const { imported, title: harnessTitle, harness: recordedHarness } = mock
       ? { imported: false, title: '', harness: '' }
       : await importedChat(sessionId);
+    // A child spawned SERVER-SIDE (an orchestration worker, a CLI child) has no
+    // tab, so the client never wrote its transcript. Its agent still holds the
+    // conversation, and `session/load` can replay it — the same path an
+    // imported chat uses. The relation is what tells the two apart from a
+    // brand-new top-level chat, which must not spawn an agent just to replay
+    // nothing.
+    const isChild = !mock && Boolean((await getSessionRelation(sessionId).catch(() => null))?.parentSessionId);
+    const canRestore = !mock && (imported || isChild) && recordedHarness !== '' && recordedHarness !== 'omp-rpc';
     // A Codex session open in another client refuses `session/resume`, so a
     // restore cannot show it. The rollout is readable while that client holds
     // the thread, and it is only consulted when the local transcript is empty.
@@ -220,12 +204,22 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
       const firstUserContent = Array.isArray(parsedMessages)
         ? parsedMessages.find((m: { role?: string; content?: string }) => m?.role === 'user')?.content
         : undefined;
-      const messages = parsedMessages.length > 0 ? parsedMessages : codexMessages;
+      // The server-side recorder is the fallback for a chat no tab ever wrote:
+      // an orchestration worker, a CLI child. `chat_sessions` still wins when
+      // it holds an ANSWER, because an open tab's copy carries the attachment
+      // chips and notice rows this fold does not build. A user-only row is a
+      // prompt the client wrote before its tab closed, not a transcript.
+      const localHasAnswer = hasAssistantRow(parsedMessages);
+      const recordedMessages = localHasAnswer ? [] : await loadAcpTranscript(sessionId);
+      const messages = localHasAnswer
+        ? parsedMessages
+        : (recordedMessages.length > 0 ? recordedMessages : (codexMessages.length > 0 ? codexMessages : parsedMessages));
       const localTitle = hasDefaultTitle && firstUserContent ? firstUserContent.slice(0, 120) : existing.title;
       // The imported row's name is in `harness_sessions`; the empty local row
       // an earlier open created carries the UUID stamp instead, which put a
-      // second spelling of the chat's name in the header.
-      const title = imported && (!localTitle || String(localTitle).startsWith('Session '))
+      // second spelling of the chat's name in the header. A spawned child has
+      // the same problem: its title is the harness's, not the UUID.
+      const title = (imported || isChild) && (!localTitle || String(localTitle).startsWith('Session '))
         ? harnessTitle || localTitle || `Session ${sessionId}`
         : localTitle || `Session ${sessionId}`;
       return json({
@@ -233,7 +227,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
           id: existing.session_id,
           title,
           messages,
-          ...(imported && messages.length === 0 ? { restore: true } : {}),
+          ...(canRestore && !hasAssistantRow(messages) ? { restore: true } : {}),
           ...liveMetaFields(liveMeta, recordedModel),
         },
         isMock: mock,
@@ -247,8 +241,11 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
       messages: [],
     };
 
+    const recordedMessages = await loadAcpTranscript(sessionId);
     const seedTitle = harnessTitle || initial.title;
-    const seededMessages = codexMessages.length > 0 ? codexMessages : initial.messages;
+    const seededMessages = recordedMessages.length > 0
+      ? recordedMessages
+      : (codexMessages.length > 0 ? codexMessages : initial.messages);
     await db.run(
       'INSERT OR REPLACE INTO chat_sessions (session_id, title, messages, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)',
       [sessionId, seedTitle, JSON.stringify(initial.messages)]
@@ -259,7 +256,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
         ...initial,
         title: seedTitle,
         messages: seededMessages,
-        ...(imported && seededMessages.length === 0 ? { restore: true } : {}),
+        ...(canRestore && !hasAssistantRow(seededMessages) ? { restore: true } : {}),
         ...liveMetaFields(liveMeta, recordedModel),
       },
       isMock: mock,

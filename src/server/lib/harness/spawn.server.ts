@@ -21,6 +21,7 @@
  */
 
 import { AcpSession } from '@/server/lib/harness/acp/session';
+import { AcpTranscriptRecorder } from '@/server/lib/harness/acp/session-transcript.server';
 import { claimPrewarmedAcpSession } from '@/server/lib/harness/acp/prewarm.server';
 import { rememberAgentToken } from '@/server/lib/sessions/agent-token.server';
 import { loadHarnessConfig, resolveLaunch } from '@/server/lib/harness/config.server';
@@ -219,6 +220,15 @@ export async function startAcpSession(
   const { session, realSessionId } = await openAcpSession(
     warm ? { ...request, process: warm.process } : request,
   );
+  // The transcript this session writes for itself. A restore replays the
+  // agent's history and persists it itself, so it is the one session that must
+  // not record. The listener is attached before the first prompt, which is what
+  // makes a server-spawned child's timeline non-empty.
+  const recorder = request.replay ? null : new AcpTranscriptRecorder(() => realSessionId);
+  if (recorder) {
+    await recorder.hydrate();
+    session.onEvent((event) => recorder.record(event));
+  }
   if (warm) {
     // The process's environment already carries the credential minted at
     // prewarm; recording a different one here would authenticate its callbacks
@@ -233,7 +243,10 @@ export async function startAcpSession(
   // `onDestroy` is a single slot, so a second registration would silently
   // replace the registry cleanup and leave a dead session answering for its id.
   const pid = session.pid;
-  registerAcpSession(session, request.sessionId, pid ? () => removeHarnessLease(pid) : undefined);
+  registerAcpSession(session, request.sessionId, () => {
+    if (pid) removeHarnessLease(pid);
+    recorder?.dispose();
+  });
   // Record the ownership BEFORE the first frame is forwarded: the sidebar reads
   // this table, not the live registry, so a row written late would draw the row
   // as `omp` until the next folder load. A failed write must not kill a live

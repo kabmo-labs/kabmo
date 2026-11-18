@@ -18,6 +18,7 @@ import { startAcpSession, takeAcpReplayEvents } from '@/server/lib/harness/spawn
 import { mintAgentEnvironment, rememberAgentToken } from '@/server/lib/sessions/agent-token.server';
 import {
   knownHarness, loadHarnessSession, loadHarnessSessionTitle, repointHarnessSession,
+  type HarnessSessionRecord,
 } from '@/server/lib/harness/session-store.server';
 import { transcriptFromReplay } from '@/server/lib/harness/acp/replay-transcript';
 import { getDb } from '@/server/db.server';
@@ -31,6 +32,7 @@ import { saveAcpPlanState } from '@/server/lib/harness/acp/acp-goal-state.server
 import type { HarnessSession } from '@/server/lib/harness/session';
 import type { ModeRequest } from '@/server/lib/omp/mode/request';
 import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
+import { hasAssistantRow } from '@/shared/lib/chat/transcript-rows';
 
 /**
  * Respawn the ACP session a recorded non-omp chat belongs to, or null when this
@@ -101,18 +103,28 @@ export async function resumeRecordedHarnessSession(
 }
 
 /**
- * Replay an IMPORTED chat's retained history into Kabmo's own transcript.
+ * Whether a recorded chat can be replayed into Kabmo's transcript.
  *
- * The sidebar shows an imported row because `harness_sessions` lists it, but
- * the agent holds the conversation: Kabmo never received those turns, so the
- * open tab would be empty. A v2 agent replays its history when
- * `session/resume` carries `replayFrom`; the frames are collected before the
- * session is usable and reduced to the rows the timeline reads. Persisting the
- * result is the point of the exercise — every later open is an ordinary read.
+ * The gate is the LOCAL TRANSCRIPT, not `origin`: an imported chat has none,
+ * and neither does a child Kabmo spawned SERVER-SIDE (an orchestration worker,
+ * a CLI child) — no tab ever wrote its turns. A chat with an assistant row
+ * already has the conversation and must not replay it twice.
+ */
+export function restoreEligible(record: HarnessSessionRecord | null, localMessages: unknown): boolean {
+  if (!record || !record.cwd) return false;
+  if (record.harness === 'omp-rpc') return false;
+  return !hasAssistantRow(localMessages);
+}
+
+/**
+ * Replay a chat's retained history into Kabmo's own transcript.
  *
- * Only an `origin = 'imported'` row is eligible: a chat Kabmo spawned already
- * has its transcript (the client wrote every turn), and replaying it would
- * duplicate the conversation.
+ * The sidebar shows a row because `harness_sessions` lists it, but the agent
+ * holds the conversation: Kabmo never received those turns, so the open tab
+ * would be empty. A v2 agent replays its history when `session/resume` carries
+ * `replayFrom`; the frames are collected before the session is usable and
+ * reduced to the rows the timeline reads. Persisting the result is the point of
+ * the exercise — every later open is an ordinary read.
  */
 export async function restoreRecordedHarnessSession(
   sessionId: string,
@@ -120,20 +132,22 @@ export async function restoreRecordedHarnessSession(
 ): Promise<{ session: HarnessSession; harness: string; messages: number } | null> {
   const record = await loadHarnessSession(sessionId);
   const harness = knownHarness(record?.harness, HARNESS_IDS);
-  if (!record || record.origin !== 'imported' || !harness || harness === 'omp-rpc' || !record.cwd) return null;
+  if (!record || !harness) return null;
 
   const db = await getDb();
   const existing = (await db.get('SELECT messages FROM chat_sessions WHERE session_id = ?', [sessionId])) as {
     messages?: string;
   } | null;
+  let localMessages: unknown = [];
   if (existing?.messages) {
     try {
-      const parsed: unknown = JSON.parse(existing.messages);
-      if (Array.isArray(parsed) && parsed.length > 0) return null;
+      localMessages = JSON.parse(existing.messages);
     } catch {
       // A corrupt local copy is not a transcript: replay and replace it.
+      localMessages = [];
     }
   }
+  if (!restoreEligible(record, localMessages)) return null;
 
   const probe = await freshProbe(harness);
   const label = harnessDescriptor(harness)?.label ?? harness;

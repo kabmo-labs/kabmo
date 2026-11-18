@@ -24,12 +24,40 @@ import type { OmpMessageEntry } from '@/shared/lib/omp/session/messages-parse';
 import type { ChatMessageData } from '@/shared/types/chat';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
 
-const MESSAGE_EVENTS = new Set(['message_start', 'message_update', 'message_end']);
+const MESSAGE_EVENT_TYPES: Record<string, true> = {
+  message_start: true,
+  message_update: true,
+  message_end: true,
+};
+
+/**
+ * One frame's message as a timeline row, or null when it carries none.
+ *
+ * Shared by the replay reducer and the live recorder so a restored row and a
+ * recorded row are built by the same rule.
+ */
+export function chatMessageFromEvent(event: AgentEvent): ChatMessageData | null {
+  const message = event.message;
+  if (!message || typeof message !== 'object' || Array.isArray(message)) return null;
+  const record = message as Record<string, unknown>;
+  const id = typeof record.id === 'string' ? record.id : '';
+  if (!id) return null;
+  const timestamp = typeof record.timestamp === 'number' || typeof record.timestamp === 'string'
+    ? record.timestamp
+    : undefined;
+  const entry = {
+    type: 'message',
+    id,
+    ...(timestamp !== undefined ? { timestamp } : {}),
+    message: record,
+  } as unknown as OmpMessageEntry;
+  return toChatMessage(entry);
+}
 
 export function transcriptFromReplay(events: readonly AgentEvent[]): ChatMessageData[] {
   const byId = new Map<string, Record<string, unknown>>();
   for (const event of events) {
-    if (!MESSAGE_EVENTS.has(event.type)) continue;
+    if (!MESSAGE_EVENT_TYPES[event.type]) continue;
     const message = event.message;
     if (!message || typeof message !== 'object' || Array.isArray(message)) continue;
     const record = message as Record<string, unknown>;
@@ -38,17 +66,8 @@ export function transcriptFromReplay(events: readonly AgentEvent[]): ChatMessage
     byId.set(id, record);
   }
   const out: ChatMessageData[] = [];
-  for (const [id, message] of byId) {
-    const timestamp = typeof message.timestamp === 'number' || typeof message.timestamp === 'string'
-      ? message.timestamp
-      : undefined;
-    const entry = {
-      type: 'message',
-      id,
-      ...(timestamp !== undefined ? { timestamp } : {}),
-      message,
-    } as unknown as OmpMessageEntry;
-    const converted = toChatMessage(entry);
+  for (const message of byId.values()) {
+    const converted = chatMessageFromEvent({ type: 'message_end', message });
     if (converted) out.push(converted);
   }
   return out;

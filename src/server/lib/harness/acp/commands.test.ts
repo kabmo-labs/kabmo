@@ -46,6 +46,7 @@ function host(): AcpCommandHost & { writes: [string, string | boolean][]; access
     isAlive: () => true,
     destroyAndWait: async () => {},
     steer: async () => ({}),
+    recordUserTurn: () => {},
     cancelTurn: () => {},
     setAccessMode: (mode) => {
       accessModes.push(mode);

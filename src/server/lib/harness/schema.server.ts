@@ -141,6 +141,23 @@ const CUSTOM_HARNESSES_SQL = `
   );
 `;
 
+/**
+ * The transcript an ACP session records for itself.
+ *
+ * A chat Kabmo spawns server-side (an orchestration worker, a CLI child) has no
+ * tab, and the client is the only writer of `chat_sessions` for an ACP chat.
+ * The driver folds the frames it already receives into this table, and the
+ * loader reads it only when `chat_sessions` is empty — so an open tab's richer
+ * row (attachment chips, notices) is never overwritten by the fallback.
+ */
+const ACP_TRANSCRIPTS_SQL = `
+  CREATE TABLE IF NOT EXISTS acp_transcripts (
+    session_id TEXT PRIMARY KEY,
+    messages TEXT NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
+`;
+
 /** Idempotent: created on every database open, like every other feature table. */
 export async function ensureHarnessSchema(db: DbClient): Promise<void> {
   await db.exec(HARNESS_SESSIONS_SQL);
@@ -148,6 +165,7 @@ export async function ensureHarnessSchema(db: DbClient): Promise<void> {
   await db.exec(HARNESS_PROBES_SQL);
   await db.exec(HARNESS_GOAL_STATE_SQL);
   await db.exec(HARNESS_USAGE_STATE_SQL);
+  await db.exec(ACP_TRANSCRIPTS_SQL);
   for (const migration of HARNESS_SESSIONS_MIGRATIONS) {
     try {
       await db.exec(migration);

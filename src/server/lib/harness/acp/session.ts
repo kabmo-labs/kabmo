@@ -198,6 +198,8 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
     return this.proc.steer(this.sessionId, blocks, queue);
   }
 
+  /** Record a mid-turn user message; the ACP mapper drops live user frames. */
+  recordUserTurn(message: string, images: unknown): void { this.emit({ type: 'user_turn', message, images }); }
   /**
    * The durable run marker (`session_stream_state`), the row the sidebar's
    * spinner and a reattaching tab's "still running" answer read. A field so a
@@ -281,7 +283,10 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
     this.background.stop();
     this.promptCount += 1;
     this.usage.beginTurn();
-    return beginAcpTurn(this, this.turns, message, images);
+    const ack = beginAcpTurn(this, this.turns, message, images);
+    // Only a delivered turn is recorded: a refusal must not leave a user row.
+    this.emit({ type: 'user_turn', message, images });
+    return ack;
   }
 
   private onNotification(method: string, params: Record<string, unknown>): void {

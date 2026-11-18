@@ -17,6 +17,7 @@ import fs from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
+import { getDb } from '@/server/db.server';
 import { loader } from '@/server/routes/chat/session';
 import { registerAcpSession } from '@/server/lib/harness/register.server';
 import { claimHarness } from '@/server/lib/harness/registry';
@@ -236,5 +237,114 @@ describe('chat session loader on a live ACP chat', () => {
     expect(body.session.harness).toBeUndefined();
     expect(body.session.liveModels).toBeUndefined();
     expect(body.session.model).toEqual({ provider: 'claude', modelId: 'sonnet' });
+  });
+});
+
+/**
+ * A child Kabmo spawned SERVER-SIDE (an orchestration worker, a CLI child) has
+ * no tab, so the client never wrote `chat_sessions`. The recorder's
+ * `acp_transcripts` row is the transcript; when even that is missing, the
+ * loader must ask for a replay instead of drawing an empty timeline.
+ */
+describe('chat session loader on a server-spawned ACP child', () => {
+  const CHILD = 'child-worker-1';
+  const PARENT = 'parent-orchestrator-1';
+  async function recordChild(options: { transcript?: unknown[]; local?: unknown[] } = {}): Promise<void> {
+    const db = await getDb();
+    const now = Date.now();
+    await db.run(
+      `INSERT INTO harness_sessions (session_id, harness, agent_session_id, cwd, title, origin, created_at, updated_at)
+       VALUES (?, 'claude', ?, '/tmp', 'Worker task', '', ?, ?)`,
+      [CHILD, CHILD, now, now],
+    );
+    await db.run(
+      `INSERT INTO session_relations (session_id, parent_session_id, lifecycle_owner_session_id, visibility, parent_notifications, depth, created_at)
+       VALUES (?, ?, ?, 'visible', 'auto', 1, ?)`,
+      [CHILD, PARENT, PARENT, now],
+    );
+    if (options.transcript) {
+      await db.run(
+        'INSERT INTO acp_transcripts (session_id, messages, updated_at) VALUES (?, ?, ?)',
+        [CHILD, JSON.stringify(options.transcript), now],
+      );
+    }
+    if (options.local) {
+      await db.run(
+        'INSERT INTO chat_sessions (session_id, title, messages, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)',
+        [CHILD, `Session ${CHILD}`, JSON.stringify(options.local)],
+      );
+    }
+  }
+  test('serves the recorded transcript and the harness title', async () => {
+    await recordChild({
+      transcript: [
+        { id: 'u1', role: 'user', content: 'do the task' },
+        { id: 'a1', role: 'ai', content: 'done' },
+      ],
+    });
+
+    const body = (await (await load(CHILD)).json()) as {
+      session: { title: string; messages: Array<{ content: string }>; restore?: boolean };
+    };
+    expect(body.session.messages.map((row) => row.content)).toEqual(['do the task', 'done']);
+    expect(body.session.title).toBe('Worker task');
+    expect(body.session.restore).toBeUndefined();
+  });
+  test('an empty local row falls back to the recorded transcript', async () => {
+    await recordChild({
+      local: [],
+      transcript: [
+        { id: 'u1', role: 'user', content: 'do the task' },
+        { id: 'a1', role: 'ai', content: 'done' },
+      ],
+    });
+
+    const body = (await (await load(CHILD)).json()) as {
+      session: { messages: Array<{ content: string }>; restore?: boolean };
+    };
+    expect(body.session.messages.map((row) => row.content)).toEqual(['do the task', 'done']);
+    expect(body.session.restore).toBeUndefined();
+  });
+
+  test('a user-only local row still falls back to the recorded answer', async () => {
+    await recordChild({
+      local: [{ id: 'u1', role: 'user', content: 'do the task' }],
+      transcript: [
+        { id: 'u1', role: 'user', content: 'do the task' },
+        { id: 'a1', role: 'ai', content: 'done' },
+      ],
+    });
+
+    const body = (await (await load(CHILD)).json()) as {
+      session: { messages: Array<{ content: string }>; restore?: boolean };
+    };
+    expect(body.session.messages.map((row) => row.content)).toEqual(['do the task', 'done']);
+    expect(body.session.restore).toBeUndefined();
+  });
+
+  test('no transcript at all asks for a replay, with the harness title', async () => {
+    await recordChild();
+
+    const body = (await (await load(CHILD)).json()) as {
+      session: { title: string; messages: unknown[]; restore?: boolean };
+    };
+    expect(body.session.messages).toEqual([]);
+    expect(body.session.restore).toBe(true);
+    expect(body.session.title).toBe('Worker task');
+  });
+
+  test('a local assistant row is a transcript and is not replayed', async () => {
+    await recordChild({
+      local: [
+        { id: 'u1', role: 'user', content: 'do the task' },
+        { id: 'a1', role: 'ai', content: 'done' },
+      ],
+    });
+
+    const body = (await (await load(CHILD)).json()) as {
+      session: { messages: Array<{ content: string }>; restore?: boolean };
+    };
+    expect(body.session.messages.map((row) => row.content)).toEqual(['do the task', 'done']);
+    expect(body.session.restore).toBeUndefined();
   });
 });
