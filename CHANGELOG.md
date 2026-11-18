@@ -4,6 +4,31 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.42.0](https://github.com/kabmo-labs/kabmo/compare/v0.41.0...v0.42.0) — 2026-11-18
+
+### Added
+
+* **chat:** open read images at full size, including svg and webp ([fa60d8d](https://github.com/kabmo-labs/kabmo/commit/fa60d8d761b9d50edfa56afb14ad2b3a1fb6b090)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **settings:** adopt omp 18.22.2's live-endpoint rows and mask credentials ([423311a](https://github.com/kabmo-labs/kabmo/commit/423311afa3e23293257112bb8f604782b2d2d494)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **sidebar:** filter sessions by harness ([7fc7663](https://github.com/kabmo-labs/kabmo/commit/7fc7663b46156c0f0857d67193ba39eda1013121)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Changed
+
+* **git-panel:** drive commit detail from selection ([99fb26b](https://github.com/kabmo-labs/kabmo/commit/99fb26b0371f9e754269991a1f37aaa011f024dc)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **chat:** read the change list on mount, not only after a run settles ([5f3425a](https://github.com/kabmo-labs/kabmo/commit/5f3425ae5b806c6fb41e92fea6cf862f577a2f4f)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **chat:** stop the first prompt of a new session rendering twice ([1c1728c](https://github.com/kabmo-labs/kabmo/commit/1c1728c74312f8f22816b19ecf3aa02352a784a0)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** record a server-spawned ACP child's transcript ([048d3ff](https://github.com/kabmo-labs/kabmo/commit/048d3fff9c1be1b5f80f2d19aa0374e42380475e)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **server-control:** dismiss a failed start and spin the refresh button ([13194bc](https://github.com/kabmo-labs/kabmo/commit/13194bcddb7bd8176f81bafd6dc7d35523ac593d)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **shells:** start a local server with the PATH the lookup used ([6344b5e](https://github.com/kabmo-labs/kabmo/commit/6344b5ea0849ae93c899b8f61250c1360822ee8e)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **sidebar:** align the ⋯ and timestamp with the sort icon ([eb3bb2a](https://github.com/kabmo-labs/kabmo/commit/eb3bb2af65e505f2b81f8b0d0629d94a21eb632e)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **sidebar:** page session roots so child sessions do not eat the window ([70244b1](https://github.com/kabmo-labs/kabmo/commit/70244b13f2f862bf46c07727dd81efd494d20f56)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **sidebar:** put the harness filter beside Archived ([67d7a3b](https://github.com/kabmo-labs/kabmo/commit/67d7a3b04792db9c0bd2dc3070a5013f67c0af7c)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **sidebar:** stop the search field drawing two clear controls ([992fe4e](https://github.com/kabmo-labs/kabmo/commit/992fe4ee2e8c0cc3bed5471971f0ce8334bf7166)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **terminal:** copy the canvas selection on every platform's copy path ([20a8c9d](https://github.com/kabmo-labs/kabmo/commit/20a8c9d9bd1a1a21eba13476aed1d06b17280e08)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.41.0](https://github.com/kabmo-labs/kabmo/compare/v0.40.0...v0.41.0) — 2026-11-18
 
 ### Added
