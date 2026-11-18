@@ -562,7 +562,49 @@ fi
 # the setting from the schema but does not act on it), and the session-view
 # copy elision, ctime-based selective-commit windows, deleted-file call
 # matching, LSP `PathMap`, mlx venv and CLI worker-selector renames — host-side.
-OMP_VERSION="${OMP_VERSION:-18.22.0}"
+# 18.22.2 (2026-11-18): the schema's `source` line moves to 632 settings and the
+# panel gains THREE rows, net +3, all under providers / Services:
+# `live.endpoint` and `live.apiKey` (the key is a credential, so the panel masks
+# it) and `providers.webKeyless` (boolean, default true). `live.voice` stops
+# being an enum and becomes a free-form string that still ships the same nine
+# voices as `ui.options`; omp's own panel renders string+options as a submenu and
+# so does `RowEditor`, so the row is unchanged on screen and a custom voice name
+# is config-only in both. The RPC wire is byte-identical — 74 commands, 300
+# definitions, 0 added, 0 removed, 0 changed — and `MODEL_ROLES`,
+# `tools/builtin-names.ts` (29 tools) and the slash registry are identical too.
+#
+# The generator carried no `credential` marker at all: it read
+# `definition.isCredential`, a getter on the `Setting` instance, while
+# `orderedSettings()` hands it the raw `SettingDefinition`, where the marker is
+# `credential`. Every credential row therefore rendered in plain text. Fixed in
+# `scripts/omp-schema.mjs`; four rows now mask (`live.apiKey`,
+# `mnemopi.embeddingApiKey`, `mnemopi.llmApiKey`, `hindsight.apiToken`).
+#
+# Two upstream changes reach Kabmo's surfaces, neither needing code:
+#   - RPC `login` no longer refuses a provider with an at-your-own-risk warning
+#     (`antigravity-cli`, `google-antigravity`): the warning arrives as an
+#     `extension_ui_request` `input` (placeholder `yes`) and the flow continues
+#     on "yes". Kabmo's login dialog already renders a non-secret `input` as a
+#     text field and posts the value, so those logins can now be completed.
+#   - an over-quota 429 now always ends with a terminal `agent_end`, which is
+#     the frame Kabmo's fold already treats as the run's close.
+#
+# Kiro arrives as a built-in provider (`/login kiro`, credits in `/usage`). It
+# reaches the console through `get_login_providers` with no list to edit, and
+# the provider icon falls back to its initials badge.
+#
+# Not adopted, deliberately: the browser's native-window report, `select()`
+# label/value/index choices, the subagent browser context and the relay/Tern
+# `app` gating (Kabmo never drives that tool), the computer tool's `setValue`
+# numbers and macOS takeover messages, the eval `commit` argument validation and
+# hook output, `/restart` re-execing through the launcher, the background
+# prompt-history write, shared discovered-model builds, Anthropic's demoted
+# reasoning replay and `omitDemotedReasoning`, the subagent `yield` changes
+# (model-facing), `^model` punctuation, `/copy` reading `out://` replies, the
+# goal-mode tool roster fix, selective-commit submodule/sparse handling, the
+# Zhipu quota-reset retry, status-line credential selection, the `--continue`
+# breadcrumb rule and the LSP inotify pruning — host-side or model-facing.
+OMP_VERSION="${OMP_VERSION:-18.22.2}"
 PACKAGE="@oh-my-pi/pi-coding-agent"
 WANTED="omp/${OMP_VERSION}"
 

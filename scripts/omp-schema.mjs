@@ -167,7 +167,10 @@ function toEntry(definition) {
   const entry = { type: definition.type };
   if (definition.default !== undefined) entry.default = definition.default;
   if (Array.isArray(definition.values)) entry.values = definition.values;
-  if (definition.isCredential) entry.credential = true;
+  // `definition` is the raw `SettingDefinition`, not the `Setting` instance:
+  // the marker is `credential`, and `isCredential` (a getter on the instance)
+  // never exists here. Reading the getter left every credential row unmasked.
+  if (definition.credential === true || definition.ui?.secret === true) entry.credential = true;
   entry.ui = { ...definition.ui };
   return entry;
 }

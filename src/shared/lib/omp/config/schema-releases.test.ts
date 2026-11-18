@@ -190,4 +190,33 @@ describe('OMP_SCHEMA release rows', () => {
     // asking; a stale ladder would hide the only uncoverable value.
     expect(OMP_SCHEMA.entries['worktree.onExit']?.values).toEqual(['keep', 'ask', 'remove', 'force']);
   });
+
+  test("18.22.2's live-endpoint and keyless rows are offered, and credentials are masked", () => {
+    // 18.22.1 lets live voice reach any OpenAI Realtime server, so the endpoint
+    // and its key are the only way to configure one from the console; the
+    // keyless switch is the only way to turn the scraped engines off.
+    const expected: Record<string, { type: SchemaEntry['type']; tab: string; group: string; default: unknown }> = {
+      'live.endpoint': { type: 'string', tab: 'providers', group: 'Services', default: undefined },
+      'live.apiKey': { type: 'string', tab: 'providers', group: 'Services', default: undefined },
+      'providers.webKeyless': { type: 'boolean', tab: 'providers', group: 'Services', default: true },
+    };
+    for (const [key, want] of Object.entries(expected)) {
+      const entry = OMP_SCHEMA.entries[key];
+      expect({ key, entry: entry && { type: entry.type, tab: entry.ui.tab, group: entry.ui.group, default: entry.default } }).toEqual({
+        key,
+        entry: want,
+      });
+    }
+    // `live.voice` became a free-form string that still ships the nine known
+    // voices as options: omp's own panel renders string+options as a submenu,
+    // and so does `RowEditor`, so the row must keep its options.
+    expect(OMP_SCHEMA.entries['live.voice']?.type).toBe('string');
+    expect(OMP_SCHEMA.entries['live.voice']?.ui.options).toHaveLength(9);
+    // The generator reads the raw definition, where the marker is `credential`
+    // (not the `Setting` instance's `isCredential` getter). Reading the getter
+    // left every credential row in plain text — including this release's key.
+    for (const key of ['live.apiKey', 'mnemopi.embeddingApiKey', 'mnemopi.llmApiKey', 'hindsight.apiToken']) {
+      expect({ key, credential: OMP_SCHEMA.entries[key]?.credential }).toEqual({ key, credential: true });
+    }
+  });
 });

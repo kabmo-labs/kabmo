@@ -1,5 +1,5 @@
 {
-  "source": "@oh-my-pi/pi-coding-agent 10 tabs / 629 settings",
+  "source": "@oh-my-pi/pi-coding-agent 10 tabs / 632 settings",
   "tabs": [
     {
       "id": "appearance",
@@ -3554,24 +3554,13 @@
       }
     },
     "live.voice": {
-      "type": "enum",
+      "type": "string",
       "default": "sol",
-      "values": [
-        "arbor",
-        "breeze",
-        "cove",
-        "ember",
-        "juniper",
-        "maple",
-        "sol",
-        "spruce",
-        "vale"
-      ],
       "ui": {
         "tab": "providers",
         "group": "Services",
         "label": "Live Voice",
-        "description": "Voice used by Codex-backed realtime voice sessions",
+        "description": "Voice of realtime voice sessions; a custom live endpoint may take other names (set in config)",
         "options": [
           {
             "value": "arbor",
@@ -3610,6 +3599,25 @@
             "label": "Vale"
           }
         ]
+      }
+    },
+    "live.endpoint": {
+      "type": "string",
+      "ui": {
+        "tab": "providers",
+        "group": "Services",
+        "label": "Live Endpoint",
+        "description": "Base URL of an OpenAI Realtime WebRTC-compatible server (e.g. http://127.0.0.1:8080/v1) used for live voice instead of Codex; empty uses Codex"
+      }
+    },
+    "live.apiKey": {
+      "type": "string",
+      "credential": true,
+      "ui": {
+        "tab": "providers",
+        "group": "Services",
+        "label": "Live Endpoint API Key",
+        "description": "Bearer key sent only to the live endpoint: a literal, an environment variable name, or !command"
       }
     },
     "tts.localVoice": {
@@ -3935,6 +3943,16 @@
             "description": "Uses r.jina.ai reader (JINA_API_KEY optional)"
           }
         ]
+      }
+    },
+    "providers.webKeyless": {
+      "type": "boolean",
+      "default": true,
+      "ui": {
+        "tab": "providers",
+        "group": "Services",
+        "label": "Keyless Web Services",
+        "description": "Let web search and URL reading use third-party services without your credential: keyless Parallel, Exa, Firecrawl, Keenable, and Perplexity, the Jina reader, and scraped engines (Startpage, DuckDuckGo, Ecosia, Google, Mojeek, Hacker News). Off, only services you configured run."
       }
     },
     "codexResets.autoRedeem5h": {
@@ -5336,6 +5354,7 @@
     },
     "mnemopi.embeddingApiKey": {
       "type": "string",
+      "credential": true,
       "ui": {
         "tab": "memory",
         "group": "Mnemopi",
@@ -5410,6 +5429,7 @@
     },
     "mnemopi.llmApiKey": {
       "type": "string",
+      "credential": true,
       "ui": {
         "tab": "memory",
         "group": "Mnemopi",
@@ -5441,6 +5461,7 @@
     },
     "hindsight.apiToken": {
       "type": "string",
+      "credential": true,
       "ui": {
         "tab": "memory",
         "group": "Hindsight",
@@ -7790,7 +7811,7 @@
         "tab": "tasks",
         "group": "Subagents",
         "label": "Structured Task Results",
-        "description": "Expose outputSchema/schemaMode on the task tool and return subagent results through the yield tool, validated against caller or agent output schemas. Off: task subagents have no yield tool and return their final message as plain text, except agents whose definition sets structured: true. Eval agent()/workpool spawns always keep structured results."
+        "description": "Expose outputSchema/schemaMode on the task tool and honor agent output schemas; a subagent with a schema returns its result through the yield tool, validated against it. Off: task subagents ignore schemas, except agents whose definition sets structured: true. A subagent without a schema has no yield tool and returns its final message. Eval agent()/workpool spawns always honor schemas."
       }
     },
     "task.speculativeLaunch": {
@@ -8468,7 +8489,7 @@
         "tab": "tools",
         "group": "Grep & Browser",
         "label": "Browser Relay",
-        "description": "Drive your own Chrome tabs through the omp browser relay. Install the extension once (`omp browser-relay install`); the relay server auto-starts when the browser prelude needs it. Takes precedence over Browser CDP URL; set PI_BROWSER_RELAY=0 or PI_BROWSER_RELAY=1 to override."
+        "description": "Drive your own Chrome tabs through the omp browser relay. Install the extension once (`omp browser-relay install`); the relay server auto-starts when the browser prelude needs it. Takes precedence over Browser CDP URL; set PI_BROWSER_RELAY=0 or PI_BROWSER_RELAY=1 to override. Subagents skip it unless an open passes app: \"relay\"."
       }
     },
     "browser.relayUrl": {
@@ -8497,7 +8518,7 @@
         "tab": "tools",
         "group": "Grep & Browser",
         "label": "cmux Browser",
-        "description": "Use cmux WKWebView surfaces for browser automation when a cmux socket is available. Set PI_BROWSER_CMUX=0 or PI_BROWSER_CMUX=1 to override."
+        "description": "Use cmux WKWebView surfaces for browser automation when a cmux socket is available (not for subagents). Set PI_BROWSER_CMUX=0 or PI_BROWSER_CMUX=1 to override."
       }
     },
     "browser.tern": {
@@ -8507,7 +8528,7 @@
         "tab": "tools",
         "group": "Grep & Browser",
         "label": "Tern Browser",
-        "description": "Inside a Tern pane, open browser tabs as picture-in-pictures over omp's pane (native web view) instead of omp's own headless browser; falls back to that browser when no Tern window can host them. An explicit app, the relay and Browser CDP URL take precedence; app \"own\" opts one open out. Set PI_BROWSER_TERN=0 or PI_BROWSER_TERN=1 to override."
+        "description": "Inside a Tern pane, open browser tabs as picture-in-pictures over omp's pane (native web view) instead of omp's own headless browser; falls back to that browser when no Tern window can host them. Subagents skip it unless an open passes app: \"tern\". An explicit app, the relay and Browser CDP URL take precedence; app \"own\" opts one open out. Set PI_BROWSER_TERN=0 or PI_BROWSER_TERN=1 to override."
       }
     },
     "browser.webkit": {
