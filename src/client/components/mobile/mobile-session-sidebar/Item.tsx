@@ -5,7 +5,7 @@ import { MobileSessionRow, MOBILE_BRANCH_STYLE } from '@/client/components/mobil
 import { SessionBranch, branchControlFor } from '@/client/components/common/session-branch';
 import type { BranchControl } from '@/client/components/common/session-branch';
 import type { ToastTone } from '@/shared/lib/ui/toast-duration';
-import { buildSessionTree } from '@/client/lib/session-tree';
+import { buildSessionTree } from '@/shared/lib/workspace/session-tree';
 import { useWorktreeDialog } from '@/client/components/mobile/mobile-session-sidebar/WorktreeDialog';
 import { useShowMore } from '@/client/hooks/ui/show-more';
 import { useExpandedSessions } from '@/client/hooks/workspace/expanded-sessions';

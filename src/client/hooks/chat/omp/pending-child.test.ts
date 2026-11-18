@@ -22,7 +22,7 @@ import {
   startPendingSession,
 } from '@/client/hooks/chat/omp/pending-sessions';
 import { withPendingRows } from '@/client/hooks/chat/omp/pending-rows';
-import { buildSessionTree } from '@/client/lib/session-tree';
+import { buildSessionTree } from '@/shared/lib/workspace/session-tree';
 import { formatNewSessionTitle } from '@/shared/lib/omp/session/default-title';
 import type { WorkspaceFolderData } from '@/shared/types';
 

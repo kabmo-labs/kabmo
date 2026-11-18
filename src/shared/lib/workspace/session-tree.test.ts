@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { buildSessionTree, descendantsOf } from '@/client/lib/session-tree';
+import { buildSessionTree, descendantsOf } from '@/shared/lib/workspace/session-tree';
 import type { SessionItemData } from '@/shared/types';
 
 function session(id: string, parentSessionId?: string): SessionItemData {

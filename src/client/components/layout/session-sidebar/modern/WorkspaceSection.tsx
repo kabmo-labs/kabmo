@@ -36,7 +36,7 @@ import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
 import { SessionRow, sessionRowBranchStyle, type SessionRowDensity } from '@/client/components/common/session-row';
 import { SessionBranch, branchControlFor } from '@/client/components/common/session-branch';
 import type { BranchControl } from '@/client/components/common/session-branch';
-import { buildSessionTree } from '@/client/lib/session-tree';
+import { buildSessionTree } from '@/shared/lib/workspace/session-tree';
 import { SessionDeleteModal } from '@/client/components/common/session-delete-modal';
 import { WorkspaceOptionsMenu } from '@/client/components/common/workspace-options-menu';
 import { NewWorktreeModal } from '@/client/components/workspace/worktree-modal/index';

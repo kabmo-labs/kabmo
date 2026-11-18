@@ -52,9 +52,9 @@ export interface FolderBatchState {
   selectableIds: string[];
   /** Header click: select or unselect everything this header owns. */
   toggleFolderSelection: () => void;
-  /** Rows to render — every offered row while selecting, else the window. */
+  /** Rows to render — every offered row while selecting, else the window's roots and their branches. */
   rendered: SessionItemData[];
-  /** Rows the next "Show more" reveals; 0 while selecting. */
+  /** ROOT rows the next "Show more" reveals (their branches follow); 0 while selecting. */
   hiddenCount: number;
 }
 

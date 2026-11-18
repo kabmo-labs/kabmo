@@ -11,7 +11,7 @@ import { SessionItem, SESSION_ITEM_BRANCH_STYLE } from '@/client/components/layo
 import { CategoryHeader } from '@/client/components/layout/session-sidebar/CategoryHeader';
 import { SessionBranch, branchControlFor } from '@/client/components/common/session-branch';
 import type { BranchControl } from '@/client/components/common/session-branch';
-import { buildSessionTree } from '@/client/lib/session-tree';
+import { buildSessionTree } from '@/shared/lib/workspace/session-tree';
 import { useExpandedSessions } from '@/client/hooks/workspace/expanded-sessions';
 import { formatFullDate, relativeTimeAgo } from '@/shared/lib/workspace/relative-time';
 import { isPendingSessionId } from '@/shared/lib/omp/session/default-title';

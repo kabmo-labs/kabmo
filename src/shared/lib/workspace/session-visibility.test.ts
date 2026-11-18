@@ -13,6 +13,11 @@
  * when it sits past the window. A regression here is silent on screen (the row
  * simply is not there) and the label's count would be wrong by the same rows.
  *
+ * The windowed unit is a ROOT session, not a transcript: a child session is a
+ * row inside its parent's branch, so counting it against the page shrank the
+ * list the user sees (five rows of budget drew three top-level rows). The
+ * branch cases below are that bug, measured.
+ *
  * The `hiddenCount` cases are as load-bearing as the exemption ones: it feeds
  * "Show more sessions (n)", which must count only what the next click reveals.
  * The exempt rows are already rendered, so counting them overstates the
@@ -113,5 +118,71 @@ describe('selectVisibleSessions', () => {
     const second = selectVisibleSessions(tenSessions(), 12, { activeSessionId: 9 });
     expect(second.rendered).toHaveLength(10);
     expect(second.hiddenCount).toBe(0);
+  });
+});
+
+/** `parent` with two children, in the sidebar's activity order. */
+function rootWithChildren(
+  parent: number,
+  childIds: number[],
+): SessionItemData[] {
+  const root = makeSession(parent);
+  const children = childIds.map((id) => makeSession(id, { parentSessionId: String(parent) }));
+  return [root, ...children];
+}
+
+describe('selectVisibleSessions over branches', () => {
+  test('a child session does not consume a root slot', () => {
+    // Two roots, the first carrying two children: five transcripts, three rows.
+    const sessions = [
+      ...rootWithChildren(1, [2, 3]),
+      ...rootWithChildren(4, [5, 6]),
+    ];
+    const result = selectVisibleSessions(sessions, 2, { activeSessionId: null });
+
+    // Both roots stay, and each keeps its whole branch — the old flat window
+    // spent three of its five slots on one root plus two children.
+    expect(result.rendered.map((s) => s.id)).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(result.hiddenCount).toBe(0);
+  });
+
+  test('a hidden root takes its branch with it, and counts as one row', () => {
+    const sessions = [
+      ...rootWithChildren(1, [2, 3]),
+      ...rootWithChildren(4, [5, 6]),
+      ...rootWithChildren(7, [8, 9]),
+    ];
+    const result = selectVisibleSessions(sessions, 2, { activeSessionId: null });
+
+    expect(result.rendered.map((s) => s.id)).toEqual([1, 2, 3, 4, 5, 6]);
+    // Next click reveals ONE row, the third root; its branch follows it.
+    expect(result.hiddenCount).toBe(1);
+  });
+
+  test('a live child keeps its ancestor chain and branch rendered', () => {
+    const sessions = [
+      ...rootWithChildren(1, [2, 3]),
+      ...rootWithChildren(4, [5, 6]),
+    ];
+    const status = { '5': 'stream' } as Record<string, string>;
+    const result = selectVisibleSessions(sessions, 1, { activeSessionId: null, sessionStatus: status });
+
+    // Root 1 is inside the window; root 4 is past it but its child is live, so
+    // the parent row that hosts the spinner is rendered too.
+    expect(result.rendered.map((s) => s.id)).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(result.hiddenCount).toBe(0);
+  });
+
+  test('an opened grandchild keeps every ancestor row rendered', () => {
+    const sessions = [
+      makeSession(1),
+      makeSession(2, { parentSessionId: '1' }),
+      makeSession(3, { parentSessionId: '2' }),
+      makeSession(4),
+    ];
+    const result = selectVisibleSessions(sessions, 1, { activeSessionId: 3 });
+
+    expect(result.rendered.map((s) => s.id)).toEqual([1, 2, 3]);
+    expect(result.hiddenCount).toBe(1);
   });
 });
