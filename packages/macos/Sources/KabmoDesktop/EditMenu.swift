@@ -7,13 +7,17 @@
  The Edit menu, and the one fact that makes it load-bearing rather than cosmetic.
 
  **A `WKWebView` gets no ⌘V, ⌘C, ⌘X, ⌘Z or ⌘A at all unless the app's menu bar
- carries an Edit menu whose items declare those key equivalents.** The web view
- is the first responder and it does receive the `keydown` (a page can see
- `metaKey` and `key === 'v'`), but the edit COMMANDS are dispatched through the
- menu system: with no menu item to claim the chord, AppKit never asks the
- responder chain, so nothing reaches `paste:` and the page's own `paste` event
- never fires either. Measured on macOS 27 with this SDK, a `WKWebView` in a bare
- `NSWindow` (no main menu) versus the same window with the Edit menu below:
+ carries an Edit menu whose items declare those key equivalents.** The edit
+ COMMANDS are dispatched through the menu system: with no menu item to claim the
+ chord, AppKit never asks the responder chain, so nothing reaches `paste:` and
+ the page's own `paste` event never fires either. With the menu installed the
+ page does NOT see the chord's `keydown` either — measured on macOS 27 with this
+ SDK, a page listener saw `⌘C`/`⌘V` only when the menu was absent; the native
+ `copy:`/`paste:` action fires the DOM `copy`/`paste` event instead. That is why
+ the terminal's canvas selection is copied from a `copy` event listener
+ (`terminal-panel/copy.ts`), not from a keydown. Measured on macOS 27 with this
+ SDK, a `WKWebView` in a bare `NSWindow` (no main menu) versus the same window
+ with the Edit menu below:
 
      no Edit menu:  paste=[], selectAll=4-4 (unchanged), copy=nil, cut=alpha, undo=alpha
      Edit menu:     paste=[CLIP], selectAll=0-10, copy=CLIP, cut=[], undo=alphaalpha

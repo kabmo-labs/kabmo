@@ -50,6 +50,7 @@ import {
   handleKeyNavigation,
 } from '@/client/components/workspace/terminal-panel/navigation';
 import { holdAcrossWrite, watchPointerPress } from '@/client/components/workspace/terminal-panel/scroll-hold';
+import { installTerminalCopy, installTerminalCopyChords } from '@/client/components/workspace/terminal-panel/copy';
 import {
   focusTerminal,
   redirectSoftKeyboardFocus,
@@ -132,6 +133,18 @@ export async function mountTerminal(
     // one.
     term.attachCustomKeyEventHandler((event: globalThis.KeyboardEvent) => handleKeyNavigation(term, event));
     instance.disposables.push(
+      // The macOS shell's Edit menu claims ⌘C, so the page never sees the
+      // keydown ghostty-web would copy from; the native `copy:` action fires a
+      // DOM `copy` event instead. See `copy.ts`.
+      { dispose: installTerminalCopy(container, () => term.getSelection()) },
+      // Windows and Linux have no native Edit menu in the way, but ghostty-web
+      // binds copy to `Meta+C` only and `Ctrl+C` must stay SIGINT. See `copy.ts`.
+      {
+        dispose: installTerminalCopyChords(container, {
+          getSelection: () => term.getSelection(),
+          paste: (text) => term.paste(text),
+        }),
+      },
       // ghostty's own `open()` re-focuses the container on a timer; see
       // `focus-target.ts` for why a phone's textarea needs this redirect.
       { dispose: redirectSoftKeyboardFocus(container, term) },

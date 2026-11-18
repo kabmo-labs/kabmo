@@ -423,13 +423,13 @@ test.describe('terminal', () => {
   // of run 43112230252, `sh`'s `clear` resolved to a Git-for-Windows `clear.exe`
   // that printed its usage and left the `while` loop as ARGUMENTS, so the buffer
   // never grew past one screen and the wheel had nothing to scroll into. The
-  // copy chord is the second half: ghostty-web binds copy to `Meta+C` only, so
-  // `cmd.exe` satisfies neither end. The renderer behaviour under test — the
-  // viewport held while output arrives, a selection outliving the drag — is
-  // covered by the Linux shards.
+  // renderer behaviour under test — the viewport held while output arrives, a
+  // selection outliving the drag — is covered by the Linux shards. The copy
+  // chord is no longer a reason to skip: `Ctrl+Shift+C` is handled by the panel
+  // on every platform, and the Windows leg is covered by the unit suite.
   test('a stream can be scrolled and selected from', async ({ harness, page, context }, testInfo) => {
     test.skip(testInfo.project.name !== 'chromium', 'reads the clipboard through Chromium permissions');
-    skipOnWindows('streams with a POSIX sh loop and copies with Meta+C; cmd.exe has neither');
+    skipOnWindows('streams with a POSIX sh loop; cmd.exe has no sh');
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);
     const server = await harness('real');
     const workspace = await seedWorkspace(server, 'e2e-terminal-stream');
@@ -480,6 +480,42 @@ test.describe('terminal', () => {
     // Two dragged rows select at most a handful of lines; twelve was the bug,
     // because the rows moved behind the gesture.
     expect(copied.split('\n').length).toBeLessThanOrEqual(4);
+
+    // The macOS shell's Edit menu claims ⌘C, so the page never sees that
+    // keydown; the native `copy:` action fires a DOM `copy` event on the
+    // focused element instead. The container's listener has to copy the canvas
+    // selection from that event too, or the shell's ⌘C copies nothing.
+    const eventCopied = await page.evaluate(() => {
+      const root = document.querySelector('[data-terminal-root]');
+      if (!root) return '';
+      const data = new DataTransfer();
+      root.dispatchEvent(new ClipboardEvent('copy', { clipboardData: data, bubbles: true, cancelable: true }));
+      return data.getData('text/plain');
+    });
+    expect(eventCopied).not.toBe('');
+    expect(eventCopied.split('\n').length).toBeLessThanOrEqual(4);
+
+    // Windows and Linux use Ctrl+Shift+C; ghostty-web binds Meta+C only, so
+    // the panel's own capture-phase chord is what makes it copy there.
+    await page.evaluate(() => navigator.clipboard.writeText('SENTINEL'));
+    await page.keyboard.press('Control+Shift+c');
+    const chordCopied = await page.evaluate(() => navigator.clipboard.readText());
+    expect(chordCopied).not.toBe('SENTINEL');
+    expect(chordCopied.split('\n').length).toBeLessThanOrEqual(4);
+
+    // Right-click Copy: ghostty's contextmenu handler puts the selection in
+    // the hidden textarea and focuses it, which is what the native menu's Copy
+    // acts on. The value and its full selection are the observable half; the
+    // native item itself is browser UI.
+    await page.mouse.click(box.x + 60, box.y + 50, { button: 'right' });
+    const contextSelection = await page.evaluate(() => {
+      const input = document.querySelector('[data-terminal-input]') as HTMLTextAreaElement | null;
+      return input ? { value: input.value, start: input.selectionStart, end: input.selectionEnd } : null;
+    });
+    expect(contextSelection?.value).not.toBe('');
+    expect(contextSelection?.start).toBe(0);
+    expect(contextSelection?.end).toBe(contextSelection?.value.length);
+    await page.keyboard.press('Escape');
 
     // Asking for the live end lets output scroll again.
     await latest.click();
