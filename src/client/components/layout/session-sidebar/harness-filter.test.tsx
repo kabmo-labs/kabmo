@@ -140,6 +140,23 @@ describe('the harness filter', () => {
     expect(picked).toEqual([null]);
   });
 
+  test('the icon form names itself for assistive tech and still opens the menu', async () => {
+    const el = await mount(h(HarnessFilter, {
+      options: OPTIONS,
+      value: 'claude',
+      onChange: () => {},
+      form: 'icon',
+    }));
+
+    // No room for the words in the 22px slot: the label lives on the control.
+    expect(trigger(el).textContent).not.toContain('claude');
+    expect(trigger(el).getAttribute('aria-label')).toBe('Filter by harness: claude');
+    expect(trigger(el).getAttribute('aria-haspopup')).toBe('menu');
+
+    await openMenu(el);
+    expect(menuRow('All harnesses')).toBeDefined();
+  });
+
   test('an active filter with no rows left keeps an entry so it can be cleared', async () => {
     const el = await mount(h(HarnessFilter, {
       options: [{ harness: 'omp-rpc', label: 'omp', count: 2 }],

@@ -131,12 +131,14 @@ export function ClassicDrawer({
         selecting={selecting}
       />
 
-      <HarnessFilter
-        options={harnessOptions}
-        value={harnessFilter}
-        onChange={onHarnessFilterChange}
-        touch
-      />
+      <div className="px-3 pt-2 pb-1">
+        <HarnessFilter
+          options={harnessOptions}
+          value={harnessFilter}
+          onChange={onHarnessFilterChange}
+          touch
+        />
+      </div>
 
       {failed ? (
         <SessionListNotice touch onRetry={onRefresh} refreshing={refreshing} />

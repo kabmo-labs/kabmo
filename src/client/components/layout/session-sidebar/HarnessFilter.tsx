@@ -12,6 +12,11 @@
  * the tail. One trigger whose contents grow is the shape that survives the next
  * agent, the same reason the session row's actions live behind `⋯`.
  *
+ * It sits immediately right of `Archived` in the `modern` filter row, and takes
+ * two forms chosen by that row's measured width (`filterRowForms`): the full
+ * chip, and the harness's own mark in the row's 22px slot. The classic chromes
+ * still draw it as a standalone line under the toolbar.
+ *
  * The options are counted over the unfiltered list (`harnessFilterOptions`), so
  * a number is a fact about the workspaces rather than about what the current
  * filter shows.
@@ -31,7 +36,7 @@
  */
 
 import { useState } from 'preact/hooks';
-import { Check, ChevronDown } from 'lucide-preact';
+import { Bot, Check, ChevronDown } from 'lucide-preact';
 import { AnchoredMenu } from '@/client/components/common/anchored-menu';
 import { HarnessGlyph, HARNESS_GLYPH_SIZE } from '@/client/components/common/harness-glyph';
 import { harnessBadgeLabel } from '@/shared/lib/harness/catalog';
@@ -44,18 +49,26 @@ interface HarnessFilterProps {
   /** The active harness, or null for every harness. */
   value: string | null;
   onChange: (harness: string | null) => void;
-  /** Phone drawer: taller targets. */
+  /** The narrow form for the filter row; the classic chrome draws the chip. */
+  form?: 'chip' | 'icon';
+  /** The classic chrome's standalone row: taller targets. */
   touch?: boolean;
 }
 
-const TRIGGER_BASE = 'inline-flex max-w-full items-center gap-1 rounded-full border font-medium transition-colors cursor-pointer';
+const TRIGGER_BASE = 'inline-flex max-w-full shrink-0 items-center border font-medium transition-colors cursor-pointer';
 const TRIGGER_ON = 'border-ink bg-ink text-paper';
 const TRIGGER_OFF = 'border-ink/15 text-ink/60 hover:border-ink/30 hover:text-ink';
 const ROW_BASE = 'w-full px-2.5 py-1.5 flex items-center gap-2 text-left hover:bg-ink/5 cursor-pointer';
 const ROW_ON = 'bg-ink/10 font-semibold text-ink';
 const ROW_OFF = 'text-ink/75';
 
-export function HarnessFilter({ options, value, onChange, touch = false }: HarnessFilterProps) {
+export function HarnessFilter({
+  options,
+  value,
+  onChange,
+  form = 'chip',
+  touch = false,
+}: HarnessFilterProps) {
   const [anchor, setAnchor] = useState<AnchorRect | null>(null);
   // The active harness may have lost its last row since the click. It keeps a
   // row so the filter that emptied the list is visible and clearable.
@@ -65,30 +78,59 @@ export function HarnessFilter({ options, value, onChange, touch = false }: Harne
   if (shown.length < 2 && !value) return null;
 
   const active = value ? shown.find((option) => option.harness === value) : undefined;
-  const size = touch ? 'px-2 py-1 text-xs' : 'px-2 py-0.5 text-[11px]';
+  const label = active ? active.label : 'All harnesses';
+
+  const trigger = form === 'icon' ? (
+    <button
+      type="button"
+      aria-haspopup="menu"
+      aria-expanded={anchor !== null}
+      aria-label={`Filter by harness: ${label}`}
+      title={value ? `Harness: ${label}` : 'Filter by harness'}
+      onClick={(event) => setAnchor(anchor ? null : anchorRectOf(event.currentTarget))}
+      className={`${TRIGGER_BASE} h-[22px] w-[22px] justify-center rounded-md ${
+        value ? 'border-ink bg-ink text-paper' : 'border-ink/15 text-ink/55 hover:border-ink/30 hover:text-ink'
+      }`}
+    >
+      {active ? (
+        <HarnessGlyph
+          harness={active.harness}
+          size={HARNESS_GLYPH_SIZE.compact}
+          inherit
+          decorative
+        />
+      ) : (
+        <Bot size={13} />
+      )}
+    </button>
+  ) : (
+    <button
+      type="button"
+      aria-haspopup="menu"
+      aria-expanded={anchor !== null}
+      title="Filter by harness"
+      onClick={(event) => setAnchor(anchor ? null : anchorRectOf(event.currentTarget))}
+      className={`${TRIGGER_BASE} gap-1 rounded-full ${touch ? 'px-2 py-1 text-xs' : 'px-2 py-0.5 text-[11px]'} ${
+        value ? TRIGGER_ON : TRIGGER_OFF
+      }`}
+    >
+      {active ? (
+        <HarnessGlyph
+          harness={active.harness}
+          size={HARNESS_GLYPH_SIZE.compact}
+          inherit
+          decorative
+        />
+      ) : null}
+      <span className="max-w-[9rem] truncate">{label}</span>
+      {active ? <span className="font-mono tabular-nums opacity-70">{active.count}</span> : null}
+      <ChevronDown size={11} className="shrink-0 opacity-60" />
+    </button>
+  );
 
   return (
-    <div className="px-3 pt-2 pb-1">
-      <button
-        type="button"
-        aria-haspopup="menu"
-        aria-expanded={anchor !== null}
-        title="Filter by harness"
-        onClick={(event) => setAnchor(anchor ? null : anchorRectOf(event.currentTarget))}
-        className={`${TRIGGER_BASE} ${size} ${value ? TRIGGER_ON : TRIGGER_OFF}`}
-      >
-        {active ? (
-          <HarnessGlyph
-            harness={active.harness}
-            size={HARNESS_GLYPH_SIZE.compact}
-            inherit
-            decorative
-          />
-        ) : null}
-        <span className="max-w-[9rem] truncate">{active ? active.label : 'All harnesses'}</span>
-        {active ? <span className="font-mono tabular-nums opacity-70">{active.count}</span> : null}
-        <ChevronDown size={11} className="shrink-0 opacity-60" />
-      </button>
+    <>
+      {trigger}
 
       <AnchoredMenu
         anchor={anchor}
@@ -128,6 +170,6 @@ export function HarnessFilter({ options, value, onChange, touch = false }: Harne
           );
         })}
       </AnchoredMenu>
-    </div>
+    </>
   );
 }

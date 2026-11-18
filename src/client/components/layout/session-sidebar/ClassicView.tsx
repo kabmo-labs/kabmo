@@ -104,11 +104,13 @@ export function ClassicSidebarView({
         selecting={batchActive}
       />
 
-      <HarnessFilter
-        options={harnessOptions}
-        value={harnessFilter}
-        onChange={onHarnessFilterChange}
-      />
+      <div className="px-3 pt-2 pb-1">
+        <HarnessFilter
+          options={harnessOptions}
+          value={harnessFilter}
+          onChange={onHarnessFilterChange}
+        />
+      </div>
 
       {failed ? (
         <SessionListNotice onRetry={onRefresh} refreshing={refreshing} />

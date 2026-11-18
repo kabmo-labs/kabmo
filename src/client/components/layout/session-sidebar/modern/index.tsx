@@ -23,7 +23,6 @@
 import { useMemo, useState } from 'preact/hooks';
 import { SearchField } from '@/client/components/layout/session-sidebar/modern/SearchField';
 import { FilterChips } from '@/client/components/layout/session-sidebar/modern/FilterChips';
-import { HarnessFilter } from '@/client/components/layout/session-sidebar/HarnessFilter';
 import { SidebarActionRow } from '@/client/components/layout/session-sidebar/modern/ActionRow';
 import { WorkspaceSection } from '@/client/components/layout/session-sidebar/modern/WorkspaceSection';
 import { ModernSidebarSkeleton } from '@/client/components/layout/session-sidebar/modern/Skeleton';
@@ -96,15 +95,11 @@ export function ModernSidebarView({
         runningCount={runningCount}
         showArchived={showArchived}
         onToggleArchived={onToggleArchived}
+        harnessFilter={harnessFilter}
+        onHarnessFilterChange={onHarnessFilterChange}
+        harnessOptions={harnessOptions}
         selecting={selecting}
         onToggleSelect={onSelectWorkspaces}
-      />
-
-      <HarnessFilter
-        options={harnessOptions}
-        value={harnessFilter}
-        onChange={onHarnessFilterChange}
-        touch={touch}
       />
 
       <SidebarActionRow
