@@ -38,8 +38,13 @@ export interface ShellServersStore {
   state: ShellServersState | null;
   /** A request is in flight; the panel disables its controls rather than queueing. */
   busy: boolean;
+  /** A MANUAL refresh is in flight; the button spins. The 4-second poll does not. */
+  refreshing: boolean;
   error: string | null;
   reload: () => Promise<void>;
+  /** Re-read the list for the refresh button, with a visible spin. */
+  refresh: () => Promise<void>;
+  dismissError: () => void;
   activate: (id: string) => Promise<boolean>;
   add: (label: string, url: string) => Promise<boolean>;
   remove: (id: string) => Promise<boolean>;
@@ -58,16 +63,27 @@ export interface ShellServersStore {
  */
 const REFRESH_INTERVAL_MS = 4000;
 
+/**
+ * How long the refresh button keeps spinning, at minimum.
+ *
+ * A local list answers in a few milliseconds, so a spin tied only to the request
+ * would be over before the eye caught it and the button would read as dead. The
+ * floor is feedback, not a delay: the read has already happened, and the button
+ * is disabled for exactly as long as it is drawn as working.
+ */
+const MIN_REFRESH_MS = 400;
+
 export function useShellServers(open: boolean): ShellServersStore {
   const available = hasShellBridge();
   const [state, setState] = useState<ShellServersState | null>(null);
   const [busy, setBusy] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // A mutation and a poll can overlap; the poll must not overwrite the answer
   // the user's own click produced. The counter is what tells them apart.
   const mutationsRef = useRef(0);
 
-  const reload = useCallback(async () => {
+  const read = useCallback(async () => {
     if (!available) return;
     const ticket = mutationsRef.current;
     try {
@@ -77,6 +93,27 @@ export function useShellServers(open: boolean): ShellServersStore {
       if (mutationsRef.current === ticket) setError(bridgeError(err));
     }
   }, [available]);
+
+  const reload = useCallback(() => read(), [read]);
+
+  const refresh = useCallback(async () => {
+    if (!available) return;
+    setRefreshing(true);
+    const started = Date.now();
+    try {
+      await read();
+    } finally {
+      const remaining = MIN_REFRESH_MS - (Date.now() - started);
+      if (remaining > 0) {
+        const { promise, resolve } = Promise.withResolvers<void>();
+        setTimeout(resolve, remaining);
+        await promise;
+      }
+      setRefreshing(false);
+    }
+  }, [available, read]);
+
+  const dismissError = useCallback(() => setError(null), []);
 
   const run = useCallback(
     async (action: () => Promise<ShellServersState>) => {
@@ -100,6 +137,13 @@ export function useShellServers(open: boolean): ShellServersStore {
     if (!available) return;
     void reload();
   }, [available, reload]);
+
+  // The error belongs to the panel session that produced it. Closing the panel
+  // is the user saying they are done with it; keeping the sentence for the next
+  // open is how a failed Start left a warning on screen until the page reloaded.
+  useEffect(() => {
+    if (!open) setError(null);
+  }, [open]);
 
   useEffect(() => {
     if (!available || !open) return;
@@ -125,5 +169,19 @@ export function useShellServers(open: boolean): ShellServersStore {
 
   const stop = useCallback((id: string) => run(() => stopLocalServer(id)), [run]);
 
-  return { available, state, busy, error, reload, activate, add, remove, start, stop };
+  return {
+    available,
+    state,
+    busy,
+    refreshing,
+    error,
+    reload,
+    refresh,
+    dismissError,
+    activate,
+    add,
+    remove,
+    start,
+    stop,
+  };
 }

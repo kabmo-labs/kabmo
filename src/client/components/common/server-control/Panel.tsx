@@ -15,7 +15,7 @@
  */
 
 import { useState } from 'preact/hooks';
-import { Check, Loader2, Play, Plus, RefreshCw, Server, Square, Trash2 } from 'lucide-preact';
+import { Check, Loader2, Play, Plus, RefreshCw, Server, Square, Trash2, X } from 'lucide-preact';
 import { AnchoredMenu } from '@/client/components/common/anchored-menu';
 import { anchorRectOf } from '@/shared/lib/ui/menu-anchor';
 import type { ShellServersStore } from '@/client/hooks/shell/servers';
@@ -195,13 +195,13 @@ export function ServerPanel({ open, onClose, variant, store, triggerRef }: Serve
         </span>
         <button
           type="button"
-          onClick={() => void store.reload()}
-          disabled={store.busy}
+          onClick={() => void store.refresh()}
+          disabled={store.refreshing || store.busy}
           title="Refresh: re-probe every server"
           aria-label="Refresh servers"
           className="p-1 rounded text-ink/40 hover:text-ink hover:bg-ink/10 cursor-pointer disabled:opacity-40"
         >
-          <RefreshCw size={12} className={store.busy ? 'animate-spin' : ''} />
+          <RefreshCw size={12} className={store.refreshing ? 'animate-spin' : ''} />
         </button>
       </div>
 
@@ -254,7 +254,18 @@ export function ServerPanel({ open, onClose, variant, store, triggerRef }: Serve
       </div>
 
       {store.error && (
-        <p className="px-3 py-1.5 text-[10px] text-error border-t border-ink/10">{store.error}</p>
+        <div className="flex items-start gap-1.5 px-3 py-1.5 border-t border-ink/10">
+          <p className="flex-1 text-[10px] text-error">{store.error}</p>
+          <button
+            type="button"
+            onClick={store.dismissError}
+            title="Dismiss"
+            aria-label="Dismiss the error"
+            className="p-0.5 rounded text-ink/40 hover:text-ink hover:bg-ink/10 cursor-pointer flex-shrink-0"
+          >
+            <X size={10} />
+          </button>
+        </div>
       )}
 
       <div className="border-t border-ink/10 px-2 py-2 space-y-1.5">

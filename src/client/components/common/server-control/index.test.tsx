@@ -69,22 +69,28 @@ let win: Window;
 let container: HTMLElement;
 let calls: Array<{ command: string; args?: Record<string, unknown> }>;
 
+/**
+ * The bridge the shells install. The test replaces it to answer, refuse, or hold
+ * a reply open — the same door the shell uses, which is what makes this a test
+ * of the bridge rather than of a stub only this suite knows about.
+ */
+function setShellCall(call: (method: string, params?: Record<string, unknown>) => Promise<unknown>) {
+  const shellWindow = win as unknown as {
+    __kabmoCall?: (method: string, params?: Record<string, unknown>) => Promise<unknown>;
+  };
+  shellWindow.__kabmoCall = call;
+}
+
 function mount(next: ShellServersState | Error, variant: 'nav' | 'chip' = 'nav', open = true) {
   calls = [];
   win.document.body.innerHTML = '';
   container = win.document.createElement('div') as unknown as HTMLElement;
   win.document.body.appendChild(container as never);
-  // The transport the shells install: `__kabmoCall` answers through the same
-  // door the shell uses, which is what makes this a test of the bridge rather
-  // than of a stub only this suite knows about.
-  const shellWindow = win as unknown as {
-    __kabmoCall?: (method: string, params?: Record<string, unknown>) => Promise<unknown>;
-  };
-  shellWindow.__kabmoCall = async (method, params) => {
+  setShellCall(async (method, params) => {
     calls.push({ command: method, args: params });
     if (next instanceof Error) throw next;
     return next;
-  };
+  });
   act(() => {
     render(h(ServerControl, { variant }), container as never);
   });
@@ -201,7 +207,7 @@ describe('ServerControl', () => {
     await settle();
     expect(container.querySelector('[aria-label="Choose a server"]')).toBeNull();
 
-    (win as unknown as { __kabmoCall?: unknown }).__kabmoCall = async () => state();
+    setShellCall(async () => state());
     mountHeader();
     await settle();
     expect(container.querySelector('[aria-label="Choose a server"]')).not.toBeNull();
@@ -213,5 +219,53 @@ describe('ServerControl', () => {
     mount(new Error("Use the server's root address — a base path is not supported."));
     await settle();
     expect(text()).toContain('root address');
+  });
+
+  /**
+   * The refresh button's spin is the only sign the press did anything: a local
+   * list answers in milliseconds, and the old `busy` flag was set by mutations
+   * only, so the icon never turned. The floor keeps the spin visible.
+   */
+  test('the refresh button spins while the shell re-probes, then stops', async () => {
+    mount(DESKTOP);
+    await settle();
+    const gate = Promise.withResolvers<void>();
+    setShellCall(async (method) => {
+      if (method === 'servers_state') await gate.promise;
+      return DESKTOP;
+    });
+    const refresh = win.document.querySelector('[aria-label="Refresh servers"]') as unknown as HTMLButtonElement;
+    act(() => {
+      refresh.click();
+    });
+    await settle();
+    expect(refresh.disabled).toBe(true);
+    expect(refresh.querySelector('svg')?.getAttribute('class') ?? '').toContain('animate-spin');
+
+    gate.resolve();
+    const floor = Promise.withResolvers<void>();
+    setTimeout(floor.resolve, 450);
+    await floor.promise;
+    await settle();
+    expect(refresh.disabled).toBe(false);
+    expect(refresh.querySelector('svg')?.getAttribute('class') ?? '').not.toContain('animate-spin');
+  });
+
+  /**
+   * A failed Start used to leave its sentence in the panel until the page was
+   * reloaded: the 4-second poll never cleared it, and the store outlives the
+   * popover. The sentence is dismissible, and closing the panel drops it.
+   */
+  test('a refused start can be dismissed without reloading the page', async () => {
+    mount(new Error('The local server exited during startup.'));
+    await settle();
+    expect(text()).toContain('exited during startup');
+    const dismiss = win.document.querySelector('[aria-label="Dismiss the error"]') as unknown as HTMLButtonElement;
+    expect(dismiss).not.toBeNull();
+    act(() => {
+      dismiss.click();
+    });
+    await settle();
+    expect(text()).not.toContain('exited during startup');
   });
 });
