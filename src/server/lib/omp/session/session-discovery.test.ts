@@ -193,6 +193,27 @@ describe('scanSessionInfo', () => {
     expect((await scanSessionInfo(file))?.firstMessage).toBe('(no messages)');
   });
 
+  test('a session opened with /skill: counts as a chat even when the skill body fills the window', async () => {
+    // The reported shape: the opening turn is a `custom_message` whose expanded
+    // SKILL.md runs past the 4 KiB prefix, so no `message` entry is in the
+    // window at all. Counting only `message` entries reported 0, and the
+    // sidebar drops `messageCount === 0` files as header-only — the row
+    // vanished (8 real chats in one project, 0.8–8.6 MB each).
+    const body = '# antislop-ui\n' + 'skill instructions\n'.repeat(400);
+    const file = writeSessionFile(join(tempDir('scan'), 'proj', 'skill.jsonl'), [
+      header('skill-id'),
+      {
+        type: 'custom_message',
+        customType: 'skill-prompt',
+        content: `[IMPORTANT: User invoked the "antislop-ui" skill; follow its instructions. Full skill below.]\n\n${body}`,
+        attribution: 'user',
+      },
+    ]);
+    const info = await scanSessionInfo(file);
+    expect(info?.messageCount).toBe(1);
+    expect(info?.firstMessage).toBe('/skill:antislop-ui');
+  });
+
   test('a missing file yields undefined instead of throwing', async () => {
     expect(await scanSessionInfo(join(tempDir('scan'), 'gone.jsonl'))).toBeUndefined();
   });

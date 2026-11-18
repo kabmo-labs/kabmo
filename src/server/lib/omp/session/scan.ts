@@ -19,7 +19,7 @@
 
 import { readLastEntryTimestamp, readTextPrefix, SESSION_LIST_PREFIX_BYTES } from '@/server/lib/omp/session/file-scan';
 import { countMessageMarkers, parseJsonlLenient, parseSessionListHeader } from '@/shared/lib/omp/session/jsonl';
-import { firstOperatorTitleFromPrefix, operatorTitleFromEntry } from '@/shared/lib/omp/session/operator-title';
+import { countSkillPromptMarkers, firstOperatorTitleFromPrefix, operatorTitleFromEntry, SKILL_PROMPT_CUSTOM_TYPE } from '@/shared/lib/omp/session/operator-title';
 
 export const SESSION_TITLE_SLOT_BYTES = 256;
 
@@ -76,11 +76,20 @@ export async function scanSessionInfo(filePath: string): Promise<OmpSessionInfo 
         type?: string;
         message?: { role?: string; content?: unknown };
         shortSummary?: string;
+        customType?: string;
       };
       if (entry.type === 'compaction' && typeof entry.shortSummary === 'string') {
         shortSummary = entry.shortSummary;
       }
       if (entry.type === 'message' && entry.message) {
+        parsedMessageCount++;
+      }
+      // A `/skill:` turn is a real message in omp's transcript (a
+      // `custom_message`, not a `message`). Counting only `message` entries
+      // reported `messageCount: 0` for a chat opened with `/skill:<name>`, and
+      // the sidebar drops `messageCount === 0` files as header-only — measured:
+      // 8 real chats in one project missing from the list.
+      if (entry.type === 'custom_message' && entry.customType === SKILL_PROMPT_CUSTOM_TYPE) {
         parsedMessageCount++;
       }
       // The operator's opening turn, by the ONE rule every surface shares — a
@@ -99,6 +108,10 @@ export async function scanSessionInfo(filePath: string): Promise<OmpSessionInfo 
     // raw-text pass below is the only chance — it is what keeps this reader in
     // agreement with the header instead of guessing a placeholder.
     firstMessage ||= firstOperatorTitleFromPrefix(prefix) ?? '';
+    // Same reason for the COUNT: a skill entry cut by the window is not a
+    // parsed entry, so the raw marker is the only evidence the chat has a turn
+    // at all. Without it the row is filtered out as header-only.
+    const rawMessageCount = countMessageMarkers(prefix) + countSkillPromptMarkers(prefix);
     return {
       path: filePath,
       id: header.id,
@@ -109,7 +122,7 @@ export async function scanSessionInfo(filePath: string): Promise<OmpSessionInfo 
       modified: lastEntryAt ?? mtime,
       fileMtime: mtime,
       fileMtimeMs: mtimeMs,
-      messageCount: Math.max(parsedMessageCount, countMessageMarkers(prefix)),
+      messageCount: Math.max(parsedMessageCount, rawMessageCount),
       size,
       firstMessage: firstMessage || '(no messages)',
     };

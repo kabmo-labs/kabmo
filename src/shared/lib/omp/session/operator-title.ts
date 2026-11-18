@@ -95,6 +95,34 @@ export function operatorTitleFromEntry(record: Record<string, unknown>): string 
 }
 
 /**
+ * How many `/skill:` turns a RAW-JSONL prefix window holds.
+ *
+ * The sidebar's "is this a chat at all" test counts `"type":"message"` entries,
+ * and a skill turn is `custom_message` — so a session opened with `/skill:` and
+ * whose expanded SKILL.md fills the whole 4 KiB window reported ZERO messages
+ * and its row was dropped from the list entirely (measured: 8 real chats in one
+ * project, 0.8–8.6 MB each, all invisible). The marker is read as a PROPERTY
+ * for the same reason the title reader does: the window can cut the entry, and
+ * the value itself can be cut mid-string.
+ */
+export function countSkillPromptMarkers(content: string): number {
+  let count = 0;
+  let marker = content.indexOf('"customType"');
+  while (marker !== -1) {
+    const value = extractStringProperty(content, 'customType', marker);
+    // A window that ends inside the value yields its fragment (`skill-pro`);
+    // no other custom type starts with `skill-`, so a long-enough prefix is
+    // the same fact as the whole word.
+    if (value === SKILL_PROMPT_CUSTOM_TYPE
+      || (value !== undefined && value.length >= 8 && SKILL_PROMPT_CUSTOM_TYPE.startsWith(value))) {
+      count++;
+    }
+    marker = content.indexOf('"customType"', marker + 12);
+  }
+  return count;
+}
+
+/**
  * Title text of the operator's opening turn inside a RAW-JSONL prefix window.
  *
  * Deliberately tolerant of a truncated line — the skill entry is routinely cut

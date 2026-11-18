@@ -21,6 +21,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import {
+  countSkillPromptMarkers,
   firstOperatorTitleFromPrefix,
   operatorTitleFromEntry,
   skillChip,
@@ -87,6 +88,26 @@ describe('firstOperatorTitleFromPrefix', () => {
   test('an unrelated customType is not mistaken for a skill turn', () => {
     const prefix = '{"type":"custom","customType": "system-prompt-digest","data":"abc"}';
     expect(firstOperatorTitleFromPrefix(prefix)).toBeUndefined();
+  });
+});
+
+describe('countSkillPromptMarkers', () => {
+  test('counts the compact marker omp actually writes', () => {
+    const prefix = '{"type":"custom_message","customType":"skill-prompt","content":"[IMPORTANT: User invoked the \\"antislop-ui\\" skill';
+    expect(countSkillPromptMarkers(prefix)).toBe(1);
+  });
+
+  test('counts a marker with a space after the colon', () => {
+    expect(countSkillPromptMarkers('{"customType": "skill-prompt"}')).toBe(1);
+  });
+
+  test('an unrelated customType is not a skill turn', () => {
+    expect(countSkillPromptMarkers('{"type":"custom","customType":"system-prompt-digest"}')).toBe(0);
+  });
+
+  test('a value cut by the window still counts', () => {
+    // The 4 KiB window can end inside the value; the turn is still there.
+    expect(countSkillPromptMarkers('{"customType":"skill-pro')).toBe(1);
   });
 });
 
