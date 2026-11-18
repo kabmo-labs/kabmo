@@ -304,6 +304,35 @@
   }
 }
 
+/* A search field that draws its own clear control must not also get the
+ * engine's.
+ *
+ * `type="search"` is the right input — Escape clears it and the platform
+ * exposes it as a searchbox — but WebKit and Blink paint
+ * `::-webkit-search-cancel-button` inside it. Measured in the session sidebar,
+ * that put the native X beside the app's own `Clear search` button: two clear
+ * controls, one of them unlabelled and unstyleable.
+ *
+ * The class is opt-in, not a global reset: a field with no clear control of its
+ * own (the plan filter) still needs the native one. `::-webkit-search-decoration`
+ * goes with it, because Safari draws the magnifier there on some versions and
+ * that would be a second glyph next to the field's own.
+ *
+ * `display: none` is the declaration that does the work, not
+ * `-webkit-appearance: none`: measured in WebKit with only the appearance reset,
+ * the button was still painted — the class changed nothing on screen until
+ * `display: none` was added. Both spellings stay so Blink, which honours the
+ * appearance reset alone, needs no second rule.
+ */
+@layer components {
+  .kabmo-search-field::-webkit-search-cancel-button,
+  .kabmo-search-field::-webkit-search-decoration {
+    display: none;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+}
+
 /* FULL COLOUR MODE: on is GREEN, off is RED.
  *
  * The colour mode is the one place a user asks for chroma, so the checkbox

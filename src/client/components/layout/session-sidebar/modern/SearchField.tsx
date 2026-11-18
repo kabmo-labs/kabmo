@@ -54,7 +54,7 @@ export function SearchField({ value, onChange, touch = false }: SearchFieldProps
           onChange={(event) => onChange(event.currentTarget.value)}
           placeholder="Search workspaces & sessions"
           aria-label="Search workspaces and sessions"
-          className={`min-w-0 flex-1 bg-transparent text-ink outline-none placeholder:text-ink/40 ${
+          className={`kabmo-search-field min-w-0 flex-1 bg-transparent text-ink outline-none placeholder:text-ink/40 ${
             touch ? 'text-[13px]' : 'text-xs'
           }`}
         />

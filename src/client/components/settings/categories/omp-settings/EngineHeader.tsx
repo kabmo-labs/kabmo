@@ -72,7 +72,7 @@ export function EngineHeader({
               value={searchQuery}
               onChange={(e) => onSearchChange(e.currentTarget.value)}
               placeholder="Search every setting…"
-              className="w-52 bg-paper border border-ink/15 rounded-md pl-6 pr-6 py-1 text-ink placeholder:text-ink/40 focus:outline-none focus:border-ink/40"
+              className="kabmo-search-field w-52 bg-paper border border-ink/15 rounded-md pl-6 pr-6 py-1 text-ink placeholder:text-ink/40 focus:outline-none focus:border-ink/40"
             />
             {searchQuery && (
               <button
