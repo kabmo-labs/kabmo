@@ -43,7 +43,7 @@ export function proposalFromMarkerPayload(payload: Record<string, unknown>): Pla
   return { title, planFilePath, planContent };
 }
 
-export function usePlanReview(sessionId: string | null): PlanReviewState {
+export function usePlanReview(sessionId: string | null, planActive = false): PlanReviewState {
   const [proposal, setProposal] = useState<PlanProposal | null>(null);
   const [deciding, setDeciding] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,9 +65,18 @@ export function usePlanReview(sessionId: string | null): PlanReviewState {
   // Kabmo's lazy-spawn path, and opening a finished session to READ it must
   // not boot an omp process for a question the answer to which is "nothing is
   // parked" (the same rule the observer-only commands follow).
+  //
+  // And only while PLAN MODE is active: a proposal can only be parked by the
+  // plan-mode approval path, so a chat that is not in plan mode has nothing to
+  // re-send. The probe used to fire on every mount, which made a normal chat
+  // dispatch a `/kabmo-mode` prompt every time it was opened — and that prompt
+  // re-armed the run (a `stream` row plus `promptRunning` for the 10 s
+  // watchdog) over a session that had already finished. `planActive` is the
+  // live mode state (`useChatTimelineModes`), so entering plan mode still
+  // re-probes; leaving it stops the probe.
   useEffect(() => {
     const current = sessionId;
-    if (!current || isPendingSessionId(current)) return;
+    if (!current || !planActive || isPendingSessionId(current)) return;
     let cancelled = false;
     fetch(`/api/agent/${encodeURIComponent(current)}`)
       .then((res) => (res.ok ? (res.json() as Promise<{ running?: boolean }>) : null))
@@ -83,7 +92,7 @@ export function usePlanReview(sessionId: string | null): PlanReviewState {
     return () => {
       cancelled = true;
     };
-  }, [sessionId]);
+  }, [sessionId, planActive]);
 
   useEffect(() => subscribeClientSignal(KABMO_MODE_SIGNAL, (detail) => {
       const marker = detail?.marker as ParsedMarker | undefined;

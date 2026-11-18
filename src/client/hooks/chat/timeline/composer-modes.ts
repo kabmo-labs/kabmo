@@ -40,13 +40,16 @@ export function useComposerModes(sessionId: string | null, harness?: string | nu
   // is picked. `omp-acp` is excluded for the reason `GET /modes` excludes it:
   // its selectors are default/plan, which the dedicated Plan toggle expresses.
   const modeChoices = harness && harness !== 'omp-acp' && probe?.modes.length ? probe.modes : undefined;
+  const modes = useChatTimelineModes(sessionId, {
+    harness,
+    ...(modeValues ? { modeValues } : {}),
+    ...(modeChoices ? { modeChoices } : {}),
+    ...(modeChoices && probe?.currentMode ? { modeCurrent: probe.currentMode } : {}),
+  });
   return {
-    modes: useChatTimelineModes(sessionId, {
-      harness,
-      ...(modeValues ? { modeValues } : {}),
-      ...(modeChoices ? { modeChoices } : {}),
-      ...(modeChoices && probe?.currentMode ? { modeCurrent: probe.currentMode } : {}),
-    }),
-    planReview: usePlanReview(sessionId),
+    modes,
+    // The republish probe is a PLAN-MODE question: a proposal can only be
+    // parked by that path, so a chat outside plan mode must not dispatch it.
+    planReview: usePlanReview(sessionId, modes.plan),
   };
 }

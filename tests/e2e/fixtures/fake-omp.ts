@@ -532,16 +532,26 @@ function handleCommand(frame: Record<string, unknown>) {
       // Kabmo's own `/kabmo-mode …` control channel (the Plan/Goal toggles,
       // the plan-review republish); `/chamber-mode` is the pre-rename spelling
       // and is honoured too. Real omp executes it in the Kabmo-owned extension
-      // and answers `agentInvoked:false` with NO
-      // assistant message — it costs no transcript. A fixture that ran it as a
-      // full turn opened a SECOND concurrent run beside the operator's, and
-      // that stray run's `message_end` cleared the first run's AI placeholder
-      // ref mid-turn: the ask card's own message then got APPENDED beside the
-      // placeholder and a later coalesced update mapped the placeholder onto it,
-      // rendering the turn (and its ask card) TWICE. Measured: ~1 run in 30,
-      // with two cards for one ask — one "Running", one "Done".
+      // and answers with a BARE ack plus a later
+      // `prompt_result {agentInvoked:false}` — measured against 18.22.2:
+      //   {"type":"response","command":"prompt","success":true}
+      //   {"type":"prompt_result","agentInvoked":false,"status":"completed",…}
+      // It costs no transcript entry either way. The frame is NOT optional: it
+      // is what tells the client the prompt opened no turn, and a fixture that
+      // dropped it (while acking `agentInvoked:false`) hid the production
+      // shape, where the bare ack used to claim the turn slot and hold the
+      // sidebar spinner for the 10 s watchdog.
+      //
+      // A fixture that ran it as a full turn opened a SECOND concurrent run
+      // beside the operator's, and that stray run's `message_end` cleared the
+      // first run's AI placeholder ref mid-turn: the ask card's own message
+      // then got APPENDED beside the placeholder and a later coalesced update
+      // mapped the placeholder onto it, rendering the turn (and its ask card)
+      // TWICE. Measured: ~1 run in 30, with two cards for one ask — one
+      // "Running", one "Done".
       if (/^\/(kabmo|chamber)-mode\b/.test(message.trim())) {
-        respond({ agentInvoked: false });
+        respond({});
+        write({ type: 'prompt_result', agentInvoked: false });
         return;
       }
       // Acknowledge the admission first, then run the turn — the order omp uses.

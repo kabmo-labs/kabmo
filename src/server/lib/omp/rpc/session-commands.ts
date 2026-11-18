@@ -53,6 +53,22 @@ export async function dispatchSessionCommand(host: SessionCommandHost, command: 
       // bounded so a wedged child cannot hold the operator's prompt.
       await awaitTitleDispatch(host);
       const streamingBehavior = command.streamingBehavior as 'steer' | 'followUp' | undefined;
+      // A slash command is Kabmo's control channel or one of omp's builtins, and
+      // NEITHER opens a turn on its own. Measured against omp 18.22.2:
+      //   - a LOCAL builtin (`/rename`, `/usage`) acks `{agentInvoked:false}` and
+      //     sends no `prompt_result`;
+      //   - an EXTENSION command (`/kabmo-mode plan republish`) acks BARE
+      //     (`{"type":"response","command":"prompt","success":true}`) and reports
+      //     `prompt_result {agentInvoked:false}` afterwards.
+      // So a slash command must not claim the turn slot optimistically. The
+      // claim wrote a `stream` row and held `promptRunning` for the agent-start
+      // watchdog, while the frame that proved no turn opened was suppressed by
+      // the run-attribution rule — the sidebar spinner and the docked indicator
+      // kept turning for 10 s over a session that had already finished
+      // (reproduced on mount: the plan-review `republish`). A slash command that
+      // DOES open a turn is covered by the frames: its `agent_start` sets both
+      // flags and writes the row itself, milliseconds later.
+      const looksLikeCommand = typeof command.message === 'string' && command.message.trimStart().startsWith('/');
       // The live `stream` row starts with the DISPATCH, not with agent_start:
       // the spawn/ack round trip that precedes agent_start must not read as
       // "nothing happened" in the sidebar after the user hit send. Skipped
@@ -63,19 +79,20 @@ export async function dispatchSessionCommand(host: SessionCommandHost, command: 
       // so a dispatch that arrives DURING the ack round trip of an earlier one
       // saw `streaming === false` and claimed the turn slot for itself. The
       // own `/kabmo-mode` commands are dispatched on that path (the
-      // plan-review `republish`, a mode toggle) and answer `agentInvoked:false`,
-      // so the claim made them release the RUNNING turn's `stream` row and emit
-      // a `prompt_result` — which the client folds as "the run settled",
-      // blanking the generating indicator mid-answer. `isRunning()` is true for
-      // the whole dispatch (promptRunning is set before the ack), so a secondary
-      // command now owns nothing and settles nothing.
-      const ownsStreamRow = !streamingBehavior && !host.isRunning() && Boolean(host.sessionId);
+      // plan-review `republish`, a mode toggle), so the claim made them release
+      // the RUNNING turn's `stream` row and emit a `prompt_result` — which the
+      // client folds as "the run settled", blanking the generating indicator
+      // mid-answer. `isRunning()` is true for the whole dispatch (promptRunning
+      // is set before the ack), so a secondary command now owns nothing and
+      // settles nothing.
+      const ownsSlot = !streamingBehavior && !host.isRunning() && Boolean(host.sessionId);
+      const ownsStreamRow = ownsSlot && !looksLikeCommand;
       // A prompt that never started a turn leaves no run behind, so the row we
       // wrote must go — unless a turn began meanwhile, which owns it now.
       const releaseStreamRow = (): void => {
         if (ownsStreamRow && !host.streaming) void clearStreamStatus(host.sessionId);
       };
-      if (!streamingBehavior) {
+      if (!streamingBehavior && !looksLikeCommand) {
         host.promptRunning = true;
         host.promptDispatchPendingCount += 1;
         host.awaitingAgentStart = false;
@@ -98,14 +115,15 @@ export async function dispatchSessionCommand(host: SessionCommandHost, command: 
           ...(streamingBehavior ? { streamingBehavior } : {}),
         }, promptAckTimeoutMs(command.images));
         if (ack?.agentInvoked === false && !streamingBehavior) {
-          // Only a dispatch that CLAIMED the turn slot may settle it. A command
-          // dispatched while a run is in flight — a mode toggle, the plan-review
-          // `republish` — also answers `agentInvoked:false`, and settling on it
-          // cleared the RUNNING turn's flags and emitted a `prompt_result` the
-          // client folds as "the run ended", blanking the generating indicator
-          // mid-answer (measured). The non-owning dispatch leaves everything
-          // alone; the run it arrived under is still in flight.
-          if (ownsStreamRow) {
+          // omp's own word that this prompt opened no turn. Settle the dispatch
+          // and tell the client, which is what releases its optimistic turn.
+          // Gated on the slot being FREE when the prompt arrived: a local
+          // builtin dispatched mid-turn (a `/usage` typed while a run streams)
+          // must not settle the run the operator is watching. A slash command
+          // never claimed the slot, so this branch is its only settle path for
+          // the `{agentInvoked:false}` ack — the row was never written, and the
+          // client still needs the frame.
+          if (ownsSlot) {
             host.promptRunning = false;
             host.awaitingAgentStart = false;
             host.awaitingAgentStartDeadline = 0;
@@ -157,7 +175,10 @@ export async function dispatchSessionCommand(host: SessionCommandHost, command: 
         }
         throw error;
       } finally {
-        if (!streamingBehavior) {
+        // Only a dispatch that INCREMENTED the count may decrement it: a slash
+        // command never claims the slot, and its `finally` would otherwise
+        // consume a concurrent plain prompt's pending count.
+        if (!streamingBehavior && !looksLikeCommand) {
           host.promptDispatchPendingCount = Math.max(0, host.promptDispatchPendingCount - 1);
         }
       }

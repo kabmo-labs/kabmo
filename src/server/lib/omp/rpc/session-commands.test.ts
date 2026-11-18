@@ -20,10 +20,15 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { dispatchSessionCommand } from '@/server/lib/omp/rpc/session-commands';
+import { foldSessionFrame } from '@/server/lib/omp/rpc/frame-fold';
+import type { SessionFrameHost } from '@/server/lib/omp/rpc/frame-fold-contract';
+import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
 import { RpcCommandError, RpcCommandTimeoutError } from '@/server/lib/omp/rpc/process';
 import { AGENT_BUSY_MESSAGE, AWAITING_AGENT_START_TIMEOUT_MS, RESTARTING_MESSAGE, SESSION_BUSY_MESSAGE, WebRpcError } from '@/server/lib/omp/rpc/constants';
 import { cancelQueuedDelivery } from '@/server/lib/queue/delivery.server';
 import { makeHarness, rejectionOf } from '@/server/lib/omp/rpc/session-commands-harness';
+import { getDb } from '@/server/db.server';
+import { loadStreamStates } from '@/shared/lib/omp/session/stream-state.server';
 import { removeDir } from '@/test-support/remove-dir';
 
 let root: string;
@@ -128,6 +133,80 @@ describe('prompt', () => {
     expect(h.host.awaitingAgentStart).toBe(false);
     expect(h.counters.watchdogs).toBe(0);
     expect(h.events).toEqual([{ type: 'prompt_result', agentInvoked: false }]);
+  });
+
+  /**
+   * A slash command may not claim the turn slot.
+   *
+   * Real omp 18.22.2 answers an EXTENSION command (`/kabmo-mode plan
+   * republish`) with a BARE ack and a later `prompt_result
+   * {agentInvoked:false}` — measured on a real child. The optimistic claim read
+   * that bare ack as an admitted turn: it wrote a `stream` row and held
+   * `promptRunning` until the 10 s agent-start watchdog, while the frame that
+   * proved no turn opened was suppressed by the run-attribution rule. The
+   * sidebar spinner and the docked indicator therefore kept turning over a
+   * session that had already finished — reproduced by merely OPENING a settled
+   * session, because `usePlanReview` dispatches that republish on mount.
+   */
+  test('a slash command with a bare ack claims nothing and writes no stream row', async () => {
+    const h = makeHarness();
+    // The status writes resolve the database; open it first so the assertion
+    // below reads a settled handle rather than racing the first open.
+    await getDb();
+    h.respond(() => ({}));
+    expect(await dispatchSessionCommand(h.host, { type: 'prompt', message: '/kabmo-mode plan republish' })).toBeNull();
+    expect(h.host.promptRunning).toBe(false);
+    expect(h.host.awaitingAgentStart).toBe(false);
+    expect(h.counters.watchdogs).toBe(0);
+    expect(h.events).toEqual([]);
+    // The row is fire-and-forget; flush it so a write that DID happen would be
+    // visible here.
+    for (let turn = 0; turn < 40; turn += 1) await Promise.resolve();
+    expect(await loadStreamStates()).toEqual({});
+  });
+
+  test('a local builtin settles the client without writing a stream row', async () => {
+    const h = makeHarness();
+    await getDb();
+    // `/usage` is a LOCAL builtin: omp acks `agentInvoked:false` and sends no
+    // `prompt_result`, so this branch is the only settle path.
+    h.respond(() => ({ agentInvoked: false }));
+    await dispatchSessionCommand(h.host, { type: 'prompt', message: '/usage' });
+    expect(h.host.promptRunning).toBe(false);
+    expect(h.counters.watchdogs).toBe(0);
+    expect(h.events).toEqual([{ type: 'prompt_result', agentInvoked: false }]);
+    for (let turn = 0; turn < 40; turn += 1) await Promise.resolve();
+    expect(await loadStreamStates()).toEqual({});
+  });
+
+  test('a PLAIN prompt still claims the slot on a bare ack', async () => {
+    // The claim exists for this case: a real turn acks bare and only announces
+    // itself at `agent_start`, and the window between them is where the sidebar
+    // must already show a spinner.
+    const h = makeHarness();
+    h.respond(() => ({}));
+    await dispatchSessionCommand(h.host, { type: 'prompt', message: 'hello' });
+    expect(h.host.promptRunning).toBe(true);
+    expect(h.host.awaitingAgentStart).toBe(true);
+    expect(h.counters.watchdogs).toBe(1);
+  });
+
+  test('the prompt_result that follows a bare-acked command reaches the client', async () => {
+    // The composition is the bug: the dispatch must not claim the slot, or the
+    // fold suppresses the very frame that proves no turn opened. With the claim
+    // in place this frame was swallowed and the row stayed `stream` until the
+    // 10 s watchdog — the spinner over a finished session.
+    const h = makeHarness();
+    h.respond(() => ({}));
+    await dispatchSessionCommand(h.host, { type: 'prompt', message: '/kabmo-mode plan republish' });
+    const { suppressForward } = foldSessionFrame(
+      h.host as unknown as SessionFrameHost,
+      { type: 'prompt_result', agentInvoked: false } as AgentEvent,
+    );
+    // The manager forwards a frame the fold did not suppress; the fold itself
+    // only decides. `true` here is the bug: the client never learns the prompt
+    // opened no turn.
+    expect(suppressForward).toBe(false);
   });
 
   test('a streamingBehavior prompt does not claim the turn flags', async () => {
