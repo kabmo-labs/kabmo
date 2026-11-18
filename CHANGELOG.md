@@ -4,6 +4,13 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.42.2](https://github.com/kabmo-labs/kabmo/compare/v0.42.1...v0.42.2) — 2026-11-18
+
+### Fixed
+
+* **sidebar:** keep /skill:-opened chats in the session list ([dd2cf39](https://github.com/kabmo-labs/kabmo/commit/dd2cf3904ea57dc93f830607b2a39879371d3f6a)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **tools:** give every render style the card's facts and a body for panel-less tools ([829ecda](https://github.com/kabmo-labs/kabmo/commit/829ecda4ac90ed3ed33b5396ac37ea3cae0c1b16)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.42.1](https://github.com/kabmo-labs/kabmo/compare/v0.42.0...v0.42.1) — 2026-11-18
 
 ### Fixed
