@@ -295,6 +295,9 @@ impl Supervisor {
 
         let mut command = Command::new(&launch.program);
         command.args(&launch.args);
+        // The CLI is a `#!/usr/bin/env bun` script: the child's PATH must carry
+        // the same directories `which` used, or `env` cannot find `bun`.
+        command.env("PATH", child_path());
         command
             .arg("--port")
             .arg(port.to_string())
@@ -525,15 +528,27 @@ pub fn resolve_launch() -> Result<Launch, String> {
     )
 }
 
+/**
+ * The directories a GUI-launched app must probe explicitly.
+ *
+ * A `.desktop` launch inherits a minimal PATH, so `~/.bun/bin` — where the CLI
+ * and `bun` itself live — is absent. Both the lookup (`which`) and the child's
+ * environment (`child_path`) read this one list: a lookup that finds a program
+ * the child cannot run is the bug this pair exists to prevent.
+ */
+fn search_directories() -> Vec<PathBuf> {
+    let home = home_directory();
+    vec![
+        home.join(".bun/bin"),
+        PathBuf::from("/usr/local/bin"),
+        PathBuf::from("/usr/bin"),
+    ]
+}
+
 pub fn which(name: &str) -> Option<String> {
     let path = std::env::var("PATH").unwrap_or_else(|_| "/usr/local/bin:/usr/bin:/bin".into());
     let mut dirs: Vec<PathBuf> = path.split(':').map(PathBuf::from).collect();
-    // A GUI-launched app inherits a minimal PATH; the usual install locations
-    // are probed explicitly for the same reason the server's own omp lookup is.
-    let home = home_directory();
-    dirs.push(home.join(".bun/bin"));
-    dirs.push(PathBuf::from("/usr/local/bin"));
-    dirs.push(PathBuf::from("/usr/bin"));
+    dirs.extend(search_directories());
 
     for dir in dirs {
         let candidate = dir.join(name);
@@ -542,6 +557,33 @@ pub fn which(name: &str) -> Option<String> {
         }
     }
     None
+}
+
+/**
+ * The child's PATH, widened with `search_directories()`.
+ *
+ * The `kabmo` CLI is a JS file whose shebang is `#!/usr/bin/env bun`, so the
+ * kernel runs `/usr/bin/env bun` and `env` resolves `bun` in the CHILD's PATH.
+ * `which` had already found the CLI by probing `~/.bun/bin`, so the spawn looked
+ * right while the child died with `env: bun: No such file or directory` in
+ * `desktop-<port>.log`. The child gets the same directories the lookup used.
+ */
+pub fn child_path_from(base: &str) -> String {
+    let mut path = base.to_string();
+    let present: Vec<PathBuf> = base.split(':').map(PathBuf::from).collect();
+    for dir in search_directories() {
+        if !present.contains(&dir) {
+            path.push(':');
+            path.push_str(&dir.to_string_lossy());
+        }
+    }
+    path
+}
+
+pub fn child_path() -> String {
+    child_path_from(
+        &std::env::var("PATH").unwrap_or_else(|_| "/usr/local/bin:/usr/bin:/bin".into()),
+    )
 }
 
 fn is_executable(path: &Path) -> bool {

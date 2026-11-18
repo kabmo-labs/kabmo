@@ -19,6 +19,26 @@ pub fn cases(r: &mut Runner) {
         probe_health(&format!("http://127.0.0.1:{port}")).is_none(),
     );
 
+    r.group("spawn environment");
+    // The CLI is a `#!/usr/bin/env bun` script. A `.desktop` launch inherits a
+    // minimal PATH, so the child must be given the same directories `which`
+    // probes — otherwise `env` cannot find `bun` and the server exits at once.
+    let path = kabmo_desktop::system::child_path_from("/usr/bin:/bin");
+    let home = kabmo_desktop::persisted::home_directory();
+    let bun = home.join(".bun/bin").to_string_lossy().into_owned();
+    r.check(
+        "the child's PATH includes ~/.bun/bin",
+        path.split(':').any(|dir| dir == bun.as_str()),
+    );
+    r.check(
+        "...and keeps the PATH it was given",
+        path.starts_with("/usr/bin:/bin"),
+    );
+    r.check(
+        "...without duplicating a directory",
+        path.split(':').filter(|dir| *dir == "/usr/bin").count() == 1,
+    );
+
     r.group("Supervisor");
     let supervisor = Supervisor::new();
     r.check("a fresh supervisor owns nothing", !supervisor.owns("local:3001"));

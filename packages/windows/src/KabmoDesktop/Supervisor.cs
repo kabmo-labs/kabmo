@@ -228,6 +228,9 @@ public sealed class Supervisor
             RedirectStandardError = true,
             WorkingDirectory = launch.WorkingDirectory ?? Environment.CurrentDirectory,
         };
+        // The Windows shim (`kabmo.exe` + `kabmo.bunx`, or a `.cmd` from npm)
+        // launches `bun`: the child needs the same directories `Which` used.
+        startInfo.Environment["PATH"] = LaunchPlan.ChildPath();
         foreach (var argument in arguments) startInfo.ArgumentList.Add(argument);
 
         if (launch.Program.EndsWith(".cmd", StringComparison.OrdinalIgnoreCase) ||

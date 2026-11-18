@@ -587,6 +587,29 @@ func systemCases() async {
     }
   }
 
+  /**
+   The child's PATH, which is what makes the CLI's `#!/usr/bin/env bun` shebang
+   resolve.
+
+   A Finder launch inherits `/usr/bin:/bin:/usr/sbin:/sbin`; `which` finds the
+   CLI by probing `~/.bun/bin` explicitly, but the child inherited the minimal
+   PATH and `/usr/bin/env bun` answered "No such file or directory" — measured
+   in `desktop-<port>.log`: three clicks, three identical lines, and the panel
+   reported "The local server exited during startup". The base is passed
+   explicitly so the test does not depend on how the runner was launched.
+   */
+  group("spawn environment")
+  do {
+    let environment = spawnEnvironment(base: ["PATH": "/usr/bin:/bin"])
+    let path = environment.first { $0.hasPrefix("PATH=") } ?? ""
+    let value = path.hasPrefix("PATH=") ? String(path.dropFirst("PATH=".count)) : path
+    let home = FileManager.default.homeDirectoryForCurrentUser.path
+    check("the child's PATH includes ~/.bun/bin", path.contains("\(home)/.bun/bin"))
+    check("...and keeps the PATH it was given", path.contains("/usr/bin:/bin"))
+    check("...without duplicating a directory",
+          value.components(separatedBy: ":").filter { $0 == "/usr/bin" }.count == 1)
+  }
+
   group("stateFileURL")
   check("the shell's list lives outside the data directory",
         !stateFileURL().path.contains("/.kabmo/"))

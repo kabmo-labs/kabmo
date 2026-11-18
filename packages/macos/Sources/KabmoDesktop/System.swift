@@ -331,20 +331,52 @@ func resolveLaunch() throws -> Launch {
   )
 }
 
+/**
+ The directories a GUI-launched app must probe explicitly.
+
+ A Finder launch inherits `/usr/bin:/bin:/usr/sbin:/sbin`, so `~/.bun/bin` — where
+ the CLI and `bun` itself live — is absent. Both the lookup (`which`) and the
+ child's environment (`spawnEnvironment`) read this one list: a lookup that finds
+ a program the child cannot run is the bug this pair exists to prevent.
+ */
+func searchDirectories() -> [String] {
+  let home = FileManager.default.homeDirectoryForCurrentUser.path
+  return ["\(home)/.bun/bin", "/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin"]
+}
+
 func which(_ name: String) -> String? {
   let path = ProcessInfo.processInfo.environment["PATH"] ?? "/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin"
   for dir in path.split(separator: ":") {
     let candidate = "\(dir)/\(name)"
     if FileManager.default.isExecutableFile(atPath: candidate) { return candidate }
   }
-  // A GUI-launched app inherits a minimal PATH; the usual install locations are
-  // probed explicitly for the same reason the server's own omp lookup does.
-  let home = FileManager.default.homeDirectoryForCurrentUser.path
-  for dir in ["\(home)/.bun/bin", "/opt/homebrew/bin", "/usr/local/bin", "/usr/bin"] {
+  for dir in searchDirectories() {
     let candidate = "\(dir)/\(name)"
     if FileManager.default.isExecutableFile(atPath: candidate) { return candidate }
   }
   return nil
+}
+
+/**
+ The child's environment, with PATH widened to `searchDirectories()`.
+
+ The `kabmo` CLI is a JS file whose shebang is `#!/usr/bin/env bun`, so the
+ kernel runs `/usr/bin/env bun` and `env` resolves `bun` in the CHILD's PATH.
+ `which` had already found the CLI by probing `~/.bun/bin`, so the spawn looked
+ right while the child died with `env: bun: No such file or directory` in
+ `desktop-<port>.log` — measured: three clicks, three identical lines, and the
+ panel reported "The local server exited during startup". The child now gets the
+ same directories the lookup used.
+ */
+public func spawnEnvironment(base: [String: String] = ProcessInfo.processInfo.environment) -> [String] {
+  var environment = base
+  var path = environment["PATH"] ?? "/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin"
+  let present = Set(path.split(separator: ":").map(String.init))
+  for dir in searchDirectories() where !present.contains(dir) {
+    path += ":\(dir)"
+  }
+  environment["PATH"] = path
+  return environment.map { "\($0.key)=\($0.value)" }
 }
 
 /**
@@ -400,9 +432,11 @@ public func spawnGroupLeader(program: String, args: [String], cwd: String?, log:
 
   let argv: [UnsafeMutablePointer<CChar>?] = ([program] + args).map { strdup($0) } + [nil]
   defer { for pointer in argv where pointer != nil { free(pointer) } }
+  let envp: [UnsafeMutablePointer<CChar>?] = spawnEnvironment().map { strdup($0) } + [nil]
+  defer { for pointer in envp where pointer != nil { free(pointer) } }
 
   var pid: pid_t = 0
-  let result = posix_spawn(&pid, program, &fileActions, &attributes, argv, environ)
+  let result = posix_spawn(&pid, program, &fileActions, &attributes, argv, envp)
   guard result == 0 else {
     throw ServerError("Could not start the local server (errno \(result)).")
   }

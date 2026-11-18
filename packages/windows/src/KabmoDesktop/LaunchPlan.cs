@@ -48,6 +48,26 @@ public sealed record LaunchPlan(string Program, IReadOnlyList<string> Arguments,
     }
 
     /**
+     * The directories a GUI-launched app must probe explicitly.
+     *
+     * A Start-menu launch inherits a minimal PATH, so `~/.bun/bin` and the
+     * per-user Bun install are absent. Both the lookup (`Which`) and the child's
+     * environment (`ChildPath`) read this one list: a lookup that finds a
+     * program the child cannot run is the bug this pair exists to prevent.
+     */
+    public static IReadOnlyList<string> SearchDirectories()
+    {
+        var home = SystemPaths.HomeDirectory();
+        return new[]
+        {
+            Path.Combine(home, ".bun", "bin"),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "bun"),
+            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+        }.Where(dir => dir.Length > 0).ToArray();
+    }
+
+    /**
      * A PATH lookup, plus the usual install locations.
      *
      * A GUI-launched app inherits a minimal PATH, which is why `~/.bun/bin` and
@@ -63,21 +83,32 @@ public sealed record LaunchPlan(string Program, IReadOnlyList<string> Arguments,
             if (File.Exists(candidate)) return candidate;
         }
 
-        var home = SystemPaths.HomeDirectory();
-        var extras = new[]
+        foreach (var dir in SearchDirectories())
         {
-            Path.Combine(home, ".bun", "bin"),
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "bun"),
-            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
-            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
-        };
-        foreach (var dir in extras)
-        {
-            if (dir.Length == 0) continue;
             var candidate = Path.Combine(dir, name);
             if (File.Exists(candidate)) return candidate;
         }
         return null;
+    }
+
+    /**
+     * The child's PATH, widened with `SearchDirectories()`.
+     *
+     * The Windows shim (`kabmo.exe` + `kabmo.bunx`, or a `.cmd` from npm)
+     * launches `bun`; the child needs the same directories the lookup used.
+     * Without them a Start-menu launch found the shim and then failed to start
+     * the CLI.
+     */
+    public static string ChildPath(string? basePath = null)
+    {
+        var path = basePath ?? Environment.GetEnvironmentVariable("PATH") ?? "";
+        var parts = path.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries).ToList();
+        var present = parts.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var dir in SearchDirectories())
+        {
+            if (!present.Contains(dir)) parts.Add(dir);
+        }
+        return string.Join(Path.PathSeparator, parts);
     }
 }
 

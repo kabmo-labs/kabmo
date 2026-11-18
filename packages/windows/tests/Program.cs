@@ -379,6 +379,19 @@ catch (ServerException error)
     Check("an absent install is refused with a sentence", error.Message.Contains("No Kabmo server to start"));
 }
 
+// The Windows shim (`kabmo.exe` + `kabmo.bunx`, or a `.cmd` from npm) launches
+// `bun`. A Start-menu launch inherits a minimal PATH, so the child must be given
+// the same directories `Which` probes — otherwise the shim cannot start the CLI
+// and the server exits.
+var basePath = string.Join(Path.PathSeparator, "/usr/bin", "/bin");
+var childPath = LaunchPlan.ChildPath(basePath);
+var bunDirectory = Path.Combine(SystemPaths.HomeDirectory(), ".bun", "bin");
+Check("the child's PATH includes ~/.bun/bin",
+    childPath.Split(Path.PathSeparator).Contains(bunDirectory));
+Check("...and keeps the PATH it was given", childPath.StartsWith(basePath));
+Check("...without duplicating a directory",
+    childPath.Split(Path.PathSeparator).Count(dir => dir == "/usr/bin") == 1);
+
 Group("SplashState");
 
 // The launch splash: every ordering below is one WebView2 really produces, and
