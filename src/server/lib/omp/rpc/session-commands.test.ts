@@ -15,9 +15,6 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { mkdtempSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 
 import { dispatchSessionCommand } from '@/server/lib/omp/rpc/session-commands';
 import { foldSessionFrame } from '@/server/lib/omp/rpc/frame-fold';
@@ -29,26 +26,26 @@ import { cancelQueuedDelivery } from '@/server/lib/queue/delivery.server';
 import { makeHarness, rejectionOf } from '@/server/lib/omp/rpc/session-commands-harness';
 import { getDb } from '@/server/db.server';
 import { loadStreamStates } from '@/shared/lib/omp/session/stream-state.server';
-import { removeDir } from '@/test-support/remove-dir';
+import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 
-let root: string;
-let savedDbPath: string | undefined;
-
-beforeEach(() => {
-  root = mkdtempSync(join(tmpdir(), 'kabmo-test-'));
-  savedDbPath = Bun.env.KABMO_DB_PATH;
-  // The stream-status writes resolve the database; point them at the temp tree
-  // so the real `~/.kabmo` is never created or opened.
-  Bun.env.KABMO_DB_PATH = join(root, 'db.sqlite');
-  delete globalThis.__kabmoDb;
+/**
+ * Isolated through the shared helper, not by hand.
+ *
+ * The stream-status writes resolve the database, so every case runs against a
+ * temp tree and the real `~/.kabmo` is never opened. Clearing
+ * `globalThis.__kabmoDb` is NOT a teardown: it drops the reference while the
+ * SQLite handle stays open, and Windows then refuses to delete the temp tree —
+ * measured on the Release gate as `EBUSY … a handle outlived its test` after the
+ * full 5 s retry window, reported against the case that had just opened the
+ * database. `releaseDb` closes the handle before deleting.
+ */
+beforeEach(async () => {
+  await isolateDb();
 });
 
-afterEach(() => {
+afterEach(async () => {
   cancelQueuedDelivery('sess-1');
-  delete globalThis.__kabmoDb;
-  if (savedDbPath === undefined) delete Bun.env.KABMO_DB_PATH;
-  else Bun.env.KABMO_DB_PATH = savedDbPath;
-  removeDir(root);
+  await releaseDb();
 });
 
 describe('guards before dispatch', () => {
