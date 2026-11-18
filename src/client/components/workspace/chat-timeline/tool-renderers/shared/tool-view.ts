@@ -47,8 +47,10 @@ export interface ToolView {
   hasPanel: boolean;
   /** The plugin renderer to use INSTEAD, when the host has no panel. */
   pluginPanel: PluginTimelineRenderer;
-  /** Whether there is anything to expand. */
+  /** Whether there is anything to expand — a panel, a plugin, or generic text. */
   hasBody: boolean;
+  /** The generic Input / Diff / Output fallback is what fills the body. */
+  hasGenericBody: boolean;
   summary: ToolSummary | null;
   header: ToolCardHeader;
   subtitle: string | undefined;
@@ -76,7 +78,6 @@ export function useToolView(tool: ToolCallData): ToolView {
   // so a plugin can ship its own agent tool without shadowing `bash` or `read`.
   const pluginRenderer = usePluginTimelineRenderer(toolKey);
   const pluginPanel = hasPanel ? null : pluginRenderer;
-  const hasBody = hasPanel || pluginPanel !== null;
   const summary = useMemo(() => toolSummary(tool), [tool]);
   const header = useMemo(() => toolCardHeader(tool, toolKey), [tool, toolKey]);
   const subtitle = toolCardSubtitle(tool, header);
@@ -85,9 +86,17 @@ export function useToolView(tool: ToolCallData): ToolView {
   const outputText = tool.output || (tool.error ? `Error: ${tool.error}` : '');
   const diffText = diffTextOf(tool);
 
+  // A tool with no panel and no plugin still has something to show: the generic
+  // Input / Diff / Output fallback. The card always rendered it (its shell sees
+  // a child VNode and calls that a body); the line styles used to gate the body
+  // on a panel alone, so a custom or plugin tool opened nothing at all.
+  const hasGenericBody =
+    !hasPanel && pluginPanel === null && Boolean(commandOrInput || diffText || outputText);
+  const hasBody = hasPanel || pluginPanel !== null || hasGenericBody;
+
   const inputJson = useMemo(
-    () => (!hasBody && commandOrInput ? tryParseJson(commandOrInput) : null),
-    [hasBody, commandOrInput],
+    () => (hasGenericBody && commandOrInput ? tryParseJson(commandOrInput) : null),
+    [hasGenericBody, commandOrInput],
   );
 
   // A reminder envelope in the result is the runtime interrupting the call, not
@@ -118,6 +127,7 @@ export function useToolView(tool: ToolCallData): ToolView {
     hasPanel,
     pluginPanel,
     hasBody,
+    hasGenericBody,
     summary: headerSummary,
     header,
     subtitle,

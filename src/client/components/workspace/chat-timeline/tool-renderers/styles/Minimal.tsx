@@ -17,6 +17,7 @@
 import { useCallback, useState } from 'preact/hooks';
 import { memo } from 'preact/compat';
 import { ToolBody } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/ToolBody';
+import { ToolRowActions } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/ToolRowActions';
 import { toolStatusGlyph, STATUS_TONE_CLASS } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/status-glyph';
 import { useToolView } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/tool-view';
 import { toolToggleLabel } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/toggle-label';
@@ -40,27 +41,30 @@ export const MinimalRow = memo(function MinimalRow({ tool, isOpen, onToggle, def
 
   return (
     <div className="px-1" data-tool-row="minimal">
-      <button
-        type="button"
-        onClick={handleToggle}
-        disabled={!view.hasBody || view.alwaysExpanded}
-        aria-expanded={isExpanded}
-        aria-label={view.hasBody && !view.alwaysExpanded ? toolToggleLabel(view.header.title, view.subtitle, isExpanded) : undefined}
-        className={`flex w-full items-baseline gap-1.5 rounded py-0.5 text-left text-[11.5px] transition-colors ${
-          view.hasBody && !view.alwaysExpanded ? 'cursor-pointer hover:bg-ink/[0.03]' : 'cursor-default'
-        } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/20`}
-      >
-        <span className={`shrink-0 self-center ${toneClass}`} aria-hidden="true">
-          {status.glyph}
-        </span>
-        <span className="sr-only">{status.word}</span>
-        <span className="shrink-0 font-medium text-ink/70">{view.header.title}</span>
-        {(view.subtitle || factsLine) && <span className="text-ink/25">·</span>}
-        <span className="min-w-0 truncate font-mono text-ink/45">
-          {view.subtitle}
-          {factsLine}
-        </span>
-      </button>
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={handleToggle}
+          disabled={!view.hasBody || view.alwaysExpanded}
+          aria-expanded={isExpanded}
+          aria-label={view.hasBody && !view.alwaysExpanded ? toolToggleLabel(view.header.title, view.subtitle, isExpanded) : undefined}
+          className={`flex min-w-0 flex-1 items-baseline gap-1.5 rounded py-0.5 text-left text-[11.5px] transition-colors ${
+            view.hasBody && !view.alwaysExpanded ? 'cursor-pointer hover:bg-ink/[0.03]' : 'cursor-default'
+          } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/20`}
+        >
+          <span className={`shrink-0 self-center ${toneClass}`} aria-hidden="true">
+            {status.glyph}
+          </span>
+          <span className="sr-only">{status.word}</span>
+          <span className="shrink-0 font-medium text-ink/70">{view.header.title}</span>
+          {(view.subtitle || factsLine) && <span className="text-ink/25">·</span>}
+          <span className="min-w-0 truncate font-mono text-ink/45">
+            {view.subtitle}
+            {factsLine}
+          </span>
+        </button>
+        <ToolRowActions tool={tool} isReminder={view.isReminder} />
+      </div>
 
       {isExpanded && view.hasBody && (
         <div className="my-1.5 overflow-hidden rounded-md border border-dashed border-ink/15 px-3 py-2.5 space-y-3 code-surface">

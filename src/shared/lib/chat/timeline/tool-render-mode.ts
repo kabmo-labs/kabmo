@@ -15,8 +15,8 @@
  *  - `compact` — one status line per call, facts inline, body inset on demand.
  *  - `trace`   — a vertical rail per section, one node per call.
  *  - `minimal` — a faint line per call, read as part of the answer.
- *  - `tui`     — omp's own terminal frame: a rounded box drawn from glyphs,
- *                with the header riding the top border.
+ *  - `tui`     — omp's terminal transcript: one coloured status line per
+ *                call, the output hanging under a hairline.
  *
  * **The mode NAMES and the copy live here**; the markup lives in
  * `tool-renderers/styles/`. A mode added here without a renderer is a build
@@ -82,6 +82,6 @@ export const TOOL_RENDER_MODE_COPY: Record<ToolRenderMode, ToolRenderModeCopy> =
   tui: {
     label: 'TUI',
     description:
-      "omp's terminal frame: a rounded box with the header on the top border, the way the TUI draws a call.",
+      "omp's terminal transcript: one coloured status line per call, with the output hanging under it.",
   },
 };

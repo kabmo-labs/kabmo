@@ -34,6 +34,7 @@ import { useCallback, useState } from 'preact/hooks';
 import { memo } from 'preact/compat';
 import type { ToolCallData } from '@/shared/types';
 import { ToolBody } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/ToolBody';
+import { ToolRowActions } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/ToolRowActions';
 import {
   toolStatusGlyph,
   type ToolStatusTone,
@@ -134,50 +135,53 @@ export const TuiRow = memo(function TuiRow({ tool, isOpen, onToggle, defaultExpa
           only — the colours separate the three claims (what ran, on what, how
           it ended), which is what the terminal does with SGR and what a box
           would otherwise have to do with borders. */}
-      <button
-        type="button"
-        onClick={handleToggle}
-        disabled={!canToggle}
-        aria-expanded={isExpanded}
-        aria-label={
-          canToggle ? toolToggleLabel(view.header.title, view.subtitle, isExpanded) : undefined
-        }
-        className={`flex w-full flex-wrap items-baseline gap-x-1 gap-y-0 rounded px-1 py-0.5 text-left text-[11.5px] leading-[1.55] transition-colors ${
-          canToggle ? 'cursor-pointer hover:bg-ink/[0.03]' : 'cursor-default'
-        } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/20`}
-      >
-        <span className={`shrink-0 self-center ${tone}`} aria-hidden="true">
-          {status.glyph}
-        </span>
-        <span className="sr-only">{status.word}</span>
-        <span className="shrink-0 font-semibold text-info">{view.header.title}</span>
-        {view.subtitle && (
-          <>
-            <span className="shrink-0 text-ink/25">:</span>
-            <span className="min-w-0 flex-1 truncate text-meta">{view.subtitle}</span>
-          </>
-        )}
-        <span className={`shrink-0 font-semibold ${tone}`}>{`[${status.word.toLowerCase()}]`}</span>
-        {facts.length > 0 && (
-          // Facts are the LAST thing on the line and they clip as a unit, so a
-          // long `exit 1 · 412 B` can never widen the row past the panel —
-          // measured at 390 the unbounded group ran the section to 459/362.
-          // The whole group carries the tooltip with every fact, so a clipped
-          // tail is still recoverable.
-          <span
-            className="min-w-0 shrink truncate text-[10.5px]"
-            title={facts.map((fact) => fact.label).join(' · ')}
-          >
-            <span className="text-ink/25">· </span>
-            <Facts facts={facts} max={HEAD_FACT_LIMIT} />
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={handleToggle}
+          disabled={!canToggle}
+          aria-expanded={isExpanded}
+          aria-label={
+            canToggle ? toolToggleLabel(view.header.title, view.subtitle, isExpanded) : undefined
+          }
+          className={`flex min-w-0 flex-1 flex-wrap items-baseline gap-x-1 gap-y-0 rounded px-1 py-0.5 text-left text-[11.5px] leading-[1.55] transition-colors ${
+            canToggle ? 'cursor-pointer hover:bg-ink/[0.03]' : 'cursor-default'
+          } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/20`}
+        >
+          <span className={`shrink-0 self-center ${tone}`} aria-hidden="true">
+            {status.glyph}
           </span>
-        )}
-        {canToggle && (
-          <span className="ml-auto shrink-0 pl-1 text-ink/40" aria-hidden="true">
-            {isExpanded ? '▾' : '▸'}
-          </span>
-        )}
-      </button>
+          <span className="sr-only">{status.word}</span>
+          <span className="shrink-0 font-semibold text-info">{view.header.title}</span>
+          {view.subtitle && (
+            <>
+              <span className="shrink-0 text-ink/25">:</span>
+              <span className="min-w-0 flex-1 truncate text-meta">{view.subtitle}</span>
+            </>
+          )}
+          <span className={`shrink-0 font-semibold ${tone}`}>{`[${status.word.toLowerCase()}]`}</span>
+          {facts.length > 0 && (
+            // Facts are the LAST thing on the line and they clip as a unit, so a
+            // long `exit 1 · 412 B` can never widen the row past the panel —
+            // measured at 390 the unbounded group ran the section to 459/362.
+            // The whole group carries the tooltip with every fact, so a clipped
+            // tail is still recoverable.
+            <span
+              className="min-w-0 shrink truncate text-[10.5px]"
+              title={facts.map((fact) => fact.label).join(' · ')}
+            >
+              <span className="text-ink/25">· </span>
+              <Facts facts={facts} max={HEAD_FACT_LIMIT} />
+            </span>
+          )}
+          {canToggle && (
+            <span className="ml-auto shrink-0 pl-1 text-ink/40" aria-hidden="true">
+              {isExpanded ? '▾' : '▸'}
+            </span>
+          )}
+        </button>
+        <ToolRowActions tool={tool} isReminder={view.isReminder} />
+      </div>
 
       {isExpanded && view.hasBody && (
         // Indentation, not a frame: the body hangs off the line the way a

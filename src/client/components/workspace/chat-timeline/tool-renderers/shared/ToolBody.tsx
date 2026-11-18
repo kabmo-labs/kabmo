@@ -57,7 +57,7 @@ export function ToolBody({ tool, view }: { tool: ToolCallData; view: ToolView })
         <ToolDetailsPanel tool={tool} />
       )}
 
-      {!view.hasBody && view.commandOrInput && (
+      {view.hasGenericBody && view.commandOrInput && (
         <div className="space-y-1.5 code-surface">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
@@ -85,14 +85,14 @@ export function ToolBody({ tool, view }: { tool: ToolCallData; view: ToolView })
         </div>
       )}
 
-      {!view.hasBody && view.diffText && (
+      {view.hasGenericBody && view.diffText && (
         <div className="space-y-1.5">
           <SectionLabel>Diff</SectionLabel>
           <DiffView text={view.diffText} path={view.subtitle} />
         </div>
       )}
 
-      {!view.hasBody && view.outputText && <FallbackOutput text={view.outputText} />}
+      {view.hasGenericBody && view.outputText && <FallbackOutput text={view.outputText} />}
     </>
   );
 }
