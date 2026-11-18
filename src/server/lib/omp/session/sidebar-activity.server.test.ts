@@ -26,6 +26,7 @@
 
 import { afterAll, afterEach, describe, expect, test } from 'bun:test';
 import fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 
 import { loadSidebarActivity } from '@/server/lib/omp/session/sidebar-activity.server';
@@ -43,7 +44,7 @@ const previousAgentDir = process.env.PI_CODING_AGENT_DIR;
  * path, so they are cleared before and after.
  */
 function useAgentDir(): string {
-  const dir = fs.mkdtempSync(path.join(fs.realpathSync('/tmp'), 'kabmo-activity-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kabmo-activity-'));
   tempDirs.push(dir);
   process.env.PI_CODING_AGENT_DIR = dir;
   clearSessionFileCaches();

@@ -779,7 +779,13 @@ test.describe('Source Control — commit history graph alignment', () => {
     await expect(row.getByText(`body line one for ${index}`)).toBeVisible();
     await expectNodesOnTitles(page, 'after expanding a body');
 
-    await row.click();
+    // The body belongs to the SELECTED row — the separate expand toggle is gone
+    // (`commit-modal/index.tsx` seeds the detail from `selectedHash`), so
+    // collapsing this body means selecting a different row, not clicking the
+    // same one again. `nth(2)` is a different commit from the row above by
+    // construction: `nth(4)` is not `subject 4`, but it is never `nth(2)`.
+    const other = page.getByRole('dialog').locator('[data-testid="commit-row"]').nth(2);
+    await other.click();
     await expect(row.getByText(`body line one for ${index}`)).toBeHidden();
     await expectNodesOnTitles(page, 'after collapsing a body');
   });

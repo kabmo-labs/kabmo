@@ -500,8 +500,6 @@ function handleCommand(frame: Record<string, unknown>) {
       respond({ subagents: [] });
       return;
     case 'prompt': {
-      // Acknowledge the admission first, then run the turn — the order omp uses.
-      respond({ agentInvoked: true });
       const message = typeof frame.message === 'string' ? frame.message : '';
       // The Kabmo fires `/rename` in the background for the auto-title, and
       // on demand for "Rename with AI". Real omp answers with
@@ -512,7 +510,16 @@ function handleCommand(frame: Record<string, unknown>) {
       // The pause is what makes the in-flight window observable: a real title
       // generation is a model call of a few seconds, and a spec asserting the
       // spinner needs the request to still be outstanding when it looks.
+      //
+      // `agentInvoked:false` is the ack real omp gives a builtin that opens no
+      // turn, and it is load-bearing: the wrapper reads `true` as "this
+      // dispatch claimed the turn slot" and holds `promptRunning` until the
+      // agent-start watchdog fires. Measured: a `/kabmo-mode` republish acked
+      // `true` left the session reporting busy for ~10 s after the answer
+      // landed, so "Rename with AI" was refused with "This session is
+      // working" on a session that had finished.
       if (message.trim().startsWith('/rename')) {
+        respond({ agentInvoked: false });
         void (async () => {
           await sleep(RENAME_DELAY_MS);
           sessionName = 'Fake session';
@@ -535,9 +542,10 @@ function handleCommand(frame: Record<string, unknown>) {
       // with two cards for one ask — one "Running", one "Done".
       if (/^\/(kabmo|chamber)-mode\b/.test(message.trim())) {
         respond({ agentInvoked: false });
-        write({ type: 'prompt_result', agentInvoked: false });
         return;
       }
+      // Acknowledge the admission first, then run the turn — the order omp uses.
+      respond({ agentInvoked: true });
       void runTurn(message, String(id));
       return;
     }
