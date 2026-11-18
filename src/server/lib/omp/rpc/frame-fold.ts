@@ -115,19 +115,32 @@ function handleToolExecutionEnd(host: SessionFrameHost): void {
  * 20 s run, and the first prompt was stored twice in Kabmo's copy of the
  * conversation.
  *
- * The RUN is the attribution, and it covers every sender: while the operator's
- * turn is streaming, a prompt that opened no turn cannot be the settle of the
- * turn they are watching. The auto-title request window is not sufficient on its
+ * The RUN is the attribution, and it covers every sender: while a run is in
+ * flight, a prompt that opened no turn cannot be the settle of the turn the
+ * operator is watching. The auto-title request window is not sufficient on its
  * own — it is armed around the `/rename`, and omp answers it in the same tick
  * (~3 ms), so a frame that won that race reached the client regardless (the leak
  * this replaces). Its flags are left alone too, exactly as the dispatcher leaves
  * a non-owning command's (see `session-commands.ts`): the live run owns them.
  *
+ * `streaming` alone is too narrow, and that is the second leak: it flips at
+ * `agent_start`, so the window between the prompt's DISPATCH and its first frame
+ * was open. A background command answered there — measured on a fresh session
+ * (omp 18.22.2): the plan-review `republish` the client fires on spawn adoption
+ * (`usePlanReview`) reached the child 43 ms after the prompt and omp answered it
+ * `agentInvoked:false` 160 ms before `agent_start`. The frame was forwarded, the
+ * client settled the optimistic turn, and the user echo that followed appended a
+ * second bubble — 57 of 58 first prompts rendered twice. `promptRunning` is set
+ * before the prompt is written and cleared only by a settle, so it covers the
+ * whole run; the dispatcher's own decline path (`session-commands.ts`, the
+ * `ack.agentInvoked === false` branch) still emits its own frame, so a prompt
+ * that genuinely opened no turn is still settled.
+ *
  * A builtin the operator typed while the agent is IDLE still passes through
  * untouched — the case this frame exists for.
  */
 function handlePromptResult(host: SessionFrameHost, event: AgentEvent): boolean {
-  if (event.agentInvoked === false && host.streaming) return true;
+  if (event.agentInvoked === false && (host.promptRunning || host.streaming)) return true;
   host.promptRunning = false;
   host.awaitingAgentStart = false;
   host.awaitingAgentStartDeadline = 0;

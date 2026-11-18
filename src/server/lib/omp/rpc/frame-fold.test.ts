@@ -237,10 +237,25 @@ describe('a non-invoking prompt_result never reaches the client mid-run', () => 
     expect(foldSessionFrame(host, { type: 'prompt_result', agentInvoked: false }).suppressForward).toBe(true);
   });
 
+  test('suppresses it in the dispatch window, before agent_start', () => {
+    // Measured on a fresh session (omp 18.22.2): the client's plan-review
+    // `republish` reaches the child 43 ms after the prompt and omp answers it
+    // `agentInvoked:false` ~160 ms BEFORE `agent_start`. `streaming` is still
+    // false there, so the frame was forwarded, the client settled the optimistic
+    // turn, and the user echo appended a second bubble (57 of 58 first prompts
+    // rendered twice). The dispatch window is part of the run.
+    const host = makeHost({ sessionId: 's1', promptRunning: true, streaming: false });
+    const result = foldSessionFrame(host, { type: 'prompt_result', agentInvoked: false });
+
+    expect(result.suppressForward).toBe(true);
+    // The dispatch it arrived under still owns the turn slot.
+    expect(host.promptRunning).toBe(true);
+  });
+
   test('still forwards the operator’s own builtin result when no turn runs', () => {
     // The case the frame exists for: a `/usage` the operator typed must settle
     // the optimistic turn, even inside a rename window.
-    const host = makeHost({ sessionId: 's1', promptRunning: true, autoTitleWindowUntil: Date.now() + 60_000 });
+    const host = makeHost({ sessionId: 's1', promptRunning: false, autoTitleWindowUntil: Date.now() + 60_000 });
     const result = foldSessionFrame(host, { type: 'prompt_result', agentInvoked: false });
 
     expect(result.suppressForward).toBe(false);
