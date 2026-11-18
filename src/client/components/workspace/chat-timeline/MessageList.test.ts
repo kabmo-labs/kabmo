@@ -16,34 +16,32 @@
  * two mounts pin both spellings, and that the footer lands once the run ends.
  */
 
-import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
+import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { MessageList } from '@/client/components/workspace/chat-timeline/MessageList';
+import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
 import type { ChatMessageData } from '@/shared/types';
 
 let container: HTMLElement;
+/** Every tree this file mounted; unmounted before the window goes away. */
+const mounted: HTMLElement[] = [];
 
-const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'HTMLInputElement', 'Event', 'MouseEvent', 'KeyboardEvent'] as const;
-/** The runner's own globals, restored on teardown — deleting them would strip natives (Event/CustomEvent) every later file needs. */const nativeGlobals: Partial<Record<(typeof DOM_GLOBALS)[number], unknown>> = {};
+beforeAll(() => installDomGlobals(new Window({ url: 'http://localhost' })));
 
-beforeAll(() => {
-  const win = new Window({ url: 'http://localhost' });
-  const target = globalThis as unknown as Record<string, unknown>;
-  for (const key of DOM_GLOBALS) {
-    if (!(key in nativeGlobals)) nativeGlobals[key] = target[key];
-    target[key] = (win as unknown as Record<string, unknown>)[key];
-  }
+afterEach(() => {
+  // UNMOUNT, not detach: `MessageList` draws `AiMessageFooter`, whose plugin
+  // strip subscribes to the list-slot store. A tree left mounted re-renders on
+  // that store's next publish — which happens in a LATER file, after
+  // `restoreDomGlobals` deleted `document`, and surfaces there as
+  // `ReferenceError: document is not defined` in `list-slots.test.ts` on the
+  // Windows shard. A detached container is enough for the assertions, but the
+  // subscription outlives it.
+  for (const node of mounted.splice(0)) render(null, node);
 });
 
-afterAll(() => {
-  const target = globalThis as unknown as Record<string, unknown>;
-  for (const key of DOM_GLOBALS) {
-    if (nativeGlobals[key] === undefined) delete target[key];
-    else target[key] = nativeGlobals[key];
-  }
-});
+afterAll(() => restoreDomGlobals());
 
 const user = (id: string): ChatMessageData => ({ id, role: 'user', content: 'yo' });
 const ai = (id: string): ChatMessageData => ({ id, role: 'ai', content: 'hi' });
@@ -53,6 +51,7 @@ const committed = (id: string): ChatMessageData => ({ id, role: 'assistant', con
 async function mount(messages: ChatMessageData[], isGenerating: boolean): Promise<HTMLElement> {
   container = document.createElement('div');
   document.body.appendChild(container);
+  mounted.push(container);
   await act(async () => {
     render(h(MessageList, { messages, isGenerating }), container);
   });
@@ -97,6 +96,7 @@ describe('MessageList mounted window', () => {
   async function mountWindowed(messages: ChatMessageData[], rowWindow: ReturnType<typeof window>): Promise<HTMLElement> {
     container = document.createElement('div');
     document.body.appendChild(container);
+    mounted.push(container);
     await act(async () => {
       render(h(MessageList, { messages, isGenerating: false, rowWindow }), container);
     });
