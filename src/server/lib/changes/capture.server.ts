@@ -28,7 +28,6 @@
  * from the frame in place right after the raw listeners return.
  */
 
-import path from 'node:path';
 import { isRecord } from '@/shared/lib/util/guards';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
 import { classifyCommand } from '@/server/lib/changes/classify-command';
@@ -49,7 +48,7 @@ import type {
 } from '@/server/lib/changes/capture-types';
 import { readHeadContent, takeScan, type GitScan } from '@/server/lib/changes/scan.server';
 import { isBuildPath, isExcludedTempPath, isInside } from '@/server/lib/changes/temp-path';
-import { patchPaths } from '@/server/lib/changes/patch-paths';
+import { captureTargets } from '@/server/lib/changes/capture-targets';
 import { reconstructEdit, resolveRacedWrite } from '@/server/lib/changes/capture-write.server';
 import { MAX_BLOB_BYTES } from '@/server/lib/changes/blobs.server';
 
@@ -180,44 +179,12 @@ export class ChangeCapture {
         pending.scan = await this.#takeScan(this.deps.cwd);
       }
     }
-    for (const absolute of this.#targets(pending)) {
+    for (const absolute of captureTargets(pending, this.deps.cwd)) {
       if (pending.before.has(absolute)) continue;
       const info = await this.#statFile(absolute);
       const text = await this.#readCapped(absolute);
       pending.before.set(absolute, { text, ...(info ? { mtimeMs: info.mtimeMs } : {}) });
     }
-  }
-
-  #targets(pending: PendingCall): string[] {
-    if (pending.tool === 'bash') {
-      const paths: string[] = [];
-      for (const mutation of pending.plan?.mutations ?? []) {
-        paths.push(mutation.path);
-        if (mutation.from) paths.push(mutation.from);
-      }
-      return paths;
-    }
-    const args = pending.args;
-    // `filePath` is the ACP/opencode spelling; `path`/`file_path` are the
-    // omp and Claude ones. A tool whose args use none of them is a note.
-    const raw: unknown[] = [args.path, args.file_path, args.filePath, args.moveTo, args.destination];
-    if (Array.isArray(args.paths)) raw.push(...args.paths);
-    if (Array.isArray(args.files)) raw.push(...args.files);
-    // `apply_patch` names its paths only inside the patch text.
-    const patch = typeof args.patch === 'string'
-      ? args.patch
-      : typeof args.patchText === 'string'
-        ? args.patchText
-        : typeof args.input === 'string'
-          ? args.input
-          : '';
-    if (patch) raw.push(...patchPaths(patch));
-    const paths: string[] = [];
-    for (const value of raw) {
-      if (typeof value !== 'string' || !value || value.includes('://')) continue;
-      paths.push(path.isAbsolute(value) ? path.normalize(value) : path.resolve(this.deps.cwd, value));
-    }
-    return paths;
   }
 
   async #end(event: AgentEvent): Promise<void> {
@@ -237,7 +204,7 @@ export class ChangeCapture {
   }
 
   async #endFileTool(pending: PendingCall): Promise<void> {
-    const targets = this.#targets(pending);
+    const targets = captureTargets(pending, this.deps.cwd);
     if (targets.length === 0) {
       // A read-only tool (`read`, `glob`, `grep`) has no adapter and no
       // mutation; only a tool whose NAME promises a write is worth a note.
