@@ -135,6 +135,29 @@ describe('build paths', () => {
   });
 });
 
+describe('apply_patch', () => {
+  test('a patch names its paths and the change is recorded', async () => {
+    const files = new Map([[at('a.txt'), 'old']]);
+    const capture = makeCapture('cap-patch', files);
+    capture.onFrame({
+      type: 'tool_execution_start',
+      toolCallId: 'c1',
+      toolName: 'apply_patch',
+      args: { input: '*** Begin Patch\n*** Update File: a.txt\n@@\n-old\n+new\n*** End Patch' },
+    });
+    await capture.flush();
+    files.set(at('a.txt'), 'new');
+    capture.onFrame({ type: 'tool_execution_end', toolCallId: 'c1', toolName: 'apply_patch' });
+    await capture.flush();
+
+    const change = (await records('cap-patch')).find((line) => line.type === 'change');
+    expect(change?.type).toBe('change');
+    if (change?.type !== 'change') throw new Error('expected a change');
+    expect(change.op).toBe('update');
+    expect(change.path).toBe(at('a.txt'));
+  });
+});
+
 describe('ACP shell tools', () => {
   test('exec_command with a command is captured as a shell call', async () => {
     const files = new Map<string, string>();

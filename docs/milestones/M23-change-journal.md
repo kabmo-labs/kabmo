@@ -387,6 +387,7 @@ routes read the new reader; `purgeSessionData` removes the journal directory.
 | Concurrent sessions in one cwd | the exact layers are per tool call; the scan skips a path another session in the same cwd recorded in the window, and `git status` runs with `--no-optional-locks` so two scans do not fight over the index |
 | Temp and build paths | `/tmp` and the OS temp dir are dropped **when outside the session cwd**; a path under a build/output directory (`dist`, `build`, `node_modules`, `target`, …) is dropped too, so a build in a run does not add every emitted chunk to that run's list |
 | Nested repos | the scan asks each nested git repo under the cwd (bounded 20 repos / 200 dirs) and records its root, so a project checkout's changes are seen and its clean files read `HEAD` from its own repo |
+| `apply_patch` | the patch text's `*** Update/Add/Delete File:` and `*** Move to:` headers name the paths; the before/after snapshot is the source |
 
 ### 10.2 Run separation
 

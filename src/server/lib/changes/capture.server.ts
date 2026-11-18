@@ -49,6 +49,7 @@ import type {
 } from '@/server/lib/changes/capture-types';
 import { readHeadContent, takeScan, type GitScan } from '@/server/lib/changes/scan.server';
 import { isBuildPath, isExcludedTempPath, isInside } from '@/server/lib/changes/temp-path';
+import { patchPaths } from '@/server/lib/changes/patch-paths';
 import { reconstructEdit, resolveRacedWrite } from '@/server/lib/changes/capture-write.server';
 import { MAX_BLOB_BYTES } from '@/server/lib/changes/blobs.server';
 
@@ -202,6 +203,15 @@ export class ChangeCapture {
     const raw: unknown[] = [args.path, args.file_path, args.filePath, args.moveTo, args.destination];
     if (Array.isArray(args.paths)) raw.push(...args.paths);
     if (Array.isArray(args.files)) raw.push(...args.files);
+    // `apply_patch` names its paths only inside the patch text.
+    const patch = typeof args.patch === 'string'
+      ? args.patch
+      : typeof args.patchText === 'string'
+        ? args.patchText
+        : typeof args.input === 'string'
+          ? args.input
+          : '';
+    if (patch) raw.push(...patchPaths(patch));
     const paths: string[] = [];
     for (const value of raw) {
       if (typeof value !== 'string' || !value || value.includes('://')) continue;
