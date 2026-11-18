@@ -34,7 +34,13 @@ import {
 import { markPendingSessionWaiting } from '@/client/hooks/chat/omp/pending-waiting';
 import { useWaitingPrompts } from '@/client/hooks/chat/waiting/store';
 import { withPendingRows } from '@/client/hooks/chat/omp/pending-rows';
+import { filterFoldersBySearch } from '@/client/hooks/chat/omp/sidebar-filter';
 import { useFolderAutoExpand } from '@/client/hooks/chat/omp/folder-auto-expand';
+import {
+  harnessFilterFolders,
+  harnessFilterOptions,
+  type HarnessFilterOption,
+} from '@/shared/lib/workspace/harness-filter';
 import { writeSetting } from '@/shared/lib/settings/client';
 import { subscribeSessionKey } from '@/shared/lib/workspace/session-state/listeners';
 import { CHAT_DRAFT_ATTACHMENTS_KEY, CHAT_DRAFT_KEY } from '@/shared/lib/chat/composer/draft';
@@ -81,6 +87,11 @@ export interface SessionSidebarController {
   setOptionsOpen: (value: boolean) => void;
   sortOption: SessionSortOption;
   handleSortChange: (opt: SessionSortOption) => void;
+  /** The harness the list is narrowed to, or null for every harness. */
+  harnessFilter: string | null;
+  setHarnessFilter: (harness: string | null) => void;
+  /** The harnesses the list holds, with row counts — the filter's menu. */
+  harnessOptions: HarnessFilterOption[];
   processedFolders: WorkspaceFolderData[];
   sessionStatus: Record<string, 'stream' | 'finish' | 'abort'>;
   handleSelectSession: (id: number | string) => void;
@@ -113,6 +124,9 @@ export function useSessionSidebarController(
 
   const [searchQuery, setSearchQuery] = useState('');
   const [showArchived, setShowArchived] = useState(false);
+  // Which agent ran the chat. In-memory like the search and the archive toggle:
+  // a filter is a way of looking at the list, not a preference about it.
+  const [harnessFilter, setHarnessFilter] = useState<string | null>(null);
   const [optionsOpen, setOptionsOpen] = useState(false);
   // Seeded from the server (app_settings.omp_sidebar_sort) so the SSR HTML and
   // the first client render agree. With no stored preference the sidebar opens
@@ -265,45 +279,28 @@ export function useSessionSidebarController(
     onAfterSelect?.();
   };
 
-  // Filter and sort folders
-  const processedFolders = useMemo(() => {
-    // A pending row joins the list BEFORE the filter: the row exists because
-    // omp's transcript scan cannot see the session yet, and a row that the
-    // user's own search hides is a row the search never offered to find.
-    let result = withPendingRows(folders, pendingEntries, {
+  // The list before any filter: the server's folders plus the pending rows. A
+  // pending row joins BEFORE the filters — the row exists because omp's
+  // transcript scan cannot see the session yet, and a row the user's own search
+  // hides is a row the search never offered to find.
+  const baseFolders = useMemo(
+    () => withPendingRows(folders, pendingEntries, {
       activeId: sessionParam,
       urlFolderId: folderIdParam,
       titleFor: titleHint,
-    });
+    }),
+    [folders, pendingEntries, sessionParam, folderIdParam, titleHint],
+  );
 
-    // Search filter. A session matches on its title OR its id: the id is what
-    // "Copy session ID" puts on the clipboard, and a search that could not find
-    // the string it just handed the user would be a dead end.
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      const matchesSession = (s: { id: number | string; title: string }) =>
-        s.title.toLowerCase().includes(q) || String(s.id).toLowerCase().includes(q);
-      if (expandSearchMatches) {
-        result = result.filter(folder => {
-          const matchFolder = folder.name.toLowerCase().includes(q);
-          const matchSession = folder.sessions?.some(matchesSession);
-          return matchFolder || matchSession;
-        }).map(folder => {
-          // If we are searching, we also filter the sessions within the folder
-          const filteredSessions = folder.sessions?.filter((s) =>
-            folder.name.toLowerCase().includes(q) || matchesSession(s)
-          );
-          return { ...folder, sessions: filteredSessions, isExpanded: true };
-        });
-      } else {
-        result = result.map(folder => {
-          const matchesFolderName = folder.name.toLowerCase().includes(q);
-          const filteredSessions = (folder.sessions || []).filter(matchesSession);
-          if (matchesFolderName) return folder;
-          return { ...folder, sessions: filteredSessions };
-        }).filter(f => f.sessions && f.sessions.length > 0);
-      }
-    }
+  // Counted over the list BEFORE the search and the harness filter, so an
+  // entry's number is a fact about the workspaces rather than about what is on
+  // screen — "3 claude" stays readable while the list is narrowed to `codex`.
+  const harnessOptions = useMemo(() => harnessFilterOptions(baseFolders), [baseFolders]);
+
+  // Filter and sort folders
+  const processedFolders = useMemo(() => {
+    let result = filterFoldersBySearch(baseFolders, searchQuery, expandSearchMatches);
+    result = harnessFilterFolders(result, harnessFilter);
 
     // A run in flight opens its folder in the SAME frame the spinner appears,
     // and keeps it open if the toggle write is refused. The write below makes
@@ -315,10 +312,8 @@ export function useSessionSidebarController(
     }
 
     // Ordering is shared with the other sidebar so the two cannot drift.
-    result = sortFolders(result, sortOption);
-
-    return result;
-  }, [folders, pendingEntries, searchQuery, sortOption, sessionParam, folderIdParam, expandSearchMatches, titleHint, runningFolderIds]);
+    return sortFolders(result, sortOption);
+  }, [baseFolders, searchQuery, harnessFilter, sortOption, expandSearchMatches, runningFolderIds]);
 
   return {
     folders,
@@ -338,6 +333,9 @@ export function useSessionSidebarController(
     setOptionsOpen,
     sortOption,
     handleSortChange,
+    harnessFilter,
+    setHarnessFilter,
+    harnessOptions,
     processedFolders,
     sessionStatus,
     handleSelectSession,

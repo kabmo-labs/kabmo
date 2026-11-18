@@ -20,6 +20,7 @@
  */
 
 import type { SessionSortOption, WorkspaceFolderData } from '@/shared/types';
+import type { HarnessFilterOption } from '@/shared/lib/workspace/harness-filter';
 import type { BatchBinding } from '@/client/components/common/batch-selection/types';
 import type { ToastTone } from '@/shared/lib/ui/toast-duration';
 
@@ -51,6 +52,12 @@ export interface SessionSidebarVariantProps {
   onToggleOptions: () => void;
   onCloseOptions: () => void;
   onSortChange: (option: SessionSortOption) => void;
+
+  /** The harness the list is narrowed to, or null for every harness. */
+  harnessFilter: string | null;
+  onHarnessFilterChange: (harness: string | null) => void;
+  /** The harnesses the list holds, with row counts — the filter's menu. */
+  harnessOptions: HarnessFilterOption[];
 
   /** Reload the list; `refreshing` spins whatever the style's refresh control is. */
   onRefresh: () => void;

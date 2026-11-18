@@ -18,7 +18,9 @@ import { MobileSessionToolbar } from '@/client/components/mobile/mobile-session-
 import { MobileSessionList } from '@/client/components/mobile/mobile-session-sidebar/List';
 import { MobileSessionListSkeleton } from '@/client/components/mobile/mobile-session-sidebar/Skeleton';
 import { SessionListNotice } from '@/client/components/layout/session-sidebar/SessionListNotice';
+import { HarnessFilter } from '@/client/components/layout/session-sidebar/HarnessFilter';
 import type { BatchBinding } from '@/client/components/common/batch-selection/types';
+import type { HarnessFilterOption } from '@/shared/lib/workspace/harness-filter';
 import type { SessionSortOption, WorkspaceFolderData } from '@/shared/types';
 import type { ToastTone } from '@/shared/lib/ui/toast-duration';
 
@@ -34,6 +36,11 @@ export interface ClassicDrawerProps {
   sortOption: SessionSortOption;
   optionsOpen: boolean;
   showArchived: boolean;
+  /** The harness the list is narrowed to, or null for every harness. */
+  harnessFilter: string | null;
+  onHarnessFilterChange: (harness: string | null) => void;
+  /** The harnesses the list holds, with row counts — the filter's menu. */
+  harnessOptions: HarnessFilterOption[];
   optionsRef: RefObject<HTMLDivElement>;
   scheduledCount: number;
   refreshing: boolean;
@@ -71,6 +78,9 @@ export function ClassicDrawer({
   sortOption,
   optionsOpen,
   showArchived,
+  harnessFilter,
+  onHarnessFilterChange,
+  harnessOptions,
   optionsRef,
   scheduledCount,
   refreshing,
@@ -119,6 +129,13 @@ export function ClassicDrawer({
         onClearSearch={onClearSearch}
         onSelectWorkspaces={onSelectWorkspaces}
         selecting={selecting}
+      />
+
+      <HarnessFilter
+        options={harnessOptions}
+        value={harnessFilter}
+        onChange={onHarnessFilterChange}
+        touch
       />
 
       {failed ? (

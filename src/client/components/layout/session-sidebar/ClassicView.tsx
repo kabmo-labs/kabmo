@@ -18,6 +18,7 @@
 
 import { useState } from 'preact/hooks';
 import { SessionSidebarToolbar } from '@/client/components/layout/session-sidebar/Toolbar';
+import { HarnessFilter } from '@/client/components/layout/session-sidebar/HarnessFilter';
 import { SessionSidebarSessionList } from '@/client/components/layout/session-sidebar/SessionList';
 import { SessionListSkeleton } from '@/client/components/layout/session-sidebar/Skeleton';
 import { SessionListNotice } from '@/client/components/layout/session-sidebar/SessionListNotice';
@@ -39,6 +40,9 @@ export function ClassicSidebarView({
   onToggleOptions,
   onCloseOptions,
   onSortChange,
+  harnessFilter,
+  onHarnessFilterChange,
+  harnessOptions,
   onRefresh,
   refreshing,
   scheduledCount,
@@ -100,6 +104,12 @@ export function ClassicSidebarView({
         selecting={batchActive}
       />
 
+      <HarnessFilter
+        options={harnessOptions}
+        value={harnessFilter}
+        onChange={onHarnessFilterChange}
+      />
+
       {failed ? (
         <SessionListNotice onRetry={onRefresh} refreshing={refreshing} />
       ) : initializing ? (
@@ -110,6 +120,7 @@ export function ClassicSidebarView({
           activeSessionId={activeSessionId}
           searchQuery={searchQuery}
           showArchived={showArchived}
+          harnessFilter={harnessFilter}
           sessionStatus={sessionStatus}
           onSelectSession={onSelectSession}
           onNewSessionForFolder={onNewSessionForFolder}

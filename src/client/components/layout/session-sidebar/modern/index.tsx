@@ -23,10 +23,12 @@
 import { useMemo, useState } from 'preact/hooks';
 import { SearchField } from '@/client/components/layout/session-sidebar/modern/SearchField';
 import { FilterChips } from '@/client/components/layout/session-sidebar/modern/FilterChips';
+import { HarnessFilter } from '@/client/components/layout/session-sidebar/HarnessFilter';
 import { SidebarActionRow } from '@/client/components/layout/session-sidebar/modern/ActionRow';
 import { WorkspaceSection } from '@/client/components/layout/session-sidebar/modern/WorkspaceSection';
 import { ModernSidebarSkeleton } from '@/client/components/layout/session-sidebar/modern/Skeleton';
 import { SessionListNotice } from '@/client/components/layout/session-sidebar/SessionListNotice';
+import { harnessBadgeLabel } from '@/shared/lib/harness/catalog';
 import {
   focusFolders,
   runningSessionCount,
@@ -50,6 +52,9 @@ export function ModernSidebarView({
   onToggleOptions,
   onCloseOptions,
   onSortChange,
+  harnessFilter,
+  onHarnessFilterChange,
+  harnessOptions,
   onRefresh,
   refreshing,
   scheduledCount,
@@ -95,6 +100,13 @@ export function ModernSidebarView({
         onToggleSelect={onSelectWorkspaces}
       />
 
+      <HarnessFilter
+        options={harnessOptions}
+        value={harnessFilter}
+        onChange={onHarnessFilterChange}
+        touch={touch}
+      />
+
       <SidebarActionRow
         onNewSession={onNewSession}
         onNewWorkspace={onNewWorkspace}
@@ -121,7 +133,9 @@ export function ModernSidebarView({
               ? 'Nothing is running right now.'
               : searchQuery
                 ? 'No workspace or chat matches that search.'
-                : 'No workspaces yet.'}
+                : harnessFilter
+                  ? `No chats on ${harnessBadgeLabel(harnessFilter)}.`
+                  : 'No workspaces yet.'}
           </div>
         ) : (
           <div className="space-y-3">

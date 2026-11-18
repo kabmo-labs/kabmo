@@ -164,3 +164,64 @@ describe('the sidebar search finds a session by its id', () => {
     harness.server.stop();
   });
 });
+
+describe('the sidebar harness filter', () => {
+  test('narrows the list to one agent and drops a workspace with nothing left', async () => {
+    const harness = await mountSidebarController('?sessionId=real-1');
+    const server = harness.server;
+    server.publish(TOPIC_SIDEBAR, {
+      folders: [
+        {
+          id: 7,
+          name: 'ws',
+          isExpanded: true,
+          hasMore: false,
+          totalSessions: 3,
+          sessions: [
+            { id: 'real-1', folder_id: 7, title: 'omp chat', harness: 'omp-rpc' },
+            { id: 'omp-2', folder_id: 7, title: 'another omp chat', harness: 'omp-rpc' },
+            { id: 'claude-1', folder_id: 7, title: 'claude chat', harness: 'claude' },
+          ],
+        },
+        {
+          id: 8,
+          name: 'other',
+          isExpanded: true,
+          hasMore: false,
+          totalSessions: 1,
+          sessions: [{ id: 'codex-1', folder_id: 8, title: 'codex chat', harness: 'codex' }],
+        },
+      ],
+      isMock: false,
+    });
+    await server.waitForTopic<SidebarPayload>(TOPIC_SIDEBAR, (value) => (value?.folders ?? []).length === 2);
+    await act(async () => {
+      for (let i = 0; i < 8; i += 1) await Promise.resolve();
+    });
+
+    // The menu counts the whole list, most-used first.
+    expect(harness.holder.api?.harnessOptions).toEqual([
+      { harness: 'omp-rpc', label: 'omp', count: 2 },
+      { harness: 'claude', label: 'claude', count: 1 },
+      { harness: 'codex', label: 'codex', count: 1 },
+    ]);
+
+    await act(async () => {
+      harness.holder.api?.setHarnessFilter('claude');
+      for (let i = 0; i < 8; i += 1) await Promise.resolve();
+    });
+    expect(renderedSessionIds(harness.holder.api)).toEqual(['claude-1']);
+    // A workspace with nothing left to show is dropped, not drawn empty.
+    expect(harness.holder.api?.processedFolders.map((folder) => folder.id)).toEqual([7]);
+    // The counts stay a fact about the workspaces, not about the narrowed list.
+    expect(harness.holder.api?.harnessOptions.map((option) => option.count)).toEqual([2, 1, 1]);
+
+    await act(async () => {
+      harness.holder.api?.setHarnessFilter(null);
+      for (let i = 0; i < 8; i += 1) await Promise.resolve();
+    });
+    expect(renderedSessionIds(harness.holder.api)).toEqual(['codex-1', 'real-1', 'omp-2', 'claude-1']);
+
+    server.stop();
+  });
+});

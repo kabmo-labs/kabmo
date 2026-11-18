@@ -1,4 +1,5 @@
 import { Category } from '@/client/components/layout/session-sidebar/CategoryItem';
+import { harnessBadgeLabel } from '@/shared/lib/harness/catalog';
 import type { BatchBinding } from '@/client/components/common/batch-selection/types';
 import type { WorkspaceFolderData } from '@/shared/types';
 import type { ToastTone } from '@/shared/lib/ui/toast-duration';
@@ -8,6 +9,8 @@ interface SessionSidebarSessionListProps {
   activeSessionId: number | string | null;
   searchQuery: string;
   showArchived: boolean;
+  /** The active harness filter, so an empty list can name what emptied it. */
+  harnessFilter?: string | null;
   sessionStatus: Record<string, 'stream' | 'finish' | 'abort'>;
   onSelectSession: (id: number | string) => void;
   onNewSessionForFolder: (id: number) => void;
@@ -27,6 +30,7 @@ export function SessionSidebarSessionList({
   activeSessionId,
   searchQuery,
   showArchived,
+  harnessFilter,
   sessionStatus,
   onSelectSession,
   onNewSessionForFolder,
@@ -43,7 +47,11 @@ export function SessionSidebarSessionList({
     <div className="flex-1 scrollbar-overlay-container p-2 space-y-4">
       {folders.length === 0 ? (
         <div className="text-center py-8 text-xs text-muted">
-          {searchQuery ? 'No results found.' : 'No workspaces available.'}
+          {searchQuery
+            ? 'No results found.'
+            : harnessFilter
+              ? `No chats on ${harnessBadgeLabel(harnessFilter)}.`
+              : 'No workspaces available.'}
         </div>
       ) : (
         folders.map(folder => (

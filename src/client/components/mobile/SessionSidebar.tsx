@@ -3,17 +3,12 @@ import { MobileSessionHeader } from '@/client/components/mobile/mobile-session-s
 import { ClassicDrawer } from '@/client/components/mobile/mobile-session-sidebar/ClassicDrawer';
 import { ModernSidebarView } from '@/client/components/layout/session-sidebar/modern';
 import { MobileSessionFooter } from '@/client/components/mobile/mobile-session-sidebar/Footer';
-import { useShellOffer } from '@/client/hooks/ui/updates/shell-download';
-import { useKabmoEvent } from '@/client/hooks/ui/window-event';
+import { useMobileUpdateFlow } from '@/client/hooks/ui/updates/mobile-flow';
 import { useToasts } from '@/client/hooks/ui/toasts';
 import { useCancelWait } from '@/client/hooks/chat/waiting/cancel';
 import { useWaitingDispatch } from '@/client/hooks/chat/waiting/dispatch';
-import { useUpdates } from '@/client/hooks/ui/updates';
 import { useSidebarStyle } from '@/client/hooks/workspace/sidebar-style';
-import { UPDATE_REQUEST_EVENT } from '@/shared/lib/updates/popup-state';
-import { useUpdateCheckRequest } from '@/client/hooks/ui/updates/check-request';
 import { openKeyBindingHelp } from '@/client/lib/commands/overlays';
-import { updateOutcomeTone } from '@/shared/lib/ui/toast-duration';
 import { useScheduledTaskCount } from '@/client/hooks/workspace/scheduled-tasks';
 import { phoneLeftStripVisible } from '@/shared/lib/workspace/mobile-dock';
 import { MobileDockBody, MobileDockStrip } from '@/client/components/mobile/mobile-session-sidebar/Dock';
@@ -99,6 +94,9 @@ export function MobileSessionSidebar({
     setOptionsOpen,
     sortOption,
     handleSortChange,
+    harnessFilter,
+    setHarnessFilter,
+    harnessOptions,
     processedFolders,
     sessionStatus,
     handleSelectSession,
@@ -117,29 +115,14 @@ export function MobileSessionSidebar({
   const [schedulerOpen, setSchedulerOpen] = useState(false);
   const scheduledCount = useScheduledTaskCount();
   const [aboutOpen, setAboutOpen] = useState(false);
-  const updates = useUpdates();
-  // An update inside a native shell, an install on an Android browser, nothing
-  // elsewhere — see `useShellOffer`.
-  const shellDownload = useShellOffer();
   const { pushToast } = useToasts();
   const cancelWait = useCancelWait(pushToast);
   useWaitingDispatch({ onNotice: pushToast });
-
-  // The popup's "Update now" hands the run over rather than starting its own —
-  // see the desktop sidebar. The phone must also bring the drawer forward, or
-  // the About modal would open over the chat with the user still looking at the
-  // session list they came from.
-  useKabmoEvent(UPDATE_REQUEST_EVENT, () => {
-    onClose();
-    setAboutOpen(true);
-    void updates.apply('kabmo').then((result) => {
-      if (!result) return;
-      pushToast(result.message, updateOutcomeTone(result));
-    });
+  const { updates, shellDownload } = useMobileUpdateFlow({
+    onClose,
+    openAbout: () => setAboutOpen(true),
+    pushToast,
   });
-
-  // The same native row as the desktop's: one check, one verdict, drawer stays.
-  useUpdateCheckRequest(updates, pushToast);
 
   const handleNewSessionAndClose = () => {
     onNewSession();
@@ -200,6 +183,9 @@ export function MobileSessionSidebar({
     onToggleOptions: () => setOptionsOpen(!optionsOpen),
     onCloseOptions: () => setOptionsOpen(false),
     onSortChange: handleSortChange,
+    harnessFilter,
+    onHarnessFilterChange: setHarnessFilter,
+    harnessOptions,
     onRefresh: refreshNow,
     refreshing: isRefreshing,
     scheduledCount,
@@ -268,6 +254,9 @@ export function MobileSessionSidebar({
             sortOption={sortOption}
             optionsOpen={optionsOpen}
             showArchived={showArchived}
+            harnessFilter={harnessFilter}
+            onHarnessFilterChange={setHarnessFilter}
+            harnessOptions={harnessOptions}
             optionsRef={optionsRef}
             scheduledCount={scheduledCount}
             refreshing={isRefreshing}
