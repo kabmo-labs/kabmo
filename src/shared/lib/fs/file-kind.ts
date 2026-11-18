@@ -87,20 +87,30 @@ export function getDocumentMimeType(filePath: string | undefined | null): string
 }
 
 /**
+ * MIME type for a path an `<img>` can PAINT — every raster image plus SVG — or
+ * null.
+ *
+ * The chat `read` card is the caller that needs this third answer: it paints the
+ * file a tool returned, and an SVG is a picture there even though the editor
+ * keeps it on the code path (`getImageMimeType` stays raster-only for that
+ * reason). One function, so the read panel and `/api/fs/raw` cannot disagree
+ * about which files are previewable.
+ */
+export function getPaintableImageMimeType(filePath: string | undefined | null): string | null {
+  return getImageMimeType(filePath) ?? (getFileExtension(filePath) === 'svg' ? SVG_MIME : null);
+}
+
+/**
  * The `content-type` `/api/fs/raw` should answer a path with, or null when the
  * bytes have no picture/document type (the route falls back to
  * `application/octet-stream`).
  *
- * SVG is named here rather than by `getImageMimeType` because it is deliberately
- * excluded there — the classifier must keep it on the text path — while the raw
- * route serves it to an `<img>`.
+ * SVG is named through `getPaintableImageMimeType` rather than by
+ * `getImageMimeType` because the classifier must keep it on the text path while
+ * the raw route serves it to an `<img>`.
  */
 export function getRawContentType(filePath: string | undefined | null): string | null {
-  return (
-    getImageMimeType(filePath) ??
-    getDocumentMimeType(filePath) ??
-    (getFileExtension(filePath) === 'svg' ? SVG_MIME : null)
-  );
+  return getPaintableImageMimeType(filePath) ?? getDocumentMimeType(filePath);
 }
 
 /** Leading bytes → MIME, longest signature first so `webp`'s `RIFF`/`WEBP`
@@ -119,6 +129,23 @@ const IMAGE_MAGIC: { bytes: number[]; mime: string; offset?: number }[] = [
 ];
 
 /**
+ * True when the bytes are an SVG document.
+ *
+ * An SVG has no magic signature — it is XML, and an `<svg>` root can sit behind
+ * a prolog, a comment, a doctype and a long `<style>` — so the head is read as
+ * text. Only the first 2 KiB are decoded: past that there is no prolog left.
+ *
+ * Lives here rather than in one caller because two paths need the same answer:
+ * the blob store has to label a `.svg` blob `image/svg+xml` or the browser
+ * downloads it, and a provider's favicon is the same question about different
+ * bytes.
+ */
+export function looksLikeSvg(bytes: Uint8Array): boolean {
+  const head = new TextDecoder().decode(bytes.subarray(0, 2048)).trimStart();
+  return head.startsWith('<svg') || (head.startsWith('<?xml') && head.includes('<svg'));
+}
+
+/**
  * MIME type for a raster image read from its own bytes, or null when no
  * signature matches.
  *
@@ -127,6 +154,10 @@ const IMAGE_MAGIC: { bytes: number[]; mime: string; offset?: number }[] = [
  * pruned of those links — or a ref whose `mimeType` field the caller lost —
  * leaves the bytes as the only evidence. A wrong `content-type` is not
  * cosmetic here: `image/*` is what makes the browser paint rather than download.
+ *
+ * SVG is the last entry because it matches no bytes table: a tool can return an
+ * SVG image block (and omp's blob store will hold it), and without this the blob
+ * route answered `application/octet-stream`, which paints nothing.
  */
 export function getImageMimeFromBytes(bytes: Uint8Array): string | null {
   for (const { bytes: magic, mime, offset = 0 } of IMAGE_MAGIC) {
@@ -140,7 +171,7 @@ export function getImageMimeFromBytes(bytes: Uint8Array): string | null {
     }
     if (matched) return mime;
   }
-  return null;
+  return looksLikeSvg(bytes) ? SVG_MIME : null;
 }
 
 /**

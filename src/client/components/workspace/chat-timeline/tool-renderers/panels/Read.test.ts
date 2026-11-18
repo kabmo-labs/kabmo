@@ -4,119 +4,72 @@
  */
 
 /**
- * The Read panel's lazy fallback.
+ * The Read panel's text branches: the lazy `/api/fs/read` fallback and the
+ * documents it renders as prose.
  *
  * A `read` whose result carries no output falls back to fetching the path it
- * named through `/api/fs/read`. An omp internal URL names no file: the route
- * refused `proc://kabmo-dev`, and the panel printed
- * `// Loaded file: proc://kabmo-dev` as if that were the file's contents.
- * A `read` of a process is answered by the `proc://` panel, never by this one —
- * but a legacy transcript can still hand it a virtual URL.
+ * named. An omp internal URL names no file: the route refused `proc://kabmo-dev`,
+ * and the panel printed `// Loaded file: proc://kabmo-dev` as if that were the
+ * file's contents. A `read` of a process is answered by the `proc://` panel,
+ * never by this one — but a legacy transcript can still hand it a virtual URL.
  *
- * Rendered with `h()` against happy-dom, following `panels/Edit.test.ts`.
+ * The picture branches are `Read.image.test.ts`; both mount through
+ * `read-test-util.ts`.
  */
 
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
-import { Window } from 'happy-dom';
-import { h, render } from 'preact';
-import { act } from 'preact/test-utils';
-import { Read } from '@/client/components/workspace/chat-timeline/tool-renderers/panels/Read';
-import type { ToolCallData } from '@/shared/types';
-
-const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'HTMLInputElement', 'Event', 'MouseEvent', 'KeyboardEvent', 'fetch'] as const;
-const nativeGlobals: Partial<Record<(typeof DOM_GLOBALS)[number], unknown>> = {};
-
-let calls: string[] = [];
-/** The next response the stub hands back. Defaults to a 200 carrying `hello`. */
-let nextResponse: { ok: boolean; status: number; body: unknown } = {
-  ok: true,
-  status: 200,
-  body: { content: 'hello' },
-};
+import {
+  fetchCalls,
+  installReadDom,
+  mountRead,
+  readTool,
+  restoreReadDom,
+  setNextResponse,
+} from '@/client/components/workspace/chat-timeline/tool-renderers/panels/read-test-util';
 
 beforeAll(() => {
-  const win = new Window({ url: 'http://localhost' });
-  const target = globalThis as unknown as Record<string, unknown>;
-  for (const key of DOM_GLOBALS) {
-    nativeGlobals[key] = target[key];
-    target[key] = (win as unknown as Record<string, unknown>)[key];
-  }
-  // The panel reads the status and the body, so the stub has to carry both: a
-  // refused read is `ok: false` with an `error`, and the assertions below are
-  // about which sentence the panel printed.
-  const stub = (async (url: string) => {
-    calls.push(String(url));
-    const { ok, status, body } = nextResponse;
-    return { ok, status, json: async () => body };
-  }) as unknown as typeof globalThis.fetch;
-  globalThis.fetch = stub;
+  installReadDom();
 });
 
 afterAll(() => {
-  const target = globalThis as unknown as Record<string, unknown>;
-  for (const key of DOM_GLOBALS) {
-    if (nativeGlobals[key] === undefined) delete target[key];
-    else target[key] = nativeGlobals[key];
-  }
+  restoreReadDom();
 });
-
-/** Mount and flush the effect + its fetch microtask chain. */
-async function mount(tool: ToolCallData) {
-  const container = document.createElement('div');
-  document.body.appendChild(container);
-  await act(async () => {
-    render(h(Read, { tool, output: tool.output ?? '' }), container);
-  });
-  // The reader awaits `fetch` and then `res.json()`, and each state write lands
-  // a turn later; a few separate `act` passes drain that chain without binding
-  // the test to the clock.
-  for (let pass = 0; pass < 4; pass += 1) {
-    await act(async () => {
-      await Promise.resolve();
-    });
-  }
-  return container;
-}
-
-function readTool(partial: Partial<ToolCallData>): ToolCallData {
-  return { id: 'r1', type: 'read', name: 'read', title: 'read', output: '', status: 'success', details: {}, ...partial } as ToolCallData;
-}
 
 describe('Read panel — lazy fallback', () => {
   beforeEach(() => {
-    nextResponse = { ok: true, status: 200, body: { content: 'hello' } };
+    setNextResponse({ ok: true, status: 200, body: { content: 'hello' } });
   });
 
   test('a virtual URL never reaches /api/fs/read', async () => {
-    calls = [];
-    const el = await mount(readTool({ target: 'proc://kabmo-dev', input: { path: 'proc://kabmo-dev' } }));
-    expect(calls).toHaveLength(0);
+    fetchCalls.length = 0;
+    const el = await mountRead(readTool({ target: 'proc://kabmo-dev', input: { path: 'proc://kabmo-dev' } }));
+    expect(fetchCalls).toHaveLength(0);
     expect(el.textContent ?? '').not.toContain('Loaded file');
   });
 
   test('a real path still lazy-loads', async () => {
-    calls = [];
-    await mount(readTool({ target: 'src/x.ts', input: { path: 'src/x.ts' } }));
-    expect(calls[0]).toContain('/api/fs/read?path=src%2Fx.ts');
+    fetchCalls.length = 0;
+    await mountRead(readTool({ target: 'src/x.ts', input: { path: 'src/x.ts' } }));
+    expect(fetchCalls[0]).toContain('/api/fs/read?path=src%2Fx.ts');
   });
 
   test('a refused read prints the server’s reason, never a fake body', async () => {
     // A binary or oversized file is refused by the route with its own sentence.
     // Printing `// Loaded file: <path>` described contents that were never read.
-    nextResponse = {
+    setNextResponse({
       ok: false,
       status: 415,
       body: { error: 'This file is not text, so it cannot be shown in the editor.', kind: 'binary' },
-    };
-    const el = await mount(readTool({ target: 'archive.zip', input: { path: 'archive.zip' } }));
+    });
+    const el = await mountRead(readTool({ target: 'archive.zip', input: { path: 'archive.zip' } }));
     const text = el.textContent ?? '';
     expect(text).toContain('not text');
     expect(text).not.toContain('Loaded file');
   });
 
   test('a read whose body is missing a content field is reported, not faked', async () => {
-    nextResponse = { ok: true, status: 200, body: {} };
-    const el = await mount(readTool({ target: 'src/y.ts', input: { path: 'src/y.ts' } }));
+    setNextResponse({ ok: true, status: 200, body: {} });
+    const el = await mountRead(readTool({ target: 'src/y.ts', input: { path: 'src/y.ts' } }));
     const text = el.textContent ?? '';
     expect(text).toContain('HTTP 200');
     expect(text).not.toContain('Loaded file');
@@ -130,7 +83,7 @@ describe('Read panel — language and markdown', () => {
     // was badged `javascript` (the language detector's default for a path with
     // no extension) and rendered as one `<pre>` of literal syntax.
     const text = '# eval — Eval\n\n- Static content? Use `read`.';
-    const el = await mount(readTool({
+    const el = await mountRead(readTool({
       target: 'xd://eval',
       input: { path: 'xd://eval' },
       output: text.split('\n').map((row, index) => `${index + 1}|${row}`).join('\n'),
@@ -169,7 +122,7 @@ describe('Read panel — language and markdown', () => {
       '- MUST open a tab before direct use.',
       '</critical>',
     ].join('\n');
-    const el = await mount(readTool({
+    const el = await mountRead(readTool({
       target: 'xd://eval/browser',
       input: { path: 'xd://eval/browser' },
       output: text.split('\n').map((line, index) => `${index + 1}|${line}`).join('\n'),
@@ -193,7 +146,7 @@ describe('Read panel — language and markdown', () => {
     // `read xd://propose` payload (one row) rendered as the paragraph
     // `1|Write your plan's <slug> …`.
     const line = "Write your plan's <slug> as plain text to xd://propose to submit the plan for approval.";
-    const el = await mount(readTool({
+    const el = await mountRead(readTool({
       target: 'xd://propose',
       input: { path: 'xd://propose' },
       output: `1|${line}`,
@@ -211,7 +164,7 @@ describe('Read panel — language and markdown', () => {
   test('a failed xd:// read stays a message, not a document', async () => {
     // `read xd://nope` answers "No such tool: xd://nope. Mounted devices: …",
     // which is a refusal rather than a document; it keeps the code surface.
-    const el = await mount(readTool({
+    const el = await mountRead(readTool({
       target: 'xd://nope',
       input: { path: 'xd://nope' },
       status: 'error',
@@ -231,7 +184,7 @@ describe('Read panel — language and markdown', () => {
     // renderer must strip that gutter before the markdown parse — otherwise the
     // heading is the paragraph `1|# Diagnose`.
     const text = '# Diagnose\n\n## Steps\n\n1. Reproduce';
-    const el = await mount(readTool({
+    const el = await mountRead(readTool({
       target: 'skill://diagnose',
       input: { path: 'skill://diagnose' },
       output: text.split('\n').map((line, index) => `${index + 1}|${line}`).join('\n'),
@@ -250,7 +203,7 @@ describe('Read panel — language and markdown', () => {
   });
 
   test('a source file still gets its language badge and code gutter', async () => {
-    const el = await mount(readTool({
+    const el = await mountRead(readTool({
       target: 'src/x.ts',
       input: { path: 'src/x.ts' },
       output: '1|const a = 1;',
@@ -259,5 +212,20 @@ describe('Read panel — language and markdown', () => {
     const text = el.textContent ?? '';
     expect(text).toContain('typescript');
     expect(text).toContain('const a = 1;');
+  });
+
+  test('a directory read draws the tree omp printed', async () => {
+    // The listing lives in `ReadDirectory` (split for the file-size ceiling);
+    // this pins the wiring, so a prop rename cannot silently empty the card.
+    const el = await mountRead(readTool({
+      target: 'src',
+      input: { path: 'src' },
+      output: '.\n- components/\n- index.ts',
+    }));
+    const text = el.textContent ?? '';
+    expect(text).toContain('Directory');
+    expect(text).toContain('components/');
+    expect(text).toContain('index.ts');
+    expect(el.querySelector('svg.lucide-folder')).not.toBeNull();
   });
 });

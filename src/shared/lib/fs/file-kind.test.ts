@@ -23,8 +23,10 @@ import {
   getFileExtension,
   getImageMimeFromBytes,
   getImageMimeType,
+  getPaintableImageMimeType,
   getRawContentType,
   IMAGE_MIME_BY_EXT,
+  looksLikeSvg,
   SVG_MIME,
 } from '@/shared/lib/fs/file-kind';
 
@@ -180,6 +182,38 @@ describe('getRawContentType', () => {
   });
 });
 
+describe('getPaintableImageMimeType', () => {
+  test('a raster image keeps its own type', () => {
+    expect(getPaintableImageMimeType('shot.png')).toBe('image/png');
+    expect(getPaintableImageMimeType('shot.webp')).toBe('image/webp');
+  });
+
+  // The chat `read` card paints the file a tool returned, and an SVG is a
+  // picture there — while the editor keeps it on the code path, which is why
+  // `getImageMimeType` stays raster-only.
+  test('svg is paintable even though it is not an image kind', () => {
+    expect(getPaintableImageMimeType('logo.svg')).toBe(SVG_MIME);
+    expect(getImageMimeType('logo.svg')).toBeNull();
+  });
+
+  test('a document and a text file are not paintable', () => {
+    expect(getPaintableImageMimeType('report.pdf')).toBeNull();
+    expect(getPaintableImageMimeType('a.ts')).toBeNull();
+    expect(getPaintableImageMimeType(undefined)).toBeNull();
+  });
+});
+
+describe('looksLikeSvg', () => {
+  test('recognises a document and one behind a prolog', () => {
+    expect(looksLikeSvg(new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg"/>'))).toBe(true);
+    expect(looksLikeSvg(new TextEncoder().encode('<?xml version="1.0"?>\n<svg/>'))).toBe(true);
+  });
+
+  test('a PNG is not an SVG', () => {
+    expect(looksLikeSvg(new Uint8Array([0x89, 0x50, 0x4e, 0x47]))).toBe(false);
+  });
+});
+
 describe('getImageMimeFromBytes', () => {
   test('the PNG signature is recognized', () => {
     expect(getImageMimeFromBytes(bytes(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a))).toBe('image/png');
@@ -237,9 +271,18 @@ describe('getImageMimeFromBytes', () => {
     expect(getImageMimeFromBytes(bytes(0x89))).toBeNull();
   });
 
-  test('a UTF-8 text buffer is not mistaken for an image', () => {
-    const text = new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg"></svg>');
-    expect(getImageMimeFromBytes(text)).toBeNull();
+  test('an SVG document is named from its own text', () => {
+    // An SVG has no magic signature, so the sniff reads the head as text. The
+    // blob route depends on this answer: without it an SVG image block was
+    // labelled `application/octet-stream` and painted nothing.
+    const svg = new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg"></svg>');
+    expect(getImageMimeFromBytes(svg)).toBe(SVG_MIME);
+    expect(getImageMimeFromBytes(new TextEncoder().encode('<?xml version="1.0"?>\n<svg/>'))).toBe(SVG_MIME);
+  });
+
+  test('ordinary text is not mistaken for a picture', () => {
+    expect(getImageMimeFromBytes(new TextEncoder().encode('<html><body>hi</body></html>'))).toBeNull();
+    expect(getImageMimeFromBytes(new TextEncoder().encode('const a = 1;'))).toBeNull();
   });
 
   test('the first matching signature wins when bytes overlap two formats', () => {

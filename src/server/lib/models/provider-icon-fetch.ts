@@ -23,8 +23,8 @@
  *   stranger.
  */
 
-import { getImageMimeFromBytes } from '@/shared/lib/fs/file-kind';
-import { looksLikeSvg, pickIconHrefs, providerIconOrigins } from '@/server/lib/models/provider-icon-parse';
+import { getImageMimeFromBytes, looksLikeSvg } from '@/shared/lib/fs/file-kind';
+import { pickIconHrefs, providerIconOrigins } from '@/server/lib/models/provider-icon-parse';
 
 /** Per-request ceiling. A favicon slower than this is not worth the wait. */
 const FETCH_TIMEOUT_MS = 4_000;

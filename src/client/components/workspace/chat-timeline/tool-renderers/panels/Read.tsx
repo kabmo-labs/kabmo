@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'preact/hooks';
-import { FileCode, FileImage, FileText, Folder, FolderOpen, Info, Loader2 } from 'lucide-preact';
+import { FileCode, FileImage, FolderOpen, Info, Loader2 } from 'lucide-preact';
 import { getLanguageFromPath } from '@/shared/lib/code/language';
 import { useDeferredHighlightLines } from '@/client/hooks/code/deferred-highlight';
 import { parseDirListing, parseNumberedCode } from '@/shared/lib/code/parser';
-import { getImageMimeType } from '@/shared/lib/fs/file-kind';
+import { getPaintableImageMimeType, SVG_MIME } from '@/shared/lib/fs/file-kind';
 import { buildFsRawUrl, isVirtualPath, stripReadSelector } from '@/shared/lib/fs/paths';
 import { toolImageSrc } from '@/shared/lib/omp/session/tool-images';
 import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
@@ -14,6 +14,8 @@ import { extractLineMeta } from '@/client/components/workspace/chat-timeline/too
 import { ToolPanelHeader } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/ToolPanelHeader';
 import { NumberedCode } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/numbered-code';
 import { getToolInputPath } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/tool-input';
+import { ReadImage } from '@/client/components/workspace/chat-timeline/tool-renderers/panels/ReadImage';
+import { ReadDirectory } from '@/client/components/workspace/chat-timeline/tool-renderers/panels/ReadDirectory';
 import { isXdDocRead } from '@/client/components/workspace/chat-timeline/tool-renderers/registry';
 
 interface ReadPanelProps {
@@ -56,12 +58,29 @@ export function Read({ tool, targetFilePath, output }: ReadPanelProps) {
   // over an output that is an error message. The failure renders as its own
   // text instead.
   const readFailed = tool?.status === 'error' || tool?.isError === true;
-  const isPathImage = !resultImage && !readFailed && getImageMimeType(cleanFetchPath) !== null;
+  const pathImageMime = getPaintableImageMimeType(cleanFetchPath);
+  const isPathImage = !resultImage && !readFailed && pathImageMime !== null;
   const isImage = Boolean(resultImage) || isPathImage;
   const imageUrl = resultImage?.src ?? (isPathImage ? buildFsRawUrl({ path: cleanFetchPath }) : null);
+  /**
+   * An SVG read is the one picture the panel ALSO has text for: omp hands an
+   * `<svg>` back as source (it has no magic bytes, so the reader treats it as
+   * XML), and the file itself is a picture. So the preview is ADDED above the
+   * source instead of replacing it — the reader gets the rendering, and the
+   * markup the tool actually returned stays readable and copyable.
+   */
+  const svgPreviewUrl = isPathImage && pathImageMime === SVG_MIME ? imageUrl : null;
+
+  /**
+   * True when the card draws a picture and nothing else: a raster image (from
+   * the result's bytes or the path fallback) with no source text to show. An
+   * SVG is the exception — its preview sits above the markup — so the lazy text
+   * read still runs for it.
+   */
+  const isPictureOnly = isImage && !svgPreviewUrl;
 
   useEffect(() => {
-    if (cleanFetchPath && !virtualPath && !isImage && !output && lazyContent === null && !loadingFile) {
+    if (cleanFetchPath && !virtualPath && !isPictureOnly && !output && lazyContent === null && !loadingFile) {
       setLoadingFile(true);
       fetch(`/api/fs/read?path=${encodeURIComponent(cleanFetchPath)}`)
         .then(async (res) => {
@@ -85,7 +104,7 @@ export function Read({ tool, targetFilePath, output }: ReadPanelProps) {
           setLoadingFile(false);
         });
     }
-  }, [cleanFetchPath, virtualPath, output, lazyContent, loadingFile, isImage]);
+  }, [cleanFetchPath, virtualPath, output, lazyContent, loadingFile, isPictureOnly]);
 
   const details = (tool?.details ?? {}) as Record<string, any>;
   /** omp's own display text: the rows it drew, WITHOUT the `1|` line-number
@@ -180,7 +199,15 @@ export function Read({ tool, targetFilePath, output }: ReadPanelProps) {
   // `xd://` device docs, whose payload is the same markdown behind a
   // `text/plain` content type.
   const isMarkdown = isDocRead && !isDir;
-  const kindLabel = isDir ? 'Directory' : isImage ? 'Image' : isMarkdown ? 'Markdown' : lang;
+  const kindLabel = isDir
+    ? 'Directory'
+    : svgPreviewUrl
+      ? 'SVG'
+      : isImage
+        ? 'Image'
+        : isMarkdown
+          ? 'Markdown'
+          : lang;
   /** The document a markdown read draws — and what Copy copies. omp's own
    *  `displayContent.text` first: it is the gutter-free text, and the gutter
    *  stripper that serves every other read keeps a one-row document's `1|`
@@ -215,11 +242,11 @@ export function Read({ tool, targetFilePath, output }: ReadPanelProps) {
     <div className="space-y-2">
       {/* Header Info */}
       <ToolPanelHeader
-        icon={isDir ? <FolderOpen size={12} /> : isImage ? <FileImage size={12} /> : <FileCode size={12} />}
+        icon={isDir ? <FolderOpen size={12} /> : isImage || svgPreviewUrl ? <FileImage size={12} /> : <FileCode size={12} />}
         label={filePath || resultImage?.name || (isDir ? 'Directory Listing' : 'File Content')}
         badge={kindLabel}
         copyText={
-          rawContent && !isImage
+          rawContent && !isPictureOnly
             ? isMarkdown
               ? markdownContent
               : parsedCode.hasLineNumbers
@@ -230,18 +257,14 @@ export function Read({ tool, targetFilePath, output }: ReadPanelProps) {
         copyLabel="Copy file content"
       />
 
-      {isImage && imageUrl ? (
-        /* An image read has no code to show: paint the bytes. */
-        <div className="overflow-hidden rounded-lg border border-ink/8 bg-paper">
-          <div className="flex max-h-80 items-center justify-center overflow-auto bg-canvas/60 p-3">
-            <img
-              src={imageUrl}
-              alt={resultImage?.name ?? cleanFetchPath ?? 'Image'}
-              title={resultImage?.name ?? cleanFetchPath}
-              className="max-h-72 max-w-full object-contain"
-            />
-          </div>
-        </div>
+      {/* An SVG is a picture AND text: omp returns the markup, and the file
+          renders. The preview goes above the source the reader can still copy. */}
+      {svgPreviewUrl && <ReadImage src={svgPreviewUrl} name={cleanFetchPath || 'Image'} />}
+
+      {isPictureOnly && imageUrl ? (
+        /* An image read has no code to show: paint the bytes, and open them at
+           full size on click — the same surface the `eval` screenshots use. */
+        <ReadImage src={imageUrl} name={resultImage?.name ?? cleanFetchPath ?? 'Image'} />
       ) : loadingFile ? (
         <div className="flex items-center gap-2 rounded-lg border border-ink/8 bg-paper px-3 py-3 font-mono text-[11px] text-ink/50">
           <Loader2 size={12} className="animate-spin" />
@@ -249,49 +272,7 @@ export function Read({ tool, targetFilePath, output }: ReadPanelProps) {
         </div>
       ) : isDir ? (
         /* Render Directory Listing */
-        <div className="overflow-hidden rounded-lg border border-ink/8 bg-paper">
-          {skippedEntries > 0 && (
-            <div className="flex items-center gap-1.5 border-b border-ink/8 bg-canvas/60 px-3 py-1.5 text-[10px] text-ink/50">
-              <Info size={11} className="shrink-0" />
-              <span>… {skippedEntries} earlier entries hidden</span>
-            </div>
-          )}
-          <div className="max-h-72 divide-y divide-ink/[0.04] overflow-y-auto font-mono text-[11px]">
-            {visibleEntries.map((entry, idx) => (
-              <div
-                key={idx}
-                className="flex items-center gap-2 px-3 py-1.5 transition-colors hover:bg-ink/[0.02]"
-                style={{ paddingLeft: `${Math.max(12, (entry.indent + 1) * 16)}px` }}
-              >
-                {entry.isDir ? (
-                  <Folder size={12} className="shrink-0 text-ink/60" />
-                ) : (
-                  <FileText size={12} className="shrink-0 text-ink/40" />
-                )}
-                <span
-                  className={`min-w-0 flex-1 truncate ${
-                    entry.isDir ? 'font-semibold text-ink' : 'text-ink/80'
-                  }`}
-                >
-                  {entry.name}
-                  {entry.isDir && '/'}
-                </span>
-                {entry.size && <span className="shrink-0 font-mono text-[10px] text-ink/40">{entry.size}</span>}
-                {entry.time && (
-                  <span className="shrink-0 rounded bg-ink/5 px-1 py-0.2 font-mono text-[10px] text-ink/45">
-                    {entry.time}
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-          {dirInfo.notice && (
-            <div className="flex items-center gap-1.5 border-t border-ink/8 bg-canvas/60 px-3 py-1.5 text-[10px] text-ink/50">
-              <Info size={11} className="shrink-0" />
-              <span>{dirInfo.notice}</span>
-            </div>
-          )}
-        </div>
+        <ReadDirectory entries={visibleEntries} skipped={skippedEntries} notice={dirInfo.notice} />
       ) : isMarkdown ? (
         /* omp draws a `text/markdown` read (and an `xd://` doc read) as the
            document it is: headings, lists, links and code fences, not a code

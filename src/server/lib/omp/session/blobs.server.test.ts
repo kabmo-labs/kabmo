@@ -118,6 +118,40 @@ describe('readBlobImage', () => {
     expect(image?.bytes).toEqual(JPEG_BYTES);
   });
 
+  test('a WEBP blob is labelled from its RIFF/WEBP tag', async () => {
+    // A `read` of a `.webp` answers with an image block, and omp externalizes it
+    // to the store; the tag at offset 8 is the only evidence left once the
+    // sibling link is pruned.
+    const hash = 'e'.repeat(64);
+    const webpBytes = Buffer.from([0x52, 0x49, 0x46, 0x46, 0x20, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50]);
+    await fsp.writeFile(path.join(getBlobStoreDir(), hash), webpBytes);
+    const image = await readBlobImage(hash);
+    expect(image?.mimeType).toBe('image/webp');
+    expect(image?.bytes).toEqual(webpBytes);
+  });
+
+  test('an SVG blob is labelled from its own text', async () => {
+    // No magic table catches an SVG; it used to answer
+    // `application/octet-stream`, which no browser paints.
+    const hash = 'f'.repeat(64);
+    const svgBytes = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"/>');
+    await fsp.writeFile(path.join(getBlobStoreDir(), hash), svgBytes);
+    const image = await readBlobImage(hash);
+    expect(image?.mimeType).toBe('image/svg+xml');
+    expect(image?.bytes).toEqual(svgBytes);
+  });
+
+  test('an SVG whose head the text check rejects still answers from its link', async () => {
+    // A document that opens with a comment or a doctype is not recognised from
+    // the first tag; the hardlink omp writes beside the blob is the fallback.
+    const hash = '9'.repeat(64);
+    const svgBytes = Buffer.from('<!-- exported --><svg xmlns="http://www.w3.org/2000/svg"/>');
+    await fsp.writeFile(path.join(getBlobStoreDir(), hash), svgBytes);
+    await fsp.writeFile(path.join(getBlobStoreDir(), `${hash}.svg`), svgBytes);
+    const image = await readBlobImage(hash);
+    expect(image?.mimeType).toBe('image/svg+xml');
+  });
+
   test('a missing blob yields null', async () => {
     expect(await readBlobImage('d'.repeat(64))).toBeNull();
   });

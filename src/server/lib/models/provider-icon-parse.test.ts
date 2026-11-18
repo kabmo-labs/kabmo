@@ -13,7 +13,6 @@
 
 import { describe, expect, test } from 'bun:test';
 import {
-  looksLikeSvg,
   pickIconHrefs,
   providerBaseOrigin,
   providerIconOrigins,
@@ -158,16 +157,5 @@ describe('pickIconHrefs', () => {
     expect(new Set(urls).size).toBe(4);
     // Highest score first: 8x8, then 7x7, then 6x6, then 5x5.
     expect(urls[0]).toBe('https://kenari.id/i7.png');
-  });
-});
-
-describe('looksLikeSvg', () => {
-  test('recognises a document and one behind a prolog', () => {
-    expect(looksLikeSvg(new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg"/>'))).toBe(true);
-    expect(looksLikeSvg(new TextEncoder().encode('<?xml version="1.0"?>\n<svg/>'))).toBe(true);
-  });
-
-  test('a PNG is not an SVG', () => {
-    expect(looksLikeSvg(new Uint8Array([0x89, 0x50, 0x4e, 0x47]))).toBe(false);
   });
 });

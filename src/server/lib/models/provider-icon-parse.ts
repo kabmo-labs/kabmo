@@ -202,11 +202,3 @@ export function pickIconHrefs(html: string, origin: string, limit = 4): string[]
   }
   return urls.slice(0, limit);
 }
-
-/** True when the bytes are an SVG document (which no magic-byte table catches). */
-export function looksLikeSvg(bytes: Uint8Array): boolean {
-  // Decode only the head: an SVG's first tag is within the first few hundred
-  // bytes even with a prolog and a long `<style>`.
-  const head = new TextDecoder().decode(bytes.subarray(0, 2048)).trimStart();
-  return head.startsWith('<svg') || (head.startsWith('<?xml') && head.includes('<svg'));
-}
