@@ -4,6 +4,13 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.42.1](https://github.com/kabmo-labs/kabmo/compare/v0.42.0...v0.42.1) — 2026-11-18
+
+### Fixed
+
+* **chat:** stop a finished session re-arming its run on open ([80a6bcb](https://github.com/kabmo-labs/kabmo/commit/80a6bcbd472bcb323ea313f7b4699b1abda530f9)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **orchestration:** report a worker's real failure once, and draw Kabmo's prompts as cards ([a5f6290](https://github.com/kabmo-labs/kabmo/commit/a5f62903c29fc4accb0a5636222599199a51b838)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.42.0](https://github.com/kabmo-labs/kabmo/compare/v0.41.0...v0.42.0) — 2026-11-18
 
 ### Added
