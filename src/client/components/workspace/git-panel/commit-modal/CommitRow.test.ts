@@ -4,19 +4,19 @@
  */
 
 /**
- * Clicking a commit row opens its full message.
+ * Selection is the only state that reveals a commit's detail.
  *
- * The row drew `%s` alone, so a commit whose body carried the reasoning — the
- * common shape in this repository — showed one line and gave no way to read
- * the rest. What these mounts pin is the pair that makes the affordance
- * honest: a commit WITH a body expands on click (the subject stays, the body
- * appears below it), and a one-line commit offers nothing to expand, because a
- * chevron that opens an empty block reads as a broken row.
+ * The row used to fire two events on one click: select the commit and toggle
+ * its expansion. The file list could then be open on a row that was not the
+ * selected one. These mounts pin the replacement contract: the body and the
+ * changed-file list render for the selected commit, and clicking a row only
+ * selects it.
  */
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
 import { h, render } from 'preact';
+import { useState } from 'preact/hooks';
 import { act } from 'preact/test-utils';
 import { CommitRow } from '@/client/components/workspace/git-panel/commit-modal/CommitRow';
 import type { GitCommit } from '@/shared/types/git';
@@ -75,54 +75,68 @@ async function mount(commitRow: GitCommit, options: { isSelected?: boolean } = {
   return container;
 }
 
+/** A parent that owns the selection, the way the modal does. */
+function Harness({ commitRow }: { commitRow: GitCommit }) {
+  const [selected, setSelected] = useState(false);
+  return h(CommitRow, {
+    commit: commitRow,
+    isSelected: selected,
+    onSelect: () => setSelected(true),
+    onAction: () => {},
+    onToggleFile: () => {},
+    isExpandedFile: () => false,
+    isLoadingFile: () => false,
+    isFullContextFile: () => false,
+    onToggleContext: () => {},
+    fileDiffs: {},
+  });
+}
+
+async function mountInteractive(commitRow: GitCommit): Promise<HTMLElement> {
+  const container = document.createElement('div');
+  document.body.appendChild(container);
+  await act(async () => {
+    render(h(Harness, { commitRow }), container);
+  });
+  return container;
+}
+
 async function click(el: Element): Promise<void> {
   await act(async () => {
     el.dispatchEvent(new window.MouseEvent('click', { bubbles: true }) as unknown as Event);
   });
 }
 
-describe('CommitRow message expansion', () => {
-  test('the body is hidden until the row is clicked', async () => {
-    const el = await mount(commit('why the change was made'));
-    expect(el.textContent).toContain('feat(scope): the subject line');
+describe('CommitRow selected detail', () => {
+  test('the body is hidden until the commit is selected', async () => {
+    const unselected = await mount(commit('why the change was made'));
+    expect(unselected.textContent).toContain('feat(scope): the subject line');
+    expect(unselected.textContent).not.toContain('why the change was made');
+
+    const selected = await mount(commit('why the change was made'), { isSelected: true });
+    expect(selected.textContent).toContain('why the change was made');
+  });
+
+  test('clicking the row selects the commit and reveals its detail', async () => {
+    const el = await mountInteractive(commit('why the change was made'));
     expect(el.textContent).not.toContain('why the change was made');
 
     await click(el.firstElementChild!);
     expect(el.textContent).toContain('why the change was made');
   });
 
-  test('clicking again collapses the body', async () => {
-    const el = await mount(commit('why the change was made'));
+  test('clicking the selected row again keeps the detail visible', async () => {
+    const el = await mountInteractive(commit('why the change was made'));
     await click(el.firstElementChild!);
     await click(el.firstElementChild!);
-    expect(el.textContent).not.toContain('why the change was made');
+    expect(el.textContent).toContain('why the change was made');
   });
 
-  test('a one-line commit renders no body and no expand affordance', async () => {
+  test('a one-line commit with no files renders no detail affordance', async () => {
     const el = await mount(commit(undefined));
     expect(el.textContent).toContain('feat(scope): the subject line');
-    // The subject row carries no chevron, so the row never promises a body.
+    // The subject row carries no chevron, so the row never promises a detail.
     expect(el.querySelectorAll('svg').length).toBe(1); // the copy-hash icon only
-  });
-
-  test('a click that ends a text selection does not collapse the body', async () => {
-    const el = await mount(commit('selectable text'));
-    await click(el.firstElementChild!);
-    expect(el.textContent).toContain('selectable text');
-
-    // Simulate selecting part of the body, then clicking to copy it.
-    const range = document.createRange();
-    range.selectNodeContents(el.querySelector('div.whitespace-pre-wrap')!);
-    const selection = window.getSelection()!;
-    selection.removeAllRanges();
-    selection.addRange(range);
-
-    await click(el.firstElementChild!);
-    expect(el.textContent).toContain('selectable text');
-
-    selection.removeAllRanges();
-    await click(el.firstElementChild!);
-    expect(el.textContent).not.toContain('selectable text');
   });
 });
 
@@ -132,54 +146,58 @@ describe('CommitRow changed-file list', () => {
     { file: 'src/two.ts', status: 'A', additions: 9, deletions: 0 },
   ];
 
-  test('the file list is hidden until the row is expanded', async () => {
-    const el = await mount(commit(undefined, files));
-    expect(el.textContent).toContain('feat(scope): the subject line');
+  test('the file list is hidden until the commit is selected', async () => {
+    const unselected = await mount(commit(undefined, files));
+    expect(unselected.textContent).toContain('feat(scope): the subject line');
+    expect(unselected.textContent).not.toContain('src/one.ts');
+    expect(unselected.textContent).not.toContain('src/two.ts');
+
+    const selected = await mount(commit(undefined, files), { isSelected: true });
+    expect(selected.textContent).toContain('src/one.ts');
+    expect(selected.textContent).toContain('src/two.ts');
+  });
+
+  test('clicking the row selects the commit and reveals the file list', async () => {
+    const el = await mountInteractive(commit(undefined, files));
     expect(el.textContent).not.toContain('src/one.ts');
-    expect(el.textContent).not.toContain('src/two.ts');
 
     await click(el.firstElementChild!);
     expect(el.textContent).toContain('src/one.ts');
     expect(el.textContent).toContain('src/two.ts');
   });
 
-  test('a commit with files but no body still expands', async () => {
-    const el = await mount(commit(undefined, files));
+  test('a commit with files but no body still shows the file list when selected', async () => {
+    const el = await mount(commit(undefined, files), { isSelected: true });
     // The chevron is the affordance: without it the file list would be
     // unreachable on a one-line commit.
-    expect(el.querySelectorAll('svg').length).toBe(2); // copy-hash + chevron
-    await click(el.firstElementChild!);
+    const subject = Array.from(el.querySelectorAll('button[aria-expanded]')).find((button) =>
+      button.textContent?.includes('feat(scope): the subject line')
+    );
+    expect(subject?.querySelector('svg')).toBeTruthy();
     expect(el.textContent).toContain('src/one.ts');
   });
 
-  test('the collapsed row states how many files the commit touched', async () => {
+  test('the unselected row states how many files the commit touched', async () => {
     const el = await mount(commit(undefined, files));
     expect(el.textContent).toContain('2 files');
   });
 
-  test('clicking again collapses the file list', async () => {
-    const el = await mount(commit(undefined, files));
-    await click(el.firstElementChild!);
-    await click(el.firstElementChild!);
-    expect(el.textContent).not.toContain('src/one.ts');
-  });
-
-  test('the subject is a button that reports and toggles the expanded state', async () => {
-    const el = await mount(commit(undefined, files));
-    const subject = Array.from(el.querySelectorAll('button[aria-expanded]')).find((button) =>
+  test('the subject is a button that reports the selected state', async () => {
+    const unselected = await mount(commit(undefined, files));
+    const unselectedSubject = Array.from(unselected.querySelectorAll('button[aria-expanded]')).find((button) =>
       button.textContent?.includes('feat(scope): the subject line')
     ) as HTMLButtonElement | undefined;
-    expect(subject).toBeTruthy();
-    expect(subject?.getAttribute('aria-expanded')).toBe('false');
+    expect(unselectedSubject?.getAttribute('aria-expanded')).toBe('false');
 
-    await click(subject!);
-    expect(el.textContent).toContain('src/one.ts');
-    expect(subject?.getAttribute('aria-expanded')).toBe('true');
+    const selected = await mount(commit(undefined, files), { isSelected: true });
+    const selectedSubject = Array.from(selected.querySelectorAll('button[aria-expanded]')).find((button) =>
+      button.textContent?.includes('feat(scope): the subject line')
+    ) as HTMLButtonElement | undefined;
+    expect(selectedSubject?.getAttribute('aria-expanded')).toBe('true');
   });
 
   test('a file row is a button that reports its own expanded state', async () => {
-    const el = await mount(commit(undefined, files));
-    await click(el.firstElementChild!);
+    const el = await mount(commit(undefined, files), { isSelected: true });
     const fileRow = Array.from(el.querySelectorAll('button[aria-expanded]')).find((button) =>
       button.textContent?.includes('src/one.ts')
     ) as HTMLButtonElement | undefined;

@@ -2,6 +2,7 @@ import type { TargetedMouseEvent } from 'preact';
 import { useState } from 'preact/hooks';
 import { Check, ChevronDown, ChevronRight, Copy } from 'lucide-preact';
 import type { GitCommit, GitCommitFile } from '@/shared/types/git';
+import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
 import { CommitActions } from '@/client/components/workspace/git-panel/commit-modal/CommitActions';
 import { CommitDiffViewer } from '@/client/components/workspace/git-panel/commit-modal/CommitDiffViewer';
 
@@ -33,12 +34,9 @@ export function CommitRow({
   headerRef,
 }: CommitRowProps) {
   const [copied, setCopied] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
-  // A one-line commit with no changed files has nothing to expand, and no
-  // affordance is drawn, because a chevron that opens an empty block reads as
-  // a broken row. The changed-file list is part of the expanded block: a page
-  // of 50 commits otherwise renders every file of every commit at once, which
-  // buries the subjects the list exists to show.
+  // Selection is the only state that reveals the detail. A separate expand
+  // toggle made one click fire two events (select and expand), and the file
+  // list could be open on a row that was not the selected one.
   const body = commit.body?.trim() ?? '';
   const hasBody = body.length > 0;
   const files = commit.files ?? [];
@@ -58,27 +56,12 @@ export function CommitRow({
     onToggleFile(commit.hash, file);
   };
 
-  // Clicking the row still selects it for the action strip, and additionally
-  // opens the full message and the changed-file list, neither of which is
-  // visible in the collapsed row. A click that ends a text selection must not
-  // count: copying the message out of an open body would otherwise collapse
-  // the very block being read.
-  const handleRowClick = () => {
-    onSelect(commit);
-    if (!expandable) return;
-    const selection = globalThis.getSelection?.();
-    if (selection && !selection.isCollapsed) return;
-    setIsExpanded((prev) => !prev);
-  };
-
   return (
     <div
-      onClick={handleRowClick}
+      onClick={() => onSelect(commit)}
       data-testid="commit-row"
       data-commit-hash={commit.hash}
-      className={`border-b border-ink/5 transition-colors cursor-pointer ${
-        isSelected ? 'bg-ink/[0.03]' : 'hover:bg-ink/[0.015]'
-      }`}
+      className="border-b border-ink/5 transition-colors cursor-pointer hover:bg-ink/[0.015]"
     >
       <div className="py-2.5 flex flex-col">
         {/* Commit Header Line */}
@@ -122,9 +105,9 @@ export function CommitRow({
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                handleRowClick();
+                onSelect(commit);
               }}
-              aria-expanded={expandable ? isExpanded : undefined}
+              aria-expanded={expandable ? isSelected : undefined}
               className="flex flex-1 min-w-0 items-start gap-1.5 text-left cursor-pointer rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/20"
             >
               <span
@@ -135,16 +118,16 @@ export function CommitRow({
               </span>
               {expandable && (
                 <span className="text-ink/55 flex-shrink-0 mt-0.5" aria-hidden="true">
-                  {isExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                  {isSelected ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
                 </span>
               )}
             </button>
           </div>
 
-          {/* Full commit message body — the subject alone hides it */}
-          {hasBody && isExpanded && (
-            <div className="text-[12px] text-ink/70 leading-relaxed whitespace-pre-wrap break-words border-l-2 border-ink/15 pl-2.5 py-0.5 font-mono">
-              {body}
+          {/* Full commit message body, rendered as markdown for the selected commit */}
+          {hasBody && isSelected && (
+            <div className="border-l-2 border-ink/15 pl-3 py-1">
+              <MarkdownRenderer content={body} className="text-ink/70" />
             </div>
           )}
 
@@ -179,9 +162,8 @@ export function CommitRow({
           </div>
         )}
 
-          {/* Changed Files List — part of the expanded block, so a collapsed
-              page stays a list of subjects rather than a wall of paths. */}
-        {hasFiles && isExpanded && (
+          {/* Changed Files List, shown for the selected commit */}
+        {hasFiles && isSelected && (
           <div className="mt-2 flex flex-col gap-1">
             {files.map((file, fileIdx) => {
               const fileExpanded = isExpandedFile(commit.hash, file.file);

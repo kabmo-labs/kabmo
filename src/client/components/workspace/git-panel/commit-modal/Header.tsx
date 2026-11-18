@@ -140,7 +140,7 @@ export function Header({
           onChange={(e) => onSearchChange(e.currentTarget.value)}
           placeholder="Filter commits by message, author, or hash..."
           aria-label="Filter commits"
-          className="w-full bg-ink/[0.03] border border-ink/15 rounded-md pl-8 pr-3 py-1.5 text-xs text-ink placeholder-ink/40 focus:outline-none focus:border-ink/40 focus-visible:ring-2 focus-visible:ring-ink/20 transition-colors font-mono"
+          className="w-full bg-ink/[0.03] border border-ink/15 rounded-md pl-8 pr-3 py-1.5 text-xs text-ink placeholder-ink/40 focus:outline-none focus:border-ink/40 transition-colors font-mono"
         />
         {searchQuery && (
           <button
