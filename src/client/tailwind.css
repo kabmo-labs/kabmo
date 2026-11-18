@@ -458,6 +458,35 @@
   overflow-y: auto;
 }
 
+/* The session list's right inset, so its content edge is the action row's.
+ *
+ * The list is a scroller, and the app's scrollbar is 8px of LAYOUT
+ * (`--scrollbar-size`), not an overlay: `overflow-y: overlay` is gone from
+ * Chrome. The action row above it is not a scroller, so its content edge is
+ * `px-3` (12px) from the panel while the rows' was 8px of padding PLUS the
+ * 8px bar — 16px. Measured on the running app, the sort icon's centre sat 8px
+ * right of every row's `⋯` and of the age's right edge, which is the reported
+ * "titik tiga tidak lurus dengan sort".
+ *
+ * `overflow-y: scroll`, not `auto`: the bar must be reserved even when the
+ * list is short, or the rows jump 8px sideways the first time they need to
+ * scroll — and the sort icon would be off by 8px in exactly the state nobody
+ * screenshots. WebKit 27 (the desktop shell) advertises `scrollbar-gutter`
+ * but does NOT reserve it for a non-overflowing `auto` scroller (measured:
+ * `clientWidth == offsetWidth` with `stable` set; `scroll` gives the 8px), so
+ * the always-present bar is the only portable reservation. Its track and thumb
+ * are transparent at rest, so it paints nothing. This rule is declared after
+ * `.scrollbar-overlay-container`, whose `auto` it deliberately overrides.
+ *
+ * The padding is then the action row's 12px minus that reserved 8px. The
+ * row's own trailing inset (3px, half the box difference) finishes the
+ * alignment: sort glyph centre = row `⋯` centre = age's right edge.
+ */
+.session-list-gutter {
+  overflow-y: scroll;
+  padding-right: calc(0.75rem - var(--scrollbar-size));
+}
+
 /* The composer reads at the transcript's own size — 13px — EXCEPT on iOS.
  *
  * Every message row in the timeline is `text-[13px] leading-relaxed`, and a

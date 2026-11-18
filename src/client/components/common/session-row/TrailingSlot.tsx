@@ -20,6 +20,14 @@
  * workspace header's action cluster uses, so the two `⋯` columns share one
  * centre. A box that merely fit the glyph (14px + a 4px pad) put the row's dots
  * 2px left of the header's on touch.
+ *
+ * That box is NARROWER than the action row's sort control (28px, 36px on
+ * touch), so the row's right inset is 3px (4px on touch) — half the difference,
+ * centring the `⋯` on the sort glyph. The age keeps its 4px inset inside the
+ * box, which is exactly the glyph's own inset — so at rest the age ends on the
+ * same x as the sort icon's right edge, and on hover the dots take its place on
+ * that line. The list's content edge is the action row's (`.session-list-gutter`
+ * in `tailwind.css`), so no scrollbar-width correction belongs here.
  */
 
 import type { TargetedMouseEvent } from 'preact';

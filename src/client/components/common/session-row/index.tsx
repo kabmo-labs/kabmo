@@ -25,13 +25,20 @@
  * ## The gutter is shared with the workspace header, numerically
  *
  * 4px of inset, the leading slot (16px; 18px on touch), then 8px before the
- * text; and on the trailing side a 22px (28px on touch) box ending 4px inside
- * the row's own edge — the same numbers `WorkspaceHeader` uses, so the status
- * glyph sits under the folder mark, the title under the folder name, and the two
- * `⋯` triggers share one column. `pl-1 pr-1`, not the `px-2` this row started
- * with: the header's own `px-1` is inside a container that starts at the list's
- * edge, and matching the row's padding to the header's is what makes the columns
- * line up.
+ * text; and on the trailing side a 22px (28px on touch) box — the same numbers
+ * `WorkspaceHeader` uses, so the status glyph sits under the folder mark, the
+ * title under the folder name, and the two `⋯` triggers share one column.
+ *
+ * The right inset is 3px (4px on touch), which is exactly half the difference
+ * between the trailing box and the chrome control it lines up with. The action
+ * row's sort trigger is a 28px box (36px on touch); a row's `⋯` box is 22px
+ * (28px). The list's content edge is the action row's content edge (see
+ * `.session-list-gutter`), so centring the narrower box needs only that half
+ * difference — the reported "titik tiga tidak lurus dengan sort". The age keeps
+ * its 4px inset inside the box, which is the glyph's own inset, so at rest the
+ * age ends on the sort icon's right edge and on hover the dots take its place
+ * on that line. `WorkspaceHeader` states the same inset; the row and the header
+ * move together.
  *
  * ## The touch row is exactly as tall as the folder header
  *
@@ -61,7 +68,7 @@ export type SessionRowDensity = 'compact' | 'touch';
 /** What a subagent row under this chrome's rows borrows from it. */
 export function sessionRowBranchStyle(touch: boolean): BranchRowStyle {
   return {
-    inset: 'pl-1 pr-1',
+    inset: touch ? 'pl-1 pr-1' : 'pl-1 pr-[3px]',
     insetPx: 4,
     slotWidth: touch ? 18 : 16,
     markGap: 8,
@@ -185,7 +192,7 @@ export function SessionRow({
         onClick={selectable ? onToggleSelect : onClick}
         onContextMenu={hasActions && !selectable ? menu.openAtCursor : undefined}
         className={`group/item relative flex w-full items-center rounded-lg text-xs transition-colors select-none cursor-pointer ${
-          touch ? 'py-0.5 pl-1 pr-1' : 'py-[7px] pl-1 pr-1'
+          touch ? 'py-0.5 pl-1 pr-1' : 'py-[7px] pl-1 pr-[3px]'
         } ${
           (selectable && selected) || menuOpen
             ? SESSION_ROW_ATTENTION_CLASS

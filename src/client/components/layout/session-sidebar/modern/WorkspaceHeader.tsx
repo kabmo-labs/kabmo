@@ -24,13 +24,19 @@
  * The icon column, the title column and the TRAILING column are the same columns
  * as a session row's (`common/session-row`): 4px of inset, a 16px slot (18px on
  * touch), then 8px before the text; and on the right, a 22px (28px on touch)
- * action box ending 4px inside the list's content edge. Measured before this
- * rule existed, the folder mark's centre sat at x=20 while the row's status glyph
- * sat at 24, the folder name at 34 while the session title started at 40, and the
- * two `⋯` triggers were 9px apart (8px vs 16px from the panel edge) — three steps
- * that made the list look like two lists. A header that "looked about right" is
- * what produced them: the pair has to be stated, so it is stated here and in
- * `session-row`.
+ * action box ending 3px (4px on touch) inside the list's content edge — half
+ * the difference between it and the action row's 28px (36px) sort control.
+ * Measured before this rule existed, the folder mark's centre sat at x=20 while
+ * the row's status glyph sat at 24, the folder name at 34 while the session
+ * title started at 40, and the two `⋯` triggers were 9px apart (8px vs 16px
+ * from the panel edge) — three steps that made the list look like two lists. A
+ * header that "looked about right" is what produced them: the pair has to be
+ * stated, so it is stated here and in `session-row`.
+ *
+ * The list's content edge is the action row's (`modern/index.tsx` +
+ * `.session-list-gutter`), which is why the trailing column needs only the
+ * half-box difference: with a scrollbar taking 8px, the rows used to sit 8px
+ * inside the sort icon and no inset could close that gap.
  *
  * The actions are the same components the classic header uses — `＋` opens a
  * chat in THIS folder and `⋯` is `WorkspaceOptionsMenu` — so pin, delete,
@@ -158,12 +164,15 @@ export function WorkspaceHeader({
         </span>
       </button>
 
-      {/* `pr-1`: the action cluster ends where a session row's trailing control
-          ends (4px inside the list's content edge), so the two `⋯` columns are
-          one column — measured before this rule, the folder's sat 8px from the
-          panel edge and the row's 16px, a 9px step between glyph centres. */}
+      {/* `pr-[3px]` on the desktop and `pr-1` on touch: the action cluster ends
+          on the SAME inset as a session row's trailing column
+          (`common/session-row`) — half the difference between the 22px (28px)
+          `⋯` box and the action row's 28px (36px) sort control — so the two
+          `⋯` columns and the sort icon share one centre. The list's content
+          edge is the action row's content edge (`.session-list-gutter`), which
+          is what makes that half difference the whole story. */}
       {!batchActive && (
-        <div className="flex shrink-0 items-center gap-0.5 pr-1">
+        <div className={`flex shrink-0 items-center gap-0.5 ${touch ? 'pr-1' : 'pr-[3px]'}`}>
           <button
             type="button"
             title="New Session"
