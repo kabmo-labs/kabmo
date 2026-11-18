@@ -74,7 +74,8 @@ private func setProcessName(_ name: String) {
   UserDefaults.standard.set(name, forKey: "NSApplicationName")
 }
 
-final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, ShellCommandHost, WKNavigationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, ShellCommandHost, WKNavigationDelegate,
+  ShellMenuActions, NSMenuItemValidation {
   private var window: ShellWindow!
   private var webView: DropWebView!
   private var supervisor = Supervisor()
@@ -224,7 +225,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
       load: { readState() },
       save: { writeState($0) }
     )
-    buildMenu()
+    installMenu()
     buildWindow()
     // A click has to be delivered to this shell, and `UNUserNotificationCenter`
     // keeps only a weak delegate — the delegate is this AppDelegate, which the
@@ -322,6 +323,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
     configuration.preferences.isElementFullscreenEnabled = true
 
     webView = DropWebView(frame: rect, configuration: configuration)
+    // Set ONCE, from the build: the old row toggled this and reloaded the page
+    // to make the change take effect, which threw away the live document. A
+    // release build leaves it off, so the page is not exposed to Safari's
+    // Develop menu.
+    if #available(macOS 13.3, *) {
+      webView.isInspectable = Self.devToolsEnabled
+    }
     webView.autoresizingMask = [.width, .height]
     webView.navigationDelegate = self
     // A web view with no `uiDelegate` answers EVERY `<input type="file">` click
@@ -572,6 +580,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
     // `didStartProvisionalNavigation` arrives the view already points at the
     // incoming document, so the comparison would match every navigation.
     shownURL = webView.url?.absoluteString
+    // `pageZoom` belongs to the view and every navigation resets it, so the
+    // host's remembered value is applied here — the first moment the new
+    // document exists.
+    restoreZoom()
     // A page can take the files the OS handed over only once it exists. The
     // launch batch was queued before the window was built, and a warm open can
     // land before the current navigation settles — both are drained here.
@@ -1039,84 +1051,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
   // ---------------------------------------------------------------- menu
 
   /**
-   The menu bar a macOS app is expected to have.
+   Install the menu bar.
 
-   Five menus, because each one is where a user looks for something specific and a
-   missing menu is not "minimal", it is broken: ⌘W/⌘M/⌃⌘F live in File and Window,
-   the window list lives in Window, the browser-shaped actions (Reload, zoom,
-   inspector) live in View, and the editing chords live in Edit. The actions are
-   the WINDOW's own selectors so AppKit routes them to whichever window is key — a
-   target of `self` would act on this delegate instead.
+   The table lives in `MenuBar.swift` (library target) so the suites install the
+   SAME rows the app ships — the Edit menu shipped missing once because its
+   builder was unreachable from a test, and this is the rest of that fix.
 
-   **Edit is not decoration.** A `WKWebView` is handed ⌘C/⌘V/⌘X/⌘Z/⌘A only
-   through a menu item that declares the key equivalent; with no Edit menu the
-   chords reach the page's `keydown` and nothing else, so the composer ignored
-   ⌘V (see `EditMenu.swift` for the A/B measurement).
+   Four of the menus are also handed to `NSApp`, and each has a reason: AppKit
+   fills `servicesMenu` from the system's providers (and without it the submenu
+   is absent), it adds the Help search field to `helpMenu`, it appends the window
+   list to `windowsMenu`, and `mainMenu` is the bar itself.
    */
-  private func buildMenu() {
-    let mainMenu = NSMenu()
-
-    // App
-    let appItem = NSMenuItem()
-    mainMenu.addItem(appItem)
-    let appMenu = NSMenu()
-    appMenu.addItem(withTitle: "About Kabmo", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
-    appMenu.addItem(.separator())
-    appMenu.addItem(withTitle: "Settings…", action: #selector(openConsoleSettings), keyEquivalent: ",")
-    appMenu.addItem(.separator())
-    appMenu.addItem(withTitle: "Hide Kabmo", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
-    let hideOthers = NSMenuItem(title: "Hide Others", action: #selector(NSApplication.hideOtherApplications(_:)), keyEquivalent: "h")
-    hideOthers.keyEquivalentModifierMask = [.command, .option]
-    appMenu.addItem(hideOthers)
-    appMenu.addItem(withTitle: "Show All", action: #selector(NSApplication.unhideAllApplications(_:)), keyEquivalent: "")
-    appMenu.addItem(.separator())
-    appMenu.addItem(withTitle: "Quit Kabmo", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
-    appItem.submenu = appMenu
-
-    // File — the window's own close, so ⌘W reaches the key window.
-    let fileItem = NSMenuItem()
-    mainMenu.addItem(fileItem)
-    let fileMenu = NSMenu(title: "File")
-    fileMenu.addItem(withTitle: "Close Window", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
-    fileItem.submenu = fileMenu
-
-    // Edit — the menu that is NOT cosmetic. A WKWebView receives no ⌘C/⌘V/⌘X/⌘Z/⌘A
-    // unless the menu bar declares those key equivalents, so without this menu the
-    // console's composer ignores the keyboard's own clipboard chords (see
-    // `EditMenu.swift` for the measurement).
-    let editItem = NSMenuItem()
-    mainMenu.addItem(editItem)
-    editItem.submenu = buildEditMenu()
-
-    // View — the browser-shaped actions.
-    let viewItem = NSMenuItem()
-    mainMenu.addItem(viewItem)
-    let viewMenu = NSMenu(title: "View")
-    viewMenu.addItem(withTitle: "Reload", action: #selector(reloadPage), keyEquivalent: "r")
-    viewMenu.addItem(withTitle: "Toggle Developer Tools", action: #selector(toggleDevTools), keyEquivalent: "i")
-    viewMenu.addItem(.separator())
-    viewMenu.addItem(withTitle: "Actual Size", action: #selector(zoomActualSize), keyEquivalent: "0")
-    viewMenu.addItem(withTitle: "Zoom In", action: #selector(zoomIn), keyEquivalent: "+")
-    viewMenu.addItem(withTitle: "Zoom Out", action: #selector(zoomOut), keyEquivalent: "-")
-    viewItem.submenu = viewMenu
-
-    // Window — minimise, zoom, full screen, and the window list. AppKit fills the
-    // list itself because this menu is assigned as `NSApp.windowsMenu`.
-    let windowItem = NSMenuItem()
-    mainMenu.addItem(windowItem)
-    let windowMenu = NSMenu(title: "Window")
-    windowMenu.addItem(withTitle: "Minimize", action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
-    windowMenu.addItem(withTitle: "Zoom", action: #selector(NSWindow.performZoom(_:)), keyEquivalent: "")
-    let fullScreen = NSMenuItem(title: "Toggle Full Screen", action: #selector(NSWindow.toggleFullScreen(_:)), keyEquivalent: "f")
-    fullScreen.keyEquivalentModifierMask = [.control, .command]
-    windowMenu.addItem(fullScreen)
-    windowMenu.addItem(.separator())
-    windowMenu.addItem(withTitle: "Bring All to Front", action: #selector(NSApplication.arrangeInFront(_:)), keyEquivalent: "")
-    windowItem.submenu = windowMenu
-    NSApp.windowsMenu = windowMenu
-
-    NSApp.mainMenu = mainMenu
+  private func installMenu() {
+    let parts = MenuBar.parts(includeDevTools: Self.devToolsEnabled)
+    NSApp.mainMenu = parts.main
+    NSApp.servicesMenu = parts.services
+    NSApp.helpMenu = parts.help
+    NSApp.windowsMenu = parts.windows
   }
+
+  /// Whether this build offers the Web Inspector. A release build must not:
+  /// `isInspectable` hands the live page to Safari's Develop menu, which is a
+  /// debugging affordance rather than a product surface.
+  private static var devToolsEnabled: Bool {
+    #if DEBUG
+    return true
+    #else
+    return ProcessInfo.processInfo.environment["KABMO_DEVTOOLS"] == "1"
+    #endif
+  }
+
+  // ------------------------------------------------------------------- App
 
   /**
    Settings › opens the console's OWN settings modal.
@@ -1130,26 +1095,164 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
    discarding the live document: a running turn, the composer draft and the
    timeline's scroll position all went with it.
    */
-  @objc private func openConsoleSettings() {
+  @objc func openConsoleSettings(_ sender: Any?) {
     openSettings(in: webView)
   }
 
-  @objc private func zoomActualSize() { webView.pageZoom = 1 }
-  @objc private func zoomIn() { webView.pageZoom = min(webView.pageZoom * 1.1, 3) }
-  @objc private func zoomOut() { webView.pageZoom = max(webView.pageZoom / 1.1, 0.5) }
+  /// The shell's own server list and pairing sheet. It was reachable only while
+  /// the splash was up or after a failed connection, so a user who wanted to
+  /// switch servers had to quit.
+  @objc func changeServer(_ sender: Any?) {
+    openServerSettings()
+  }
 
-  @objc private func reloadPage() {
+  /// Check for Updates… asks the page, because the check and its verdict live in
+  /// `useUpdates` on whichever sidebar is mounted. See `checkUpdatesScript`.
+  @objc func checkForUpdates(_ sender: Any?) {
+    requestUpdateCheck(in: webView)
+  }
+
+  // ------------------------------------------------------------------ File
+
+  /// New Session is a page command: the console owns the routing state and the
+  /// sidebar's rule for "the empty workspace" (`openEmptyWorkspace`).
+  @objc func newSession(_ sender: Any?) {
+    runCommand("workspace.newSession", in: webView)
+  }
+
+  /**
+   Open… — the Finder panel for a document, which is the one entry point the
+   shell could not otherwise offer: a `WKWebView` never sees a path a double-click
+   carried, and `openFiles` only fires when the OS hands a file over.
+
+   The panel is a SHEET, and the paths go through the same queue and the same
+   script as an OS open, so a file picked here and a file double-clicked in
+   Finder arrive identically (`OpenPaths.swift`).
+   */
+  @objc func openFile(_ sender: Any?) {
+    let panel = NSOpenPanel()
+    panel.allowsMultipleSelection = true
+    panel.canChooseDirectories = false
+    panel.canChooseFiles = true
+    panel.beginSheetModal(for: window) { [weak self] response in
+      guard let self, response == .OK else { return }
+      self.openedPaths.add(panel.urls.map(\.path))
+      self.flushOpenPaths()
+    }
+  }
+
+  // ------------------------------------------------------------------ View
+
+  /// One row for every page command. `representedObject` is the catalog id, so
+  /// the table states the id once and the action stays a single function.
+  @objc func runPageCommand(_ sender: Any?) {
+    guard let item = sender as? NSMenuItem, let id = item.representedObject as? String else { return }
+    runCommand(id, in: webView)
+  }
+
+  @objc func reloadPage(_ sender: Any?) {
     webView.reload()
   }
 
-  /// `isInspectable` is the switch that turns on the Web Inspector for a
-  /// WKWebView on macOS 13.3+; without it ⌘⌥I does nothing and a rendering bug
-  /// in the page cannot be looked at from inside the shell.
-  @objc private func toggleDevTools() {
-    if #available(macOS 13.3, *) {
-      webView.isInspectable.toggle()
+  /// The console in the user's browser — a second screen, and the surface a
+  /// developer can attach real Web Inspector to.
+  @objc func openInBrowser(_ sender: Any?) {
+    guard let url = webView.url else { return }
+    NSWorkspace.shared.open(url)
+  }
+
+  @objc func zoomActualSize(_ sender: Any?) { applyZoom(ZoomStore.defaultZoom) }
+  @objc func zoomIn(_ sender: Any?) { applyZoom(ZoomStore.zoomedIn(webView.pageZoom)) }
+  @objc func zoomOut(_ sender: Any?) { applyZoom(ZoomStore.zoomedOut(webView.pageZoom)) }
+
+  /**
+   Allow Web Inspector, as a CHECKMARK row rather than the old toggle.
+
+   `isInspectable` is already set from the build at creation, so a row that
+   toggled it would start by turning it OFF — and the old implementation forced a
+   `reload()` to make the toggle take effect, which discarded the live document.
+   The state is real (`validateMenuItem` draws it), the reload is gone.
+   */
+  @objc func toggleWebInspector(_ sender: Any?) {
+    if #available(macOS 13.3, *) { webView.isInspectable.toggle() }
+  }
+
+  // ---------------------------------------------------------------- Window
+
+  /// A diagnostic workbench is often parked beside the thing it diagnoses.
+  @objc func keepOnTop(_ sender: Any?) {
+    window.level = window.level == .floating ? .normal : .floating
+  }
+
+  // ------------------------------------------------------------------ Help
+
+  @objc func openHelp(_ sender: Any?) {
+    if let url = URL(string: "https://github.com/kabmo-labs/kabmo/wiki") {
+      NSWorkspace.shared.open(url)
     }
-    webView.reload()
+  }
+
+  @objc func reportIssue(_ sender: Any?) {
+    if let url = URL(string: "https://github.com/kabmo-labs/kabmo/issues/new") {
+      NSWorkspace.shared.open(url)
+    }
+  }
+
+  // ------------------------------------------------------------------ zoom
+
+  /// Set the page zoom and remember it for this host. `pageZoom` belongs to the
+  /// view and is reset by navigation, so the stored value is what makes a press
+  /// survive the next load.
+  private func applyZoom(_ zoom: CGFloat) {
+    let value = ZoomStore.clamp(zoom)
+    webView.pageZoom = value
+    if let host = ZoomStore.host(of: webView.url?.absoluteString) {
+      UserDefaults.standard.set(Double(value), forKey: ZoomStore.key(forHost: host))
+    }
+  }
+
+  /// Applied on every `didFinish`: the previous document's zoom is gone by then.
+  private func restoreZoom() {
+    guard let host = ZoomStore.host(of: webView.url?.absoluteString),
+          let stored = UserDefaults.standard.object(forKey: ZoomStore.key(forHost: host)) as? Double else {
+      webView.pageZoom = ZoomStore.defaultZoom
+      return
+    }
+    webView.pageZoom = ZoomStore.clamp(CGFloat(stored))
+  }
+}
+
+/**
+ What the menu system asks before it draws a row.
+
+ Two rows are STATE, not commands: the full-screen row names the transition it
+ will perform, and Keep on Top carries the window's level as a checkmark. The
+ page-command rows are enabled only once a document can answer — a row pressed
+ during the splash would call a property nothing has installed yet.
+
+ Everything else answers `true`: these rows are the app's own actions, and a
+ refusal here is what once made a built, correctly-chorded Edit menu look dead.
+ */
+extension AppDelegate {
+  func validateMenuItem(_ item: NSMenuItem) -> Bool {
+    if item.action == #selector(NSWindow.toggleFullScreen(_:)) {
+      item.title = window?.styleMask.contains(.fullScreen) == true ? "Exit Full Screen" : "Enter Full Screen"
+      return true
+    }
+    if item.action == #selector(ShellMenuActions.keepOnTop(_:)) {
+      item.state = window?.level == .floating ? .on : .off
+      return true
+    }
+    if item.action == #selector(ShellMenuActions.runPageCommand(_:)) {
+      return pageReady
+    }
+    if item.action == #selector(ShellMenuActions.toggleWebInspector(_:)) {
+      if #available(macOS 13.3, *) {
+        item.state = webView?.isInspectable == true ? .on : .off
+      }
+      return true
+    }
+    return true
   }
 }
 

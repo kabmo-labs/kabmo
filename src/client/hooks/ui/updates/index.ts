@@ -25,7 +25,12 @@ export interface UseUpdatesResult {
   progress: UpdateLogState | null;
   error: string | null;
   hasUpdate: boolean;
-  check: () => Promise<void>;
+  /**
+   * The verdict, not just "done": a caller that asked for the check (the native
+   * menu's row) has to report it, and reading `info` from state right after the
+   * promise resolves is a race the returned value does not have.
+   */
+  check: () => Promise<UpdateCheckResult | null>;
   apply: (target: UpdateTarget) => Promise<UpdateApplyResult | null>;
 }
 
@@ -81,16 +86,16 @@ export function useUpdates(options: UseUpdatesOptions = {}): UseUpdatesResult {
   const [applying, setApplying] = useState<UpdateTarget | null>(null);
   const [progress, setProgress] = useState<UpdateLogState | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const inFlightCheckRef = useRef<Promise<void> | null>(null);
+  const inFlightCheckRef = useRef<Promise<UpdateCheckResult | null> | null>(null);
   const lastCheckAtRef = useRef(0);
   const didAutoCheckRef = useRef(false);
   const applyAbortRef = useRef<AbortController | null>(null);
 
-  const check = useCallback(() => {
+  const check = useCallback((): Promise<UpdateCheckResult | null> => {
     if (inFlightCheckRef.current) return inFlightCheckRef.current;
 
     lastCheckAtRef.current = Date.now();
-    const request = (async () => {
+    const request = (async (): Promise<UpdateCheckResult | null> => {
       setChecking(true);
       setError(null);
 
@@ -100,9 +105,12 @@ export function useUpdates(options: UseUpdatesOptions = {}): UseUpdatesResult {
         if (!response.ok) {
           throw new Error(responseMessage(payload, `Update check failed (HTTP ${response.status})`));
         }
-        setInfo(payload as UpdateCheckResult);
+        const result = payload as UpdateCheckResult;
+        setInfo(result);
+        return result;
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : 'Unable to check for updates.');
+        return null;
       } finally {
         setChecking(false);
         inFlightCheckRef.current = null;

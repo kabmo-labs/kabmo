@@ -89,11 +89,31 @@ free is then done in `ShellWindow.swift`:
 | double-click on the bar | follows `AppleActionOnDoubleClick`: zoom (default), minimise, or nothing |
 | right-click on the bar | Move Window / Minimize / Zoom / Enter Full Screen / Close |
 | ⌘W ⌘M ⌃⌘F | close, minimise, full screen (`validateUserInterfaceItem` keeps them live) |
-| ⌘R / ⌘⇧I / ⌘0 ⌘+ ⌘- | reload, inspector, page zoom |
+| ⌘R / ⌥⌘I / ⌘0 ⌘+ ⌘= ⌘- | reload, Web Inspector (debug builds), page zoom — ⌘= is matched by a hidden alternate, and the zoom is remembered per host |
+| ⌘O | Open… a document in the console (the same path a Finder double-click takes) |
 | ⌘C ⌘V ⌘X ⌘Z ⌘⇧Z ⌘A | copy, paste, cut, undo, redo, select all — **only because of the Edit menu** |
 | ⌘, (Settings…) | opens the console's own Settings modal; the shell dispatches `omp:open-settings` and never reloads the page |
 | green button | full screen; the webview is inset by `safeAreaInsets` so the page does not sit under the menu bar |
 | a press on any control in the bar | reaches the control — the selector stops at interactive elements |
+
+### The menu bar is a library table with a bridge behind it
+
+`MenuBar.swift` (library target) owns the App/File/Edit/View/Window/Help rows so
+`Tests/MenuBarTests.swift` can assert the SAME table the app installs. The Edit
+menu's rows keep their chords in `EditMenu.swift` because a `WKWebView` receives
+no ⌘C/⌘V/⌘X/⌘Z/⌘A without a menu item declaring them.
+
+Every row that runs a **page** command (New Session, Command Palette, Quick
+Open, the panel toggles, Keyboard Shortcuts) declares **no key equivalent**. AppKit
+handles key equivalents before the first responder, so a native ⌘B would consume
+the chord and the page's own dispatcher — which also owns the user's overrides —
+would never see it. The row instead calls `window.__kabmoRunCommand(id)`, and the
+catalog stays the single source for chords.
+
+`NSApp.servicesMenu`, `helpMenu` and `windowsMenu` are all set: without the first
+the Services submenu is absent, the second is what adds the Help search field,
+and AppKit appends the window list to the third (it does NOT add "Bring All to
+Front" — measured — so that row is stated in the table).
 
 ### When the OS kills the web process
 

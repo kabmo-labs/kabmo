@@ -89,6 +89,42 @@ public let editMenuItems: [EditMenuItem] = [
 ]
 
 /**
+ One row of the menu, including the separators HIG groups it with.
+
+ The separators are part of the TABLE rather than the builder so the suite can
+ assert the shipped shape: undo/redo, then the clipboard verbs, then Select All.
+ A builder that inserted them would leave the table and the menu free to drift.
+ */
+public enum EditMenuEntry: Sendable {
+  case separator
+  case item(EditMenuItem)
+}
+
+public let editMenuEntries: [EditMenuEntry] = [
+  .item(EditMenuItem(title: "Undo", action: undoAction, key: "z")),
+  .item(EditMenuItem(title: "Redo", action: redoAction, key: "z", modifiers: [.command, .shift])),
+  .separator,
+  .item(EditMenuItem(title: "Cut", action: #selector(NSText.cut(_:)), key: "x")),
+  .item(EditMenuItem(title: "Copy", action: #selector(NSText.copy(_:)), key: "c")),
+  .item(EditMenuItem(title: "Paste", action: #selector(NSText.paste(_:)), key: "v")),
+  .item(EditMenuItem(title: "Delete", action: #selector(NSText.delete(_:)), key: "")),
+  .separator,
+  .item(EditMenuItem(title: "Select All", action: #selector(NSText.selectAll(_:)), key: "a")),
+]
+
+/// The titles the shipped menu starts with, separators included (an empty
+/// title). A suite compares the installed menu against this, not against a
+/// hand-written list.
+public var editMenuTitles: [String] {
+  editMenuEntries.map { entry in
+    switch entry {
+    case .separator: return ""
+    case let .item(item): return item.title
+    }
+  }
+}
+
+/**
  The Edit menu, built from the table above.
 
  Lives in the library rather than in `App.swift` so the window suite installs the
@@ -98,8 +134,11 @@ public let editMenuItems: [EditMenuItem] = [
  */
 public func buildEditMenu() -> NSMenu {
   let menu = NSMenu(title: "Edit")
-  for row in editMenuItems {
-    menu.addItem(row.menuItem)
+  for entry in editMenuEntries {
+    switch entry {
+    case .separator: menu.addItem(.separator())
+    case let .item(item): menu.addItem(item.menuItem)
+    }
   }
   return menu
 }

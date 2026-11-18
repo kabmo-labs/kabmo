@@ -32,3 +32,24 @@ export function openSessionInUrl(sessionId: string): boolean {
   window.dispatchEvent(new Event('popstate'));
   return true;
 }
+
+/**
+ * Clear the routing state, which is the sidebar's own "New Session".
+ *
+ * The sidebar's primary action opens the EMPTY WORKSPACE — the landing, with no
+ * query at all — rather than minting a pending chat (see `SessionsView`). A
+ * native menu row and the command palette need the same move without a component
+ * to call `setSearchParams` from, so it lives here beside the session opener and
+ * writes through the same store.
+ */
+export function openEmptyWorkspace(options: { replace?: boolean } = {}): boolean {
+  if (typeof window === 'undefined') return false;
+  const url = new URL(window.location.href);
+  url.search = '';
+  // The sidebar's own button replaces the history entry (a New Session press is
+  // not a place to go Back to); the option keeps the two callers identical.
+  if (options.replace) window.history.replaceState(null, '', url);
+  else window.history.pushState(null, '', url);
+  window.dispatchEvent(new Event('popstate'));
+  return true;
+}

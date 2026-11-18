@@ -15,7 +15,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
 
-import { openSessionInUrl } from '@/client/lib/router/open-session';
+import { openEmptyWorkspace, openSessionInUrl } from '@/client/lib/router/open-session';
 import { installOpenSessionDispatcher } from '@/client/lib/native/open-session';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
 
@@ -62,6 +62,31 @@ describe('openSessionInUrl', () => {
     go('?sessionId=keep');
     expect(openSessionInUrl('   ')).toBe(false);
     expect(window.location.search).toBe('?sessionId=keep');
+  });
+});
+
+describe('openEmptyWorkspace', () => {
+  test('clears every routing parameter', () => {
+    go('?folderId=3&sessionId=old&subagent=9');
+    expect(openEmptyWorkspace()).toBe(true);
+    expect(window.location.search).toBe('');
+  });
+
+  test('tells the router the URL moved', () => {
+    go('?sessionId=old');
+    let events = 0;
+    const listener = () => { events += 1; };
+    window.addEventListener('popstate', listener);
+    openEmptyWorkspace();
+    window.removeEventListener('popstate', listener);
+    expect(events).toBe(1);
+  });
+
+  test('keeps the path and the hash', () => {
+    window.history.replaceState(null, '', '/workspace?sessionId=old#timeline');
+    openEmptyWorkspace();
+    expect(window.location.pathname).toBe('/workspace');
+    expect(window.location.hash).toBe('#timeline');
   });
 });
 

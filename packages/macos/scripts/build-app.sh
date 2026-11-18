@@ -74,6 +74,9 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
   <key>CFBundleShortVersionString</key><string>__VERSION__</string>
   <key>CFBundleVersion</key><string>__VERSION__</string>
   <key>CFBundleIconFile</key><string>Kabmo</string>
+  <!-- The About panel's last line. Without it the standard panel draws an empty
+       row, which reads as a build that forgot its own name. -->
+  <key>NSHumanReadableCopyright</key><string>MIT licensed. © Kabmo Labs.</string>
   <key>LSMinimumSystemVersion</key><string>13.0</string>
   <key>NSHighResolutionCapable</key><true/>
   <!-- The documents this app can RENDER, which is what puts it in Finder's

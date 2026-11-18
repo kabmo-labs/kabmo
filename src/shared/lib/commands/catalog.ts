@@ -56,6 +56,22 @@ export const BUILTIN_COMMANDS: readonly CommandMeta[] = [
     },
   },
   {
+    id: 'workspace.newSession',
+    title: 'New Session',
+    category: 'Workspace',
+    keywords: ['new', 'chat', 'start', 'empty', 'workspace'],
+    defaultKey: {
+      mac: [{ code: 'KeyN', meta: true }],
+      other: [{ code: 'KeyN', ctrl: true }],
+    },
+  },
+  {
+    id: 'workspace.checkUpdates',
+    title: 'Check for Updates',
+    category: 'Workspace',
+    keywords: ['update', 'version', 'release', 'upgrade'],
+  },
+  {
     id: 'workspace.toggleSidebar',
     title: 'Toggle Sidebar',
     category: 'View',

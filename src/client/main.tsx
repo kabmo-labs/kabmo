@@ -21,6 +21,7 @@ import { readNotificationGrant } from '@/client/lib/notifications/os';
 import { installOpenSessionDispatcher } from '@/client/lib/native/open-session';
 import { installFileLaunchHandler } from '@/client/lib/launch/file-handlers';
 import { installOpenPaths } from '@/client/lib/native/open-paths';
+import { installCommandRunner } from '@/client/lib/native/run-command';
 import { installDeviceFiles } from '@/client/lib/launch/device-files';
 
 import '@/client/tailwind.css';
@@ -143,6 +144,14 @@ installOpenSessionDispatcher();
 // tab. Installed before the first render so a launch that beat hydration is
 // drained by the same tick that registers the opener.
 installOpenPaths();
+
+// A native menu row can only report a click; the command it names lives in the
+// page's catalog. The shell calls `window.__kabmoRunCommand(id)` and this is the
+// transport — installed before the first render for the same reason as the other
+// native hooks: a row pressed during hydration must find the runner, not
+// `undefined`. The row carries NO key equivalent, so the page's own dispatcher
+// keeps every chord (and the user's overrides) intact.
+installCommandRunner();
 
 // A document the PHONE handed over — picked in the Files app, or "Open with →
 // Kabmo" from Gmail — arrives as BYTES, not a path: the console may be on

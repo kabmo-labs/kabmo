@@ -722,6 +722,10 @@ WebProcessRecoveryTests.run()
 notificationWireCases()
 // When an update rebuilds the notification daemon's app record.
 notificationRegistrationCases()
+// The menu bar's shape, from the same table the app installs.
+menuBarCases()
+// Page zoom's arithmetic and the key it is remembered under.
+zoomStoreCases()
 
 print("\n\(checks - failures)/\(checks) checks passed")
 exit(failures == 0 ? 0 : 1)

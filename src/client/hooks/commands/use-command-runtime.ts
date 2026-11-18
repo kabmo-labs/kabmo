@@ -19,6 +19,8 @@ import { setUserKeybindings } from '@/client/lib/commands/keymap';
 import { registerCommand } from '@/client/lib/commands/registry';
 import { editorCommandTarget } from '@/client/lib/commands/editor-target';
 import { openKeyBindingHelp, openPalette } from '@/client/lib/commands/overlays';
+import { openEmptyWorkspace } from '@/client/lib/router/open-session';
+import { UPDATE_CHECK_EVENT } from '@/shared/lib/updates/popup-state';
 import type { EditorCommand } from '@/shared/lib/code/editor/keymap';
 import { readUserKeybindings } from '@/shared/lib/commands/user-keybindings';
 import { isMacPlatform, isWindowsPlatform } from '@/shared/lib/util/platform';
@@ -42,6 +44,19 @@ export function useCommandRuntime(): void {
       registerCommand('workspace.commandPalette', () => openPalette('commands')),
       registerCommand('workspace.quickOpen', () => openPalette('files')),
       registerCommand('workspace.keyBindings', () => openKeyBindingHelp()),
+      // The sidebar's primary action, reachable from the native File menu and
+      // the palette. It clears the routing state rather than minting a pending
+      // chat — see `SessionsView.handleNewSession`.
+      registerCommand('workspace.newSession', () => {
+        openEmptyWorkspace();
+      }),
+      // The native App menu's "Check for Updates…" asks the page, because the
+      // check and its verdict live in `useUpdates` on whichever sidebar is
+      // mounted. A second copy of the request here would be a second source of
+      // truth for the same state.
+      registerCommand('workspace.checkUpdates', () => {
+        window.dispatchEvent(new CustomEvent(UPDATE_CHECK_EVENT));
+      }),
       registerCommand('workspace.saveFile', () => editorCommandTarget()?.saveNow()),
       registerCommand('editor.run', (args) => {
         const command = (args as { command?: EditorCommand } | undefined)?.command;

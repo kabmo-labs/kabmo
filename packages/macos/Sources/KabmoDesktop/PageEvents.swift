@@ -59,3 +59,71 @@ public func openSettings(in webView: WKWebView, completion: ((Bool) -> Void)? = 
     completion?((value as? Bool) ?? false)
   }
 }
+
+/// The event the console listens for when the menu asks for an update check.
+public let checkUpdatesEvent = "omp:update-check"
+
+/**
+ Ask the console to check for updates.
+
+ The check and its verdict live in `useUpdates` on whichever sidebar is mounted,
+ so the shell cannot run it: a second copy of the request would be a second
+ source of truth for the same state. One event, one owner — the same shape as
+ `openSettingsScript`, and with the same load-window limit (a press during the
+ splash has no listener yet).
+ */
+public let checkUpdatesScript = """
+(() => {
+  if (!document.documentElement) return false;
+  window.dispatchEvent(new CustomEvent('\(checkUpdatesEvent)'));
+  return true;
+})()
+"""
+
+/// Dispatch `checkUpdatesScript` into `webView`.
+public func requestUpdateCheck(in webView: WKWebView, completion: ((Bool) -> Void)? = nil) {
+  webView.evaluateJavaScript(checkUpdatesScript) { value, _ in
+    completion?((value as? Bool) ?? false)
+  }
+}
+
+/**
+ The script a menu row runs for one catalog command.
+
+ The row carries NO key equivalent (see `MenuBar.swift`): the page's dispatcher
+ owns every chord and the user's overrides, and the shell only reports the click
+ through `window.__kabmoRunCommand`. A page that has not installed the property
+ answers `undefined`, which the row treats as "not ready" rather than an error.
+ */
+public func runCommandScript(_ id: String) -> String {
+  "window.__kabmoRunCommand ? window.__kabmoRunCommand(\(javaScriptString(id))) : false"
+}
+
+/// Dispatch `runCommandScript(id)` into `webView`.
+public func runCommand(_ id: String, in webView: WKWebView, completion: ((Bool) -> Void)? = nil) {
+  webView.evaluateJavaScript(runCommandScript(id)) { value, _ in
+    completion?((value as? Bool) ?? false)
+  }
+}
+
+/**
+ A single-quoted JavaScript string literal.
+
+ The ids this carries are catalog names, but a caller is allowed to hand it
+ anything — and an unescaped quote is a syntax error that leaves the row silent.
+ */
+private func javaScriptString(_ value: String) -> String {
+  var escaped = ""
+  for character in value {
+    switch character {
+    case "\\": escaped += "\\\\"
+    case "'": escaped += "\\'"
+    case "\n": escaped += "\\n"
+    case "\r": escaped += "\\r"
+    case "\u{2028}": escaped += "\\u2028"
+    case "\u{2029}": escaped += "\\u2029"
+    default: escaped.append(character)
+    }
+  }
+  return "'\(escaped)'"
+}

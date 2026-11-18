@@ -52,6 +52,7 @@ import { useKabmoEvent } from '@/client/hooks/ui/window-event';
 import { useToasts } from '@/client/hooks/ui/toasts';
 import { useUpdates } from '@/client/hooks/ui/updates';
 import { UPDATE_REQUEST_EVENT } from '@/shared/lib/updates/popup-state';
+import { useUpdateCheckRequest } from '@/client/hooks/ui/updates/check-request';
 import { openKeyBindingHelp } from '@/client/lib/commands/overlays';
 import { MAX_LEFT_PANEL_WIDTH } from '@/shared/lib/workspace/sidebar-width';
 import { updateOutcomeTone } from '@/shared/lib/ui/toast-duration';
@@ -127,6 +128,12 @@ export function LeftColumn({
       pushToast(result.message, updateOutcomeTone(result));
     });
   });
+
+  // The native App menu's "Check for Updates…". The row cannot read this
+  // column's state, so it asks for the check and this is the one place that
+  // runs it — the popup when a release is available, a sentence when there is
+  // not.
+  useUpdateCheckRequest(updates, pushToast);
 
   return (
     <>

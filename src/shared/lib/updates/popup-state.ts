@@ -31,6 +31,17 @@ export const UPDATE_POPUP_SETTING_KEY = 'omp_update_popup_version';
 export const UPDATE_POPUP_OPEN_EVENT = 'omp:update-popup';
 
 /**
+ * Window event that asks for a fresh update check.
+ *
+ * The native menu's "Check for Updates…" cannot read the console's update state,
+ * and a second copy of the check would be a second source of truth. The row
+ * dispatches this event; whichever sidebar is mounted owns `useUpdates` and runs
+ * the one check, then reports the verdict (the popup when there is a release, a
+ * toast when there is not).
+ */
+export const UPDATE_CHECK_EVENT = 'omp:update-check';
+
+/**
  * Window event that opens the About modal and starts Kabmo update.
  *
  * The popup's "Update now" does not run the update itself: the About modal is

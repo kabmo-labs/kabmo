@@ -44,6 +44,23 @@ let settingsRecorderScript = """
 </script>
 """
 
+/// The page's half of the native menu's page-command rows.
+///
+/// The real console installs `window.__kabmoRunCommand` at boot
+/// (`src/client/lib/native/run-command.ts`); this recorder is the same contract,
+/// so a row that names the wrong id — or a script that never reaches the page —
+/// is visible as an empty list rather than as a menu that "did nothing".
+let commandRecorderScript = """
+<script>
+  window.__ranCommands = [];
+  window.__kabmoRunCommand = (id) => {
+    if (id !== 'workspace.toggleSidebar') return false;
+    window.__ranCommands.push(id);
+    return true;
+  };
+</script>
+"""
+
 /// A page with the shape the shell's header has: a marked strip, a control
 /// inside it, and body content below.
 ///
@@ -69,7 +86,7 @@ let page = """
 <input id="attach-upload" type="file" multiple style="position:absolute;left:8px;top:260px;width:220px;height:24px">
 <a id="blank" href="https://example.test/release" target="_blank" style="position:absolute;left:8px;top:120px">release notes</a>
 <iframe id="panel" src="about:blank" style="position:absolute;right:8px;top:200px;width:300px;height:200px;border:0"></iframe>
-""" + dropRecorderScript + settingsRecorderScript + """
+""" + dropRecorderScript + settingsRecorderScript + commandRecorderScript + """
 </body></html>
 """
 
@@ -449,9 +466,9 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
     // `>=`, not `==`: AppKit appends its own rows to any menu titled Edit
     // (AutoFill, Start Dictation, Emoji & Symbols — measured: 17 rows for our 7).
     // The contract is that OURS are all there, in order, not that nothing else is.
-    let ours = shipped.prefix(editMenuItems.count).map(\.title)
+    let ours = shipped.prefix(editMenuTitles.count).map(\.title)
     check("the app's Edit menu starts with the shipped rows",
-          ours == editMenuItems.map(\.title))
+          ours == editMenuTitles)
     for row in editMenuItems {
       let item = shipped.first { $0.title == row.title }
       check("Edit › \(row.title) is installed", item != nil)
@@ -611,6 +628,7 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
     runDoubleClickCases()
     runMenuCases()
     runSettingsMenuCases()
+    runPageCommandCases()
     runEditingCases()
     runSplashCases()
     runServerSettingsCases()
@@ -935,6 +953,39 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
 
     let survived = eval("document.documentElement.dataset.probe") as? String
     check("the document was not replaced by the row", survived == "kept")
+  }
+
+  /**
+   The page-command rows, driven through the SHIPPED script.
+
+   Each View/File/Help row carries a catalog id and no key equivalent; the row's
+   whole job is to hand that id to `window.__kabmoRunCommand`. The cases below
+   assert both halves a row can get wrong: the id that crosses, and the boolean
+   the page answers (an unregistered command must read as `false`, not as a row
+   that did something).
+   */
+  func runPageCommandCases() {
+    print("\nthe menu's page-command rows")
+    _ = eval("window.__ranCommands = []; true")
+
+    var answered: Bool?
+    runCommand("workspace.toggleSidebar", in: webView) { answered = $0 }
+    pump(0.3)
+    check("the shipped script reaches the page's runner", answered == true)
+    check("the page ran the command the row named",
+          (eval("window.__ranCommands.length") as? Int) == 1)
+    check("the catalog id crossed intact",
+          (eval("window.__ranCommands[0]") as? String) == "workspace.toggleSidebar")
+
+    var unknown: Bool?
+    runCommand("workspace.not-a-command", in: webView) { unknown = $0 }
+    pump(0.3)
+    check("an id the page does not know answers false", unknown == false)
+
+    // A quote in an id must not break the script: the row would go silent with
+    // no console error the shell could see.
+    check("the script escapes a quote in the id",
+          runCommandScript("a'b").contains("a\\'b"))
   }
 
   func doubleClick(at point: NSPoint) {

@@ -1,6 +1,7 @@
 import { useState } from 'preact/hooks';
 import { useSearchParams } from '@/client/lib/router/search-params';
 import { newSessionParams } from '@/client/lib/router/branch-params';
+import { openEmptyWorkspace } from '@/client/lib/router/open-session';
 import { NewWorkspaceModal } from '@/client/components/layout/session-sidebar/Modals';
 import { SchedulerModal } from '@/client/components/layout/session-sidebar/scheduler-modal';
 import { ClassicSidebarView } from '@/client/components/layout/session-sidebar/ClassicView';
@@ -133,7 +134,7 @@ export function SessionsView({
    * their own pending session, because those DO choose a context up front.
    */
   const handleNewSession = () => {
-    setSearchParams(new URLSearchParams(), { replace: true });
+    openEmptyWorkspace({ replace: true });
   };
 
   /**

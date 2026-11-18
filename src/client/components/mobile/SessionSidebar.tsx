@@ -11,6 +11,7 @@ import { useWaitingDispatch } from '@/client/hooks/chat/waiting/dispatch';
 import { useUpdates } from '@/client/hooks/ui/updates';
 import { useSidebarStyle } from '@/client/hooks/workspace/sidebar-style';
 import { UPDATE_REQUEST_EVENT } from '@/shared/lib/updates/popup-state';
+import { useUpdateCheckRequest } from '@/client/hooks/ui/updates/check-request';
 import { openKeyBindingHelp } from '@/client/lib/commands/overlays';
 import { updateOutcomeTone } from '@/shared/lib/ui/toast-duration';
 import { useScheduledTaskCount } from '@/client/hooks/workspace/scheduled-tasks';
@@ -136,6 +137,9 @@ export function MobileSessionSidebar({
       pushToast(result.message, updateOutcomeTone(result));
     });
   });
+
+  // The same native row as the desktop's: one check, one verdict, drawer stays.
+  useUpdateCheckRequest(updates, pushToast);
 
   const handleNewSessionAndClose = () => {
     onNewSession();

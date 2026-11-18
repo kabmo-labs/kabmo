@@ -37,7 +37,7 @@ const UPDATES: UseUpdatesResult = {
   progress: null,
   error: null,
   hasUpdate: false,
-  check: async () => {},
+  check: async () => null,
   apply: async () => null,
 };
 
