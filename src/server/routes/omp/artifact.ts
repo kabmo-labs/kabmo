@@ -9,9 +9,10 @@
  *
  * The transcript keeps only a truncated body plus
  * `details.meta.limits.columnTruncated.artifactId`; the rest lives in a file
- * beside the session (`<sessionDir>/<sessionId>/<id>.<kind>.log`). The reader
- * owns every path guard — a numeric id, a known kind, a resolved path inside
- * the session directory — so this route only turns its answer into a response.
+ * beside the session — `<sessionDir>/<sessionId>/<id>.log` since omp 19.0.0,
+ * `<id>.<kind>.log` before it. The reader owns every path guard — a numeric id,
+ * a known kind, a resolved path inside the session directory — so this route
+ * only turns its answer into a response.
  *
  * `no-store`, like the blob route: a session copied between machines can leave
  * an artifact missing, and a 404 that later becomes available must not stay

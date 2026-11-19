@@ -1,7 +1,8 @@
 import { useMemo } from 'preact/hooks';
 import { Check, Clock, Server, Shrink, Terminal } from 'lucide-preact';
 import type { ToolCallData } from '@/shared/types';
-import { bashServiceOf, daemonTone, procUptime } from '@/shared/lib/omp/session/proc';
+import { bashServiceOf } from '@/shared/lib/omp/session/proc';
+import { daemonTone, procUptime } from '@/shared/lib/omp/session/proc-daemon';
 import { formatToolBytes } from '@/shared/lib/chat/tool/labels';
 import { minimizedOutputOf } from '@/shared/lib/chat/tool/minimized';
 import { CopyButton } from '@/client/components/common/CopyButton';

@@ -604,7 +604,55 @@ fi
 # goal-mode tool roster fix, selective-commit submodule/sparse handling, the
 # Zhipu quota-reset retry, status-line credential selection, the `--continue`
 # breadcrumb rule and the LSP inotify pruning — host-side or model-facing.
-OMP_VERSION="${OMP_VERSION:-18.22.2}"
+#
+# 19.0.0 (2026-11-19) is a BREAKING release upstream. The schema's `source` line
+# moves to 638 settings and the panel gains SIX rows: `providers.
+# cacheWarmingStrategy` (auto/keepalive/compact), `providers.
+# cacheWarmingCompactPercent` and `providers.cacheWarmingCompactTokens`
+# (providers / Protocol), `task.crossInstance` (tasks / Subagents),
+# `mcp.evalNamespaces` and `mcp.builtinTransforms` (tools / Discovery & MCP).
+# `composer.predictions` flips its default false → true (Kabmo has no prediction
+# surface, so the row is editable and nothing reads it), `task.enableLsp` is
+# relabelled "LSP Edit Checks in Subagents" and now gates only formatting and
+# diagnostics, and four descriptions change. The RPC wire keeps its 74 commands
+# and gains ONE ADDITIVE definition (300 → 301), `CacheWarmingMethod`, carried
+# by a now-required `method` on `cache_warming_start`/`_end`; one description
+# changes (`ManualCompactionStartEvent`). `MODEL_ROLES`,
+# `tools/builtin-names.ts` (29 tools) and the slash registry are identical.
+#
+# Three upstream breaks DO reach a Kabmo surface, each fixed with the bump:
+#   - `artifact://<id>` became `local://<id>.log`, and the spill file moved from
+#     `<sessionDir>/<id>.<kind>.log` to `<sessionDir>/<id>.log`. The `details`
+#     record is unchanged, so the chip still finds the id; `readArtifact` now
+#     probes `<id>.log` first and falls back to the legacy name for a session
+#     recorded before the pin (`artifacts.server.ts`).
+#   - `proc://` reports a daemon `UnitSnapshot` — `{key, label, pids,
+#     policy.hold}` — instead of the broker's `{name, pid, persist, detached}`.
+#     Kabmo's `ProcDaemon` reader maps both generations, so the service name,
+#     pid and mode facts survive (`shared/lib/omp/session/proc-daemon.ts`).
+#   - the `wait` ladder is two rungs, 5 s then 4 minutes, and the timeout
+#     sentence now continues with "Nothing else left? …". The window still ends
+#     the first sentence, so the parser is unchanged; the constant and its
+#     comments moved (`wait-idle.ts`).
+#
+# `/handoff` is now a background compaction (`session.compact(focus, {mode:
+# "handoff"})`), and the RPC `handoff` command no longer refuses while a
+# response is in flight. Kabmo never calls the RPC verb; `/handoff` and
+# `/compact handoff` are forwarded as prompts, and `manual_compaction_start`
+# arriving mid-stream is already folded. `handoff` stays in
+# `CONVERSATION_MOVING_COMMANDS` because the compaction still rewrites the
+# transcript a side question snapshotted.
+#
+# Not adopted, deliberately: the unified per-user daemon and `omp ps --json`'s
+# `{daemon, reports}` shape (Kabmo never runs `omp ps`), built-in MCP transforms
+# and eval namespaces, cross-instance task discovery, Tern live cards, the `btw`
+# draft mode, the `bash` `notify` option and `excludeFromContext` on bash/eval
+# messages, the `read` binary-resource backing file, grep's notebook projection
+# and gitignored hint, the `todo` active-phase selection, the `yield`
+# schema/result changes, `/restart` re-execing through the launcher, the
+# `--continue` breadcrumb rule, the commit/hook fixes, the browser/computer
+# fixes and the LSP inotify pruning — host-side or model-facing.
+OMP_VERSION="${OMP_VERSION:-19.0.0}"
 PACKAGE="@oh-my-pi/pi-coding-agent"
 WANTED="omp/${OMP_VERSION}"
 

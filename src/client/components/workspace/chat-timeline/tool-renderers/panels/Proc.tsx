@@ -25,16 +25,13 @@ import { Activity, CheckCircle2, CircleSlash, Loader2, Radio, Server, Terminal }
 import type { ToolCallData } from '@/shared/types';
 import { stripAnsiCodes } from '@/shared/lib/code/ansi';
 import {
-  daemonTone,
-  formatProcDuration,
   jobTone,
   procOpLabel,
-  procUptime,
   procViewOf,
   type ProcAgent,
-  type ProcDaemon,
   type ProcJob,
 } from '@/shared/lib/omp/session/proc';
+import { daemonTone, formatProcDuration, procUptime, type ProcDaemon } from '@/shared/lib/omp/session/proc-daemon';
 import { FallbackOutput } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/FallbackOutput';
 import { ToolPanelHeader } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/ToolPanelHeader';
 import { jobSubject, jobProgressLine } from '@/shared/lib/omp/session/job-progress';

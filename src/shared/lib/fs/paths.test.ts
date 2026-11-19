@@ -70,6 +70,8 @@ describe('isVirtualPath', () => {
     expect(isVirtualPath('agent://Sleeper')).toBe(true);
     expect(isVirtualPath('skill://pr-review')).toBe(true);
     expect(isVirtualPath('artifact://17')).toBe(true);
+    // omp 19.0.0's spill URL, which replaced `artifact://<id>`.
+    expect(isVirtualPath('local://17.log')).toBe(true);
   });
 
   test('leaves a real path alone', () => {

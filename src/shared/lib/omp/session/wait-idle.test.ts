@@ -13,10 +13,10 @@ import { describe, expect, test } from 'bun:test';
 import { WAIT_LADDER_MS, waitIdleLabel, waitIdleOf } from '@/shared/lib/omp/session/wait-idle';
 
 describe('the idle ladder', () => {
-  test('mirrors the windows omp 18.17.0 gives a blocking wait', () => {
-    // The 30-minute cap is GONE: a wait returns when its window elapses, and the
-    // window climbs one rung for each back-to-back idle wait.
-    expect([...WAIT_LADDER_MS]).toEqual([5_000, 10_000, 30_000, 60_000, 300_000]);
+  test('mirrors the two-rung ladder omp 19.0.0 gives a blocking wait', () => {
+    // The 30-minute cap is GONE, and 19.0.0 cut the five rungs to two: a first
+    // idle wait gets 5 s, every back-to-back one 4 minutes.
+    expect([...WAIT_LADDER_MS]).toEqual([5_000, 240_000]);
   });
 
   test('reads the window omp names on a first idle return', () => {
@@ -34,6 +34,17 @@ describe('the idle ladder', () => {
       .toEqual({ windowMs: 10_000 });
     expect(waitIdleOf('1 background job still running.\n\nNo job finished within 30s; a back-to-back wait allows up to 60s.'))
       .toEqual({ windowMs: 30_000 });
+  });
+
+  test('reads the 19.0.0 sentence, which names the next window in a second sentence', () => {
+    // 19.0.0: `No reply within 5.0s. Nothing else left? Call `wait` again right
+    // away: it then blocks up to 4m.` The window still ends the first sentence.
+    expect(
+      waitIdleOf('No reply within 5.0s. Nothing else left? Call `wait` again right away: it then blocks up to 4m.'),
+    ).toEqual({ windowMs: 5_000 });
+    expect(
+      waitIdleOf('1 background job still running.\n\nNo job finished within 4m. Nothing else left? End your turn: results and messages start your next one.'),
+    ).toEqual({ windowMs: 240_000 });
   });
 
   test('reads the streak omp names from the second idle wait on', () => {

@@ -1,5 +1,5 @@
 {
-  "source": "@oh-my-pi/pi-coding-agent 10 tabs / 632 settings",
+  "source": "@oh-my-pi/pi-coding-agent 10 tabs / 638 settings",
   "tabs": [
     {
       "id": "appearance",
@@ -1350,7 +1350,7 @@
     },
     "composer.predictions": {
       "type": "boolean",
-      "default": false,
+      "default": true,
       "ui": {
         "tab": "interaction",
         "group": "Input",
@@ -3421,7 +3421,7 @@
         "tab": "providers",
         "group": "Protocol",
         "label": "Cache Warming",
-        "description": "Re-send the last request with a one-token output budget shortly before its prompt-cache entry expires",
+        "description": "Refresh the last request's prompt-cache entry shortly before it expires (Anthropic max_tokens 0 pre-warm, else a one-token replay)",
         "options": [
           {
             "value": "off",
@@ -3437,6 +3437,102 @@
             "value": "idle",
             "label": "Idle",
             "description": "Also refresh 5-minute entries between runs while the expected savings stay above the cost floor"
+          }
+        ]
+      }
+    },
+    "providers.cacheWarmingStrategy": {
+      "type": "enum",
+      "default": "auto",
+      "values": [
+        "auto",
+        "keepalive",
+        "compact"
+      ],
+      "ui": {
+        "tab": "providers",
+        "group": "Protocol",
+        "label": "Cache Warming Strategy",
+        "description": "How a long tool call is bridged once refreshing stops paying: compact the history before the cache expires, or let it expire",
+        "options": [
+          {
+            "value": "auto",
+            "label": "Auto",
+            "description": "Refresh while the refresh spend stays within the cheaper buy-out, then compact large prompts or let the entry expire"
+          },
+          {
+            "value": "keepalive",
+            "label": "Keep Alive",
+            "description": "Never compact; refresh until it stops paying"
+          },
+          {
+            "value": "compact",
+            "label": "Compact",
+            "description": "Compact at the first decision once the prompt reaches the bridge-compaction threshold"
+          }
+        ]
+      }
+    },
+    "providers.cacheWarmingCompactPercent": {
+      "type": "number",
+      "default": 60,
+      "ui": {
+        "tab": "providers",
+        "group": "Protocol",
+        "label": "Cache Bridge Compaction Percent",
+        "description": "Share of the context window a prompt must reach before a long tool call may be bridged with compaction; the lower of this and the token limit applies",
+        "options": [
+          {
+            "value": "40",
+            "label": "40%"
+          },
+          {
+            "value": "50",
+            "label": "50%"
+          },
+          {
+            "value": "60",
+            "label": "60%"
+          },
+          {
+            "value": "70",
+            "label": "70%"
+          },
+          {
+            "value": "80",
+            "label": "80%"
+          }
+        ]
+      }
+    },
+    "providers.cacheWarmingCompactTokens": {
+      "type": "number",
+      "default": 150000,
+      "ui": {
+        "tab": "providers",
+        "group": "Protocol",
+        "label": "Cache Bridge Compaction Tokens",
+        "description": "Prompt tokens from which a long tool call may be bridged with compaction; the lower of this and the window percent applies",
+        "options": [
+          {
+            "value": "50000",
+            "label": "50K tokens"
+          },
+          {
+            "value": "100000",
+            "label": "100K tokens"
+          },
+          {
+            "value": "150000",
+            "label": "150K tokens"
+          },
+          {
+            "value": "200000",
+            "label": "200K tokens"
+          },
+          {
+            "value": "300000",
+            "label": "300K tokens"
           }
         ]
       }
@@ -6964,7 +7060,7 @@
         "tab": "tools",
         "group": "Execution",
         "label": "Intent Tracing",
-        "description": "Ask the agent to describe the intent of each tool call before executing it"
+        "description": "Ask the agent to describe the intent of each tool call before executing it. Unset: on in the interactive TUI, off in print, RPC, ACP, and SDK sessions"
       }
     },
     "tools.abortOnFabricatedResult": {
@@ -7505,7 +7601,7 @@
           {
             "value": "auto",
             "label": "Auto",
-            "description": "Isolated subagents use ovnfs checkouts when ovnfs is found; otherwise (and for worktrees) the PAL picks the best available backend"
+            "description": "Isolated subagents and `/wt` use ovnfs checkouts when ovnfs is found; otherwise (and for other worktrees) the PAL picks the best available backend"
           },
           {
             "value": "apfs",
@@ -7656,7 +7752,7 @@
         "tab": "tasks",
         "group": "Isolation",
         "label": "ovnfs Binary",
-        "description": "ovnfs executable; unset looks for `ovnfs` on PATH. When it is found, ovnfs checkouts (copy-on-write views of a folder, ready in about a second at any size) serve every separate copy: the system prompt tells agents to open checkouts instead of git worktrees or copies, and isolated subagents (when allowed, with `isolation.backend` on auto) run in checkouts instead of native clones"
+        "description": "ovnfs executable; unset looks for `ovnfs` on PATH. When it is found, ovnfs checkouts (copy-on-write views of a folder, ready in about a second at any size) serve every separate copy: the system prompt tells agents to open checkouts instead of git worktrees or copies, and with `isolation.backend` on auto, isolated subagents (when allowed) run in checkouts instead of native clones and `/wt` moves the session into a checkout instead of a linked worktree"
       }
     },
     "task.isolation.merge": {
@@ -7961,8 +8057,18 @@
       "ui": {
         "tab": "tasks",
         "group": "Subagents",
-        "label": "LSP in Subagents",
-        "description": "Allow subagents spawned via the task tool to use the lsp tool. Off by default to keep subagents cheap; enable when LSP-aware delegation is worth the extra tokens."
+        "label": "LSP Edit Checks in Subagents",
+        "description": "Run LSP formatting and diagnostics on subagent edits. Off by default to keep subagents cheap; the lsp tool stays available to them either way."
+      }
+    },
+    "task.crossInstance": {
+      "type": "boolean",
+      "default": false,
+      "ui": {
+        "tab": "tasks",
+        "group": "Subagents",
+        "label": "Cross-Instance Agent Messaging",
+        "description": "Let other omp instances in this folder read agent outputs and send messages that can wake agents"
       }
     },
     "task.maxRecursionDepth": {
@@ -8753,6 +8859,26 @@
         "group": "Discovery & MCP",
         "label": "MCP Startup Window",
         "description": "Wait this many milliseconds for initial MCP tool discovery; 0 waits until connections settle"
+      }
+    },
+    "mcp.evalNamespaces": {
+      "type": "boolean",
+      "default": false,
+      "ui": {
+        "tab": "tools",
+        "group": "Discovery & MCP",
+        "label": "MCP Eval Namespaces",
+        "description": "Expose each MCP server as an eval global (github.create_issue(...)) instead of top-level or xd:// tools"
+      }
+    },
+    "mcp.builtinTransforms": {
+      "type": "boolean",
+      "default": true,
+      "ui": {
+        "tab": "tools",
+        "group": "Discovery & MCP",
+        "label": "MCP Built-in Transforms",
+        "description": "Skip recognized MCP servers that omp's own tools replace (Codex's node_repl while eval runs JavaScript)"
       }
     },
     "mcp.renderMarkdownResults": {

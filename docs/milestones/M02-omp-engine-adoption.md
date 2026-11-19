@@ -2300,3 +2300,142 @@ deleted-file call matching, the LSP `PathMap`, the mlx venv refactor and the
 | R94 | `worktree.onExit` gains `force` | schema regenerated; no code acts on it | enum is `keep/ask/remove/force` |
 | R95 | executable reads are metadata-only | none needed; card renders text | `ReadToolDetails` unchanged; wire byte-identical |
 | R96 | host-side changes | none needed | 74 commands / 300 definitions; roles and slash registry identical |
+
+# omp 19.0.0 adoption (2026-11-19)
+
+The pin moved **18.22.2 → 19.0.0**. This is a breaking release upstream, and
+three of its breaks reach Kabmo: the spill URL and file layout, the daemon
+snapshot behind `proc://`, and the `wait` ladder. All three are adopted here.
+The RPC wire keeps its 74 commands and gains one definition; the settings panel
+gains six rows.
+
+## Method
+
+- `npm pack @oh-my-pi/pi-coding-agent@18.22.2` and `@19.0.0` (plus the matching
+  `pi-tui` and `pi-utils`) into temp trees, then `diff -rq` over `src/` — 426
+  entries differ.
+- `rpc-wire.schema.json` compared whole: **74 commands, 300 → 301 definitions**,
+  0 commands added/removed, 1 definition added (`CacheWarmingMethod`), 2 changed
+  (`CacheWarmingStartEvent`/`CacheWarmingEndEvent` gain a required `method`),
+  and one description (`ManualCompactionStartEvent`). `MODEL_ROLES`,
+  `tools/builtin-names.ts` (29 tools) and the slash registry are identical.
+- The schema generator run against an installed 19.0.0 produces **10 tabs /
+  638 settings / 477 entries** (was 632 / 471).
+- `composer.predictions` flips its default `false → true`; no new
+  `ui.condition` arrives, so `isConditionMet` needs no arm.
+
+## Findings
+
+### R97 — `artifact://<id>` became `local://<id>.log` (code)
+
+The spill file moved from `<sessionDir>/<id>.<kind>.log` to
+`<sessionDir>/<id>.log` at the session's `local://` root, and the URL in the
+result text is now `local://<id>.log`. The `details` record is unchanged
+(`meta.minimized.artifactId`, `meta.limits.columnTruncated.artifactId`), so the
+chip still finds the id; only the reader's path changed. `readArtifact` probes
+`<id>.log` first and falls back to the legacy `<id>.<kind>.log`, because a
+session recorded before the pin still names one. A new spill reports
+`kind: 'spill'`; the client ignores the field.
+
+### R98 — `proc://` reports a `UnitSnapshot`, not a `DaemonSnapshot` (code)
+
+The broker's `{name, pid, persist, detached}` became a daemon unit's
+`{key, label, pids, policy.hold}`. Kabmo's `ProcDaemon` reader now maps `key`
+to the service name, `pids[0]` to the pid, and `policy.hold` to the
+`persist`/`detached` flags the card already drew, while still reading the old
+fields from a session recorded before the pin. The `bash` service-launch
+details (`{name, state, ready, timedOut, pid}`) are unchanged, so
+`bashServiceOf` keeps working through the same reader.
+
+The `proc://` text header also changed (`persist=… detached=…` became
+`mode=persist|session|detached`), and a running job waiting for a spawn slot
+now lists as `queued`. Kabmo reads the structured `details`, not the header,
+and `jobTone` already treats an unknown status as muted.
+
+### R99 — the `wait` ladder is two rungs: 5 s, then 4 minutes (code)
+
+`WAIT_LADDER_MS` is now `[5_000, 240_000]`; the old five-rung ladder
+(5 s / 10 s / 30 s / 60 s / 5 min) is gone. The sentence a timeout returns also
+changed shape — `No reply within 5.0s. Nothing else left? Call \`wait\` again
+right away: it then blocks up to 4m.` — but the window still ends the first
+sentence, so `waitIdleOf` parses it unchanged. The constant is a reference for
+the current pin; the card always labels the window omp states.
+
+### R100 — `/handoff` is now a background compaction (no code)
+
+`session.handoff(focus)` was replaced by `session.compact(focus, { mode:
+"handoff" })`, and the RPC `handoff` command no longer refuses while a response
+is in flight: it returns `{}` and leaves live turns running. Kabmo never calls
+the RPC verb; `/handoff` and `/compact handoff` are forwarded as prompts, and
+the text-mode handler runs the compaction. `manual_compaction_start` can now
+arrive while `streaming` is true, which the fold already handles — `compacting`
+stays true until `_end`. `handoff` stays in `CONVERSATION_MOVING_COMMANDS`
+because the compaction still rewrites the transcript a side question
+snapshotted.
+
+### R101 — cache-warming events name their method (no code)
+
+`cache_warming_start`/`_end` gain a required `method` (`prewarm` | `replay`).
+Kabmo lists both frames as deliberate no-ops in `transport-frames.ts`, so the
+new field never reaches a surface.
+
+### R102 — custom messages can be excluded from model context (no code)
+
+A `custom` message may carry `excludeFromContext: true`; omp renders and saves
+it but never sends it to the model. Kabmo's transcript reads the message, not
+the flag, so the row still appears.
+
+### R103 — six settings rows, one default flip (schema only)
+
+New rows: `providers.cacheWarmingStrategy` (auto/keepalive/compact),
+`providers.cacheWarmingCompactPercent`, `providers.cacheWarmingCompactTokens`
+(providers / Protocol), `task.crossInstance` (tasks / Subagents),
+`mcp.evalNamespaces` and `mcp.builtinTransforms` (tools / Discovery & MCP).
+`composer.predictions` now defaults to `true`; Kabmo has no prediction surface,
+so the row is editable and nothing reads it. `task.enableLsp` is relabelled
+"LSP Edit Checks in Subagents" and now gates only formatting/diagnostics — the
+`lsp` tool is always available to subagents. Four descriptions change
+(`providers.cacheWarming`, `tools.intentTracing`, `task.isolation.backend`,
+`ovnfs.path`).
+
+### R104 — tool-call intent tracing is off by default in RPC (no code)
+
+`tools.intentTracing` is unset by default in print, RPC, ACP and SDK sessions,
+so a new session's tool calls carry no `i` intent. Kabmo already treats an
+absent intent as an absence: the job row falls back to its label and the tool
+card draws no intent line. The setting remains editable for an operator who
+wants it back.
+
+### R105 — an `ask` timeout with a required field empty is no answer (no code)
+
+The result is `details: { answers: [], timedOut: true }` and the text "The ask
+timed out before the user answered its required fields; no answer was given."
+Kabmo's card already renders unanswered questions and reads `timedOut`; the
+text has no JSON, so the fallback parser returns no answers rather than
+inventing one.
+
+### R106 — host-side changes (no action)
+
+The unified per-user daemon (and `omp ps --json`'s `{daemon, reports}` shape —
+Kabmo never runs `omp ps`), built-in MCP transforms and eval namespaces,
+cross-instance task discovery, Tern live cards, the `btw` draft mode, the
+`bash` `notify` option and `excludeFromContext` on bash/eval messages, the
+`read` binary-resource backing file, grep's notebook projection and gitignored
+hint, the `todo` active-phase selection, the `yield` schema/result changes,
+`/restart` re-execing through the launcher, the `--continue` breadcrumb rule,
+the commit/hook fixes, the browser/computer fixes and the LSP inotify pruning.
+
+## 19.0.0 outcomes
+
+| # | Finding | Action | Verification |
+|---|---|---|---|
+| R97 | spill is `local://<id>.log` | reader probes `<id>.log`, falls back to `<id>.<kind>.log` | `artifacts.server.test.ts` reads both layouts |
+| R98 | `proc://` reports a `UnitSnapshot` | `daemonOf` maps `key`/`pids[0]`/`policy.hold`, keeps legacy fields | `proc.test.ts` pins the 19.0.0 shape |
+| R99 | wait ladder is 5 s / 4 min | constant and comments updated; parser unchanged | `wait-idle.test.ts` pins the 19.0.0 sentence |
+| R100 | `/handoff` is background compaction | none needed; fold already handles the pair | 74 commands / 301 definitions; `handoff` still conversation-moving |
+| R101 | cache-warming `method` | none needed; frames are deliberate no-ops | `transport-frames.ts` lists both |
+| R102 | `excludeFromContext` | none needed; display is unchanged | custom message still renders |
+| R103 | six rows, one default flip | schema regenerated | 638 settings / 477 entries; `omp:schema:check` passes |
+| R104 | intent tracing off in RPC | none needed; absent intent already handled | `job-progress.ts` falls back to the label |
+| R105 | empty-answer ask timeout | none needed; card renders unanswered | `parseAskResult` returns no answers |
+| R106 | host-side changes | none needed | roles, tool names and slash registry identical |

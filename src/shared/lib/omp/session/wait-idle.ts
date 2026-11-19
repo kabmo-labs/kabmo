@@ -9,9 +9,10 @@
  * omp 18.17.0 removed the 30-minute cap (`WAIT_MAX_MS`) and with it the "Wait
  * limit reached" answer the `wait` card used to name. A blocking wait now
  * returns when its window elapses, and the window climbs one rung for every
- * back-to-back idle wait — 5 s, 10 s, 30 s, 60 s, then 5 minutes — restarting at
- * the floor once the agent has done other work in between. So there is no
- * ceiling to count down to any more.
+ * back-to-back idle wait, restarting at the floor once the agent has done other
+ * work in between. omp 19.0.0 standardized the ladder to two rungs — 5 s for a
+ * first idle wait, 4 minutes for each back-to-back one — so there is no ceiling
+ * to count down to any more.
  *
  * Neither the rung nor the streak is a field on the result: both are stated in
  * omp's prose, which is what this module parses. It lives beside `wait.ts`
@@ -29,8 +30,14 @@ import { formatToolMs } from '@/shared/lib/chat/tool/labels';
 
 /**
  * How long a blocking `wait` gives its first wake, per rung of omp's ladder.
+ *
+ * omp 19.0.0 cut the five-rung ladder (5 s / 10 s / 30 s / 60 s / 5 min) to two:
+ * a first idle wait gets 5 s, every back-to-back one 4 minutes
+ * (`WAIT_LADDER_MS` in `tools/wait.ts`). A session recorded before the pin
+ * still names the old windows, so this list is a reference for the current pin
+ * only — the window a result reports is always parsed from omp's sentence.
  */
-export const WAIT_LADDER_MS = [5_000, 10_000, 30_000, 60_000, 300_000] as const;
+export const WAIT_LADDER_MS = [5_000, 240_000] as const;
 
 /** A span in omp's `formatDuration` spelling: `250ms`, `5.0s`, `30s`, `1m45s`, `5m`, `2h5m`. */
 const OMP_DURATION = String.raw`(?:\d+d)?(?:\d+h)?(?:\d+m)?(?:[\d.]+s)?(?:\d+ms)?`;

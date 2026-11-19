@@ -16,15 +16,13 @@
 import { describe, expect, test } from 'bun:test';
 import {
   bashServiceOf,
-  daemonTone,
-  formatProcDuration,
   jobTone,
   parseProcUrl,
   procOpLabel,
   procPathOf,
-  procUptime,
   procViewOf,
 } from '@/shared/lib/omp/session/proc';
+import { daemonTone, formatProcDuration, procUptime } from '@/shared/lib/omp/session/proc-daemon';
 
 describe('parseProcUrl', () => {
   test('reads the bare listing', () => {
@@ -129,6 +127,35 @@ describe('procViewOf — read', () => {
     });
     expect(view?.daemon?.state).toBe('failed');
     expect(view?.terminalRows).toEqual(['$ bun run dev', 'boom']);
+  });
+
+  test('reads a 19.0.0 unit snapshot, whose name is `key` and pid is `pids[0]`', () => {
+    const view = procViewOf({
+      target: 'proc://ompdev',
+      details: {
+        proc: {
+          daemon: {
+            id: 'u_7bf84d40',
+            kind: 'proc',
+            key: 'ompdev',
+            label: 'omp dev server',
+            state: 'ready',
+            pids: [22985, 22986],
+            startedAt: 1,
+            policy: { hold: 'persist', idleMs: 0, onIdle: 'stop', restart: 'no', survive: 'exec' },
+          },
+          log: '$ bun run dev',
+        },
+      },
+    });
+    expect(view?.daemon).toMatchObject({
+      name: 'ompdev',
+      label: 'omp dev server',
+      pid: 22985,
+      state: 'ready',
+      hold: 'persist',
+      persist: true,
+    });
   });
 
   test('reads the listing', () => {

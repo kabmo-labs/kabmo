@@ -21,12 +21,14 @@
  * legacy `hub` tool carried the same data at the TOP level of `details`
  * (`{daemon}`, `{jobs}`, `{daemons}`). One reader for both, so the panel, the
  * card header, the fact chips and the activity phrase cannot disagree about
- * what a call did.
+ * what a call did. The daemon snapshot itself is read in `proc-daemon.ts`,
+ * which maps both the 19.0.0 `UnitSnapshot` and the broker snapshot before it.
  *
  * Pure and DOM-free: both the live fold and the reload path reach it.
  */
 
 import { isRecord } from '@/shared/lib/util/guards';
+import { daemonOf, type ProcDaemon } from '@/shared/lib/omp/session/proc-daemon';
 
 export const PROC_SCHEME = 'proc://';
 
@@ -69,23 +71,6 @@ export function procRequestOp(path: string | undefined, toolName: string | undef
   // alone cannot tell the two apart, which is why the transport is an input.
   if (target.action === 'read' && target.id && (toolName ?? '').toLowerCase() === 'write') return 'stdin';
   return target.action;
-}
-
-export interface ProcDaemon {
-  name?: string;
-  id?: string;
-  state?: string;
-  pid?: number;
-  createdAt?: number;
-  startedAt?: number;
-  readyAt?: number;
-  exitedAt?: number;
-  exitCode?: number;
-  restartCount?: number;
-  outputBytes?: number;
-  readyMatch?: string;
-  persist?: boolean;
-  detached?: boolean;
 }
 
 export interface ProcJob {
@@ -156,26 +141,6 @@ function asBoolean(value: unknown): boolean | undefined {
 
 function asList<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value.filter(isRecord) as T[]) : [];
-}
-
-function daemonOf(value: unknown): ProcDaemon | undefined {
-  if (!isRecord(value)) return undefined;
-  return {
-    name: asString(value.name),
-    id: asString(value.id),
-    state: asString(value.state),
-    pid: asNumber(value.pid),
-    createdAt: asNumber(value.createdAt),
-    startedAt: asNumber(value.startedAt),
-    readyAt: asNumber(value.readyAt),
-    exitedAt: asNumber(value.exitedAt),
-    exitCode: asNumber(value.exitCode),
-    restartCount: asNumber(value.restartCount),
-    outputBytes: asNumber(value.outputBytes),
-    readyMatch: asString(value.readyMatch),
-    persist: asBoolean(value.persist),
-    detached: asBoolean(value.detached),
-  };
 }
 
 function jobOf(value: unknown): ProcJob | undefined {
@@ -257,30 +222,13 @@ export function procViewOf(tool: {
  * The service a `bash` launch created, from `details.service`.
  *
  * omp answers a service-launching `bash` with `{name, state, ready, timedOut,
- * pid}` — the same snapshot `proc://<id>` reports under `proc.daemon` — so a
- * service started by `bash` and one read back by `proc://` describe themselves
- * through one reader.
+ * pid}`; `proc://<id>` reports a 19.0.0 `UnitSnapshot` under `proc.daemon`
+ * (`key`, `pids`, `policy.hold`). Both describe themselves through one reader,
+ * which reads either generation.
  */
 export function bashServiceOf(tool: { details?: Record<string, unknown> }): ProcDaemon | undefined {
   const details = isRecord(tool.details) ? tool.details : undefined;
   return daemonOf(details?.service);
-}
-
-/** Tone for a daemon state — omp's own union, mapped to the ink palette. */
-export function daemonTone(state: string | undefined): 'ok' | 'warn' | 'error' | 'muted' {
-  switch (state) {
-    case 'ready':
-    case 'running':
-      return 'ok';
-    case 'failed':
-      return 'error';
-    case 'starting':
-    case 'restarting':
-    case 'stopping':
-      return 'warn';
-    default:
-      return 'muted';
-  }
 }
 
 /** Tone for a job status (`running | completed | failed | cancelled`). */
@@ -297,30 +245,6 @@ export function jobTone(status: string | undefined): 'ok' | 'warn' | 'error' | '
     default:
       return 'muted';
   }
-}
-
-/** `1h 4m` / `12m 3s` / `840ms` — the scale a service lives on. */
-export function formatProcDuration(ms: number): string {
-  if (!Number.isFinite(ms) || ms < 0) return '';
-  if (ms < 1000) return `${Math.round(ms)}ms`;
-  const totalSeconds = Math.floor(ms / 1000);
-  if (totalSeconds < 60) return `${totalSeconds}s`;
-  const minutes = Math.floor(totalSeconds / 60);
-  if (minutes < 60) return `${minutes}m ${totalSeconds % 60}s`;
-  const hours = Math.floor(minutes / 60);
-  return `${hours}h ${minutes % 60}m`;
-}
-
-/**
- * How long a daemon has been up, or how long it ran before it exited. An
- * exited service's span is `exitedAt - startedAt`, never `now - startedAt` —
- * a service that died an hour ago has not been running for an hour.
- */
-export function procUptime(daemon: ProcDaemon, now = Date.now()): { label: string; ms: number } | undefined {
-  if (typeof daemon.startedAt !== 'number') return undefined;
-  const end = typeof daemon.exitedAt === 'number' ? daemon.exitedAt : now;
-  const ms = Math.max(0, end - daemon.startedAt);
-  return { label: formatProcDuration(ms), ms };
 }
 
 /** One-word label for the op a call performed. */

@@ -4,12 +4,14 @@
  */
 
 /**
- * The `artifact://<id>` reference a truncated result carries.
+ * The spill reference a truncated result carries.
  *
  * The shape is omp's own, taken from a real result: the id sits under
  * `details.meta.limits.columnTruncated.artifactId`, and the kind is NOT in that
  * record — it comes from the tool that produced the result, which is what tells
- * an `eval` artifact from a `bash` one under the same id.
+ * an `eval` artifact from a `bash` one under the same id. omp 19.0.0 names the
+ * file `local://<id>.log` and drops the kind from the path; the `details`
+ * record is unchanged, so this reader is too.
  *
  * Pure function, no mounting.
  */

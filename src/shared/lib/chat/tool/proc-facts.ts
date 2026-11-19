@@ -13,7 +13,8 @@
  * line count and a `read`'s the service log as a file size.
  */
 
-import { bashServiceOf, daemonTone, formatProcDuration, jobTone, procOpLabel, procUptime, procViewOf } from '@/shared/lib/omp/session/proc';
+import { bashServiceOf, jobTone, procOpLabel, procViewOf } from '@/shared/lib/omp/session/proc';
+import { daemonTone, formatProcDuration, procUptime } from '@/shared/lib/omp/session/proc-daemon';
 import { countPhrase } from '@/shared/lib/chat/tool/labels';
 import type { ToolCallData } from '@/shared/types/chat';
 import type { ToolFact } from '@/shared/lib/chat/tool/summary';

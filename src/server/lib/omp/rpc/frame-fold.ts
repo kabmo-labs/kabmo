@@ -252,6 +252,10 @@ export function foldSessionFrame(host: SessionFrameHost, event: AgentEvent): Fra
     // transcript, and a reset (or a command timeout's reset) could kill it —
     // and the session-file caches were never dropped, so the sidebar and the
     // timeline kept serving the pre-compaction read. Both pairs fold here.
+    // 19.0.0's `/handoff` is a manual compaction in `handoff` mode: it leaves
+    // live turns running and applies between turns, so the pair can arrive
+    // while `streaming` is true. `compacting` is still the right answer — a
+    // compaction is pending — and `_end` clears it either way.
     case 'auto_compaction_start':
     case 'manual_compaction_start':
       host.compacting = true;

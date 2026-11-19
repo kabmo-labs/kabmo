@@ -4,7 +4,12 @@
  */
 
 /**
- * The `artifact://<id>` reference a rewritten or truncated tool result carries.
+ * The spill reference a rewritten or truncated tool result carries.
+ *
+ * omp 19.0.0 names the file `local://<id>.log` at the session's `local://`
+ * root; before it the URL was `artifact://<id>` and the file carried the tool's
+ * kind. The `details` record is the same either way, so only the reader's path
+ * changed (`artifacts.server.ts`).
  *
  * Two records name one, and both are read here:
  *

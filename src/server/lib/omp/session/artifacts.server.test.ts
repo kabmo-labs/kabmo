@@ -4,11 +4,12 @@
  */
 
 /**
- * Reading the raw stream behind an `artifact://<id>` reference.
+ * Reading the raw stream behind a spilled tool result.
  *
- * omp spills a long tool result to `<sessionDir>/<sessionId>/<id>.<kind>.log`
- * and leaves only a truncated body in the transcript. Nothing in Kabmo
- * read it, so 65 real results (the longest in the corpus) stopped at the 768
+ * omp 19.0.0 spills a long tool result to `<sessionDir>/<sessionId>/<id>.log`
+ * (a `local://<id>.log` file) and leaves only a truncated body in the
+ * transcript; before it the file was `<id>.<kind>.log`. Nothing in Kabmo read
+ * either, so 65 real results (the longest in the corpus) stopped at the 768
  * bytes the transcript kept.
  *
  * The id and kind reach this module from a session transcript — a document the
@@ -48,6 +49,8 @@ beforeAll(async () => {
   await fsp.writeFile(path.join(sessionDir, '420.bash.log'), 'full build log\nsecond line\n');
   await fsp.writeFile(path.join(sessionDir, '213.eval.log'), 'eval output\n');
   await fsp.writeFile(path.join(sessionDir, '420.read.log'), 'read output\n');
+  // 19.0.0: the spill is `<id>.log` at the session's local:// root, no kind.
+  await fsp.writeFile(path.join(sessionDir, '500.log'), 'spilled by 19.0.0\n');
   clearSessionFileCaches();
 });
 
@@ -69,7 +72,14 @@ describe('isArtifactKind', () => {
 });
 
 describe('readArtifact', () => {
-  test('reads the stream omp spilled for the id', async () => {
+  test('reads a 19.0.0 local:// spill, which carries no kind in its name', async () => {
+    const artifact = await readArtifact(SESSION_ID, '500', 'bash');
+    expect(artifact?.text).toBe('spilled by 19.0.0\n');
+    expect(artifact?.kind).toBe('spill');
+    expect(artifact?.truncated).toBe(false);
+  });
+
+  test('reads the legacy stream omp spilled for the id', async () => {
     const artifact = await readArtifact(SESSION_ID, '420', 'bash');
     expect(artifact?.text).toBe('full build log\nsecond line\n');
     expect(artifact?.kind).toBe('bash');

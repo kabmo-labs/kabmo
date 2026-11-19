@@ -11,8 +11,9 @@
  * while producing almost no output, so the card has to answer one question the
  * generic fallback could not: how long has this been going, and is anything
  * still moving. (omp 18.17.0 removed its 30-minute ceiling: a window from a
- * 5 s → 5 min ladder now ends the call, and the ladder climbs across back-to-back
- * idle waits.) Before this the call had NO panel (`toolPanelKind` returned
+ * ladder now ends the call, and the ladder climbs across back-to-back idle
+ * waits — 19.0.0 cut it to 5 s, then 4 minutes.) Before this the call had NO
+ * panel (`toolPanelKind` returned
  * null) and rendered as `Wait` + a "Wait" header + an empty Output block, even
  * though omp reports the whole picture in `details` — every job's status, its
  * elapsed `durationMs`, a subagent's `completionPercent`, and whether the wait
