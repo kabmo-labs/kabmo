@@ -298,6 +298,13 @@ public sealed class ServerStore
     /// <summary>Caller holds the gate.</summary>
     private async Task<StartResult> StartLockedAsync(int port, string? label)
     {
+        var running = await RunningOwnedAsync().ConfigureAwait(false);
+        if (running is not null)
+        {
+            throw new ServerException(
+                $"A local server is already running ({running.Url}). Stop it before starting another.");
+        }
+
         var started = await _deps.StartAsync(port).ConfigureAwait(false);
         var entries = _state.Entries.ToList();
         var index = entries.FindIndex(entry => entry.Id == started.Id);
@@ -327,6 +334,24 @@ public sealed class ServerStore
         _state = _state with { Entries = entries, Spawned = spawned, ActiveId = started.Id };
         Persist();
         return started;
+    }
+
+    /// <summary>
+    /// A server this shell started that is still answering, or null.
+    ///
+    /// The shell owns ONE local server. A second one shares `%APPDATA%\Kabmo` — the
+    /// same database, the same plugin children, the same tray slot — and every
+    /// Start press used to add another row on a fresh free port, so a few presses
+    /// left several servers each holding an omp child. Caller holds the gate.
+    /// </summary>
+    private async Task<StoredServer?> RunningOwnedAsync()
+    {
+        foreach (var stored in _state.Entries)
+        {
+            if (!_state.Spawned.ContainsKey(stored.Id)) continue;
+            if (await _deps.ProbeAsync(stored.Url).ConfigureAwait(false) is not null) return stored;
+        }
+        return null;
     }
 
     public async Task StopAsync(string id)

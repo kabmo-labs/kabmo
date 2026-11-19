@@ -338,8 +338,26 @@ public actor ServerStore {
     throw ServerError("\(entry.label) is not answering. Start it first.")
   }
 
+  /// Is a server this shell started still answering?
+  ///
+  /// The shell owns ONE local server. A second one shares `~/.kabmo` — the same
+  /// database, the same plugin children, the same tray slot — and every Start
+  /// press used to add another row on a fresh free port, so a few presses left
+  /// several servers each holding an omp child.
+  private func runningOwned() async -> StoredServer? {
+    for stored in state.entries where state.spawned[stored.id] != nil {
+      if await deps.probe(stored.url) != nil { return stored }
+    }
+    return nil
+  }
+
   /// Start a local server as this shell's child and select it.
   public func start(port: Int, label: String? = nil) async throws -> (id: String, url: String) {
+    if let running = await runningOwned() {
+      throw ServerError(
+        "A local server is already running (\(running.url)). Stop it before starting another."
+      )
+    }
     let started = try await deps.start(port: port)
     if let index = state.entries.firstIndex(where: { $0.id == started.id }) {
       state.entries[index].url = started.url

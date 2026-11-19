@@ -236,6 +236,55 @@ pub fn cases(r: &mut Runner) {
             == Some(4242),
     );
 
+    // One local server at a time: the store, not the panel, is the limit.
+    let mut spawned = BTreeMap::new();
+    spawned.insert("local:3001".to_string(), 9);
+    let (mut store, saved) = store_with(
+        FakeDeps::new(Some(9)).with_health("http://127.0.0.1:3001"),
+        PersistedState {
+            entries: vec![StoredServer {
+                id: "local:3001".into(),
+                label: "L".into(),
+                url: "http://127.0.0.1:3001".into(),
+                kind: ServerKind::Managed,
+                port: Some(3001),
+            }],
+            spawned: spawned.clone(),
+            ..Default::default()
+        },
+    );
+    let refused = store.start(3007, None).is_err();
+    r.check("a second local server is refused while one runs", refused);
+    r.check(
+        "...and nothing was persisted for it",
+        saved.borrow().is_empty(),
+    );
+
+    // A recorded pid whose server died does not block: that Start is a restart.
+    let (mut store, _) = store_with(
+        FakeDeps::new(Some(4242)),
+        PersistedState {
+            entries: vec![StoredServer {
+                id: "local:3001".into(),
+                label: "L".into(),
+                url: "http://127.0.0.1:3001".into(),
+                kind: ServerKind::Managed,
+                port: Some(3001),
+            }],
+            spawned,
+            ..Default::default()
+        },
+    );
+    r.check(
+        "a dead owned server does not block a start",
+        store
+            .start(3007, None)
+            .map(|started| started.id)
+            .ok()
+            .as_deref()
+            == Some("local:3007"),
+    );
+
     let mut spawned = BTreeMap::new();
     spawned.insert("local:3001".to_string(), 9);
     let (mut store, saved) = store_with(

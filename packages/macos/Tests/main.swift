@@ -251,6 +251,31 @@ func storeCases() async {
     check("stopping clears the recorded pid", box.saved.last?.spawned.isEmpty == true)
   }
 
+  // One local server at a time: the store, not the panel, is the limit.
+  do {
+    let deps = FakeDeps(health: ["http://127.0.0.1:3001": Health()], startPid: 9)
+    let (store, _) = makeStore(deps: deps, persisted: PersistedState(
+      entries: [StoredServer(id: "local:3001", label: "L", url: "http://127.0.0.1:3001", kind: .managed, port: 3001)],
+      spawned: ["local:3001": 9]
+    ))
+    var refused = false
+    do { _ = try await store.start(port: 3007) } catch { refused = true }
+    check("a second local server is refused while one runs", refused)
+    let started = await deps.started
+    check("...and nothing was spawned", started.isEmpty)
+  }
+
+  // A recorded pid whose server died does not block: that Start is a restart.
+  do {
+    let deps = FakeDeps(startPid: 4242)
+    let (store, _) = makeStore(deps: deps, persisted: PersistedState(
+      entries: [StoredServer(id: "local:3001", label: "L", url: "http://127.0.0.1:3001", kind: .managed, port: 3001)],
+      spawned: ["local:3001": 9]
+    ))
+    let started = try? await store.start(port: 3007)
+    check("a dead owned server does not block a start", started?.id == "local:3007")
+  }
+
   // Adoption is limited to the pids this shell recorded, and only while they answer.
   do {
     let deps = FakeDeps(detected: [entry("local:3001", url: "http://127.0.0.1:3001", port: 3001)])

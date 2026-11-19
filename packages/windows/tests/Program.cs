@@ -240,6 +240,34 @@ await CheckAsync("starting selects the new server and records the pid", async ()
         && pid == 4242;
 });
 
+// One local server at a time: the store, not the panel, is the limit.
+await CheckAsync("a second local server is refused while one runs", async () =>
+{
+    var deps = new FakeDeps { StartPid = 9 };
+    deps.Health["http://127.0.0.1:3001"] = new Health();
+    var (store, saved) = MakeStore(deps, new PersistedState
+    {
+        Entries = new[] { new StoredServer { Id = "local:3001", Label = "L", Url = "http://127.0.0.1:3001", Kind = ServerKind.Managed, Port = 3001 } },
+        Spawned = new Dictionary<string, int> { ["local:3001"] = 9 },
+    });
+    var refused = false;
+    try { await store.StartAsync(3007); } catch (ServerException) { refused = true; }
+    return refused && deps.Started.Count == 0 && saved.Last is null;
+});
+
+// A recorded pid whose server died does not block: that Start is a restart.
+await CheckAsync("a dead owned server does not block a start", async () =>
+{
+    var deps = new FakeDeps { StartPid = 4242 };
+    var (store, _) = MakeStore(deps, new PersistedState
+    {
+        Entries = new[] { new StoredServer { Id = "local:3001", Label = "L", Url = "http://127.0.0.1:3001", Kind = ServerKind.Managed, Port = 3001 } },
+        Spawned = new Dictionary<string, int> { ["local:3001"] = 9 },
+    });
+    var started = await store.StartAsync(3007);
+    return started.Id == "local:3007";
+});
+
 await CheckAsync("stopping clears the recorded pid", async () =>
 {
     var deps = new FakeDeps { StartPid = 9 };

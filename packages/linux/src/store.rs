@@ -437,6 +437,18 @@ impl<D: Deps> ServerStore<D> {
         Err(ShellError::new(format!("{label} is not answering. Start it first.")))
     }
 
+    /// Is a server this shell started still answering?
+    ///
+    /// The shell owns ONE local server. A second one shares `~/.kabmo` — the same
+    /// database, the same plugin children, the same tray slot — and every Start
+    /// press used to add another row on a fresh free port, so a few presses left
+    /// several servers each holding an omp child.
+    fn running_owned(&self) -> Option<&StoredServer> {
+        self.state.entries.iter().find(|stored| {
+            self.state.spawned.contains_key(&stored.id) && self.deps.probe(&stored.url).is_some()
+        })
+    }
+
     /// Start a local server as this shell's child and select it.
     ///
     /// Answers the `StartResult` — the id, the address and the pid — because the
@@ -448,6 +460,12 @@ impl<D: Deps> ServerStore<D> {
         port: u16,
         label: Option<&str>,
     ) -> Result<StartResult, ShellError> {
+        if let Some(running) = self.running_owned() {
+            return Err(ShellError::new(format!(
+                "A local server is already running ({}). Stop it before starting another.",
+                running.url
+            )));
+        }
         let started = self.deps.start(port).map_err(ShellError::new)?;
         if let Some(index) = self
             .state
