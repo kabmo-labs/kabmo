@@ -81,9 +81,17 @@ beforeEach(() => {
   document.body.appendChild(container);
 });
 
-afterEach(() => {
+afterEach(async () => {
   if (container) {
-    render(null, container);
+    // Unmount INSIDE `act`, so every cleanup (the menus' keydown listener,
+    // above all) has run before the next step. A bare `render(null)` leaves
+    // Preact's debounced cleanup queued, and it then runs after `afterAll`
+    // restored the globals — measured on Windows as
+    // `ReferenceError: document is not defined` in anchored-menu, reported
+    // against this file.
+    await act(() => {
+      render(null, container);
+    });
     container.remove();
   }
   restoreRealtime();

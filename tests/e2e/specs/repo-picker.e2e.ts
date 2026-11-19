@@ -52,7 +52,7 @@ test.describe('repo picker', () => {
 
     // The root row reads the workspace DIRECTORY's name, which is the last
     // segment of the path rather than the folder's display name.
-    const rootName = workspace.path.split('/').filter(Boolean).pop()!;
+    const rootName = workspace.path.split(/[\\/]/).filter(Boolean).pop()!;
 
     for (const panel of ['Files', 'Search', 'Source Control']) {
       await page.getByRole('button', { name: panel }).click();
@@ -89,7 +89,7 @@ test.describe('repo picker', () => {
     // The root row SURVIVES that walk: the root is not itself a repo, so
     // discovery omits `'.'`, and the picker must still offer it — the panel is
     // browsing the root until the user picks something else.
-    const rootName = workspace.path.split('/').filter(Boolean).pop()!;
+    const rootName = workspace.path.split(/[\\/]/).filter(Boolean).pop()!;
     await expect(page.locator('[role="option"]:visible', { hasText: rootName })).toBeVisible();
 
     await option.focus();

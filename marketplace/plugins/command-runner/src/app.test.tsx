@@ -22,7 +22,6 @@ import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { loadPluginApp, uninstallTestPluginRuntime } from '@kabmo-labs/kabmo-sdk/testing/app';
-import type { FakeKabmoHarness } from '@kabmo-labs/kabmo-sdk/testing';
 import {
   PanelHostProvider,
   PluginIdProvider,
