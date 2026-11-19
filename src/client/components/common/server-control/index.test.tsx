@@ -178,6 +178,50 @@ describe('ServerControl', () => {
     expect(stops.map((button) => button.getAttribute('aria-label'))).toEqual(['Stop Local :3001']);
   });
 
+  /**
+   * A server this shell spawned that has since died has no Stop (nothing to
+   * stop) — and Remove used to be gated on `!owned`, so the row had NO action at
+   * all and could not be cleared without reloading the page.
+   */
+  test('a dead server this shell spawned can still be removed', async () => {
+    mount(state({
+      entries: [
+        { id: 'local:3000', label: 'Local :3000', url: 'http://127.0.0.1:3000', kind: 'managed', port: 3000, running: false, owned: true, source: 'stored' },
+      ],
+    }));
+    await settle();
+    expect(text()).toContain('Stopped');
+    expect(win.document.querySelector('[aria-label="Stop Local :3000"]')).toBeNull();
+    const remove = win.document.querySelector('[aria-label="Remove Local :3000"]');
+    expect(remove).not.toBeNull();
+    act(() => {
+      (remove as unknown as HTMLButtonElement).click();
+    });
+    await settle();
+    expect(calls.some((call) => call.command === 'servers_remove')).toBe(true);
+  });
+
+  /**
+   * The shell owns ONE local server. The store refuses a second, so the panel
+   * must not offer one; the note replaces the button while a server it started
+   * is running.
+   */
+  test('Start is replaced by the running server, one at a time', async () => {
+    mount(DESKTOP);
+    await settle();
+    expect(text()).not.toContain('Start a local server');
+    expect(text()).toContain('Local :3001 is running');
+
+    // A recorded server that died does not block: starting again is the restart.
+    mount(state({
+      entries: [
+        { id: 'local:3001', label: 'Local :3001', url: 'http://127.0.0.1:3001', kind: 'managed', port: 3001, running: false, owned: true, source: 'stored' },
+      ],
+    }));
+    await settle();
+    expect(text()).toContain('Start a local server');
+  });
+
   test('a phone is offered no Start, and no local discovery', async () => {
     mount(PHONE, 'chip');
     await settle();

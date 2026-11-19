@@ -4,22 +4,26 @@
  */
 
 /**
- * The server panel's own markup: one row per server, the empty state, and the
- * two footers a shell may or may not offer.
+ * The server panel: the two groups, the empty state, the error line and the
+ * footer a shell may or may not offer.
  *
  * Split from `ServerControl` so the trigger (a chip on a phone, a labelled
  * button in a desktop navbar) and the list can be read and tested apart. The
  * STORE is the control's, not the panel's: the old panel opened a second
  * `useShellServers`, which meant two copies of the list, two 4-second polls and
  * a trigger that could disagree with the rows directly under it.
+ *
+ * The ROW lives in `Row.tsx`: its action rules (Stop only for an owned server
+ * that answers, Remove for everything else) are the part a reader comes here
+ * for, and keeping them here pushed this file past the 350-line ceiling.
  */
 
 import { useState } from 'preact/hooks';
-import { Check, Loader2, Play, Plus, RefreshCw, Server, Square, Trash2, X } from 'lucide-preact';
+import { Loader2, Play, Plus, RefreshCw, Server, X } from 'lucide-preact';
 import { AnchoredMenu } from '@/client/components/common/anchored-menu';
+import { Row } from '@/client/components/common/server-control/Row';
 import { anchorRectOf } from '@/shared/lib/ui/menu-anchor';
 import type { ShellServersStore } from '@/client/hooks/shell/servers';
-import type { ShellServer } from '@/client/lib/shell/servers';
 
 export type ServerControlVariant = 'nav' | 'chip';
 
@@ -31,85 +35,6 @@ interface ServerPanelProps {
   store: ShellServersStore;
   /** The button this panel hangs from, measured when it opens. */
   triggerRef: { current: HTMLButtonElement | null };
-}
-
-function statusLine(server: ShellServer): string {
-  if (!server.running) return 'Stopped';
-  const parts: string[] = [];
-  if (server.version) parts.push(`v${server.version}`);
-  if (server.mode) parts.push(server.mode);
-  if (server.pid) parts.push(`pid ${server.pid}`);
-  return parts.length > 0 ? parts.join(' · ') : 'Running';
-}
-
-function Row({
-  server,
-  active,
-  busy,
-  onActivate,
-  onStop,
-  onRemove,
-}: {
-  server: ShellServer;
-  active: boolean;
-  busy: boolean;
-  onActivate: () => void;
-  onStop?: () => void;
-  onRemove?: () => void;
-}) {
-  const canConnect = server.running && !active;
-  return (
-    <div
-      className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 ${
-        active ? 'border-ink/30 bg-ink/[0.04]' : 'border-ink/10'
-      }`}
-    >
-      <span
-        className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-          server.running ? 'bg-success' : 'bg-ink/25'
-        }`}
-        aria-hidden="true"
-      />
-      <button
-        type="button"
-        onClick={onActivate}
-        disabled={busy || !canConnect}
-        title={canConnect ? `Switch to ${server.label}` : statusLine(server)}
-        className="flex-1 min-w-0 text-left cursor-pointer disabled:cursor-default group"
-      >
-        <span className="flex items-center gap-1.5">
-          <span className="text-xs font-medium text-ink truncate">{server.label}</span>
-          {active && <Check size={12} className="text-success flex-shrink-0" aria-label="Active" />}
-        </span>
-        <span className="block text-[10px] text-ink/50 truncate font-mono">{server.url}</span>
-        <span className="block text-[10px] text-ink/40 truncate">{statusLine(server)}</span>
-      </button>
-      {onStop && server.owned && server.running && (
-        <button
-          type="button"
-          onClick={onStop}
-          disabled={busy}
-          title="Stop this local server"
-          aria-label={`Stop ${server.label}`}
-          className="p-1 rounded text-ink/40 hover:text-error hover:bg-error/10 cursor-pointer disabled:opacity-40"
-        >
-          <Square size={12} />
-        </button>
-      )}
-      {onRemove && !server.owned && (
-        <button
-          type="button"
-          onClick={onRemove}
-          disabled={busy}
-          title="Remove from the list"
-          aria-label={`Remove ${server.label}`}
-          className="p-1 rounded text-ink/40 hover:text-error hover:bg-error/10 cursor-pointer disabled:opacity-40"
-        >
-          <Trash2 size={12} />
-        </button>
-      )}
-    </div>
-  );
 }
 
 /**
@@ -164,6 +89,10 @@ export function ServerPanel({ open, onClose, variant, store, triggerRef }: Serve
   const detected = state?.detected ?? [];
   const activeId = state?.activeId;
   const startable = state?.startable !== false;
+  // One local server per shell: the store refuses a second anyway, so the
+  // control must not offer one. A recorded server that died does not count —
+  // starting again is the restart.
+  const runningLocal = entries.find((server) => server.owned && server.running);
 
   const submit = async () => {
     if (!url.trim()) return;
@@ -272,8 +201,17 @@ export function ServerPanel({ open, onClose, variant, store, triggerRef }: Serve
         {/* A phone cannot spawn a server: there is no process to start and no
             terminal to own it. The control is ABSENT rather than disabled,
             because a disabled button would promise a capability the shell does
-            not have. */}
-        {startable && (
+            not have.
+
+            A desktop shell owns ONE local server. While it runs, the control is
+            replaced by the fact rather than disabled: the row above already
+            carries the Stop, and a dead grey button would leave the reader
+            wondering what would enable it. */}
+        {startable && (runningLocal ? (
+          <p className="px-1 text-[10px] text-ink/50">
+            {runningLocal.label} is running — stop it to start another.
+          </p>
+        ) : (
           <button
             type="button"
             onClick={() => void store.start()}
@@ -282,7 +220,7 @@ export function ServerPanel({ open, onClose, variant, store, triggerRef }: Serve
           >
             <Play size={12} /> Start a local server
           </button>
-        )}
+        ))}
 
         {adding ? (
           <form
