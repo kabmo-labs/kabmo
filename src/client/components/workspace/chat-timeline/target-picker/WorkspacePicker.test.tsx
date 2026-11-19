@@ -22,6 +22,7 @@ import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
 import { WorkspacePicker, workspaceLabel } from '@/client/components/workspace/chat-timeline/target-picker/WorkspacePicker';
+import { NEW_WORKSPACE_EVENT } from '@/shared/lib/workspace/new-workspace';
 import type { WorkspaceFolderData } from '@/shared/types';
 
 const folder = (id: number, name: string, icon?: string): WorkspaceFolderData => ({
@@ -143,6 +144,55 @@ describe('WorkspacePicker', () => {
     expect(rows[0]?.querySelector('.lucide-code-2')).not.toBeNull();
     // A workspace with no icon keeps the default folder mark.
     expect(rows[1]?.querySelector('.lucide-folder')).not.toBeNull();
+  });
+
+  test('the menu offers "Add new workspace" and asks the layout for the dialog', async () => {
+    let asked = 0;
+    const onAsk = () => {
+      asked += 1;
+    };
+    window.addEventListener(NEW_WORKSPACE_EVENT, onAsk);
+    try {
+      const host = await mount(
+        h(WorkspacePicker, {
+          folders: [folder(1, 'kabmo')],
+          selectedFolderId: 1,
+          setSelectedFolderId: () => {},
+        }),
+      );
+
+      await act(async () => {
+        (host.querySelector('button') as HTMLButtonElement).click();
+      });
+      const add = [...host.querySelectorAll('[role="menuitem"]')]
+        .find((row) => row.textContent?.includes('Add new workspace')) as HTMLButtonElement | undefined;
+      expect(add).toBeDefined();
+
+      await act(async () => {
+        add?.click();
+      });
+      expect(asked).toBe(1);
+      // The menu closes: the dialog is the next thing the user sees.
+      expect(host.querySelector('[role="menu"]')).toBeNull();
+    } finally {
+      window.removeEventListener(NEW_WORKSPACE_EVENT, onAsk);
+    }
+  });
+
+  test('the add action is offered even with no workspaces yet', async () => {
+    const host = await mount(
+      h(WorkspacePicker, {
+        folders: [],
+        selectedFolderId: null,
+        setSelectedFolderId: () => {},
+      }),
+    );
+
+    await act(async () => {
+      (host.querySelector('button') as HTMLButtonElement).click();
+    });
+    expect(textOf(host)).toContain('No workspaces available');
+    expect(textOf(host)).toContain('Add new workspace');
   });
 
   test('choosing a folder clears the worktree pick', async () => {

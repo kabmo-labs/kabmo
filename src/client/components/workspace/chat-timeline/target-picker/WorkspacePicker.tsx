@@ -24,12 +24,13 @@
  */
 
 import { useMemo, useRef, useState } from 'preact/hooks';
-import { Check, ChevronDown, Folder } from 'lucide-preact';
+import { Check, ChevronDown, Folder, Plus } from 'lucide-preact';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 import { PickerSearch } from '@/client/components/common/picker-search';
 import { getProjectIcon } from '@/shared/lib/workspace/project-icon';
 import { projectAccentStyle } from '@/shared/lib/workspace/project-accent';
 import { matchesPickerQuery } from '@/shared/lib/ui/picker-filter';
+import { requestNewWorkspace } from '@/shared/lib/workspace/new-workspace';
 import type { WorkspaceFolderData } from '@/shared/types';
 
 export interface WorkspacePickerProps {
@@ -162,6 +163,24 @@ export function WorkspacePicker({
                 );
               })
             )}
+          </div>
+          {/* The dialog is the layout's, not this menu's: the picker only asks
+              for it, so the action works with the dock collapsed or showing a
+              plugin panel. */}
+          <div className="border-t border-ink/5 pt-1">
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                setQuery('');
+                requestNewWorkspace();
+              }}
+              className="w-full text-left px-3 py-1.5 flex items-center gap-2 text-ink/70 hover:bg-ink/5 hover:text-ink transition-colors cursor-pointer"
+            >
+              <Plus size={12} className="flex-shrink-0" />
+              <span className="font-medium">Add new workspace</span>
+            </button>
           </div>
         </div>
       )}

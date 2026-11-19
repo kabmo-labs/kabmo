@@ -21,6 +21,7 @@ import type { ComposerModes } from '@/client/components/workspace/chat-timeline/
 import type { WaitingCandidate } from '@/client/components/workspace/chat-timeline/chat-input/WaitingDependencyPicker';
 import type { DeferredModelStore } from '@/client/hooks/chat/timeline/deferred-model';
 import { EmptyWorkspacePrompt } from '@/client/components/workspace/chat-timeline/EmptyWorkspacePrompt';
+import { NewWorkspaceHost } from '@/client/components/layout/new-workspace-host';
 import type { SpawnTarget } from '@/client/hooks/chat/timeline/spawn-target';
 import type { ToastTone } from '@/shared/lib/ui/toast-duration';
 
@@ -94,55 +95,60 @@ export interface PendingChatViewProps {
 
 export function PendingChatView(props: PendingChatViewProps) {
   return (
-    <EmptyWorkspacePrompt
-      className={props.className}
-      folders={props.folders}
-      selectedFolderId={props.selectedFolderId}
-      setSelectedFolderId={props.setSelectedFolderId}
-      rootPath={props.rootPath}
-      inputValue={props.inputValue}
-      setInputValue={props.setInputValue}
-      inputAttachments={props.inputAttachments}
-      setInputAttachments={props.setInputAttachments}
-      onSend={props.onSend}
-      isGenerating={props.isGenerating}
-      appSettings={props.appSettings}
-      messages={props.messages}
-      provider={props.provider}
-      providerNames={props.providerNames}
-      modelName={props.modelName}
-      modelNames={props.modelNames}
-      onThinkingLevelChange={props.onThinkingLevelChange}
-      onModelChange={props.onModelChange}
-      accessMode={props.accessMode}
-      onAccessModeChange={props.onAccessModeChange}
-      modes={props.modes}
-      composerModelRef={props.composerModelRef}
-      deferredComposerPickRef={props.deferredComposerPickRef}
-      sessionModel={props.sessionModel}
-      sessionThinkingLevel={props.sessionThinkingLevel}
-      generatingVerb={props.generatingVerb}
-      variant={props.variant}
-      onUndo={props.onUndo}
-      onRetry={props.onRetry}
-      onNewChat={props.onNewChat}
-      streamStatusMap={props.streamStatusMap}
-      titleForSession={props.titleForSession}
-      waitingFor={props.waitingFor}
-      onWaitingForChange={props.onWaitingForChange}
-      heldWait={props.heldWait}
-      onCancelWait={props.onCancelWait}
-      spawnTarget={props.spawnTarget}
-      onSpawnTargetChange={props.onSpawnTargetChange}
-      parentSessionId={props.parentSessionId}
-      onParentSessionChange={props.onParentSessionChange}
-      branchLabel={props.branchLabel}
-      branchAllowNone={props.branchAllowNone}
-      {...(props.branchPreview ? { branchPreview: props.branchPreview } : {})}
-      onWorktreeReport={props.onWorktreeReport}
-      {...(props.harness ? { harness: props.harness } : {})}
-      harnessEditable={props.harnessEditable}
-      onSelectHarness={props.onSelectHarness}
-    />
+    <>
+      <EmptyWorkspacePrompt
+        className={props.className}
+        folders={props.folders}
+        selectedFolderId={props.selectedFolderId}
+        setSelectedFolderId={props.setSelectedFolderId}
+        rootPath={props.rootPath}
+        inputValue={props.inputValue}
+        setInputValue={props.setInputValue}
+        inputAttachments={props.inputAttachments}
+        setInputAttachments={props.setInputAttachments}
+        onSend={props.onSend}
+        isGenerating={props.isGenerating}
+        appSettings={props.appSettings}
+        messages={props.messages}
+        provider={props.provider}
+        providerNames={props.providerNames}
+        modelName={props.modelName}
+        modelNames={props.modelNames}
+        onThinkingLevelChange={props.onThinkingLevelChange}
+        onModelChange={props.onModelChange}
+        accessMode={props.accessMode}
+        onAccessModeChange={props.onAccessModeChange}
+        modes={props.modes}
+        composerModelRef={props.composerModelRef}
+        deferredComposerPickRef={props.deferredComposerPickRef}
+        sessionModel={props.sessionModel}
+        sessionThinkingLevel={props.sessionThinkingLevel}
+        generatingVerb={props.generatingVerb}
+        variant={props.variant}
+        onUndo={props.onUndo}
+        onRetry={props.onRetry}
+        onNewChat={props.onNewChat}
+        streamStatusMap={props.streamStatusMap}
+        titleForSession={props.titleForSession}
+        waitingFor={props.waitingFor}
+        onWaitingForChange={props.onWaitingForChange}
+        heldWait={props.heldWait}
+        onCancelWait={props.onCancelWait}
+        spawnTarget={props.spawnTarget}
+        onSpawnTargetChange={props.onSpawnTargetChange}
+        parentSessionId={props.parentSessionId}
+        onParentSessionChange={props.onParentSessionChange}
+        branchLabel={props.branchLabel}
+        branchAllowNone={props.branchAllowNone}
+        {...(props.branchPreview ? { branchPreview: props.branchPreview } : {})}
+        onWorktreeReport={props.onWorktreeReport}
+        {...(props.harness ? { harness: props.harness } : {})}
+        harnessEditable={props.harnessEditable}
+        onSelectHarness={props.onSelectHarness}
+      />
+      {/* The picker's "Add new workspace" row asks for this dialog; the pending
+          chat is the only view that draws the picker, so it hosts the answer. */}
+      <NewWorkspaceHost />
+    </>
   );
 }
