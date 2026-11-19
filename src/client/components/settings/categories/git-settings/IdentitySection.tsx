@@ -6,20 +6,21 @@
 /**
  * Settings → Git → Commit identity.
  *
- * A commit carries a name and an email. Kabmo keeps a small list and one
- * selection; the selection is passed to the git command that creates the
- * commit, so the repository's own config is untouched and a terminal or an
- * agent in the same checkout keeps its identity.
+ * The saved identities are a library; the user's GLOBAL git config is the
+ * source of truth. Applying one writes `user.name` / `user.email` with
+ * `git config --global`, so every repository without a local override commits
+ * as that person. "Global config" restores what was there before Kabmo wrote.
  *
- * "Repository config" is the default and the honest one: with no selection,
- * git answers with whatever `user.name` / `user.email` the repository or the
- * machine already has.
+ * The previous values and the applied id live in the same config under
+ * `kabmo.identity.*`, so the backup survives a restart and cannot be applied to
+ * the wrong scope.
  */
 
-import { useState } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 import { Plus, Trash2 } from 'lucide-preact';
 import type { SettingsState } from '@/shared/types';
-import { isGitIdentity, type GitIdentity } from '@/shared/lib/git/identity';
+import { isGitIdentity, type GitIdentity, type GitIdentityRead } from '@/shared/lib/git/identity';
+import { SearchSelect } from '@/client/components/common/search-select';
 
 interface IdentitySectionProps {
   settings: SettingsState;
@@ -30,10 +31,51 @@ const INPUT_CLASS = 'w-full bg-paper border border-ink/20 rounded-md px-2.5 py-1
 
 export function IdentitySection({ settings, onUpdate }: IdentitySectionProps) {
   const identities = settings.gitIdentities ?? [];
-  const selected = settings.gitCommitIdentity ?? '';
+  const [read, setRead] = useState<GitIdentityRead | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    fetch('/api/settings/git-identity')
+      .then(async (response) => {
+        const body = await response.json().catch(() => null) as (GitIdentityRead & { error?: string }) | null;
+        if (!response.ok || !body) throw new Error(body?.error || `Request failed (HTTP ${response.status})`);
+        if (active) setRead({ global: body.global, appliedId: body.appliedId });
+      })
+      .catch((cause: unknown) => {
+        if (active) setError(cause instanceof Error ? cause.message : String(cause));
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const apply = async (identityId: string) => {
+    setBusy(identityId || 'global');
+    setError(null);
+    try {
+      const response = await fetch('/api/settings/git-identity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identityId }),
+      });
+      const body = await response.json().catch(() => null) as (GitIdentityRead & { error?: string }) | null;
+      if (!response.ok || !body) throw new Error(body?.error || `Request failed (HTTP ${response.status})`);
+      setRead({ global: body.global, appliedId: body.appliedId });
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setBusy(null);
+    }
+  };
 
   const add = () => {
     const candidate: GitIdentity = {
@@ -47,67 +89,88 @@ export function IdentitySection({ settings, onUpdate }: IdentitySectionProps) {
       setError('Enter a name and a valid email address.');
       return;
     }
-    onUpdate({ gitIdentities: [...identities, candidate], gitCommitIdentity: candidate.id });
+    onUpdate({ gitIdentities: [...identities, candidate] });
     setName('');
     setEmail('');
     setError(null);
   };
 
-  const remove = (id: string) => {
-    onUpdate({
-      gitIdentities: identities.filter((entry) => entry.id !== id),
-      ...(selected === id ? { gitCommitIdentity: '' } : {}),
-    });
+  const remove = async (id: string) => {
+    if (read?.appliedId === id) await apply('');
+    onUpdate({ gitIdentities: identities.filter((entry) => entry.id !== id) });
   };
+
+  const appliedId = read?.appliedId ?? '';
+  const global = read?.global ?? null;
 
   return (
     <section className="space-y-3">
       <div>
         <h4 className="text-sm font-semibold text-ink">Commit Identity</h4>
         <p className="text-[11px] text-ink/60 mt-0.5">
-          The name and email a commit carries. Repository config leaves git's own user.name and user.email in charge.
+          The name and email a commit carries. Applying an identity writes it to your global git config.
         </p>
       </div>
 
-      <div className="rounded-lg border border-ink/15 bg-paper divide-y divide-ink/10">
-        <label className="flex items-center gap-3 p-3.5 cursor-pointer">
-          <input
-            type="radio"
-            checked={selected === ''}
-            onChange={() => onUpdate({ gitCommitIdentity: '' })}
-            className="accent-ink"
-          />
-          <div className="min-w-0">
-            <div className="text-xs font-semibold text-ink">Repository config</div>
-            <div className="text-[10px] text-ink/50">git's own user.name / user.email</div>
-          </div>
-        </label>
-
-        {identities.map((identity) => (
-          <div key={identity.id} className="flex items-center gap-3 p-3.5">
-            <label className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer">
-              <input
-                type="radio"
-                checked={selected === identity.id}
-                onChange={() => onUpdate({ gitCommitIdentity: identity.id })}
-                className="accent-ink"
-              />
-              <div className="min-w-0">
-                <div className="text-xs font-semibold text-ink truncate">{identity.name}</div>
-                <div className="text-[10px] text-ink/50 truncate">{identity.email}</div>
-              </div>
-            </label>
-            <button
-              type="button"
-              onClick={() => remove(identity.id)}
-              aria-label={`Remove ${identity.name}`}
-              className="p-1.5 rounded text-ink/40 hover:text-error hover:bg-ink/5 transition-colors cursor-pointer"
-            >
-              <Trash2 size={12} />
-            </button>
-          </div>
-        ))}
+      <div className="rounded-lg border border-ink/15 bg-paper p-3.5 space-y-2">
+        <label className="block text-[10px] font-semibold uppercase tracking-wider text-ink/45">Commit as</label>
+        <SearchSelect
+          ariaLabel="Commit identity"
+          value={appliedId}
+          onChange={(value) => void apply(value)}
+          disabled={loading || busy !== null}
+          placeholder="Global config"
+          searchable={identities.length > 8}
+          options={[
+            {
+              value: '',
+              label: 'Global config',
+              hint: "git's own user.name / user.email",
+            },
+            ...identities.map((identity) => ({
+              value: identity.id,
+              label: identity.name,
+              hint: identity.email,
+            })),
+          ]}
+        />
+        <p className="text-[10px] text-ink/50">
+          {loading
+            ? 'Reading git config…'
+            : global
+              ? `Current: ${global.name} <${global.email}>`
+              : 'No identity configured'}
+          {busy ? ' · applying…' : ''}
+        </p>
       </div>
+
+      {identities.length > 0 && (
+        <details className="rounded-lg border border-ink/15 bg-paper">
+          <summary className="px-3.5 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-ink/45 cursor-pointer select-none">
+            Manage saved identities ({identities.length})
+          </summary>
+          <div className="divide-y divide-ink/10 border-t border-ink/10 max-h-48 overflow-y-auto">
+            {identities.map((identity) => (
+              <div key={identity.id} className="flex items-center gap-3 px-3.5 py-2.5">
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-semibold text-ink truncate">{identity.name}</div>
+                  <div className="text-[10px] text-ink/50 truncate">{identity.email}</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void remove(identity.id)}
+                  aria-label={`Remove ${identity.name}`}
+                  className="p-1.5 rounded text-ink/40 hover:text-error hover:bg-ink/5 transition-colors cursor-pointer"
+                >
+                  <Trash2 size={12} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+
+      {error && <p className="text-[10px] text-error">{error}</p>}
 
       <div className="rounded-lg border border-ink/15 bg-paper p-3.5 space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -132,9 +195,8 @@ export function IdentitySection({ settings, onUpdate }: IdentitySectionProps) {
             className={INPUT_CLASS}
           />
         </div>
-        {error && <p className="text-[10px] text-error">{error}</p>}
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-[10px] text-ink/50">Applied to commits made from the Source Control panel.</p>
+          <p className="text-[10px] text-ink/50">Saved identities are a library; pick one above to apply it globally.</p>
           <button
             type="button"
             onClick={add}
@@ -146,7 +208,7 @@ export function IdentitySection({ settings, onUpdate }: IdentitySectionProps) {
       </div>
 
       <p className="text-[10px] text-ink/45 leading-relaxed">
-        The selected identity is passed to git for each commit. It does not rewrite the repository's config, so a terminal or an agent keeps its own identity.
+        Applying writes `user.name` and `user.email` to your global git config. Global config restores what was there before Kabmo wrote.
       </p>
     </section>
   );

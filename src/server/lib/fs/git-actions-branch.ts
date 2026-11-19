@@ -27,8 +27,6 @@ import { OPERATION_LABELS } from '@/shared/lib/fs/git-unmerged';
 import { continueArgsFor, mergeBranch, resolveConflict, type ConflictSide } from '@/server/lib/fs/git-merge';
 import { deleteBranch, renameBranch } from '@/server/lib/fs/git-branch';
 import { applyStash, dropStash, pushStash } from '@/server/lib/fs/git-stash';
-import { readSelectedGitIdentity } from '@/server/lib/fs/git-identity.server';
-import { gitIdentityArgs } from '@/shared/lib/git/identity';
 import { expectOk, field, fileForAction, flag, stoppedOperationPayload, type GitActionHandler } from '@/server/lib/fs/git-actions-shared';
 
 /**
@@ -51,8 +49,7 @@ export const GIT_BRANCH_ACTIONS: Record<string, GitActionHandler> = {
   async merge_branch({ formData, targetDir }) {
     // By NAME, not by hash: `git merge <sha>` writes `Merge commit '<sha>'`
     // where `git merge <branch>` writes `Merge branch '<name>'` (measured).
-    const identity = await readSelectedGitIdentity();
-    await mergeBranch(targetDir, field(formData, 'branch'), gitIdentityArgs(identity));
+    await mergeBranch(targetDir, field(formData, 'branch'));
     // A merge that stops on a conflict SUCCEEDS and leaves the tree to the
     // operation bar, so the panel's toast must not claim it merged.
     return stoppedOperationPayload(targetDir);
@@ -76,8 +73,7 @@ export const GIT_BRANCH_ACTIONS: Record<string, GitActionHandler> = {
       throw new Error(`Nothing to conclude — a ${OPERATION_LABELS[state.operation]} leaves its changes in the working tree.`);
     }
     await requireNoConflicts(targetDir, 'concluding the operation');
-    const identity = await readSelectedGitIdentity();
-    await expectOk([...gitIdentityArgs(identity), ...args], targetDir, 60_000);
+    await expectOk(args, targetDir, 60_000);
   },
 
   async resolve_conflict({ formData, targetDir }) {

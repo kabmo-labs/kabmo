@@ -3,6 +3,7 @@ import * as settingsRoot from '@/server/routes/settings/root';
 import * as settingsAgents from '@/server/routes/settings/agents';
 import * as settingsBehavior from '@/server/routes/settings/behavior';
 import * as settingsCommands from '@/server/routes/settings/commands';
+import * as settingsGitIdentity from '@/server/routes/settings/git-identity';
 import * as settingsMcp from '@/server/routes/settings/mcp';
 import * as settingsModelOverride from '@/server/routes/settings/model-override';
 import * as settingsMcpTest from '@/server/routes/settings/mcp-test';
@@ -25,6 +26,7 @@ export const settingsBindings: HandlerBinding[] = [
   ...bindingsFor(settingsAgents, '/api/settings/agents'),
   ...bindingsFor(settingsBehavior, '/api/settings/behavior'),
   ...bindingsFor(settingsCommands, '/api/settings/commands'),
+  ...bindingsFor(settingsGitIdentity, '/api/settings/git-identity'),
   ...bindingsFor(settingsMcp, '/api/settings/mcp'),
   ...bindingsFor(settingsModelOverride, '/api/settings/model-override'),
   ...bindingsFor(settingsMcpTest, '/api/settings/mcp-test'),

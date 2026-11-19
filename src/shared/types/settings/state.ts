@@ -99,8 +99,6 @@ export interface SettingsState {
   commitMessagePrompt: string;
   /** Saved commit identities (name + email). */
   gitIdentities: GitIdentity[];
-  /** The identity a commit uses; empty means the repository's own config. */
-  gitCommitIdentity: string;
   soundAlerts: boolean;
   chatCompletionSound: boolean;
   /**

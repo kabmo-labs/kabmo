@@ -5,11 +5,8 @@
 
 import { describe, expect, test } from 'bun:test';
 import {
-  gitIdentityArgs,
-  gitIdentityAuthorArgs,
   isGitIdentity,
   normalizeGitIdentities,
-  selectedGitIdentity,
   type GitIdentity,
 } from '@/shared/lib/git/identity';
 
@@ -26,7 +23,7 @@ describe('isGitIdentity', () => {
     expect(isGitIdentity({ ...WORK, id: 'has space' })).toBe(false);
   });
 
-  test('refuses angle brackets, which would change the --author address', () => {
+  test('refuses angle brackets, which would change the author address', () => {
     expect(isGitIdentity({ ...WORK, name: 'Work <Admin>' })).toBe(false);
     expect(isGitIdentity({ ...WORK, email: 'work@example.invalid>' })).toBe(false);
   });
@@ -45,31 +42,5 @@ describe('normalizeGitIdentities', () => {
   test('a non-array is an empty list', () => {
     expect(normalizeGitIdentities(null)).toEqual([]);
     expect(normalizeGitIdentities({})).toEqual([]);
-  });
-});
-
-describe('selectedGitIdentity', () => {
-  test('empty and unknown selections mean repository config', () => {
-    expect(selectedGitIdentity([WORK], '')).toBeNull();
-    expect(selectedGitIdentity([WORK], 'missing')).toBeNull();
-  });
-
-  test('a matching id is the identity', () => {
-    expect(selectedGitIdentity([WORK], 'work')).toEqual(WORK);
-  });
-});
-
-describe('git identity arguments', () => {
-  test('no identity adds no flags', () => {
-    expect(gitIdentityArgs(null)).toEqual([]);
-    expect(gitIdentityAuthorArgs(null)).toEqual([]);
-  });
-
-  test('the identity is two -c flags, and an amend names the author', () => {
-    expect(gitIdentityArgs(WORK)).toEqual([
-      '-c', 'user.name=Work User',
-      '-c', 'user.email=work@example.invalid',
-    ]);
-    expect(gitIdentityAuthorArgs(WORK)).toEqual(['--author', 'Work User <work@example.invalid>']);
   });
 });

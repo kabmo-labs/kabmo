@@ -40,7 +40,6 @@ export const DEFAULT_SETTINGS = {
   commitMessageModel: '',
   commitMessagePrompt: '',
   gitIdentities: [],
-  gitCommitIdentity: '',
   soundAlerts: true,
   chatCompletionSound: true,
   notifyDesktopEnabled: true,
