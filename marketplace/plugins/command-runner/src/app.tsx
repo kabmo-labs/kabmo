@@ -58,6 +58,15 @@ import { mountScopeWatch, stopOtherScopes } from './watch';
 import { RPC, type CommandListing, type RunLog, type RunnerState } from './protocol';
 import { useCustomDialog } from './panel/use-custom-dialog';
 
+/**
+ * The empty per-command flag map.
+ *
+ * ONE object for both session slots (they are read-only fallbacks, never
+ * mutated), because `useSessionState` keys its read effect on the fallback's
+ * identity — see the call sites.
+ */
+const NO_FLAGS: Record<string, boolean> = {};
+
 /** The right-panel view, wired to the plugin's own server half. */
 function CommandRunnerPanel() {
   const pluginId = usePluginId();
@@ -80,11 +89,17 @@ function CommandRunnerPanel() {
   // Which FILES the reader expanded. Absent means COLLAPSED — a workspace seen
   // for the first time opens as a list of command files rather than every
   // command in the repository; only an explicit `false` keeps one open.
+  //
+  // The fallbacks are MODULE constants, never a `{}` written in the call: the
+  // hook's read effect is keyed on the fallback's identity, so a fresh literal
+  // re-arms it on every render — and since that effect writes the fallback into
+  // state, the panel re-renders forever (measured: 300 renders and still
+  // climbing, which hung the first app-level test written for this panel).
   const [collapsedGroups, setCollapsedGroups] = useSessionState<Record<string, boolean>>(
     'commandRunner.collapsedGroups',
-    {},
+    NO_FLAGS,
   );
-  const [background, setBackground] = useSessionState<Record<string, boolean>>('commandRunner.background', {});
+  const [background, setBackground] = useSessionState<Record<string, boolean>>('commandRunner.background', NO_FLAGS);
 
   const [listing, setListing] = useState<CommandListing | null>(null);
   const [listingError, setListingError] = useState<string | null>(null);
