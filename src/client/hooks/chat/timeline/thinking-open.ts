@@ -40,22 +40,28 @@ export interface ThinkingOpenState {
 /**
  * `messageId` is optional so a block mounted outside a session (a spec, a
  * preview) still toggles — it just cannot remember the choice.
+ *
+ * `autoOpen` is the RUN's liveness, not the segment's: a warm session can
+ * deliver a thinking segment's first update and its `message_end` inside one
+ * animation frame, so the block mounts already finalized. Keying the default
+ * on the segment's own `isGenerating` left it collapsed for the rest of the
+ * run — the reported "thinking sometimes does not open".
  */
 export function useThinkingOpenState(
   messageId: string | undefined,
   defaultOpen: boolean,
-  isGenerating: boolean,
+  autoOpen: boolean,
 ): ThinkingOpenState {
   const [stored, setStored] = useSessionState<Record<string, boolean>>(THINKING_OPEN_STATE_KEY, {});
-  const [local, setLocal] = useState(defaultOpen || isGenerating);
+  const [local, setLocal] = useState(defaultOpen || autoOpen);
   const choice = messageId ? stored[messageId] : undefined;
 
   // A run that starts streaming opens itself, as it always has. This is the
   // local half on purpose: the stored half is the reader's own choice, and it
   // must not be overwritten by a default.
   useEffect(() => {
-    if (isGenerating) setLocal(true);
-  }, [isGenerating]);
+    if (autoOpen) setLocal(true);
+  }, [autoOpen]);
 
   const isOpen = choice ?? local;
   const toggle = (): void => {

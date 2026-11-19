@@ -87,7 +87,11 @@ export const MessageList = memo(function MessageList({
   sessionId,
   changeRecords,
 }: MessageListProps) {
-  const { streamingIdx, footers, prevNonNoticeIdx } = useMemo(() => {
+  const { streamingIdx, footers, prevNonNoticeIdx, lastUserIdx } = useMemo(() => {
+    let lastUser = -1;
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      if (messages[i]?.role === 'user') { lastUser = i; break; }
+    }
     return {
       // The streaming AI row is the last non-notice row (see streamingRowIndex).
       streamingIdx: streamingRowIndex(messages),
@@ -95,6 +99,12 @@ export const MessageList = memo(function MessageList({
       // the footer renders after.
       footers: resolveRunFooters(messages, isGenerating),
       prevNonNoticeIdx: previousNonNoticeIndex(messages),
+      // The live run is every row after the last user turn. A thinking block
+      // in it must open even when its segment already settled: a warm session
+      // delivers the first `message_update` and its `message_end` inside one
+      // animation frame, so the block mounts already finalized and the
+      // segment's own `isGenerating` is false.
+      lastUserIdx: lastUser,
     };
   }, [messages, isGenerating]);
 
@@ -151,6 +161,7 @@ export const MessageList = memo(function MessageList({
             const msg = messages[idx];
             const prev = messages[idx - 1];
             const isLoading = isGenerating && idx === streamingIdx && msg.role === 'ai';
+            const isLiveRun = isGenerating && idx > lastUserIdx;
             const isAiFragment = msg.role !== 'user' && prev && prev.role !== 'user' && !isNoticeRow(prev);
             const prevRealIdx = prevNonNoticeIdx[idx];
             const prevReal = prevRealIdx >= 0 ? messages[prevRealIdx] : null;
@@ -167,6 +178,7 @@ export const MessageList = memo(function MessageList({
                 <ChatMessageItem
                   msg={msg}
                   isStreaming={isLoading}
+                  isLiveRun={isLiveRun}
                   onUndo={onUndo}
                   onNewChat={onNewChat}
                   onFork={onFork}

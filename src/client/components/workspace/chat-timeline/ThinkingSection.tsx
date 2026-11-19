@@ -42,6 +42,13 @@ interface ThinkingSectionProps {
    */
   messageId?: string;
   defaultExpanded?: boolean;
+  /**
+   * The row belongs to the run in flight. A thinking block opens for the whole
+   * run, not only while its own segment streams: a warm session delivers the
+   * first `message_update` and its `message_end` in one animation frame, so
+   * the block mounts already finalized and would otherwise stay collapsed.
+   */
+  isRunStreaming?: boolean;
   showSeparator?: boolean;
   /** Phone layout: the section's frame is the timeline gutter itself. */
   isMobile?: boolean;
@@ -51,6 +58,7 @@ export function ThinkingSection({
   thinking,
   messageId,
   defaultExpanded = false,
+  isRunStreaming = false,
   showSeparator = false,
   isMobile = false,
 }: ThinkingSectionProps) {
@@ -61,7 +69,11 @@ export function ThinkingSection({
   const framed = chrome.frame !== '';
 
   const isGenerating = typeof thinking === 'object' ? Boolean(thinking.isGenerating) : false;
-  const { isOpen, toggle: toggleOpen } = useThinkingOpenState(messageId, defaultExpanded, isGenerating);
+  const { isOpen, toggle: toggleOpen } = useThinkingOpenState(
+    messageId,
+    defaultExpanded,
+    isGenerating || isRunStreaming,
+  );
   const thoughtBodyRef = useRef<HTMLDivElement>(null);
 
   const thoughtText = typeof thinking === 'string' ? thinking : thinking.thought || '';

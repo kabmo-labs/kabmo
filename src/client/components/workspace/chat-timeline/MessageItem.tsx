@@ -18,6 +18,12 @@ import { useToolRenderMode } from '@/client/hooks/chat/timeline/tool-render-mode
 interface ChatMessageItemProps {
   msg: ChatMessageData | any;
   isStreaming?: boolean;
+  /**
+   * This row belongs to the run in flight (it sits after the last user turn).
+   * A thinking block in it opens even when its own segment already settled —
+   * see `MessageList`'s `lastUserIdx`.
+   */
+  isLiveRun?: boolean;
   onUndo?: (msgId: string, content?: string) => void;
   /**
    * Start a new chat seeded with this row. A user row passes its attachments
@@ -52,6 +58,7 @@ interface ChatMessageItemProps {
 export const ChatMessageItem = memo(function ChatMessageItem({
   msg,
   isStreaming = false,
+  isLiveRun = false,
   onUndo,
   onNewChat,
   onFork,
@@ -131,6 +138,7 @@ export const ChatMessageItem = memo(function ChatMessageItem({
             thinking={thinkingData} 
             messageId={String(msg.id)}
             defaultExpanded={false}
+            isRunStreaming={isLiveRun}
             showSeparator={isPrevAssistant}
             isMobile={isMobile}
           />

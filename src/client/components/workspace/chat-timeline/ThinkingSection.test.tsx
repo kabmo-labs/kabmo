@@ -56,12 +56,16 @@ afterEach(() => {
   (globalThis as unknown as Record<string, unknown>).fetch = nativeFetch;
 });
 
-async function mount(messageId: string, thinking: typeof THOUGHT & { isGenerating?: boolean } = THOUGHT): Promise<void> {
+async function mount(
+  messageId: string,
+  thinking: typeof THOUGHT & { isGenerating?: boolean } = THOUGHT,
+  isRunStreaming = false,
+): Promise<void> {
   await act(async () => {
     render(
       h(SessionStateProvider, {
         sessionId: SESSION,
-        children: h(ThinkingSection, { thinking, messageId }),
+        children: h(ThinkingSection, { thinking, messageId, isRunStreaming }),
       }) as never,
       container,
     );
@@ -113,5 +117,37 @@ describe('thinking open state', () => {
     // re-applied on the next frame would re-open it under their cursor.
     await click();
     expect(toggle().getAttribute('aria-expanded')).toBe('false');
+  });
+
+  /**
+   * The reported "thinking sometimes does not open": a warm session delivers a
+   * thinking segment's first `message_update` and its `message_end` inside one
+   * animation frame, so the block mounts with the segment already finalized
+   * (`isGenerating: false`). The run is still live, and the block must open.
+   */
+  test('a finalized segment in a live run opens', async () => {
+    await mount('m1', { ...THOUGHT, isGenerating: false }, true);
+    expect(toggle().getAttribute('aria-expanded')).toBe('true');
+  });
+
+  test('a finalized segment in a settled run stays closed', async () => {
+    await mount('m1', { ...THOUGHT, isGenerating: false }, false);
+    expect(toggle().getAttribute('aria-expanded')).toBe('false');
+  });
+
+  test('a block opened while streaming stays open when its segment settles', async () => {
+    await mount('m1', { ...THOUGHT, isGenerating: true });
+    expect(toggle().getAttribute('aria-expanded')).toBe('true');
+    await mount('m1', { ...THOUGHT, isGenerating: false });
+    expect(toggle().getAttribute('aria-expanded')).toBe('true');
+  });
+
+  test('50 coalesced segments in a live run all open', async () => {
+    for (let i = 0; i < 50; i += 1) {
+      render(null, container);
+      container.remove();
+      await mount(`m-${i}`, { ...THOUGHT, isGenerating: false }, true);
+      expect(toggle().getAttribute('aria-expanded')).toBe('true');
+    }
   });
 });

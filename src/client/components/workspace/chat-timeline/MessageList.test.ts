@@ -16,19 +16,32 @@
  * two mounts pin both spellings, and that the footer lands once the run ends.
  */
 
-import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { MessageList } from '@/client/components/workspace/chat-timeline/MessageList';
+import { SessionStateProvider } from '@/client/components/common/session-state-provider';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
 import type { ChatMessageData } from '@/shared/types';
 
 let container: HTMLElement;
 /** Every tree this file mounted; unmounted before the window goes away. */
 const mounted: HTMLElement[] = [];
+/** The runner's own fetch, so a leaked stub cannot be mistaken for it. */
+const nativeFetch = Bun.fetch;
 
 beforeAll(() => installDomGlobals(new Window({ url: 'http://localhost' })));
+
+beforeEach(() => {
+  // `SessionStateProvider` hydrates the session blob on mount; Bun's fetch
+  // cannot resolve the relative URL happy-dom would hand it.
+  (globalThis as unknown as Record<string, unknown>).fetch = async () =>
+    new Response(JSON.stringify({ sessionId: 'message-list-spec', state: {} }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+});
 
 afterEach(() => {
   // UNMOUNT, not detach: `MessageList` draws `AiMessageFooter`, whose plugin
@@ -39,6 +52,7 @@ afterEach(() => {
   // Windows shard. A detached container is enough for the assertions, but the
   // subscription outlives it.
   for (const node of mounted.splice(0)) render(null, node);
+  (globalThis as unknown as Record<string, unknown>).fetch = nativeFetch;
 });
 
 afterAll(() => restoreDomGlobals());
@@ -53,7 +67,13 @@ async function mount(messages: ChatMessageData[], isGenerating: boolean): Promis
   document.body.appendChild(container);
   mounted.push(container);
   await act(async () => {
-    render(h(MessageList, { messages, isGenerating }), container);
+    render(
+      h(SessionStateProvider, {
+        sessionId: 'message-list-spec',
+        children: h(MessageList, { messages, isGenerating }),
+      }) as never,
+      container,
+    );
   });
   return container;
 }
@@ -71,6 +91,39 @@ describe('MessageList run footers', () => {
     const messages = [user('u1'), ai('a1'), committed('d1')];
     expect(footers(await mount(messages, true))).toBe(0);
     expect(footers(await mount(messages, false))).toBe(1);
+  });
+});
+
+/**
+ * A thinking block opens for the whole LIVE RUN, not only while its own
+ * segment streams. A warm session delivers the first `message_update` and its
+ * `message_end` inside one animation frame, so the block mounts already
+ * finalized; keying the default on the segment's own flag left it collapsed
+ * for the rest of the run (the reported "thinking sometimes does not open").
+ */
+describe('MessageList live-run thinking', () => {
+  const thinkingRow = (id: string, isGenerating: boolean): ChatMessageData => ({
+    id,
+    role: 'ai',
+    content: '',
+    thinking: { thought: 'hmm', isGenerating },
+  });
+  const expanded = (el: HTMLElement) =>
+    el.querySelector<HTMLButtonElement>('button[aria-expanded]')?.getAttribute('aria-expanded');
+
+  test('a finalized thinking segment after the last user turn opens', async () => {
+    const el = await mount([user('u1'), thinkingRow('a1', false)], true);
+    expect(expanded(el)).toBe('true');
+  });
+
+  test('a historical thinking block stays closed while a later run streams', async () => {
+    const el = await mount(
+      [user('u1'), thinkingRow('a1', false), user('u2'), thinkingRow('a2', false)],
+      true,
+    );
+    const toggles = el.querySelectorAll<HTMLButtonElement>('button[aria-expanded]');
+    expect(toggles[0]?.getAttribute('aria-expanded')).toBe('false');
+    expect(toggles[1]?.getAttribute('aria-expanded')).toBe('true');
   });
 });
 
