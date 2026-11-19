@@ -120,7 +120,9 @@ export function CommitMessageSection({ settings, onUpdate }: CommitMessageSectio
 
   const resetPrompt = () => {
     setPromptText(DEFAULT_COMMIT_MESSAGE_PROMPT);
-    onUpdate({ commitMessagePrompt: '' });
+    // An unsaved edit is discarded by the textarea write above; only a stored
+    // override needs the settings write.
+    if (customPrompt) onUpdate({ commitMessagePrompt: '' });
   };
 
   const willUse = mode === 'off'
@@ -240,13 +242,15 @@ export function CommitMessageSection({ settings, onUpdate }: CommitMessageSectio
           <div>
             <label className="block text-[10px] font-semibold uppercase tracking-wider text-ink/45">Prompt</label>
             <p className="text-[10px] text-ink/50 mt-0.5">
-              {customPrompt ? 'Custom prompt' : 'Built-in prompt'} · placeholders are filled from the staged change set.
+              {customPrompt ? 'Custom prompt' : 'Built-in prompt'}
+              {promptDirty ? ' · unsaved changes' : ''}
+              {' · '}placeholders are filled from the staged change set.
             </p>
           </div>
           <button
             type="button"
             onClick={resetPrompt}
-            disabled={!customPrompt}
+            disabled={!customPrompt && !promptDirty}
             className="flex items-center gap-1.5 px-2.5 py-1 rounded border border-ink/20 text-[10px] font-medium text-ink/70 hover:bg-ink/5 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <RotateCcw size={11} /> Reset to default
