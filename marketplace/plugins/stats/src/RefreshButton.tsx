@@ -6,12 +6,14 @@
 /**
  * The panel's refresh control: the glyph and the button.
  *
- * The glyph is drawn INLINE rather than imported, and that is a build fact
- * rather than a preference: the kit ships no icon set, and a plugin's
- * `node_modules` carries only the two `@kabmo-labs/*` packages the host links
- * into it — `lucide-preact` is the HOST's own dependency, so importing it would
- * make this plugin's build depend on a package it was never given. One path is
- * cheaper than that dependency.
+ * The glyph is `RefreshCw` from `lucide-preact` — the same mark the host's own
+ * `RefreshButton` draws for the Files panel — transcribed rather than imported,
+ * and that is a build fact rather than a preference: the kit ships no icon set,
+ * and a plugin's `node_modules` carries only the two `@kabmo-labs/*` packages
+ * the host links into it, so a `lucide-preact` import would make this plugin's
+ * build depend on a package it was never given. The four subpaths are kept as
+ * four `<path>` elements, exactly as lucide draws them: merging them changes how
+ * the overlapping round caps at the arrow tips are composited.
  *
  * The button owns its own `disabled` state from the caller's `refreshing`, so a
  * second click cannot queue a second sample while the first is in flight.
@@ -49,7 +51,7 @@ export function RefreshButton({ onRefresh, refreshing, className = '' }: Refresh
         <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
         <path d="M21 3v5h-5" />
         <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-        <path d="M3 21v-5h5" />
+        <path d="M8 16H3v5" />
       </svg>
     </button>
   );

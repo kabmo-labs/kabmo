@@ -18,7 +18,13 @@
  * list scannable, not to replace the text a screen reader reads.
  */
 
-export function Glyph({ path, size = 12 }: { path: string; size?: number }) {
+/**
+ * One glyph. `path` is one `d`, or several — a mark from an icon set that draws
+ * it as separate subpaths (lucide's refresh arrow does) keeps that shape, so the
+ * plugin's glyph and the host's are the same geometry rather than two drawings
+ * that look alike.
+ */
+export function Glyph({ path, size = 12 }: { path: string | readonly string[]; size?: number }) {
   return (
     <svg
       width={size}
@@ -31,7 +37,9 @@ export function Glyph({ path, size = 12 }: { path: string; size?: number }) {
       stroke-linejoin="round"
       aria-hidden="true"
     >
-      <path d={path} />
+      {(typeof path === 'string' ? [path] : path).map((d) => (
+        <path key={d} d={d} />
+      ))}
     </svg>
   );
 }
@@ -39,7 +47,18 @@ export function Glyph({ path, size = 12 }: { path: string; size?: number }) {
 export const ICON = {
   /** The panel's own mark, matching `icon.svg`. */
   forge: 'M18 18a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 6a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM13 6h3a2 2 0 0 1 2 2v7M6 9v12',
-  refresh: 'M3 12a9 9 0 0 1 15.5-6.2M21 12a9 9 0 0 1-15.5 6.2M3 4v5h5M21 20v-5h-5',
+  // The Files panel's refresh glyph — `RefreshCw` from `lucide-preact`, which
+  // the host's own `RefreshButton` draws. Copied as its four subpaths rather
+  // than joined into one `d`, because overlapping round caps at the arrow tips
+  // composite differently inside one path; a plugin cannot import lucide (the
+  // host hands it only its two `@kabmo-labs/*` packages), so the geometry is
+  // what is shared.
+  refresh: [
+    'M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8',
+    'M21 3v5h-5',
+    'M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16',
+    'M8 16H3v5',
+  ],
   back: 'M19 12H5M12 19l-7-7 7-7',
   external: 'M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3',
   comment: 'M21 11.5a8.4 8.4 0 0 1-9 8.4 8.5 8.5 0 0 1-3.9-.9L3 21l1.9-5a8.4 8.4 0 0 1-.9-3.9 8.5 8.5 0 0 1 8.5-8.5 8.4 8.4 0 0 1 8.5 8z',
