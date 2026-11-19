@@ -19,6 +19,7 @@
 
 import type { SessionContextTelemetry } from '@/shared/types/context';
 import { getDb } from '@/server/db.server';
+import { getLiveSession, harnessOfSession } from '@/server/lib/omp/rpc/session-registry';
 
 /** What the live session exposes for this bridge. */
 export interface AcpTelemetrySession {
@@ -130,4 +131,22 @@ export function buildAcpTelemetry(
     distribution: { ...ZERO_DISTRIBUTION },
     rawMessages: [],
   };
+}
+
+/**
+ * The ACP snapshot for one session: the live session's own counters when it is
+ * running, else the last usage it reported. `null` means this session has no
+ * ACP usage at all, and the caller must draw its empty state rather than an
+ * estimate — the omp-shaped estimator invents tokens and a model id.
+ */
+export async function acpTelemetryFor(
+  sessionId: string,
+  title: string | null | undefined,
+): Promise<SessionContextTelemetry | null> {
+  const live = getLiveSession(sessionId);
+  if (live && harnessOfSession(live) !== 'omp-rpc') {
+    return buildAcpTelemetry(live as unknown as AcpTelemetrySession, title);
+  }
+  const stored = await loadAcpUsage(sessionId);
+  return stored ? buildAcpTelemetry(stored, title) : null;
 }

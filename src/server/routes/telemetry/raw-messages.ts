@@ -4,6 +4,11 @@ import { isMockMode } from '@/server/mock.server';
 import { loadSessionSource } from '@/server/lib/chat/session-store.server';
 import { computeSessionContextTelemetry } from '@/client/data/context-data';
 import { computeRawMessagesPage, type RawMessageRole } from '@/server/lib/omp/session/telemetry-raw';
+import { resolveSessionRef } from '@/server/lib/sessions/resolve.server';
+import { buildAcpRawMessages } from '@/server/lib/harness/acp/acp-raw-messages.server';
+import { loadAcpFramesPage } from '@/server/lib/harness/acp/acp-frames.server';
+import { loadAcpUsage } from '@/server/lib/harness/acp/acp-telemetry.server';
+import type { ChatMessageData } from '@/shared/types/chat';
 import type { RawMessageItem } from '@/shared/types';
 
 const MAX_PAGE_SIZE = 100;
@@ -45,6 +50,35 @@ export async function loader({ request }: LoaderFunctionArgs) {
     if (sessionId && source?.kind === 'jsonl') {
       const result = await computeRawMessagesPage(source.filePath, page, pageSize, role);
       return json({ ...result, page, pageSize, isMock: false, source: 'omp-jsonl' });
+    }
+
+    // An ACP chat has no JSONL: the raw panel reads the ORIGINAL
+    // `session/update` payloads the agent sent, not Kabmo's folded transcript.
+    // A session recorded before the frame log existed falls back to the
+    // transcript rows, which are still truthful (no invented tokens/model).
+    const ref = sessionId ? await resolveSessionRef(sessionId) : null;
+    if (ref?.harness && ref.harness !== 'omp-rpc') {
+      const usage = await loadAcpUsage(sessionId!).catch(() => null);
+      const modelId = usage?.runModel
+        ? `${usage.runModel.provider}/${usage.runModel.modelId}`
+        : undefined;
+      const context = {
+        ...(modelId ? { modelId } : {}),
+        ...(ref.cwd ? { cwd: ref.cwd } : {}),
+      };
+      const frames = await loadAcpFramesPage(sessionId!, page, pageSize, role, context);
+      if (frames.total > 0) {
+        return json({ ...frames, page, pageSize, isMock: false, source: 'acp-frames' });
+      }
+      if (source?.kind === 'messages') {
+        const items = buildAcpRawMessages(source.messages as ChatMessageData[], context);
+        return json({
+          ...pagedFromList(items, page, pageSize, role, items.length),
+          isMock: false,
+          source: 'acp-transcript',
+        });
+      }
+      return json({ items: [], total: 0, filteredTotal: 0, page, pageSize, isMock: false, source: 'acp-frames' });
     }
 
     if (source?.kind === 'messages') {

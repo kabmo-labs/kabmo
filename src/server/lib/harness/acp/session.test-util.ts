@@ -24,6 +24,7 @@ import { AcpUsageMeter } from '@/server/lib/harness/acp/session-usage';
 import { AcpFrameMapper } from '@/server/lib/harness/acp/frames';
 import { AcpTurns } from '@/server/lib/harness/acp/turn';
 import { SessionListeners } from '@/server/lib/harness/acp/session-listeners';
+import { RawNotificationSink } from '@/server/lib/harness/acp/raw-listeners';
 import { PendingPermissions } from '@/server/lib/harness/acp/permissions';
 import { stampMessageModel } from '@/server/lib/harness/acp/session-config';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
@@ -168,6 +169,7 @@ export function mountSession(): MountedSession {
     usage: new AcpUsageMeter(),
     runModel: null,
     events: eventSink,
+    rawSink: new RawNotificationSink(),
     proc,
     idle,
     destroyed: false,

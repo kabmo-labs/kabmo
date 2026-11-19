@@ -158,6 +158,28 @@ const ACP_TRANSCRIPTS_SQL = `
   );
 `;
 
+/**
+ * The raw `session/update` notifications an ACP session received.
+ *
+ * The transcript is Kabmo's REFACTORED view (one row per message, tool calls
+ * folded in). The raw panel is the place a user checks what the agent actually
+ * sent, so it reads these frames — the original ACP payloads — not the fold.
+ * `kind`/`role` are denormalized at write time so the panel can page and filter
+ * without parsing every payload.
+ */
+const ACP_FRAMES_SQL = `
+  CREATE TABLE IF NOT EXISTS acp_frames (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id TEXT NOT NULL,
+    method TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    role TEXT NOT NULL,
+    payload TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS acp_frames_session ON acp_frames(session_id, id);
+`;
+
 /** Idempotent: created on every database open, like every other feature table. */
 export async function ensureHarnessSchema(db: DbClient): Promise<void> {
   await db.exec(HARNESS_SESSIONS_SQL);
@@ -166,6 +188,7 @@ export async function ensureHarnessSchema(db: DbClient): Promise<void> {
   await db.exec(HARNESS_GOAL_STATE_SQL);
   await db.exec(HARNESS_USAGE_STATE_SQL);
   await db.exec(ACP_TRANSCRIPTS_SQL);
+  await db.exec(ACP_FRAMES_SQL);
   for (const migration of HARNESS_SESSIONS_MIGRATIONS) {
     try {
       await db.exec(migration);

@@ -74,6 +74,8 @@ const SESSION_ROW_DELETES: readonly (readonly [string, string])[] = [
   // second copy of the same conversation, so a delete that left it behind would
   // resurrect the transcript on the next open.
   ['acp_transcripts', 'session_id'],
+  // The raw `session/update` log the context panel's Raw Messages view reads.
+  ['acp_frames', 'session_id'],
   ['files', 'session_id'],
   // An ACP chat has no transcript for the scan to lose: `harness_sessions` IS
   // its row, so leaving it behind both refused the delete as "not found" (nothing

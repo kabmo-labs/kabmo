@@ -14,6 +14,8 @@ import { getDb } from '@/server/db.server';
 import { isMockMode } from '@/server/mock.server';
 import { getSessionData } from '@/client/data/mock/chat';
 import { findSessionFileById } from '@/server/lib/omp/session/locator';
+import { loadAcpTranscript } from '@/server/lib/harness/acp/session-transcript.server';
+import { hasAssistantRow } from '@/shared/lib/chat/transcript-rows';
 
 export interface JsonlSessionSource {
   kind: 'jsonl';
@@ -47,14 +49,33 @@ export async function loadSessionSource(sessionId: string | null): Promise<Sessi
 
   // Chat-created sessions have no JSONL on disk — fall back to the DB copy.
   const existing = await db.get('SELECT * FROM chat_sessions WHERE session_id = ?', [sessionId]);
+  let parsedMessages: unknown[] = [];
   if (existing) {
-    let parsedMessages: unknown[] = [];
     try {
       const parsed: unknown = JSON.parse(existing.messages);
       if (Array.isArray(parsed)) parsedMessages = parsed;
     } catch {
       parsedMessages = [];
     }
+  }
+
+  // An ACP chat's server-side recorder writes `acp_transcripts`; `chat_sessions`
+  // is the client's copy and can hold only the prompt a closed tab wrote. The
+  // chat loader already prefers the recorder when the client copy has no
+  // answer, so the telemetry endpoints must read the same source or the raw
+  // panel shows a different conversation from the timeline.
+  if (!hasAssistantRow(parsedMessages)) {
+    const recorded = await loadAcpTranscript(sessionId).catch(() => []);
+    if (recorded.length > 0) {
+      return {
+        kind: 'messages',
+        title: existing?.title || `Session ${sessionId}`,
+        messages: recorded,
+      };
+    }
+  }
+
+  if (existing) {
     return { kind: 'messages', title: existing.title || `Session ${sessionId}`, messages: parsedMessages };
   }
   return null;

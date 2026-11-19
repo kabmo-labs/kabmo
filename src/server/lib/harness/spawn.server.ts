@@ -22,6 +22,7 @@
 
 import { AcpSession } from '@/server/lib/harness/acp/session';
 import { AcpTranscriptRecorder } from '@/server/lib/harness/acp/session-transcript.server';
+import { AcpFrameRecorder } from '@/server/lib/harness/acp/acp-frames.server';
 import { claimPrewarmedAcpSession } from '@/server/lib/harness/acp/prewarm.server';
 import { rememberAgentToken } from '@/server/lib/sessions/agent-token.server';
 import { loadHarnessConfig, resolveLaunch } from '@/server/lib/harness/config.server';
@@ -229,6 +230,10 @@ export async function startAcpSession(
     await recorder.hydrate();
     session.onEvent((event) => recorder.record(event));
   }
+  // The raw panel reads the original `session/update` payloads, not the fold
+  // above. A restore replays the agent's history and must not duplicate it.
+  const frameRecorder = request.replay ? null : new AcpFrameRecorder(() => realSessionId);
+  if (frameRecorder) session.onRawNotification((method, params) => frameRecorder.record(method, params));
   if (warm) {
     // The process's environment already carries the credential minted at
     // prewarm; recording a different one here would authenticate its callbacks
@@ -246,6 +251,7 @@ export async function startAcpSession(
   registerAcpSession(session, request.sessionId, () => {
     if (pid) removeHarnessLease(pid);
     recorder?.dispose();
+    frameRecorder?.dispose();
   });
   // Record the ownership BEFORE the first frame is forwarded: the sidebar reads
   // this table, not the live registry, so a row written late would draw the row

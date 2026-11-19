@@ -34,6 +34,7 @@ import { capabilitiesFrom } from '@/server/lib/harness/launch';
 import { PendingPermissions } from '@/server/lib/harness/acp/permissions';
 import { cancelAllAcpPermissions } from '@/server/lib/harness/acp/session-permissions';
 import { handleSessionNotification } from '@/server/lib/harness/acp/session-notifications';
+import { RawNotificationSink, type RawNotificationListener } from '@/server/lib/harness/acp/raw-listeners';
 import { AcpUsageMeter, type AcpContextUsage } from '@/server/lib/harness/acp/session-usage';
 import { handleAcpClientRequest, handleAcpCancelRequest, type AcpClientRequestAnswer } from '@/server/lib/harness/acp/session-requests';
 import { reportAcpExit } from '@/server/lib/harness/acp/session-exit';
@@ -97,6 +98,8 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
   readonly background: AcpBackgroundProbe;
   private readonly mapper = new AcpFrameMapper();
   private readonly events = new SessionListeners();
+  /** Raw `session/update` sinks: the frame log the raw panel reads. */
+  private readonly rawSink = new RawNotificationSink();
   readonly permissions = new PendingPermissions();
   private destroyHook: (() => void) | null = null;
   private destroyed = false;
@@ -167,6 +170,8 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
   isRunning(): boolean { return this.isAlive() && (this.turns.isPromptRunning || this.turns.isStreaming); }
   isBusy(): boolean { return this.isRunning() || this.permissions.size() > 0; }
   onEvent(listener: (event: AgentEvent) => void): () => void { return this.events.add(listener); }
+  /** Subscribe to the raw `session/update` payloads, before the mapper folds them. */
+  onRawNotification(listener: RawNotificationListener): () => void { return this.rawSink.add(listener); }
   emit(event: AgentEvent): void { this.replay.push(event); this.events.emit(event); }
 
   getPendingUiDialogs(): Record<string, unknown>[] {
@@ -287,6 +292,9 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
     if (handleAcpCancelRequest(this, method, params)) return;
     // A `session/load` replay repeats the whole chat; leave it to the probe.
     if (this.background.consume(method, params)) return;
+    // The raw panel reads the original ACP payloads, so the frame log is fed
+    // BEFORE the mapper folds them (and before the turn gate can drop one).
+    if (method === 'session/update') this.rawSink.emit(method, params);
     handleSessionNotification(this, method, params);
   }
 

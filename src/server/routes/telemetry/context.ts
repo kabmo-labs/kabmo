@@ -6,6 +6,8 @@ import { loadSessionSource } from '@/server/lib/chat/session-store.server';
 import { computeRealSessionTelemetry } from '@/server/lib/omp/session/telemetry';
 import { CONTEXT_LIMIT } from '@/server/lib/omp/session/telemetry/format';
 import { resolveSelectedModelContextLimit } from '@/server/lib/models/selected-context-limit.server';
+import { resolveSessionRef } from '@/server/lib/sessions/resolve.server';
+import { acpTelemetryFor } from '@/server/lib/harness/acp/acp-telemetry.server';
 import type { SessionContextTelemetry } from '@/shared/types';
 
 /**
@@ -45,6 +47,35 @@ export async function loader({ request }: LoaderFunctionArgs) {
     }
 
     if (source?.kind === 'messages') {
+      // An ACP chat's numbers come from the agent's own `usage_update`, not
+      // from an estimate over the transcript. The omp-shaped computation below
+      // invents token counts, a cost and a model id, which is exactly what the
+      // panel must not show for a harness that reports real usage.
+      const ref = sessionId ? await resolveSessionRef(sessionId) : null;
+      if (ref?.harness && ref.harness !== 'omp-rpc') {
+        const acp = await acpTelemetryFor(sessionId!, source.title);
+        if (acp) return json({ telemetry: stripRawMessages(acp), isMock: false, source: 'acp-usage' });
+        // No usage was ever reported (a chat that has not run, or one whose
+        // agent sends none). The transcript still says how many turns exist,
+        // so the panel shows a started session with zero usage rather than
+        // "not started" over a conversation that is on screen.
+        const rows = source.messages as { role?: string; model?: string }[];
+        const userCount = rows.filter((row) => row.role === 'user').length;
+        const model = rows.find((row) => typeof row.model === 'string' && row.model)?.model ?? '';
+        const base = emptyTelemetry(sessionId || 'default', source.title, selectedLimit);
+        return json({
+          telemetry: {
+            ...base,
+            messagesCount: rows.length,
+            userCount,
+            assistantCount: rows.length - userCount,
+            modelId: model,
+            modelName: model,
+          },
+          isMock: false,
+          source: 'acp-transcript',
+        });
+      }
       const telemetry = computeSessionContextTelemetry(sessionId, source.title, source.messages, selectedLimit);
       return json({ telemetry: stripRawMessages(telemetry), isMock: false });
     }
