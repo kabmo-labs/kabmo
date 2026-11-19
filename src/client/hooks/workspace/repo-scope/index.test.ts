@@ -190,6 +190,13 @@ describe('resolveRepoForPanel', () => {
     expect(resolveRepoForPanel('projects/a', ['projects/a', 'projects/b'])).toBe('projects/a');
   });
 
+  test('keeps an EXPLICIT root pick even when the root is not a repo', () => {
+    // The picker offers the root row, so a click on it must stick: the git
+    // panel then draws its "not a repository" state. Resolving it back to the
+    // first nested repo made the row a dead control.
+    expect(resolveRepoForPanel('.', ['alpha', 'conflicted'])).toBe('.');
+  });
+
   test('keeps the root when the root IS a repo', () => {
     // `.` is a real repository here, so it is a legitimate answer rather than
     // "no pick" — falling through to a nested one would move the panel off the
@@ -203,11 +210,11 @@ describe('resolveRepoForPanel', () => {
     // makes this deterministic — measured, `readdir` order differs between
     // machines and after a directory is rewritten, so an unsorted list made the
     // default repository differ between two reads of the same workspace.
-    expect(resolveRepoForPanel('.', ['alpha', 'conflicted'])).toBe('alpha');
-    expect(resolveRepoForPanel('.', ['conflicted', 'alpha'])).toBe('conflicted');
+    expect(resolveRepoForPanel(null, ['alpha', 'conflicted'])).toBe('alpha');
+    expect(resolveRepoForPanel(null, ['conflicted', 'alpha'])).toBe('conflicted');
   });
 
   test('answers the root when there is nothing to fall back to', () => {
-    expect(resolveRepoForPanel('.', [])).toBe('.');
+    expect(resolveRepoForPanel(null, [])).toBe('.');
   });
 });

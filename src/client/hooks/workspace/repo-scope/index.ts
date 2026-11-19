@@ -67,6 +67,14 @@ const LEGACY_REPO_STATE_KEYS = ['git.activeRepo', 'files.activeRepo', 'search.ac
  * The repo a git panel works on: the user's pick, or — when they have none and
  * the workspace root is not itself a repo — the first repo discovery found.
  *
+ * `null` means NO PICK. An explicit `'.'` is the root and is honored even when
+ * the root is not a repository: the git panel then draws its "not a repository"
+ * state, which is the one action that can turn the folder into a repo. The
+ * fallback exists only for a session that has not chosen anything, so the two
+ * cases must not be conflated — the picker offers the root row, and a click on
+ * it that silently resolved back to the first nested repo would be a dead
+ * control.
+ *
  * The git loader applies the same fallback when it is sent no repo at all
  * (`repo = repos.includes('.') ? '.' : repos[0]`), so resolving it here is what
  * keeps the header label, the picker's checkmark and the requests all naming
@@ -75,9 +83,9 @@ const LEGACY_REPO_STATE_KEYS = ['git.activeRepo', 'files.activeRepo', 'search.ac
  * nested repos is a normal workspace — so the files, search and terminal panels
  * keep `'.'` as the root itself.
  */
-export function resolveRepoForPanel(pick: string, repos: readonly string[]): string {
-  if (pick !== '.' || repos.includes('.')) return pick;
-  return repos[0] ?? '.';
+export function resolveRepoForPanel(pick: string | null, repos: readonly string[]): string {
+  if (pick !== null) return pick;
+  return repos.includes('.') ? '.' : (repos[0] ?? '.');
 }
 
 /**
@@ -91,6 +99,8 @@ export function resolveRepoForPanel(pick: string, repos: readonly string[]): str
  */
 export function useRepoScope(rootPath: string | undefined): {
   activeRepo: string;
+  /** The stored pick for this root, or null when the session has none. */
+  pickedRepo: string | null;
   setActiveRepo: (repo: string) => void;
   ready: boolean;
 } {
@@ -126,13 +136,15 @@ export function useRepoScope(rootPath: string | undefined): {
 
   // A pick made under another root (or stored before the root was recorded
   // alongside it) names a directory that need not exist here: fall back to the
-  // workspace root.
-  const activeRepo =
+  // workspace root. `pickedRepo` keeps the distinction the git panel needs —
+  // `null` is "no pick", `'.'` is an explicit choice of the root.
+  const pickedRepo =
     pick && typeof pick === 'object' && pick.root === scope && typeof pick.repo === 'string' && pick.repo
       ? pick.repo
-      : '.';
+      : null;
+  const activeRepo = pickedRepo ?? '.';
 
-  return { activeRepo, setActiveRepo, ready };
+  return { activeRepo, pickedRepo, setActiveRepo, ready };
 }
 
 /**
@@ -142,9 +154,9 @@ export function useRepoScope(rootPath: string | undefined): {
  * the panel's own reads, so the dot describes the repository its view would show.
  */
 export function useResolvedRepo(rootPath: string | undefined, active: boolean): string {
-  const { activeRepo } = useRepoScope(rootPath);
+  const { pickedRepo } = useRepoScope(rootPath);
   const { repos } = useRepoList(rootPath, active);
-  return resolveRepoForPanel(activeRepo, repos);
+  return resolveRepoForPanel(pickedRepo, repos);
 }
 
 export interface RepoListHandle {

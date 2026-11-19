@@ -42,6 +42,8 @@ const nativeFetch = Bun.fetch;
 
 let container: HTMLElement;
 let server: RealtimeTestServer;
+/** Every `/api/fs/git` status read the panel made. */
+let reads: string[] = [];
 
 /** A payload the panel renders as `n` changed files. */
 function statusOf(count: number, syncCount?: { ahead: number; behind: number }): unknown {
@@ -70,6 +72,7 @@ afterEach(() => {
     render(null, container);
     container.remove();
   }
+  reads = [];
   resetRealtimeClient();
   resetToasts();
   server?.stop();
@@ -104,6 +107,7 @@ async function mount(options: {
     // `/api/fs/git` and differ only by method.
     if (init?.method === 'POST' && options.action !== undefined) return json(options.action);
     // The panel's own HTTP read (mount + Refresh): EMPTY, deliberately.
+    reads.push(url);
     return json(statusOf(0, options.httpSync));
   };
 
@@ -135,6 +139,14 @@ describe('GitPanel change list', () => {
   test('renders the topic list, not the mount-time HTTP read', async () => {
     await mount();
     expect(container.textContent).toContain('file-0.txt');
+  });
+
+  test('the panel read names the root explicitly, so the route does not fall back to a nested repo', async () => {
+    // The route's implicit-repo fallback exists for a request that names NO
+    // repo. Omitting `repo` for `'.'` made the panel read the first nested repo
+    // while its header and topic described the root.
+    await mount();
+    expect(reads.some((url) => url.includes('/api/fs/git?') && url.includes('repo=.'))).toBe(true);
   });
 
   test('a topic push updates the list', async () => {

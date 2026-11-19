@@ -29,7 +29,7 @@
 import { useCallback, useMemo, useState } from 'preact/hooks';
 import { RepoPicker } from '@kabmo-labs/kabmo-ui';
 import { RepoModal } from '@/client/components/workspace/repo-picker/Modal';
-import { repoLabel, repoShortLabel } from '@/shared/lib/fs/repo-label';
+import { repoRows } from '@/shared/lib/fs/repo-label';
 
 interface GitRepoPickerProps {
   rootPath?: string;
@@ -55,15 +55,14 @@ export function GitRepoPicker({
   // The rows carry their own labels, because the naming rule is the host's (see
   // `repo-label`): the root reads as its folder's name, a list row keeps its
   // whole root-relative path, and the trigger truncates to the last segment.
+  // `repoRows` also SYNTHESIZES the root row: discovery omits `'.'` when the
+  // root is not itself a repo, and the root is still a legitimate scope for the
+  // browsing panels — a folder of nested repos is a normal workspace.
   const scope = useMemo(
     () => ({
       root: rootPath ?? null,
       repo: activeRepo,
-      rows: repos.map((repo) => ({
-        repo,
-        label: repoLabel(repo, rootPath),
-        short: repoShortLabel(repo, rootPath),
-      })),
+      rows: repoRows(rootPath, repos),
       scanning,
       ready: true,
       setRepo: onSelectRepo,

@@ -86,6 +86,26 @@ describe('GitRepoPicker', () => {
     expect(trigger().textContent).toContain('Workspace');
   });
 
+  test('offers the root row when discovery found only nested repos', async () => {
+    // A workspace root that is a folder of nested repos is not itself a repo,
+    // so discovery omits `'.'`. The root is still a legitimate scope, and the
+    // trigger must name it rather than the first nested repo the panel is not
+    // showing.
+    await mount(['projects/a/token']);
+    expect(trigger().textContent).toContain('Workspace');
+    await act(async () => {
+      trigger().click();
+    });
+    const rootRow = [...container.querySelectorAll('button[role="option"]')].find(
+      (b) => b.textContent?.trim() === 'Workspace',
+    );
+    expect(rootRow).toBeDefined();
+    await act(async () => {
+      (rootRow as HTMLButtonElement | undefined)?.click();
+    });
+    expect(selections).toEqual(['.']);
+  });
+
   test('opens a list that selects on click', async () => {
     await mount(['.', 'projects/a/token']);
     await act(async () => {

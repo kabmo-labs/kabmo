@@ -28,40 +28,18 @@
  *   script (no component), so the two cannot disagree about which tree they mean.
  */
 
-import type { RepoScope, RepoScopeRow, UiKitServices } from '@kabmo-labs/kabmo-ui';
+import type { RepoScope, UiKitServices } from '@kabmo-labs/kabmo-ui';
 import { getSessionValue, setSessionKey } from '@/shared/lib/workspace/session-state/store';
 import { subscribeSessionKey } from '@/shared/lib/workspace/session-state/listeners';
 import { pluginContext, subscribePluginContext } from '@/client/lib/plugins/context';
 import { repoStore, UNKNOWN_LIST } from '@/client/hooks/workspace/repo-scope/store';
 import { REPO_SCOPE_STATE_KEY } from '@/client/hooks/workspace/repo-scope';
-import { repoLabel, repoShortLabel } from '@/shared/lib/fs/repo-label';
+import { repoRows } from '@/shared/lib/fs/repo-label';
 
 /** A repo choice, kept next to the workspace root it was made under. */
 interface RepoPick {
   root: string;
   repo: string;
-}
-
-/**
- * The choices, as rows.
- *
- * The labels are computed HERE because the naming rule is the host's: the root
- * reads as its folder's name, a list row keeps its whole root-relative path so
- * `jns6_5/token` and `jns7/token` are distinguishable, and a trigger truncates
- * to the last segment. The kit is a published package that cannot import
- * `repo-label`, and a second copy of those rules is how one repo comes to be
- * labelled two ways in two places.
- *
- * `'.'` always leads: the root is a legitimate choice even when it is not itself
- * a repository, because a folder of nested repos is a normal workspace.
- */
-function rowsFor(root: string, repos: readonly string[]): RepoScopeRow[] {
-  const rest = repos.filter((repo) => repo !== '.');
-  return ['.', ...rest].map((repo) => ({
-    repo,
-    label: repoLabel(repo, root),
-    short: repoShortLabel(repo, root),
-  }));
 }
 
 /**
@@ -90,6 +68,10 @@ function readRepoScope(): RepoScope {
  * - **A pick from another root is not this root's pick.** The slot is per
  *   session, so a session that picked a repo and was then pointed at another
  *   workspace still holds the old pair; the fallback is the workspace root.
+ *
+ * The rows come from `repoRows`, which always leads with `'.'`: the root is a
+ * legitimate choice even when it is not itself a repository, because a folder of
+ * nested repos is a normal workspace.
  */
 export function resolveRepoScope(
   root: string | null,
@@ -104,7 +86,7 @@ export function resolveRepoScope(
     pick && typeof pick === 'object' && pick.root === root && typeof pick.repo === 'string' && pick.repo
       ? pick.repo
       : '.';
-  return { root, repo, rows: rowsFor(root, repos), scanning, ready: true };
+  return { root, repo, rows: repoRows(root, repos), scanning, ready: true };
 }
 
 /**

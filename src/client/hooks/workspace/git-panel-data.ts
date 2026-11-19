@@ -56,15 +56,18 @@ export function useGitPanelData(
 ): GitPanelData {
   const fetcher = useFetcher<GitPanelStatus>();
 
-  const { activeRepo: pickedRepo, setActiveRepo, ready: activeRepoReady } = useRepoScope(rootPath);
+  const { pickedRepo, setActiveRepo, ready: activeRepoReady } = useRepoScope(rootPath);
   const { repos, scanning: reposScanning, rescan: refreshRepos } = useRepoList(rootPath, enabled);
   // When the user has picked nothing and the workspace root is not itself a
   // repo, git falls back to the first repo discovery found — the same choice
-  // the loader makes for a request that names no repo. Resolving it here rather
-  // than reading it back from the response is what keeps the header label, the
-  // picker's checkmark and the requests describing one repo: the response
-  // arrives a render later, and by then it may belong to a workspace the user
-  // has already left.
+  // the loader makes for a request that names no repo. An EXPLICIT pick of the
+  // root is honored even when it is not a repo, so the picker's root row is a
+  // real choice (the panel then draws its "not a repository" state) rather than
+  // a control that silently snaps back to the first nested repo. Resolving it
+  // here rather than reading it back from the response is what keeps the header
+  // label, the picker's checkmark and the requests describing one repo: the
+  // response arrives a render later, and by then it may belong to a workspace
+  // the user has already left.
   const activeRepo = resolveRepoForPanel(pickedRepo, repos);
   const activeRepoRef = useRef(activeRepo);
   activeRepoRef.current = activeRepo;
@@ -111,7 +114,12 @@ export function useGitPanelData(
     const targetRepo = repo ?? activeRepoRef.current;
     const params = new URLSearchParams();
     if (rootPath) params.set('root', rootPath);
-    if (targetRepo && targetRepo !== '.') params.set('repo', targetRepo);
+    // ALWAYS send the repo, including `'.'`. The route's implicit-repo fallback
+    // (`repos.includes('.') ? '.' : repos[0]`) exists for a request that names
+    // none, and an explicit root pick must not be mistaken for one: omitting
+    // `repo` here made the panel read the first nested repo while its header
+    // and topic described the root.
+    if (targetRepo) params.set('repo', targetRepo);
     // The toolbar's ↑ahead ↓behind badge is what this asks for; it makes the
     // loader refresh the branch's remote-tracking ref before counting, so the
     // numbers describe origin rather than the last fetch.

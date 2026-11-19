@@ -85,6 +85,13 @@ test.describe('repo picker', () => {
     // The nested repo appears once discovery's walk lands and the topic pushes.
     const option = page.locator('[role="option"]:visible', { hasText: 'projects/alpha' });
     await expect(option).toBeVisible({ timeout: 20_000 });
+
+    // The root row SURVIVES that walk: the root is not itself a repo, so
+    // discovery omits `'.'`, and the picker must still offer it — the panel is
+    // browsing the root until the user picks something else.
+    const rootName = workspace.path.split('/').filter(Boolean).pop()!;
+    await expect(page.locator('[role="option"]:visible', { hasText: rootName })).toBeVisible();
+
     await option.focus();
     await page.keyboard.press('Enter');
 

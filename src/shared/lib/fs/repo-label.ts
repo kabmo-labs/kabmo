@@ -53,3 +53,32 @@ export function repoShortLabel(repo: string, rootPath: string | undefined): stri
   if (repo === '.') return workspaceFolderName(rootPath);
   return repo.split('/').pop() || repo;
 }
+
+/** One choice a repo picker draws: the path it sends back, and its two labels. */
+export interface RepoRow {
+  repo: string;
+  label: string;
+  short: string;
+}
+
+/**
+ * The rows a repo picker draws: the workspace root first, then discovery's
+ * order.
+ *
+ * The root is a legitimate choice even when it is not itself a repository — a
+ * folder of nested repos is a normal workspace, and Files/Search/Terminal browse
+ * it — so the row is SYNTHESIZED when discovery did not report it. Discovery
+ * omits `'.'` for a root that is not a repo (the git route's implicit-repo
+ * fallback depends on that), and a picker that mapped the list straight through
+ * therefore lost the root the moment the walk found a nested repo: the trigger
+ * fell back to the first nested repo while the panel was still browsing the
+ * root.
+ */
+export function repoRows(rootPath: string | undefined, repos: readonly string[]): RepoRow[] {
+  const rest = repos.filter((repo) => repo !== '.');
+  return ['.', ...rest].map((repo) => ({
+    repo,
+    label: repoLabel(repo, rootPath),
+    short: repoShortLabel(repo, rootPath),
+  }));
+}

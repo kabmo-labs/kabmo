@@ -15,7 +15,7 @@
 
 import { describe, expect, test } from 'bun:test';
 import { groupRepos, repoNameWithinGroup } from '@/shared/lib/fs/repo-groups';
-import { repoLabel, repoShortLabel, workspaceFolderName } from '@/shared/lib/fs/repo-label';
+import { repoLabel, repoRows, repoShortLabel, workspaceFolderName } from '@/shared/lib/fs/repo-label';
 
 describe('workspaceFolderName', () => {
   test('names the root by its last path segment', () => {
@@ -60,6 +60,27 @@ describe('repoShortLabel', () => {
 
   test('a single-segment repo is its own label', () => {
     expect(repoShortLabel('token', '/ws')).toBe('token');
+  });
+});
+
+describe('repoRows', () => {
+  test('synthesizes the root row when discovery did not report it', () => {
+    // The reported bug: a workspace root that is a folder of nested repos is
+    // not itself a repo, so discovery omits `'.'` — and the picker lost the
+    // root, leaving the trigger on the first nested repo while the panel was
+    // still browsing the root.
+    const rows = repoRows('/home/dev/Workspace', ['projects/a', 'projects/b']);
+    expect(rows.map((row) => row.repo)).toEqual(['.', 'projects/a', 'projects/b']);
+    expect(rows[0]).toEqual({ repo: '.', label: 'Workspace', short: 'Workspace' });
+  });
+
+  test('leads with the root whatever order discovery returned', () => {
+    const rows = repoRows('/ws', ['projects/a', '.', 'zzz']);
+    expect(rows.map((row) => row.repo)).toEqual(['.', 'projects/a', 'zzz']);
+  });
+
+  test('an empty discovery still offers the root', () => {
+    expect(repoRows('/ws', []).map((row) => row.repo)).toEqual(['.']);
   });
 });
 
