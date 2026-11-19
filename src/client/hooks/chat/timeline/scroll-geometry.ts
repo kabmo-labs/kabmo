@@ -51,6 +51,13 @@ export interface TimelineGeometryPinDeps {
   followRef: RefObject<boolean>;
   /** A jump in flight owns the position; its own watch re-aims. */
   jumpActiveRef: RefObject<boolean>;
+  /**
+   * The row window measured a row ABOVE the viewport: the content height above
+   * the reader changed, and re-pinning the tail would move the viewport by the
+   * measured-vs-estimated difference (the reported up/down bounce). Skip one
+   * delivery and clear the flag.
+   */
+  skipTailPinRef: RefObject<boolean>;
   pinToBottom: (behavior: ScrollBehavior) => void;
   /** Re-derives the scroll-bottom affordance from the same geometry. */
   syncFollowBottom: () => void;
@@ -61,6 +68,7 @@ export function useTimelineGeometryPin({
   contentNode,
   followRef,
   jumpActiveRef,
+  skipTailPinRef,
   pinToBottom,
   syncFollowBottom,
 }: TimelineGeometryPinDeps): void {
@@ -71,6 +79,16 @@ export function useTimelineGeometryPin({
     let frame: number | null = null;
     const observer = new ResizeObserver((entries) => {
       const containerResized = entries.some((entry) => entry.target === container);
+      // The row window just measured a row ABOVE the viewport. The content
+      // height above the reader changed; re-pinning the tail here would move
+      // the viewport by the measured-vs-estimated difference — the reported
+      // up/down bounce. The row window already wrote the anchor, so this
+      // delivery stands down.
+      if (skipTailPinRef.current) {
+        skipTailPinRef.current = false;
+        syncFollowBottom();
+        return;
+      }
       if (containerResized && followRef.current && !jumpActiveRef.current) {
         pinToBottom('instant');
         syncFollowBottom();
@@ -91,5 +109,5 @@ export function useTimelineGeometryPin({
       observer.disconnect();
       if (frame !== null) cancelAnimationFrame(frame);
     };
-  }, [contentNode, scrollNode, followRef, jumpActiveRef, pinToBottom, syncFollowBottom]);
+  }, [contentNode, scrollNode, followRef, jumpActiveRef, skipTailPinRef, pinToBottom, syncFollowBottom]);
 }

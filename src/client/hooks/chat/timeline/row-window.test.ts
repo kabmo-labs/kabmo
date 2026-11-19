@@ -89,20 +89,21 @@ interface JumpStub {
   behavior: { current: ScrollBehavior };
 }
 
-function Probe({ node, jump }: { node: HTMLDivElement | null; jump?: JumpStub }) {
+function Probe({ node, jump, skip }: { node: HTMLDivElement | null; jump?: JumpStub; skip?: { current: boolean } }) {
   rowWindow = useTimelineRowWindow({
     ids: Array.from({ length: ROWS }, (_, i) => `r-${i}`),
     scrollRef: { current: node },
     scrollNode: node,
     ...(jump ? { jumpActiveRef: jump.active, jumpBehaviorRef: jump.behavior } : {}),
+    ...(skip ? { skipTailPinRef: skip } : {}),
   });
   return null;
 }
 
-async function mount(node: HTMLDivElement | null, jump?: JumpStub): Promise<void> {
+async function mount(node: HTMLDivElement | null, jump?: JumpStub, skip?: { current: boolean }): Promise<void> {
   container = document.createElement('div');
   document.body.appendChild(container);
-  await act(async () => { render(h(Probe, { node, ...(jump ? { jump } : {}) }), container); });
+  await act(async () => { render(h(Probe, { node, ...(jump ? { jump } : {}), ...(skip ? { skip } : {}) }), container); });
   drainFrames();
 }
 
@@ -288,5 +289,39 @@ describe('useTimelineRowWindow', () => {
     // The row the reader was on kept its place: the 1 000 px that appeared
     // above it moved the offset by exactly that much.
     expect(scroller.scrollTop).toBe(before + 1_000);
+  });
+
+  test('a row growing above the viewport at the tail keeps the anchor, not the tail', async () => {
+    // The reported "scroll down, back, scroll down, back": a thinking block
+    // streams, a row ABOVE the viewport is measured, and following the tail
+    // moves the viewport by the measured-vs-estimated difference. The anchor
+    // must win, and the geometry pin must stand down for that delivery.
+    const scroller = installScroller(ROWS * ROW_HEIGHT - VIEWPORT);
+    const heights = new Map<string, number>();
+    for (let i = 0; i < ROWS; i += 1) {
+      const node = document.createElement('div');
+      node.dataset.rowId = `r-${i}`;
+      node.getBoundingClientRect = () => {
+        const height = heights.get(node.dataset.rowId!) ?? ROW_HEIGHT;
+        return { height, bottom: i * ROW_HEIGHT + height - scroller.scrollTop } as DOMRect;
+      };
+      scroller.appendChild(node);
+    }
+    const skip = { current: false };
+    const jump = { active: { current: true }, behavior: { current: 'instant' as ScrollBehavior } };
+    await mount(scroller, jump, skip);
+    await act(async () => {});
+    const before = scroller.scrollTop;
+
+    heights.set('r-50', ROW_HEIGHT + 1_000);
+    await act(async () => { render(h(Probe, { node: scroller, jump, skip }), container); });
+    drainFrames();
+    await act(async () => {});
+
+    // The anchor is the row at the top of the viewport; the 1 000 px that
+    // appeared ABOVE it moved it down by exactly that much, so the viewport
+    // follows the anchor (the content above stays put) instead of the tail.
+    expect(scroller.scrollTop).toBe(before + 1_000);
+    expect(skip.current).toBe(true);
   });
 });

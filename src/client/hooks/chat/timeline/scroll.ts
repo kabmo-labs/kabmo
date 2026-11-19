@@ -126,6 +126,15 @@ export interface ChatTimelineScrollResult {
    * rAF reached the tail.
    */
   jumpBehaviorRef: RefObject<ScrollBehavior>;
+  /**
+   * Set by the row window when the measurement that just landed was a row
+   * ABOVE the viewport. The content height above the reader changed, so the
+   * geometry pin must NOT re-pin the tail for that delivery — doing so moves
+   * the viewport by the measured-vs-estimated difference, which is the
+   * reported "scroll down, back, scroll down, back" while a thinking block
+   * streams. The observer clears it after skipping one delivery.
+   */
+  skipTailPinRef: RefObject<boolean>;
   handleScroll: () => void;
   scrollToBottom: (behavior?: ScrollBehavior) => void;
   /** Jump to the tail and re-engage follow mode (scroll-bottom button, the
@@ -168,6 +177,10 @@ export function useChatTimelineScroll(options: ChatTimelineScrollOptions = {}): 
   const jumpActiveRef = useRef(false);
   // The motion of the jump in flight; see ChatTimelineScrollResult.
   const jumpBehaviorRef = useRef<ScrollBehavior>('smooth');
+  // Set by the row window when the measurement that just landed was a row
+  // ABOVE the viewport; the geometry pin skips one delivery. See the result
+  // field's doc.
+  const skipTailPinRef = useRef(false);
   // The landing watch: owns the viewport until the jump has landed.
   const landingRef = useRef<JumpLanding | null>(null);
   // Last time the READER touched the scroller (wheel, touch, pointer, key).
@@ -269,6 +282,7 @@ export function useChatTimelineScroll(options: ChatTimelineScrollOptions = {}): 
     contentNode,
     followRef,
     jumpActiveRef,
+    skipTailPinRef,
     pinToBottom,
     syncFollowBottom,
   });
@@ -292,6 +306,7 @@ export function useChatTimelineScroll(options: ChatTimelineScrollOptions = {}): 
     jumpCountRef,
     jumpActiveRef,
     jumpBehaviorRef,
+    skipTailPinRef,
     handleScroll,
     scrollToBottom,
     jumpToBottom,

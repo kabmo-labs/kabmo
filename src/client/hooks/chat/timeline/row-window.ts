@@ -94,6 +94,9 @@ export interface UseTimelineRowWindowDeps {
    *  the jump reached the bottom and the correction pulled the viewport
    *  2 000 px back up, 217 px short of the tail once the stream grew again). */
   jumpCountRef?: RefObject<number>;
+  /** Set when the measurement that just landed was a row ABOVE the viewport;
+   *  the geometry pin stands down for that delivery (the up/down bounce). */
+  skipTailPinRef?: RefObject<boolean>;
   /** False renders every row (a short list, or a surface without a scroller). */
   enabled?: boolean;
 }
@@ -105,6 +108,7 @@ export function useTimelineRowWindow({
   jumpActiveRef,
   jumpBehaviorRef,
   jumpCountRef,
+  skipTailPinRef,
   enabled = true,
 }: UseTimelineRowWindowDeps): TimelineRowWindow {
   // Heights of rows that have been on screen at least once, by id — so a row
@@ -207,21 +211,26 @@ export function useTimelineRowWindow({
     if (!enabled) return;
     const el = element;
     if (!el) return;
-    const measure = (): boolean => {
+    const measure = (): { changed: boolean; above: boolean } => {
       let changed = false;
+      let above = false;
       for (const node of el.querySelectorAll<HTMLElement>('[data-row-id]')) {
         const id = node.dataset.rowId;
         if (!id) continue;
-        const height = node.getBoundingClientRect().height;
+        const rect = node.getBoundingClientRect();
+        const height = rect.height;
         if (height <= 0) continue;
         const previous = measuredRef.current.get(id);
         if (previous !== undefined && Math.abs(previous - height) <= MEASURE_EPSILON_PX) continue;
         measuredRef.current.set(id, height);
+        // A row at or above the viewport's top moves the content ABOVE the
+        // reader; the tail pin must not follow it (see `skipTailPinRef`).
+        if (rect.bottom <= 0) above = true;
         changed = true;
       }
-      return changed;
+      return { changed, above };
     };
-    const adopt = (): void => {
+    const adopt = (above: boolean): void => {
       // Which row the reader is looking at, under the geometry they are still
       // seeing: `el.scrollTop` has not moved yet (a browser does not adjust it
       // when content above grows), so the OLD layout is the right one to read
@@ -257,10 +266,18 @@ export function useTimelineRowWindow({
       // the browser: three rows removed and re-added per expand), which throws
       // away every block's local state.
       const next = layoutTimelineRows(ids, measuredRef.current);
-      const target = tail || !anchorId
-        ? Math.max(0, el.scrollHeight - el.clientHeight)
-        : next.offsets[rowIndex(ids, anchorId)] + offset;
+      // A measurement ABOVE the viewport moved the content the reader is
+      // looking at: keep the anchor and let the geometry pin stand down, or
+      // following the tail moves the viewport by the measured-vs-estimated
+      // difference (the reported up/down bounce).
+      const keepAnchor = above && tail && Boolean(anchorId);
+      const target = keepAnchor
+        ? next.offsets[rowIndex(ids, anchorId)] + offset
+        : tail || !anchorId
+          ? Math.max(0, el.scrollHeight - el.clientHeight)
+          : next.offsets[rowIndex(ids, anchorId)] + offset;
       tailPinRef.current = tail;
+      if (keepAnchor && skipTailPinRef) skipTailPinRef.current = true;
       // A reveal OWNS the viewport until it settles: it re-writes its target
       // every frame, so a correction here would be written back over it and the
       // two would trade the viewport (measured before this guard existed: the
@@ -276,7 +293,8 @@ export function useTimelineRowWindow({
       }
       setVersion((value) => value + 1);
     };
-    if (measure()) adopt();
+    const first = measure();
+    if (first.changed) adopt(first.above);
 
     if (typeof ResizeObserver === 'undefined') return;
     let frame: number | null = null;
@@ -287,7 +305,8 @@ export function useTimelineRowWindow({
       // frame, and the report it eventually raises is an uncaught page error.
       frame = requestAnimationFrame(() => {
         frame = null;
-        if (measure()) adopt();
+        const result = measure();
+        if (result.changed) adopt(result.above);
       });
     });
     for (const node of el.querySelectorAll('[data-row-id]')) observer.observe(node);
@@ -301,6 +320,11 @@ export function useTimelineRowWindow({
   useLayoutEffect(() => {
     const el = element;
     if (!el || !tailPinRef.current) return;
+    // The measurement that just landed was ABOVE the viewport: the row window
+    // kept the anchor, and the geometry pin stands down for this delivery.
+    // Writing the tail here would undo that and move the viewport by the
+    // measured-vs-estimated difference (the reported up/down bounce).
+    if (skipTailPinRef?.current) return;
     // A jump to the tail owns the position while it lands; its own watch is
     // what puts the viewport at the bottom, and a second writer here is a
     // second animation.
