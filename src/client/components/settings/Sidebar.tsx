@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-preact';
-import { BarChart3, Bell, BookOpen, Bot, Boxes, Cloud, Coins, Cpu, FolderGit, Keyboard, Library, MessageSquare, Palette, Plug, Power, Puzzle, Radio, RefreshCw, Search, Sliders, Terminal, Waypoints, X } from 'lucide-preact';
+import { BarChart3, Bell, BookOpen, Bot, Boxes, Cloud, Coins, Cpu, FolderGit, GitBranch, Keyboard, Library, MessageSquare, Palette, Plug, Power, Puzzle, Radio, RefreshCw, Search, Sliders, Terminal, Waypoints, X } from 'lucide-preact';
 import { HarnessGlyph } from '@/client/components/common/harness-glyph';
 import type { SettingsCategoryId } from '@/shared/types';
 import { SETTINGS_SECTIONS, type SettingsSection } from '@/shared/lib/settings/sections';
@@ -32,6 +32,7 @@ export const SETTINGS_CATEGORIES: CategoryDef[] = [
   { id: 'connect', label: 'Connect', icon: Radio, section: 'CONNECT', description: 'Tunnels, addresses, and the devices paired to this server.' },
   // WORKSPACE
   { id: 'projects', label: 'Projects', icon: FolderGit, section: 'WORKSPACE', description: 'Workspace directories, roots, and ignored paths.' },
+  { id: 'git', label: 'Git', icon: GitBranch, section: 'WORKSPACE', description: 'Commit message generation, the agent that writes it, and the prompt template.' },
   // OMP
   { id: 'omp', label: 'OMP Engine', icon: Cpu, section: 'OMP', description: 'Live agent state and native omp config keys.' },
   { id: 'providers', label: 'Providers', icon: Cloud, section: 'OMP', description: 'AI model engines, endpoints, and credentials.' },

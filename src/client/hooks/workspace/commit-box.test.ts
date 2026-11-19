@@ -44,6 +44,11 @@ let headMessage: string | null = PREVIOUS;
 /** Holds the read open, so a case can act while it is in flight. */
 let gate: Promise<void> | null = null;
 let release: () => void = () => {};
+/** The commit-message request the hook issued. */
+let generateBody: Record<string, unknown> | null = null;
+/** What the generation endpoint answers. */
+let generateAnswer: string | null = 'feat: generated';
+let generateStatus = 200;
 let container: HTMLElement;
 const nativeFetch = Bun.fetch;
 
@@ -65,10 +70,17 @@ async function mount(stored: Record<string, unknown> = {}) {
     });
     return null;
   };
-  globalThis.fetch = (async (input: unknown) => {
+  globalThis.fetch = (async (input: unknown, init?: RequestInit) => {
     const url = String(input);
     if (url.includes('/state')) {
       return new Response(JSON.stringify({ state: stored }), { status: 200, headers: { 'content-type': 'application/json' } });
+    }
+    if (url.includes('/api/fs/git-message')) {
+      generateBody = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>;
+      const body = generateStatus === 200
+        ? { success: true, message: generateAnswer }
+        : { error: 'Stage changes first.', code: 'nothing_staged' };
+      return new Response(JSON.stringify(body), { status: generateStatus, headers: { 'content-type': 'application/json' } });
     }
     reads.push(url);
     if (gate) await gate;
@@ -101,6 +113,9 @@ afterEach(() => {
   headMessage = PREVIOUS;
   gate = null;
   release = () => {};
+  generateBody = null;
+  generateAnswer = 'feat: generated';
+  generateStatus = 200;
   if (container) render(null, container);
   container?.remove();
   // The store is a module singleton: without this the previous case's draft is
@@ -199,5 +214,51 @@ describe('useCommitBox amend pre-fill', () => {
     expect(actions).toEqual([{ type: 'commit', extra: { message: PREVIOUS, amend: '1' } }]);
     expect(mounted!.message).toBe('');
     expect(mounted!.amend).toBe(false);
+  });
+
+  test('generate fills an empty draft and marks it generated', async () => {
+    await mount();
+    await act(async () => { mounted!.generate(); });
+    await settle();
+
+    expect(mounted!.message).toBe('feat: generated');
+    expect(mounted!.generated).toBe(true);
+    expect(mounted!.suggestion).toBeNull();
+    expect(generateBody).toMatchObject({ root: ROOT, repo: '.', sessionId: SESSION });
+  });
+
+  test('a typed draft is never overwritten; the answer becomes a suggestion', async () => {
+    await mount();
+    await act(async () => { mounted!.setMessage('my own message'); });
+    await act(async () => { mounted!.generate(); });
+    await settle();
+
+    expect(mounted!.message).toBe('my own message');
+    expect(mounted!.suggestion).toBe('feat: generated');
+
+    await act(async () => { mounted!.useSuggestion(); });
+    expect(mounted!.message).toBe('feat: generated');
+    expect(mounted!.generated).toBe(true);
+    expect(mounted!.suggestion).toBeNull();
+  });
+
+  test('a failed generate leaves the draft alone', async () => {
+    generateStatus = 409;
+    await mount();
+    await act(async () => { mounted!.generate(); });
+    await settle();
+
+    expect(mounted!.message).toBe('');
+    expect(mounted!.suggestion).toBeNull();
+  });
+
+  test('generate sends the amend flag', async () => {
+    await mount();
+    await act(async () => { mounted!.toggleAmend(true); });
+    await settle();
+    await act(async () => { mounted!.generate(); });
+    await settle();
+
+    expect(generateBody).toMatchObject({ amend: true });
   });
 });

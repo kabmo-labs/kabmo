@@ -26,8 +26,7 @@
  * window it occupies is real time the UI can honestly report as "evaluating".
  */
 
-import { stripKabmoHostEnv } from '@kabmo-labs/kabmo-sdk';
-import { resolveOmpBin } from '@/server/lib/omp/core/cli';
+import { runOmpPrint } from '@/server/lib/omp/core/print.server';
 
 export interface GoalAuditAnswers {
   allDone: boolean;
@@ -127,10 +126,6 @@ export function decideGoalProgress(answers: GoalAuditAnswers): GoalVerdict {
   return 'continue';
 }
 
-async function readStream(stream: ReadableStream<Uint8Array>): Promise<string> {
-  return await new Response(stream).text();
-}
-
 export interface GoalAuditDeps {
   resolveBin?: () => string | null;
 }
@@ -141,47 +136,14 @@ export async function runGoalAudit(
   request: GoalAuditRequest,
   deps: GoalAuditDeps = {},
 ): Promise<GoalAuditAnswers | null> {
-  const bin = (deps.resolveBin ?? resolveOmpBin)();
-  if (!bin) return null;
-
-  // `--thinking off` is not a shortcut, it is the audit's whole cost profile:
-  // measured on this machine, a one-line reply took 26.7 s with reasoning on
-  // and 4.5 s with it off — and the auditor is a classification, not a task.
-  const args = ['-p', '--no-session', '--no-tools', '--no-lsp', '--thinking', 'off', '--cwd', request.cwd];
-  if (request.model) args.push('--model', request.model);
-
-  try {
-    const proc = Bun.spawn({
-      cmd: [bin, ...args],
+  const outcome = await runOmpPrint(
+    {
+      prompt: buildGoalAuditPrompt(request.objective, request.answer),
       cwd: request.cwd,
-      // The auditor is a reader: no session, no tools, no title, and the
-      // Kabmo's own port/password must not leak into it.
-      env: stripKabmoHostEnv({ ...Bun.env, PI_NO_TITLE: '1' }, process.platform),
-      stdin: 'pipe',
-      stdout: 'pipe',
-      stderr: 'pipe',
-      windowsHide: true,
-    });
-
-    const killer = setTimeout(() => {
-      void proc.kill();
-    }, request.timeoutMs ?? GOAL_AUDIT_TIMEOUT_MS);
-
-    try {
-      // The prompt goes on stdin, not on the command line: an excerpt can be
-      // 10 KB, and `omp -p` reads stdin when no message argument is given.
-      proc.stdin.write(buildGoalAuditPrompt(request.objective, request.answer));
-      await proc.stdin.end();
-      const [stdout, exitCode] = await Promise.all([readStream(proc.stdout), proc.exited]);
-      if (exitCode !== 0) return null;
-      return readGoalAuditAnswers(stdout);
-    } finally {
-      clearTimeout(killer);
-      void readStream(proc.stderr).catch(() => '');
-    }
-  } catch {
-    // A spawn failure (out of descriptors) is an audit that could not be
-    // taken, not a verdict.
-    return null;
-  }
+      ...(request.model ? { model: request.model } : {}),
+      ...(request.timeoutMs !== undefined ? { timeoutMs: request.timeoutMs } : {}),
+    },
+    deps,
+  );
+  return outcome.ok ? readGoalAuditAnswers(outcome.text) : null;
 }

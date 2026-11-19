@@ -25,6 +25,7 @@ export type SettingsCategoryId =
   | 'connect'
   // WORKSPACE
   | 'projects'
+  | 'git'
   // OMP
   | 'omp'
   | 'providers'
@@ -83,6 +84,18 @@ export interface SettingsState {
    *  once when the first user message settles, retried once at that run's end;
    *  a later run never re-titles it — and a user-set name is never overwritten. */
   autoSessionTitle: boolean;
+  /**
+   * How the Source Control panel writes a commit message. `auto` follows the
+   * active chat's harness (omp when no chat is open); `omp` always uses omp's
+   * tiny role; `harness` pins one ACP agent; `off` hides the action.
+   */
+  commitMessageMode: 'auto' | 'omp' | 'harness' | 'off';
+  /** Harness id for `harness` mode. Empty means none. */
+  commitMessageHarness: string;
+  /** Optional `provider/model` override. Empty means the target's default. */
+  commitMessageModel: string;
+  /** Custom prompt template. Empty means the built-in one. */
+  commitMessagePrompt: string;
   soundAlerts: boolean;
   chatCompletionSound: boolean;
   /**

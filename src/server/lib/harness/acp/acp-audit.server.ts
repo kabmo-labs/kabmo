@@ -15,20 +15,17 @@
  * omp RPC child is involved.
  *
  * The session is disposable: no registry entry, no stream row, no title, no
- * goal driver. Only the assistant text is kept.
+ * goal driver. Only the assistant text is kept. The transport itself lives in
+ * `one-shot.server.ts`, shared with the commit-message generator.
  */
 
-import { AcpSession } from '@/server/lib/harness/acp/session';
-import { loadHarnessConfig, resolveLaunch } from '@/server/lib/harness/config.server';
-import { sessionLaunchCommand } from '@/server/lib/harness/launch';
+import { runAcpOneShot } from '@/server/lib/harness/acp/one-shot.server';
 import {
   buildGoalAuditPrompt,
   readGoalAuditAnswers,
   type GoalAuditAnswers,
 } from '@/server/lib/omp/session/goal-auditor.server';
-import { extractTextFromContent } from '@/shared/lib/omp/session/mapper';
 import type { HarnessId } from '@/shared/lib/harness/catalog';
-import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
 
 export interface AcpGoalAuditRequest {
   harness: HarnessId;
@@ -40,9 +37,6 @@ export interface AcpGoalAuditRequest {
   timeoutMs?: number;
 }
 
-/** How long one audit may take. The harness may be slower than print mode. */
-const DEFAULT_TIMEOUT_MS = 90_000;
-
 /**
  * Ask the ACP agent to classify the last turn's report.
  *
@@ -50,58 +44,15 @@ const DEFAULT_TIMEOUT_MS = 90_000;
  * reply); the driver treats that the same way it treats an omp audit failure.
  */
 export async function runAcpGoalAudit(request: AcpGoalAuditRequest): Promise<GoalAuditAnswers | null> {
-  let launch;
-  try {
-    const configured = await loadHarnessConfig(request.harness);
-    launch = resolveLaunch(request.harness, configured);
-  } catch {
-    return null;
-  }
-
-  const session = new AcpSession(
-    {
-      harness: request.harness,
-      command: sessionLaunchCommand(request.harness, launch.command),
-      ...(launch.env ? { env: launch.env } : {}),
-      model: request.model,
-      // A classification, not a task: the cheapest level the agent offers.
-      thinkingLevel: 'off',
-      accessMode: 'yolo',
-    },
-    request.cwd,
-  );
-  // A disposable reader: no stream row, no turn settle, no queue, no title.
-  session.markStream = () => {};
-  session.onTurnEnded = async () => {};
-
-  const events: AgentEvent[] = [];
-  session.onEvent((event) => events.push(event));
-  const ended = Promise.withResolvers<void>();
-  const stop = session.onEvent((event) => {
-    if (event.type === 'agent_end') ended.resolve();
+  const outcome = await runAcpOneShot({
+    harness: request.harness,
+    cwd: request.cwd,
+    model: request.model,
+    prompt: buildGoalAuditPrompt(request.objective, request.answer),
+    ...(request.timeoutMs !== undefined ? { timeoutMs: request.timeoutMs } : {}),
+    // The audit is a classification, not a task: the agent may use its own
+    // tools to read the report, and the prompt is the only thing it is asked.
+    denyTools: false,
   });
-  const timer = setTimeout(() => {
-    void session.destroyAndWait();
-    ended.resolve();
-  }, request.timeoutMs ?? DEFAULT_TIMEOUT_MS);
-
-  try {
-    await session.start();
-    // `synthetic` keeps the audit prompt from becoming this session's title.
-    await session.send({
-      type: 'prompt',
-      message: buildGoalAuditPrompt(request.objective, request.answer),
-      synthetic: true,
-    });
-    await ended.promise;
-    const message = [...events].reverse().find((event) => event.type === 'message_end')?.message;
-    if (!message || typeof message !== 'object' || !('content' in message)) return null;
-    return readGoalAuditAnswers(extractTextFromContent((message as { content: unknown }).content));
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timer);
-    stop();
-    await session.destroyAndWait().catch(() => {});
-  }
+  return outcome.ok ? readGoalAuditAnswers(outcome.text) : null;
 }

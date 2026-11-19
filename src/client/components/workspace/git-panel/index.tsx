@@ -99,7 +99,20 @@ export function GitPanel({ className = '', enabled = true, rootPath, refreshKey 
   // The draft, the amend checkbox and the pre-fill that seeds it with HEAD's
   // message — see `commit-box.ts` for the three rules that keep the seeding
   // from overwriting a draft the user typed.
-  const { message, setMessage, amend, seeded, toggleAmend, commit } = useCommitBox({
+  const {
+    message,
+    setMessage,
+    amend,
+    seeded,
+    toggleAmend,
+    commit,
+    isGenerating,
+    suggestion,
+    generated,
+    generate,
+    useSuggestion,
+    dismissSuggestion,
+  } = useCommitBox({
     rootPath,
     repo: activeRepo,
     execute: executeAction,
@@ -292,9 +305,15 @@ export function GitPanel({ className = '', enabled = true, rootPath, refreshKey 
           isBusy={isBusy}
           amend={amend}
           seeded={seeded}
+          isGenerating={isGenerating}
+          suggestion={suggestion}
+          generated={generated}
           onToggleAmend={toggleAmend}
           onChangeMessage={setMessage}
           onCommit={commit}
+          onGenerate={generate}
+          onUseSuggestion={useSuggestion}
+          onDismissSuggestion={dismissSuggestion}
         />
       )}
 

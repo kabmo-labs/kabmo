@@ -31,8 +31,9 @@
  * box keeps the placeholder it always had.
  */
 
-import { useCallback, useEffect, useRef } from 'preact/hooks';
+import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { useSessionState, useSessionStateSnapshot } from '@/client/hooks/workspace/session-state';
+import { pushToast } from '@/client/hooks/ui/toasts';
 
 interface UseCommitBoxOptions {
   rootPath?: string;
@@ -50,12 +51,26 @@ export interface CommitBoxState {
   /** The checkbox handler: it is what triggers the pre-fill. */
   toggleAmend: (next: boolean) => void;
   commit: () => void;
+  /** True while the commit-message model is answering. */
+  isGenerating: boolean;
+  /** A generated message that was NOT written into a non-empty draft. */
+  suggestion: string | null;
+  /** True while the draft is the generated text and the user has not edited it. */
+  generated: boolean;
+  generate: () => void;
+  useSuggestion: () => void;
+  dismissSuggestion: () => void;
 }
 
 export function useCommitBox({ rootPath, repo, execute }: UseCommitBoxOptions): CommitBoxState {
   const { sessionId } = useSessionStateSnapshot();
   const [message, setMessage] = useSessionState<string>('git.commitDraft', '');
   const [amend, setAmend] = useSessionState<boolean>('git.amend', false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [suggestion, setSuggestion] = useState<string | null>(null);
+  const [generated, setGenerated] = useState(false);
+  /** Guards a double click while the request is in flight. */
+  const generatingRef = useRef(false);
   /** The text this hook seeded, so un-ticking clears only its own write. */
   const seededRef = useRef<string | null>(null);
   // The live draft and checkbox, read inside the async tail without making
@@ -68,6 +83,68 @@ export function useCommitBox({ rootPath, repo, execute }: UseCommitBoxOptions): 
   amendRef.current = amend;
   const setMessageRef = useRef(setMessage);
   setMessageRef.current = setMessage;
+
+  /** The UI's setter: a user edit ends the "generated" state. */
+  const setDraft = useCallback(
+    (value: string) => {
+      setMessage(value);
+      setGenerated(false);
+    },
+    [setMessage],
+  );
+
+  const generate = useCallback(() => {
+    if (generatingRef.current) return;
+    generatingRef.current = true;
+    setIsGenerating(true);
+    setSuggestion(null);
+
+    const body = {
+      ...(rootPath ? { root: rootPath } : {}),
+      repo,
+      ...(sessionId ? { sessionId } : {}),
+      ...(amendRef.current ? { amend: true } : {}),
+    };
+
+    void fetch('/api/fs/git-message', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+      .then(async (response) => {
+        const payload = await response.json().catch(() => null) as { message?: unknown; error?: unknown } | null;
+        if (!response.ok || typeof payload?.message !== 'string' || !payload.message.trim()) {
+          throw new Error(
+            typeof payload?.error === 'string' ? payload.error : `Request failed (HTTP ${response.status})`,
+          );
+        }
+        const text = payload.message.trim();
+        // A draft the user typed is never overwritten: the answer becomes a
+        // suggestion they can accept. An empty box is filled directly.
+        if (messageRef.current.trim().length === 0) {
+          setMessageRef.current(text);
+          setGenerated(true);
+        } else {
+          setSuggestion(text);
+        }
+      })
+      .catch((error: unknown) => {
+        pushToast(error instanceof Error ? error.message : String(error), 'error');
+      })
+      .finally(() => {
+        generatingRef.current = false;
+        setIsGenerating(false);
+      });
+  }, [rootPath, repo, sessionId]);
+
+  const useSuggestion = useCallback(() => {
+    if (suggestion === null) return;
+    setMessage(suggestion);
+    setGenerated(true);
+    setSuggestion(null);
+  }, [suggestion, setMessage]);
+
+  const dismissSuggestion = useCallback(() => setSuggestion(null), []);
 
   useEffect(() => {
     if (!amend) return;
@@ -123,7 +200,22 @@ export function useCommitBox({ rootPath, repo, execute }: UseCommitBoxOptions): 
     setMessage('');
     setAmend(false);
     seededRef.current = null;
+    setSuggestion(null);
+    setGenerated(false);
   }, [execute, setAmend, setMessage]);
 
-  return { message, setMessage, amend, seeded: seededRef.current !== null && message === seededRef.current, toggleAmend, commit };
+  return {
+    message,
+    setMessage: setDraft,
+    amend,
+    seeded: seededRef.current !== null && message === seededRef.current,
+    toggleAmend,
+    commit,
+    isGenerating,
+    suggestion,
+    generated,
+    generate,
+    useSuggestion,
+    dismissSuggestion,
+  };
 }

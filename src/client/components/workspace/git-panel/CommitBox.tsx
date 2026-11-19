@@ -1,5 +1,5 @@
 import { CHECKBOX_CLASS } from '@/client/components/common/checkbox/style';
-import { Check } from 'lucide-preact';
+import { Check, Loader2, Sparkles } from 'lucide-preact';
 
 interface GitCommitBoxProps {
   message: string;
@@ -13,9 +13,18 @@ interface GitCommitBoxProps {
    * stale draft. Cleared by the first edit.
    */
   seeded?: boolean;
+  /** True while the commit-message model is answering. */
+  isGenerating?: boolean;
+  /** A generated message that was not written into a non-empty draft. */
+  suggestion?: string | null;
+  /** True while the draft is the generated text and the user has not edited it. */
+  generated?: boolean;
   onToggleAmend?: (value: boolean) => void;
   onChangeMessage: (value: string) => void;
   onCommit: () => void;
+  onGenerate?: () => void;
+  onUseSuggestion?: () => void;
+  onDismissSuggestion?: () => void;
 }
 
 /**
@@ -46,11 +55,18 @@ export function GitCommitBox({
   isBusy = false,
   amend = false,
   seeded = false,
+  isGenerating = false,
+  suggestion = null,
+  generated = false,
   onToggleAmend,
   onChangeMessage,
   onCommit,
+  onGenerate,
+  onUseSuggestion,
+  onDismissSuggestion,
 }: GitCommitBoxProps) {
   const canCommit = message.trim().length > 0 && !isBusy && (amend || hasStagedChanges);
+  const canGenerate = (amend || hasStagedChanges) && !isBusy && !isGenerating;
 
   const commitTitle = amend
     ? 'Rewrite the previous commit with this message'
@@ -58,8 +74,39 @@ export function GitCommitBox({
       ? 'Commit staged changes'
       : 'Stage changes first';
 
+  const generateTitle = isGenerating
+    ? 'Generating…'
+    : amend || hasStagedChanges
+      ? 'Generate a commit message from the staged changes'
+      : 'Stage changes first';
+
   return (
     <div className="border-t border-ink/10 bg-canvas/50 p-3 flex flex-col gap-2">
+      {suggestion && (
+        <div className="rounded border border-ink/20 bg-paper p-2.5 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-ink/45">Generated message</span>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={onUseSuggestion}
+                className="px-2 py-0.5 rounded bg-ink text-canvas text-[10px] font-medium hover:bg-ink/90 transition-colors cursor-pointer"
+              >
+                Use
+              </button>
+              <button
+                type="button"
+                onClick={onDismissSuggestion}
+                className="px-2 py-0.5 rounded border border-ink/20 text-ink/70 text-[10px] font-medium hover:bg-ink/5 transition-colors cursor-pointer"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+          <pre className="whitespace-pre-wrap break-words text-[11px] text-ink/80 font-mono max-h-32 overflow-y-auto">{suggestion}</pre>
+        </div>
+      )}
+
       <textarea
         value={message}
         onChange={(e) => onChangeMessage(e.currentTarget.value)}
@@ -74,7 +121,13 @@ export function GitCommitBox({
         className="w-full resize-y min-h-[100px] max-h-[200px] bg-paper border border-ink/20 rounded px-2.5 py-1.5 text-xs text-ink placeholder-ink/40 focus:outline-none focus:border-ink/40 transition-colors font-mono"
       />
 
-      <div className="flex items-center gap-2">
+      {generated && message.trim().length > 0 && (
+        <div className="flex items-center gap-1 text-[10px] text-ink/40">
+          <Sparkles size={10} /> Generated from staged changes
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center gap-2">
         <label className="flex items-center gap-1.5 text-[11px] text-ink/70 cursor-pointer select-none">
           <input
             type="checkbox"
@@ -95,10 +148,22 @@ export function GitCommitBox({
 
         <button
           type="button"
+          onClick={onGenerate}
+          disabled={!canGenerate}
+          title={generateTitle}
+          aria-label="Generate commit message with AI"
+          className="ml-auto flex items-center justify-center gap-1.5 px-3 py-1.5 rounded border border-ink/20 text-ink/80 hover:bg-ink/5 transition-colors cursor-pointer text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {isGenerating ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+          {isGenerating ? 'Generating…' : 'Generate'}
+        </button>
+
+        <button
+          type="button"
           onClick={onCommit}
           disabled={!canCommit}
           title={commitTitle}
-          className="ml-auto flex items-center justify-center gap-1.5 px-3 py-1.5 rounded bg-ink text-canvas hover:bg-ink/90 transition-colors cursor-pointer text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+          className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded bg-ink text-canvas hover:bg-ink/90 transition-colors cursor-pointer text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <Check size={12} />
           {amend ? 'Amend commit' : 'Commit'}

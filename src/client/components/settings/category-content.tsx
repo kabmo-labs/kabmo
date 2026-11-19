@@ -21,6 +21,7 @@ import { AppearanceSettings } from '@/client/components/settings/categories/Appe
 import { ChatSettings } from '@/client/components/settings/categories/ChatSettings';
 import { KeyboardSettings } from '@/client/components/settings/categories/KeyboardSettings';
 import { ProjectSettings } from '@/client/components/settings/categories/ProjectSettings';
+import { GitSettings } from '@/client/components/settings/categories/GitSettings';
 import { ProviderSettings } from '@/client/components/settings/categories/ProviderSettings';
 import { AgentSettings } from '@/client/components/settings/categories/AgentSettings';
 import { BehaviorSettings } from '@/client/components/settings/categories/BehaviorSettings';
@@ -68,6 +69,8 @@ export function CategoryContent({
       return <KeyboardSettings settings={settings} onUpdate={onUpdate} />;
     case 'projects':
       return <ProjectSettings />;
+    case 'git':
+      return <GitSettings settings={settings} onUpdate={onUpdate} />;
     case 'providers':
       return <ProviderSettings autoOpenAdd={autoOpenAdd} onAddModalClose={onAddModalClose} />;
     case 'agents':
