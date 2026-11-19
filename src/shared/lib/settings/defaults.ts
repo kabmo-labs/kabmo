@@ -39,6 +39,8 @@ export const DEFAULT_SETTINGS = {
   commitMessageHarness: '',
   commitMessageModel: '',
   commitMessagePrompt: '',
+  gitIdentities: [],
+  gitCommitIdentity: '',
   soundAlerts: true,
   chatCompletionSound: true,
   notifyDesktopEnabled: true,

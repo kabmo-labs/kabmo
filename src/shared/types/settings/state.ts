@@ -7,6 +7,7 @@ import type { SurfaceStyle } from '@/shared/lib/theme/surface-style';
 import type { IconStyle } from '@/shared/lib/theme/icon-style';
 import type { TrayIconStyle } from '@/shared/lib/theme/tray-icon-style';
 import type { SettingsSection } from '@/shared/lib/settings/sections';
+import type { GitIdentity } from '@/shared/lib/git/identity';
 
 /** Wire protocol for the live agent event stream (chat timeline). */
 export type SettingsCategoryId =
@@ -96,6 +97,10 @@ export interface SettingsState {
   commitMessageModel: string;
   /** Custom prompt template. Empty means the built-in one. */
   commitMessagePrompt: string;
+  /** Saved commit identities (name + email). */
+  gitIdentities: GitIdentity[];
+  /** The identity a commit uses; empty means the repository's own config. */
+  gitCommitIdentity: string;
   soundAlerts: boolean;
   chatCompletionSound: boolean;
   /**

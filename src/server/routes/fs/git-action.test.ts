@@ -28,12 +28,13 @@
  *    derivation strips everything before the first `/`, and a SHA has none).
  */
 
-import { afterAll, describe, expect, test } from 'bun:test';
+import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import fs from 'node:fs';
 import path from 'node:path';
 import { testPosix } from '@/test-support/platform';
 import { action } from '@/server/routes/fs/git';
 import { removeDir } from '@/test-support/remove-dir';
+import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 
 /**
  * Scratch fixtures, under a directory this file owns.
@@ -114,6 +115,17 @@ afterAll(() => {
   // The whole scratch root goes, not just the repos this run made: a previous
   // crashed run would otherwise leave fixtures inside the working tree.
   removeDir(FIXTURE_ROOT);
+});
+
+// The commit action reads the selected commit identity from Kabmo's settings
+// blob. Without an isolated database these tests would read the developer's
+// real identity and commit the fixtures as them.
+beforeEach(async () => {
+  await isolateDb();
+});
+
+afterEach(async () => {
+  await releaseDb();
 });
 
 describe('git action operands are argv, never shell text', () => {

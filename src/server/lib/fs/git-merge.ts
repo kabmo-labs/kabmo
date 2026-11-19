@@ -81,14 +81,14 @@ async function expectStarted(args: string[], cwd: string, operation: GitOperatio
  * The name is validated first, so a string that is not a branch cannot reach
  * git as an option (`git merge --abort` would run happily on a bare `merge`).
  */
-export async function mergeBranch(targetDir: string, branch: string): Promise<string> {
+export async function mergeBranch(targetDir: string, branch: string, identityArgs: string[] = []): Promise<string> {
   const name = branch.trim();
   if (!name) throw new Error('A branch name is required.');
   const check = await runGit(['check-ref-format', '--branch', name], { cwd: targetDir, timeout: 5_000 });
   if (check.exitCode !== 0) {
     throw new Error(check.stderr.trim() || `'${name}' is not a valid branch name`);
   }
-  await expectStarted(['merge', '--no-edit', '--', name], targetDir, 'merge', 120_000);
+  await expectStarted([...identityArgs, 'merge', '--no-edit', '--', name], targetDir, 'merge', 120_000);
   return `git merge ${name}`;
 }
 
@@ -108,31 +108,31 @@ export async function refResolves(targetDir: string, ref: string): Promise<boole
  * `['merge', hash]` had: measured, `git merge --abort` ran when the "hash" was
  * `--abort`.
  */
-export async function mergeCommit(targetDir: string, hash: string): Promise<void> {
+export async function mergeCommit(targetDir: string, hash: string, identityArgs: string[] = []): Promise<void> {
   const sha = hash.trim();
   if (!/^[0-9a-f]{7,40}$/i.test(sha)) throw new Error(`'${sha}' is not a commit hash.`);
-  await expectStarted(['merge', '--no-edit', '--', sha], targetDir, 'merge', 120_000);
+  await expectStarted([...identityArgs, 'merge', '--no-edit', '--', sha], targetDir, 'merge', 120_000);
 }
 
 /** Cherry-pick one commit, with the same guard. */
-export async function cherryPick(targetDir: string, hash: string): Promise<void> {
+export async function cherryPick(targetDir: string, hash: string, identityArgs: string[] = []): Promise<void> {
   const sha = hash.trim();
   if (!/^[0-9a-f]{7,40}$/i.test(sha)) throw new Error(`'${sha}' is not a commit hash.`);
-  await expectStarted(['cherry-pick', '--', sha], targetDir, 'cherry-pick', 120_000);
+  await expectStarted([...identityArgs, 'cherry-pick', '--', sha], targetDir, 'cherry-pick', 120_000);
 }
 
 /** Revert one commit without opening an editor for the message. */
-export async function revertCommit(targetDir: string, hash: string): Promise<void> {
+export async function revertCommit(targetDir: string, hash: string, identityArgs: string[] = []): Promise<void> {
   const sha = hash.trim();
   if (!/^[0-9a-f]{7,40}$/i.test(sha)) throw new Error(`'${sha}' is not a commit hash.`);
-  await expectStarted(['revert', '--no-edit', '--', sha], targetDir, 'revert', 120_000);
+  await expectStarted([...identityArgs, 'revert', '--no-edit', '--', sha], targetDir, 'revert', 120_000);
 }
 
 /** Rebase onto a commit, with the same guard. */
-export async function rebaseOnto(targetDir: string, hash: string): Promise<void> {
+export async function rebaseOnto(targetDir: string, hash: string, identityArgs: string[] = []): Promise<void> {
   const sha = hash.trim();
   if (!/^[0-9a-f]{7,40}$/i.test(sha)) throw new Error(`'${sha}' is not a commit hash.`);
-  await expectStarted(['rebase', '--', sha], targetDir, 'rebase', 120_000);
+  await expectStarted([...identityArgs, 'rebase', '--', sha], targetDir, 'rebase', 120_000);
 }
 
 /** Reset the current branch, with the mode and the hash both guarded. */

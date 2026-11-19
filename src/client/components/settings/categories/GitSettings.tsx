@@ -13,6 +13,7 @@
  */
 
 import type { SettingsState } from '@/shared/types';
+import { IdentitySection } from '@/client/components/settings/categories/git-settings/IdentitySection';
 import { CommitMessageSection } from '@/client/components/settings/categories/git-settings/CommitMessageSection';
 
 interface GitSettingsProps {
@@ -23,6 +24,7 @@ interface GitSettingsProps {
 export function GitSettings({ settings, onUpdate }: GitSettingsProps) {
   return (
     <div className="w-full space-y-6 text-xs text-ink">
+      <IdentitySection settings={settings} onUpdate={onUpdate} />
       <CommitMessageSection settings={settings} onUpdate={onUpdate} />
     </div>
   );

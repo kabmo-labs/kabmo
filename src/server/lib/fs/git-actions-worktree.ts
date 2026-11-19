@@ -35,6 +35,8 @@ import {
   revertCommit,
 } from '@/server/lib/fs/git-merge';
 import { fetchCommitsPage, fetchDiffActions } from '@/server/lib/fs/git-actions-history';
+import { readSelectedGitIdentity } from '@/server/lib/fs/git-identity.server';
+import { gitIdentityArgs, gitIdentityAuthorArgs } from '@/shared/lib/git/identity';
 import { expectOk, field, fileForAction, hashFor, refExists, stoppedOperationPayload, type GitActionHandler } from '@/server/lib/fs/git-actions-shared';
 
 /**
@@ -102,11 +104,21 @@ export const GIT_WORKTREE_ACTIONS: Record<string, GitActionHandler> = {
   async commit({ formData, targetDir }) {
     const message = (formData.get('message') as string) ?? '';
     const amend = formData.get('amend') === '1';
+    const identity = await readSelectedGitIdentity();
+    const identityArgs = gitIdentityArgs(identity);
+    // `-c` sets the committer; an amend keeps the old author unless `--author`
+    // names the selected identity.
+    const authorArgs = amend ? gitIdentityAuthorArgs(identity) : [];
     // argv, never `git commit -m "<message>"`: a message holding a backtick or
     // a `$( )` was executed by the shell the old command string went through.
     // `--amend` rewrites the previous commit, which is why the panel asks for it
     // explicitly and never implies it.
-    await expectOk(amend ? ['commit', '--amend', '-m', message] : ['commit', '-m', message], targetDir);
+    await expectOk(
+      amend
+        ? [...identityArgs, 'commit', '--amend', ...authorArgs, '-m', message]
+        : [...identityArgs, 'commit', '-m', message],
+      targetDir,
+    );
   },
 
   async stage({ formData, targetDir }) {
@@ -188,17 +200,20 @@ export const GIT_WORKTREE_ACTIONS: Record<string, GitActionHandler> = {
   },
 
   async merge_commit({ formData, targetDir }) {
-    await mergeCommit(targetDir, hashFor(formData));
+    const identity = await readSelectedGitIdentity();
+    await mergeCommit(targetDir, hashFor(formData), gitIdentityArgs(identity));
     return stoppedOperationPayload(targetDir);
   },
 
   async cherry_pick({ formData, targetDir }) {
-    await cherryPick(targetDir, hashFor(formData));
+    const identity = await readSelectedGitIdentity();
+    await cherryPick(targetDir, hashFor(formData), gitIdentityArgs(identity));
     return stoppedOperationPayload(targetDir);
   },
 
   async revert_commit({ formData, targetDir }) {
-    await revertCommit(targetDir, hashFor(formData));
+    const identity = await readSelectedGitIdentity();
+    await revertCommit(targetDir, hashFor(formData), gitIdentityArgs(identity));
     return stoppedOperationPayload(targetDir);
   },
 
@@ -208,7 +223,8 @@ export const GIT_WORKTREE_ACTIONS: Record<string, GitActionHandler> = {
   },
 
   async rebase_commit({ formData, targetDir }) {
-    await rebaseOnto(targetDir, hashFor(formData));
+    const identity = await readSelectedGitIdentity();
+    await rebaseOnto(targetDir, hashFor(formData), gitIdentityArgs(identity));
     return stoppedOperationPayload(targetDir);
   },
 };
