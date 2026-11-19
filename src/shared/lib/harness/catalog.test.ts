@@ -102,6 +102,20 @@ describe('harness catalog after the Gemini retirement', () => {
     expect(HARNESS_LAUNCH.hermes?.install).toContain("pm.sync_venv(['acp']");
   });
 
+  test('omo is listed and bridges `omo --mode rpc` through pi-acp', () => {
+    // OmO Native ships no ACP server of its own (measured against 5.1.x: no
+    // `acp` subcommand). It is a senpi (pi fork) engine, so the pi-acp adapter
+    // drives it over `omo --mode rpc`; `PI_ACP_PI_COMMAND` is the adapter's own
+    // override for the binary it spawns.
+    const descriptor = harnessDescriptor('omo');
+    expect(descriptor?.transport).toBe('acp');
+    expect(descriptor?.glyph).toBe('omo');
+    expect(HARNESS_LAUNCH.omo?.command).toEqual(['npx', '-y', 'pi-acp@0.0.34']);
+    expect(HARNESS_LAUNCH.omo?.env).toEqual({ PI_ACP_PI_COMMAND: 'omo' });
+    expect(HARNESS_LAUNCH.omo?.requires?.binary).toBe('omo');
+    expect(HARNESS_LAUNCH.omo?.install).toContain('get.omo.dev/install.sh');
+  });
+
   test('every catalog entry has a launch line or is the built-in transport', () => {
     // The built-in transport has no agent to launch by definition; everything
     // else without a line would probe to "no launch command is configured",

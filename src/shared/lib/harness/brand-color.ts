@@ -53,6 +53,9 @@ const HARNESS_BASES: Readonly<Record<string, string>> = {
   // Hermes' mark is the vendor's black "nous girl" portrait, so it paints in the
   // theme's ink like the other monochrome marks.
   hermes: '#000000',
+  // OmO's mark is the vendor's black face on a light plate; the face is the
+  // mark, so it paints in the theme's ink like the other monochrome marks.
+  omo: '#000000',
 };
 
 /**

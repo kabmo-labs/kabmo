@@ -222,4 +222,23 @@ export const HARNESS_LAUNCH: Readonly<Partial<Record<HarnessId, HarnessLaunch>>>
     install: 'curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash   # then: cd ~/.hermes/hermes-agent && python -c "import pm; pm.sync_venv([\'acp\'], explicit=True)"',
     note: 'native ACP (`hermes acp`); the `acp` extra must be synced once or the subcommand does not exist. Configure a provider with `hermes model` (or ~/.hermes/config.yaml / .env) before a turn succeeds; models are published as `provider:model`',
   },
+  // OmO Native ships no ACP server of its own (measured against 5.1.x: no
+  // `acp` subcommand). It is a senpi (pi fork) engine, so the `pi-acp` adapter
+  // drives it over `omo --mode rpc`; `PI_ACP_PI_COMMAND` is the adapter's own
+  // override for the binary it spawns. Measured through Kabmo's ACP client on
+  // 5.1.9: initialize + session/new answered, 69 models · 3 thought levels,
+  // list/delete advertised.
+  omo: {
+    id: 'omo',
+    command: ['npx', '-y', 'pi-acp@0.0.34'],
+    env: { PI_ACP_PI_COMMAND: 'omo' },
+    // The adapter spawns `omo`; `npx` being present says nothing about whether
+    // a chat can run.
+    requires: {
+      binary: 'omo',
+      label: 'OmO Native (`omo`)',
+    },
+    install: 'curl -fsSL https://get.omo.dev/install.sh | bash   # then run `omo setup` once',
+    note: 'bridges `omo --mode rpc` through pi-acp; OmO Native is a senpi (pi fork) engine. Run `omo setup` (or `/login`) once before a turn succeeds; models are published as `provider/model`',
+  },
 };

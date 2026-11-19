@@ -20,7 +20,7 @@
  * two tables would keep disagreeing about the same file.
  */
 
-import type { HarnessId } from '@/shared/lib/harness/catalog';
+import { harnessDescriptor, type HarnessId } from '@/shared/lib/harness/catalog';
 import type { ProviderRegistryKind } from '@/shared/lib/harness/provider-contracts';
 import { providerFacts } from '@/shared/lib/harness/provider-lookup';
 
@@ -34,7 +34,7 @@ export function registryLabel(id: string | null | undefined): string {
     case 'yaml-providers': return 'models.yml (omp)';
     case 'json-provider': return 'opencode.json';
     case 'toml-model-providers': return 'config.toml (codex)';
-    case 'json-providers': return 'models.json (pi)';
+    case 'json-providers': return `models.json (${harnessDescriptor(id)?.label ?? 'pi'})`;
     case 'toml-providers': return 'config.toml (kimi)';
     case 'json-model-providers': return 'settings.json (qwen)';
     case 'zcode-provider-rules': return 'provider_config.json (zcode)';

@@ -154,7 +154,7 @@ model dropdown, a mark beside the session in the sidebar, and a section in Setti
 |---|---|---|
 | `omp` | RPC (`--mode rpc-ui`) | the default; the only path that reports todos, subagents, host tools, stats and compaction |
 | `omp-acp` | ACP (`omp acp`) | the same agent over the adapter, with a slimmer surface |
-| Claude Code, Codex, OpenCode, Command Code, deepseek-harness, Antigravity, MiniMax, pi, qwen, kimi, Cursor, ZCode, JCode, Grok | ACP over stdio | each launches its own CLI; models, modes, thought levels and MCP servers are probed from the agent, not hardcoded |
+| Claude Code, Codex, OpenCode, Command Code, deepseek-harness, Antigravity, MiniMax, pi, qwen, kimi, Cursor, ZCode, JCode, Grok, OmO | ACP over stdio | each launches its own CLI; models, modes, thought levels and MCP servers are probed from the agent, not hardcoded |
 | your own | ACP over stdio | add a launch line in Settings → Harnesses |
 
 Capabilities are probed, not assumed: the fork control appears only where the agent advertises

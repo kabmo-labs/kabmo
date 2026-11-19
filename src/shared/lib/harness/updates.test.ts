@@ -95,7 +95,15 @@ describe('update facts per harness', () => {
     expect(harnessUpdateFacts('claude')?.agentBin).toBe('claude-agent-acp');
     expect(harnessUpdateFacts('codex')?.agentBin).toBe('codex-acp');
     expect(harnessUpdateFacts('pi')?.agentBin).toBe('pi-acp');
+    expect(harnessUpdateFacts('omo')?.agentBin).toBe('pi-acp');
     expect(harnessUpdateFacts('zcode')?.agentBin).toBe('zcode-acp-server');
+  });
+
+  test('omo reports the adapter and names the CLI it drives', () => {
+    // The probe reports `pi-acp`; the binary underneath is OmO Native, which
+    // updates through its own installer rather than an npm package.
+    expect(latestSourceFor('omo')).toBe('pi-acp');
+    expect(harnessUpdateFacts('omo')?.cli).toEqual({ bin: 'omo', name: 'OmO' });
   });
 
   test('an unknown harness has no facts at all', () => {

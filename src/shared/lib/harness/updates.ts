@@ -120,6 +120,15 @@ export const HARNESS_UPDATE_FACTS: Readonly<Partial<Record<HarnessId, HarnessUpd
     // The ADAPTER is on npm; the agent it drives is not, so the note names both.
     note: 'The row reports the ADAPTER; the `pi` binary it drives versions separately.',
   },
+  omo: {
+    // Same adapter as pi: the probe reports `pi-acp`, while the CLI underneath
+    // is OmO Native (`omo --version`), which updates through its own installer.
+    kind: 'npm',
+    pkg: 'pi-acp',
+    agentBin: 'pi-acp',
+    cli: { bin: 'omo', name: 'OmO' },
+    note: 'The row reports the ADAPTER; the `omo` binary updates with its own installer (`omo update`).',
+  },
   qwen: { kind: 'npm', pkg: '@qwen-code/qwen-code' },
   kimi: { kind: 'npm', pkg: '@moonshot-ai/kimi-code' },
   minimax: { kind: 'npm', pkg: '@minimax-ai/code' },

@@ -55,7 +55,12 @@ export type BuiltinHarnessId =
   /** Nous Research's Hermes Agent, over the ACP adapter it ships in-tree
    *  (`hermes acp`). The stock install exposes only the messages gateway and
    *  the TUI; the ACP surface arrives with its `acp` extra. */
-  | 'hermes';
+  | 'hermes'
+  /** Oh My OpenAgent's standalone `omo` command, over the `pi-acp` bridge.
+   *  OmO Native is a senpi (pi fork) engine, so the adapter's `--mode rpc`
+   *  surface applies; the CLI ships no ACP server of its own (measured against
+   *  5.1.x: no `acp` subcommand). */
+  | 'omo';
 
 /**
  * A harness id: one this build ships, or one the user added.
@@ -87,6 +92,7 @@ export const HARNESS_IDS: readonly BuiltinHarnessId[] = [
   'jcode',
   'grok',
   'hermes',
+  'omo',
 ];
 
 export interface HarnessDescriptor {
@@ -142,6 +148,7 @@ export type HarnessGlyph =
   | 'jcode'
   | 'grok'
   | 'hermes'
+  | 'omo'
   /** A user-added ACP harness: no vendor mark, drawn as its initial. */
   | 'custom';
 
@@ -169,6 +176,7 @@ export const HARNESS_CATALOG: Readonly<Record<BuiltinHarnessId, HarnessDescripto
   jcode: { id: 'jcode', label: 'jcode', initial: 'J', transport: 'acp', glyph: 'jcode' },
   grok: { id: 'grok', label: 'grok', initial: 'G', transport: 'acp', glyph: 'grok' },
   hermes: { id: 'hermes', label: 'hermes', initial: 'H', transport: 'acp', glyph: 'hermes' },
+  omo: { id: 'omo', label: 'omo', initial: 'O', transport: 'acp', glyph: 'omo' },
 };
 
 /**

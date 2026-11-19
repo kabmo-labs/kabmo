@@ -46,6 +46,7 @@ const WRITABLE: Record<string, string> = {
   opencode: 'json-provider',
   codex: 'toml-model-providers',
   pi: 'json-providers',
+  omo: 'json-providers',
   kimi: 'toml-providers',
   qwen: 'json-model-providers',
   zcode: 'zcode-provider-rules',
@@ -69,6 +70,16 @@ describe('the measured registry table', () => {
   test('omp and its ACP transport name the same models.yml', () => {
     expect(providerFacts('omp-acp').registry.file).toBe(providerFacts('omp-rpc').registry.file);
     expect(providerFacts('omp-rpc').registry.kind).toBe('yaml-providers');
+  });
+
+  test('omo keeps its own models.json, not pi’s', () => {
+    // OmO Native is a senpi (pi fork) engine, so the SHAPE is pi's; the file is
+    // under OmO's own agent dir, and writing pi's file would leave OmO unchanged.
+    expect(providerFacts('omo').registry.kind).toBe('json-providers');
+    expect(providerFacts('omo').registry.file).toBe('.omo/agent/models.json');
+    expect(providerFacts('omo').registry.file).not.toBe(providerFacts('pi').registry.file);
+    expect(registryLabel('omo')).toBe('models.json (omo)');
+    expect(registryLabel('pi')).toBe('models.json (pi)');
   });
 
   test('the writable harnesses are exactly the ones with a format writer', () => {

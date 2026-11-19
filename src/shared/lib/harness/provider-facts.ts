@@ -103,6 +103,20 @@ export const HARNESS_PROVIDER_FACTS: Readonly<Partial<Record<HarnessId, HarnessP
     importFrom: ['omp-rpc', 'opencode', 'codex'],
     summary: 'pi reads providers from models.json; each needs a baseUrl and an api.',
   },
+  omo: {
+    registry: {
+      // OmO Native is a senpi (pi fork) engine and keeps the same models.json
+      // shape under its own agent dir (`~/.omo/agent`, or OMO_CODING_AGENT_DIR /
+      // SENPI_CODING_AGENT_DIR). Measured on 5.1.9: `providers.<id>` with
+      // `name`, `api`, `baseUrl`, `apiKey` and `models`.
+      kind: 'json-providers', file: '.omo/agent/models.json', pointer: 'providers',
+      writable: true, baseUrlField: 'baseUrl', apiKeyField: 'apiKey',
+      dialectField: 'api', modelsField: 'models',
+    },
+    createsChoice: true,
+    importFrom: ['omp-rpc', 'opencode', 'codex', 'pi'],
+    summary: 'OmO reads providers from ~/.omo/agent/models.json; each needs a baseUrl and an api.',
+  },
   kimi: {
     registry: {
       // MEASURED: the binary this build updates is `@moonshot-ai/kimi-code`,

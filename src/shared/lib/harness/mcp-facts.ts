@@ -58,6 +58,10 @@ export const HARNESS_MCP_FACTS: Record<BuiltinHarnessId, HarnessMcpFacts> = {
   // Hermes' ACP adapter takes the editor's `mcpServers` on session/new and adds
   // them to the servers its own `config.yaml` already enables.
   hermes: { delivery: 'acp', note: 'Injected on session/new, on top of the servers ~/.hermes/config.yaml enables; the editor list is always added.' },
+  // OmO's ACP surface is the pi-acp bridge, which takes the editor's
+  // `mcpServers` on session/new; OmO's own servers in ~/.omo/agent/mcp.json are
+  // added on top.
+  omo: { delivery: 'acp', note: 'Injected on session/new through pi-acp, on top of the servers ~/.omo/agent/mcp.json enables.' },
 };
 
 /**
