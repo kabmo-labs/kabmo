@@ -100,7 +100,15 @@ export function ForgePanel(_props: ForgePanelProps) {
   const credential = useForgeCredential(scope, active);
   const selected = pick && pick.scope === scopeKey && pick.section === section ? pick : null;
   const detail = useForgeDetail(scope, section, selected?.id ?? null, active);
-  const write = useForgeWrite(scope, section, selected?.id ?? null, detail.reload);
+  // A write closes the item, merges the change, or adds a comment: the detail
+  // owes a re-read for its body and conversation, and the LIST owes one for the
+  // row it came from — the state badge in the item's header is drawn from the
+  // list's copy of the item, and a closed issue that still says `open` in the
+  // list behind it is the same bug as a stale list after a refresh.
+  const write = useForgeWrite(scope, section, selected?.id ?? null, () => {
+    detail.reload();
+    void list.reload();
+  });
 
   const provider = list.list?.provider ?? 'github';
   const items = list.list?.sections[section]?.items ?? [];
@@ -155,6 +163,16 @@ export function ForgePanel(_props: ForgePanelProps) {
     setPick({ scope: scopeKey, section, id: entry.id });
   };
 
+  // The header's refresh re-reads EVERY page the panel is showing, not just the
+  // list: an open merge request is the page the reader is looking at, and a
+  // refresh that left its state, checks and conversation at their mount values
+  // is the one thing the control must not do. The credential is deliberately
+  // not re-read — it is resolved once per mount (see `useForgeCredential`).
+  const refresh = () => {
+    void list.reload();
+    if (selected) detail.reload();
+  };
+
   // Same gate the other workspace-scoped views take: a forge hangs off a
   // repository, so with no workspace there is nothing to read and the panel must
   // say so rather than sit on a spinner no request will ever answer.
@@ -177,11 +195,11 @@ export function ForgePanel(_props: ForgePanelProps) {
         list={list.list}
         provider={provider}
         filter={filter}
-        loading={list.loading}
+        loading={list.loading || detail.loading}
         credential={credential}
         target={scope}
         onFilter={setFilter}
-        onRefresh={() => void list.reload()}
+        onRefresh={refresh}
       />
 
       <div className="flex min-h-0 flex-1 flex-col @[520px]:flex-row-reverse">

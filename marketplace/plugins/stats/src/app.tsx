@@ -84,6 +84,20 @@ function StatsPanel() {
   // in-flight flag — the RPC call's own `pending` is the honest spinner.
   const refreshing = sample.pending;
 
+  /**
+   * The Refresh control: one sample now, then the topic resync.
+   *
+   * The forced sample is what measures, and its publish is how every subscriber
+   * — this panel and the navbar readout — sees the result. The resync that
+   * follows is for the socket that missed that publish: without it the button
+   * spins and the panel keeps the numbers it already had, which reads as a
+   * measurement that found nothing new.
+   */
+  async function refreshNow(): Promise<void> {
+    await sample.call({ force: true });
+    realtime.refresh();
+  }
+
   /** Run the confirmed kill, then take a sample so the row disappears. */
   async function confirmKill(): Promise<void> {
     if (!killTarget) return;
@@ -144,7 +158,7 @@ function StatsPanel() {
   return (
     <Panel title="Stats">
       <div class="-m-3 p-2 flex flex-col">
-        <TotalsBar snapshot={snapshot} onRefresh={() => void sample.call({ force: true })} refreshing={refreshing} />
+        <TotalsBar snapshot={snapshot} onRefresh={() => void refreshNow()} refreshing={refreshing} />
 
         {history ? (
           <div class="flex flex-col gap-1.5 border-b border-ink/10 px-3 py-2">

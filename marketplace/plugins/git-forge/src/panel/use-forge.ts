@@ -180,8 +180,10 @@ export interface ForgeWriteState {
  *
  * A success is NOT repainted from the answer alone: the host's reply is the item
  * it changed, but the conversation, the files and the CI verdict all move with
- * it, so the detail is read again. The optimistic patch exists only to keep the
- * state badge honest for the frame before that read lands.
+ * it, so the caller re-reads what it draws. The item's own state badge is drawn
+ * from the LIST's copy of the row, which is why the panel's `onDone` re-reads
+ * the list as well as the detail — a closed issue that still reads `open` in the
+ * list behind it is the defect this hook cannot fix from here.
  */
 export function useForgeWrite(
   scope: Scope | null,

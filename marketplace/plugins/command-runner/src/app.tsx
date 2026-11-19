@@ -94,6 +94,10 @@ function CommandRunnerPanel() {
 
   const scope = repo.root ? { root: repo.root, repo: repo.repo } : null;
   const runs = state.value?.runs ?? [];
+  // The topic's own resync, held apart so the refresh handler can name it: a
+  // socket that missed a publish leaves a run on "running" forever, and asking
+  // for the snapshot is the only thing that repairs it.
+  const refreshRuns = state.refresh;
 
   // `list.call` is a NEW function per render (the hook returns a fresh state
   // object), so it must not be a dependency of the scan: doing so re-runs the scan
@@ -229,6 +233,21 @@ function CommandRunnerPanel() {
     [pluginId],
   );
 
+  /**
+   * The header's Rescan: every read this panel draws, not only the files.
+   *
+   * The scan re-reads the command listing. The run list is the plugin's topic,
+   * not the scan's answer, so it is resynced too — a socket that missed a
+   * publish leaves a finished run showing "running", and the button is the one
+   * place the reader can ask again. The open rows' logs follow: they are keyed
+   * on their run's byte count, so the resync re-reads exactly the rows whose
+   * output moved.
+   */
+  const refresh = useCallback(() => {
+    void scan();
+    refreshRuns();
+  }, [scan, refreshRuns]);
+
   return (
     <PanelView
       listing={listing}
@@ -242,7 +261,7 @@ function CommandRunnerPanel() {
       showHeader={host.showHeader !== false}
       onToggleGroup={handleToggleGroup}
       onToggleBackground={handleToggleBackground}
-      onRefresh={() => void scan()}
+      onRefresh={refresh}
       onRun={handleRun}
       onStop={handleStop}
       onReadLog={handleReadLog}

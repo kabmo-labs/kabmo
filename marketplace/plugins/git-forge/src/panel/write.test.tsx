@@ -249,6 +249,27 @@ describe('WriteBar', () => {
     expect(container.textContent).toContain('Comment posted.');
   });
 
+  test('a write re-reads the list as well as the item, so its state badge moves', async () => {
+    await mount();
+    const listsBefore = calls.filter((call) => call.method === 'list').length;
+    const detailsBefore = calls.filter((call) => call.method === 'detail').length;
+
+    const box = container.querySelector('textarea[aria-label="Comment"]') as HTMLTextAreaElement;
+    await act(async () => {
+      box.value = 'Looks good';
+      box.dispatchEvent(new window.Event('input', { bubbles: true }));
+    });
+    await click('Post a comment on #1');
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    // The item's header badge is drawn from the LIST's row, so a write that
+    // re-read only the detail leaves a closed issue reading `open`.
+    expect(calls.filter((call) => call.method === 'detail').length).toBe(detailsBefore + 1);
+    expect(calls.filter((call) => call.method === 'list').length).toBe(listsBefore + 1);
+  });
+
   test('Escape cancels the confirmation and keeps the item', async () => {
     detailOutcome = {
       ok: true,
