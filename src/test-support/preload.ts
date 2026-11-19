@@ -28,6 +28,23 @@
  */
 
 import { afterAll } from 'bun:test';
+import { options } from 'preact';
+
+// DIAG: temporary
+type DiagVNode = { type?: unknown; __?: DiagVNode };
+const diagPrevUnmount = options.unmount;
+options.unmount = ((vnode: DiagVNode) => {
+  if (typeof document === 'undefined') {
+    const chain: string[] = [];
+    for (let v: DiagVNode | undefined = vnode; v; v = v.__) {
+      const t = v.type;
+      chain.push(typeof t === 'function' ? ((t as { displayName?: string }).displayName || t.name || 'anon') : String(t));
+    }
+    console.error('[diag] unmount without document:', chain.join(' < '), new Error().stack);
+  }
+  diagPrevUnmount?.(vnode as never);
+}) as typeof options.unmount;
+
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
