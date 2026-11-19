@@ -58,6 +58,10 @@ export function VisibilityMenu({
 }: VisibilityMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  // DIAG: temporary
+  const diagMount = useRef('');
+  if (!diagMount.current) diagMount.current = new Error().stack ?? '';
+  if (typeof document === 'undefined') console.error('[diag] VisibilityMenu rendered without document\n' + diagMount.current);
 
   useLayoutEffect(() => {
     const el = menuRef.current;
