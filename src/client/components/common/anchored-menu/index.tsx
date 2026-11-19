@@ -74,10 +74,6 @@ export function AnchoredMenu({
 }: AnchoredMenuProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const [placement, setPlacement] = useState<MenuPlacement | null>(null);
-  // DIAG: temporary
-  const diagMount = useRef('');
-  if (!diagMount.current) diagMount.current = new Error().stack ?? '';
-  if (typeof document === 'undefined') console.error('[diag] AnchoredMenu rendered without document\n' + diagMount.current);
 
   // Measured before paint, and re-measured on every render: the folder menu
   // swaps its rows for the delete confirmation, which changes its height, and a

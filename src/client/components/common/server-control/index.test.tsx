@@ -81,9 +81,25 @@ function setShellCall(call: (method: string, params?: Record<string, unknown>) =
   shellWindow.__kabmoCall = call;
 }
 
+/**
+ * Drop the mounted tree through PREACT, never by detaching its container.
+ *
+ * `mount()` cleared `document.body.innerHTML` before each render, which left the
+ * previous tree MOUNTED and subscribed — its shell poll kept running — so a
+ * later re-render landed after `afterEach` had restored the runner's globals:
+ * `ReferenceError: document is not defined` from preact's portal teardown,
+ * reported against whichever file ran next. Measured on the Windows gate of
+ * release run 44514562224.
+ */
+function resetDom() {
+  if (!container) return;
+  act(() => render(null, container as never));
+  win.document.body.innerHTML = '';
+}
+
 function mount(next: ShellServersState | Error, variant: 'nav' | 'chip' = 'nav', open = true) {
   calls = [];
-  win.document.body.innerHTML = '';
+  resetDom();
   container = win.document.createElement('div') as unknown as HTMLElement;
   win.document.body.appendChild(container as never);
   setShellCall(async (method, params) => {
@@ -123,21 +139,21 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  if (container) act(() => render(null, container as never));
+  resetDom();
   restoreDomGlobals();
 });
 
 describe('ServerControl', () => {
   test('a browser renders nothing, because there is no shell to control', async () => {
-    win.document.body.innerHTML = '';
-    const bare = win.document.createElement('div');
-    win.document.body.appendChild(bare as never);
+    resetDom();
+    container = win.document.createElement('div') as unknown as HTMLElement;
+    win.document.body.appendChild(container as never);
     act(() => {
-      render(h(ServerControl, { variant: 'chip' }), bare as never);
+      render(h(ServerControl, { variant: 'chip' }), container as never);
     });
     await settle();
-    expect((bare.textContent ?? '').trim()).toBe('');
-    expect(bare.querySelector('button')).toBeNull();
+    expect((container.textContent ?? '').trim()).toBe('');
+    expect(container.querySelector('button')).toBeNull();
   });
 
   test('lists the stored servers, the detected ones, and marks the active row', async () => {
@@ -239,7 +255,7 @@ describe('ServerControl', () => {
    */
   test('the drawer header carries the chip, but only inside a shell', async () => {
     const mountHeader = () => {
-      win.document.body.innerHTML = '';
+      resetDom();
       container = win.document.createElement('div') as unknown as HTMLElement;
       win.document.body.appendChild(container as never);
       act(() => {
