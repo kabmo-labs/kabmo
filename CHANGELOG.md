@@ -4,6 +4,36 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.43.0](https://github.com/kabmo-labs/kabmo/compare/v0.42.2...v0.43.0) — 2026-11-19
+
+### Added
+
+* **git:** choose the commit identity ([7fe40a8](https://github.com/kabmo-labs/kabmo/commit/7fe40a84e75df33fd266521f0d5357ba986d5e21)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **git:** generate a commit message from the staged change set ([423ffe3](https://github.com/kabmo-labs/kabmo/commit/423ffe3770bec9a8ea4cd5b8c74ec686f81f9335)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** add OmO over the pi-acp bridge ([5de29c2](https://github.com/kabmo-labs/kabmo/commit/5de29c2eaace91a2bb00ab8fd697c309f296c814)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **omp:** bump the pin to 19.0.0 and adopt its spill, proc and wait shapes ([2f6d6e8](https://github.com/kabmo-labs/kabmo/commit/2f6d6e8546ca77b34c4d1652b4cdc9995ac2c2e4)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **workspace:** add "Add new workspace" to the composer workspace picker ([1491744](https://github.com/kabmo-labs/kabmo/commit/14917445276b8fa76eafd6038feb6997d7c7fefa)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Changed
+
+* **git:** keep the commit identity in global git config ([9bca535](https://github.com/kabmo-labs/kabmo/commit/9bca5356ce8e31c473ba69f771d74cb8db81012d)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **acp:** read the raw session/update frames in the context panel ([0aab6c5](https://github.com/kabmo-labs/kabmo/commit/0aab6c5f7ad50fa3dcfd69267f607d4ea7ce6f73)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **chat:** open a thinking block for the whole live run ([8085e1d](https://github.com/kabmo-labs/kabmo/commit/8085e1d3b516acb6204c12d1d9e96aa152d6279c)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **chat:** stop the timeline bouncing while a thinking block streams ([37efa9b](https://github.com/kabmo-labs/kabmo/commit/37efa9b7dd1eace059631a60ac56c375371aef60)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **command-runner:** kept the panel from re-rendering forever, and made Rescan re-read its runs ([5776e1a](https://github.com/kabmo-labs/kabmo/commit/5776e1a3da1b7fd8bf8a5cfa47a894d05a87a382)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **git:** let Reset to default discard an unsaved prompt ([6119fbf](https://github.com/kabmo-labs/kabmo/commit/6119fbfdb0a3590f48f2ec13b87528d2e36530d3)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **mcp:** show an ACP agent's own servers and resolve its secrets ([b0f411f](https://github.com/kabmo-labs/kabmo/commit/b0f411f82c9428f7b7bede4d285a1461019b5267)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **plugins:** a panel's refresh re-reads every page it shows ([2273f99](https://github.com/kabmo-labs/kabmo/commit/2273f9997fbf70075b203976755c0f0f22b5aae7)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **plugins:** matched the refresh glyph to the host's RefreshCw ([48fa718](https://github.com/kabmo-labs/kabmo/commit/48fa718665c95d326c0c9af5e3f0697a18e39a6f)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **server-control:** offer one local server and let a dead row be removed ([6693f73](https://github.com/kabmo-labs/kabmo/commit/6693f73eb28d492beabe261a8c27a16e62b09305)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **shells:** allow one local server per desktop shell ([59c016a](https://github.com/kabmo-labs/kabmo/commit/59c016aa1666bc4d6b106f8021f514dbba91fe6f)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **test:** drop the server-control tree through preact, not the DOM ([dff680e](https://github.com/kabmo-labs/kabmo/commit/dff680ef0f4681b8b83e54abc9d05dafd6109824)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **ui:** resolve a menu's document from its own panel, not the globals ([dde3e19](https://github.com/kabmo-labs/kabmo/commit/dde3e1976ebfa569a93f863f7d57539722418b14)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **workspace:** keep the workspace root selectable in the repo picker ([d5ba460](https://github.com/kabmo-labs/kabmo/commit/d5ba460934ab9fd2c63457c73018a2b1ccbed3b9)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.42.2](https://github.com/kabmo-labs/kabmo/compare/v0.42.1...v0.42.2) — 2026-11-18
 
 ### Fixed
