@@ -32,6 +32,16 @@ export interface HarnessCapabilities {
   hasPlan: boolean;
   /** How mid-turn input works, or null when the agent has no way to take it. */
   steerMode: 'steer' | 'follow-up' | null;
+  /**
+   * The MCP transports the agent advertised beyond the stdio baseline.
+   *
+   * ACP's `mcpCapabilities` is optional: stdio is always accepted, while
+   * `http`/`sse` are only real when the agent says so. The navbar list and the
+   * handshake both read this, so a server the agent cannot accept is neither
+   * sent nor shown as delivered. Absent on a probe recorded before this field
+   * existed, which the readers treat as "not advertised".
+   */
+  mcpCapabilities?: { http: boolean; sse: boolean };
   agentName?: string;
   agentVersion?: string;
   /** Why the harness is unusable, when it is: an auth method id, a missing
@@ -53,6 +63,7 @@ export const UNPROBED_CAPABILITIES: HarnessCapabilities = {
   hasUsage: false,
   hasPlan: false,
   steerMode: null,
+  mcpCapabilities: { http: false, sse: false },
 };
 
 /** Spawn-time capability read: one ACP session, then dispose. */

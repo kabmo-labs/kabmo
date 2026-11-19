@@ -21,6 +21,7 @@
 
 import { nativeToServerItem } from '@/server/lib/omp/config/mcp';
 import { testMcpServer } from '@/server/lib/omp/config/mcp-test';
+import { resolveMcpConfig } from '@/server/lib/mcp/secrets.server';
 import type { McpServerEntry } from '@/server/lib/mcp/registry.server';
 import type { McpProbeResult } from '@/shared/types';
 
@@ -49,7 +50,12 @@ export async function probeMcpServer(
   entry: McpServerEntry,
   cwd: string,
 ): Promise<McpProbeResult> {
-  const item = nativeToServerItem(entry.name, entry.config, 0, true);
+  // The probe must test the server the agent actually receives: a `!command`
+  // header is resolved by omp before connecting, and an ACP agent gets the
+  // resolved value from Kabmo. Probing the literal string would report a
+  // failure the agent never sees.
+  const config = await resolveMcpConfig(entry.config, cwd);
+  const item = nativeToServerItem(entry.name, config, 0, true);
   // A spawn failure (ENOENT, a refused endpoint) is a RESULT, not a 500: the
   // status icon has to say "failed" with the reason.
   const result = await testMcpServer({ server: item, cwd }).catch((cause: unknown) => ({

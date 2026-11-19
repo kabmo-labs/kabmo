@@ -35,15 +35,55 @@ import { methodNotAllowedResponse } from '@/server/lib/route-adapter';
 import { resolveSessionRef } from '@/server/lib/sessions/resolve.server';
 import { asOmpSession, getLiveSession, harnessOfSession } from '@/server/lib/omp/rpc/session-registry';
 import { reloadChildMcp } from '@/server/lib/omp/rpc/reload-mcp';
-import { mcpServerEntriesFor, type McpServerSource } from '@/server/lib/mcp/registry.server';
+import { mcpServerEntriesFor, type McpServerEntry, type McpServerSource } from '@/server/lib/mcp/registry.server';
+import { agentMcpEntriesFor } from '@/server/lib/mcp/agent-config.server';
 import { readSessionMcpOverrides, writeSessionMcpOverrides } from '@/server/lib/mcp/session-state.server';
 import { ensureSessionMcpOverlay } from '@/server/lib/mcp/session-overlay.server';
 import { cachedMcpProbe, probeMcpServer } from '@/server/lib/mcp/probe.server';
+import { loadProbes, probes } from '@/server/lib/harness/probe-cache.server';
 import { mcpDelivery } from '@/shared/lib/harness/mcp-facts';
 import { isRecord } from '@/shared/lib/util/guards';
+import type { McpTransport } from '@/shared/types';
 
 /** The sources omp's RPC mode can actually read: its own `mcp.json` files. */
 const FILE_SOURCES: readonly McpServerSource[] = ['user', 'project'];
+
+/**
+ * The transports an ACP agent advertised, or null when no probe has run.
+ *
+ * stdio is the ACP baseline; `http`/`sse` are optional and an agent that does
+ * not advertise one cannot accept it. The handshake applies the same filter,
+ * so the list cannot claim a server the agent never received.
+ */
+async function acpTransports(harness: string | null): Promise<{ http: boolean; sse: boolean } | null> {
+  if (!harness) return null;
+  const probe = probes().get(harness) ?? (await loadProbes()).get(harness);
+  return probe?.capabilities.mcpCapabilities ?? null;
+}
+
+/** Drop the transports the agent did not advertise. */
+function visibleForAcp<T extends { transport: McpTransport }>(
+  servers: T[],
+  caps: { http: boolean; sse: boolean } | null,
+): T[] {
+  if (!caps) return servers;
+  return servers.filter((server) =>
+    server.transport === 'stdio' || (server.transport === 'http' ? caps.http : caps.sse),
+  );
+}
+
+/**
+ * The injected list plus the servers the agent loads from its own config.
+ *
+ * The injected entry wins a name collision: it is the one Kabmo sent on
+ * `session/new`, and the agent's own file is the fallback for names Kabmo does
+ * not know. The agent's own rows are never filtered by `mcpCapabilities` —
+ * the agent already accepted them when it loaded its config.
+ */
+function withAgentServers(injected: McpServerEntry[], agent: McpServerEntry[]): McpServerEntry[] {
+  const seen = new Set(injected.map((entry) => entry.name.toLowerCase()));
+  return [...injected, ...agent.filter((entry) => !seen.has(entry.name.toLowerCase()))];
+}
 
 export async function getSessionMcp({ params }: LoaderFunctionArgs) {
   const sessionId = params.sessionId;
@@ -52,12 +92,22 @@ export async function getSessionMcp({ params }: LoaderFunctionArgs) {
   const ref = await resolveSessionRef(sessionId);
   const overrides = await readSessionMcpOverrides(sessionId);
   const delivery = ref.harness ? mcpDelivery(ref.harness) : null;
-  const servers = ref.cwd
+  const injected = ref.cwd
     ? await mcpServerEntriesFor(ref.cwd, {
         overrides,
         sources: delivery === 'omp-config' ? FILE_SOURCES : undefined,
       })
     : [];
+  const visible = delivery === 'acp'
+    ? visibleForAcp(injected, await acpTransports(ref.harness))
+    : injected;
+  // An ACP agent also loads its own config; those servers are part of what the
+  // chat actually has, so the list is the union rather than Kabmo's injection
+  // alone (which is why it used to look identical to an omp-rpc chat).
+  const agent = delivery === 'acp' && ref.harness && ref.cwd
+    ? await agentMcpEntriesFor(ref.harness, ref.cwd)
+    : [];
+  const servers = withAgentServers(visible, agent);
 
   return json({
     sessionId,
@@ -97,6 +147,18 @@ export async function setSessionMcp({ request, params }: ActionFunctionArgs) {
   const base = await mcpServerEntriesFor(ref.cwd, { sources });
   const target = base.find((entry) => entry.name === name);
   if (!target) {
+    // A name the agent loads from its own config is real, but Kabmo cannot
+    // change it: the file belongs to the agent. Say so instead of a 404 that
+    // reads as "no such server".
+    const agent = delivery === 'acp' && ref.harness
+      ? await agentMcpEntriesFor(ref.harness, ref.cwd)
+      : [];
+    if (agent.some((entry) => entry.name === name)) {
+      return json(
+        { error: `MCP server "${name}" is configured by the agent, not by Kabmo` },
+        { status: 409 },
+      );
+    }
     return json({ error: `MCP server "${name}" is not configured for this session` }, { status: 404 });
   }
 
@@ -107,7 +169,14 @@ export async function setSessionMcp({ request, params }: ActionFunctionArgs) {
   await writeSessionMcpOverrides(sessionId, next);
 
   const applied = await applySessionMcpChange(sessionId, ref.cwd, next);
-  const servers = await mcpServerEntriesFor(ref.cwd, { overrides: next, sources });
+  const entries = await mcpServerEntriesFor(ref.cwd, { overrides: next, sources });
+  const visible = delivery === 'acp'
+    ? visibleForAcp(entries, await acpTransports(ref.harness))
+    : entries;
+  const agent = delivery === 'acp' && ref.harness
+    ? await agentMcpEntriesFor(ref.harness, ref.cwd)
+    : [];
+  const servers = withAgentServers(visible, agent);
   return json({
     success: true,
     sessionId,
@@ -140,11 +209,14 @@ export async function probeSessionMcp({ request, params }: ActionFunctionArgs) {
   if (!ref.cwd) return json({ error: 'Session has no working directory' }, { status: 400 });
   const delivery = ref.harness ? mcpDelivery(ref.harness) : null;
   const overrides = await readSessionMcpOverrides(sessionId);
-  const entries = await mcpServerEntriesFor(ref.cwd, {
+  const injected = await mcpServerEntriesFor(ref.cwd, {
     overrides,
     sources: delivery === 'omp-config' ? FILE_SOURCES : undefined,
   });
-  const entry = entries.find((candidate) => candidate.name === name);
+  const agent = delivery === 'acp' && ref.harness
+    ? await agentMcpEntriesFor(ref.harness, ref.cwd)
+    : [];
+  const entry = withAgentServers(injected, agent).find((candidate) => candidate.name === name);
   if (!entry) {
     return json({ error: `MCP server "${name}" is not configured for this session` }, { status: 404 });
   }

@@ -56,7 +56,7 @@ function statusDetail(server: SessionMcpServer, status: McpServerStatus): string
 }
 
 export function McpSection({ sessionId }: McpSectionProps) {
-  const { servers, delivery, loading, error, pending, checking, toggle, probe } = useSessionMcp(sessionId);
+  const { servers, delivery, loading, error, pending, checking, lastChange, toggle, probe } = useSessionMcp(sessionId);
   const [expanded, setExpanded] = useState<string | null>(null);
   const enabledCount = servers.filter((server) => server.enabled).length;
 
@@ -85,6 +85,9 @@ export function McpSection({ sessionId }: McpSectionProps) {
               checking: checking === server.name,
               probe: server.probe,
             });
+            // The agent's own config is not Kabmo's to change: the row is a
+            // fact about the chat, not a switch. The probe still works.
+            const agentOwned = server.source === 'agent';
             return (
               <li key={server.name}>
                 <div className="flex items-center gap-2 py-0.5 rounded hover:bg-ink/5">
@@ -95,9 +98,11 @@ export function McpSection({ sessionId }: McpSectionProps) {
                     <input
                       type="checkbox"
                       checked={server.enabled}
-                      disabled={pending === server.name}
+                      disabled={agentOwned || pending === server.name}
                       onChange={(event) => void toggle(server.name, event.currentTarget.checked)}
-                      aria-label={`${server.enabled ? 'Disable' : 'Enable'} ${server.name} for this session`}
+                      aria-label={agentOwned
+                        ? `Configured by the agent: ${server.name}`
+                        : `${server.enabled ? 'Disable' : 'Enable'} ${server.name} for this session`}
                       className={`${CHECKBOX_CLASS} size-3.5 flex-shrink-0`}
                     />
                     <span
@@ -106,6 +111,9 @@ export function McpSection({ sessionId }: McpSectionProps) {
                       {server.name}
                     </span>
                   </label>
+                  {agentOwned && (
+                    <span className="text-[9px] uppercase tracking-wide text-ink/40 flex-shrink-0">agent</span>
+                  )}
                   <span className="text-[9px] uppercase tracking-wide text-ink/40 flex-shrink-0">
                     {server.transport}
                   </span>
@@ -134,6 +142,20 @@ export function McpSection({ sessionId }: McpSectionProps) {
 
       {delivery === 'omp-config' && servers.length > 0 && (
         <div className="pt-1.5 text-[10px] text-ink/40 font-sans">Applies to this session only.</div>
+      )}
+      {delivery === 'acp' && servers.length > 0 && (
+        <div className="pt-1.5 text-[10px] text-ink/40 font-sans">
+          Injected on session/new; a change applies to the next message.
+        </div>
+      )}
+      {lastChange && (
+        <div className="pt-1 text-[10px] text-ink/50 font-sans" role="status">
+          {lastChange.applied
+            ? 'Applied to the running session.'
+            : lastChange.appliesOnNextSpawn
+              ? 'Saved; applies on the next message.'
+              : 'Saved.'}
+        </div>
       )}
     </div>
   );

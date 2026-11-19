@@ -120,8 +120,9 @@ export function definitionFromItem(item: McpServerItem): McpServerDefinition | n
 }
 
 /** Where a server was declared. The settings pane and the session list both
- *  need it, and a second derivation would drift from this one. */
-export type McpServerSource = 'user' | 'project' | 'custom' | 'plugin';
+ *  need it, and a second derivation would drift from this one. `agent` is the
+ *  harness's own config, which Kabmo can read but not toggle. */
+export type McpServerSource = 'user' | 'project' | 'custom' | 'plugin' | 'agent';
 
 /**
  * One server as the session sees it: the native `mcp.json` shape (so a
@@ -137,7 +138,7 @@ export interface McpServerEntry {
 }
 
 /** The transport a native entry names, by the same rule `definitionFromNative` uses. */
-function transportOf(config: McpServer): McpTransport {
+export function transportOf(config: McpServer): McpTransport {
   if (typeof config.url === 'string' && config.url.trim()) return config.type === 'sse' ? 'sse' : 'http';
   return 'stdio';
 }

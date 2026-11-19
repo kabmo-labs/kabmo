@@ -37,6 +37,7 @@ import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
 import { harnessDescriptor, type HarnessId } from '@/shared/lib/harness/catalog';
 import { mcpDelivery } from '@/shared/lib/harness/mcp-facts';
 import { mcpServersFor, toAcpMcpServers } from '@/server/lib/mcp/registry.server';
+import { resolveMcpDefinition } from '@/server/lib/mcp/secrets.server';
 import { readSessionMcpOverrides } from '@/server/lib/mcp/session-state.server';
 import { ensureCustomHarnesses } from '@/server/lib/harness/custom.server';
 import type { HarnessConfig } from '@/shared/lib/harness/config';
@@ -139,9 +140,18 @@ export async function openAcpSession(
   // The session's own overrides are applied here, which is what makes a toggle
   // per-session: the list is an argument to `session/new|load`, not a file.
   const overrides = await readSessionMcpOverrides(request.sessionId);
-  const mcpServers = mcpDelivery(request.harness) === 'acp'
-    ? toAcpMcpServers(await mcpServersFor(request.cwd, { overrides }))
+  // `!command` and bare-env values are omp's own indirection; an ACP agent
+  // receives the list as JSON and would get the literal string. Resolve them
+  // here, before the wire shape, so the agent gets the header omp would have
+  // sent — and so the navbar's probe answers for the same server.
+  const definitions = mcpDelivery(request.harness) === 'acp'
+    ? await Promise.all(
+        (await mcpServersFor(request.cwd, { overrides })).map((definition) =>
+          resolveMcpDefinition(definition, request.cwd),
+        ),
+      )
     : [];
+  const mcpServers = toAcpMcpServers(definitions);
   // Built here rather than behind a factory in the session module: this is the
   // only place a session is constructed, and the handshake it runs (load vs
   // new) is decided by the request this function already holds.

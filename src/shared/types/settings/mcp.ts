@@ -55,8 +55,8 @@ export interface McpServerItem {
   status?: 'active' | 'inactive' | 'error';
 }
 
-/** Where a session's server was declared. */
-export type McpServerSource = 'user' | 'project' | 'custom' | 'plugin';
+/** Where a session's server was declared. `agent` is the harness's own config. */
+export type McpServerSource = 'user' | 'project' | 'custom' | 'plugin' | 'agent';
 
 /** The answer of a real MCP handshake, cached for a minute server-side. */
 export interface McpProbeResult {

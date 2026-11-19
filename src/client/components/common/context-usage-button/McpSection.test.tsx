@@ -25,20 +25,24 @@ import type { McpProbeResult, SessionMcpPayload } from '@/shared/types';
 const nativeFetch = Bun.fetch;
 let container: HTMLElement;
 
-function payload(probe: McpProbeResult | null): SessionMcpPayload {
+function payload(probe: McpProbeResult | null, delivery: SessionMcpPayload['delivery'] = 'omp-config'): SessionMcpPayload {
   return {
     sessionId: 'session-mcp',
-    harness: 'omp-rpc',
-    delivery: 'omp-config',
+    harness: delivery === 'acp' ? 'claude' : 'omp-rpc',
+    delivery,
     live: false,
     servers: [{ name: 'obsidian', transport: 'http', source: 'user', enabled: true, probe }],
     overrides: {},
   };
 }
 
-async function mount(probe: McpProbeResult | null): Promise<void> {
+async function mount(probe: McpProbeResult | null, delivery: SessionMcpPayload['delivery'] = 'omp-config'): Promise<void> {
+  await mountPayload(payload(probe, delivery));
+}
+
+async function mountPayload(data: SessionMcpPayload): Promise<void> {
   (globalThis as unknown as Record<string, unknown>).fetch = async () =>
-    new Response(JSON.stringify(payload(probe)), {
+    new Response(JSON.stringify(data), {
       status: 200,
       headers: { 'content-type': 'application/json' },
     });
@@ -94,5 +98,30 @@ describe('McpSection status glyph', () => {
     const button = infoButton();
     expect(button.getAttribute('aria-label')).toBe('obsidian status: unknown');
     expect(button.classList.contains('text-warning-text')).toBe(true);
+  });
+
+  test('an ACP list says the servers are injected on session/new', async () => {
+    await mount(null, 'acp');
+
+    expect(container.textContent).toContain('Injected on session/new');
+    expect(container.textContent).not.toContain('Applies to this session only.');
+  });
+
+  test('an agent-owned server is a read-only row, not a switch', async () => {
+    await mountPayload({
+      sessionId: 'session-mcp',
+      harness: 'opencode',
+      delivery: 'acp',
+      live: false,
+      servers: [
+        { name: 'needmcp', transport: 'http', source: 'agent', enabled: true, probe: null },
+      ],
+      overrides: {},
+    });
+
+    const checkbox = container.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    expect(checkbox.disabled).toBe(true);
+    expect(checkbox.getAttribute('aria-label')).toBe('Configured by the agent: needmcp');
+    expect(container.textContent).toContain('agent');
   });
 });

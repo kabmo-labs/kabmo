@@ -106,15 +106,23 @@ export async function handshakeAcpSession(
 ): Promise<void> {
   const init = await proc.initialize(undefined, 60_000);
   target.onProtocol?.(init.protocolVersion === 2 ? 2 : 1);
-  /** opencode's plugin activation gate: the first `session/new`s refuse with
-   *  `ServiceUnavailableError` until the agent's plugins finish booting. */
-  const requestedMcp = target.mcpServers ?? [];
+  // stdio is the ACP baseline; `http`/`sse` are only real when the agent
+  // advertises them. Sending an unadvertised transport is at best ignored and
+  // at worst rejects the whole setup request, so the list is filtered here —
+  // the same rule the navbar's list uses.
+  const advertisedMcp = init.agentCapabilities?.mcpCapabilities;
+  const requestedMcp = (target.mcpServers ?? []).filter((server) => {
+    if (!('type' in server)) return true;
+    return server.type === 'http' ? advertisedMcp?.http === true : advertisedMcp?.sse === true;
+  });
   // A v2 peer validates `mcpServers` strictly (tagged entries, absolute stdio
   // command) and rejects the whole setup request otherwise. The conversion is
   // here because this is the first point the negotiated major is known.
   const mcpServers: AcpMcpServerWire[] = init.protocolVersion === 2
     ? toAcpV2McpServers(requestedMcp)
     : requestedMcp;
+  /** opencode's plugin activation gate: the first `session/new`s refuse with
+   *  `ServiceUnavailableError` until the agent's plugins finish booting. */
   const newSession = (cwd: string, timeoutMs?: number) =>
     newSessionAfterActivation(target.harness, cwd, (dir, ms) => proc.newSession(dir, ms, mcpServers), {
       ...(timeoutMs !== undefined ? { perAttemptMs: timeoutMs } : {}),

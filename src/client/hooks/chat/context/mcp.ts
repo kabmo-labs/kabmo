@@ -32,6 +32,12 @@ export interface SessionMcpState {
   pending: string | null;
   /** The server name whose handshake is in flight, if any. */
   checking: string | null;
+  /**
+   * What the last toggle did. ACP receives the list on `session/new`, so a
+   * change to a live chat lands on the next spawn; the panel says so instead
+   * of leaving the checkbox as the only signal.
+   */
+  lastChange: { applied: boolean; appliesOnNextSpawn: boolean } | null;
   toggle: (name: string, enabled: boolean) => Promise<void>;
   probe: (name: string) => Promise<void>;
 }
@@ -42,12 +48,14 @@ export function useSessionMcp(sessionId: string | null): SessionMcpState {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
   const [checking, setChecking] = useState<string | null>(null);
+  const [lastChange, setLastChange] = useState<SessionMcpState['lastChange']>(null);
 
   useEffect(() => {
     // Dropped on a session change so the previous chat's servers cannot be
     // drawn under the new title while the read is in flight.
     setPayload(null);
     setError(null);
+    setLastChange(null);
     if (!sessionId) return;
     let cancelled = false;
     setLoading(true);
@@ -90,7 +98,12 @@ export function useSessionMcp(sessionId: string | null): SessionMcpState {
           const message = data && typeof data === 'object' && 'error' in data ? String(data.error) : `HTTP ${response.status}`;
           throw new Error(message);
         }
-        const next = data as { servers?: SessionMcpServer[]; overrides?: Record<string, boolean> };
+        const next = data as {
+          servers?: SessionMcpServer[];
+          overrides?: Record<string, boolean>;
+          applied?: boolean;
+          appliesOnNextSpawn?: boolean;
+        };
         setPayload((previous) =>
           previous
             ? {
@@ -100,6 +113,10 @@ export function useSessionMcp(sessionId: string | null): SessionMcpState {
               }
             : previous,
         );
+        setLastChange({
+          applied: next.applied === true,
+          appliesOnNextSpawn: next.appliesOnNextSpawn === true,
+        });
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : String(cause));
       } finally {
@@ -153,6 +170,7 @@ export function useSessionMcp(sessionId: string | null): SessionMcpState {
     error,
     pending,
     checking,
+    lastChange,
     toggle,
     probe,
   };

@@ -100,6 +100,10 @@ export function capabilitiesFrom(
     hasUsage: observed.usage,
     hasPlan: observed.plan,
     steerMode: steeringSupported ? 'steer' : null,
+    mcpCapabilities: {
+      http: caps.mcpCapabilities?.http === true,
+      sse: caps.mcpCapabilities?.sse === true,
+    },
     ...(init.agentInfo?.name ? { agentName: init.agentInfo.name } : {}),
     ...(init.agentInfo?.version ? { agentVersion: init.agentInfo.version } : {}),
   };
