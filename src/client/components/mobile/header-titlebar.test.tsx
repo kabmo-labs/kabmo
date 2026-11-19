@@ -45,6 +45,19 @@ const DOM_GLOBALS = [
 ] as const;
 const nativeGlobals: Partial<Record<(typeof DOM_GLOBALS)[number], unknown>> = {};
 
+/**
+ * The session-state read, answered instead of attempted.
+ *
+ * The provider reads `/api/sessions/<id>/state` on mount, and this window's
+ * relative URL is invalid outside a page, so the read REJECTS. The rejection's
+ * continuation then lands after the case ended and re-renders the provider,
+ * which diffs away the header it had already dropped — and the header's menus
+ * clean up by touching `document`, which `afterAll` has removed by then. The
+ * subject here is the headers' markup, never the store, so the read answers an
+ * empty blob and nothing is left in flight.
+ */
+const realFetch = globalThis.fetch;
+
 let win: Window;
 let container: HTMLElement;
 
@@ -55,6 +68,8 @@ type Shell = {
 };
 
 beforeAll(() => {
+  globalThis.fetch = (async () =>
+    new Response(JSON.stringify({ state: {} }), { status: 200 })) as unknown as typeof fetch;
   win = new Window({ url: 'http://localhost' });
   const target = globalThis as unknown as Record<string, unknown>;
   for (const key of DOM_GLOBALS) {
@@ -63,7 +78,19 @@ beforeAll(() => {
   }
 });
 
-afterAll(() => {
+afterAll(async () => {
+  // Flush anything still queued (a provider's continuation, a deferred commit)
+  // while `document` is installed. Preact schedules its effect/commit work
+  // through `requestAnimationFrame` with a 35 ms `setTimeout` fallback, and
+  // `requestAnimationFrame` is absent in this suite, so the fallback is what
+  // runs — a zero-delay drain misses it, and on Windows the callback then fires
+  // after the next file's compilation, i.e. after this `afterAll` removed the
+  // globals: `ReferenceError: document is not defined` from `preact.render`'s
+  // portal teardown, reported against the file that happens to run next.
+  await act(async () => {
+    await Bun.sleep(60);
+  });
+  globalThis.fetch = realFetch;
   const target = globalThis as unknown as Record<string, unknown>;
   for (const key of DOM_GLOBALS) {
     const value = nativeGlobals[key];

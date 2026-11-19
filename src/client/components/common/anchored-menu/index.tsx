@@ -80,13 +80,22 @@ export function AnchoredMenu({
   // placement computed for the shorter menu put the longer one past the window
   // edge. The state is only written when a number actually moved, so this
   // settles in one extra render instead of looping.
+  //
+  // The viewport is read from the panel's OWN document, never the global: this
+  // component portals out of its host tree, so `panelRef.current.ownerDocument`
+  // is the document it actually paints into. A global read is a second opinion
+  // that can be absent — measured under `bun test` on Windows, where a deferred
+  // flush landed after the suite restored the globals and the menu died with
+  // `ReferenceError: document is not defined`.
   useLayoutEffect(() => {
-    if (!anchor || !panelRef.current) return;
-    const box = panelRef.current.getBoundingClientRect();
+    const el = panelRef.current;
+    const view = el?.ownerDocument.defaultView;
+    if (!anchor || !el || !view) return;
+    const box = el.getBoundingClientRect();
     const next = placeMenu(
       anchor,
       { width: box.width, height: box.height },
-      { width: window.innerWidth, height: window.innerHeight },
+      { width: view.innerWidth, height: view.innerHeight },
       align,
     );
     setPlacement((prev) =>
@@ -94,17 +103,26 @@ export function AnchoredMenu({
     );
   });
 
+  const open = anchor !== null;
+
   useEffect(() => {
+    if (!open) return;
+    const doc = panelRef.current?.ownerDocument;
+    if (!doc) return;
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.key !== 'Escape') return;
       event.preventDefault();
       onClose();
     };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [onClose]);
+    doc.addEventListener('keydown', onKeyDown);
+    return () => doc.removeEventListener('keydown', onKeyDown);
+  }, [open, onClose]);
 
-  if (!anchor) return null;
+  // Nothing to portal into means nothing to draw. The global is read ONCE here
+  // rather than inside an effect, so a menu whose render was deferred until
+  // after the document went away reports the absence instead of throwing.
+  const host = typeof document === 'undefined' ? null : document.body;
+  if (!anchor || !host) return null;
 
   const style: CSSProperties = placement
     ? { top: `${placement.top}px`, left: `${placement.left}px`, maxHeight: `${placement.maxHeight}px` }
@@ -136,6 +154,6 @@ export function AnchoredMenu({
         {children}
       </div>
     </div>,
-    document.body,
+    host,
   );
 }

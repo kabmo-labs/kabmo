@@ -61,26 +61,38 @@ export function VisibilityMenu({
 
   useLayoutEffect(() => {
     const el = menuRef.current;
-    if (!el) return;
+    const view = el?.ownerDocument.defaultView;
+    if (!el || !view) return;
     const { width, height } = el.getBoundingClientRect();
     const margin = 8;
     const below = anchor.bottom + 4;
-    const top = below + height + margin <= window.innerHeight ? below : Math.max(margin, anchor.top - height - 4);
+    const top = below + height + margin <= view.innerHeight ? below : Math.max(margin, anchor.top - height - 4);
     // A rail is on the RIGHT edge, so its menu opens to its left; the navbar
     // spans the window, so its menu is right-aligned to the header's edge.
     const desiredLeft = align === 'left' ? anchor.left - width - 4 : anchor.right - width - 4;
-    setPos({ top, left: Math.max(margin, Math.min(desiredLeft, window.innerWidth - width - margin)) });
+    setPos({ top, left: Math.max(margin, Math.min(desiredLeft, view.innerWidth - width - margin)) });
   }, [anchor, align]);
 
+  // Registered on the menu's OWN document rather than the global: this panel is
+  // portalled, so its document is the one it paints into, and the global can be
+  // absent by the time a deferred cleanup runs (measured under `bun test`:
+  // `ReferenceError: document is not defined` from this effect, reported against
+  // a later file).
   useEffect(() => {
+    const doc = menuRef.current?.ownerDocument;
+    if (!doc) return;
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.key !== 'Escape') return;
       event.preventDefault();
       onClose();
     };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    doc.addEventListener('keydown', onKeyDown);
+    return () => doc.removeEventListener('keydown', onKeyDown);
   }, [onClose]);
+
+  // Nothing to portal into means nothing to draw; see `AnchoredMenu`.
+  const host = typeof document === 'undefined' ? null : document.body;
+  if (!host) return null;
 
   return createPortal(
     <div className="fixed inset-0 z-[70]" onClick={onClose} onContextMenu={(e) => { e.preventDefault(); onClose(); }}>
@@ -128,6 +140,6 @@ export function VisibilityMenu({
         })}
       </div>
     </div>,
-    document.body,
+    host,
   );
 }
