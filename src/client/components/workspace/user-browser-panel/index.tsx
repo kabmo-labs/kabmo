@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'preact/hooks';
 import { UserBrowserAddressBar } from '@/client/components/workspace/user-browser-panel/AddressBar';
 import { UserBrowserFrame } from '@/client/components/workspace/user-browser-panel/Frame';
+import { UserBrowserTabStrip } from '@/client/components/workspace/user-browser-panel/TabStrip';
 import { AnnotateBar } from '@/client/components/workspace/user-browser-panel/AnnotateBar';
 import { AnnotateLayer } from '@/client/components/workspace/user-browser-panel/AnnotateLayer';
 import { useUserBrowser } from '@/client/hooks/browser/use-user-browser';
@@ -36,21 +37,28 @@ export function UserBrowserPanel({ className = '', active = true }: UserBrowserP
   // How the LAST lookup went, so the bar can say why a mark has no element.
   const [readability, setReadability] = useState<ElementAtResult | null>(null);
   const {
+    tabs,
+    activeTabId,
     url,
     input,
     setInput,
-    frameKey,
     loading,
     error,
     canGoBack,
     canGoForward,
+    canOpenTab,
     submit,
     goBack,
     goForward,
     reload,
     markLoaded,
+    openTab,
+    selectTab,
+    closeTab,
   } = useUserBrowser();
-  const annotate = useAnnotate(frameKey);
+  // Marks belong to the PAGE, so the key is the tab AND its load counter: a
+  // reload clears them, a tab switch moves them to that tab's (empty) set.
+  const annotate = useAnnotate(`${activeTabId ?? ''}:${tabs.find((tab) => tab.id === activeTabId)?.frameKey ?? 0}`);
 
   const handleOpenExternal = useCallback(() => {
     if (!url) return;
@@ -97,8 +105,24 @@ export function UserBrowserPanel({ className = '', active = true }: UserBrowserP
 
   const annotateActive = annotate.active && Boolean(url);
 
+  const loadingTabId = loading ? (activeTabId ?? null) : null;
+
   return (
-    <div className={`flex flex-col h-full w-full bg-paper text-ink overflow-hidden ${className}`}>
+    <div
+      data-user-browser-panel=""
+      className={`flex flex-col h-full w-full bg-paper text-ink overflow-hidden ${className}`}
+    >
+      {/* The strip is above the bar, as in every browser: it maps what is open,
+          the bar describes the active tab. Drawn from one tab upward, because
+          `+` must stay reachable even when the last tab was closed. */}
+      <UserBrowserTabStrip
+        tabs={tabs}
+        activeTabId={activeTabId}
+        canOpenTab={canOpenTab}
+        onSelect={selectTab}
+        onClose={closeTab}
+        onNewTab={openTab}
+      />
       <UserBrowserAddressBar
         url={url}
         input={input}
@@ -120,6 +144,7 @@ export function UserBrowserPanel({ className = '', active = true }: UserBrowserP
         onZoomOut={() => setZoomLevel((prev) => Math.max(50, prev - 10))}
         onResetZoom={() => setZoomLevel(100)}
         onSetZoom={setZoomLevel}
+        focusKey={activeTabId ?? undefined}
         annotate={{
           active: annotateActive,
           count: annotate.shapes.length,
@@ -142,9 +167,9 @@ export function UserBrowserPanel({ className = '', active = true }: UserBrowserP
         />
       )}
       <UserBrowserFrame
-        url={url}
-        frameKey={frameKey}
-        loading={loading}
+        tabs={tabs}
+        activeTabId={activeTabId}
+        loadingTabId={loadingTabId}
         viewportMode={viewportMode}
         zoomLevel={zoomLevel}
         onLoad={markLoaded}

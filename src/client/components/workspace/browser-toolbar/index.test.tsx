@@ -73,7 +73,7 @@ afterAll(() => {
 });
 
 /** The agent panel's bar in miniature: no viewport cluster, no annotation. */
-async function mount(width: number, widths: number[], onSelect: string[] = []): Promise<void> {
+async function mount(width: number, widths: number[], onSelect: string[] = [], twoRows = false): Promise<void> {
   barWidth = width;
   clusterWidths = widths;
   container = document.createElement('div');
@@ -95,6 +95,7 @@ async function mount(width: number, widths: number[], onSelect: string[] = []): 
           onReconnect: () => onSelect.push('reconnect'),
           openExternalLabel: 'Buka di jendela baru',
           openExternalTitle: 'Open in new window',
+          twoRows,
           children: h('input', { 'aria-label': 'Read-only URL', value: 'https://example.com' }),
         },
       ),
@@ -163,5 +164,42 @@ describe('BrowserToolbar overflow', () => {
       item.dispatchEvent(new window.MouseEvent('click', { bubbles: true }) as never);
     });
     expect(ran).toEqual(['external']);
+  });
+});
+
+/**
+ * The user panel's bar is TWO rows — address on top, controls below — and that
+ * split is the point: one packed row left the address field fighting the
+ * device/zoom clusters for the 140px floor, and the field is the control this
+ * toolbar cannot lose.
+ */
+describe('BrowserToolbar two rows', () => {
+  test('the address row and the control row are separate children of the bar', async () => {
+    await mount(420, [60, 40, 30, 30, 30], [], true);
+    const bar = container.firstElementChild as HTMLElement;
+    const rows = [...bar.children] as HTMLElement[];
+    expect(rows.length).toBe(2);
+    const [addressRow, controlRow] = rows;
+    // The address field lives on the FIRST row, the controls on the SECOND.
+    expect(addressRow!.contains(addressField())).toBe(true);
+    expect(addressRow!.querySelector('[data-toolbar-cluster]')).toBeNull();
+    expect(controlRow!.querySelector('[data-toolbar-cluster]')).not.toBeNull();
+    expect(controlRow!.contains(addressField())).toBe(false);
+  });
+
+  test('the address survives at a width where a single row would bury every control', async () => {
+    // 220px: the single-row case at this width puts everything in `⋯` (see
+    // above). Two rows CARRIES the controls on their own line instead.
+    await mount(220, [60, 40, 30, 30, 30], [], true);
+    expect(addressField()).not.toBeNull();
+    const bar = container.firstElementChild as HTMLElement;
+    const controlRow = bar.children[1] as HTMLElement;
+    expect(controlRow.querySelectorAll('[data-toolbar-cluster]').length).toBeGreaterThan(0);
+  });
+
+  test('an unmeasured two-row bar renders every control and still no `⋯`', async () => {
+    await mount(0, [60, 40, 30, 30, 30], [], true);
+    expect(trigger()).toBeUndefined();
+    expect(rowButtons().length).toBe(7);
   });
 });

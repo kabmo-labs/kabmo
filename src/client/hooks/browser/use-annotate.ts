@@ -9,9 +9,10 @@
  * The marks belong to ONE page view. An iframe's internal navigation is not
  * observable from this origin (`onLoad` is all the host gets), so a mark made
  * before a navigation would otherwise point at a different document than the
- * one it was drawn on. `frameKey` therefore clears the marks: a reload or a
- * typed address is a new page, and keeping them would send the agent
- * coordinates for a page the user is no longer looking at.
+ * one it was drawn on. `pageKey` therefore clears the marks: a reload, a typed
+ * address or a TAB SWITCH is a new page, and keeping them would send the agent
+ * coordinates for a page the user is no longer looking at. The panel composes
+ * that key from the active tab's id and its load counter.
  *
  * The mark being DRAGGED is not state here — it lives in the overlay that draws
  * it, and arrives as one finished shape through `add`. A pointermove-driven
@@ -48,7 +49,7 @@ export function nextShapeId(): string {
   return `annot-${Date.now().toString(36)}-${shapeSeq}`;
 }
 
-export function useAnnotate(frameKey: number): UseAnnotateResult {
+export function useAnnotate(pageKey: string | number): UseAnnotateResult {
   const [active, setActive] = useState(false);
   const [tool, setTool] = useState<AnnotateTool>('box');
   const [shapes, setShapes] = useState<AnnotateShape[]>([]);
@@ -58,7 +59,7 @@ export function useAnnotate(frameKey: number): UseAnnotateResult {
   useEffect(() => {
     setShapes([]);
     setSelectedId(null);
-  }, [frameKey]);
+  }, [pageKey]);
 
   const toggle = useCallback(() => {
     setActive((prev) => !prev);

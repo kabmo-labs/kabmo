@@ -27,6 +27,12 @@ interface UserBrowserAddressBarProps {
   onSetZoom: (zoom: number) => void;
   /** Annotation toggle — this panel is the only one that offers it. */
   annotate?: BrowserToolbarAnnotate;
+  /**
+   * Changes when the panel activates a different tab. A blank tab focuses the
+   * field, the way `+` focuses a browser's omnibox — otherwise a new tab opens
+   * with an empty address and the caret wherever it was.
+   */
+  focusKey?: string;
 }
 
 type UserBrowserPhase = 'idle' | 'loading' | 'ready';
@@ -63,15 +69,46 @@ export function UserBrowserAddressBar({
   onResetZoom,
   onSetZoom,
   annotate,
+  focusKey,
 }: UserBrowserAddressBarProps) {
   const followedRef = useRef<string | undefined>(undefined);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  /**
+   * The last URL this bar mirrored into the field, and what the field said at
+   * that moment. A URL that arrives while the user is typing an address is a
+   * LOAD FINISHING, not a navigation they asked for: mirroring it replaced the
+   * address they were typing with the page they were leaving. Measured in
+   * Chromium: type page A, press Enter, start typing page B during the load —
+   * the load's settle rewound the field to A, so Enter went to A again.
+   */
+  const typedRef = useRef<string | null>(null);
 
   // Mirror the loaded URL into the field, but never overwrite active typing.
   useEffect(() => {
     if (followedRef.current === url) return;
     followedRef.current = url;
-    if (url) onInputChange(url);
-  }, [url, onInputChange]);
+    const typed = typedRef.current;
+    typedRef.current = null;
+    if (!url) return;
+    // The user changed the field after the URL last moved: their text wins.
+    if (typed !== null && typed !== input) return;
+    onInputChange(url);
+  }, [url, input, onInputChange]);
+
+  // Focus only on a CHANGE of the active tab: the panel mounting on a blank
+  // first tab must not steal the caret from the chat composer.
+  const firstFocusKey = useRef(focusKey);
+  useEffect(() => {
+    if (focusKey === undefined || firstFocusKey.current === focusKey) return;
+    firstFocusKey.current = focusKey;
+    if (url) return;
+    inputRef.current?.focus();
+  }, [focusKey, url]);
+
+  const handleInput = (value: string) => {
+    typedRef.current = value;
+    onInputChange(value);
+  };
 
   const phase: UserBrowserPhase = !url ? 'idle' : loading ? 'loading' : 'ready';
   const dotClass =
@@ -93,6 +130,7 @@ export function UserBrowserAddressBar({
 
   return (
     <BrowserToolbar
+      twoRows
       url={url}
       statusDotClass={dotClass}
       statusLabel={PHASE_LABEL[phase]}
@@ -112,7 +150,7 @@ export function UserBrowserAddressBar({
       <div className="flex items-center flex-1 min-w-0 space-x-1.5">
         {navControls}
         <form
-          className={`flex-1 min-w-0 flex items-center bg-canvas border rounded-md px-2 py-0.5 space-x-1 focus-within:border-ink/40 ${error ? 'border-error' : 'border-ink/15'}`}
+          className={`flex-1 min-w-0 flex items-center bg-canvas border rounded-md px-2 py-1 space-x-1 focus-within:border-ink/40 ${error ? 'border-error' : 'border-ink/15'}`}
           onSubmit={(event) => {
             event.preventDefault();
             onSubmit(input);
@@ -120,9 +158,10 @@ export function UserBrowserAddressBar({
         >
           <Globe size={12} className="text-ink/40 flex-shrink-0" />
           <input
+            ref={inputRef}
             type="text"
             value={input}
-            onChange={(event) => onInputChange(event.currentTarget.value)}
+            onChange={(event) => handleInput(event.currentTarget.value)}
             placeholder="Type an address (e.g. localhost:5173) and press Enter…"
             aria-label="Browser address"
             aria-invalid={error !== undefined && error !== null}

@@ -55,6 +55,14 @@ export interface BrowserToolbarProps {
   /** Open-external button label/title, differing between the two panels. */
   openExternalLabel: string;
   openExternalTitle: string;
+  /**
+   * Draw the bar as TWO rows: navigation + address on top, the trailing
+   * controls on the row below. The user panel asks for it because its address
+   * field is the primary control and its tab strip already owns a band — one
+   * packed row made the field fight the device/zoom clusters for 140px. The
+   * agent panel's URL is read-only, so it stays a single row.
+   */
+  twoRows?: boolean;
   /** The middle slot: read-only URL text, or the nav cluster + editable form. */
   children: ComponentChildren;
 }
@@ -93,6 +101,7 @@ export function BrowserToolbar({
   onReconnect,
   openExternalLabel,
   openExternalTitle,
+  twoRows = false,
   children,
 }: BrowserToolbarProps) {
   const [copied, setCopied] = useState(false);
@@ -159,31 +168,58 @@ export function BrowserToolbar({
       ? Math.min(STATUS_MAX_PX, barWidth * 0.25)
       : STATUS_MAX_PX
     : STATUS_DOT_PX;
-  const tailBudget =
-    barWidth > 0 ? Math.max(0, barWidth - statusMax - ADDRESS_MIN_PX - BAR_CHROME_PX) : undefined;
+  // Two rows do not share the top row with the trailing controls, so the address
+  // slot takes everything the status cluster does not. The second row gets the
+  // bar's full width as ITS budget — self-measured until the bar has one, so an
+  // unmeasured two-row bar does not bury every control (a granted `0` would).
+  const tailBudget = twoRows
+    ? barWidth > 0
+      ? barWidth
+      : undefined
+    : barWidth > 0
+      ? Math.max(0, barWidth - statusMax - ADDRESS_MIN_PX - BAR_CHROME_PX)
+      : undefined;
+
+  const statusCluster = (
+    <div
+      className="flex items-center space-x-1.5 flex-shrink-0 min-w-0"
+      style={{ maxWidth: `${statusMax}px` }}
+      title={statusLabel}
+    >
+      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${statusDotClass}`} />
+      {showStatusLabel && (
+        <span className="text-[10px] font-mono uppercase tracking-wide text-ink/60 truncate">{statusLabel}</span>
+      )}
+    </div>
+  );
 
   return (
     <div
       ref={barRef}
       data-browser-toolbar=""
-      className="h-10 px-2.5 border-b border-ink/10 bg-paper flex items-center gap-x-2 flex-shrink-0 select-none"
+      className={`px-2.5 border-b border-ink/10 bg-paper flex flex-col gap-y-1 flex-shrink-0 select-none ${
+        twoRows ? 'py-1' : 'h-10 justify-center'
+      }`}
     >
-      <div
-        className="flex items-center space-x-1.5 flex-shrink-0 min-w-0"
-        style={{ maxWidth: `${statusMax}px` }}
-        title={statusLabel}
-      >
-        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${statusDotClass}`} />
-        {showStatusLabel && (
-          <span className="text-[10px] font-mono uppercase tracking-wide text-ink/60 truncate">{statusLabel}</span>
-        )}
+      {/* The bands are named so a spec (and a reader) can tell the address row
+          from the control row without counting children; the ORDER is the
+          contract, and both layouts name the row their controls live on. */}
+      <div data-toolbar-band="address" className="flex items-center gap-x-2 min-w-0">
+        {statusCluster}
+
+        {/* Never a cluster: `flex-1 min-w-0` in the bar means it is drawn at
+            every width and takes the space the trailing controls give up. On two
+            rows it takes everything the status cluster leaves. */}
+        <div className="flex flex-1 min-w-0 items-center">{children}</div>
+
+        {!twoRows && <ToolbarRow clusters={clusters} available={tailBudget} />}
       </div>
 
-      {/* Never a cluster: `flex-1 min-w-0` in the bar means it is drawn at every
-          width and takes the space the trailing controls give up. */}
-      <div className="flex flex-1 min-w-0 items-center">{children}</div>
-
-      <ToolbarRow clusters={clusters} available={tailBudget} />
+      {twoRows && (
+        <div data-toolbar-band="controls" className="flex items-center min-w-0">
+          <ToolbarRow clusters={clusters} available={tailBudget} />
+        </div>
+      )}
     </div>
   );
 }
