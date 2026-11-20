@@ -21,7 +21,7 @@ export interface CategoryDef {
 
 export const SETTINGS_CATEGORIES: CategoryDef[] = [
   // KABMO
-  { id: 'appearance', label: 'Appearance', icon: Palette, section: 'KABMO', description: 'Custom themes, typography scale, and layout density.' },
+  { id: 'appearance', label: 'Appearance', icon: Palette, section: 'KABMO', description: 'Palette, shell layout, icons, and the code editor’s face, theme and behaviour.' },
   { id: 'chats', label: 'Chats', icon: MessageSquare, section: 'KABMO', description: 'Chat width, composer style, tool call rendering, session titles, and goal mode.' },
   { id: 'keyboard', label: 'Keyboard', icon: Keyboard, section: 'KABMO', description: 'Every command shortcut, the composer Enter keys, and chord conflicts.' },
   { id: 'notifications', label: 'Notifications', icon: Bell, section: 'KABMO', description: 'Completion sound, separate Desktop and Mobile delivery switches, and the finished, waiting-for-you and failed run triggers.' },

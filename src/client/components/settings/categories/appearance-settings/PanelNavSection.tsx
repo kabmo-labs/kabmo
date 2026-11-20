@@ -134,8 +134,8 @@ export function PanelNavSection({ settings, onUpdate }: PanelNavSectionProps) {
   return (
     <section className="space-y-3">
       <div>
-        <h4 className="text-xs font-semibold text-ink">Panel navigation</h4>
-        <p className="mt-0.5 text-[11px] text-ink/50">
+        <h4 className="text-sm font-semibold text-ink">Panel navigation</h4>
+        <p className="mt-0.5 text-[11px] text-ink/60">
           How each desktop panel column is navigated. The two columns are chosen independently.
           The phone keeps its own drawer and chip strip — this does not reach it.
         </p>

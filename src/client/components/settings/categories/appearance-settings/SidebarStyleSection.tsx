@@ -109,8 +109,8 @@ export function SidebarStyleSection({ settings, onUpdate }: SidebarStyleSectionP
   return (
     <section className="space-y-3">
       <div>
-        <h4 className="text-xs font-semibold text-ink">Session sidebar</h4>
-        <p className="mt-0.5 text-[11px] text-ink/50">
+        <h4 className="text-sm font-semibold text-ink">Session sidebar</h4>
+        <p className="mt-0.5 text-[11px] text-ink/60">
           How the left column draws its workspaces and chats. Both styles list the same
           workspaces and offer the same actions; the choice applies to desktop and phone,
           and takes effect immediately.

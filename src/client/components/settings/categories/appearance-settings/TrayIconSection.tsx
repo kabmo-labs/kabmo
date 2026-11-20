@@ -68,8 +68,8 @@ export function TrayIconSection({ settings, onUpdate }: TrayIconSectionProps) {
   return (
     <section className="space-y-3">
       <div>
-        <h4 className="text-xs font-semibold text-ink">Tray icon</h4>
-        <p className="mt-0.5 text-[11px] text-ink/50">
+        <h4 className="text-sm font-semibold text-ink">Tray icon</h4>
+        <p className="mt-0.5 text-[11px] text-ink/60">
           The menu-bar (macOS) or notification-area (Windows, Linux) icon. Full colour is the
           shipped app icon, orange arm and all; monochrome is a greyscale conversion: the green
           plate and the cream strokes swap luminance with the theme, and the orange arm becomes

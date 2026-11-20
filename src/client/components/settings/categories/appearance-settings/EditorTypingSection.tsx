@@ -76,8 +76,8 @@ export function EditorTypingSection({ settings: _settings, onUpdate }: EditorTyp
   return (
     <section className="space-y-3">
       <div>
-        <h4 className="text-xs font-semibold text-ink">Editor typing</h4>
-        <p className="text-[11px] text-ink/50 mt-0.5">
+        <h4 className="text-sm font-semibold text-ink">Editor typing</h4>
+        <p className="text-[11px] text-ink/60 mt-0.5">
           Both change what typing does, which is why they are switches rather than always-on.
         </p>
       </div>

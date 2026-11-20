@@ -58,8 +58,8 @@ export function EditorIndentSection({ settings: _settings, onUpdate }: EditorInd
     <section className="space-y-3">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h4 className="text-xs font-semibold text-ink">Editor indentation</h4>
-          <p className="text-[11px] text-ink/50 mt-0.5">
+          <h4 className="text-sm font-semibold text-ink">Editor indentation</h4>
+          <p className="text-[11px] text-ink/60 mt-0.5">
             One level, in spaces. Enter, Tab and the auto-indent rules all use it.
           </p>
         </div>

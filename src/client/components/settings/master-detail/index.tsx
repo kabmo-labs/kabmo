@@ -22,7 +22,9 @@ interface SettingsMasterDetailProps {
 
 /**
  * Master-detail shell for the settings categories that are two panes on a
- * desktop (providers, projects, agents, commands, MCP, skills, usage).
+ * desktop (providers, projects, agents, commands, MCP, skills, usage) and for
+ * the two that navigate by GROUP inside one category (`chats`,
+ * `appearance` — those draw `GroupSidebar` / `GroupDetail`).
  *
  * Both panes stay mounted at every width, so a pane's state — a half-typed
  * form, a scroll position — survives the drill and the back. Only the phone

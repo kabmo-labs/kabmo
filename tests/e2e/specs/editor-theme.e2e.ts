@@ -77,9 +77,13 @@ test.describe('editor theme', () => {
 
     await page.getByRole('button', { name: 'Settings' }).first().click();
     await page.getByRole('button', { name: 'Appearance' }).click();
+    // The category is grouped: the palette opens first, and the editor's own
+    // two axes are one row down. Without this the grid is not mounted at all —
+    // the detail pane renders only the active group's sections.
+    await page.getByRole('button', { name: /^Editor:/ }).click();
 
     // The editor theme cards are the ones carrying a colour swatch; the app
-    // palette is a separate grid in the same panel.
+    // palette is a separate grid in the same pane.
     const draculaCard = page.getByRole('button', { name: /^Dracula Theme/ }).first();
     await expect(draculaCard).toBeVisible();
 
@@ -124,6 +128,7 @@ test.describe('editor theme', () => {
 
     await page.getByRole('button', { name: 'Settings' }).first().click();
     await page.getByRole('button', { name: 'Appearance' }).click();
+    await page.getByRole('button', { name: /^Editor:/ }).click();
 
     const autoCard = page.getByRole('button', { name: /^Auto/ }).first();
     await expect(autoCard).toHaveAttribute('aria-pressed', 'true');

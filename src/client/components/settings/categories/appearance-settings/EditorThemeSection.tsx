@@ -87,12 +87,12 @@ export function EditorThemeSection({ settings, onUpdate }: EditorThemeSectionPro
   return (
     <section className="space-y-3">
       <div>
-        <h3 className="font-semibold text-sm uppercase tracking-wider text-ink/80 flex items-center gap-2">
-          <Palette size={16} className="text-ink/60" />
-          Editor Theme
-        </h3>
-        <p className="text-[11px] text-ink/60 mt-1">
-          Colours for the code editor only — the console around it keeps the theme above. <strong>Auto</strong>{' '}
+        <h4 className="flex items-center gap-2 text-sm font-semibold text-ink">
+          <Palette size={15} className="text-ink/60" />
+          Editor theme
+        </h4>
+        <p className="text-[11px] text-ink/60 mt-0.5">
+          Colours for the code editor only: the console keeps the palette in the Palette group. <strong>Auto</strong>{' '}
           follows the app palette; any other choice paints the editor's own surface, gutter, selection and
           syntax, and applies to every open editor without a reload.
         </p>

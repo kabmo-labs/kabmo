@@ -130,8 +130,8 @@ export function SurfaceStyleSection({ settings, onUpdate }: SurfaceStyleSectionP
   return (
     <section className="space-y-3">
       <div>
-        <h4 className="text-xs font-semibold text-ink">Surfaces</h4>
-        <p className="mt-0.5 text-[11px] text-ink/50">
+        <h4 className="text-sm font-semibold text-ink">Surfaces</h4>
+        <p className="mt-0.5 text-[11px] text-ink/60">
           What the windows are made of. Both styles draw the same panels, rows and dialogs;
           the frost is one blur pass per window, and it follows the palette — there is no
           separate glass colour to tune.

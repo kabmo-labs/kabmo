@@ -74,8 +74,8 @@ export function EditorBlameSection({ settings: _settings, onUpdate }: EditorBlam
   return (
     <section className="space-y-3">
       <div>
-        <h4 className="text-xs font-semibold text-ink">Line blame</h4>
-        <p className="text-[11px] text-ink/50 mt-0.5">
+        <h4 className="text-sm font-semibold text-ink">Line blame</h4>
+        <p className="text-[11px] text-ink/60 mt-0.5">
           Who last touched a line, and which commit. Read from git, so it needs a committed file.
         </p>
       </div>

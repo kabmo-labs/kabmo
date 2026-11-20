@@ -87,8 +87,8 @@ export function BorderStyleSection({ settings, onUpdate }: BorderStyleSectionPro
   return (
     <section className="space-y-3">
       <div>
-        <h4 className="text-xs font-semibold text-ink">Rules</h4>
-        <p className="mt-0.5 text-[11px] text-ink/50">
+        <h4 className="text-sm font-semibold text-ink">Rules</h4>
+        <p className="mt-0.5 text-[11px] text-ink/60">
           Whether the 1px rules between panels, columns and rows are painted. Controls keep their
           edge either way, and so do validation colours, drop zones and the focus ring.
         </p>

@@ -26,11 +26,11 @@ export function EditorFontSection({ settings, onUpdate }: EditorFontSectionProps
   return (
     <section className="space-y-3">
       <div>
-        <h3 className="font-semibold text-sm uppercase tracking-wider text-ink/80 flex items-center gap-2">
-          <Type size={16} className="text-ink/60" />
-          Editor Font
-        </h3>
-        <p className="text-[11px] text-ink/60 mt-1">
+        <h4 className="flex items-center gap-2 text-sm font-semibold text-ink">
+          <Type size={15} className="text-ink/60" />
+          Editor font
+        </h4>
+        <p className="text-[11px] text-ink/60 mt-0.5">
           Typeface for the code editor and its line numbers, in both the desktop panel and the phone's
           full-screen editor. Only Fira Code ships with the app; the others are used when your device
           has them, and fall back to Fira Code when it does not.

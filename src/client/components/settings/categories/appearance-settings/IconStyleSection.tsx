@@ -104,8 +104,8 @@ export function IconStyleSection({ settings, onUpdate }: IconStyleSectionProps) 
   return (
     <section className="space-y-3">
       <div>
-        <h4 className="text-xs font-semibold text-ink">Icons</h4>
-        <p className="mt-0.5 text-[11px] text-ink/50">
+        <h4 className="text-sm font-semibold text-ink">Icons</h4>
+        <p className="mt-0.5 text-[11px] text-ink/60">
           Every icon: toolbar and panel glyphs, provider logos and file-type marks. Full colour
           gives each glyph its own hue and keeps the palette’s red, green, amber and blue for
           signals; a colour that would disappear on the active theme falls back to the ink. A
