@@ -31,6 +31,7 @@ import {
   isKnownToolName,
   toolTypeFor,
 } from '@/server/lib/harness/acp/mapper';
+import { delegationLabel, resolveToolIdentity } from '@/server/lib/harness/acp/tool-identity';
 import type { AcpToolKind, AcpToolStatus } from '@/server/lib/harness/acp/protocol';
 
 /** The message block a tool card renders from. */
@@ -41,6 +42,8 @@ export interface ToolCallBlock {
   arguments?: Record<string, unknown>;
   toolKind?: AcpToolKind;
   toolType?: string;
+  /** The adapter's own kind, when it is not one of the spec's ten. */
+  rawKind?: string;
 }
 
 interface OpenTool {
@@ -82,23 +85,30 @@ export class AcpToolCalls {
   open(update: Record<string, unknown>): AgentEvent[] {
     const toolCallId = typeof update.toolCallId === 'string' ? update.toolCallId : '';
     if (!toolCallId) return [];
-    const name = typeof update.name === 'string' && update.name
-      ? update.name
-      : typeof update.title === 'string' && update.title
-        ? update.title
-        : 'tool';
-    const kind = typeof update.kind === 'string' ? (update.kind as AcpToolKind) : undefined;
-    const status = typeof update.status === 'string' ? (update.status as AcpToolStatus) : 'pending';
-    // A specific kind is authoritative. `other`/absent is only an explicit type
-    // when the name is one the renderers know; otherwise the shared parser's
-    // own inference from the name is better informed than a forced `read`.
-    const toolType = kind !== undefined && kind !== 'other'
-      ? toolTypeFor(kind, name)
-      : isKnownToolName(name) ? toolTypeFor(kind, name) : undefined;
+    // The identity is resolved, not read off the top level: grok names its tool
+    // in `_meta` and cursor names it in `rawInput._toolName`, and reading only
+    // `update.name` made a subagent a generic tool (or, with `kind` alone, a
+    // file read).
+    const identity = resolveToolIdentity(update);
     const rawInput = update.rawInput;
     const args = rawInput && typeof rawInput === 'object' && !Array.isArray(rawInput)
       ? Object.fromEntries(Object.entries(rawInput))
       : undefined;
+    const title = typeof update.title === 'string' ? update.title : undefined;
+    const name = identity.name ?? title ?? 'tool';
+    // A delegation IS a subagent: it gets the `task` panel, not the read/edit
+    // one, and its label is the child's task so the card says what it is doing.
+    const delegation = delegationLabel(name, args, title);
+    const kind = identity.kind;
+    const status = typeof update.status === 'string' ? (update.status as AcpToolStatus) : 'pending';
+    // A specific kind is authoritative. `other`/absent is only an explicit type
+    // when the name is one the renderers know; otherwise the shared parser's
+    // own inference from the name is better informed than a forced `read`.
+    const toolType = delegation
+      ? 'task'
+      : kind !== undefined && kind !== 'other'
+        ? toolTypeFor(kind, name)
+        : isKnownToolName(name) ? toolTypeFor(kind, name) : undefined;
 
     this.host.pushBlock({
       type: 'toolCall',
@@ -106,6 +116,7 @@ export class AcpToolCalls {
       name,
       ...(args ? { arguments: args } : {}),
       ...(kind ? { toolKind: kind } : {}),
+      ...(identity.rawKind ? { rawKind: identity.rawKind } : {}),
       ...(toolType ? { toolType } : {}),
     });
 
@@ -121,7 +132,8 @@ export class AcpToolCalls {
         toolName: name,
         ...(toolType ? { toolType } : {}),
         ...(args ? { args } : {}),
-        ...(typeof update.title === 'string' ? { intent: update.title } : {}),
+        // The child's task for a delegation; the adapter's title otherwise.
+        ...(delegation ?? title ? { intent: delegation ?? title } : {}),
         ...(acpToolTarget(update.locations, rawInput) ? { target: acpToolTarget(update.locations, rawInput) } : {}),
       },
     ];
@@ -133,7 +145,7 @@ export class AcpToolCalls {
         id: toolCallId,
         name,
         kind,
-        title: typeof update.title === 'string' ? update.title : undefined,
+        title,
         status,
         rawOutput: update.rawOutput,
         content: update.content,

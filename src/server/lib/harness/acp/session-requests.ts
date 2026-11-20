@@ -54,6 +54,12 @@ export function handleAcpClientRequest(
   // The file surface the client advertised at `initialize`. Routed before the
   // refusal so an agent that took the advertisement at its word gets an answer.
   if (isAcpFsMethod(method)) return handleAcpFsRequest(host, method, params);
+  // Cursor asks the CLIENT to run a nested task (`cursor/task`, measured on
+  // cursor-agent 2026.08.11). Answering `-32601` made its adapter fall back with
+  // an error in the middle of a delegation the tool card had already drawn; an
+  // empty result is what the adapter expects from a client that does not run
+  // the child itself.
+  if (method === 'cursor/task') return Promise.resolve({ answered: true, result: {} });
   // `-32601`, not "internal error": the agent decides from the code whether this
   // client simply lacks the method (Spec §Errors).
   return Promise.resolve({

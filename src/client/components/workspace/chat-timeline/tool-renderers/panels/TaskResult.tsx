@@ -5,6 +5,7 @@ import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
 import { tryParseJson } from '@/shared/lib/code/syntax-highlight';
 import { JsonCodeBlock } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/JsonCodeBlock';
 import { formatCompactTokens, formatCost } from '@/shared/lib/format/number';
+import { acpDelegationRow } from '@/client/components/workspace/chat-timeline/tool-renderers/panels/task-rows';
 
 interface TaskRow {
   id?: unknown;
@@ -77,9 +78,18 @@ export function TaskResult({ tool }: { tool: ToolCallData }) {
   const inputContext = typeof inputObj?.context === 'string' ? inputObj.context.trim() : '';
   const inputTasks = Array.isArray(inputObj?.tasks) ? (inputObj.tasks as InputTask[]) : [];
 
+  // An ACP agent sends ONE child in its own spelling (grok's `description`/
+  // `subagent_type`, cursor's `_toolName`), never omp's `tasks[]`. Without this
+  // a delegation card from those agents rendered as an empty card.
+  const acpRow = useMemo(
+    () => acpDelegationRow(inputObj, typeof tool.intent === 'string' ? tool.intent : undefined),
+    [inputObj, tool.intent],
+  );
+
   const rows: TaskRow[] = useMemo(() => {
     if (results.length > 0) return results;
     if (progress.length > 0) return progress;
+    if (acpRow) return [{ ...acpRow, id: tool.id, status: tool.status === 'success' ? 'done' : 'running' }];
     if (inputTasks.length > 0) {
       return inputTasks.map((t, idx) => ({
         id: `task-sub-${idx}`,
@@ -90,9 +100,13 @@ export function TaskResult({ tool }: { tool: ToolCallData }) {
       }));
     }
     return [];
-  }, [results, progress, inputTasks, tool.status]);
+  }, [results, progress, acpRow, inputTasks, tool.id, tool.status]);
 
-  if (rows.length === 0 && !tool.output && !inputContext) return null;
+  // The ACP child's brief is its task, and it is shown as the specification
+  // block below; `acpRow` already contributed the row above it.
+  const specTasks: Array<{ name?: string; agent?: string; task?: string; assignment?: string }> =
+    inputTasks.length > 0 ? inputTasks : acpRow?.task ? [acpRow] : [];
+  if (rows.length === 0 && !tool.output && !inputContext && specTasks.length === 0) return null;
 
   const totalTokens = rows.reduce((sum, r) => sum + (typeof r.tokens === 'number' ? r.tokens : 0), 0);
   const totalCost = rows.reduce((sum, r) => sum + (typeof r.cost === 'number' ? r.cost : 0), 0);
@@ -174,7 +188,7 @@ export function TaskResult({ tool }: { tool: ToolCallData }) {
       )}
 
       {/* 3. Task Specifications (Target, Change, Acceptance) */}
-      {inputTasks.length > 0 && (
+      {specTasks.length > 0 && (
         <div className="overflow-hidden rounded-lg border border-ink/8 bg-paper">
           <button
             type="button"
@@ -192,7 +206,7 @@ export function TaskResult({ tool }: { tool: ToolCallData }) {
           </button>
           {tasksExpanded && (
             <div className="divide-y divide-ink/8 border-t border-ink/8 bg-canvas/30">
-              {inputTasks.map((t, idx) => (
+              {specTasks.map((t, idx) => (
                 <div key={idx} className="p-3 space-y-1.5 text-[11.5px] text-ink/80 select-text">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-ink text-[12px]">{t.name || `Task #${idx + 1}`}</span>

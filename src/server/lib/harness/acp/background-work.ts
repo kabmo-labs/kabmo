@@ -20,25 +20,51 @@
  * collected instead of folded (they repeat the whole chat), and the text past
  * the answer the operator already has is emitted as the agent's continuation.
  *
- * The probe backs off (2s → 30s) and gives up after ten minutes; it never
- * substitutes a failure for an answer it did not see.
+ * **Text is not the only evidence.** Measured on agy 1.5.3 against a real chat
+ * (155 s of work): its replay carried `read_file` and a failed `run_command`
+ * AFTER the holding sentence and **no** new `agent_message_chunk` at all. A
+ * probe that waited for prose therefore sat on a finished run until the ten
+ * minute ceiling and the operator saw nothing. New TOOL calls are progress too,
+ * so they are surfaced as a notice — and each one that lands means the child is
+ * still working, which is what re-arms the ceiling.
+ *
+ * The probe backs off (2s → 30s) and gives up after ten minutes past the last
+ * evidence of work; it never substitutes a failure for an answer it did not see.
  */
 
-import { acpContentText } from '@/server/lib/harness/acp/mapper';
+import { collectReplayFrame, newToolNotice, type ReplaySegment } from '@/server/lib/harness/acp/background-replay';
 import { stampMessageModel } from '@/server/lib/harness/acp/session-config';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
 import { extractTextFromContent } from '@/shared/lib/omp/session/mapper';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
 
-/** Tool names that hand work to a process the turn does not await. */
+/** Tool names that hand work to a process the turn does not await.
+ *
+ *  `spawn_subagent` is grok's spelling and arrives only as `_meta["x.ai/tool"]`;
+ *  `resolveToolIdentity` lifts it into the card's `name`, which is why this list
+ *  still matches. Cursor's `task` is deliberately absent: its adapter runs the
+ *  child inside the call and answers before `end_turn`, so there is nothing to
+ *  probe for. */
 const BACKGROUND_TOOLS: Record<string, true> = {
   invoke_subagent: true,
   spawn_subagent: true,
 };
 
+/** Whether a card names a call that outlives the turn. Reads the resolved
+ *  `name`, so an adapter that hides it in `_meta` is detected too. */
+export function isBackgroundToolName(name: string | undefined): boolean {
+  return typeof name === 'string' && BACKGROUND_TOOLS[name.toLowerCase()] === true;
+}
+
 export const BACKGROUND_FIRST_DELAY_MS = 2_000;
 export const BACKGROUND_MAX_DELAY_MS = 30_000;
 export const BACKGROUND_TIMEOUT_MS = 10 * 60_000;
+/** The absolute ceiling, independent of how often new work re-arms the quiet
+ *  window. A probe holds the session out of the idle reclaim (`resetIdle`), so
+ *  an agent that reports a tool every minute must not keep it alive forever.
+ *  One hour is the repo's own precedent for "silence means a wedged turn"
+ *  (`turn-silence.ts`). */
+export const BACKGROUND_MAX_LIFETIME_MS = 60 * 60_000;
 export const BACKGROUND_LOAD_TIMEOUT_MS = 120_000;
 
 /** Did this turn hand work to a background worker? Read from the closed
@@ -50,7 +76,7 @@ export function spawnsBackgroundWork(message: unknown): boolean {
   return content.some((block) => {
     if (!block || typeof block !== 'object') return false;
     if (!('type' in block) || block.type !== 'toolCall') return false;
-    return 'name' in block && typeof block.name === 'string' && BACKGROUND_TOOLS[block.name.toLowerCase()] === true;
+    return 'name' in block && isBackgroundToolName(typeof block.name === 'string' ? block.name : undefined);
   });
 }
 
@@ -134,19 +160,6 @@ export interface AcpBackgroundProbeOptions {
   cancel?: (handle: unknown) => void;
 }
 
-/** Replay chunks collected since the last `user_message_chunk`. */
-interface ReplaySegment {
-  text: string;
-  sawUser: boolean;
-}
-
-/**
- * The load probe for one background turn.
- *
- * `consume` must be called for every notification while a probe is in flight:
- * the replay repeats the whole transcript, and folding it into the live chat
- * would duplicate history.
- */
 export class AcpBackgroundProbe {
   private readonly load: () => Promise<unknown>;
   private readonly resetIdle: () => void;
@@ -164,12 +177,16 @@ export class AcpBackgroundProbe {
   private pendingNotice: string | null = null;
   private timer: unknown = null;
   private deadline = 0;
+  /** When this probe began, for the absolute ceiling. */
+  private beganAt = 0;
   private delay: number;
   private stopped = true;
   private inFlight = false;
   /** Consecutive `session/load` failures; a lost agent is not retried forever. */
   private failures = 0;
   private queued: string | null = null;
+  /** Tool calls already reported for this probe, so a notice is not repeated. */
+  private reportedTools = new Set<string>();
 
   constructor(options: AcpBackgroundProbeOptions) {
     this.load = options.load;
@@ -188,6 +205,7 @@ export class AcpBackgroundProbe {
   start(baseline: string): void {
     this.baseline = baseline.trim();
     this.pendingNotice = null;
+    this.reportedTools = new Set();
     // A previous probe's load can still be running. Queue this turn instead of
     // interleaving two replays; the queued baseline starts when that load ends.
     if (this.inFlight) {
@@ -195,6 +213,7 @@ export class AcpBackgroundProbe {
       return;
     }
     this.stopped = false;
+    this.beganAt = this.now();
     this.deadline = this.now() + this.timeoutMs;
     this.delay = this.firstDelayMs;
     this.failures = 0;
@@ -218,20 +237,7 @@ export class AcpBackgroundProbe {
    */
   consume(method: string, params: Record<string, unknown>): boolean {
     if (!this.collecting || method !== 'session/update') return false;
-    const update = params.update;
-    if (!update || typeof update !== 'object') return true;
-    const record = update as Record<string, unknown>;
-    const kind = typeof record.sessionUpdate === 'string' ? record.sessionUpdate : '';
-    if (kind === 'user_message_chunk') {
-      // A new user turn starts a new assistant segment. Everything before it is
-      // history this probe does not need.
-      this.collecting.text = '';
-      this.collecting.sawUser = true;
-      return true;
-    }
-    if (kind === 'agent_message_chunk') {
-      this.collecting.text += acpContentText(record.content);
-    }
+    collectReplayFrame(this.collecting, params.update);
     return true;
   }
 
@@ -246,7 +252,7 @@ export class AcpBackgroundProbe {
   private async probe(): Promise<void> {
     if (this.stopped || this.inFlight) return;
     this.inFlight = true;
-    this.collecting = { text: '', sawUser: false };
+    this.collecting = { text: '', sawUser: false, tools: [] };
     this.resetIdle();
     let failed = false;
     try {
@@ -277,6 +283,7 @@ export class AcpBackgroundProbe {
       }
     } else {
       this.failures = 0;
+      let toolNotice: string | null = null;
       // A replay that never reached a user chunk cannot be placed in the
       // conversation, so it is not a notice.
       const notice = segment?.sawUser ? backgroundNotice(this.baseline, segment.text) : null;
@@ -293,6 +300,16 @@ export class AcpBackgroundProbe {
           this.delay = this.firstDelayMs;
           this.arm();
         }
+      } else if (segment?.sawUser && (toolNotice = newToolNotice(segment, this.reportedTools)) !== null) {
+        // No new prose, but the child RAN something: deliver that and keep
+        // watching — each new tool call is evidence the run is alive, so the
+        // ceiling is re-armed instead of expiring under it.
+        this.emitNotice(toolNotice);
+        // New work re-arms the QUIET window, never the absolute ceiling.
+        this.deadline = this.now() + this.timeoutMs;
+        this.delay = Math.min(this.delay * 2, this.maxDelayMs);
+        if (this.now() - this.beganAt >= BACKGROUND_MAX_LIFETIME_MS) this.stopped = true;
+        else this.arm();
       } else if (this.now() >= this.deadline) {
         this.stopped = true;
       } else {
