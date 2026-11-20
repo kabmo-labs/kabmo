@@ -225,6 +225,29 @@ describe('buildGitStatusMaps', () => {
     expect(info).toMatchObject({ hasUntracked: true, hasDeleted: true, colorClass: 'text-success' });
   });
 
+  test('the dot uses the same tone as the folder name for add + modified + delete', () => {
+    const info = buildGitStatusMaps([
+      change('src/a.ts', 'A '),
+      change('src/b.ts', ' M'),
+      change('src/c.ts', ' D'),
+    ]).folderMap.get('src');
+    expect(info).toMatchObject({ colorClass: 'text-info', dotClass: 'bg-info' });
+  });
+
+  test('the dot tone always tracks the name tone, one branch each', () => {
+    const cases: Array<{ rows: GitChange[]; name: string; dot: string }> = [
+      { rows: [change('src/a.ts', 'UU')], name: 'text-warning', dot: 'bg-warning' },
+      { rows: [change('src/a.ts', ' M')], name: 'text-info', dot: 'bg-info' },
+      { rows: [change('src/a.ts', '??')], name: 'text-success', dot: 'bg-success' },
+      { rows: [change('src/a.ts', ' D')], name: 'text-error', dot: 'bg-error' },
+    ];
+    for (const c of cases) {
+      const info = buildGitStatusMaps(c.rows).folderMap.get('src');
+      expect(info?.colorClass).toBe(c.name);
+      expect(info?.dotClass).toBe(c.dot);
+    }
+  });
+
   test('a non-space, non-question first column counts as staged', () => {
     const info = buildGitStatusMaps([change('src/a.ts', 'M ')]) .folderMap.get('src');
     expect(info?.hasStaged).toBe(true);

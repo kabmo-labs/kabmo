@@ -19,7 +19,17 @@ export interface FolderGitStatusInfo {
   hasDeleted: boolean;
   /** A conflicted file lives somewhere under this folder. */
   hasConflicted?: boolean;
+  /** The folder NAME's tone. */
   colorClass: string;
+  /**
+   * The dot that sits beside the name, in the SAME tone as `colorClass`.
+   *
+   * Assigned in the same branch as `colorClass` on purpose: the Files panel
+   * used to re-derive the dot from the `has*` flags with its own priority, so a
+   * folder with an added + modified + deleted file named itself blue and drew
+   * a red dot. One priority, one module.
+   */
+  dotClass: string;
 }
 
 /**
@@ -153,6 +163,7 @@ export function buildGitStatusMaps(changes: GitChange[]): {
         hasStaged: false,
         hasDeleted: false,
         colorClass: 'text-info',
+        dotClass: 'bg-info',
       };
 
       existing.count += 1;
@@ -180,12 +191,16 @@ export function buildGitStatusMaps(changes: GitChange[]): {
       // (info/blue), then Untracked (success/green), then Deleted (error/red).
       if (existing.hasConflicted) {
         existing.colorClass = 'text-warning';
+        existing.dotClass = 'bg-warning';
       } else if (existing.hasModified || existing.hasStaged) {
         existing.colorClass = 'text-info';
+        existing.dotClass = 'bg-info';
       } else if (existing.hasUntracked) {
         existing.colorClass = 'text-success';
+        existing.dotClass = 'bg-success';
       } else if (existing.hasDeleted) {
         existing.colorClass = 'text-error';
+        existing.dotClass = 'bg-error';
       }
 
       folderMap.set(currentPath, existing);

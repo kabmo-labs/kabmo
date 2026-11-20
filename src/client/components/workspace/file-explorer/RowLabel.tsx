@@ -60,10 +60,7 @@ export function TreeRowLabel({ name, path, isFolder, isOpen, ignored, selected, 
 
       {folderStatus && (
         <span
-          className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-            folderStatus.hasDeleted ? 'bg-error' :
-            folderStatus.hasModified || folderStatus.hasStaged ? 'bg-info' : 'bg-success'
-          }`}
+          className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${folderStatus.dotClass}`}
           title={`${folderStatus.count} changed file${folderStatus.count > 1 ? 's' : ''}`}
         />
       )}
