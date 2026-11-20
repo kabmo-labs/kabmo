@@ -148,7 +148,7 @@ describe('ContextUsageButton', () => {
   test('fills the ring with the share in use, clockwise from the top', async () => {
     await mount(telemetryAt(42));
 
-    const { circumference, dashOffset } = contextRingGeometry(42, 20, 2);
+    const { circumference, dashOffset } = contextRingGeometry(42, 24, 2.5);
     expect(Number(arc().getAttribute('stroke-dasharray'))).toBeCloseTo(circumference);
     expect(Number(arc().getAttribute('stroke-dashoffset'))).toBeCloseTo(dashOffset);
     // The arc starts at three o'clock on an SVG circle; the rotation is what
@@ -166,8 +166,12 @@ describe('ContextUsageButton', () => {
     expect(svg.getAttribute('viewBox')).toBe('0 0 24 24');
     expect(svg.getAttribute('width')).toBe('16');
     // The outer circle spans radius + half the stroke, in viewBox units.
+    // The rim fills the 24-unit grid: the row's glyphs stop at 20, but a ring is
+    // one outline carrying the whole graphic, so it needs the extra room to read
+    // at the same weight (20 units inked 114 unit² against their 141 and 189).
     const circle = container.querySelector('svg circle') as SVGCircleElement;
-    expect(Number(circle.getAttribute('r')) + Number(circle.getAttribute('stroke-width')) / 2).toBe(10);
+    expect(Number(circle.getAttribute('r'))).toBe(10.75);
+    expect(Number(circle.getAttribute('r')) * 2 + Number(circle.getAttribute('stroke-width'))).toBe(24);
   });
 
   test('draws the band the share falls in', async () => {
