@@ -121,6 +121,28 @@ export function dropEntry(sessionId: string): void {
 }
 
 /**
+ * Drop EVERY entry, the write history and the pending timers.
+ *
+ * Exists for the test process, not the app: the store is a module singleton, and
+ * `bun test` runs every suite in one process, so a suite that writes a slot and
+ * forgets it leaves the cache holding an entry. Enough of those and the 10-entry
+ * LRU fills; the next suite's `hydrateSession` then evicts the session it just
+ * seeded, because a leaked entry that is DIRTY (a debounced persist that never
+ * landed) is never evicted and so consumes a permanent slot. Measured: a full
+ * run evicted `s-a` at size 11 in `panel-tabs.session.test.tsx`, a case that
+ * passes alone and on a developer machine but failed on every CI leg.
+ *
+ * Never called from product code — a reset here would drop user state.
+ */
+export function resetCache(): void {
+  for (const timer of persistTimers.values()) clearTimeout(timer);
+  entries.clear();
+  lastTouched.clear();
+  dirty.clear();
+  persistTimers.clear();
+}
+
+/**
  * Evict the oldest clean sessions until the cache is within bounds.
  *
  * Dirty-safety rule: a session with unsaved writes (`isDirty`) must never be

@@ -63,6 +63,12 @@ export function keysWrittenAfter(sessionId: string, since: number): Set<string> 
   return written;
 }
 
+/** Drop every session's write history — the store's reset, for a test process. */
+export function resetWrites(): void {
+  writeSeq = 0;
+  writeLog.clear();
+}
+
 /** Drop a session's write history — evicted, forgotten or adopted away. */
 export function forgetWrites(sessionId: string): void {
   writeLog.delete(sessionId);

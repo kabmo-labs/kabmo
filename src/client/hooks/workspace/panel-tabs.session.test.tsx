@@ -24,13 +24,13 @@
  * is read directly for the persisted shape.
  */
 
-import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { SessionStateProvider } from '@/client/components/common/session-state-provider/index';
 import { usePanelTabs } from '@/client/hooks/workspace/panel-tabs';
-import { getSessionState, getSessionValue, hydrateSession, setSessionKey } from '@/shared/lib/workspace/session-state/store';
+import { getSessionState, getSessionValue, hydrateSession, resetSessionStateStore, setSessionKey } from '@/shared/lib/workspace/session-state/store';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'HTMLInputElement', 'Event', 'MouseEvent', 'KeyboardEvent'] as const;
 const nativeGlobals: Partial<Record<(typeof DOM_GLOBALS)[number], unknown>> = {};
@@ -85,7 +85,6 @@ beforeAll(() => {
     );
   };
 });
-
 afterAll(() => {
   const target = globalThis as unknown as Record<string, unknown>;
   for (const key of DOM_GLOBALS) {
@@ -95,13 +94,27 @@ afterAll(() => {
   target.fetch = nativeFetch;
 });
 
+/**
+ * Every case starts on an EMPTY cache.
+ *
+ * The store is a module singleton, and `bun test` runs every suite in one
+ * process: a suite that writes a slot and does not forget it leaves an entry
+ * behind, so by the time this file runs the 10-entry LRU can already be full of
+ * other suites' leaked — and often DIRTY, therefore permanently un-evictable —
+ * sessions. Hydrating `s-a` and then `s-b` then evicts `s-a`, and this suite
+ * fails on a case that passes in isolation. Measured in CI on a full run: the
+ * cache evicted `s-a` at size 11.
+ */
+beforeEach(() => {
+  resetSessionStateStore();
+});
+
 afterEach(() => {
   render(null, container);
   container.remove();
   seen = null;
   actions = null;
 });
-
 describe('a session that never opened a tab', () => {
   test('starts on the home page with an empty strip, NOT on the stored right view', () => {
     hydrateSession('s-new', {});
@@ -121,14 +134,22 @@ describe('a session that never opened a tab', () => {
 
 describe('tabs are per session', () => {
   test('two sessions keep different strips', () => {
+    // Each session is hydrated and asserted BEFORE the next one is seeded.
+    //
+    // The store is a process-wide LRU capped at 10 sessions, so seeding both up
+    // front let the second `hydrateSession` evict the first when the cache was
+    // already full of other suites' sessions — and `evictIfNeeded` skips dirty
+    // entries, so a leaked entry that never persisted held a slot permanently.
+    // That made this case pass in isolation and fail on every CI leg. Nothing
+    // here depends on two entries co-residing, and the claim under test — one
+    // session's strip is not another's — is unchanged.
     hydrateSession('s-a', { 'layout.rightPanelTabs': { tabs: ['files'], active: 'files', home: false } });
-    hydrateSession('s-b', { 'layout.rightPanelTabs': { tabs: ['git', 'todo'], active: 'todo', home: false } });
-
     mount('s-a');
     expect(seen?.tabs).toEqual(['files']);
     render(null, container);
     container.remove();
 
+    hydrateSession('s-b', { 'layout.rightPanelTabs': { tabs: ['git', 'todo'], active: 'todo', home: false } });
     mount('s-b');
     expect(seen?.tabs).toEqual(['git', 'todo']);
     expect(seen?.active).toBe('todo');

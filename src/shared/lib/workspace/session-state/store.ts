@@ -99,6 +99,7 @@ import {
   lastAccess,
   markDirty,
   readEntry,
+  resetCache,
   setPersistTimer,
   stampAccess,
   touchEntry,
@@ -110,6 +111,7 @@ import {
   keysWrittenAfter,
   mergeStoredBlob,
   noteWrite,
+  resetWrites,
 } from '@/shared/lib/workspace/session-state/merge';
 
 type SessionState = Record<string, unknown>;
@@ -259,6 +261,22 @@ export function hydrateSession(sessionId: string | null, state: SessionState): v
   evictNow(sessionId);
   notifySessionKey(sessionId);
   notifySessionReplaced(sessionId);
+}
+
+/**
+ * Drop every cached session and the write history that goes with it.
+ *
+ * The store is a module singleton, so `bun test`'s single process shares it
+ * across suites. A suite that writes a slot and does not forget it leaves an
+ * entry behind, and once the LRU is full the next suite's `hydrateSession` can
+ * evict the session it just seeded. This is the seam that makes a suite
+ * independent of what ran before it.
+ *
+ * Test-only: product code must never call this.
+ */
+export function resetSessionStateStore(): void {
+  resetCache();
+  resetWrites();
 }
 
 /**
