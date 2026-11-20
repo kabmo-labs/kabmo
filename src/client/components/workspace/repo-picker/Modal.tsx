@@ -7,7 +7,7 @@
  * The repo management modal, opened from the repo dropdown and from the git
  * panel's header.
  *
- * The dropdown could not host this: it is 208px wide with a 192px scroll area
+ * The dropdown could not host this: it is 352px wide with a 192px scroll area
  * and one `<button>` per repo, which stops working at the scale a workspace of
  * nested repositories reaches — measured on the author's install, one workspace
  * holds **144** repos. It also cannot carry per-repo state: a row there shows a

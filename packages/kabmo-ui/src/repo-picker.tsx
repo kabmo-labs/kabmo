@@ -22,6 +22,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { createPortal } from 'preact/compat';
 import type { RepoScopeHandle } from './repo';
 
 export interface RepoPickerProps {
@@ -56,7 +57,7 @@ function Glyph({ path, size = 12, spin = false }: { path: string; size?: number;
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
-      class={spin ? 'animate-spin' : undefined}
+      class={spin ? 'animate-spin flex-shrink-0' : 'flex-shrink-0'}
       aria-hidden="true"
     >
       <path d={path} />
@@ -73,21 +74,91 @@ const ICON = {
   manage: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z',
 } as const;
 
+/**
+ * Width the list opens at, and the padding kept between it and the viewport.
+ *
+ * 224px (`w-56`) fitted only a basename: a nested repo's whole path is what a
+ * row shows (`repo-label` keeps it whole so `jns6_5/token` and `jns7/token`
+ * differ), and a 40-character path truncates at 224px even on a 1440px screen.
+ * The cap below is a reading measure, not a panel width — the list is portaled
+ * so a 268px Source Control column no longer clips it.
+ */
+const MENU_WIDTH_PX = 352;
+const MENU_GAP_PX = 6;
+const VIEWPORT_PAD_PX = 8;
+
+interface MenuAnchor {
+  top: number;
+  left: number;
+  width: number;
+  maxHeight: number;
+}
+
+/**
+ * The fixed rectangle the portaled list occupies, from the trigger's own box.
+ *
+ * The trigger sits in a panel that clips its children (`overflow: hidden` on
+ * the resizer's panel), so the list is a `position: fixed` child of `<body>`:
+ * measured here, otherwise the wider list is cut at the panel's edge. The left
+ * edge is clamped so the trigger at the column's right still opens a full-width
+ * list on screen, and the height stops at the viewport's bottom.
+ */
+function anchorFor(trigger: HTMLElement | null): MenuAnchor | null {
+  if (!trigger) return null;
+  const rect = trigger.getBoundingClientRect();
+  const width = Math.min(MENU_WIDTH_PX, window.innerWidth - VIEWPORT_PAD_PX * 2);
+  const left = Math.max(VIEWPORT_PAD_PX, Math.min(rect.left, window.innerWidth - width - VIEWPORT_PAD_PX));
+  const top = rect.bottom + MENU_GAP_PX;
+  return { top, left, width, maxHeight: Math.max(120, window.innerHeight - top - VIEWPORT_PAD_PX) };
+}
+
 export function RepoPicker({ scope, className, disabled = false, onManage, manageLabel = 'Manage repositories…' }: RepoPickerProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const ref = useRef<HTMLDivElement>(null);
+  const [anchor, setAnchor] = useState<MenuAnchor | null>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   // Outside click closes. A published package cannot import the host's hook, and
   // a pointerdown listener is what a browser actually delivers for a click
-  // outside a menu (a click listener misses a drag that ends elsewhere).
+  // outside a menu (a click listener misses a drag that ends elsewhere). The
+  // list is portaled, so it is not inside the trigger's box and both are tested.
   useEffect(() => {
     if (!open) return;
     const onDown = (event: globalThis.MouseEvent) => {
-      if (!ref.current?.contains(event.target as Node)) setOpen(false);
+      const target = event.target as Node;
+      if (triggerRef.current?.contains(target) || menuRef.current?.contains(target)) return;
+      setOpen(false);
     };
     document.addEventListener('pointerdown', onDown);
     return () => document.removeEventListener('pointerdown', onDown);
+  }, [open]);
+
+  // The list is `position: fixed`, so it does not move with the trigger: every
+  // scroll (the panel's own included) and resize re-measures it. Capture phase
+  // because a panel's scroll listener runs on the panel, not the window.
+  useEffect(() => {
+    if (!open) return;
+    const reposition = () => setAnchor(anchorFor(triggerRef.current));
+    reposition();
+    window.addEventListener('resize', reposition);
+    window.addEventListener('scroll', reposition, true);
+    return () => {
+      window.removeEventListener('resize', reposition);
+      window.removeEventListener('scroll', reposition, true);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setOpen(false);
+      setQuery('');
+      triggerRef.current?.focus();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
   }, [open]);
 
   // `'.'` always leads, so the root is the first row whatever order discovery
@@ -120,26 +191,48 @@ export function RepoPicker({ scope, className, disabled = false, onManage, manag
   }
 
   return (
-    <div class={`relative ${className ?? ''}`} ref={ref}>
+    <div class={`relative min-w-0 ${className ?? ''}`}>
       <button
         type="button"
-        onClick={() => setOpen((was) => !was)}
+        ref={triggerRef}
+        onClick={() => {
+          if (open) {
+            setOpen(false);
+            return;
+          }
+          setAnchor(anchorFor(triggerRef.current));
+          setOpen(true);
+        }}
         title="Switch git project"
         aria-haspopup="listbox"
         aria-expanded={open}
-        class="flex items-center gap-1.5 px-2 py-1 rounded transition-colors text-xs text-ink/80 font-medium hover:bg-ink/5"
+        class="flex items-center gap-1.5 min-w-0 max-w-full px-2 py-1 rounded transition-colors text-xs text-ink/80 font-medium hover:bg-ink/5"
       >
         <Glyph path={ICON.folder} />
-        <span class="truncate max-w-[130px]">{selected?.short ?? 'workspace root'}</span>
+        {/* No fixed cap: the label owns whatever the header leaves it and only
+            ellipsizes when the panel is genuinely too narrow. `min-w-0` on both
+            the button and the span is what lets the flex slot shrink below the
+            text's natural width. */}
+        <span class="truncate min-w-0" title={selected?.label}>
+          {selected?.short ?? 'workspace root'}
+        </span>
         <Glyph path={ICON.chevron} />
       </button>
 
-      {open && (
+      {open && anchor && createPortal(
         <div
           role="listbox"
-          class="absolute top-full left-0 mt-1 w-56 bg-paper border border-ink/20 rounded-md shadow-lg z-50 flex flex-col overflow-hidden text-xs"
+          ref={menuRef}
+          style={{
+            position: 'fixed',
+            top: `${anchor.top}px`,
+            left: `${anchor.left}px`,
+            width: `${anchor.width}px`,
+            maxHeight: `${anchor.maxHeight}px`,
+          }}
+          class="bg-paper border border-ink/20 rounded-md shadow-lg z-50 flex flex-col overflow-hidden text-xs"
         >
-          <div class="px-2 py-1.5 border-b border-ink/10 flex items-center gap-1.5">
+          <div class="px-2 py-1.5 border-b border-ink/10 flex items-center gap-1.5 flex-shrink-0">
             <Glyph path={ICON.search} size={11} />
             <input
               type="text"
@@ -165,7 +258,7 @@ export function RepoPicker({ scope, className, disabled = false, onManage, manag
               <Glyph path={ICON.refresh} size={11} spin={scope.scanning} />
             </button>
           </div>
-          <div class="max-h-48 overflow-y-auto scrollbar-overlay-container py-1">
+          <div class="flex-1 min-h-0 max-h-48 overflow-y-auto scrollbar-overlay-container py-1">
             {filtered.length === 0 ? (
               <div class="px-3 py-2 text-ink/40 italic">No repos found</div>
             ) : (
@@ -181,7 +274,7 @@ export function RepoPicker({ scope, className, disabled = false, onManage, manag
                     setQuery('');
                   }}
                   title={row.label}
-                  class="w-full text-left px-3 py-2 hover:bg-ink/5 flex items-center justify-between transition-colors"
+                  class="w-full text-left px-3 py-2 hover:bg-ink/5 flex items-center justify-between gap-2 transition-colors"
                 >
                   <span class="truncate">{row.label}</span>
                   {scope.repo === row.repo && <Glyph path={ICON.check} />}
@@ -190,7 +283,7 @@ export function RepoPicker({ scope, className, disabled = false, onManage, manag
             )}
           </div>
           {onManage && (
-            <div class="border-t border-ink/10">
+            <div class="border-t border-ink/10 flex-shrink-0">
               <button
                 type="button"
                 onClick={() => {
@@ -205,7 +298,8 @@ export function RepoPicker({ scope, className, disabled = false, onManage, manag
               </button>
             </div>
           )}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

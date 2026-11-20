@@ -16,7 +16,7 @@
  * Two host-only pieces remain, and they are why this wrapper exists at all:
  *
  * - **The modal.** A workspace with dozens of repositories cannot be managed
- *   from a 208px dropdown, so the list's footer opens a larger surface with
+ *   from a 352px dropdown, so the list's footer opens a larger surface with
  *   grouping and per-repo state. The kit takes that as an optional `onManage`
  *   row, so a plugin — which has no such surface — draws no row and promises
  *   nothing.
@@ -74,7 +74,7 @@ export function GitRepoPicker({
   const openModal = useCallback(() => setModalOpen(true), []);
 
   return (
-    <div className="relative">
+    <div className="relative min-w-0">
       <RepoPicker scope={scope} onManage={openModal} />
       <RepoModal
         isOpen={modalOpen}

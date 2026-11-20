@@ -6,7 +6,7 @@
 /**
  * The picker's dropdown and the door to the modal.
  *
- * The load-bearing half is the ENTRY: the dropdown is 208px wide with a 192px
+ * The load-bearing half is the ENTRY: the dropdown is 352px wide with a 192px
  * scroll area, and the whole point of the modal is that a workspace with dozens
  * of repositories cannot be managed from there. An entry that renders but does
  * not open the modal leaves the feature unreachable — and one that leaves the
@@ -80,6 +80,15 @@ function trigger(): HTMLButtonElement {
   return container.querySelector('button[title="Switch git project"]') as HTMLButtonElement;
 }
 
+/**
+ * The dropdown list itself. Portaled to `<body>`, not inside the picker's own
+ * box: the right panel clips its children, and the list must be able to be
+ * wider than a 268px Source Control column.
+ */
+function menu(): HTMLElement {
+  return document.querySelector('[role="listbox"]') as HTMLElement;
+}
+
 describe('GitRepoPicker', () => {
   test('names the active repo in the trigger', async () => {
     await mount(['.']);
@@ -96,7 +105,7 @@ describe('GitRepoPicker', () => {
     await act(async () => {
       trigger().click();
     });
-    const rootRow = [...container.querySelectorAll('button[role="option"]')].find(
+    const rootRow = [...document.querySelectorAll('button[role="option"]')].find(
       (b) => b.textContent?.trim() === 'Workspace',
     );
     expect(rootRow).toBeDefined();
@@ -111,7 +120,7 @@ describe('GitRepoPicker', () => {
     await act(async () => {
       trigger().click();
     });
-    const row = [...container.querySelectorAll('button')].find((b) => b.textContent?.includes('projects/a/token'));
+    const row = [...menu().querySelectorAll('button')].find((b) => b.textContent?.includes('projects/a/token'));
     expect(row).toBeDefined();
     await act(async () => {
       row?.click();
@@ -119,12 +128,27 @@ describe('GitRepoPicker', () => {
     expect(selections).toEqual(['projects/a/token']);
   });
 
+  test('the list is portaled and wider than the old 224px cap', async () => {
+    // The right panel clips its children and its Source Control floor is 268px,
+    // so a list left inside the trigger is cut off the moment it is widened.
+    // The portal is what lets one width serve both a narrow panel and a full
+    // nested path (`projects/jns6_5/token` is 22 characters).
+    await mount(['.', 'projects/jns6_5/token']);
+    await act(async () => {
+      trigger().click();
+    });
+    const list = menu();
+    expect(container.contains(list)).toBe(false);
+    expect(document.body.contains(list)).toBe(true);
+    expect(Number.parseFloat(list.style.width)).toBeGreaterThan(224);
+  });
+
   test('offers the manage entry, and opening it closes the dropdown', async () => {
     await mount(['.', 'projects/a/token']);
     await act(async () => {
       trigger().click();
     });
-    const manage = [...container.querySelectorAll('button')].find((b) =>
+    const manage = [...menu().querySelectorAll('button')].find((b) =>
       b.textContent?.includes('Manage repositories'),
     );
     expect(manage).toBeDefined();
@@ -137,7 +161,7 @@ describe('GitRepoPicker', () => {
     // The modal is up (its own heading), and the dropdown's filter field is
     // gone — two lists on screen at once is what the close exists to prevent.
     expect(container.textContent).toContain('Repositories');
-    expect(container.querySelector('input[placeholder="Search repos..."]')).toBeNull();
+    expect(document.querySelector('input[placeholder="Search repos..."]')).toBeNull();
   });
 
   test('the filter narrows the dropdown list', async () => {
@@ -145,13 +169,13 @@ describe('GitRepoPicker', () => {
     await act(async () => {
       trigger().click();
     });
-    const input = container.querySelector('input[title="Search repositories"]') as HTMLInputElement;
+    const input = menu().querySelector('input[title="Search repositories"]') as HTMLInputElement;
     await act(async () => {
       input.value = 'alpha';
       input.dispatchEvent(new window.Event('input', { bubbles: true }));
     });
     for (let i = 0; i < 5; i += 1) await act(async () => {});
-    expect(container.textContent).toContain('alpha');
-    expect(container.textContent).not.toContain('beta');
+    expect(menu().textContent).toContain('alpha');
+    expect(menu().textContent).not.toContain('beta');
   });
 });
