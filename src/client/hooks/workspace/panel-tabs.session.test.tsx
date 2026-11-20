@@ -30,7 +30,7 @@ import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { SessionStateProvider } from '@/client/components/common/session-state-provider/index';
 import { usePanelTabs } from '@/client/hooks/workspace/panel-tabs';
-import { getSessionValue, hydrateSession, setSessionKey } from '@/shared/lib/workspace/session-state/store';
+import { getSessionState, getSessionValue, hydrateSession, setSessionKey } from '@/shared/lib/workspace/session-state/store';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'HTMLInputElement', 'Event', 'MouseEvent', 'KeyboardEvent'] as const;
 const nativeGlobals: Partial<Record<(typeof DOM_GLOBALS)[number], unknown>> = {};
@@ -66,11 +66,21 @@ beforeAll(() => {
     if (!(key in nativeGlobals)) nativeGlobals[key] = target[key];
     target[key] = (win as unknown as Record<string, unknown>)[key];
   }
+  // The stub stands in for the SERVER, and the server answers what it was
+  // persisted — so the GET returns the session's own entry rather than `{}`.
+  //
+  // Returning `{}` made `loadSession` adopt an empty blob over the value
+  // `hydrateSession` had just seeded, and `mount()` only awaits the effects of
+  // the first commit: whether the clearing fetch had settled by the assertion
+  // depended on the event loop's timing, not on the code. That passed locally
+  // and failed 100% of the time in CI (both the Linux and the Windows leg, the
+  // same single case), because the response landed before the first read there.
   target.fetch = async (input: unknown, init?: { method?: string; body?: unknown }) => {
     const method = init?.method ?? 'GET';
     const sessionId = String(input).split('/sessions/')[1]?.split('/')[0] ?? 'x';
+    if (method === 'POST') return new Response(JSON.stringify({ success: true }), { status: 200, headers: { 'content-type': 'application/json' } });
     return new Response(
-      JSON.stringify(method === 'POST' ? { success: true } : { sessionId, state: {} }),
+      JSON.stringify({ sessionId, state: { ...(getSessionState(sessionId) ?? {}) } }),
       { status: 200, headers: { 'content-type': 'application/json' } },
     );
   };

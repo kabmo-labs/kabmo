@@ -862,17 +862,24 @@ test.describe('Source Control — repository management', () => {
     } else {
       await showSourceControl(page);
     }
-    // Discovery runs in the background; the picker's own list is the gate. The
-    // dropdown is toggled CLOSED after each read — it has no Escape handler, so
-    // leaving it open would make the spec's own click close it instead of
-    // opening it.
+    // Discovery runs in the background; the picker's own list is the gate.
+    //
+    // The rows are `role="option"` inside the picker's `role="listbox"`, which is
+    // a `position: fixed` child of `<body>` — the right panel clips its children,
+    // so the 352px list cannot live inside 268px of Source Control. It is
+    // therefore NOT a descendant of the trigger, and the old
+    // `div.absolute.top-full button` (what the list was before `77c91091`
+    // portaled it) matched nothing at all.
     await expect(visiblePicker(page)).toBeVisible();
-    await expect.poll(async () => {
-      await visiblePicker(page).click();
-      const rows = await page.locator('div.absolute.top-full button').allTextContents();
-      await visiblePicker(page).click();
-      return rows.filter((row) => row.includes('alpha')).length;
-    }).toBeGreaterThan(0);
+    await visiblePicker(page).click();
+    const list = page.locator('[role="listbox"]:visible');
+    await expect(list).toBeVisible();
+    // `toHaveCount` retries, so an empty list — discovery still running — keeps
+    // waiting instead of read-once-and-return-empty the way `allTextContents` did.
+    await expect(list.getByRole('option').filter({ hasText: 'alpha' })).toHaveCount(1);
+    // Closed before returning: the caller's next click is meant to OPEN it.
+    await visiblePicker(page).click();
+    await expect(list).toBeHidden();
     return { parent: parent.path, alpha, conflicted };
   }
 
