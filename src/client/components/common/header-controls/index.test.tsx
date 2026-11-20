@@ -168,7 +168,7 @@ function controlNames(): string[] {
  */
 async function mount(
   layout: 'desktop' | 'mobile',
-  props: { switch?: boolean; width?: number; hidden?: string[] } = {},
+  props: { width?: number; hidden?: string[] } = {},
 ): Promise<void> {
   // happy-dom resolves `matchMedia` against `innerWidth`, so writing it is the
   // same signal a real resize raises.
@@ -188,7 +188,6 @@ async function mount(
           sessionId: SESSION,
           showRightPanel: layout === 'desktop',
           onToggleRightPanel: () => {},
-          ...(props.switch ? { onSwitchToMobile: () => {} } : {}),
           ...(props.hidden ? { hidden: props.hidden } : {}),
         }),
       }),
@@ -210,7 +209,7 @@ async function mount(
 
 describe('HeaderControls', () => {
   test('desktop draws install, plugin slots, reload, context, lock, right side', async () => {
-    await mount('desktop', { switch: true });
+    await mount('desktop');
 
     expect(controlNames()).toEqual([
       'Install Kabmo',
@@ -219,12 +218,11 @@ describe('HeaderControls', () => {
       'Context usage',
       'Sign out',
       'Toggle Right Side',
-      'Switch to Mobile View',
     ]);
   });
 
   test('a hidden control leaves the row', async () => {
-    await mount('desktop', { switch: true, hidden: ['reload', 'context'] });
+    await mount('desktop', { hidden: ['reload', 'context'] });
 
     // The menu is the way back, so the control is absent from the row rather
     // than disabled — the same rule the activity rail's menu follows.
@@ -233,7 +231,6 @@ describe('HeaderControls', () => {
       'Demo Stats',
       'Sign out',
       'Toggle Right Side',
-      'Switch to Mobile View',
     ]);
   });
 

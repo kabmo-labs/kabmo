@@ -78,6 +78,8 @@ interface LeftColumnProps {
   refreshKey: number;
   onRefresh: () => void;
   onOpenFile: (file: unknown) => void;
+  /** Dev-only layout switch, drawn in the footer beside the phone's mirror. */
+  onMobileToggle?: () => void;
 }
 
 export function LeftColumn({
@@ -97,6 +99,7 @@ export function LeftColumn({
   refreshKey,
   onRefresh,
   onOpenFile,
+  onMobileToggle,
 }: LeftColumnProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
@@ -186,6 +189,7 @@ export function LeftColumn({
             onSettings={() => setSettingsOpen(true)}
             onKeyBindings={openKeyBindingHelp}
             onInfo={() => setInfoOpen(true)}
+            onMobileToggle={onMobileToggle}
             shellDownload={shellDownload}
             updateAvailable={updates.hasUpdate}
             onUpdateClick={() => {

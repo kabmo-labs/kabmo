@@ -18,6 +18,11 @@
  * The PHONE header does not read this set. It has no context menu, so a control
  * hidden there would have no way back — the same reason the rail pins its
  * sessions view. The desktop navbar is the surface that owns the menu.
+ *
+ * The layout switch is NOT here either: it moved to the sidebar footer, where
+ * the phone's own mirror control ("Desktop") sits in the same slot. A control
+ * that lives in one layout's row and the other layout's footer has no single
+ * row for this menu to hide.
  */
 
 import { useCallback, useSyncExternalStore } from 'preact/compat';
@@ -38,7 +43,6 @@ export const NAVBAR_CONTROL = {
   context: 'context',
   signout: 'signout',
   rightPanel: 'right-panel',
-  mobile: 'mobile',
 } as const;
 
 export type NavbarControlId = (typeof NAVBAR_CONTROL)[keyof typeof NAVBAR_CONTROL];
@@ -63,7 +67,6 @@ export const NAVBAR_CONTROLS: NavbarControlItem[] = [
   { id: NAVBAR_CONTROL.context, title: 'Context usage' },
   { id: NAVBAR_CONTROL.signout, title: 'Sign out' },
   { id: NAVBAR_CONTROL.rightPanel, title: 'Right side' },
-  { id: NAVBAR_CONTROL.mobile, title: 'Mobile view' },
 ];
 
 const listeners = new Set<() => void>();

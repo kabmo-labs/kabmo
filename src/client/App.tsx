@@ -139,7 +139,7 @@ export function App({ initialIsMobile = false, production = false, appSettings =
   ) : (
     <DesktopLayout
       sessionId={sessionId}
-      onSwitchToMobile={production ? undefined : handleSwitchToMobile}
+      onMobileToggle={production ? undefined : handleSwitchToMobile}
       appSettings={appSettings}
     />
   );

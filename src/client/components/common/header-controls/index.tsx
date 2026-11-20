@@ -1,4 +1,4 @@
-import { PanelRight, PanelRightClose, Smartphone } from 'lucide-preact';
+import { PanelRight, PanelRightClose } from 'lucide-preact';
 import { PWAInstallButton } from '@/client/components/common/PWAInstallButton';
 import { ReloadPageButton } from '@/client/components/common/ReloadPageButton';
 import { SignOutButton } from '@/client/components/common/SignOutButton';
@@ -43,8 +43,6 @@ interface HeaderControlsProps {
    */
   showRightPanel: boolean;
   onToggleRightPanel: () => void;
-  /** Desktop only: the dev-only layout switch, drawn after every listed control. */
-  onSwitchToMobile?: () => void;
   /**
    * Control ids the user switched off in the navbar's right-click menu.
    *
@@ -115,7 +113,6 @@ export function HeaderControls({
   sessionId,
   showRightPanel,
   onToggleRightPanel,
-  onSwitchToMobile,
   hidden = [],
 }: HeaderControlsProps) {
   const iconClass = ICON_BUTTON_CLASS[layout];
@@ -186,17 +183,6 @@ export function HeaderControls({
       ))}
       {moreRows && (
         <HeaderMoreMenu entries={headerEntries.folded} hidden={hidden} />
-      )}
-      {layout === 'desktop' && onSwitchToMobile && !isHidden(NAVBAR_CONTROL.mobile) && (
-        <button
-          type="button"
-          onClick={onSwitchToMobile}
-          className={iconClass}
-          title="Switch to Mobile View"
-          aria-label="Switch to Mobile View"
-        >
-          <Smartphone size={size} />
-        </button>
       )}
       {/* The Windows and Linux shells draw no caption buttons of their own —
           their webview is the whole window — so the PAGE owns minimise,

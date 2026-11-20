@@ -248,13 +248,10 @@ export function MobileHeader({
           anchor={visibility.anchor}
           title="Navbar"
           align="right"
-          // Only the controls this header actually draws: install and the
-          // dev-only layout switch are desktop furniture, and a checkbox for
-          // one would hide nothing.
+          // Only the controls this header actually draws: install is desktop
+          // furniture, and a checkbox for one would hide nothing.
           items={NAVBAR_CONTROLS.filter(
-            (item) =>
-              item.id !== NAVBAR_CONTROL.install &&
-              item.id !== NAVBAR_CONTROL.mobile,
+            (item) => item.id !== NAVBAR_CONTROL.install,
           ).map((item) => ({ ...item, removable: true }))}
           hidden={hidden}
           onToggle={setHidden}

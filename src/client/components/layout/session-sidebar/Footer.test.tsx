@@ -73,4 +73,24 @@ describe('desktop session sidebar footer', () => {
     expect(el.textContent).toContain(`v${packageJson.version}`);
     expect(el.textContent).toContain('update');
   });
+
+  // The layout switch lives in the footer on BOTH layouts: the phone draws
+  // "Desktop" here, so the desktop's "mobile view" is the mirror control in the
+  // same slot rather than a button in the top navbar.
+  test('draws the layout switch only when the caller offers one', async () => {
+    const without = await mount(h(SessionSidebarFooter, { onSettings: noop, onKeyBindings: noop, onInfo: noop }));
+    expect(without.querySelector('button[aria-label="Switch to mobile view"]')).toBeNull();
+
+    render(null, without);
+    without.remove();
+
+    let presses = 0;
+    const withSwitch = await mount(
+      h(SessionSidebarFooter, { onSettings: noop, onKeyBindings: noop, onInfo: noop, onMobileToggle: () => { presses += 1; } }),
+    );
+    const control = withSwitch.querySelector('button[aria-label="Switch to mobile view"]') as HTMLElement | null;
+    expect(control).toBeTruthy();
+    control!.click();
+    expect(presses).toBe(1);
+  });
 });

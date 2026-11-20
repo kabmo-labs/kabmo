@@ -6,7 +6,7 @@ import { BrandWordmark } from '@/client/components/common/brand-wordmark';
 import { StreamStatusDot } from '@/client/components/common/StreamStatusDot';
 import { SessionActionsMenu, useRowMenu } from '@/client/components/common/session-actions-menu';
 import { VisibilityMenu, type MenuAnchor } from '@/client/components/layout/VisibilityMenu';
-import { NAVBAR_CONTROL, NAVBAR_CONTROLS, useNavbarControls } from '@/client/hooks/ui/navbar-controls';
+import { NAVBAR_CONTROLS, useNavbarControls } from '@/client/hooks/ui/navbar-controls';
 import { useInlineRename } from '@/client/hooks/ui/inline-rename';
 import { useSessionRenaming } from '@/client/hooks/workspace/renaming-sessions';
 import type { AgentStreamStatus } from '@/shared/lib/chat/omp/status';
@@ -29,7 +29,6 @@ interface TopNavbarProps {
   showRightSide: boolean;
   /** Live agent event stream status; the indicator is WebSocket-only. */
   streamStatus?: AgentStreamStatus;
-  onSwitchToMobile?: () => void;
   onToggleRightSide: () => void;
   onToggleLeftPanel: () => void;
   /** Session-level actions for the title's overflow menu, when a session is on screen. */
@@ -50,7 +49,6 @@ export function TopNavbar({
   showLeftPanel,
   showRightSide,
   streamStatus,
-  onSwitchToMobile,
   onToggleRightSide,
   onToggleLeftPanel,
   sessionActions,
@@ -194,7 +192,6 @@ export function TopNavbar({
           sessionId={sessionId ?? null}
           showRightPanel={showRightSide}
           onToggleRightPanel={onToggleRightSide}
-          onSwitchToMobile={onSwitchToMobile}
           hidden={hidden}
         />
         {/* The Windows/Linux caption buttons come from `HeaderControls` itself:
@@ -220,13 +217,10 @@ export function TopNavbar({
           anchor={menuAnchor}
           title="Navbar"
           align="right"
-          // A control this build does not draw has no row: the dev-only layout
-          // switch is absent in a production build, and a checkbox for it would
-          // hide nothing.
-          items={NAVBAR_CONTROLS.filter((item) => {
-            if (item.id === NAVBAR_CONTROL.mobile) return Boolean(onSwitchToMobile);
-            return true;
-          }).map((item) => ({ ...item, removable: true }))}
+          // A control this build does not draw has no row: the menu is the
+          // switch for the row, and a checkbox for a control the navbar no
+          // longer holds would hide nothing.
+          items={NAVBAR_CONTROLS.map((item) => ({ ...item, removable: true }))}
           hidden={hidden}
           onToggle={setHidden}
           onClose={() => setMenuAnchor(null)}

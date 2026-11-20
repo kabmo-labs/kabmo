@@ -1,4 +1,4 @@
-import { Info, Keyboard, Settings } from 'lucide-preact';
+import { Info, Keyboard, Settings, Smartphone } from 'lucide-preact';
 import packageJson from '@/../package.json';
 import type { ShellDownload } from '@/client/hooks/ui/updates/shell-download';
 import { ShellUpdateButton } from '@/client/components/common/shell-update-button';
@@ -12,6 +12,14 @@ interface SessionSidebarFooterProps {
   onUpdateClick?: () => void;
   /** The native-shell artifact to offer, or null. Set inside a shell (an update) or on an Android browser (an install). */
   shellDownload?: ShellDownload | null;
+  /**
+   * Switch the app to the phone layout for this page session only.
+   *
+   * It lives here, not in the top navbar, because the phone's own footer draws
+   * the mirror control ("Desktop") in the same slot: one switch, one position on
+   * both layouts. Dev-only — `App` passes it only outside a production build.
+   */
+  onMobileToggle?: () => void;
 }
 
 /**
@@ -24,7 +32,7 @@ interface SessionSidebarFooterProps {
  * is unreachable by keyboard"). It is also what lets a browser spec address
  * these controls by role and name instead of by their position in the DOM.
  */
-export function SessionSidebarFooter({ onSettings, onKeyBindings, onInfo, updateAvailable, onUpdateClick, shellDownload }: SessionSidebarFooterProps) {
+export function SessionSidebarFooter({ onSettings, onKeyBindings, onInfo, onMobileToggle, updateAvailable, onUpdateClick, shellDownload }: SessionSidebarFooterProps) {
   return (
     <div className="h-10 px-3 border-t border-ink/10 flex items-center justify-between text-ink/60 shrink-0">
       <div className="flex space-x-1">
@@ -65,6 +73,20 @@ export function SessionSidebarFooter({ onSettings, onKeyBindings, onInfo, update
           // shell installs the artifact itself, and a link there would be a file
           // in Downloads instead of an updated app.
           <ShellUpdateButton download={shellDownload} variant="icon" />
+        )}
+        {onMobileToggle && (
+          // After the shell offer, which is the phone footer's own order
+          // (About · shell · Desktop): one strip, one sequence, so the layout
+          // switch keeps its place when the layout changes under it.
+          <button
+            type="button"
+            onClick={onMobileToggle}
+            title="Switch to mobile view"
+            aria-label="Switch to mobile view"
+            className="p-1 rounded hover:text-ink hover:bg-ink/5 cursor-pointer transition-colors"
+          >
+            <Smartphone size={16} />
+          </button>
         )}
       </div>
       <div className="flex items-center gap-2">

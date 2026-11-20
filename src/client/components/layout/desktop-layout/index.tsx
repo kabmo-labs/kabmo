@@ -32,11 +32,12 @@ import { useActiveWorkspaceProject } from '@/client/hooks/workspace/active-proje
 
 interface DesktopLayoutProps {
   sessionId: string | null;
-  onSwitchToMobile?: () => void;
+  /** Dev-only: switch the app to the phone layout for this page session. */
+  onMobileToggle?: () => void;
   appSettings?: Record<string, any>;
 }
 
-export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }: DesktopLayoutProps) {
+export function DesktopLayout({ sessionId, onMobileToggle, appSettings = {} }: DesktopLayoutProps) {
   const { folders, isMock } = useSidebarData();
   // A new session opens Files. Deliberately NOT `appSettings.activeRightPanel`:
   // pre-per-session builds stored that key globally, so reading it back made
@@ -269,6 +270,7 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
             refreshKey={refreshKey}
             onRefresh={handleRefreshWorkspace}
             onOpenFile={(file) => handleOpenFile(file as Parameters<typeof handleOpenFile>[0])}
+            onMobileToggle={onMobileToggle}
           />
 
           {/* Right stack: top navbar + resizable workspace (the group's filler).
@@ -285,7 +287,6 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
                 showLeftPanel={sidebarOpen}
                 showRightSide={rightSideShown}
                 streamStatus={streamStatus}
-                onSwitchToMobile={onSwitchToMobile}
                 onToggleRightSide={rightSide.toggleRightSide}
                 onToggleLeftPanel={() => handleToggleLeftPanel(!sidebarOpen)}
                 sessionActions={sessionActions}
