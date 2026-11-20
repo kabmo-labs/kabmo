@@ -34,11 +34,17 @@
  *   collapse and the width transition has something to animate.
  */
 
-import { useState } from 'preact/hooks';
+import { useEffect, useMemo, useState } from 'preact/hooks';
 import type { RefObject } from 'preact';
+import { RefreshCw } from 'lucide-preact';
 import { Panel, type PanelImperativeHandle } from '@/client/components/layout/desktop-layout/resizer';
 import { ActivityBar } from '@/client/components/layout/ActivityBar';
 import { LeftDockView } from '@/client/components/layout/LeftDock';
+import { PanelTabsColumn } from '@/client/components/workspace/panel-tabs';
+import { usePanelCatalog } from '@/client/components/workspace/plugin-panel/catalog';
+import { usePanelTabs } from '@/client/hooks/workspace/panel-tabs';
+import { SESSIONS_VIEW_ID } from '@/shared/lib/workspace/left-dock';
+import type { PanelNavStyle } from '@/shared/lib/workspace/panel-nav';
 import { useLeftDock } from '@/client/hooks/workspace/left-dock';
 import { usePanelDropTarget } from '@/client/hooks/workspace/panel-drop-target';
 import { ResizeHandle } from '@/client/components/layout/desktop-layout/ResizeHandle';
@@ -63,6 +69,15 @@ interface LeftColumnProps {
   open: boolean;
   /** Draw the rail. A global preference, off by default. */
   railEnabled: boolean;
+  /**
+   * How this column is navigated when the rail is on: `rail` draws the 44px
+   * activity bar, `tabs` draws the browser-style strip and its home page.
+   *
+   * The rail's own switch still decides whether the column has ANY navigation
+   * furniture — a user who never placed a panel on the dock keeps the plain
+   * session list, and switching the style cannot conjure a strip out of it.
+   */
+  navStyle: PanelNavStyle;
   /** The view the dock actually shows, after resolving the stored selection. */
   view: string;
   onSelectView: (view: string) => void;
@@ -86,6 +101,7 @@ export function LeftColumn({
   panelRef,
   open,
   railEnabled,
+  navStyle,
   view,
   onSelectView,
   onCollapse,
@@ -121,6 +137,49 @@ export function LeftColumn({
   const updates = useUpdates();
   const { pushToast } = useToasts();
   const shellDownload = useShellOffer();
+
+  /**
+   * The tab strip's working set, and the catalog it opens views from.
+   *
+   * The LEFT column's sessions view is PINNED: it is why the column exists, so
+   * it cannot be closed and it leads the strip. With the rail off there is no
+   * strip at all (the plain session list), and the hook is simply unused.
+   */
+  const catalog = usePanelCatalog('left');
+  const known = useMemo(() => new Set(catalog.map((panel) => panel.id)), [catalog]);
+  const tabsState = usePanelTabs('left', known, SESSIONS_VIEW_ID);
+  const tabsMode = railEnabled && navStyle === 'tabs';
+
+  /**
+   * A view opened from a card must reach the BODY, not only the strip, so the
+   * active tab writes the same per-session selection the rail's button does.
+   * One direction only: the reverse (`view` → tab) is derived on read, so a
+   * stored selection that names a closed tab falls back instead of resurrecting
+   * it.
+   */
+  useEffect(() => {
+    if (!tabsMode) return;
+    if (tabsState.active !== null && tabsState.active !== view) onSelectView(tabsState.active);
+  }, [tabsMode, tabsState.active, view, onSelectView]);
+
+  /**
+   * The OTHER direction, for everything that is not the strip: `omp:open-panel`
+   * from a plugin's navbar entry, a panel dropped on the column, a restored
+   * stored selection. Those write `view` and do not know a strip exists, so the
+   * tab would be missing from a column that is showing it — a chip strip whose
+   * active view has no chip.
+   */
+  const { open: openTab, tabs: openTabIds } = tabsState;
+  useEffect(() => {
+    if (!tabsMode) return;
+    if (openTabIds.includes(view)) return;
+    // Only a view this column can DRAW becomes a tab. Writing an id the catalog
+    // no longer holds — a panel switched off, a plugin mid-import — would be
+    // filtered straight back out by `visiblePanelTabs` and re-opened on the next
+    // render, which is a write loop disguised as a sync.
+    if (!known.has(view)) return;
+    openTab(view);
+  }, [tabsMode, view, openTabIds, openTab, known]);
 
   // The update popup's "Update now" hands the run to the About modal, which owns
   // the live output. The column owns both, so a view switch cannot lose them.
@@ -161,7 +220,7 @@ export function LeftColumn({
         >
           <SessionSidebarHeader streamStatus={streamStatus} onCollapse={onCollapse} />
           <div className="flex flex-1 min-h-0 w-full">
-            {railEnabled ? (
+            {railEnabled && navStyle === 'rail' ? (
               <ActivityBar
                 side="left"
                 activePanel={view}
@@ -171,19 +230,58 @@ export function LeftColumn({
                 activeProjectPath={activeProjectPath}
               />
             ) : null}
-            <LeftDockView
-              className="flex-1 min-w-0 h-full"
-              activeView={view}
-              onClose={onCollapse}
-              appSettings={appSettings}
-              streamStatus={streamStatus}
-              refreshKey={refreshKey}
-              onRefresh={onRefresh}
-              onOpenFile={onOpenFile}
-              sessionId={sessionId ?? null}
-              {...(activeProjectPath ? { rootPath: activeProjectPath } : {})}
-              hasActiveContext={hasActiveContext}
-            />
+            {tabsMode ? (
+              <PanelTabsColumn
+                catalog={catalog}
+                tabs={tabsState}
+                pinned={SESSIONS_VIEW_ID}
+                homeTitle="Panel kiri"
+                actions={
+                  <button
+                    type="button"
+                    onClick={onRefresh}
+                    title="Muat ulang view"
+                    aria-label="Muat ulang view"
+                    className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-ink/50 transition-colors hover:bg-ink/5 hover:text-ink"
+                  >
+                    <RefreshCw size={13} />
+                  </button>
+                }
+              >
+                <LeftDockView
+                  className="w-full h-full"
+                  // The strip's own selection, not the stored one it syncs into:
+                  // reading `view` here would make the body lag the chip by one
+                  // render, which is visible as a chip that looks selected over
+                  // the previous view.
+                  activeView={tabsState.active ?? view}
+                  onClose={onCollapse}
+                  appSettings={appSettings}
+                  streamStatus={streamStatus}
+                  refreshKey={refreshKey}
+                  onRefresh={onRefresh}
+                  onOpenFile={onOpenFile}
+                  sessionId={sessionId ?? null}
+                  {...(activeProjectPath ? { rootPath: activeProjectPath } : {})}
+                  hasActiveContext={hasActiveContext}
+                  tabsMode
+                />
+              </PanelTabsColumn>
+            ) : (
+              <LeftDockView
+                className="flex-1 min-w-0 h-full"
+                activeView={view}
+                onClose={onCollapse}
+                appSettings={appSettings}
+                streamStatus={streamStatus}
+                refreshKey={refreshKey}
+                onRefresh={onRefresh}
+                onOpenFile={onOpenFile}
+                sessionId={sessionId ?? null}
+                {...(activeProjectPath ? { rootPath: activeProjectPath } : {})}
+                hasActiveContext={hasActiveContext}
+              />
+            )}
           </div>
           <SessionSidebarFooter
             onSettings={() => setSettingsOpen(true)}

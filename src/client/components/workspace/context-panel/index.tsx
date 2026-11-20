@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { useSearchParams } from '@/client/lib/router/search-params';
 import { PanelHeader } from '@/client/components/workspace/panel-header';
+import { PanelHeading } from '@/client/components/workspace/panel-header/title-policy';
 import { RefreshButton } from '@/client/components/common/header-button';
 import type { SessionContextTelemetry } from '@/shared/types';
 import { emptyTelemetry } from '@/client/data/context-data';
@@ -17,12 +18,15 @@ interface ContextPanelProps {
   enabled?: boolean;
   refreshKey?: number;
   onClose?: () => void;
+  /** The column's chip already names this view; see `title-policy.tsx`. */
+  tabsMode?: boolean;
 }
 
 export function ContextPanel({
   className = '',
   enabled = true,
-  refreshKey = 0
+  refreshKey = 0,
+  tabsMode = false,
 }: ContextPanelProps) {
   const [searchParams] = useSearchParams();
   const sessionId = searchParams.get('sessionId');
@@ -106,9 +110,11 @@ export function ContextPanel({
       <PanelHeader
         left={
           <>
-            <h2 className="text-xs font-medium text-ink tracking-tight truncate">
-              {telemetry.sessionTitle}
-            </h2>
+            <PanelHeading id="context" tabsMode={tabsMode}>
+              <h2 className="text-xs font-medium text-ink tracking-tight truncate">
+                {telemetry.sessionTitle}
+              </h2>
+            </PanelHeading>
             <span className="text-[11px] text-ink/50 truncate font-mono">
               {telemetry.timestamp}
             </span>

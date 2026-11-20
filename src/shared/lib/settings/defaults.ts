@@ -23,6 +23,7 @@ import { DEFAULT_THEME_ID } from '@/shared/lib/theme/catalog';
 import { DEFAULT_CHAT_WIDTH_MODE } from '@/shared/lib/chat/timeline/width-mode';
 import { DEFAULT_TOOL_RENDER_MODE } from '@/shared/lib/chat/timeline/tool-render-mode';
 import { DEFAULT_SIDEBAR_STYLE } from '@/shared/lib/workspace/sidebar-style';
+import { DEFAULT_PANEL_NAV } from '@/shared/lib/workspace/panel-nav';
 import { DEFAULT_COMPOSER_STYLE } from '@/shared/lib/chat/composer/style';
 import { DEFAULT_SURFACE_STYLE } from '@/shared/lib/theme/surface-style';
 import { DEFAULT_ICON_STYLE } from '@/shared/lib/theme/icon-style';
@@ -54,6 +55,8 @@ export const DEFAULT_SETTINGS = {
   toolRenderStyle: DEFAULT_TOOL_RENDER_MODE,
   showChangedFiles: true,
   sidebarStyle: DEFAULT_SIDEBAR_STYLE,
+  leftPanelNav: DEFAULT_PANEL_NAV,
+  rightPanelNav: DEFAULT_PANEL_NAV,
   composerStyle: DEFAULT_COMPOSER_STYLE,
   surfaceStyle: DEFAULT_SURFACE_STYLE,
   iconStyle: DEFAULT_ICON_STYLE,

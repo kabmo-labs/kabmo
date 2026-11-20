@@ -53,6 +53,15 @@ export interface PanelBodyProps {
   /** The phone's drawer hides a view's own header; the desktop stack does not. */
   showHeader?: boolean;
   /**
+   * The COLUMN navigates by a tab strip, so its chip already names this view.
+   *
+   * A header row that exists only to repeat that name is suppressed; one that
+   * carries real facts (a repo picker, a progress line, a timestamp, a refresh)
+   * is kept with its title hidden. `panel-header/title-policy.tsx` is the one
+   * place that decides, and `showsPanelHeader` is its entry point.
+   */
+  tabsMode?: boolean;
+  /**
    * Which shell is drawing this body. A view with its own small-screen form
    * (the wiki's floating page-list button) must know the PHONE from a merely
    * narrow desktop column; no container or media query can tell the two apart.

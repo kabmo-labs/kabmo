@@ -6,7 +6,7 @@ import { useRepoList, useRepoScope } from '@/client/hooks/workspace/repo-scope';
 import { useSearchStream } from '@/client/hooks/workspace/search-stream';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 
-export function SearchPanel({ className = '', enabled = true, rootPath, onOpenFile }: { className?: string, enabled?: boolean, rootPath?: string, onOpenFile?: (file: unknown) => void }) {
+export function SearchPanel({ className = '', enabled = true, rootPath, onOpenFile, tabsMode = false }: { className?: string, enabled?: boolean, rootPath?: string, onOpenFile?: (file: unknown) => void, tabsMode?: boolean }) {
   const [query, setQuery] = useSessionState<string>('search.query', '');
   const [replaceQuery, setReplaceQuery] = useSessionState<string>('search.replaceQuery', '');
 
@@ -97,6 +97,7 @@ export function SearchPanel({ className = '', enabled = true, rootPath, onOpenFi
   return (
     <SearchPanelBody
       className={className}
+      tabsMode={tabsMode}
       query={query}
       setQuery={setQuery}
       replaceQuery={replaceQuery}

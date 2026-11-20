@@ -3,6 +3,7 @@ import type { SettingsState } from '@/shared/types';
 import { resolveThemeId } from '@/shared/lib/theme/catalog';
 import { ThemeGrid } from '@/client/components/settings/categories/appearance-settings/ThemeGrid';
 import { SidebarStyleSection } from '@/client/components/settings/categories/appearance-settings/SidebarStyleSection';
+import { PanelNavSection } from '@/client/components/settings/categories/appearance-settings/PanelNavSection';
 import { SurfaceStyleSection } from '@/client/components/settings/categories/appearance-settings/SurfaceStyleSection';
 import { IconStyleSection } from '@/client/components/settings/categories/appearance-settings/IconStyleSection';
 import { TrayIconSection } from '@/client/components/settings/categories/appearance-settings/TrayIconSection';
@@ -39,6 +40,8 @@ export function AppearanceSettings({ settings, onUpdate }: AppearanceSettingsPro
         </div>
 
         <SidebarStyleSection settings={settings} onUpdate={onUpdate} />
+
+        <PanelNavSection settings={settings} onUpdate={onUpdate} />
 
         <SurfaceStyleSection settings={settings} onUpdate={onUpdate} />
 

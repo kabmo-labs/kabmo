@@ -27,6 +27,7 @@
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { AlertCircle, FileText, Loader2 } from 'lucide-preact';
 import { PanelHeader } from '@/client/components/workspace/panel-header';
+import { PanelHeading } from '@/client/components/workspace/panel-header/title-policy';
 import { RefreshButton } from '@/client/components/common/header-button';
 import { useSearchParams } from '@/client/lib/router/search-params';
 import { useSessionState } from '@kabmo-labs/kabmo-ui';
@@ -44,6 +45,8 @@ interface PlanPanelProps {
    * state survives a switch without a re-read.
    */
   active?: boolean;
+  /** The column's chip already names this view; see `title-policy.tsx`. */
+  tabsMode?: boolean;
 }
 
 /** The selection, kept next to the session it was made in. */
@@ -52,7 +55,7 @@ interface PlanPick {
   path: string;
 }
 
-export function PlanPanel({ className = '', active = true }: PlanPanelProps) {
+export function PlanPanel({ className = '', active = true, tabsMode = false }: PlanPanelProps) {
   const [searchParams] = useSearchParams();
   const sessionId = searchParams.get('sessionId');
 
@@ -117,7 +120,9 @@ export function PlanPanel({ className = '', active = true }: PlanPanelProps) {
         left={
           <>
             <FileText size={12} className="flex-shrink-0 text-ink/50" />
-            <span className="truncate text-[11px] font-medium text-ink/70">Plan mode</span>
+            <PanelHeading id="plan" tabsMode={tabsMode}>
+              <span className="truncate text-[11px] font-medium text-ink/70">Plan mode</span>
+            </PanelHeading>
             {hasPlan && (
               <span className="flex-shrink-0 rounded border border-ink/15 bg-ink/5 px-1.5 py-0.5 font-mono text-[10px] text-ink/60">
                 {files.length}

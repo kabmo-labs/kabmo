@@ -33,6 +33,7 @@ import { applyChatWidthMode } from '@/client/hooks/chat/timeline/width-mode';
 import { applyToolRenderMode } from '@/client/hooks/chat/timeline/tool-render-mode';
 import { applyShowChangedFiles } from '@/client/hooks/chat/timeline/changed-files-setting';
 import { applySidebarStyle } from '@/client/hooks/workspace/sidebar-style';
+import { applyPanelNav } from '@/client/hooks/workspace/panel-nav';
 import { applyComposerStyle } from '@/client/hooks/chat/composer/style';
 import { applySurfaceStyle } from '@/client/hooks/ui/surface-style';
 import { applyIconStyle } from '@/client/hooks/ui/icon-style';
@@ -87,6 +88,17 @@ export function applySettingsSideEffects(previous: SettingsState, next: Settings
   // effect the user watches happen.
   if (next.sidebarStyle !== previous.sidebarStyle) {
     applySidebarStyle(next.sidebarStyle);
+  }
+
+  // A panel column's navigation picks a Preact tree over one column, and both
+  // columns are visible behind this modal — so a change repaints on the click.
+  // Each side is announced separately: one value must not re-mount the other
+  // column's tree, which would lose whatever the user has open in it.
+  if (next.leftPanelNav !== previous.leftPanelNav) {
+    applyPanelNav('left', next.leftPanelNav);
+  }
+  if (next.rightPanelNav !== previous.rightPanelNav) {
+    applyPanelNav('right', next.rightPanelNav);
   }
 
   // The composer style reorders the card's rows. The composer is NOT visible

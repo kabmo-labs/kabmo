@@ -16,6 +16,8 @@ import { resolveLeftDockMinWidth } from '@/shared/lib/workspace/left-dock-width'
 import { SESSIONS_VIEW_ID } from '@/shared/lib/workspace/left-dock';
 import { DEFAULT_RIGHT_PANEL_TYPE } from '@/shared/lib/workspace/right-panels';
 import { useOpenPanelRequest } from '@/client/hooks/workspace/open-panel';
+import { usePanelNav } from '@/client/hooks/workspace/panel-nav';
+import { useRightOpenRequest } from '@/client/hooks/workspace/right-open-request';
 import { useLeftDock, useLeftDockWidth } from '@/client/hooks/workspace/left-dock';
 import { useEditorViewLayout } from '@/client/hooks/workspace/editor-view';
 import { useLeftDockView } from '@/client/components/workspace/plugin-panel/catalog';
@@ -39,19 +41,23 @@ interface DesktopLayoutProps {
 
 export function DesktopLayout({ sessionId, onMobileToggle, appSettings = {} }: DesktopLayoutProps) {
   const { folders, isMock } = useSidebarData();
-  // A new session opens Files. Deliberately NOT `appSettings.activeRightPanel`:
-  // pre-per-session builds stored that key globally, so reading it back made
-  // every new chat open whichever panel was last picked in any other session.
+  // The restored right view. NOT `appSettings.activeRightPanel`: pre-per-session
+  // builds stored that key globally, so every new chat inherited the last pick.
   const [activeRightPanel, setActiveRightPanel] = useSessionState<string>('layout.activeRightPanel', DEFAULT_RIGHT_PANEL_TYPE);
   const [showLeftPanel, setShowLeftPanel] = useSessionState<boolean>('layout.showLeftPanel', appSettings.showLeftPanel ?? true);
   const [activeLeftView, setActiveLeftView] = useSessionState<string>('layout.activeLeftPanel', SESSIONS_VIEW_ID);
-  // Which plugin panel, if any, owns the editor column. Per session, like every
-  // other layout choice: two chats may be working on different things.
+  // Which plugin panel owns the editor column. Per session: two chats may be
+  // working on different things.
   const [activeEditorPanelKey, setActiveEditorPanelKey] = useSessionState<string | null>('layout.activeEditorPanel', null);
+  // An explicit "open this view" for the right column, kept apart from the
+  // restored selection; see `useRightOpenRequest`.
+  const { request: rightOpenRequest, requestPanel: requestRightPanel } = useRightOpenRequest(setActiveRightPanel);
   const { widths: panelWidths, commitWidths } = usePanelWidths();
-  // The dock's width is per VIEW and global, like the right panel's order: it
-  // lists the same views in every chat.
+  // The dock's width is per view and global: it lists the same views always.
   const dock = useLeftDock();
+  // Read ONCE here: a change to one column's style must not re-mount the other.
+  const leftNav = usePanelNav('left');
+  const rightNav = usePanelNav('right');
   // What the dock actually shows: a stored id naming a panel that has moved to
   // the right column falls back to the session list, while one naming nothing at
   // all is left for the dock to explain.
@@ -204,7 +210,7 @@ export function DesktopLayout({ sessionId, onMobileToggle, appSettings = {} }: D
     if (collapsing) rightSide.closeRightPanel();
     else {
       rightSide.revealRightPanel();
-      setActiveRightPanel(panel);
+      requestRightPanel(panel);
     }
   };
 
@@ -223,7 +229,7 @@ export function DesktopLayout({ sessionId, onMobileToggle, appSettings = {} }: D
       rightSide.revealEditor();
     },
     onRight: (panelKey) => {
-      setActiveRightPanel(panelKey);
+      requestRightPanel(panelKey);
       rightSide.revealRightPanel();
     },
   });
@@ -251,6 +257,7 @@ export function DesktopLayout({ sessionId, onMobileToggle, appSettings = {} }: D
             panelRef={leftPanelRef}
             open={sidebarOpen}
             railEnabled={dock.enabled}
+            navStyle={leftNav}
             view={leftView}
             onSelectView={(panel) => {
               // A rail click means "show this view" — never "toggle" it. A
@@ -299,6 +306,8 @@ export function DesktopLayout({ sessionId, onMobileToggle, appSettings = {} }: D
                 editorPanelRef={editorPanelRef}
                 showRightPanel={showRightPanel}
                 showRightSide={rightSideShown}
+                rightNav={rightNav}
+                rightOpenRequest={rightOpenRequest}
                 activeRightPanel={activeRightPanel}
                 activeEditorPanelKey={activeEditorPanelKey}
                 onSelectEditorPanel={(panelKey) => {

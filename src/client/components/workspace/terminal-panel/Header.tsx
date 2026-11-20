@@ -17,6 +17,8 @@ interface TerminalHeaderProps {
   onRefreshRepos: () => void;
   shell?: string;
   onRestart: () => void;
+  /** The column's chip already names this view; see `title-policy.tsx`. */
+  tabsMode?: boolean;
 }
 
 const STATUS_LABEL: Record<TerminalStatus, string> = {
@@ -44,17 +46,22 @@ export function TerminalHeader({
   onRefreshRepos,
   shell,
   onRestart,
+  tabsMode = false,
 }: TerminalHeaderProps) {
   const shellName = shell ? shell.split('/').pop() : '';
   return (
     <PanelHeader
       left={
         <>
+          {/* The strip's chip already says "Terminal" under the tab style, so
+              only the glyph stays — it is the row's leading mark, not its name. */}
           <div className="flex items-center space-x-1.5">
             <Terminal size={14} className="text-ink/80 flex-shrink-0" />
-            <span className="text-xs font-semibold tracking-wider text-ink uppercase">
-              Terminal
-            </span>
+            {tabsMode ? null : (
+              <span className="text-xs font-semibold tracking-wider text-ink uppercase">
+                Terminal
+              </span>
+            )}
           </div>
 
           <span

@@ -47,6 +47,11 @@ interface LeftDockViewProps {
   rootPath?: string;
   /** Whether a workspace folder is open; a view that reads the tree is inert without one. */
   hasActiveContext?: boolean;
+  /**
+   * The column navigates by a tab strip, so its chip already names this view;
+   * see `panel-header/title-policy.tsx`.
+   */
+  tabsMode?: boolean;
 }
 
 /**
@@ -81,6 +86,7 @@ export function LeftDockView({
   sessionId,
   rootPath,
   hasActiveContext = false,
+  tabsMode = false,
 }: LeftDockViewProps) {
   const catalog = usePanelCatalog('left');
   const active = catalog.find((panel) => panel.id === activeView);
@@ -98,6 +104,7 @@ export function LeftDockView({
     appSettings,
     ...(streamStatus ? { streamStatus } : {}),
     layout: 'desktop',
+    tabsMode,
   };
 
   return (

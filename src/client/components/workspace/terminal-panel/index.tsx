@@ -24,13 +24,15 @@ interface TerminalPanelProps {
   enabled?: boolean;
   rootPath?: string;
   showHeader?: boolean;
+  /** The column's chip already names this view; see `title-policy.tsx`. */
+  tabsMode?: boolean;
   /** True while this view is the one on screen (the layout's `active`). */
   active?: boolean;
 }
 
 const encoder = new TextEncoder();
 
-export function TerminalPanel({ className = '', enabled = true, rootPath, showHeader = true, active = true }: TerminalPanelProps) {
+export function TerminalPanel({ className = '', enabled = true, rootPath, showHeader = true, active = true, tabsMode = false }: TerminalPanelProps) {
   const terminalRef = useRef<RealtimeTerminalHandle>(null);
   const { isDark } = useTheme();
   // Only a device without a physical keyboard gets the key bar: on a desktop
@@ -221,6 +223,7 @@ export function TerminalPanel({ className = '', enabled = true, rootPath, showHe
           onRefreshRepos={rescanRepos}
           shell={shell}
           onRestart={handleRestartClick}
+          tabsMode={tabsMode}
         />
       )}
 

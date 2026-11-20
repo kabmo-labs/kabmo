@@ -1,5 +1,6 @@
 import { AlertCircle } from 'lucide-preact';
 import { PanelHeader } from '@/client/components/workspace/panel-header';
+import { PanelHeading } from '@/client/components/workspace/panel-header/title-policy';
 import { RefreshButton } from '@/client/components/common/header-button';
 import { ProviderDetail } from '@/client/components/settings/categories/usage-settings/ProviderDetail';
 import { buildProviders } from '@/client/components/settings/categories/usage-settings/providers';
@@ -16,10 +17,12 @@ interface UsagePanelProps {
   /** False while the panel is hidden (desktop right panel / mobile tab):
    *  releases the usage topic. */
   active?: boolean;
+  /** The column's chip already names this view; see `title-policy.tsx`. */
+  tabsMode?: boolean;
 }
 
 /** Right-panel Usage: every provider's quota and balance, one card each. */
-export function UsagePanel({ className = '', active = true }: UsagePanelProps) {
+export function UsagePanel({ className = '', active = true, tabsMode = false }: UsagePanelProps) {
   const { report: fetched, isLoading, error, reload } = useUsageReport();
 
   // The topic is the read path: it re-resolves on subscribe, so switching to
@@ -61,7 +64,9 @@ export function UsagePanel({ className = '', active = true }: UsagePanelProps) {
       <PanelHeader
         left={
           <>
-            <h2 className="text-xs font-semibold text-ink uppercase tracking-wider">Usage</h2>
+            <PanelHeading id="usage" tabsMode={tabsMode}>
+              <h2 className="text-xs font-semibold text-ink uppercase tracking-wider">Usage</h2>
+            </PanelHeading>
             <span className="text-[11px] text-ink/50 truncate">
               Updated {formatDateTime(report.generatedAt)}
             </span>

@@ -11,6 +11,7 @@ import { useEditorDrop, type EditorDropResult } from '@/client/hooks/editor/use-
 import { EditorDropOverlay } from '@/client/components/workspace/editor/EditorDropOverlay';
 import { ResizeHandle } from '@/client/components/layout/desktop-layout/ResizeHandle';
 import { RightColumn } from '@/client/components/layout/desktop-layout/RightColumn';
+import type { PanelNavStyle } from '@/shared/lib/workspace/panel-nav';
 import { useAvailableWidth } from '@/client/hooks/workspace/available-width';
 import {
   HANDLE_WIDTH,
@@ -72,6 +73,14 @@ interface WorkspacePanelsProps {
   onChangeRightPanel: (panel: string) => void;
   /** A panel body's own close control: the right column only. */
   onCloseRightPanel: () => void;
+  /**
+   * How the right column is navigated, when the rail is on: `rail` draws the
+   * 44px activity bar, `tabs` draws the browser-style strip over a home page.
+   * The DOM decides which is mounted; the setting decides what `tabs` means.
+   */
+  rightNav: PanelNavStyle;
+  /** An explicit "open this view" for the right column; see `RightColumnProps`. */
+  rightOpenRequest?: { panelKey: string; nonce: number } | null;
   /** The editor panel's corner control: put the editor column away. */
   onHideEditor: () => void;
   onSessionTitle: (title: string | null) => void;
@@ -109,6 +118,8 @@ export function WorkspacePanels(props: WorkspacePanelsProps) {
     onDropResult,
     onChangeRightPanel,
     onCloseRightPanel,
+    rightNav,
+    rightOpenRequest,
     onHideEditor,
     onSessionTitle,
     onPanelWidths,
@@ -295,10 +306,13 @@ export function WorkspacePanels(props: WorkspacePanelsProps) {
           onRefresh={onRefreshWorkspace}
           onOpenFile={onOpenFile}
           onClose={onCloseRightPanel}
+          navStyle={rightNav}
+          onSelectPanel={onChangeRightPanel}
+          {...(rightOpenRequest ? { openRequest: rightOpenRequest } : {})}
         />
       </Group>
 
-      {showRightSide && (
+      {showRightSide && rightNav === 'rail' && (
         <ActivityBar side="right" activePanel={shownRightPanel} onChangePanel={onChangeRightPanel} isPanelOpen={showRightPanel} hasActiveContext={hasActiveContext} activeProjectPath={activeProjectPath} />
       )}
     </div>

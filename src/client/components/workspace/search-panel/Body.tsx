@@ -3,6 +3,7 @@ import { CaseSensitive, Check, MoreHorizontal, Regex, ReplaceAll, Search, WholeW
 import type { RefObject } from 'preact';
 import { GitRepoPicker } from '@/client/components/workspace/repo-picker';
 import { PanelHeader } from '@/client/components/workspace/panel-header';
+import { PanelHeading } from '@/client/components/workspace/panel-header/title-policy';
 import { SearchResults } from '@/client/components/workspace/search-panel/Results';
 import { setSearchReveal } from '@/client/lib/search-reveal';
 import { groupSearchResults, MAX_SEARCH_RESULTS } from '@/shared/lib/fs/search-list';
@@ -43,6 +44,8 @@ interface SearchPanelBodyProps {
   onOpenFile?: (file: unknown) => void;
   handleReplace: (file?: string) => void;
   replaceBusy: boolean;
+  /** The column's chip already names this view; see `title-policy.tsx`. */
+  tabsMode?: boolean;
 }
 
 /**
@@ -85,6 +88,7 @@ export function SearchPanelBody({
   onOpenFile,
   handleReplace,
   replaceBusy,
+  tabsMode = false,
 }: SearchPanelBodyProps) {
   const groups = useMemo(() => groupSearchResults(results), [results]);
 
@@ -142,7 +146,9 @@ export function SearchPanelBody({
       <PanelHeader
         left={
           <>
-            <h2 className="text-xs font-semibold text-ink uppercase tracking-wider">Search</h2>
+            <PanelHeading id="search" tabsMode={tabsMode}>
+              <h2 className="text-xs font-semibold text-ink uppercase tracking-wider">Search</h2>
+            </PanelHeading>
             <GitRepoPicker
               rootPath={rootPath}
               activeRepo={activeRepo}

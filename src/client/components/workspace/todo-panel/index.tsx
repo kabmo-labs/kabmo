@@ -23,6 +23,7 @@
 import { useMemo } from 'preact/hooks';
 import { AlertCircle, ListTodo } from 'lucide-preact';
 import { PanelHeader } from '@/client/components/workspace/panel-header';
+import { showsPanelHeader } from '@/client/components/workspace/panel-header/title-policy';
 import { RefreshButton } from '@/client/components/common/header-button';
 import { useSearchParams } from '@/client/lib/router/search-params';
 import { useSessionState } from '@kabmo-labs/kabmo-ui';
@@ -46,9 +47,11 @@ interface TodoPanelProps {
    * "No session selected" for a session that was open and had a full list.
    */
   active?: boolean;
+  /** The column's chip already names this view; see `title-policy.tsx`. */
+  tabsMode?: boolean;
 }
 
-export function TodoPanel({ className = '', active = true }: TodoPanelProps) {
+export function TodoPanel({ className = '', active = true, tabsMode = false }: TodoPanelProps) {
   const [searchParams] = useSearchParams();
   const sessionId = searchParams.get('sessionId');
   const [collapsedPhases, setCollapsedPhases] = useSessionState<Record<string, boolean>>(
@@ -83,6 +86,7 @@ export function TodoPanel({ className = '', active = true }: TodoPanelProps) {
 
   return (
     <div className={`flex h-full w-full min-w-0 flex-col overflow-hidden bg-paper text-ink ${className}`}>
+      {showsPanelHeader('todo', tabsMode) ? (
       <PanelHeader
         left={
           <>
@@ -108,6 +112,7 @@ export function TodoPanel({ className = '', active = true }: TodoPanelProps) {
           />
         }
       />
+      ) : null}
 
       {progress && progress.total > 0 && (
         <div className="flex-shrink-0 border-b border-ink/10 px-3.5 py-2.5">

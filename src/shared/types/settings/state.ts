@@ -2,6 +2,7 @@ import type { ThemeId } from '@/shared/lib/theme/catalog';
 import type { ChatWidthMode } from '@/shared/lib/chat/timeline/width-mode';
 import type { ToolRenderMode } from '@/shared/lib/chat/timeline/tool-render-mode';
 import type { SidebarStyle } from '@/shared/lib/workspace/sidebar-style';
+import type { PanelNavStyle } from '@/shared/lib/workspace/panel-nav';
 import type { ComposerStyle } from '@/shared/lib/chat/composer/style';
 import type { SurfaceStyle } from '@/shared/lib/theme/surface-style';
 import type { IconStyle } from '@/shared/lib/theme/icon-style';
@@ -176,6 +177,28 @@ export interface SettingsState {
    * `classic` is the default so an upgrade rearranges nothing.
    */
   sidebarStyle: SidebarStyle;
+  /**
+   * How the DESKTOP left panel column is navigated (`rail` | `tabs`).
+   *
+   * A PRESENTATION choice over one catalog: both styles draw the same views and
+   * the same bodies. `rail` is the 44px vertical activity bar every install
+   * already has; `tabs` is a browser-style strip of opened views over a home
+   * page that draws the whole catalog as a card grid.
+   *
+   * **Independent of `rightPanelNav`**, and desktop-only: a phone has one drawer
+   * per side and keeps its chip strip, so `mobile/**` never reads either value.
+   * `rail` is the default so an upgrade rearranges nothing.
+   */
+  leftPanelNav: PanelNavStyle;
+  /**
+   * How the DESKTOP right panel column is navigated (`rail` | `tabs`).
+   *
+   * Independent of `leftPanelNav`: the two columns answer different questions
+   * (the left is the session list plus placed panels, the right is a working set
+   * the user opens and closes), so a user may want tabs on one and the rail on
+   * the other. Desktop-only, like its left counterpart.
+   */
+  rightPanelNav: PanelNavStyle;
   /**
    * How the chat composer is drawn (`classic` | `calm` | `console` | `stage`).
    * A PRESENTATION choice over one composer: every style renders the same
