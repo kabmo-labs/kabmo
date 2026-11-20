@@ -6,14 +6,19 @@
 /**
  * How wide the chat's content column is drawn.
  *
- * Three cards, narrowest to widest, in the order `CHAT_WIDTH_MODES` declares —
- * the row reads as a scale, and the bar inside each card is the same scale drawn
- * to size (60% / 85% / 100% of the track). That bar is why the cards are not
- * just three radio rows: the difference between the modes is a WIDTH, and a
- * label alone cannot show it.
+ * Four cards: the three presets, then Custom — the width the user dragged by
+ * hand. The presets read as a scale (their bar is the same scale drawn to size,
+ * 60% / 85% / 100% of the track), and the Custom card states the number a drag
+ * produced, so a column that no longer matches any preset has a card that says
+ * so instead of three unselected ones.
  *
- * The mode changes no panel and no control — it is a reading width. The pixels
- * live in `tailwind.css` (`--chat-column-max`), the names and the copy in
+ * The custom card is a real control, not a readout: clicking it returns to the
+ * stored custom width after a preset was picked, which is the only way back to
+ * a number the user chose (the alternative would be "drag until it looks
+ * right"). It carries `aria-pressed` like the others.
+ *
+ * The mode changes no panel and no control — it is a reading width. The preset
+ * pixels live in `tailwind.css` (`--chat-column-max`), the names and the copy in
  * `shared/lib/chat/timeline/width-mode.ts`, so this file states neither.
  */
 
@@ -21,7 +26,7 @@ import { Check } from 'lucide-preact';
 import type { SettingsState } from '@/shared/types';
 import {
   CHAT_WIDTH_MODE_COPY,
-  CHAT_WIDTH_MODES,
+  CHAT_WIDTH_PRESETS,
   type ChatWidthMode,
 } from '@/shared/lib/chat/timeline/width-mode';
 
@@ -36,6 +41,10 @@ const PREVIEW_SHARE: Record<ChatWidthMode, string> = {
   compact: '60%',
   wide: '85%',
   full: '100%',
+  // Custom draws at whatever the user pulled. A fixed share would claim a
+  // number the bar cannot know; it sits near `wide` and the figure beside it
+  // is the truth.
+  custom: '80%',
 };
 
 export function ChatLayoutSection({ settings, onUpdate }: ChatLayoutSectionProps) {
@@ -47,11 +56,12 @@ export function ChatLayoutSection({ settings, onUpdate }: ChatLayoutSectionProps
         <h4 className="text-sm font-semibold text-ink">Chat Width</h4>
         <p className="text-[11px] text-ink/60 mt-0.5">
           How wide the conversation is drawn. The composer follows the transcript, and no mode hides a panel.
+          Drag the right edge of the transcript for any width in between.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3" role="group" aria-label="Chat width">
-        {CHAT_WIDTH_MODES.map((mode) => {
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3" role="group" aria-label="Chat width">
+        {([...CHAT_WIDTH_PRESETS, 'custom'] as const).map((mode) => {
           const copy = CHAT_WIDTH_MODE_COPY[mode];
           const isSelected = selected === mode;
           return (
@@ -75,7 +85,14 @@ export function ChatLayoutSection({ settings, onUpdate }: ChatLayoutSectionProps
             >
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="font-semibold text-xs text-ink">{copy.label}</span>
+                  <span className="font-semibold text-xs text-ink">
+                    {copy.label}
+                    {mode === 'custom' && (
+                      <span className="ml-1.5 font-mono font-normal text-[10px] text-ink/55">
+                        {settings.chatColumnWidth}px
+                      </span>
+                    )}
+                  </span>
                   <div
                     className={`w-4 h-4 rounded-full border flex items-center justify-center ${
                       isSelected ? 'border-ink bg-ink text-paper' : 'border-ink/30 bg-transparent'
@@ -101,11 +118,11 @@ export function ChatLayoutSection({ settings, onUpdate }: ChatLayoutSectionProps
         })}
       </div>
 
-      {/* A phone is narrower than the smallest column, so all three modes draw
-          the same thing there. Said in words rather than leaving a control that
+      {/* A phone is narrower than the smallest column, so every mode draws the
+          same thing there. Said in words rather than leaving a control that
           looks inert. */}
       <p className="text-[10px] text-ink/45 font-mono">
-        On a phone the column already fills the screen, so the mode has no visible effect.
+        On a phone the column already fills the screen, so the mode and the drag have no visible effect.
       </p>
     </section>
   );

@@ -148,8 +148,10 @@ describe('pending chat dock frame', () => {
     const el = mount({ messages: [], isGenerating: false });
     await settle();
     expect(el.querySelector('[data-composer-dock]')).toBeNull();
-    const column = el.firstElementChild?.firstElementChild as HTMLElement;
-    expect(column.className).toContain('my-auto');
-    expect(column.className).toContain('justify-center');
+    // The column is the `.chat-column` beside the width grip, not the grip
+    // itself — the landing page mounts one handle as a sibling of the column.
+    const column = el.querySelector<HTMLElement>('.chat-column');
+    expect(column?.className).toContain('my-auto');
+    expect(column?.className).toContain('justify-center');
   });
 });

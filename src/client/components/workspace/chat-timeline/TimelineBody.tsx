@@ -5,6 +5,7 @@ import { MinimapShortcuts } from '@/client/components/workspace/chat-timeline/Mi
 import { MobileTurnJump } from '@/client/components/workspace/chat-timeline/MobileTurnJump';
 import { LoadingOlderIndicator } from '@/client/components/workspace/chat-timeline/SessionSkeleton';
 import { OrphanAsks } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/OrphanAsks';
+import { ColumnResizeHandle } from '@/client/components/workspace/chat-timeline/ColumnResizeHandle';
 import { useSessionChanges } from '@/client/hooks/chat/timeline/session-changes';
 import { useShowChangedFiles } from '@/client/hooks/chat/timeline/changed-files-setting';
 import type { Attachment, ChatMessageData, UserTurnRef } from '@/shared/types';
@@ -98,6 +99,11 @@ export function TimelineBody({
       ) : (
         <MinimapShortcuts turns={userTurns} jumping={jumpingTurn} onJumpTurn={onJumpTurn} />
       )}
+
+      {/* The column's edge. Rendered here, outside the scroller, so the grip
+          does not scroll away with the transcript and so its offset is measured
+          against the surface that centres the column. */}
+      <ColumnResizeHandle isMobile={isMobile} />
 
       {/* Timeline Body */}
       <div

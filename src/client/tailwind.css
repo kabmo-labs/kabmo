@@ -641,6 +641,12 @@
  * panel-widths.ts`), so an open editor or right panel narrows it and the column
  * follows instead of overflowing.
  *
+ * `custom` has NO rule here on purpose: its number is the user's (dragged, and
+ * stored as `chatColumnWidth`), so the writer sets `--chat-column-max` INLINE on
+ * `<html>` — an inline declaration outranks every rule in this block. That is
+ * also why `applyChatWidthMode` removes the property for every preset: a
+ * leftover inline value would beat `compact` and `full` alike.
+ *
  * Before this, the number was written out at eight call sites as
  * `max-w-[970px]` — transcript, composer dock, skeleton, subagent view and the
  * empty workspace prompt — which is eight chances for a mode to half-apply.

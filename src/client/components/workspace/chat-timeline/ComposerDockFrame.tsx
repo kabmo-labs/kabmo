@@ -1,4 +1,5 @@
 import type { ComponentChildren } from 'preact';
+import { ColumnResizeHandle } from '@/client/components/workspace/chat-timeline/ColumnResizeHandle';
 
 interface ComposerDockFrameProps {
   isMobile: boolean;
@@ -19,16 +20,21 @@ interface ComposerDockFrameProps {
  * (`Thinking…`, 113px) — the row jumped at the moment the chat was adopted, and
  * the jump read as two different indicators.
  *
- * The `relative` belongs here: it keeps the queue/indicator stack anchored
- * above the input while the side-question form takes the composer's place.
+ * `relative` is load-bearing twice: it keeps the queue/indicator stack anchored
+ * above the input while the side-question form takes the composer's place, and
+ * it is the box the column's resize grip is measured against. The grip is here
+ * as well as in `TimelineBody` so the column's whole height is draggable — the
+ * transcript's strip ends where the dock begins, and the hand off is invisible
+ * because both measure the same column edge.
  */
 export function ComposerDockFrame({ isMobile, children }: ComposerDockFrameProps) {
   return (
     <div
       data-composer-dock=""
-      className={`border-t-0 bg-transparent flex-shrink-0 ${isMobile ? 'px-3 pt-1' : 'p-4 pt-1'}`}
+      className={`relative border-t-0 bg-transparent flex-shrink-0 ${isMobile ? 'px-3 pt-1' : 'p-4 pt-1'}`}
       style={isMobile ? { paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))' } : undefined}
     >
+      <ColumnResizeHandle isMobile={isMobile} />
       <div className="chat-column relative">{children}</div>
     </div>
   );

@@ -68,8 +68,11 @@ export function applySettingsSideEffects(previous: SettingsState, next: Settings
 
   // The chat column's width is an attribute on `<html>` that CSS reads, so it
   // applies the moment the choice is made.
+  // The number travels with the mode: a `custom` mode without its width would
+  // draw at the clamp floor, and the stored width changes only through a drag
+  // (which applies itself), never through this modal.
   if (next.chatWidthMode !== previous.chatWidthMode) {
-    applyChatWidthMode(next.chatWidthMode);
+    applyChatWidthMode(next.chatWidthMode, next.chatColumnWidth);
   }
 
   // The tool-render style picks a Preact renderer, so the open timeline has to

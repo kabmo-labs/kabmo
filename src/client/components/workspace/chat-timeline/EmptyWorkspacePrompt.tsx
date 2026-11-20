@@ -4,6 +4,7 @@ import type { Attachment, ChatMessageData, WorkspaceFolderData } from '@/shared/
 import { ChatInput } from '@/client/components/workspace/chat-timeline/chat-input/index';
 import { PendingTranscript } from '@/client/components/workspace/chat-timeline/PendingTranscript';
 import { ComposerDockFrame } from '@/client/components/workspace/chat-timeline/ComposerDockFrame';
+import { ColumnResizeHandle } from '@/client/components/workspace/chat-timeline/ColumnResizeHandle';
 import { GeneratingIndicator } from '@/client/components/workspace/chat-timeline/GeneratingIndicator';
 import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 import {
@@ -244,7 +245,7 @@ export function EmptyWorkspacePrompt({
 
   return (
     <div
-      className={`flex flex-col h-full bg-canvas ${docked ? '' : isMobile ? 'px-3 py-4' : 'p-8'} ${className}`}
+      className={`relative flex flex-col h-full bg-canvas ${docked ? '' : isMobile ? 'px-3 py-4' : 'p-8'} ${className}`}
       style={!docked && isMobile ? { paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))' } : undefined}
     >
       {docked ? (
@@ -307,31 +308,39 @@ export function EmptyWorkspacePrompt({
           </ComposerDockFrame>
         </>
       ) : (
-        <div className="chat-column flex flex-col min-h-0 my-auto justify-center space-y-3">
-          {/* Workspace Selection Seamless Dropdown (No border, transparent
-              background). A chat with rows keeps its target and drops the
-              picker; this branch is only the chat that has not started. */}
-          <DraftTargetRow
-            folders={folders as WorkspaceFolderData[]}
-            selectedFolderId={selectedFolderId}
-            setSelectedFolderId={setSelectedFolderId}
-            spawnTarget={spawnTarget}
-            onSpawnTargetChange={onSpawnTargetChange}
-            onWorktreeReport={onWorktreeReport}
-            parentSessionId={parentSessionId}
-            onParentSessionChange={onParentSessionChange}
-            branchLabel={branchLabel}
-            branchAllowNone={branchAllowNone}
-            waitingFor={waitingFor}
-            onWaitingForChange={onWaitingForChange}
-            candidates={candidates}
-          />
-          {/* A held prompt owns this chat until it is released: there is no
-              session to send a second prompt to, and a composer that looked live
-              would accept one that could not be delivered. */}
-          {heldPrompt}
-          {composer}
-        </div>
+        <>
+          {/* The landing page's composer is the same column as the dock's, so it
+              gets the same grip — a SIBLING of the column, never a child: the
+              handle measures its parent as the surface, and a grip inside the
+              column would be 214px tall (the column's own height) and offset
+              from its own edge by construction. */}
+          <ColumnResizeHandle isMobile={isMobile} />
+          <div className="chat-column flex flex-col min-h-0 my-auto justify-center space-y-3">
+            {/* Workspace Selection Seamless Dropdown (No border, transparent
+                background). A chat with rows keeps its target and drops the
+                picker; this branch is only the chat that has not started. */}
+            <DraftTargetRow
+              folders={folders as WorkspaceFolderData[]}
+              selectedFolderId={selectedFolderId}
+              setSelectedFolderId={setSelectedFolderId}
+              spawnTarget={spawnTarget}
+              onSpawnTargetChange={onSpawnTargetChange}
+              onWorktreeReport={onWorktreeReport}
+              parentSessionId={parentSessionId}
+              onParentSessionChange={onParentSessionChange}
+              branchLabel={branchLabel}
+              branchAllowNone={branchAllowNone}
+              waitingFor={waitingFor}
+              onWaitingForChange={onWaitingForChange}
+              candidates={candidates}
+            />
+            {/* A held prompt owns this chat until it is released: there is no
+                session to send a second prompt to, and a composer that looked
+                live would accept one that could not be delivered. */}
+            {heldPrompt}
+            {composer}
+          </div>
+        </>
       )}
     </div>
   );

@@ -143,15 +143,23 @@ export interface SettingsState {
    */
   goalDefaultBudget: number | null;
   /**
-   * How wide the chat's content column is (`compact` | `wide` | `full`). A
-   * READING width, not a layout: no mode hides a panel. The numbers live in
-   * `tailwind.css` (`--chat-column-max`); this field only names the choice.
+   * How wide the chat's content column is (`compact` | `wide` | `full` |
+   * `custom`). A READING width, not a layout: no mode hides a panel. The
+   * PRESET numbers live in `tailwind.css` (`--chat-column-max`); `custom` draws
+   * at `chatColumnWidth` below.
    *
    * Global, not per-session: a comfortable line length is a property of the
    * person and the display, not of one conversation, and a per-session value
    * would send every new chat back to the default.
    */
   chatWidthMode: ChatWidthMode;
+  /**
+   * Pixel width a `custom` column draws at, written by dragging the column's
+   * edge. Kept while a preset is active, so picking Custom again restores the
+   * width the user dragged instead of a placeholder. Clamped on read
+   * (`resolveChatColumnWidth`), because a stored value is untrusted input.
+   */
+  chatColumnWidth: number;
   /**
    * How a tool call is drawn in the transcript (`card` | `compact` | `trace` |
    * `minimal` | `tui`). A reading style: every mode renders the same call,
