@@ -8,6 +8,7 @@ import { formatDateTime } from '@/client/components/settings/categories/usage-se
 import { useUsageReport } from '@/client/hooks/settings/useUsageReport';
 import { useSettingsMasterDetail } from '@/client/hooks/settings/master-detail';
 import { SettingsMasterDetail } from '@/client/components/settings/master-detail';
+import { SETTINGS_BAND, SETTINGS_BAND_HEIGHT } from '@/client/components/settings/pane-header';
 
 /** Settings → Usage: provider quota, balances, and locally recorded burn. */
 export function UsageSettings() {
@@ -66,7 +67,7 @@ export function UsageSettings() {
         }
         detail={
           <div className="flex-1 h-full overflow-hidden flex flex-col">
-            <div className="px-3.5 py-2.5 border-b border-ink/10 flex items-center justify-between gap-3 flex-shrink-0">
+            <div className={`${SETTINGS_BAND} px-3.5 justify-between gap-3`} style={{ height: SETTINGS_BAND_HEIGHT }}>
               <div className="flex items-center gap-2 min-w-0">
                 <span className="text-xs font-semibold text-ink/75 truncate">
                   Updated {formatDateTime(report.generatedAt)}

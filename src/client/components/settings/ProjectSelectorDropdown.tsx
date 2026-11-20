@@ -2,6 +2,7 @@ import { useRef, useState } from 'preact/hooks';
 import type { FunctionComponent } from 'preact/compat';
 import { Check, ChevronDown, Folder } from 'lucide-preact';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
+import { SETTINGS_BAND, SETTINGS_BAND_HEIGHT } from '@/client/components/settings/pane-header';
 
 export interface ProjectOption {
   id: string;
@@ -98,8 +99,11 @@ export const ProjectSelectorDropdown: FunctionComponent<ProjectSelectorDropdownP
   // (or, worse, naming a scope that does not exist).
   if (options.length === 0) {
     return (
-      <div className={variant === 'compact' ? 'p-2.5 border-b border-ink/10' : 'p-3 border-b border-ink/10'}>
-        <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-dashed border-ink/15 text-[11px] text-ink/50">
+      <div
+        className={`${SETTINGS_BAND} relative ${variant === 'compact' ? 'px-2.5' : 'px-3'}`}
+        style={{ height: SETTINGS_BAND_HEIGHT }}
+      >
+        <div className="flex w-full items-center gap-2 px-2.5 py-1.5 rounded-lg border border-dashed border-ink/15 text-[11px] text-ink/50">
           <Folder size={13} className="text-ink/40 flex-shrink-0" />
           <span className="truncate">No projects yet. Add one in Settings, Projects</span>
         </div>
@@ -109,7 +113,11 @@ export const ProjectSelectorDropdown: FunctionComponent<ProjectSelectorDropdownP
 
   if (variant === 'compact') {
     return (
-      <div className="p-2.5 border-b border-ink/10 relative" ref={dropdownRef}>
+      <div
+        className={`${SETTINGS_BAND} relative px-2.5`}
+        style={{ height: SETTINGS_BAND_HEIGHT }}
+        ref={dropdownRef}
+      >
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
@@ -125,7 +133,7 @@ export const ProjectSelectorDropdown: FunctionComponent<ProjectSelectorDropdownP
         {isOpen && (
           <>
             <div className="fixed inset-0 z-20" onClick={() => setIsOpen(false)} />
-            <div className="glass-popover absolute left-2.5 right-2.5 top-12 z-30 bg-paper border border-ink/15 rounded-lg shadow-lg py-1 animate-in fade-in zoom-in-95 duration-100">
+            <div className="glass-popover absolute left-2.5 right-2.5 top-full z-30 bg-paper border border-ink/15 rounded-lg shadow-lg py-1 animate-in fade-in zoom-in-95 duration-100">
               {optionButtons}
             </div>
           </>
@@ -135,7 +143,11 @@ export const ProjectSelectorDropdown: FunctionComponent<ProjectSelectorDropdownP
   }
 
   return (
-    <div className="p-3 border-b border-ink/10 relative" ref={dropdownRef}>
+    <div
+      className={`${SETTINGS_BAND} relative px-3`}
+      style={{ height: SETTINGS_BAND_HEIGHT }}
+      ref={dropdownRef}
+    >
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
@@ -149,7 +161,7 @@ export const ProjectSelectorDropdown: FunctionComponent<ProjectSelectorDropdownP
       </button>
 
       {isOpen && (
-        <div className="glass-popover absolute top-12 left-3 right-3 bg-paper border border-ink/20 rounded-lg shadow-lg z-30 py-1 divide-y divide-ink/5 animate-in fade-in zoom-in-95 duration-100">
+        <div className="glass-popover absolute top-full left-3 right-3 bg-paper border border-ink/20 rounded-lg shadow-lg z-30 py-1 divide-y divide-ink/5 animate-in fade-in zoom-in-95 duration-100">
           {optionButtons}
         </div>
       )}

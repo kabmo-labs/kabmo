@@ -2,6 +2,7 @@ import { useRef, useState } from 'preact/hooks';
 import { Loader2, Plus, RefreshCw, Search, X } from 'lucide-preact';
 import type { ProviderItem } from '@/shared/types';
 import { ProviderIconPlate } from '@/client/components/common/provider-icon/Plate';
+import { SETTINGS_BAND, SETTINGS_BAND_HEIGHT } from '@/client/components/settings/pane-header';
 import {
   groupProviders,
   providerStatusLabel,
@@ -59,7 +60,7 @@ export function ProviderSidebarList({
 
   return (
     <div className="w-full md:w-64 md:border-r border-ink/10 h-full flex flex-col bg-paper/50 flex-shrink-0">
-      <div className="px-3 pt-3 pb-2 flex items-center justify-between gap-2">
+      <div className={`${SETTINGS_BAND} px-3 gap-2 justify-between`} style={{ height: SETTINGS_BAND_HEIGHT }}>
         <span className="text-[10px] font-semibold tracking-wider text-ink/50 uppercase">
           {isLoading ? 'Loading…' : `${providers.length} provider${providers.length === 1 ? '' : 's'}`}
         </span>

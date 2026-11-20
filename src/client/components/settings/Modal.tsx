@@ -15,6 +15,7 @@ import { SettingsSidebar, settingsCategoriesFor } from '@/client/components/sett
 import { useHarnesses } from '@/client/hooks/models/use-harnesses';
 import { CategoryContent } from '@/client/components/settings/category-content';
 import type { CatalogTab } from '@/client/components/settings/categories/SkillCatalogSettings';
+import { SETTINGS_BAND, SETTINGS_BAND_HEIGHT_INSET } from '@/client/components/settings/pane-header';
 
 export interface SettingsModalProps {
   isOpen: boolean;
@@ -166,14 +167,15 @@ export function SettingsModal({
 
         {/* DESKTOP & MOBILE DETAIL VIEW */}
         <div className={`flex-1 flex-col h-full overflow-hidden ${isMobileDrilled ? 'flex' : 'hidden md:flex'}`}>
-          {/* Header Bar. The height and padding carry the safe-area insets on a
-              phone: the modal is full-screen below `md`, so without them the
-              back button and the title sit under the status bar / notch, the
-              same way the mobile chrome (header, editor, diff) already avoids. */}
+          {/* Header Bar. Its height is the sheet's one band height, so the rule
+              under the drawer's search field continues across this seam.
+              The inset carries the safe area on a phone: the modal is
+              full-screen below `md`, so without it the back button and the
+              title sit under the status bar / notch. */}
           <div
-            className="px-6 border-b border-ink/10 flex items-center justify-between flex-shrink-0"
+            className={`${SETTINGS_BAND} px-6 justify-between`}
             style={{
-              height: 'calc(4rem + env(safe-area-inset-top, 0px))',
+              height: SETTINGS_BAND_HEIGHT_INSET,
               paddingTop: 'env(safe-area-inset-top, 0px)',
               paddingLeft: 'max(1.5rem, env(safe-area-inset-left, 0px))',
               paddingRight: 'max(1.5rem, env(safe-area-inset-right, 0px))',
@@ -239,9 +241,9 @@ export function SettingsModal({
         {/* MOBILE CATEGORY LIST VIEW (When not drilled into detail) */}
         <div className={`flex-1 flex-col h-full bg-canvas md:hidden ${isMobileDrilled ? 'hidden' : 'flex'}`}>
           <div
-            className="px-4 border-b border-ink/10 flex items-center justify-between flex-shrink-0 bg-canvas"
+            className={`${SETTINGS_BAND} px-4 justify-between bg-canvas`}
             style={{
-              height: 'calc(3.5rem + env(safe-area-inset-top, 0px))',
+              height: SETTINGS_BAND_HEIGHT_INSET,
               paddingTop: 'env(safe-area-inset-top, 0px)',
               paddingLeft: 'max(1rem, env(safe-area-inset-left, 0px))',
               paddingRight: 'max(1rem, env(safe-area-inset-right, 0px))',

@@ -25,9 +25,9 @@ interface GroupDetailProps {
 export function GroupDetail({ group, children }: GroupDetailProps) {
   return (
     <div className="flex-1 h-full overflow-hidden flex flex-col text-xs text-ink">
-      <div className={`${SETTINGS_BAND} flex-col justify-center px-3.5`} style={{ height: SETTINGS_BAND_HEIGHT }}>
+      <div className={`${SETTINGS_BAND} items-start flex-col justify-center px-3.5`} style={{ height: SETTINGS_BAND_HEIGHT }}>
         <span className="text-xs font-semibold text-ink/75">{group.label}</span>
-        <p className="text-[11px] text-ink/60 leading-snug mt-0.5 truncate">{group.description}</p>
+        <p className="w-full text-[11px] text-ink/60 leading-snug mt-0.5 truncate">{group.description}</p>
       </div>
 
       <div className="flex-1 overflow-y-auto scrollbar-overlay-container p-3.5 space-y-7 pb-6">

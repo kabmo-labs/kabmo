@@ -4,6 +4,7 @@ import { HarnessGlyph } from '@/client/components/common/harness-glyph';
 import type { SettingsCategoryId } from '@/shared/types';
 import { SETTINGS_SECTIONS, type SettingsSection } from '@/shared/lib/settings/sections';
 import { harnessMenuEntries } from '@/shared/lib/harness/menu';
+import { SETTINGS_BAND, SETTINGS_BAND_HEIGHT } from '@/client/components/settings/pane-header';
 
 export interface CategoryDef {
   id: SettingsCategoryId;
@@ -127,9 +128,10 @@ export function SettingsSidebar({
 
   return (
     <div className={`flex flex-col h-full bg-canvas border-r border-ink/10 text-ink select-none ${className}`}>
-      {/* Search Bar */}
-      <div className="p-3 border-b border-ink/10 flex-shrink-0">
-        <div className="relative flex items-center">
+      {/* Search Bar, in the sheet's one band height so the rule under it meets
+          the detail header's across the modal. */}
+      <div className={`${SETTINGS_BAND} px-3`} style={{ height: SETTINGS_BAND_HEIGHT }}>
+        <div className="relative flex w-full items-center">
           <Search size={14} className="absolute left-2.5 text-ink/40 pointer-events-none" />
           <input
             type="text"

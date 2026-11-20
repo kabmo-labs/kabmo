@@ -2,6 +2,7 @@ import type { LucideIcon } from 'lucide-preact';
 import { Pin, PinOff, Plus } from 'lucide-preact';
 import type { ProjectConfigItem, WorkspaceFolderData } from '@/shared/types';
 import { getProjectIcon } from '@/shared/lib/workspace/project-icon';
+import { SETTINGS_BAND, SETTINGS_BAND_HEIGHT } from '@/client/components/settings/pane-header';
 
 /** The subset of a sidebar folder row this list borrows, when one exists. */
 type FolderFacts = Pick<WorkspaceFolderData, 'id' | 'totalSessions'>;
@@ -43,7 +44,7 @@ export function ProjectSidebarList({
 
   return (
     <div className="w-full md:w-64 md:border-r border-ink/10 h-full flex flex-col bg-paper/50 flex-shrink-0">
-      <div className="px-3.5 py-2.5 border-b border-ink/10 flex items-center justify-between">
+      <div className={`${SETTINGS_BAND} px-3.5 justify-between`} style={{ height: SETTINGS_BAND_HEIGHT }}>
         <span className="text-xs font-semibold text-ink">
           {projects.length} project{projects.length === 1 ? '' : 's'}
         </span>

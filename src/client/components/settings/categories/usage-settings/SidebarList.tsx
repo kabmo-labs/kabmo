@@ -1,6 +1,7 @@
 import type { UsageReport } from '@/shared/types';
 import { buildProviders, statusLabel, type ProviderEntry, type UsageProviderId } from '@/client/components/settings/categories/usage-settings/providers';
 import { ProviderIconPlate } from '@/client/components/common/provider-icon/Plate';
+import { SETTINGS_BAND, SETTINGS_BAND_HEIGHT } from '@/client/components/settings/pane-header';
 
 interface UsageSidebarListProps {
   report: UsageReport;
@@ -35,7 +36,7 @@ export function UsageSidebarList({
 
   return (
     <div className="w-full md:w-64 md:border-r border-ink/10 h-full flex flex-col bg-paper/50 flex-shrink-0 select-none">
-      <div className="px-3.5 py-2.5 border-b border-ink/10 flex items-center justify-between">
+      <div className={`${SETTINGS_BAND} px-3.5 justify-between`} style={{ height: SETTINGS_BAND_HEIGHT }}>
         <span className="text-xs font-semibold text-ink">
           {providers.length} provider{providers.length === 1 ? '' : 's'} with keys
         </span>

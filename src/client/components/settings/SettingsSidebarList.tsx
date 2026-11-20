@@ -2,6 +2,7 @@ import type { ComponentChildren } from 'preact';
 import type { FunctionComponent } from 'preact/compat';
 import { Plus } from 'lucide-preact';
 import { ProjectSelectorDropdown, type ProjectOption } from '@/client/components/settings/ProjectSelectorDropdown';
+import { SETTINGS_BAND, SETTINGS_BAND_HEIGHT } from '@/client/components/settings/pane-header';
 
 export interface SettingsSidebarItem {
   id: string;
@@ -92,7 +93,7 @@ export const SettingsSidebarList: FunctionComponent<SettingsSidebarListProps> = 
         {...(projectOptions ? { options: projectOptions } : {})}
       />
 
-      <div className="px-3.5 py-2.5 border-b border-ink/10 flex items-center justify-between">
+      <div className={`${SETTINGS_BAND} px-3.5 justify-between`} style={{ height: SETTINGS_BAND_HEIGHT }}>
         <span className="text-xs font-semibold text-ink">
           Total {items.length}
         </span>

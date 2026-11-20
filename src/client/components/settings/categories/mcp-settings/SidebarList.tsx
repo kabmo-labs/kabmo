@@ -2,6 +2,7 @@ import type { FunctionComponent } from 'preact/compat';
 import { Globe, Plus, Terminal } from 'lucide-preact';
 import type { McpServerItem } from '@/shared/types';
 import { ProjectSelectorDropdown } from '@/client/components/settings/ProjectSelectorDropdown';
+import { SETTINGS_BAND, SETTINGS_BAND_HEIGHT } from '@/client/components/settings/pane-header';
 
 export interface McpProjectOption {
   id: string;
@@ -49,7 +50,7 @@ export const McpSidebarList: FunctionComponent<McpSidebarListProps> = ({
         getTriggerLabel={() => activeProjectName}
       />
 
-      <div className="px-3.5 py-2.5 border-b border-ink/10 flex items-center justify-between">
+      <div className={`${SETTINGS_BAND} px-3.5 justify-between`} style={{ height: SETTINGS_BAND_HEIGHT }}>
         <span className="text-xs font-semibold text-ink">
           Total {servers.length}
         </span>
