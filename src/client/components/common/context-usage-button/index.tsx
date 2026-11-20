@@ -44,7 +44,7 @@ import { ContextRing } from '@/client/components/common/context-usage-button/Rin
 import { McpSection } from '@/client/components/common/context-usage-button/McpSection';
 import { SessionStats } from '@/client/components/common/context-usage-button/SessionStats';
 import { TokenTotals } from '@/client/components/common/context-usage-button/TokenTotals';
-import { CONTROL_BOX } from '@/client/lib/ui/control-plate';
+import { CONTROL_BOX, CONTROL_GLYPH_PX } from '@/client/lib/ui/control-plate';
 
 interface ContextUsageButtonProps {
   sessionId: string | null;
@@ -107,9 +107,9 @@ export function ContextUsageButton({ sessionId, layout = 'desktop' }: ContextUsa
         aria-haspopup="dialog"
         aria-expanded={open}
       >
-        {/* The ring keeps its own 18px: it is a dial, not a glyph, and it reads
-            smaller than a stroke icon at the same box. */}
-        <ContextRing percent={percent} />
+        {/* The dial is drawn on lucide's 24-unit grid at `size`, so it takes
+            the row's own glyph size and stroke weight — see `Ring.tsx`. */}
+        <ContextRing percent={percent} size={CONTROL_GLYPH_PX[layout]} />
       </button>
 
       {open && (

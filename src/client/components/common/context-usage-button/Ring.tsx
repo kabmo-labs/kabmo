@@ -64,32 +64,50 @@ const EMPTY_TRACK = 'text-ink/75';
 /** The track under an arc: quiet enough that the band colour stays the signal. */
 const FILLED_TRACK = 'text-ink/25';
 
+/**
+ * The dial is drawn on lucide's own 24-unit grid, at lucide's 2-unit stroke, so
+ * it reads as a glyph beside the row's other icons.
+ *
+ * It used to be an 18px box scaled 1:1 — a full-bleed circle of 16 ink px with a
+ * 2px CSS stroke, against a lucide glyph that inks 18 of its 24 units and
+ * therefore draws 12 ink px at 1.33px in the same 16px box. Measured on the
+ * running navbar: the ring's ink was 16x16 CSS against 12x12, and its stroke was
+ * 50% heavier, which is the reported "icon context usage lebih besar dari icon
+ * di sebelahnya". Matching the grid is what fixes both halves at once, at any
+ * glyph size.
+ */
+const VIEW = 24;
+/** Outer diameter in viewBox units: 20 inked at a 2-unit stroke reads as 18–20. */
+const OUTER = 20;
+const STROKE = 2;
+
 interface ContextRingProps {
   percent: number;
+  /** CSS box the 24-unit grid is scaled into; the row's own glyph size. */
   size?: number;
-  strokeWidth?: number;
 }
 
-export function ContextRing({ percent, size = 18, strokeWidth = 2 }: ContextRingProps) {
-  const { radius, circumference, dashOffset } = contextRingGeometry(percent, size, strokeWidth);
-  const centre = size / 2;
+export function ContextRing({ percent, size = 16 }: ContextRingProps) {
+  const { radius, circumference, dashOffset } = contextRingGeometry(percent, OUTER, STROKE);
+  const centre = VIEW / 2;
   const band = contextUsageBand(percent);
   // The threshold is GEOMETRIC, not a guessed percentage: an arc shorter than
   // its own stroke width is a round-capped dot, not a share you can read, so
-  // below that the ring still takes the heavier track (a 2% arc on an 18px dial
-  // is a single pixel of colour, and the control would read as missing again).
-  const filled = circumference - dashOffset >= strokeWidth;
+  // below that the ring still takes the heavier track (a 2% arc on a 20-unit
+  // dial is a single unit of colour, and the control would read as missing
+  // again).
+  const filled = circumference - dashOffset >= STROKE;
   const stroke = {
     fill: 'none',
     stroke: 'currentColor',
-    'stroke-width': strokeWidth,
+    'stroke-width': STROKE,
   };
 
   return (
     <svg
       width={size}
       height={size}
-      viewBox={`0 0 ${size} ${size}`}
+      viewBox={`0 0 ${VIEW} ${VIEW}`}
       aria-hidden="true"
     >
       <circle

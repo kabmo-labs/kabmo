@@ -148,13 +148,26 @@ describe('ContextUsageButton', () => {
   test('fills the ring with the share in use, clockwise from the top', async () => {
     await mount(telemetryAt(42));
 
-    const { circumference, dashOffset } = contextRingGeometry(42, 18, 2);
+    const { circumference, dashOffset } = contextRingGeometry(42, 20, 2);
     expect(Number(arc().getAttribute('stroke-dasharray'))).toBeCloseTo(circumference);
     expect(Number(arc().getAttribute('stroke-dashoffset'))).toBeCloseTo(dashOffset);
     // The arc starts at three o'clock on an SVG circle; the rotation is what
     // makes the fill read clockwise from twelve — around the ring's CENTRE, not
     // the viewBox origin.
-    expect(arc().getAttribute('transform')).toBe('rotate(-90 9 9)');
+    expect(arc().getAttribute('transform')).toBe('rotate(-90 12 12)');
+  });
+
+  test('draws on lucide\'s grid, so it matches the glyphs beside it', async () => {
+    // The reported defect: the ring inked 16 CSS px with a 2px stroke in the
+    // desktop navbar, while lucide's icons ink 18 of their 24 units — 12 CSS px
+    // at 1.33px in the same 16px box. Half of "icon context usage lebih besar".
+    await mount(telemetryAt(42));
+    const svg = container.querySelector('svg') as SVGSVGElement;
+    expect(svg.getAttribute('viewBox')).toBe('0 0 24 24');
+    expect(svg.getAttribute('width')).toBe('16');
+    // The outer circle spans radius + half the stroke, in viewBox units.
+    const circle = container.querySelector('svg circle') as SVGCircleElement;
+    expect(Number(circle.getAttribute('r')) + Number(circle.getAttribute('stroke-width')) / 2).toBe(10);
   });
 
   test('draws the band the share falls in', async () => {
