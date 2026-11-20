@@ -5,6 +5,12 @@ All notable changes to this package are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.3](https://github.com/kabmo-labs/kabmo/compare/kabmo-ui/v0.0.2...kabmo-ui/v0.0.3) — 2026-11-20
+
+### Fixed
+
+* **workspace:** keep the repo picker label and list readable ([77c9109](https://github.com/kabmo-labs/kabmo/commit/77c910911b1a692c58dd6c07793d4ed24d8d43ba)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.0.2](https://github.com/kabmo-labs/kabmo/compare/kabmo-ui/v0.0.1...kabmo-ui/v0.0.2) — 2026-10-29
 
 ### Changed

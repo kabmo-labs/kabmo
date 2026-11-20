@@ -77,7 +77,7 @@
     },
     "packages/kabmo-ui": {
       "name": "@kabmo-labs/kabmo-ui",
-      "version": "0.0.2",
+      "version": "0.0.3",
       "dependencies": {
         "@kabmo-labs/kabmo-sdk": "workspace:*",
         "preact": "^10.29.8",
