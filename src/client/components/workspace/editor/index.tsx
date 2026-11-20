@@ -50,6 +50,7 @@ export function Editor({
   activeEditorPanelKey = null,
   forcedActiveFileId = null,
   asSplitPane = false,
+  onHidePanel,
 }: EditorProps) {
   // A split pane renders the tab it was given; the left pane follows the strip's active id.
   const resolvedActiveFileId = asSplitPane ? forcedActiveFileId : activeFileId;
@@ -220,10 +221,12 @@ export function Editor({
   const pluginColumn = useActiveEditorPanel(activeEditorPanelKey);
 
   if (pluginColumn) {
-    return <PluginColumn pluginId={pluginColumn.pluginId} Component={pluginColumn.Component} sessionId={sessionId} className={className} />;
+    // The takeover draws the column's own switch too: a plugin surface is
+    // still a column the user may want out of the way.
+    return <PluginColumn pluginId={pluginColumn.pluginId} Component={pluginColumn.Component} sessionId={sessionId} className={className} onHide={onHidePanel} />;
   }
 
-  if (openedFiles.length === 0) return <EmptyEditor className={className} />;
+  if (openedFiles.length === 0) return <EmptyEditor className={className} onHide={onHidePanel} />;
 
   const viewerKind = editor.viewerKind;
   const isPreview = activeFile ? previewMode[activeFile.id] : false;
@@ -296,6 +299,9 @@ export function Editor({
       onSplitTo={splitState.splitTo}
       onUnsplit={splitState.close}
       splitRightFileId={splitState.rightFile?.id ?? null}
+      // The column's own switch, in its top-right corner. Absent in a split
+      // pane: the split's right pane draws no strip, and the column is one panel.
+      onHide={onHidePanel}
     />
   );
 

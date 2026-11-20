@@ -94,9 +94,9 @@ export const BUILTIN_COMMANDS: readonly CommandMeta[] = [
   },
   {
     id: 'workspace.toggleRightPanel',
-    title: 'Toggle Right Panel',
+    title: 'Toggle Right Side',
     category: 'View',
-    keywords: ['panel', 'right', 'files', 'git'],
+    keywords: ['panel', 'right', 'files', 'git', 'editor', 'hide'],
     defaultKey: {
       mac: [{ code: 'KeyJ', meta: true, alt: true }],
       other: [{ code: 'KeyJ', ctrl: true, alt: true }],

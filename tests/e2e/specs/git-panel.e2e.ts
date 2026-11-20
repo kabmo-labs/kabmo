@@ -110,7 +110,7 @@ async function showSourceControl(page: Page): Promise<void> {
   const rightPanel = page.locator('[data-panel-id="right-panel"]');
   const width = (await rightPanel.boundingBox())?.width ?? 0;
   if (width === 0) {
-    await page.getByRole('button', { name: /toggle right panel/i }).click();
+    await page.getByRole('button', { name: /toggle right side/i }).click();
     // Wait for the panel to actually take space, not for a duration.
     await expect.poll(async () => (await rightPanel.boundingBox())?.width ?? 0).toBeGreaterThan(0);
   }

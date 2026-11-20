@@ -174,7 +174,7 @@ describe('glass column material', () => {
   test('a workspace column is chrome, and its view roots step aside for it', async () => {
     const [glass, panels] = await Promise.all([
       read('./glass.css'),
-      read('./components/layout/desktop-layout/WorkspacePanels.tsx'),
+      read('./components/layout/desktop-layout/RightColumn.tsx'),
     ]);
     // The marker is on the SLOT (one owner), never on each view.
     expect(panels).toContain('data-panel-chrome=""');

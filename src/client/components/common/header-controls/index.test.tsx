@@ -168,7 +168,7 @@ function controlNames(): string[] {
  */
 async function mount(
   layout: 'desktop' | 'mobile',
-  props: { editor?: boolean; switch?: boolean; width?: number; hidden?: string[] } = {},
+  props: { switch?: boolean; width?: number; hidden?: string[] } = {},
 ): Promise<void> {
   // happy-dom resolves `matchMedia` against `innerWidth`, so writing it is the
   // same signal a real resize raises.
@@ -188,7 +188,6 @@ async function mount(
           sessionId: SESSION,
           showRightPanel: layout === 'desktop',
           onToggleRightPanel: () => {},
-          ...(props.editor ? { showEditor: true, onToggleEditor: () => {} } : {}),
           ...(props.switch ? { onSwitchToMobile: () => {} } : {}),
           ...(props.hidden ? { hidden: props.hidden } : {}),
         }),
@@ -210,8 +209,8 @@ async function mount(
 }
 
 describe('HeaderControls', () => {
-  test('desktop draws install, plugin slots, reload, context, lock, editor, panel', async () => {
-    await mount('desktop', { editor: true, switch: true });
+  test('desktop draws install, plugin slots, reload, context, lock, right side', async () => {
+    await mount('desktop', { switch: true });
 
     expect(controlNames()).toEqual([
       'Install Kabmo',
@@ -219,14 +218,13 @@ describe('HeaderControls', () => {
       'Reload page',
       'Context usage',
       'Sign out',
-      'Toggle Editor Layout',
-      'Toggle Right Panel',
+      'Toggle Right Side',
       'Switch to Mobile View',
     ]);
   });
 
   test('a hidden control leaves the row', async () => {
-    await mount('desktop', { editor: true, switch: true, hidden: ['reload', 'context'] });
+    await mount('desktop', { switch: true, hidden: ['reload', 'context'] });
 
     // The menu is the way back, so the control is absent from the row rather
     // than disabled — the same rule the activity rail's menu follows.
@@ -234,8 +232,7 @@ describe('HeaderControls', () => {
       'Install Kabmo',
       'Demo Stats',
       'Sign out',
-      'Toggle Editor Layout',
-      'Toggle Right Panel',
+      'Toggle Right Side',
       'Switch to Mobile View',
     ]);
   });
@@ -286,7 +283,7 @@ describe('HeaderControls', () => {
   });
 
   test('the shared controls sit in the same relative order on both layouts', async () => {
-    await mount('desktop', { editor: true });
+    await mount('desktop');
     const desktop = controlNames();
     render(null, container);
     container.remove();
@@ -296,7 +293,7 @@ describe('HeaderControls', () => {
 
     // Context before the panel on both — the two controls a user presses while
     // reading a run.
-    expect(desktop.indexOf('Context usage')).toBeLessThan(desktop.indexOf('Toggle Right Panel'));
+    expect(desktop.indexOf('Context usage')).toBeLessThan(desktop.indexOf('Toggle Right Side'));
     expect(mobile.indexOf('Context usage')).toBeLessThan(mobile.indexOf('Open Right Panel'));
   });
 

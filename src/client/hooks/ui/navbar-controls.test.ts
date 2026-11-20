@@ -43,7 +43,7 @@ describe('navbar controls', () => {
     // The menu and the row share these ids; a row with no control would be a
     // checkbox that hides nothing.
     const ids = NAVBAR_CONTROLS.map((item) => item.id);
-    expect(ids).toEqual(['install', 'reload', 'context', 'signout', 'editor', 'right-panel', 'mobile']);
+    expect(ids).toEqual(['install', 'reload', 'context', 'signout', 'right-panel', 'mobile']);
     primeKabmoSettings({ [NAVBAR_HIDDEN_SETTING_KEY]: ids });
     expect(readHiddenControls()).toEqual(ids);
   });

@@ -1,4 +1,4 @@
-import { LayoutTemplate, PanelRight, PanelRightClose, Smartphone } from 'lucide-preact';
+import { PanelRight, PanelRightClose, Smartphone } from 'lucide-preact';
 import { PWAInstallButton } from '@/client/components/common/PWAInstallButton';
 import { ReloadPageButton } from '@/client/components/common/ReloadPageButton';
 import { SignOutButton } from '@/client/components/common/SignOutButton';
@@ -35,11 +35,14 @@ const MOBILE_FULL_ROW_PX = { without: 400, withSignOut: 436 } as const;
 interface HeaderControlsProps {
   layout: HeaderLayout;
   sessionId: string | null;
+  /**
+   * The right side is on screen. On the desktop this is the editor column, the
+   * right panel and their rail together — one toggle, because a control that
+   * put away only the panel left the rail and the editor column standing. On a
+   * phone it is the right sidebar.
+   */
   showRightPanel: boolean;
   onToggleRightPanel: () => void;
-  /** Desktop only: the editor column has no phone counterpart in the header. */
-  showEditor?: boolean;
-  onToggleEditor?: () => void;
   /** Desktop only: the dev-only layout switch, drawn after every listed control. */
   onSwitchToMobile?: () => void;
   /**
@@ -84,10 +87,11 @@ const ICON_SIZE: Record<HeaderLayout, number> = CONTROL_GLYPH_PX;
  *   3. Reload page              — desktop; behind `⋯` on a phone
  *   4. Context usage
  *   5. Sign out (the lock)      — desktop; behind `⋯` on a phone
- *   6. Editor toggle            — desktop only
- *   7. Right panel
- *   8. More actions (`⋯`)       — phone only, in the slot the two moved controls
- *                                  left behind
+ *   6. Right side               — the editor column, the right panel and their
+ *                                 rail, as ONE toggle; the editor column's own
+ *                                 switch lives on the panel's corner instead
+ *   7. More actions (`⋯`)       — phone only, in the slot the two moved controls
+ *                                 left behind
  *
  * The dev-only layout switch sits AFTER that list: it is not part of the
  * product's navbar and must not push a listed control out of the agreed order.
@@ -111,8 +115,6 @@ export function HeaderControls({
   sessionId,
   showRightPanel,
   onToggleRightPanel,
-  showEditor = false,
-  onToggleEditor,
   onSwitchToMobile,
   hidden = [],
 }: HeaderControlsProps) {
@@ -160,18 +162,6 @@ export function HeaderControls({
       {(layout === 'desktop' || !folded) && !isHidden(NAVBAR_CONTROL.reload) && <ReloadPageButton size={size} className={iconClass} />}
       {!isHidden(NAVBAR_CONTROL.context) && <ContextUsageButton sessionId={sessionId} layout={layout} />}
       {(layout === 'desktop' || !folded) && !isHidden(NAVBAR_CONTROL.signout) && <SignOutButton size={size} className={iconClass} />}
-      {layout === 'desktop' && onToggleEditor && !isHidden(NAVBAR_CONTROL.editor) && (
-        <button
-          type="button"
-          onClick={onToggleEditor}
-          className={`${iconClass} ${showEditor ? 'text-ink' : 'text-ink/40'}`}
-          title={withChord('toggleEditorPanel', 'Toggle Editor Layout')}
-          aria-label={withChord('toggleEditorPanel', 'Toggle Editor Layout')}
-          aria-pressed={showEditor}
-        >
-          <LayoutTemplate size={size} />
-        </button>
-      )}
       {!isHidden(NAVBAR_CONTROL.rightPanel) && (layout === 'mobile' ? (
         <button
           type="button"
@@ -187,8 +177,8 @@ export function HeaderControls({
           type="button"
           onClick={onToggleRightPanel}
           className={`${iconClass} ${showRightPanel ? 'text-ink' : 'text-ink/40'}`}
-          title={withChord('toggleRightPanel', 'Toggle Right Panel')}
-          aria-label={withChord('toggleRightPanel', 'Toggle Right Panel')}
+          title={withChord('toggleRightPanel', 'Toggle Right Side')}
+          aria-label={withChord('toggleRightPanel', 'Toggle Right Side')}
           aria-pressed={showRightPanel}
         >
           {showRightPanel ? <PanelRightClose size={size} /> : <PanelRight size={size} />}

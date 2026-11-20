@@ -144,7 +144,7 @@ test.describe('right panel', () => {
 
     // The navbar's toggle collapses the panel; toggling back must return to the
     // SAME view, not the default.
-    const toggle = page.getByRole('button', { name: /toggle right panel/i });
+    const toggle = page.getByRole('button', { name: /toggle right side/i });
     await toggle.click();
     await expect(page.locator('[data-panel-id="right-panel"]')).toBeHidden();
     await toggle.click();

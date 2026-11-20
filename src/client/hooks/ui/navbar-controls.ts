@@ -37,7 +37,6 @@ export const NAVBAR_CONTROL = {
   reload: 'reload',
   context: 'context',
   signout: 'signout',
-  editor: 'editor',
   rightPanel: 'right-panel',
   mobile: 'mobile',
 } as const;
@@ -63,8 +62,7 @@ export const NAVBAR_CONTROLS: NavbarControlItem[] = [
   { id: NAVBAR_CONTROL.reload, title: 'Reload page' },
   { id: NAVBAR_CONTROL.context, title: 'Context usage' },
   { id: NAVBAR_CONTROL.signout, title: 'Sign out' },
-  { id: NAVBAR_CONTROL.editor, title: 'Editor layout' },
-  { id: NAVBAR_CONTROL.rightPanel, title: 'Right panel' },
+  { id: NAVBAR_CONTROL.rightPanel, title: 'Right side' },
   { id: NAVBAR_CONTROL.mobile, title: 'Mobile view' },
 ];
 

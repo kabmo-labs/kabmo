@@ -136,9 +136,8 @@ describe('phone header visibility menu', () => {
     const list = menu();
     expect(list).not.toBeNull();
     // The controls this header draws are offered; desktop-only furniture is not.
-    expect(list!.textContent).toContain('Right panel');
+    expect(list!.textContent).toContain('Right side');
     expect(list!.textContent).toContain('Reload page');
-    expect(list!.textContent).not.toContain('Editor layout');
     expect(list!.textContent).not.toContain('Install app');
     list!.parentElement?.remove();
   });
@@ -149,7 +148,7 @@ describe('phone header visibility menu', () => {
     });
     const list = menu() as HTMLElement;
     const row = [...list.querySelectorAll('[role="menuitemcheckbox"]')].find(
-      (el) => el.textContent?.includes('Right panel'),
+      (el) => el.textContent?.includes('Right side'),
     ) as HTMLButtonElement;
     expect(row).toBeDefined();
 

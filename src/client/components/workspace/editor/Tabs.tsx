@@ -6,6 +6,7 @@ import { TabContextMenu } from '@/client/components/workspace/editor/TabContextM
 import { buildTabMenuRows, type TabMenuAction } from '@/client/lib/editor/tab-menu';
 import { splitCandidate } from '@/shared/lib/workspace/split-editor';
 import { PanelRight } from 'lucide-preact';
+import { EditorHideButton } from '@/client/components/workspace/editor/EditorHideButton';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 import { getGitStatusInfo } from '@/shared/lib/fs/git-status';
 import type { OpenedFile } from '@/shared/types/fs';
@@ -35,6 +36,11 @@ interface EditorTabsProps {
   onUnsplit?: () => void;
   /** The tab the right pane shows, so `Split right` can be absent for it. */
   splitRightFileId?: number | string | null;
+  /**
+   * Put the editor column away. Drawn at the strip's trailing corner — the
+   * switch for a panel belongs on the panel, not in the top navbar.
+   */
+  onHide?: () => void;
 }
 
 export function EditorTabs({
@@ -50,6 +56,7 @@ export function EditorTabs({
   onSplitTo,
   onUnsplit,
   splitRightFileId = null,
+  onHide,
 }: EditorTabsProps) {
   // Which tabs hold edits that are not on disk. The dot replaces the close `×`
   // while the tab is dirty — the VS Code convention, and the reason it costs no
@@ -231,6 +238,7 @@ export function EditorTabs({
         >
           <PanelRight size={14} />
         </button>
+        {onHide && <EditorHideButton onHide={onHide} />}
       </div>
 
       {hiddenTabs.length > 0 && (

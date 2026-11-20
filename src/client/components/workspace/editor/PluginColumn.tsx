@@ -13,17 +13,27 @@
 
 import type { ComponentType } from 'preact/compat';
 import { PluginIdProvider } from '@kabmo-labs/kabmo-ui';
+import { EditorHideButton } from '@/client/components/workspace/editor/EditorHideButton';
 
 interface PluginColumnProps {
   pluginId: string;
   Component: ComponentType<{ sessionId: string | null; workspacePath: string | null }>;
   sessionId: string | null;
   className?: string;
+  /** Put the column away; the takeover stays selected for the next opening. */
+  onHide?: () => void;
 }
 
-export function PluginColumn({ pluginId, Component, sessionId, className = '' }: PluginColumnProps) {
+export function PluginColumn({ pluginId, Component, sessionId, className = '', onHide }: PluginColumnProps) {
   return (
     <div className={`flex flex-col h-full bg-canvas ${className}`}>
+      {/* The plugin owns the surface, so the host draws no strip — but the
+          column's own switch still has to be reachable from here. */}
+      {onHide && (
+        <div className="flex justify-end flex-shrink-0 border-b border-ink/10">
+          <EditorHideButton onHide={onHide} />
+        </div>
+      )}
       <PluginIdProvider pluginId={pluginId}>
         <Component sessionId={sessionId} workspacePath={null} />
       </PluginIdProvider>

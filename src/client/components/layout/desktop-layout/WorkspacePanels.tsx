@@ -4,17 +4,14 @@ import type { RefObject } from 'preact/compat';
 import { Group, Panel, type PanelImperativeHandle } from '@/client/components/layout/desktop-layout/resizer';
 import { PanelSuspense } from '@/client/components/layout/desktop-layout/PanelSuspense';
 import { ChatTimeline } from '@/client/components/workspace/chat-timeline/index';
-import { usePanelCatalog, PluginPanelBody, usePanelSlotPlugins, type PanelBodyProps } from '@/client/components/workspace/plugin-panel/resolve';
+import { usePanelCatalog, usePanelSlotPlugins } from '@/client/components/workspace/plugin-panel/resolve';
 import { EditorPluginRail } from '@/client/components/workspace/editor/PluginRail';
-import { PanelHostProvider } from '@kabmo-labs/kabmo-ui';
 import { ActivityBar } from '@/client/components/layout/ActivityBar';
 import { useEditorDrop, type EditorDropResult } from '@/client/hooks/editor/use-editor-drop';
 import { EditorDropOverlay } from '@/client/components/workspace/editor/EditorDropOverlay';
 import { ResizeHandle } from '@/client/components/layout/desktop-layout/ResizeHandle';
+import { RightColumn } from '@/client/components/layout/desktop-layout/RightColumn';
 import { useAvailableWidth } from '@/client/hooks/workspace/available-width';
-import { usePanelDropTarget } from '@/client/hooks/workspace/panel-drop-target';
-import { useLeftDock } from '@/client/hooks/workspace/left-dock';
-import { useSessionStateContext } from '@/client/hooks/workspace/session-state/context';
 import {
   HANDLE_WIDTH,
   MIN_EDITOR_PANEL_WIDTH,
@@ -38,6 +35,12 @@ interface WorkspacePanelsProps {
   chatHidden?: boolean;
   editorPanelRef: RefObject<PanelImperativeHandle | null>;
   showRightPanel: boolean;
+  /**
+   * The whole right side is on screen. When it is not, the activity rail goes
+   * with the panels: the rail is how a view is CHOSEN, and a rail beside two
+   * collapsed columns is a column of marks that switches nothing.
+   */
+  showRightSide: boolean;
   /** A built-in view id or a plugin panel key (`plugin:<id>/<panel>`). */
   activeRightPanel: string;
   /** The `plugin:<id>` whose panel owns the editor column, or null. */
@@ -67,7 +70,10 @@ interface WorkspacePanelsProps {
   /** The outcome of a file dropped on the chat or the editor, for the toasts. */
   onDropResult?: (result: EditorDropResult) => void;
   onChangeRightPanel: (panel: string) => void;
-  onToggleRightPanel: () => void;
+  /** A panel body's own close control: the right column only. */
+  onCloseRightPanel: () => void;
+  /** The editor panel's corner control: put the editor column away. */
+  onHideEditor: () => void;
   onSessionTitle: (title: string | null) => void;
   onPanelWidths: (patch: PanelWidths) => void;
 }
@@ -79,6 +85,7 @@ export function WorkspacePanels(props: WorkspacePanelsProps) {
     chatHidden = false,
     editorPanelRef,
     showRightPanel,
+    showRightSide,
     activeRightPanel,
     activeEditorPanelKey,
     onSelectEditorPanel,
@@ -101,7 +108,8 @@ export function WorkspacePanels(props: WorkspacePanelsProps) {
     onRevealInFiles,
     onDropResult,
     onChangeRightPanel,
-    onToggleRightPanel,
+    onCloseRightPanel,
+    onHideEditor,
     onSessionTitle,
     onPanelWidths,
   } = props;
@@ -134,12 +142,6 @@ export function WorkspacePanels(props: WorkspacePanelsProps) {
   // (tree expansion, search results, terminal buffer) survives switches and no
   // panel re-fetches its data just because the user looked away.
   const catalog = usePanelCatalog();
-  // The right column is a destination too: a panel dragged from the left rail
-  // must land where it was dropped, not bounce back because only the 44px rail
-  // accepted it. The rail owns ordering; this owns which side receives it.
-  const { setSide } = useLeftDock();
-  const rightDrop = usePanelDropTarget({ onPlace: (id) => setSide(id, 'right') });
-  const { sessionId } = useSessionStateContext();
   // A stored selection can name a view the user has just placed on the LEFT
   // rail — the right column then holds no such panel. Falling back to the first
   // view it does hold is what the phone's drawer already does, and it keeps a
@@ -269,6 +271,7 @@ export function WorkspacePanels(props: WorkspacePanelsProps) {
               reopenableCount={reopenableCount}
               onCopyPath={onCopyPath}
               onRevealInFiles={onRevealInFiles}
+              onHidePanel={onHideEditor}
             />
             </PanelSuspense>
             </div>
@@ -276,73 +279,28 @@ export function WorkspacePanels(props: WorkspacePanelsProps) {
         </Panel>
 
         {showRightPanel && <ResizeHandle />}
-        <Panel panelRef={rightPanelRef} id="right-panel" defaultSize={rightWidth} minSize={rightPanelMin} maxSize={rightMaxSize} collapsed={!showRightPanel}>
-          <div
-            className={`w-full h-full ${rightDrop.active ? 'ring-1 ring-inset ring-ink/30' : ''}`}
-            {...rightDrop.dropProps}
-          >
-          <PanelSuspense>
-            {/* ONE renderer for both kinds of panel. Each view stays MOUNTED
-                while another is on screen (hidden with CSS), so a tree's
-                expansion, a search's results and a terminal's buffer survive a
-                switch. A plugin panel is mounted only while it is the active
-                one: a hidden plugin is a component nobody is looking at, and
-                the host owns no state of its own to preserve. */}
-            {catalog.map((panel) => {
-              const isActiveView = shownRightPanel === panel.id;
-              if (!panel.builtin && !isActiveView) return null;
-              const body: PanelBodyProps = {
-                className: 'w-full h-full',
-                sessionId,
-                // A view that stays live while hidden keeps reading even when
-                // another view is on screen — the terminal owns a live PTY and
-                // swapping it to the placeholder mid-command would drop the
-                // stream. Everything else polls only while shown.
-                enabled: panel.liveWhileHidden
-                  ? hasActiveContext
-                  : hasActiveContext && isActiveView,
-                // On screen means selected AND the column is open. A collapsed
-                // right panel keeps every view MOUNTED (that is what preserves a
-                // tree's expansion and a terminal's buffer), so `isActiveView`
-                // alone would report a view nobody can see as active — and a
-                // view that re-reads on activation would never notice the
-                // column being reopened.
-                active: isActiveView && showRightPanel,
-                refreshKey,
-                ...(activeProjectPath ? { rootPath: activeProjectPath } : {}),
-                onRefresh: onRefreshWorkspace,
-                onOpenFile,
-                onClose: onToggleRightPanel,
-                layout: 'desktop',
-              };
-              // `glass-chrome` + `data-panel-chrome` on the SLOT, not on each
-              // view: the right panel is column chrome, exactly like the session
-              // sidebar, and ten built-in views plus every plugin panel paint
-              // their own `bg-paper` root. Marking the slot makes the column one
-              // surface and leaves a future view nothing to forget.
-              return (
-                <div
-                  key={panel.id}
-                  data-panel-chrome=""
-                  className={`glass-chrome w-full h-full${isActiveView ? '' : ' hidden'}`}
-                >
-                  <PanelHostProvider value={body}>{panel.render(body)}</PanelHostProvider>
-                </div>
-              );
-            })}
-            {/* The selection names a panel that is switched off, uninstalled, or
-                whose bundle has not loaded — a notice, never a blank column. */}
-            {!activePanel ? (
-              <div data-panel-chrome="" className="glass-chrome w-full h-full">
-                <PluginPanelBody panelKey={activeRightPanel} />
-              </div>
-            ) : null}
-          </PanelSuspense>
-          </div>
-        </Panel>
+        <RightColumn
+          panelRef={rightPanelRef}
+          open={showRightPanel}
+          width={rightWidth}
+          minWidth={rightPanelMin}
+          maxWidth={rightMaxSize}
+          catalog={catalog}
+          shownPanel={shownRightPanel}
+          selectedPanel={activeRightPanel}
+          activePanelFound={Boolean(activePanel)}
+          hasActiveContext={hasActiveContext}
+          activeProjectPath={activeProjectPath}
+          refreshKey={refreshKey}
+          onRefresh={onRefreshWorkspace}
+          onOpenFile={onOpenFile}
+          onClose={onCloseRightPanel}
+        />
       </Group>
 
-      <ActivityBar side="right" activePanel={shownRightPanel} onChangePanel={onChangeRightPanel} isPanelOpen={showRightPanel} hasActiveContext={hasActiveContext} activeProjectPath={activeProjectPath} />
+      {showRightSide && (
+        <ActivityBar side="right" activePanel={shownRightPanel} onChangePanel={onChangeRightPanel} isPanelOpen={showRightPanel} hasActiveContext={hasActiveContext} activeProjectPath={activeProjectPath} />
+      )}
     </div>
   );
 }

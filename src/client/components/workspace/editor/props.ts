@@ -61,4 +61,13 @@ export interface EditorProps {
   forcedActiveFileId?: number | string | null;
   /** A split pane never splits again: the column has two panes, not a tree. */
   asSplitPane?: boolean;
+  /**
+   * Put the editor column away from its own corner control.
+   *
+   * The column's own switch used to be a navbar button, next to the control
+   * that now hides the whole right side; it belongs on the panel it acts on.
+   * Only the LEFT pane draws it — the split's right pane has no chrome of its
+   * own, and the column is one panel.
+   */
+  onHidePanel?: () => void;
 }

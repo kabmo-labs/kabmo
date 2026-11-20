@@ -21,13 +21,16 @@ interface TopNavbarProps {
   /** The session the title belongs to, for the in-flight rename cue. */
   sessionId?: string | null;
   showLeftPanel: boolean;
-  showEditor: boolean;
-  showRightPanel: boolean;
+  /**
+   * The right side — editor column, right panel and their rail — is on screen.
+   * ONE control switches all three; the editor column's own switch lives on the
+   * panel's corner, not here.
+   */
+  showRightSide: boolean;
   /** Live agent event stream status; the indicator is WebSocket-only. */
   streamStatus?: AgentStreamStatus;
   onSwitchToMobile?: () => void;
-  onToggleEditor: () => void;
-  onToggleRightPanel: () => void;
+  onToggleRightSide: () => void;
   onToggleLeftPanel: () => void;
   /** Session-level actions for the title's overflow menu, when a session is on screen. */
   sessionActions?: {
@@ -45,12 +48,10 @@ export function TopNavbar({
   sessionTitle,
   sessionId,
   showLeftPanel,
-  showEditor,
-  showRightPanel,
+  showRightSide,
   streamStatus,
   onSwitchToMobile,
-  onToggleEditor,
-  onToggleRightPanel,
+  onToggleRightSide,
   onToggleLeftPanel,
   sessionActions,
 }: TopNavbarProps) {
@@ -191,10 +192,8 @@ export function TopNavbar({
         <HeaderControls
           layout="desktop"
           sessionId={sessionId ?? null}
-          showRightPanel={showRightPanel}
-          onToggleRightPanel={onToggleRightPanel}
-          showEditor={showEditor}
-          onToggleEditor={onToggleEditor}
+          showRightPanel={showRightSide}
+          onToggleRightPanel={onToggleRightSide}
           onSwitchToMobile={onSwitchToMobile}
           hidden={hidden}
         />
@@ -226,7 +225,6 @@ export function TopNavbar({
           // hide nothing.
           items={NAVBAR_CONTROLS.filter((item) => {
             if (item.id === NAVBAR_CONTROL.mobile) return Boolean(onSwitchToMobile);
-            if (item.id === NAVBAR_CONTROL.editor) return Boolean(onToggleEditor);
             return true;
           }).map((item) => ({ ...item, removable: true }))}
           hidden={hidden}

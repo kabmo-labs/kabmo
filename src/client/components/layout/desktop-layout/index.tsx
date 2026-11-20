@@ -1,9 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from 'preact/hooks';
-import { useSearchParams } from '@/client/lib/router/search-params';
 import { Group, Panel, type PanelImperativeHandle } from '@/client/components/layout/desktop-layout/resizer';
 import { LeftColumn } from '@/client/components/layout/desktop-layout/LeftColumn';
-import { SettingsModal } from '@/client/components/settings/LazyModal';
-import { activeProjectForSession, effectiveRootFor } from '@/shared/lib/workspace/active-project';
+import { DesktopOverlays } from '@/client/components/layout/desktop-layout/DesktopOverlays';
 import { useFileTabs } from '@/client/hooks/workspace/file-tabs';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
 import { TopNavbar } from '@/client/components/layout/desktop-layout/TopNavbar';
@@ -27,9 +25,10 @@ import { useWorkspaceCommands } from '@/client/hooks/workspace/commands';
 import { PluginBootstrap } from '@/client/lib/plugins/bootstrap';
 import { useToasts } from '@/client/hooks/ui/toasts';
 import type { EditorDropResult } from '@/client/hooks/editor/use-editor-drop';
-import { SessionDeleteModal } from '@/client/components/common/session-delete-modal';
 import { useNavbarSessionActions } from '@/client/hooks/workspace/navbar-session-actions';
 import { useCopyTabPath } from '@/client/hooks/workspace/copy-tab-path';
+import { useRightSideLayout, type RightSideLayout } from '@/client/hooks/workspace/right-side';
+import { useActiveWorkspaceProject } from '@/client/hooks/workspace/active-project';
 
 interface DesktopLayoutProps {
   sessionId: string | null;
@@ -39,7 +38,6 @@ interface DesktopLayoutProps {
 
 export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }: DesktopLayoutProps) {
   const { folders, isMock } = useSidebarData();
-  const [showRightPanel, setShowRightPanel] = useSessionState<boolean>('layout.showRightPanel', appSettings.showRightPanel ?? true);
   // A new session opens Files. Deliberately NOT `appSettings.activeRightPanel`:
   // pre-per-session builds stored that key globally, so reading it back made
   // every new chat open whichever panel was last picked in any other session.
@@ -67,28 +65,20 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
   const editorPanelRef = useRef<PanelImperativeHandle | null>(null);
   const rightPanelRef = useRef<PanelImperativeHandle | null>(null);
   const leftPanelRef = useRef<PanelImperativeHandle | null>(null);
-  const [userToggledEditor, setUserToggledEditor] = useSessionState<boolean | null>('layout.userToggledEditor', appSettings.userToggledEditor ?? null);
 
-  const [searchParams] = useSearchParams();
-  const folderIdParam = searchParams.get('folderId');
-  const activeProject = useMemo(() => {
-    const sessionFolder = activeProjectForSession(folders, sessionId || '').folder;
-    if (sessionFolder) return sessionFolder;
-    if (folderIdParam) return folders.find(f => String(f.id) === String(folderIdParam)) ?? null;
-    return null;
-  }, [folders, sessionId, folderIdParam]);
-  // A worktree session runs OUTSIDE its folder's project path, so the panels
-  // follow the session's own root — the checkout it left would otherwise be what
-  // Files, Search, Git and the terminal read.
-  const activeProjectPath = useMemo(
-    () => effectiveRootFor(folders, sessionId || '') ?? activeProject?.project_path ?? null,
-    [folders, sessionId, activeProject],
-  );
-  const hasActiveContext = !!activeProject;
+  // The workspace the session belongs to, its root, and whether one exists —
+  // one hook, because a worktree session reading its folder's path is how the
+  // panels ended up on the wrong checkout.
+  const { path: activeProjectPath, hasActiveContext } = useActiveWorkspaceProject(folders, sessionId);
 
+  // Opening a file must show the column (and the side it lives on). The hook
+  // that owns that flag is built below, after the tab list exists — a tab is
+  // one of the things that gives the column content — so the callback reaches
+  // it through a ref rather than a second owner for the same flag.
+  const rightSideRef = useRef<RightSideLayout | null>(null);
   const handleOpenTab = useCallback(() => {
-    setUserToggledEditor(true);
-  }, [setUserToggledEditor]);
+    rightSideRef.current?.revealEditor();
+  }, []);
 
   const {
     openedFiles,
@@ -110,12 +100,28 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
   // plugin must not push a column onto the screen — but the third is what the
   // toggle has to open on to, since the rail lives inside the column.
   const editorTakeovers = usePanelSlotPlugins();
-  // The user's own switch wins over every default, in both directions.
   const editorHasContent =
     openedFiles.length > 0 || activeEditorPanelKey !== null || editorTakeovers.length > 0;
-  const showEditor =
-    editorHasContent &&
-    (userToggledEditor ?? (openedFiles.length > 0 || activeEditorPanelKey !== null));
+
+  /**
+   * The right side's visibility: the editor column, the right panel and the
+   * activity rail beside them. ONE hook, because the navbar's toggle puts all
+   * three away with one click and brings all three back with the next — a
+   * second owner for the editor's flag is how a rail stays behind beside a
+   * collapsed panel (see `useRightSideLayout`).
+   */
+  const rightSide = useRightSideLayout({
+    editorHasContent,
+    editorOpensByDefault: openedFiles.length > 0 || activeEditorPanelKey !== null,
+    showRightPanelInitially: appSettings.showRightPanel ?? true,
+    userToggledEditorInitially: appSettings.userToggledEditor ?? null,
+  });
+  rightSideRef.current = rightSide;
+  const { showRightPanel, showEditor } = rightSide;
+  // ONE flag for the whole side, read by the navbar's control AND by the rail:
+  // a second "is anything visible" spelling would let the button read one state
+  // while the rail draws another.
+  const rightSideShown = !rightSide.hidden;
 
   // A diff wants room a source file does not, so the editor panel keeps a
   // separate remembered width per tab kind.
@@ -183,8 +189,10 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
     // by the editor's WIDTH mode, so flipping `showLeftPanel` alone would change
     // a value the layout is ignoring and the chord would do nothing.
     toggleSidebar: () => handleToggleLeftPanel(!sidebarOpen),
-    toggleEditor: () => setUserToggledEditor((previous) => !(previous ?? showEditor)),
-    toggleRightPanel: () => setShowRightPanel((previous) => !previous),
+    toggleEditor: rightSide.toggleEditor,
+    // The side's own switch, so the other chord and the navbar's button cannot
+    // disagree about what "the right side" means.
+    toggleRightPanel: rightSide.toggleRightSide,
     openSettings: () => (settings.isOpen ? settings.close() : settings.open()),
   });
 
@@ -192,12 +200,12 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
   // click selects and opens. One handler for both columns' rails.
   const handleChangeRightPanel = (panel: string) => {
     const collapsing = activeRightPanel === panel && showRightPanel;
-    setShowRightPanel(!collapsing);
-    if (!collapsing) setActiveRightPanel(panel);
+    if (collapsing) rightSide.closeRightPanel();
+    else {
+      rightSide.revealRightPanel();
+      setActiveRightPanel(panel);
+    }
   };
-
-  const handleToggleRightPanel = () => setShowRightPanel(!showRightPanel);
-  const handleToggleEditor = () => setUserToggledEditor(!showEditor);
 
   // A panel asked to be shown from somewhere that is not its own rail — a
   // plugin's navbar readout (`app.headerPanel({ opensPanel })`). Where it lives
@@ -211,11 +219,11 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
     },
     onEditor: (panelKey) => {
       setActiveEditorPanelKey(panelKey);
-      setUserToggledEditor(true);
+      rightSide.revealEditor();
     },
     onRight: (panelKey) => {
       setActiveRightPanel(panelKey);
-      setShowRightPanel(true);
+      rightSide.revealRightPanel();
     },
   });
 
@@ -275,12 +283,10 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
                 sessionTitle={sessionTitle}
                 sessionId={sessionId}
                 showLeftPanel={sidebarOpen}
-                showEditor={showEditor}
-                showRightPanel={showRightPanel}
+                showRightSide={rightSideShown}
                 streamStatus={streamStatus}
                 onSwitchToMobile={onSwitchToMobile}
-                onToggleEditor={handleToggleEditor}
-                onToggleRightPanel={handleToggleRightPanel}
+                onToggleRightSide={rightSide.toggleRightSide}
                 onToggleLeftPanel={() => handleToggleLeftPanel(!sidebarOpen)}
                 sessionActions={sessionActions}
               />
@@ -291,13 +297,14 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
                 chatHidden={editorView.chatHidden}
                 editorPanelRef={editorPanelRef}
                 showRightPanel={showRightPanel}
+                showRightSide={rightSideShown}
                 activeRightPanel={activeRightPanel}
                 activeEditorPanelKey={activeEditorPanelKey}
                 onSelectEditorPanel={(panelKey) => {
                   setActiveEditorPanelKey(panelKey);
                   // Choosing a takeover must OPEN the column, or the click would
                   // land on a panel that is still collapsed.
-                  if (panelKey) setUserToggledEditor(true);
+                  if (panelKey) rightSide.revealEditor();
                 }}
                 rightPanelRef={rightPanelRef}
                 panelWidths={panelWidths}
@@ -317,7 +324,8 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
                 onRefreshWorkspace={handleRefreshWorkspace}
                 onDropResult={handleDropResult}
                 onChangeRightPanel={handleChangeRightPanel}
-                onToggleRightPanel={handleToggleRightPanel}
+                onCloseRightPanel={rightSide.closeRightPanel}
+                onHideEditor={rightSide.hideEditor}
                 onSessionTitle={setSessionTitle}
                 onPanelWidths={commitWidths}
               />
@@ -326,25 +334,7 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
         </Group>
       </div>
 
-      {/* Global Desktop Settings Modal */}
-      <SettingsModal
-        isOpen={settings.isOpen}
-        onClose={settings.close}
-        initialCategory={settings.category}
-        autoOpenAddProvider={settings.autoOpenAddProvider}
-        appSettings={appSettings}
-      />
-
-      {/* The navbar title menu's delete path and the rename-with-AI refusal
-          surface here: this layout owns no sidebar, so it must render its own
-          confirmation and toast stack. */}
-      <SessionDeleteModal
-        session={sessionDelete.pending}
-        isDeleting={sessionDelete.isDeleting}
-        error={sessionDelete.error}
-        onClose={sessionDelete.cancelDelete}
-        onConfirm={() => void sessionDelete.confirmDelete()}
-      />
+      <DesktopOverlays settings={settings} sessionDelete={sessionDelete} appSettings={appSettings} />
     </div>
   );
 }
