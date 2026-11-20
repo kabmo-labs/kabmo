@@ -4,14 +4,14 @@ import { ReloadPageButton } from '@/client/components/common/ReloadPageButton';
 import { SignOutButton } from '@/client/components/common/SignOutButton';
 import { ContextUsageButton } from '@/client/components/common/context-usage-button';
 import { HeaderPanelButtons } from '@/client/components/common/header-panel-buttons';
-import { useHeaderEntries } from '@/client/components/common/header-panel-buttons/entries';
+import type { HeaderEntries } from '@/client/components/common/header-panel-buttons/entries';
 import { HeaderMoreMenu } from '@/client/components/common/header-controls/MoreMenu';
 import { WindowControls } from '@/client/components/common/window-controls';
 import { drawsWindowControls } from '@/client/lib/desktop/titlebar';
 import { useAuthEnabled, useAuthState } from '@/client/hooks/ui/auth';
 import { useViewportAtLeast } from '@/client/hooks/ui/media-query';
 import { CONTROL_BOX, CONTROL_GLYPH_PX, CONTROL_ROW_GAP } from '@/client/lib/ui/control-plate';
-import { NAVBAR_CONTROL, type NavbarControlId } from '@/client/hooks/ui/navbar-controls';
+import { NAVBAR_CONTROL, navbarPluginControlId, type NavbarControlId } from '@/client/hooks/ui/navbar-controls';
 import { withChord } from '@/client/lib/ui/with-chord';
 
 export type HeaderLayout = 'desktop' | 'mobile';
@@ -32,7 +32,7 @@ export type HeaderLayout = 'desktop' | 'mobile';
  */
 const MOBILE_FULL_ROW_PX = { without: 400, withSignOut: 436 } as const;
 
-interface HeaderControlsProps {
+export interface HeaderControlsProps {
   layout: HeaderLayout;
   sessionId: string | null;
   /**
@@ -44,10 +44,20 @@ interface HeaderControlsProps {
   showRightPanel: boolean;
   onToggleRightPanel: () => void;
   /**
-   * Control ids the user switched off in the navbar's right-click menu.
+   * The plugin entries resolved by the surface that draws this cluster.
    *
-   * Only the desktop navbar passes this: the phone header has no context menu,
-   * so a control hidden there would have no way back.
+   * Required, and resolved by the CALLER's `useHeaderEntries`, because the
+   * same answer decides two things: what stands in the row and what the
+   * surface's visibility menu lists. Resolving it here as well was a second
+   * media query and a second registry read for one row.
+   */
+  entries: HeaderEntries;
+  /**
+   * Control ids the user switched off in the header's visibility menu.
+   *
+   * Both layouts pass it: the phone opens the same menu on a long press, so a
+   * control hidden on the desktop is hidden there too — and the menu keeps its
+   * row on both, which is the way back.
    */
   hidden?: string[];
 }
@@ -113,11 +123,18 @@ export function HeaderControls({
   sessionId,
   showRightPanel,
   onToggleRightPanel,
+  entries,
   hidden = [],
 }: HeaderControlsProps) {
   const iconClass = ICON_BUTTON_CLASS[layout];
   const size = ICON_SIZE[layout];
   const isHidden = (id: NavbarControlId) => hidden.includes(id);
+  // A plugin entry is a control like any other: its menu id is
+  // `plugin:<pluginId>`, so the set the menu wrote is the set that removes it
+  // from the row AND from the `⋯` menu a narrow phone folds it into.
+  const isPluginHidden = (pluginId: string) => hidden.includes(navbarPluginControlId(pluginId));
+  const inlineEntries = entries.inline.filter((entry) => !isPluginHidden(entry.pluginId));
+  const foldedEntries = entries.folded.filter((entry) => !isPluginHidden(entry.pluginId));
   const authEnabled = useAuthEnabled();
   const authState = useAuthState();
   const signOutShown = authEnabled && authState !== 'required';
@@ -127,16 +144,12 @@ export function HeaderControls({
   const wideEnoughForAll = layout === 'desktop' || wideRow;
   // A phone folds the two rare controls only while the row cannot hold them.
   const folded = layout === 'mobile' && !wideEnoughForAll;
-  // ONE resolution of what the plugin entries do, because two surfaces draw it:
-  // the row (inline) and the `⋯` menu (folded). Asking twice would be two media
-  // queries deciding one row, and the two halves could disagree mid-resize.
-  const headerEntries = useHeaderEntries(layout);
   // The `⋯` trigger is drawn only while it has a row to offer: with both
   // folded controls switched off and no plugin entry folded, an empty menu is
   // a button that opens nothing.
   const moreRows =
     (folded && (!isHidden(NAVBAR_CONTROL.reload) || (signOutShown && !isHidden(NAVBAR_CONTROL.signout)))) ||
-    headerEntries.folded.length > 0;
+    foldedEntries.length > 0;
 
   return (
     // `titlebar-no-drag` belongs HERE, on the cluster's own root, not on each
@@ -151,7 +164,7 @@ export function HeaderControls({
     // draws it correct by construction.
     <div className={`flex items-center ${CONTROL_ROW_GAP} titlebar-no-drag`}>
       {layout === 'desktop' && !isHidden(NAVBAR_CONTROL.install) && <PWAInstallButton />}
-      <HeaderPanelButtons layout={layout} entries={headerEntries.inline} />
+      <HeaderPanelButtons layout={layout} entries={inlineEntries} />
       {/* The cluster's ORDER is fixed; what changes on a narrow phone is that
           reload and sign-out move behind `⋯`, which sits in the slot they
           left. Nothing is hidden at a width that can hold it: measured, the
@@ -182,7 +195,7 @@ export function HeaderControls({
         </button>
       ))}
       {moreRows && (
-        <HeaderMoreMenu entries={headerEntries.folded} hidden={hidden} />
+        <HeaderMoreMenu entries={foldedEntries} hidden={hidden} />
       )}
       {/* The Windows and Linux shells draw no caption buttons of their own —
           their webview is the whole window — so the PAGE owns minimise,

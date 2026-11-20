@@ -32,7 +32,7 @@ import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { definePluginApp } from '@kabmo-labs/kabmo-sdk/app';
-import { HeaderControls } from '@/client/components/common/header-controls';
+import { HeaderControlsHarness } from '@/test-support/header-controls-harness';
 import { SessionStateProvider } from '@/client/components/common/session-state-provider/index';
 import { registerPluginBundle, resetPluginSlots } from '@/client/lib/plugins/slots';
 import { primeAuthState } from '@/client/hooks/ui/auth';
@@ -175,7 +175,7 @@ async function mount(layout: 'desktop' | 'mobile', width: number): Promise<void>
     render(
       h(SessionStateProvider, {
         sessionId: SESSION,
-        children: h(HeaderControls, {
+        children: h(HeaderControlsHarness, {
           layout,
           sessionId: SESSION,
           showRightPanel: layout === 'desktop',

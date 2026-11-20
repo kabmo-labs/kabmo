@@ -15,9 +15,16 @@
  * same row in every session, so a per-session set would move the user's own
  * arrangement when they picked another chat.
  *
- * The PHONE header does not read this set. It has no context menu, so a control
- * hidden there would have no way back — the same reason the rail pins its
- * sessions view. The desktop navbar is the surface that owns the menu.
+ * BOTH headers read this set: the desktop navbar's right-click and the phone's
+ * long-press open the same `VisibilityMenu`, so a control switched off on one
+ * layout is off on the other rather than silently returning after a resize.
+ *
+ * A PLUGIN's header entry is a control too. Its id is `plugin:<pluginId>` —
+ * the enablement key's own form — so the menu row, the stored set and the
+ * entry the plugin registered all name the same thing. A plugin's bundle may
+ * not have loaded yet when the set is read, which is why validation accepts
+ * the SHAPE of a plugin id instead of resolving it against the registry:
+ * dropping it on a slow import would switch the user's choice back on.
  *
  * The layout switch is NOT here either: it moved to the sidebar footer, where
  * the phone's own mirror control ("Desktop") sits in the same slot. A control
@@ -27,6 +34,7 @@
 
 import { useCallback, useSyncExternalStore } from 'preact/compat';
 import { readKabmoSetting, writeSetting } from '@/shared/lib/settings/client';
+import { PLUGIN_PANEL_PREFIX } from '@/shared/lib/workspace/panel-ids';
 
 /** `app_settings` key holding the hidden control ids. */
 export const NAVBAR_HIDDEN_SETTING_KEY = 'omp_navbar_hidden_controls';
@@ -48,12 +56,51 @@ export const NAVBAR_CONTROL = {
 export type NavbarControlId = (typeof NAVBAR_CONTROL)[keyof typeof NAVBAR_CONTROL];
 
 export interface NavbarControlItem {
-  id: NavbarControlId;
+  /** A built-in control id, or `plugin:<pluginId>` for a plugin's entry. */
+  id: string;
+  title: string;
+}
+
+/** A plugin entry the row can draw, as the menu needs to name it. */
+export interface NavbarPluginEntry {
+  pluginId: string;
   title: string;
 }
 
 /**
- * Every control the menu can switch, in the row's own order.
+ * The id a plugin's navbar entry is switched by: `plugin:<pluginId>`.
+ *
+ * The same string `pluginEnablementKey` produces, deliberately: one plugin is
+ * one id across the panel catalog, the enablement rows and this menu, so a
+ * stored choice cannot belong to a control that no longer exists under that
+ * name. It is NOT a `plugin:<pluginId>:<slot>` panel instance key — a header
+ * entry is the plugin's, not one of its panels.
+ */
+export function navbarPluginControlId(pluginId: string): string {
+  return `${PLUGIN_PANEL_PREFIX}${pluginId}`;
+}
+
+/** Whether an id names a plugin's navbar entry (and not one of its panels). */
+export function isNavbarPluginControlId(id: string): boolean {
+  if (!id.startsWith(PLUGIN_PANEL_PREFIX)) return false;
+  const pluginId = id.slice(PLUGIN_PANEL_PREFIX.length);
+  return pluginId.length > 0 && !pluginId.includes(':');
+}
+
+/** Each built-in control's menu label. */
+const CONTROL_TITLES: Record<NavbarControlId, string> = {
+  install: 'Install app',
+  reload: 'Reload page',
+  context: 'Context usage',
+  signout: 'Sign out',
+  'right-panel': 'Right side',
+};
+
+/**
+ * The BUILT-IN controls the menu can switch, in the row's own order.
+ *
+ * The plugin entries are not here — they are a runtime fact, and
+ * `navbarControlItems` splices them where the row draws them.
  *
  * The window's caption buttons are not here: they are the window's, not the
  * page's, and a hidden close button is a window the user cannot close. The
@@ -61,13 +108,32 @@ export interface NavbarControlItem {
  * it is the only mouse way back, the same reason the rail pins its sessions
  * view.
  */
-export const NAVBAR_CONTROLS: NavbarControlItem[] = [
-  { id: NAVBAR_CONTROL.install, title: 'Install app' },
-  { id: NAVBAR_CONTROL.reload, title: 'Reload page' },
-  { id: NAVBAR_CONTROL.context, title: 'Context usage' },
-  { id: NAVBAR_CONTROL.signout, title: 'Sign out' },
-  { id: NAVBAR_CONTROL.rightPanel, title: 'Right side' },
-];
+export const NAVBAR_CONTROLS: NavbarControlItem[] = (
+  [
+    NAVBAR_CONTROL.install,
+    NAVBAR_CONTROL.reload,
+    NAVBAR_CONTROL.context,
+    NAVBAR_CONTROL.signout,
+    NAVBAR_CONTROL.rightPanel,
+  ] satisfies NavbarControlId[]
+).map((id) => ({ id, title: CONTROL_TITLES[id] }));
+
+/**
+ * What the menu lists, in the row's own order: install, the plugins' entries,
+ * then reload, context, sign-out and the right side.
+ *
+ * Built here rather than at each surface so the menu and the row cannot drift
+ * when a plugin is installed or removed: a plugin that adds a control adds a
+ * menu row, and the two headers that offer the menu list it in the same place
+ * the row draws it.
+ */
+export function navbarControlItems(plugins: readonly NavbarPluginEntry[]): NavbarControlItem[] {
+  return NAVBAR_CONTROLS.flatMap((item) =>
+    item.id === NAVBAR_CONTROL.install
+      ? [item, ...plugins.map((plugin) => ({ id: navbarPluginControlId(plugin.pluginId), title: plugin.title }))]
+      : [item],
+  );
+}
 
 const listeners = new Set<() => void>();
 
@@ -83,9 +149,10 @@ function subscribe(listener: () => void): () => void {
 /**
  * The stored set, validated.
  *
- * An id this build does not know is DROPPED rather than kept: the set is also
- * the row's own switch, so a stale id would hide nothing and the menu would
- * show a checkbox for a control that no longer exists.
+ * An id this build does not know is DROPPED rather than kept, with ONE
+ * exception: a plugin's id is validated by its SHAPE (`plugin:<pluginId>`),
+ * because the set may be read before that plugin's bundle has loaded. Dropping
+ * it then would switch the user's choice back on at the next render.
  */
 export function readHiddenControls(): string[] {
   const source = readKabmoSetting<unknown>(NAVBAR_HIDDEN_SETTING_KEY);
@@ -93,7 +160,14 @@ export function readHiddenControls(): string[] {
   lastSource = source;
   const known = new Set<string>(NAVBAR_CONTROLS.map((item) => item.id));
   cached = Array.isArray(source)
-    ? [...new Set(source.filter((id): id is string => typeof id === 'string' && known.has(id)))]
+    ? [
+        ...new Set(
+          source.filter(
+            (id): id is string =>
+              typeof id === 'string' && (known.has(id) || isNavbarPluginControlId(id)),
+          ),
+        ),
+      ]
     : [];
   return cached;
 }

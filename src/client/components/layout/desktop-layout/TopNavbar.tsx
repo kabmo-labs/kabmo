@@ -6,7 +6,8 @@ import { BrandWordmark } from '@/client/components/common/brand-wordmark';
 import { StreamStatusDot } from '@/client/components/common/StreamStatusDot';
 import { SessionActionsMenu, useRowMenu } from '@/client/components/common/session-actions-menu';
 import { VisibilityMenu, type MenuAnchor } from '@/client/components/layout/VisibilityMenu';
-import { NAVBAR_CONTROLS, useNavbarControls } from '@/client/hooks/ui/navbar-controls';
+import { useHeaderEntries } from '@/client/components/common/header-panel-buttons/entries';
+import { navbarControlItems, useNavbarControls } from '@/client/hooks/ui/navbar-controls';
 import { useInlineRename } from '@/client/hooks/ui/inline-rename';
 import { useSessionRenaming } from '@/client/hooks/workspace/renaming-sessions';
 import type { AgentStreamStatus } from '@/shared/lib/chat/omp/status';
@@ -75,6 +76,9 @@ export function TopNavbar({
   // have, for the row of controls above them. A hidden control stays a row of
   // this menu, so it is never lost.
   const { hidden, setHidden } = useNavbarControls();
+  // Resolved here ONCE: the row and the menu are two halves of one answer, so
+  // a plugin that adds a control adds its menu row in the same render.
+  const headerEntries = useHeaderEntries('desktop');
   const [menuAnchor, setMenuAnchor] = useState<MenuAnchor | null>(null);
   const headerRef = useRef<HTMLElement>(null);
   const openMenu = (event: TargetedMouseEvent<HTMLElement>) => {
@@ -192,6 +196,7 @@ export function TopNavbar({
           sessionId={sessionId ?? null}
           showRightPanel={showRightSide}
           onToggleRightPanel={onToggleRightSide}
+          entries={headerEntries}
           hidden={hidden}
         />
         {/* The Windows/Linux caption buttons come from `HeaderControls` itself:
@@ -219,8 +224,10 @@ export function TopNavbar({
           align="right"
           // A control this build does not draw has no row: the menu is the
           // switch for the row, and a checkbox for a control the navbar no
-          // longer holds would hide nothing.
-          items={NAVBAR_CONTROLS.map((item) => ({ ...item, removable: true }))}
+          // longer holds would hide nothing. Plugin entries are the row's too,
+          // so they are listed even while switched off — hiding one never
+          // loses it.
+          items={navbarControlItems(headerEntries.inline).map((item) => ({ ...item, removable: true }))}
           hidden={hidden}
           onToggle={setHidden}
           onClose={() => setMenuAnchor(null)}

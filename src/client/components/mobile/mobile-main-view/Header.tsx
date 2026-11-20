@@ -8,9 +8,10 @@ import { useSessionRenaming } from '@/client/hooks/workspace/renaming-sessions';
 import { StreamStatusDot } from '@/client/components/common/StreamStatusDot';
 import { BrandWordmark } from '@/client/components/common/brand-wordmark';
 import { HeaderControls } from '@/client/components/common/header-controls';
+import { useHeaderEntries } from '@/client/components/common/header-panel-buttons/entries';
 import { AnchoredMenu } from '@/client/components/common/anchored-menu';
 import { VisibilityMenu } from '@/client/components/layout/VisibilityMenu';
-import { NAVBAR_CONTROL, NAVBAR_CONTROLS, useNavbarControls } from '@/client/hooks/ui/navbar-controls';
+import { NAVBAR_CONTROL, navbarControlItems, useNavbarControls } from '@/client/hooks/ui/navbar-controls';
 import { useVisibilityMenuTrigger } from '@/client/hooks/ui/visibility-menu-trigger';
 import { anchorRectOf, type AnchorRect } from '@/shared/lib/ui/menu-anchor';
 import { titlebarPaddingLeft, titlebarPaddingRight } from '@/shared/lib/ui/titlebar';
@@ -59,6 +60,9 @@ export function MobileHeader({
   // put away — and the menu keeps its row, which is the way back.
   const { hidden, setHidden } = useNavbarControls();
   const visibility = useVisibilityMenuTrigger();
+  // Resolved here ONCE: the row and the menu must agree about which plugin
+  // entries exist, including when one of them is switched off.
+  const headerEntries = useHeaderEntries('mobile');
 
   // Recent sessions: archived rows are hidden. A session the user actually
   // opened in this tab within the last 10 minutes ranks by that open time
@@ -240,6 +244,7 @@ export function MobileHeader({
         sessionId={activeSessionId == null ? null : String(activeSessionId)}
         showRightPanel={false}
         onToggleRightPanel={onOpenRightSidebar}
+        entries={headerEntries}
         hidden={hidden}
       />
 
@@ -249,10 +254,11 @@ export function MobileHeader({
           title="Navbar"
           align="right"
           // Only the controls this header actually draws: install is desktop
-          // furniture, and a checkbox for one would hide nothing.
-          items={NAVBAR_CONTROLS.filter(
-            (item) => item.id !== NAVBAR_CONTROL.install,
-          ).map((item) => ({ ...item, removable: true }))}
+          // furniture, and a checkbox for one would hide nothing. Plugin
+          // entries ARE drawn here, folded or not, so they get a row too.
+          items={navbarControlItems([...headerEntries.inline, ...headerEntries.folded])
+            .filter((item) => item.id !== NAVBAR_CONTROL.install)
+            .map((item) => ({ ...item, removable: true }))}
           hidden={hidden}
           onToggle={setHidden}
           onClose={visibility.close}

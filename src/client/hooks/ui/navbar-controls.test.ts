@@ -18,6 +18,8 @@ import { primeKabmoSettings } from '@/shared/lib/settings/client';
 import {
   NAVBAR_CONTROLS,
   NAVBAR_HIDDEN_SETTING_KEY,
+  navbarControlItems,
+  navbarPluginControlId,
   readHiddenControls,
   toggleHiddenControl,
 } from '@/client/hooks/ui/navbar-controls';
@@ -46,5 +48,29 @@ describe('navbar controls', () => {
     expect(ids).toEqual(['install', 'reload', 'context', 'signout', 'right-panel']);
     primeKabmoSettings({ [NAVBAR_HIDDEN_SETTING_KEY]: ids });
     expect(readHiddenControls()).toEqual(ids);
+  });
+
+  test('a plugin entry is `plugin:<pluginId>`, never one of its panel keys', () => {
+    expect(navbarPluginControlId('stats')).toBe('plugin:stats');
+    // An installed plugin's entry may be hidden before its bundle reports in,
+    // so the SHAPE is what validation keeps; a panel instance key is a
+    // different control and must not become a menu row.
+    primeKabmoSettings({
+      [NAVBAR_HIDDEN_SETTING_KEY]: ['plugin:stats', 'plugin:stats:rightPanel', 'plugin:'],
+    });
+    expect(readHiddenControls()).toEqual(['plugin:stats']);
+  });
+
+  test('the menu puts a plugin entry where the row draws it', () => {
+    const items = navbarControlItems([{ pluginId: 'stats', title: 'Stats' }]);
+    expect(items.map((item) => item.id)).toEqual([
+      'install',
+      'plugin:stats',
+      'reload',
+      'context',
+      'signout',
+      'right-panel',
+    ]);
+    expect(items[1]!.title).toBe('Stats');
   });
 });

@@ -27,7 +27,7 @@ import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { definePluginApp } from '@kabmo-labs/kabmo-sdk/app';
-import { HeaderControls } from '@/client/components/common/header-controls';
+import { HeaderControlsHarness } from '@/test-support/header-controls-harness';
 import { SessionStateProvider } from '@/client/components/common/session-state-provider/index';
 import { registerPluginBundle, resetPluginSlots } from '@/client/lib/plugins/slots';
 import { primeAuthState } from '@/client/hooks/ui/auth';
@@ -135,7 +135,7 @@ afterAll(() => {
   restoreDomGlobals();
 });
 
-async function mount(layout: 'desktop' | 'mobile', width: number): Promise<void> {
+async function mount(layout: 'desktop' | 'mobile', width: number, hidden?: string[]): Promise<void> {
   Object.defineProperty(window, 'innerWidth', { value: width, configurable: true, writable: true });
   container = document.createElement('div');
   document.body.appendChild(container);
@@ -143,11 +143,12 @@ async function mount(layout: 'desktop' | 'mobile', width: number): Promise<void>
     render(
       h(SessionStateProvider, {
         sessionId: SESSION,
-        children: h(HeaderControls, {
+        children: h(HeaderControlsHarness, {
           layout,
           sessionId: SESSION,
           showRightPanel: false,
           onToggleRightPanel: () => {},
+          ...(hidden ? { hidden } : {}),
         }),
       }),
       container,
@@ -225,5 +226,26 @@ describe('a plugin header action', () => {
   test('a wide enough phone keeps it in the row', async () => {
     await mount('mobile', 500);
     expect(rowNames()).toContain('Demo Stats');
+  });
+
+  test('switching the plugin entry off removes it from the desktop row', async () => {
+    await mount('desktop', 1024, ['plugin:demo']);
+    expect(rowNames()).not.toContain('Demo Stats');
+    // The other controls are untouched: one id hides one control.
+    expect(rowNames()).toContain('Context usage');
+  });
+
+  test('a folded plugin row goes with it, and the menu keeps the other rows', async () => {
+    await mount('mobile', 390, ['plugin:demo']);
+
+    const trigger = container.querySelector('button[aria-label="More actions"]') as HTMLElement;
+    expect(trigger).toBeTruthy();
+    await act(async () => {
+      trigger.click();
+    });
+    const menu = container.querySelector('[role="menu"]') as HTMLElement;
+    expect(menu.querySelector('[role="menuitem"][aria-label="Demo Stats"]')).toBeNull();
+    // Reload and sign-out are still folded; the menu is not empty.
+    expect(menu.textContent).toContain('Reload page');
   });
 });
