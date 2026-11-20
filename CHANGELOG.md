@@ -4,6 +4,13 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.43.1](https://github.com/kabmo-labs/kabmo/compare/v0.43.0...v0.43.1) — 2026-11-20
+
+### Fixed
+
+* **acp:** answer approvals correctly, keep the session, and stop losing context ([48f809a](https://github.com/kabmo-labs/kabmo/commit/48f809ac44911ad17dc0b7da7c0501678567259b)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **acp:** recognise a subagent delegation and never miss its work ([d3a5feb](https://github.com/kabmo-labs/kabmo/commit/d3a5febacb42a813a0913e7f2e3023c85c46908b)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.43.0](https://github.com/kabmo-labs/kabmo/compare/v0.42.2...v0.43.0) — 2026-11-19
 
 ### Added
