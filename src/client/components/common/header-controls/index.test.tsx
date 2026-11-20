@@ -168,7 +168,7 @@ function controlNames(): string[] {
  */
 async function mount(
   layout: 'desktop' | 'mobile',
-  props: { width?: number; hidden?: string[] } = {},
+  props: { width?: number; hidden?: string[]; showRightPanel?: boolean } = {},
 ): Promise<void> {
   // happy-dom resolves `matchMedia` against `innerWidth`, so writing it is the
   // same signal a real resize raises.
@@ -186,7 +186,7 @@ async function mount(
         children: h(HeaderControlsHarness, {
           layout,
           sessionId: SESSION,
-          showRightPanel: layout === 'desktop',
+          showRightPanel: props.showRightPanel ?? layout === 'desktop',
           onToggleRightPanel: () => {},
           ...(props.hidden ? { hidden: props.hidden } : {}),
         }),
@@ -219,6 +219,21 @@ describe('HeaderControls', () => {
       'Sign out',
       'Toggle Right Side',
     ]);
+  });
+
+  test('the right side toggle keeps one glyph whether open or hidden', async () => {
+    // A toggle cannot flip an arrow under the cursor: same panel mark in both
+    // states, and `aria-pressed` names the state it is in.
+    const button = () => container.querySelector('button[aria-label^="Toggle Right Side"]');
+    const glyph = () => button()?.querySelector('svg')?.getAttribute('class') ?? '';
+    await mount('desktop', { showRightPanel: true });
+    const open = glyph();
+    expect(open).not.toContain('lucide-panel-right-close');
+    render(null, container);
+    container.remove();
+    await mount('desktop', { showRightPanel: false });
+    expect(glyph()).toBe(open);
+    expect(button()?.getAttribute('aria-pressed')).toBe('false');
   });
 
   test('a hidden control leaves the row', async () => {

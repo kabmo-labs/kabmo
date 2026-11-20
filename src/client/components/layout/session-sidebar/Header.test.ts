@@ -74,6 +74,16 @@ describe('sidebar title bar', () => {
     expect(el.textContent).toContain('Kabmo');
   });
 
+  test('the collapse control draws the plain panel glyph, not the close arrow', async () => {
+    const el = await mount(() => {});
+    const glyph = collapseButton(el)?.querySelector('svg');
+    // One glyph for the whole toggle: the sidebar can only be collapsed from
+    // here (reopening is the navbar's), so a second, arrowed mark said the
+    // same thing twice and read as a different action from the navbar's.
+    expect(glyph?.getAttribute('class')).toContain('lucide-panel-left');
+    expect(glyph?.getAttribute('class')).not.toContain('lucide-panel-left-close');
+  });
+
   test('the collapse control runs its handler', async () => {
     let collapsed = 0;
     const el = await mount(() => { collapsed += 1; });

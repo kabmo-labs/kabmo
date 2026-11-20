@@ -18,8 +18,8 @@
  *
  * The glyph is `PanelRightClose`, not the `PanelRight` the split toggle beside
  * it draws: two identical marks a few pixels apart would be one control drawn
- * twice, and the close glyph is the same one the navbar used for this action
- * before the move.
+ * twice. This button has ONE direction (hide), unlike the navbar's side toggle,
+ * which keeps a single `PanelRight` in both states because it is a toggle.
  */
 
 import { PanelRightClose } from 'lucide-preact';

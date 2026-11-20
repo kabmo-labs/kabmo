@@ -1,4 +1,4 @@
-import { PanelLeftClose } from 'lucide-preact';
+import { PanelLeft } from 'lucide-preact';
 import { BrandWordmark } from '@/client/components/common/brand-wordmark';
 import { StreamStatusDot } from '@/client/components/common/StreamStatusDot';
 import { withChord } from '@/client/lib/ui/with-chord';
@@ -52,7 +52,7 @@ export function SessionSidebarHeader({
           aria-label={label}
           className="w-7 h-7 -mr-1.5 inline-flex items-center justify-center rounded text-ink/50 hover:text-ink hover:bg-ink/5 transition-colors cursor-pointer titlebar-no-drag"
         >
-          <PanelLeftClose size={15} />
+          <PanelLeft size={15} />
         </button>
       )}
     </div>

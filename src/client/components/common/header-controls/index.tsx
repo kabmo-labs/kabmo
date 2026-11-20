@@ -1,4 +1,4 @@
-import { PanelRight, PanelRightClose } from 'lucide-preact';
+import { PanelRight } from 'lucide-preact';
 import { PWAInstallButton } from '@/client/components/common/PWAInstallButton';
 import { ReloadPageButton } from '@/client/components/common/ReloadPageButton';
 import { SignOutButton } from '@/client/components/common/SignOutButton';
@@ -191,7 +191,7 @@ export function HeaderControls({
           aria-label={withChord('toggleRightPanel', 'Toggle Right Side')}
           aria-pressed={showRightPanel}
         >
-          {showRightPanel ? <PanelRightClose size={size} /> : <PanelRight size={size} />}
+          <PanelRight size={size} />
         </button>
       ))}
       {moreRows && (
