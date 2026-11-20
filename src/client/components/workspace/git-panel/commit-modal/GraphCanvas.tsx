@@ -5,7 +5,8 @@ import { LANE_COLORS, buildBezierPath, computeCommitLanes, computeGraphLinks } f
 interface GraphCanvasProps {
   commits: GitCommit[];
   nodePositions: Record<string, number>;
-  selectedHash?: string;
+  /** The row whose detail is open, which is what the halo marks. */
+  expandedHash?: string;
   hoveredHash?: string;
   isGraphMode: boolean;
   laneWidth?: number;
@@ -16,7 +17,7 @@ interface GraphCanvasProps {
 export function GraphCanvas({
   commits,
   nodePositions,
-  selectedHash,
+  expandedHash,
   hoveredHash,
   isGraphMode,
   laneWidth = 18,
@@ -109,7 +110,7 @@ export function GraphCanvas({
           const lane = laneMap.get(commit.hash) ?? 0;
           const cx = isGraphMode ? paddingLeft + lane * laneWidth : 16;
           const cy = nodePositions[commit.hash] ?? 20;
-          const isSelected = selectedHash === commit.hash || selectedHash === commit.shortHash;
+          const isExpanded = expandedHash === commit.hash || expandedHash === commit.shortHash;
           const isHovered = hoveredHash === commit.hash || hoveredHash === commit.shortHash;
           const laneColor = isGraphMode
             ? LANE_COLORS[lane % LANE_COLORS.length]
@@ -118,13 +119,13 @@ export function GraphCanvas({
           return (
             <g key={`node-${commit.hash}`} data-commit-node={commit.hash}>
               {/* Outer halo when active or hovered */}
-              {(isSelected || isHovered) && (
+              {(isExpanded || isHovered) && (
                 <circle
                   cx={cx}
                   cy={cy}
                   r={8}
                   fill={laneColor}
-                  fillOpacity={isSelected ? 0.35 : 0.2}
+                  fillOpacity={isExpanded ? 0.35 : 0.2}
                   stroke={laneColor}
                   strokeWidth={1}
                 />

@@ -7,6 +7,7 @@ import { CommitRow } from '@/client/components/workspace/git-panel/commit-modal/
 import { computeCommitLanes } from '@/shared/lib/fs/git-graph';
 import { useCommitPagination } from '@/client/hooks/workspace/commit-pagination';
 import { useCommitInteractions } from '@/client/hooks/workspace/commit-interactions';
+import { useCommitExpansion } from '@/client/hooks/workspace/commit-expansion';
 
 interface GitCommitModalProps {
   output: CommitHistoryPage | null;
@@ -62,7 +63,10 @@ export function GitCommitModal({
   const setIsGraphMode = (graph: boolean) => setPage((current) => ({ ...current, graph }));
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedHash, setSelectedHash] = useState<string>('');
+  // Which row is open — see `useCommitExpansion` for why nothing is expanded
+  // until a row is clicked, why clicking the open row closes it, and why a new
+  // page starts collapsed.
+  const { expandedHash, toggleExpanded } = useCommitExpansion(output);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const {
@@ -91,13 +95,6 @@ export function GitCommitModal({
     rootPath,
     activeRepo,
   });
-
-  // Set initial selected commit
-  useEffect(() => {
-    if (commits.length > 0 && !selectedHash) {
-      setSelectedHash(commits[0].hash);
-    }
-  }, [commits, selectedHash]);
 
   // Filter commits based on search query
   const filteredCommits = useMemo(() => {
@@ -161,12 +158,12 @@ export function GitCommitModal({
   }, [filteredCommits]);
 
   /**
-   * `selectedHash` is a dependency because SELECTING a row MOVES the rows
-   * below it: the action strip renders under the selected subject line, so the
-   * row it lands on grows by that strip's height while the row that had it
-   * shrinks by exactly the same — the container's TOTAL height does not move,
-   * so the ResizeObserver below never fires and every node keeps its
-   * pre-selection `y`.
+   * `expandedHash` is a dependency because OPENING a row MOVES the rows below
+   * it: the action strip, the body and the file list render under the open
+   * subject line, so the row it lands on grows while the row that had it
+   * shrinks by exactly the same — the container's TOTAL height does not move
+   * when the previous row was open, so the ResizeObserver below never fires and
+   * every node keeps its pre-toggle `y`.
    *
    * Measured in the browser on a 50-commit page: with the first row selected
    * and the third clicked, row 0 went 170.1px → 121.6px and row 2 went
@@ -182,23 +179,23 @@ export function GitCommitModal({
       measurePositions();
     });
     return () => cancelAnimationFrame(rafId);
-  }, [measurePositions, filteredCommits, fileDiffs, expandedFiles, isGraphMode, selectedHash]);
+  }, [measurePositions, filteredCommits, fileDiffs, expandedFiles, isGraphMode, expandedHash]);
 
   /**
    * Observe the container AND every row inside it.
    *
    * The container alone is not enough, and that is the bug this fixes. A row's
-   * box can change while the container's does not: selecting a commit renders
+   * box can change while the container's does not: opening a commit renders
    * the action strip under its subject line, so the row that gains the strip
    * grows by exactly what the row that loses it shrinks by. The total is
    * unchanged, no container resize is reported, and every node keeps the `y` it
    * was measured at before the click.
    *
-   * Measured in the browser on a 50-commit page: with the first row selected
-   * and the third clicked, row 0 went 170.1px → 121.6px and row 2 went
+   * Measured in the browser on a 50-commit page: with the first row open and
+   * the third clicked, row 0 went 170.1px → 121.6px and row 2 went
    * 152.9px → 201.4px, the container total stayed put, and the node for row 1
    * sat 48.5px BELOW the subject line it names — the reported "point tidak
-   * lurus dengan commit title". `selectedHash` in the effect's dependencies is
+   * lurus dengan commit title". `expandedHash` in the effect's dependencies is
    * what fixes that case immediately; observing the rows is what keeps the
    * invariant true for the NEXT per-row change that happens to net out, rather
    * than requiring this list to name every prop that can move a row.
@@ -284,7 +281,7 @@ export function GitCommitModal({
               <GraphCanvas
                 commits={filteredCommits}
                 nodePositions={nodePositions}
-                selectedHash={selectedHash}
+                expandedHash={expandedHash}
                 isGraphMode={isGraphMode}
                 laneWidth={laneWidth}
                 paddingLeft={paddingLeft}
@@ -301,8 +298,8 @@ export function GitCommitModal({
                   <CommitRow
                     key={commit.hash}
                     commit={commit}
-                    isSelected={selectedHash === commit.hash}
-                    onSelect={(c) => setSelectedHash(c.hash)}
+                    isExpanded={expandedHash === commit.hash}
+                    onToggleExpand={() => toggleExpanded(commit.hash)}
                     onAction={handleCommitAction}
                     onToggleFile={handleToggleFile}
                     isExpandedFile={(h, f) => expandedFiles.has(`${h}:${f}`)}

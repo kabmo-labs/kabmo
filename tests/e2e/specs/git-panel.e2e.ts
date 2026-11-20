@@ -649,18 +649,18 @@ test.describe('Source Control — commit history graph alignment', () => {
   /**
    * A repository with `count` commits.
    *
-   * `bodies: true` gives every commit a multi-line body, so a row has something
-   * to expand; `bodies: false` gives one-line subjects, so a click only SELECTS.
+   * `bodies: true` gives every commit a multi-line body, so an open row renders
+   * prose under its subject; `bodies: false` gives one-line subjects, so an
+   * open row renders only the action strip and the changed-file list.
    *
-   * The distinction is load-bearing for the spec, not decoration. Selecting a
-   * row moves the action strip from the previous selection to the new one, so
-   * one row grows by the strip's height while another shrinks by exactly the
-   * same — a NET-ZERO change to the container's height, which is the state that
-   * used to leave every node at its pre-click `y`. A commit with a body ALSO
-   * expands on that same click, which grows the container and re-triggers the
-   * measurement by itself: a fixture of multi-line commits therefore hides the
-   * bug it is meant to catch (measured — the first version of this spec passed
-   * with the fix reverted for exactly that reason).
+   * The distinction is load-bearing for the spec, not decoration. One row is
+   * open at a time, so opening a SECOND row shrinks the first by exactly what
+   * the second grows by — a NET-ZERO change to the container's height, the
+   * state that used to leave every node at its pre-click `y`. The FIRST click
+   * of a run grows the container and re-triggers the measurement by itself,
+   * which is why a fixture where every click grows it would hide the bug it is
+   * meant to catch (measured — the first version of this spec passed with the
+   * fix reverted for exactly that reason).
    */
   function seedHistoryRepo(name: string, count: number, options: { bodies: boolean }): SeedWorkingRepo {
     const repo = makeRepo(name);
@@ -734,26 +734,32 @@ test.describe('Source Control — commit history graph alignment', () => {
 
   test('a selected commit keeps its node on its own title line', async ({ harness, page }) => {
     const server = await harness('real');
-    // ONE-LINE commits on purpose: a click then only SELECTS, which moves the
-    // action strip between rows and leaves the container's total height
-    // unchanged. With a body on every commit the same click also expands, the
-    // container grows, and the measurement re-fires by itself — see
-    // `seedHistoryRepo` for why that would hide the bug.
+    // ONE-LINE commits on purpose: the row still opens (an action strip and a
+    // changed-file list) but no body text does, so the height that moves is the
+    // same shape for every row and the spec is about the node following it —
+    // see `seedHistoryRepo` for why a growing container can hide the bug.
     const repo = seedHistoryRepo('git-graph-select', 12, { bodies: false });
     await openHistory(page, server, repo);
 
-    // Baseline: the first row is selected on open (the panel seeds the
-    // selection from the first commit), and every node sits on its title.
+    // Baseline: every row is COLLAPSED on open — the modal seeds no expansion —
+    // and every node sits on its title. The subject's own `aria-expanded` is
+    // the row's state, read off the DOM rather than inferred from a detail
+    // selector that could be hidden by CSS.
     await expectNodesOnTitles(page, 'initial');
+    const expandedOnOpen = await page
+      .getByRole('dialog')
+      .locator('[data-testid="commit-row"] button[aria-expanded="true"]')
+      .count();
+    expect(expandedOnOpen, 'the history opens with no row expanded').toBe(0);
 
-    // Selecting MOVES the rows: the action strip renders under the newly
-    // selected row's subject line and leaves the previous one, so the rows
-    // between them shift by that strip's height. The container's total height
-    // is unchanged, which is why a container-only ResizeObserver never noticed
-    // — measured, the node for the third row sat 48.5px below its title.
+    // Expanding a row renders the action strip under its subject line, and
+    // collapsing the previous one removes that strip: the rows between them
+    // shift by the strip's height while the container's total height stays put,
+    // which is why a container-only ResizeObserver never noticed — measured,
+    // the node for the third row sat 48.5px below its title.
     for (const index of [3, 6, 1, 9]) {
       await page.getByRole('dialog').locator('[data-testid="commit-row"]').nth(index).click();
-      await expectNodesOnTitles(page, `after selecting row ${index}`);
+      await expectNodesOnTitles(page, `after expanding row ${index}`);
     }
   });
 
@@ -779,13 +785,10 @@ test.describe('Source Control — commit history graph alignment', () => {
     await expect(row.getByText(`body line one for ${index}`)).toBeVisible();
     await expectNodesOnTitles(page, 'after expanding a body');
 
-    // The body belongs to the SELECTED row — the separate expand toggle is gone
-    // (`commit-modal/index.tsx` seeds the detail from `selectedHash`), so
-    // collapsing this body means selecting a different row, not clicking the
-    // same one again. `nth(2)` is a different commit from the row above by
-    // construction: `nth(4)` is not `subject 4`, but it is never `nth(2)`.
-    const other = page.getByRole('dialog').locator('[data-testid="commit-row"]').nth(2);
-    await other.click();
+    // The row is its own toggle: clicking the open row again closes it, and the
+    // graph is re-measured for the row that shrank rather than for a selection
+    // that moved.
+    await row.click();
     await expect(row.getByText(`body line one for ${index}`)).toBeHidden();
     await expectNodesOnTitles(page, 'after collapsing a body');
   });
@@ -795,14 +798,15 @@ test.describe('Source Control — commit history graph alignment', () => {
     const repo = seedHistoryRepo('git-graph-mode', 12, { bodies: false });
     await openHistory(page, server, repo);
 
-    // Graph mode draws the action strip on EVERY row (`isSelected || isGraphMode`),
-    // so the row heights there are a different shape from History's — the mode
-    // is a separate measurement, not a re-run of the same one.
+    // Graph mode draws a wider gutter and its own rail geometry, so the row
+    // heights and the node x-positions there are a different shape from
+    // History's — the mode is a separate measurement, not a re-run of the same
+    // one.
     await page.getByRole('dialog').getByTitle('Graph view').click();
     await expectNodesOnTitles(page, 'graph mode, initial');
 
     await page.getByRole('dialog').locator('[data-testid="commit-row"]').nth(5).click();
-    await expectNodesOnTitles(page, 'graph mode, after selecting row 5');
+    await expectNodesOnTitles(page, 'graph mode, after expanding row 5');
   });
 });
 
