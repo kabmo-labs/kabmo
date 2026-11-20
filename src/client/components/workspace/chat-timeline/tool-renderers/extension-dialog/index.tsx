@@ -1,7 +1,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { CheckCircle2 } from 'lucide-preact';
-import type { ExtensionUiDialogRequest } from '@/client/hooks/chat/omp';
+import type { ExtensionDialogResponse, ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
 import { ExtensionDialogHeader } from '@/client/components/workspace/chat-timeline/tool-renderers/extension-dialog/Header';
 import { ExtensionDialogSelectBody } from '@/client/components/workspace/chat-timeline/tool-renderers/extension-dialog/SelectBody';
 import { ExtensionDialogFooter } from '@/client/components/workspace/chat-timeline/tool-renderers/extension-dialog/Footer';
@@ -10,12 +10,7 @@ import { dialogMethodMeta, useDialogShortcuts } from '@/client/components/worksp
 import { isApprovalGateFrame } from '@/shared/lib/chat/omp/approval-gate';
 import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
 
-export type ExtensionDialogResponse =
-  | { value: string }
-  | { confirmed: boolean }
-  | { cancelled: true }
-  /** One `ask` answer per question, in question order (grouped ask mode). */
-  | { answers: { id: string; selectedOptions: string[]; customInput?: string }[] };
+export type { ExtensionDialogResponse } from '@/shared/types/omp/agent';
 
 interface ExtensionDialogProps {
   request: ExtensionUiDialogRequest;
@@ -193,8 +188,25 @@ export function ExtensionDialog({ request, onRespond }: ExtensionDialogProps) {
               />
             )}
 
-            {/* Confirm Banner */}
-            {request.method === 'confirm' && (
+            {/* Confirm Banner — only when the producer offered no choices. An
+                ACP approval carries its agent's own option list (allow once /
+                always / reject), and a yes/no banner threw that away: "Always
+                allow" was unreachable and Esc could select whatever came last. */}
+            {request.method === 'confirm' && options.length > 0 && (
+              <div className="space-y-2">
+                {options.map((option, index) => (
+                  <button
+                    key={request.optionIds?.[index] ?? option}
+                    type="button"
+                    onClick={() => onRespond(request, { optionId: request.optionIds?.[index] ?? option })}
+                    className="flex w-full cursor-pointer items-center justify-between rounded-xl border border-ink/15 bg-canvas/30 px-4 py-3 text-left text-[13px] font-medium text-ink transition-colors hover:border-ink/30 hover:bg-canvas/50"
+                  >
+                    <span className="min-w-0 break-words">{option}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {request.method === 'confirm' && options.length === 0 && (
               <div className="flex items-center gap-3 rounded-xl border border-ink/10 bg-canvas/30 p-4">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-ink/5 text-ink">
                   <CheckCircle2 size={18} />

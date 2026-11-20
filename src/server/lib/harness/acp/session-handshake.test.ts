@@ -69,10 +69,79 @@ describe('handshakeAcpSession', () => {
     expect(proc.calls).toEqual(['new']);
   });
 
-  test('load restores and then starts the replacement session', async () => {
+  test('load restores the same session and continues on it', async () => {
     const proc = processDouble();
-    await handshakeAcpSession(target(), proc, { model: null, thinking: null, mode: null }, 'agent-1');
+    const session = target();
+    await handshakeAcpSession(session, proc, { model: null, thinking: null, mode: null }, 'agent-1');
+    expect(proc.calls).toEqual(['load']);
+    expect(session.sessionId).toBe('agent-1');
+  });
+
+  test('a load that answers a forked id continues on that id', async () => {
+    const proc = processDouble({
+      async loadSession() {
+        proc.calls.push('load');
+        return { sessionId: 'forked-1' };
+      },
+    });
+    const session = target();
+    await handshakeAcpSession(session, proc, { model: null, thinking: null, mode: null }, 'agent-1');
+    expect(proc.calls).toEqual(['load']);
+    expect(session.sessionId).toBe('forked-1');
+  });
+
+  test('resume wins when the agent advertises both, and load is never called', async () => {
+    const proc = processDouble({
+      async initialize() {
+        return {
+          protocolVersion: 1,
+          agentCapabilities: { loadSession: true, sessionCapabilities: { resume: {} } },
+        };
+      },
+      async resumeSession(sessionId: string) {
+        proc.calls.push(`resume:${sessionId}`);
+        return {};
+      },
+    });
+    const session = target();
+    await handshakeAcpSession(session, proc, { model: null, thinking: null, mode: null }, 'agent-1');
+    expect(proc.calls).toEqual(['resume:agent-1']);
+    expect(session.sessionId).toBe('agent-1');
+  });
+
+  test('a failed restore continues in a fresh session and says so', async () => {
+    const proc = processDouble({
+      async loadSession() {
+        proc.calls.push('load');
+        throw new Error('session not found');
+      },
+    });
+    const session = target();
+    const notices: unknown[] = [];
+    session.emit = (event) => {
+      notices.push(event);
+    };
+    await handshakeAcpSession(session, proc, { model: null, thinking: null, mode: null }, 'agent-1');
     expect(proc.calls).toEqual(['load', 'new']);
+    expect(session.sessionId).toBe('new-id');
+    expect(notices).toContainEqual({
+      type: 'notice',
+      level: 'warning',
+      message: 'claude could not restore the previous session; continuing in a fresh session without in-agent history.',
+    });
+  });
+
+  test('an auth refusal during restore is never replaced by a silent new session', async () => {
+    const proc = processDouble({
+      async loadSession() {
+        proc.calls.push('load');
+        throw Object.assign(new Error('Authentication required'), { code: -32000 });
+      },
+    });
+    await expect(
+      handshakeAcpSession(target(), proc, { model: null, thinking: null, mode: null }, 'agent-1'),
+    ).rejects.toThrow('Authentication required');
+    expect(proc.calls).toEqual(['load']);
   });
 
   test('an agent with no loadSession but sessionCapabilities.resume resumes in place', async () => {

@@ -19,11 +19,12 @@ import type { AcpId } from '@/server/lib/harness/acp/protocol';
 import type { PendingPermissions } from '@/server/lib/harness/acp/permissions';
 import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 import { allowOption, autoApproval, type PermissionOption } from '@/server/lib/harness/acp/permissions';
+import { permissionGrantKey } from '@/server/lib/harness/acp/grants';
 import { noteAwaitingInput } from '@/server/lib/notifications/feed.server';
 
 /**
- * The option id to select when the tier already allows this call, or null to
- * park it as a dialog.
+ * The option id to select when the tier (or a standing grant) already allows
+ * this call, or null to park it as a dialog.
  *
  * Answered HERE, before a dialog exists: parking it would ask a question the
  * operator's own selection already answered, and `isBusy()` would report a
@@ -32,12 +33,16 @@ import { noteAwaitingInput } from '@/server/lib/notifications/feed.server';
 export function preApprovedOption(
   accessMode: ApprovalMode,
   params: Record<string, unknown>,
+  permissions?: PendingPermissions,
 ): string | null {
   const toolCall = params.toolCall && typeof params.toolCall === 'object'
     ? Object.fromEntries(Object.entries(params.toolCall))
     : undefined;
-  if (!autoApproval(accessMode, toolCall)) return null;
   const options = Array.isArray(params.options) ? (params.options as PermissionOption[]) : [];
+  // A standing "always allow" is the operator's own answer to this exact call;
+  // it wins over the tier, including one that would otherwise ask.
+  if (permissions?.grants.has(permissionGrantKey(toolCall))) return allowOption(options, 'always');
+  if (!autoApproval(accessMode, toolCall)) return null;
   return allowOption(options);
 }
 
@@ -99,7 +104,7 @@ export function answerPermissionRequest(
   id: AcpId,
   params: Record<string, unknown>,
 ): Promise<PermissionRequestAnswer> {
-  const optionId = preApprovedOption(host.accessMode, params);
+  const optionId = preApprovedOption(host.accessMode, params, host.permissions);
   if (optionId) {
     return Promise.resolve({ answered: true, result: { outcome: { outcome: 'selected', optionId } } });
   }

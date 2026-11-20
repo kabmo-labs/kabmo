@@ -22,12 +22,16 @@ import type {
   AcpHandshakeTarget,
 } from '@/server/lib/harness/acp/session-handshake';
 import { handshakeAcpSession } from '@/server/lib/harness/acp/session-handshake';
+import { loadAcpGrants } from '@/server/lib/harness/acp/grants.server';
 import type { IdleReaper } from '@/server/lib/omp/rpc/idle-reaper';
 
 /** The session slice a start drives: the handshake target, its clock and id. */
 export interface AcpStartTarget extends AcpHandshakeTarget {
   sessionId: string;
   idle: IdleReaper;
+  /** The approval queue, so the grants earned in an earlier process are
+   *  hydrated before the first `session/request_permission` can arrive. */
+  permissions?: { grants: { hydrate(keys: readonly string[]): void } };
 }
 
 export async function startAcpSession(
@@ -56,6 +60,9 @@ export async function startAcpSession(
   );
   if (wantsReplay) await replay.run(mapper, handshake);
   else await handshake();
+  // "Always allow" is the operator's standing decision for this chat; a new
+  // child must not ask again. Read once, before the session can take a prompt.
+  target.permissions?.grants.hydrate(await loadAcpGrants(target.sessionId));
   // A slow handshake is not idleness: the window starts once it is usable.
   target.idle.reset(true);
   return { sessionId: target.sessionId };

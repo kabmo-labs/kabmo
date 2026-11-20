@@ -30,7 +30,9 @@
  */
 
 import { configOption, modelFromOption } from '@/server/lib/harness/acp/prompt';
-import type { AcpConfigOption, AcpSessionModeState } from '@/server/lib/harness/acp/protocol';
+import { permissionGrantKey } from '@/server/lib/harness/acp/grants';
+import { saveAcpGrant } from '@/server/lib/harness/acp/grants.server';
+import type { AcpConfigOption, AcpSessionModeState, AcpSessionModels } from '@/server/lib/harness/acp/protocol';
 import type { PendingPermissions } from '@/server/lib/harness/acp/permissions';
 import { markStreamModel } from '@/shared/lib/omp/session/stream-state.server';
 import type { HarnessId } from '@/shared/lib/harness/catalog';
@@ -132,26 +134,49 @@ export interface AcpResponder {
   respond(id: string | number, result: unknown): void;
 }
 
-/** Answer one parked approval dialog. Unknown ids are ignored, never guessed. */
+/** Answer one parked approval dialog.
+ *
+ *  `optionId` is the option the operator actually CLICKED (the dialog renders
+ *  the agent's list); `confirmed` is the fallback for a yes/no frame. An id the
+ *  dialog does not hold is ignored rather than guessed — it belongs to a frame
+ *  that was withdrawn, and selecting a different option there would approve
+ *  something the operator never saw.
+ *
+ *  Returns the grant key when the chosen option was `allow_always`, so the
+ *  caller can persist the standing decision. */
 export function settlePermissionDialog(
   permissions: PendingPermissions,
   responder: AcpResponder,
   dialogId: string,
-  confirmed: boolean,
-): void {
+  choice: { confirmed: boolean; optionId?: string },
+): string | null {
   const entry = permissions.take(dialogId);
-  if (!entry) return;
-  const chosen = permissions.optionFor(entry, confirmed);
-  responder.respond(entry.id, {
-    outcome: chosen ? { outcome: 'selected', optionId: chosen.optionId } : { outcome: 'cancelled' },
-  });
+  if (!entry) return null;
+  const picked = (choice.optionId
+    ? entry.options.find((option) => option.optionId === choice.optionId)
+    : undefined) ?? permissions.optionFor(entry, choice.confirmed);
+  if (!picked) {
+    responder.respond(entry.id, { outcome: { outcome: 'cancelled' } });
+    return null;
+  }
+  responder.respond(entry.id, { outcome: { outcome: 'selected', optionId: picked.optionId } });
+  if (picked.kind !== 'allow_always') return null;
+  const key = permissionGrantKey(entry.toolCall);
+  if (!permissions.grants.add(key)) return null;
+  if (key !== null) void saveAcpGrant(entry.sessionId, key).catch(() => {});
+  return key;
 }
 
 /** The process slice a config write drives; `AcpProcess` satisfies it. */
 export interface AcpConfigWriter extends AcpConfigNotice {
   modes: AcpSessionModeState | null;
+  /** The `models` block, for an agent with no `model` selector. */
+  models?: AcpSessionModels | null;
   writeConfigOption(configId: string, value: string | boolean): Promise<unknown>;
   writeMode(modeId: string): Promise<unknown>;
+  /** `session/set_model`: the only way to select a model on an agent that
+   *  publishes a `models` block instead of a config option. */
+  writeModel?: (modelId: string) => Promise<unknown>;
 }
 
 /**
@@ -167,6 +192,20 @@ export async function setAcpConfig(
 ): Promise<unknown> {
   if (configId === 'mode' && typeof value === 'string' && !target.configOptions.some((option) => option.id === 'mode') && target.modes) {
     return setAcpMode(target, value);
+  }
+  // The synthesized selector from a `models` block is answered by
+  // `session/set_model`: the agent never published a `model` config option, so a
+  // `set_config_option` would ask it for a selector it does not have.
+  const synthesized = configId === 'model'
+    && typeof value === 'string'
+    && target.models !== undefined
+    && target.models !== null;
+  if (synthesized && target.writeModel) {
+    const result = await target.writeModel(value);
+    target.models = { ...target.models, currentModelId: value };
+    adoptConfigAnswer(target, result, { configId, value });
+    publishConfigChange(target, configId);
+    return result;
   }
   const result = await target.writeConfigOption(configId, value);
   adoptConfigAnswer(target, result, { configId, value });

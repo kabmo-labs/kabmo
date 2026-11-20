@@ -18,6 +18,13 @@
 
 import type { AcpId, AcpResponse } from '@/server/lib/harness/acp/protocol';
 
+/** What the table does when a request's own deadline expires. A timeout is the
+ *  client's verdict, not the agent's: without telling it, the agent keeps
+ *  working on a request nobody will read. */
+export interface PendingCallsOptions {
+  onTimeout?: (id: AcpId, method: string, params: Record<string, unknown>) => void;
+}
+
 /** A JSON-RPC error answer, with the code the spec defines for it. */
 export class AcpRequestError extends Error {
   constructor(
@@ -43,6 +50,8 @@ export interface Pending {
 export class PendingCalls {
   private readonly map = new Map<AcpId, Pending>();
 
+  constructor(private readonly options: PendingCallsOptions = {}) {}
+
   /** Track one call. `budgetMs` of 0 means "no timer" — a whole turn. */
   begin<T>(id: AcpId, method: string, params: unknown, budgetMs: number): Promise<T> {
     const { promise, resolve, reject } = Promise.withResolvers<T>();
@@ -56,6 +65,10 @@ export class PendingCalls {
       entry.timer = setTimeout(() => {
         if (this.map.get(id) !== entry) return;
         this.map.delete(id);
+        // ACP's `$/cancel_request` is how a client withdraws a request it no
+        // longer wants. Keeping the pool consistent is not enough — the agent
+        // would run the abandoned request to completion.
+        this.options.onTimeout?.(id, method, entry.params);
         reject(new Error(`ACP ${method} timed out after ${budgetMs}ms`));
       }, budgetMs);
       entry.timer.unref?.();

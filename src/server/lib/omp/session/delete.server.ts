@@ -88,6 +88,9 @@ const SESSION_ROW_DELETES: readonly (readonly [string, string])[] = [
   // The per-session MCP overrides and the agent-dir overlay they build. The
   // row is keyed to the id; the directory is removed below.
   ['session_mcp_state', 'session_id'],
+  // An ACP chat's standing "always allow" decisions. A deleted chat that kept
+  // them would re-approve the same commands if its id were ever reused.
+  ['acp_permission_grants', 'session_id'],
 ];
 
 async function purgeKabmoRows(db: DbClient, sessionId: string): Promise<number> {

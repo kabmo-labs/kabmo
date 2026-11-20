@@ -223,11 +223,7 @@ export interface OmpAgentHandle extends OmpAgentState {
    *  `answers` is the grouped ask's reply: one entry per question, in order. */
   respondToExtensionUi: (
     request: ExtensionUiDialogRequest,
-    response:
-      | { value: string }
-      | { confirmed: boolean }
-      | { cancelled: true }
-      | { answers: { id: string; selectedOptions: string[]; customInput?: string }[] },
+    response: ExtensionDialogResponse,
   ) => Promise<void>;
   disconnect: () => void;
 }
@@ -253,6 +249,9 @@ export interface ExtensionUiDialogRequest {
   method: ExtensionUiDialogMethod;
   title: string;
   options?: string[];
+  /** Ids parallel to `options`, when the producer has them (ACP permission
+   *  requests). The dialog answers with the id, never the label. */
+  optionIds?: string[];
   optionDetails?: { description?: string }[];
   message?: string;
   placeholder?: string;
@@ -287,3 +286,13 @@ export type IncomingExtensionUiRequest =
   | { type: 'extension_ui_request'; id: string; method: 'cancel'; targetId: string }
   | { type: 'extension_ui_request'; id: string; method: 'notify'; message: string; notifyType?: 'info' | 'warning' | 'error' }
   | { type: 'extension_ui_request'; id: string; method: 'open_url'; url: string; launchUrl?: string; instructions?: string };
+
+/** One answer to an extension dialog. `optionId` names the producer's own
+ *  choice (ACP approvals); `value`/`confirmed`/`answers` are omp's shapes. */
+export type ExtensionDialogResponse =
+  | { value: string }
+  | { confirmed: boolean }
+  | { optionId: string }
+  | { cancelled: true }
+  /** One `ask` answer per question, in question order (grouped ask mode). */
+  | { answers: { id: string; selectedOptions: string[]; customInput?: string }[] };

@@ -13,7 +13,7 @@
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
-import { mountSession, notify } from '@/server/lib/harness/acp/session.test-util';
+import { flushTicks, mountSession, notify } from '@/server/lib/harness/acp/session.test-util';
 import { createSessionRelation } from '@/server/lib/sessions/relations.server';
 import { materializeNotice } from '@/server/lib/sessions/notify.server';
 import {
@@ -50,7 +50,7 @@ describe('ACP prompt dispatch', () => {
     expect(events.some((event) => event.type === 'agent_end')).toBe(false);
 
     turn.finish({ stopReason: 'end_turn' });
-    for (let i = 0; i < 4; i += 1) await Promise.resolve();
+    await flushTicks();
 
     expect(events.find((event) => event.type === 'agent_end')).toMatchObject({
       type: 'agent_end',
@@ -64,7 +64,7 @@ describe('ACP prompt dispatch', () => {
     await session.send({ type: 'prompt', message: 'hello' });
     await turn.started;
     turn.fail(new Error('agent exploded'));
-    for (let i = 0; i < 4; i += 1) await Promise.resolve();
+    await flushTicks();
     const errors = events.filter((event) => event.type === 'prompt_error');
     // The generic "no answer" verdict must not land on top of the agent's own
     // reason: it was emitted SECOND, so the client kept the useless one.
@@ -82,7 +82,7 @@ describe('ACP prompt dispatch', () => {
     expect(turnEnds()).toBe(0);
 
     turn.finish({ stopReason: 'end_turn' });
-    for (let i = 0; i < 4; i += 1) await Promise.resolve();
+    await flushTicks();
     expect(turnEnds()).toBe(1);
   });
 });
@@ -108,7 +108,7 @@ describe('ACP cancel', () => {
     // The agent's own reply to the cancel arrives late; it must not close a turn
     // that is already closed.
     turn.finish({ stopReason: 'cancelled' });
-    for (let i = 0; i < 4; i += 1) await Promise.resolve();
+    await flushTicks();
     expect(session.isRunning()).toBe(false);
   });
 
@@ -118,7 +118,7 @@ describe('ACP cancel', () => {
     await session.send({ type: 'prompt', message: 'long job' });
     session.cancelTurn();
     turn.finish({ stopReason: 'cancelled' });
-    for (let i = 0; i < 4; i += 1) await Promise.resolve();
+    await flushTicks();
 
     const ends = events.filter((event) => event.type === 'agent_end');
     expect(ends).toHaveLength(1);
@@ -141,7 +141,7 @@ describe('ACP turn serialization', () => {
     // it — never went out and every later send was refused as "already
     // processing". Settling it locally is what frees the chain.
     await session.send({ type: 'prompt', message: 'second' });
-    for (let i = 0; i < 8; i += 1) await Promise.resolve();
+    await flushTicks();
     expect(turn.calls()).toBe(2);
     expect(session.isRunning()).toBe(true);
   });
@@ -171,10 +171,10 @@ describe('ACP turn serialization', () => {
     await turn.started;
     session.cancelTurn();
     await session.send({ type: 'prompt', message: 'second' });
-    for (let i = 0; i < 8; i += 1) await Promise.resolve();
+    await flushTicks();
 
     turn.finish({ stopReason: 'end_turn' });
-    for (let i = 0; i < 8; i += 1) await Promise.resolve();
+    await flushTicks();
     expect(events.filter((event) => event.type === 'agent_end')).toHaveLength(2);
     expect(session.isRunning()).toBe(false);
   });
@@ -230,7 +230,7 @@ describe('ACP model identity', () => {
     });
 
     turn.finish({ stopReason: 'end_turn' });
-    for (let i = 0; i < 8; i += 1) await Promise.resolve();
+    await flushTicks();
     expect(events.find((event) => event.type === 'message_end')?.message).toMatchObject({
       model: 'qwen3-8-27b:free',
       provider: 'kenari',

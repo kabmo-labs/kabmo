@@ -46,19 +46,26 @@ export interface AcpCommandHost {
   isAlive(): boolean;
   destroyAndWait(): Promise<void>;
   steer(blocks: unknown[], queue: 'steering' | 'followUp'): Promise<unknown>;
+  /** Hold an input until the running turn ends (an agent with no steering). */
+  queueTurnInput?: (message: string, images: unknown) => void;
+  /** The content blocks one prompt sends: text, images and `@path` links. */
+  blocksFor?: (message: string, images: unknown) => Promise<unknown[]>;
   /** Record a mid-turn user message in the session's own transcript. */
   recordUserTurn(message: string, images: unknown): void;
   cancelTurn(): void;
   /** Adopt the composer's approval tier. ACP decides approvals in-process. */
   setAccessMode(mode: ApprovalMode): void;
   setConfig(configId: string, value: string | boolean): Promise<unknown>;
-  resolvePermission(dialogId: string, confirmed: boolean): unknown;
+  resolvePermission(dialogId: string, confirmed: boolean, optionId?: string): unknown;
   webState(): Record<string, unknown>;
   /** The agent's own slash-command list, when it published one. */
   agentCommands: { name: string; description?: string; inputHint?: string }[];
 }
 
-  /** The command vocabulary the routes already use. */
+  /** A prompt's blocks when the host offers no richer builder: text and images. */
+const defaultBlocks = async (message: string, images: unknown): Promise<unknown[]> => promptBlocks(message, images);
+
+/** The command vocabulary the routes already use. */
   export async function dispatchCommand(host: AcpCommandHost, command: Record<string, unknown>): Promise<unknown> {
     if (!host.isAlive()) throw new Error('ACP session is not running');
     const type = typeof command.type === 'string' ? command.type : '';
@@ -90,9 +97,14 @@ export interface AcpCommandHost {
 
       case 'steer': {
         const message = String(command.message ?? '');
-        const blocks = promptBlocks(message, command.images);
+        const blocks = await (host.blocksFor ?? defaultBlocks)(message, command.images);
         if (host.capabilities.steerMode !== 'steer') {
-          throw new Error(`This harness has no mid-turn steering (${host.harness})`);
+          // No mid-turn channel: hold it for the turn's end instead of dropping
+          // the operator's message. ACP has no queue of its own — the second
+          // prompt WOULD cancel the first — so the wait belongs here.
+          host.queueTurnInput?.(message, command.images);
+          host.recordUserTurn(message, command.images);
+          return { queued: true };
         }
         const result = await host.steer(blocks, 'steering');
         host.recordUserTurn(message, command.images);
@@ -101,8 +113,12 @@ export interface AcpCommandHost {
 
       case 'follow_up': {
         const message = String(command.message ?? '');
-        const blocks = promptBlocks(message, command.images);
-        if (!host.capabilities.steerMode) throw new Error(`This harness cannot queue a follow-up (${host.harness})`);
+        const blocks = await (host.blocksFor ?? defaultBlocks)(message, command.images);
+        if (!host.capabilities.steerMode) {
+          host.queueTurnInput?.(message, command.images);
+          host.recordUserTurn(message, command.images);
+          return { queued: true };
+        }
         const result = await host.steer(blocks, 'followUp');
         host.recordUserTurn(message, command.images);
         return result;
@@ -173,10 +189,12 @@ export interface AcpCommandHost {
       case 'extension_ui_response': {
         // The approval dialog's answer, in the shape the shared gate sends. The
         // session owns the picking (which option means "allow"), because it is
-        // also the side that rendered the options.
+        // also the side that rendered the options. `optionId` is the option the
+        // operator clicked; `confirmed` is the yes/no fallback.
         const id = typeof command.id === 'string' ? command.id : '';
+        const optionId = typeof command.optionId === 'string' ? command.optionId : undefined;
         const confirmed = command.confirmed === true || command.value === 'allow';
-        return host.resolvePermission(id, confirmed);
+        return host.resolvePermission(id, confirmed, optionId);
       }
 
       default:

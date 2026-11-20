@@ -119,9 +119,14 @@ export class AcpFrameMapper {
       case 'state_update':
       case 'terminal_update':
       case 'terminal_output_chunk':
+        return [];
+      // Compaction has no card of its own, but it is a LIVE event the operator
+      // must see: a chat that silently spends a minute rewriting its context
+      // reads as a hang. `session.compaction` is advertised, so an agent may
+      // send these, and a notice is the surface that exists.
       case 'compaction_update':
       case 'compaction_summary_chunk':
-        return [];
+        return this.compaction(update);
       case 'usage_update':
         return this.usage(update);
       case 'available_commands_update':
@@ -277,6 +282,16 @@ export class AcpFrameMapper {
       },
     });
     return frames;
+  }
+
+  /** One compaction frame as a notice, or nothing once it is complete. */
+  private compaction(update: Record<string, unknown>): AgentEvent[] {
+    const failed = typeof update.error === 'string' && update.error.length > 0;
+    return [{
+      type: 'notice',
+      level: failed ? 'warning' : 'info',
+      message: failed ? `Compaction failed: ${update.error}` : 'Compacting the conversation…',
+    }];
   }
 
   private usage(update: Record<string, unknown>): AgentEvent[] {

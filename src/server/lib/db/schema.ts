@@ -28,6 +28,7 @@ import { ensurePromptHistorySchema } from '@/server/lib/chat/schema.server';
 import { ensureSessionMcpSchema } from '@/server/lib/mcp/schema.server';
 import { ensureNotificationSchema } from '@/server/lib/notifications/schema.server';
 import { ensureConnectSchema } from '@/server/lib/connect/devices.server';
+import { ensureAcpGrantSchema } from '@/server/lib/harness/acp/grants.server';
 import { migrateWorkspaceFolderColumns } from '@/shared/lib/workspace/schema-migrations';
 import { migrateSessionStreamStateColumns } from '@/shared/lib/omp/session/schema-migrations';
 
@@ -170,6 +171,8 @@ export async function initSchema(db: DbClient): Promise<void> {
   // Paired devices and their token hashes: the Connect page's list, and the
   // credential the auth gate verifies on every request from a phone.
   await ensureConnectSchema(db);
+  // An ACP "always allow" decision survives the child it was made to.
+  await ensureAcpGrantSchema(db);
   await db.exec(`
     CREATE TABLE IF NOT EXISTS files (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

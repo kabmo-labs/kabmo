@@ -1,0 +1,100 @@
+/**
+ * @license
+ * SPDX-License-Identifier: MIT
+ */
+
+/**
+ * The seams an ACP session binds at construction: the turn machine and the
+ * background probe.
+ *
+ * Both are pure wiring over the process and the mapper, and both are the place a
+ * reader gets lost inside `session.ts` — the turn machine's `prompt` seam builds
+ * the blocks a prompt sends, and the probe's `load` is a `session/load` on the
+ * session's OWN id. Naming them here keeps the session class to the state it
+ * owns.
+ */
+
+import {
+  AcpBackgroundProbe,
+  BACKGROUND_LOAD_TIMEOUT_MS,
+  deliverBackgroundNotice,
+  type BackgroundNoticeHost,
+} from '@/server/lib/harness/acp/background-work';
+import type { AcpProcess } from '@/server/lib/harness/acp/client';
+import type { AcpFrameMapper } from '@/server/lib/harness/acp/frames';
+import { promptBlocks } from '@/server/lib/harness/acp/prompt';
+import { promptFileLinks } from '@/server/lib/harness/acp/prompt-files';
+import { AcpTurns, type AcpTurnEndInfo } from '@/server/lib/harness/acp/turn';
+import { stampMessageModel } from '@/server/lib/harness/acp/session-config';
+import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
+import type { IdleReaper } from '@/server/lib/omp/rpc/idle-reaper';
+
+/** Everything the two seams read off the session. The counts are the background
+ *  notice's alone: it emits one synthetic assistant row and has to move them. */
+export interface AcpWiringHost extends BackgroundNoticeHost {
+  readonly cwd: string;
+  readonly proc: AcpProcess;
+  readonly mapper: AcpFrameMapper;
+  readonly idle: IdleReaper;
+  sessionId: string;
+  runModel: { provider: string; modelId: string } | null;
+  emit(event: AgentEvent): void;
+  onTurnEnded(info: AcpTurnEndInfo): void;
+}
+
+/** The wiring a session builds for itself: live getters, so the handshake's id
+ *  and model reach the turn machine without a second assignment. */
+export function acpWiringFor(session: {
+  cwd: string;
+  sessionId: string;
+  runModel: { provider: string; modelId: string } | null;
+  messageCount: number;
+  assistantCount: number;
+  emit(event: AgentEvent): void;
+  onTurnEnded(info: AcpTurnEndInfo): Promise<void>;
+}, parts: { proc: AcpProcess; mapper: AcpFrameMapper; idle: IdleReaper }): AcpWiringHost {
+  return {
+    cwd: session.cwd,
+    proc: parts.proc,
+    mapper: parts.mapper,
+    idle: parts.idle,
+    get sessionId() { return session.sessionId; },
+    get runModel() { return session.runModel; },
+    get messageCount() { return session.messageCount; },
+    get assistantCount() { return session.assistantCount; },
+    emit: (event) => session.emit(event),
+    onTurnEnded: (info) => void session.onTurnEnded(info),
+  };
+}
+
+/** The background probe: ACP holds a subagent's completion until the next
+ *  request, and `session/load` is the only request that surfaces it. */
+export function acpBackgroundProbe(host: AcpWiringHost): AcpBackgroundProbe {
+  return new AcpBackgroundProbe({
+    load: () => host.proc.loadSession(host.sessionId, host.cwd, BACKGROUND_LOAD_TIMEOUT_MS),
+    resetIdle: () => host.idle.reset(),
+    emit: (text) => deliverBackgroundNotice(host, text),
+  });
+}
+
+/** The turn machine: one prompt, its frames, and how it ends. */
+export function acpTurns(host: AcpWiringHost): AcpTurns {
+  return new AcpTurns({
+    emit: (event) => host.emit(event),
+    prompt: (message, images) =>
+      // `@path` mentions travel as `resource_link` blocks: no agent but omp
+      // expands them, and the file would otherwise reach the model as a path
+      // with no bytes behind it.
+      promptFileLinks(host.cwd, message).then(
+        (files) => host.proc.prompt(host.sessionId, promptBlocks(message, images, files), 0) as Promise<{ stopReason?: string } | undefined>,
+      ),
+    cancelAgent: () => host.proc.cancel(host.sessionId),
+    abandonPrompt: () => host.proc.abandonPrompt(host.sessionId),
+    resetMapper: () => host.mapper.reset(),
+    closeMessage: () => host.mapper.closeMessage().map((event) => stampMessageModel(event, host.runModel)),
+    openCalls: () => host.mapper.openCalls(),
+    // Armed from the turn's END, exactly as the omp wrapper arms it from its own
+    // terminal settle: without this a queued follow-up never left the table.
+    onTurnEnd: (info) => host.onTurnEnded(info),
+  });
+}

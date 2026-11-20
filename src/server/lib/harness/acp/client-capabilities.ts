@@ -33,11 +33,14 @@
  *  - `auth.terminal` — Kabmo does not reproduce the agent's launch line in an
  *    interactive terminal for login.
  *  - `session.configOptions.boolean` — the selector UI is select-only.
- *  - `session.compaction` — compaction updates have no renderer.
+ *
+ * `session.compaction` IS advertised: the frame mapper turns a compaction into a
+ * notice, which is the surface the timeline already has, so an agent may report
+ * one instead of falling back to modelling it as conversation text.
  */
 export const KABMO_CLIENT_CAPABILITIES = {
   fs: { readTextFile: true, writeTextFile: true },
-  session: { notices: {} },
+  session: { notices: {}, compaction: {} },
 } as const;
 
 /** The latest protocol major this client sends; it also speaks v1. */

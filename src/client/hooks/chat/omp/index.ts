@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import type { RefObject } from 'preact/compat';
 import type { AgentImage, ChatMessageData, OmpAgentCallbacks, OmpAgentHandle, OmpAgentState, PromptDispatchResult } from '@/shared/types';
-import type { ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
+import type { ExtensionDialogResponse, ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
 import { type ToolResultRecord, useOmpAgentStream } from '@/client/hooks/chat/omp/stream';
 import { useOmpPromptSender } from '@/client/hooks/chat/omp/prompt-send';
 import { stopAgentSession } from '@/shared/lib/chat/omp/abort';
@@ -263,11 +263,7 @@ export function useOmpAgent(
   /** Jawab dialog ask/approval (extension_ui_response) — melepas blocking tool call. */
   const respondToExtensionUi = useCallback(async (
     request: ExtensionUiDialogRequest,
-    response:
-      | { value: string }
-      | { confirmed: boolean }
-      | { cancelled: true }
-      | { answers: { id: string; selectedOptions: string[]; customInput?: string }[] },
+    response: ExtensionDialogResponse,
   ): Promise<void> => {
     const sid = sessionIdRef.current;
     if (!sid) return;

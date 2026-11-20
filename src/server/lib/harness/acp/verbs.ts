@@ -28,14 +28,20 @@ export type AcpNotify = (method: string, params: unknown) => void;
 /** The negotiated major, so a verb can shape its params and normalize its answer. */
 export type AcpDialect = 1 | 2;
 
+/** The extra roots one setup request carries, when the agent advertised them. */
+export interface SessionDirs {
+  additionalDirectories?: string[];
+}
+
 export async function newSession(
   invoke: AcpInvoke,
   cwd: string,
   timeoutMs = 120_000,
   dialect: AcpDialect = 1,
   mcpServers: AcpMcpServerWire[] = [],
+  dirs: SessionDirs = {},
 ): Promise<AcpSessionNewResult> {
-  const result = await invoke<Record<string, unknown>>('session/new', { cwd, mcpServers }, timeoutMs);
+  const result = await invoke<Record<string, unknown>>('session/new', { cwd, mcpServers, ...dirs }, timeoutMs);
   return dialect === 2 ? normalizeSessionResult(result) : (result as unknown as AcpSessionNewResult);
 }
 
@@ -45,8 +51,9 @@ export async function loadSession(
   cwd: string,
   timeoutMs = 120_000,
   mcpServers: AcpMcpServerWire[] = [],
+  dirs: SessionDirs = {},
 ): Promise<unknown> {
-  return invoke('session/load', { sessionId, cwd, mcpServers }, timeoutMs);
+  return invoke('session/load', { sessionId, cwd, mcpServers, ...dirs }, timeoutMs);
 }
 
 export async function resumeSession(
@@ -60,10 +67,11 @@ export async function resumeSession(
    *  `session/update` frames before the reply. v1 peers replay through
    *  `session/load` instead. */
   replayFrom?: { type: 'start' },
+  dirs: SessionDirs = {},
 ): Promise<unknown> {
   const result = await invoke<Record<string, unknown>>(
     'session/resume',
-    { sessionId, cwd, mcpServers, ...(dialect === 2 && replayFrom ? { replayFrom } : {}) },
+    { sessionId, cwd, mcpServers, ...(dialect === 2 && replayFrom ? { replayFrom } : {}), ...dirs },
     timeoutMs,
   );
   return dialect === 2 ? normalizeSessionResult(result) : result;
@@ -77,10 +85,11 @@ export async function forkSession(
   target?: Record<string, unknown>,
   meta?: Record<string, unknown>,
   mcpServers: AcpMcpServerWire[] = [],
+  dirs: SessionDirs = {},
 ): Promise<AcpSessionNewResult> {
   return invoke<AcpSessionNewResult>(
     'session/fork',
-    { sessionId, cwd, mcpServers, ...(target ? { target } : {}), ...(meta ? { _meta: meta } : {}) },
+    { sessionId, cwd, mcpServers, ...dirs, ...(target ? { target } : {}), ...(meta ? { _meta: meta } : {}) },
     timeoutMs,
   );
 }
@@ -185,6 +194,28 @@ export async function setMode(
   timeoutMs = 30_000,
 ): Promise<unknown> {
   return invoke('session/set_mode', { sessionId, modeId }, timeoutMs);
+}
+
+/** Sign this client in with one of the agent's advertised `authMethods`.
+ *  `_meta.headless` tells the agent no interactive terminal is attached, so a
+ *  method that needs one refuses instead of parking the spawn. */
+export async function authenticate(
+  invoke: AcpInvoke,
+  methodId: string,
+  timeoutMs = 120_000,
+): Promise<unknown> {
+  return invoke('authenticate', { methodId, _meta: { headless: true } }, timeoutMs);
+}
+
+/** `session/set_model`: select a model on an agent that publishes a `models`
+ *  block instead of a `model` config option (measured on grok). */
+export async function setModel(
+  invoke: AcpInvoke,
+  sessionId: string,
+  modelId: string,
+  timeoutMs = 30_000,
+): Promise<unknown> {
+  return invoke('session/set_model', { sessionId, modelId }, timeoutMs);
 }
 
 /** Remove one session from the agent's own history (`sessionCapabilities.delete`). */

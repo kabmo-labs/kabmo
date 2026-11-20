@@ -32,6 +32,10 @@ import { ACP_ERROR } from '@/server/lib/harness/acp/protocol';
 export interface AcpFsHost {
   readonly cwd: string;
   readonly sessionId: string;
+  /** Publish the write so the timeline's change journal records it. A write the
+   *  AGENT performed through this client runs no tool of its own: without this
+   *  frame its file change never reached the journal or the diff panel. */
+  emit?(event: Record<string, unknown> & { type: string }): void;
 }
 
 /** Structurally the `answered: false` branch of the client-request answer. */
@@ -66,7 +70,7 @@ export async function handleAcpFsRequest(
     return refuse(ACP_ERROR.invalidParams, `Path is outside this session's workspace: ${target}`);
   }
 
-  return method === 'fs/read_text_file' ? read(target, params) : write(target, params);
+  return method === 'fs/read_text_file' ? read(target, params) : write(host, target, params);
 }
 
 async function read(target: string, params: Record<string, unknown>): Promise<AcpFsAnswer> {
@@ -94,15 +98,25 @@ async function read(target: string, params: Record<string, unknown>): Promise<Ac
   return { answered: true, result: { content: lines.slice(start, end).join('\n') } };
 }
 
-async function write(target: string, params: Record<string, unknown>): Promise<AcpFsAnswer> {
+async function write(host: AcpFsHost, target: string, params: Record<string, unknown>): Promise<AcpFsAnswer> {
   const content = params.content;
   if (typeof content !== 'string') {
     return refuse(ACP_ERROR.invalidParams, 'content is required');
   }
+  // The before side travels with the event: the journal's start-frame snapshot
+  // never ran, and reading the file again after this write would report no
+  // change at all.
+  const before = await Bun.file(target).text().catch(() => null);
   try {
     // `Bun.write` creates missing parent directories, which is the "MUST create
     // the file if it doesn't exist" half of the method.
     await Bun.write(target, content);
+    host.emit?.({
+      type: 'fs_write',
+      path: target,
+      ...(before !== null ? { before } : {}),
+      after: content,
+    });
     return { answered: true, result: {} };
   } catch (error) {
     return fileError(target, error);

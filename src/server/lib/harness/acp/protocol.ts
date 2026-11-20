@@ -206,6 +206,16 @@ export interface AcpSessionNewResult {
   modes?: AcpSessionModeState;
   /** v2 setup responses may advertise the initial slash commands. */
   availableCommands?: AcpAgentCommand[];
+  /** The model list some agents publish INSTEAD of a `model` config option
+   *  (measured on grok: `currentModelId` + `availableModels`). Read by the
+   *  picker, and written back with `session/set_model`. */
+  models?: AcpSessionModels;
+}
+
+/** `session/new|load|resume`'s model list, for an agent that publishes one. */
+export interface AcpSessionModels {
+  currentModelId?: string;
+  availableModels?: { modelId: string; name?: string; description?: string }[];
 }
 
 /** `session/new|load|resume`'s legacy mode state, and `session/set_mode`. */
@@ -224,7 +234,16 @@ export interface AcpInitializeResult {
     sessionCapabilities?: Record<string, unknown>;
     _meta?: Record<string, unknown>;
   };
-  authMethods?: { id: string; name: string; description?: string; type?: string }[];
+  authMethods?: {
+    id: string;
+    name: string;
+    description?: string;
+    type?: string;
+    /** A `terminal` method's own arguments: the sign-in command to print. */
+    args?: string[];
+    /** Environment the sign-in command needs, as name/value pairs. */
+    env?: Record<string, string>;
+  }[];
   _meta?: Record<string, unknown>;
 }
 

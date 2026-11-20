@@ -16,7 +16,7 @@
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
-import { mountSession, notify } from '@/server/lib/harness/acp/session.test-util';
+import { flushTicks, mountSession, notify } from '@/server/lib/harness/acp/session.test-util';
 import { loadAcpSessions, saveHarnessSession } from '@/server/lib/harness/session-store.server';
 import { onRealtimeSignal } from '@/server/lib/realtime/signals.server';
 
@@ -43,7 +43,7 @@ describe('ACP silent turn', () => {
     await turn.started;
     if (say) notify(session, { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: say } });
     turn.finish({ stopReason: 'end_turn' });
-    for (let i = 0; i < 5; i += 1) await Promise.resolve();
+    await flushTicks();
     return events;
   };
 
@@ -88,7 +88,7 @@ describe('ACP stream marker', () => {
     expect(streamMarks()).toEqual(['stream']);
 
     turn.finish({ stopReason: 'end_turn' });
-    for (let i = 0; i < 4; i += 1) await Promise.resolve();
+    await flushTicks();
     expect(streamMarks()).toEqual(['stream', 'finish']);
   });
 
@@ -107,7 +107,7 @@ describe('ACP stream marker', () => {
     // No answer at all is the ACP silent-turn verdict, and the only reason the
     // notification has to show.
     turn.finish({ stopReason: 'end_turn' });
-    for (let i = 0; i < 4; i += 1) await Promise.resolve();
+    await flushTicks();
     expect(streamMarks()).toEqual(['stream', 'finish']);
     expect(streamMarkFailures()).toEqual([null, 'The agent ended the turn without sending an answer']);
   });

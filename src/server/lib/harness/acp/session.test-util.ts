@@ -26,6 +26,7 @@ import { AcpTurns } from '@/server/lib/harness/acp/turn';
 import { SessionListeners } from '@/server/lib/harness/acp/session-listeners';
 import { RawNotificationSink } from '@/server/lib/harness/acp/raw-listeners';
 import { PendingPermissions } from '@/server/lib/harness/acp/permissions';
+import { acpConfigView } from '@/server/lib/harness/acp/session-config-view';
 import { stampMessageModel } from '@/server/lib/harness/acp/session-config';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
 
@@ -70,6 +71,16 @@ export interface BackgroundProbeStub {
   consume: (method: string, params: Record<string, unknown>) => boolean;
 }
 
+/** Drain the microtask queue.
+ *
+ *  `session/prompt` is chained: a settle resolves the stub, then the busy-retry
+ *  wrapper, the turn's `settle`, `finish`, the end seams and the queue each take
+ *  a hop. Four ticks stopped being enough the moment that wrapper existed; this
+ *  is a fixed count of hops, not a wall-clock wait. */
+export async function flushTicks(count = 24): Promise<void> {
+  for (let i = 0; i < count; i += 1) await Promise.resolve();
+}
+
 /** One in-flight `session/prompt` the stub can settle. */
 interface PendingPrompt {
   promise: Promise<unknown>;
@@ -77,7 +88,7 @@ interface PendingPrompt {
   reject: (reason?: unknown) => void;
 }
 
-export function mountSession(): MountedSession {
+export function mountSession(options: { busyWaitMs?: number } = {}): MountedSession {
   const events: AgentEvent[] = [];
   const dispatched = Promise.withResolvers<void>();
   const calls: PendingPrompt[] = [];
@@ -114,6 +125,8 @@ export function mountSession(): MountedSession {
     // A config write; the default reply omits the list, which is the shape a
     // harness that ignores the protocol's "complete list" rule returns.
     setConfigOption: async (_sessionId: string, _configId: string, _value: string | boolean) => ({}),
+    setMode: async (_sessionId: string, _modeId: string) => ({}),
+    setModel: async (_sessionId: string, _modelId: string) => ({}),
     deleteSession: async (sessionId: string) => {
       deletes.push(sessionId);
       return {};
@@ -135,7 +148,7 @@ export function mountSession(): MountedSession {
         .onTurnEnded(info);
       turnEndCount += 1;
     },
-  });
+  }, options);
   const marks: string[] = [];
   const markFailures: Array<string | null> = [];
   const answers: { id: unknown; result: unknown }[] = [];
@@ -158,6 +171,25 @@ export function mountSession(): MountedSession {
     turns,
     mapper,
     permissions: new PendingPermissions(),
+    // The config view is a constructor field; a prototype mount has none, and
+    // `set_model` writes through it.
+    config: acpConfigView(
+      {
+        get harness() { return 'opencode'; },
+        get sessionId() { return 'acp-1'; },
+        get configOptions() { return session.configOptions; },
+        set configOptions(options) { session.configOptions = options; },
+        get runModel() { return session.runModel; },
+        set runModel(model) { session.runModel = model; },
+        get modes() { return session.modes; },
+        set modes(modes) { session.modes = modes; },
+        get models() { return session.models; },
+        set models(models) { session.models = models; },
+        get isStreaming() { return session.isStreaming; },
+        emit: (event) => session.emit(event),
+      },
+      proc,
+    ),
     accessMode: 'always-ask',
     capabilities: {},
     configOptions: [],

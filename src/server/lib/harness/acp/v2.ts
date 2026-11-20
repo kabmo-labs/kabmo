@@ -51,6 +51,15 @@ function advertised(value: unknown): boolean {
 export function normalizeInitializeResult(raw: Record<string, unknown>): AcpInitializeResult {
   const version = typeof raw.protocolVersion === 'number' ? raw.protocolVersion : 1;
   if (version !== 2) return raw as unknown as AcpInitializeResult;
+  // A peer that REPORTS 2 but answers with v1's keys (`agentCapabilities`, and
+  // no `capabilities`) is speaking v1. Reading it as v2 finds no capabilities
+  // at all and, worse, sets the turn machine's completion mode to `state` — so
+  // the `session/prompt` answer that ends every v1 turn is ignored and the run
+  // hangs until the silence ceiling. bb's heuristic is the same: the shape, not
+  // the number, decides which generation a result is written in.
+  if (asRecord(raw.agentCapabilities) !== undefined && asRecord(raw.capabilities) === undefined) {
+    return { ...raw, protocolVersion: 1 } as AcpInitializeResult;
+  }
 
   const capabilities = asRecord(raw.capabilities) ?? {};
   const session = asRecord(capabilities.session);
@@ -112,6 +121,10 @@ export function normalizeAuthMethods(value: unknown): AcpInitializeResult['authM
       name: asString(method?.name) ?? id,
       ...(asString(method?.description) ? { description: asString(method?.description) } : {}),
       ...(asString(method?.type) ? { type: asString(method?.type) } : {}),
+      ...(Array.isArray(method?.args)
+        ? { args: method.args.filter((arg): arg is string => typeof arg === 'string') }
+        : {}),
+      ...(asRecord(method?.env) ? { env: asRecord(method?.env) as Record<string, string> } : {}),
     }];
   });
 }

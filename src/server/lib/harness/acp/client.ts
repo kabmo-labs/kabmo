@@ -73,7 +73,7 @@ const DEFAULT_REQUEST_TIMEOUT_MS = 60_000;
 
 export class AcpProcess {
   private readonly stdio: AgentStdio;
-  private readonly pending = new PendingCalls();
+  private readonly pending: PendingCalls;
   private readonly options: AcpClientOptions;
   private nextId = 1;
   private exited = false;
@@ -94,6 +94,11 @@ export class AcpProcess {
 
   constructor(options: AcpClientOptions) {
     this.options = options;
+    // A timed-out request is withdrawn from the AGENT too, not only from this
+    // table: `$/cancel_request` is the spec's way to say "stop working on it".
+    this.pending = new PendingCalls({
+      onTimeout: (id) => this.notify('$/cancel_request', { requestId: id }),
+    });
     this.sinks = options;
     this.stdio = new AgentStdio(
       {
@@ -142,14 +147,8 @@ export class AcpProcess {
     return this.init;
   }
 
-  /**
-   * Re-bind the frame sinks.
-   *
-   * A prewarmed process is spawned before the session that will own it exists,
-   * so its notifications and agent→client requests have nowhere to go until the
-   * claim. Attaching here is what makes the warm child indistinguishable from a
-   * cold one for the rest of its life.
-   */
+  /** Re-bind the frame sinks: a prewarmed process outlives the session that
+   *  adopts it, so its handlers are attached at the claim. */
   attachSinks(sinks: Pick<AcpClientOptions, 'onNotification' | 'onClientRequest' | 'onExit' | 'onStderr'>): void {
     this.sinks = sinks;
   }
@@ -159,8 +158,8 @@ export class AcpProcess {
   }
 
   // ── protocol verbs ───────────────────────────────────────────────────────
-  // Thin delegates to `verbs.ts`: the transport owns framing, the verbs own the
-  // wire shape. Callers keep using `proc.newSession(...)`.
+  // Thin delegates to `verbs.ts`: the transport owns framing, the verbs own
+  // the wire shape.
 
   newSession(cwd: string, timeoutMs?: number, mcpServers?: AcpMcpServerWire[]) {
     return verbs.newSession(this.call, cwd, timeoutMs, this.protocolVersion, mcpServers);
@@ -225,6 +224,11 @@ export class AcpProcess {
     return verbs.setMode(this.call, sessionId, modeId, timeoutMs);
   }
 
+  /** Sign this client in with one of the agent's advertised auth methods. */
+  authenticate(methodId: string, timeoutMs?: number) {
+    return verbs.authenticate(this.call, methodId, timeoutMs);
+  }
+
   deleteSession(sessionId: string, timeoutMs?: number) {
     return verbs.deleteSession(this.call, sessionId, timeoutMs);
   }
@@ -261,11 +265,9 @@ export class AcpProcess {
     this.rejectAll(new Error('ACP agent disposed'));
   }
 
-  /** Send a client→agent request and await its result.
-   *
-   *  `timeoutMs` is the turn budget: `session/prompt` passes 0 because a coding
-   *  turn legitimately runs for minutes, and every other verb takes the default
-   *  cap. A cap of 0 disables the timer entirely. */
+  /** Send a client→agent request and await its result. `timeoutMs` is the turn
+   *  budget: a prompt passes 0 (a coding turn runs for minutes) and every other
+   *  verb takes the default cap. */
   private request<T>(method: string, params: unknown, timeoutMs = 0): Promise<T> {
     if (this.exited) return Promise.reject(new Error('ACP agent has exited'));
     const budget = timeoutMs > 0
@@ -286,9 +288,8 @@ export class AcpProcess {
   private write(frame: AcpRequest | AcpNotification | AcpResponse): void {
     if (this.exited) return;
     const line = `${JSON.stringify(frame)}\n`;
-    // Serialized: two frames interleaved on one pipe would corrupt the stream,
-    // and a closed pipe is reported by `exited` rather than thrown into the
-    // queue (which would wedge every later frame).
+    // Serialized: two interleaved frames would corrupt the stream, and a closed
+    // pipe is reported by `exited` rather than thrown into the queue.
     this.writeQueue = this.writeQueue.then(async () => {
       this.stdio.write(line);
       await this.stdio.flush();
@@ -336,10 +337,8 @@ export class AcpProcess {
       // approval dialog works this way, and sending a refusal here would answer
       // the same request twice.
       if (handled && 'deferred' in handled) return;
-      // A refusal is REQUIRED, not optional: an unanswered agent→client call
-      // parks the turn forever (the agent's dispatcher waits on it). The code
-      // travels with it so the agent can distinguish "not implemented" from
-      // "that file is gone" and fall back accordingly.
+      // A refusal is REQUIRED: an unanswered agent→client call parks the turn.
+      // The code travels with it so the agent can fall back accordingly.
       this.respondError(id, handled?.message ?? `Kabmo does not implement ${method}`, handled?.code);
     } catch (error) {
       this.respondError(id, error instanceof Error ? error.message : String(error));

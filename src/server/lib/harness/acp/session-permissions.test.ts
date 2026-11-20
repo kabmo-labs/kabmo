@@ -104,6 +104,70 @@ describe('ACP permission gating', () => {
   });
 });
 
+describe('ACP approval options', () => {
+  const withOptions = (session: AcpSession, id: number, options: Array<{ optionId: string; kind: string }>, action = 'execute') =>
+    (session as unknown as PermissionHost).onClientRequest(id, 'session/request_permission', {
+      sessionId: 'acp-1',
+      toolCall: { kind: action, title: 'Run the thing', rawInput: { command: 'rm -rf build' } },
+      options,
+    });
+
+  test('dismissing a dialog with only an allow option answers cancelled, never allow', async () => {
+    const { session, permissionAnswers } = mountSession();
+    await withOptions(session, 30, [{ optionId: 'allow', kind: 'allow_once' }]);
+    session.resolvePermission('30', false);
+    expect(permissionAnswers()).toEqual([
+      { id: 30, result: { outcome: { outcome: 'cancelled' } } },
+    ]);
+  });
+
+  test('Confirm picks the allow option even when the agent lists reject first', async () => {
+    const { session, permissionAnswers } = mountSession();
+    await withOptions(session, 31, [
+      { optionId: 'deny', kind: 'reject_once' },
+      { optionId: 'allow', kind: 'allow_once' },
+    ]);
+    session.resolvePermission('31', true);
+    expect(permissionAnswers()).toEqual([
+      { id: 31, result: { outcome: { outcome: 'selected', optionId: 'allow' } } },
+    ]);
+  });
+
+  test('an "always allow" choice answers that option and silences the next identical request', async () => {
+    const { session, events, permissionAnswers } = mountSession();
+    await withOptions(session, 32, [
+      { optionId: 'once', kind: 'allow_once' },
+      { optionId: 'always', kind: 'allow_always' },
+      { optionId: 'deny', kind: 'reject_once' },
+    ]);
+    session.resolvePermission('32', false, 'always');
+    expect(permissionAnswers()).toEqual([
+      { id: 32, result: { outcome: { outcome: 'selected', optionId: 'always' } } },
+    ]);
+    const before = dialogs(events);
+    expect(await withOptions(session, 33, [
+      { optionId: 'once', kind: 'allow_once' },
+      { optionId: 'always', kind: 'allow_always' },
+    ])).toEqual({
+      answered: true,
+      result: { outcome: { outcome: 'selected', optionId: 'always' } },
+    });
+    expect(dialogs(events)).toBe(before);
+  });
+
+  test('a choice id the dialog does not hold is never substituted', async () => {
+    const { session, permissionAnswers } = mountSession();
+    await withOptions(session, 34, [
+      { optionId: 'allow', kind: 'allow_once' },
+      { optionId: 'deny', kind: 'reject_once' },
+    ]);
+    session.resolvePermission('34', true, 'not-an-option');
+    expect(permissionAnswers()).toEqual([
+      { id: 34, result: { outcome: { outcome: 'selected', optionId: 'allow' } } },
+    ]);
+  });
+});
+
 describe('ACP cancellation answers parked approvals', () => {
   test('Stop answers every parked request with the cancelled outcome', async () => {
     const { session, permissionAnswers } = mountSession();

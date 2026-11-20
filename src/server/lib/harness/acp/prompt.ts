@@ -16,7 +16,8 @@
  *    approve.
  */
 
-import { acpOptionValues, type AcpConfigOption, type AcpSessionModeState } from '@/server/lib/harness/acp/protocol';
+import { acpOptionValues, type AcpConfigOption, type AcpSessionModeState, type AcpSessionModels } from '@/server/lib/harness/acp/protocol';
+import type { PromptFileLink } from '@/server/lib/harness/acp/prompt-files';
 
 /** The selector in a `configOptions` list for one ACP category. */
 export function configOption(options: AcpConfigOption[], category: string): AcpConfigOption | undefined {
@@ -66,8 +67,50 @@ function parseModelPair(value: string): { provider: string; modelId: string } | 
   return null;
 }
 
+/**
+ * The model an agent publishes as a `models` block, when it publishes no
+ * `model` config option.
+ *
+ * Measured on grok 1.0.77: `session/new` answers `models: {currentModelId,
+ * availableModels}` and no selector, so a client that reads only
+ * `configOptions` showed an empty picker and refused every `set_model`.
+ * `currentModelId` is the agent's own id, with no `provider/` prefix, so the
+ * harness stands in for the provider — the same fallback a bare selector value
+ * gets.
+ */
+export function modelFromList(
+  models: AcpSessionModels | undefined,
+  fallbackProvider: string,
+): { provider: string; modelId: string } | null {
+  const current = models?.currentModelId;
+  if (typeof current !== 'string' || current.length === 0) return null;
+  return modelFromOption({ id: 'model', currentValue: current }, fallbackProvider);
+}
+
+/** The selector list a `models` block stands in for, in `configOptions` form, so
+ *  every consumer (picker, `get_state`, `set_model`) reads ONE shape. */
+export function modelsAsSelector(models: AcpSessionModels | undefined): AcpConfigOption | null {
+  const available = models?.availableModels;
+  if (!Array.isArray(available) || available.length === 0) return null;
+  return {
+    id: 'model',
+    name: 'Model',
+    category: 'model',
+    type: 'select',
+    ...(typeof models?.currentModelId === 'string' ? { currentValue: models.currentModelId } : {}),
+    options: available.flatMap((model) => {
+      if (!model || typeof model.modelId !== 'string' || !model.modelId) return [];
+      return [{
+        value: model.modelId,
+        ...(typeof model.name === 'string' && model.name ? { name: model.name } : {}),
+        ...(typeof model.description === 'string' && model.description ? { description: model.description } : {}),
+      }];
+    }),
+  } satisfies AcpConfigOption;
+}
+
 /** A prompt in ACP content-block form. */
-export function promptBlocks(message: string, images: unknown): unknown[] {
+export function promptBlocks(message: string, images: unknown, files: readonly PromptFileLink[] = []): unknown[] {
   const blocks: unknown[] = [];
   if (Array.isArray(images)) {
     for (const image of images) {
@@ -77,19 +120,15 @@ export function promptBlocks(message: string, images: unknown): unknown[] {
       blocks.push({ type: 'image', data: image.data, mimeType });
     }
   }
+  // The file links precede the text: an agent that reads them does so while it
+  // reads the prompt, and the text is the last block (a trailing link is what
+  // some adapters truncate).
+  for (const file of files) blocks.push({ type: 'resource_link', uri: file.uri, name: file.name });
   blocks.push({ type: 'text', text: message });
   return blocks;
 }
 
-/** What the approval dialog says, from the tool call the agent reported. */
-export function permissionText(toolCall: Record<string, unknown> | undefined): string {
-  const rawInput = toolCall?.rawInput;
-  if (rawInput && typeof rawInput === 'object' && 'command' in rawInput && typeof rawInput.command === 'string') {
-    return `$ ${rawInput.command}`;
-  }
-  const title = toolCall?.title;
-  return typeof title === 'string' ? title : 'This action needs your approval';
-}
+
 
 /** What a session may write into the agent's config selectors. */
 export interface ConfigSelections {

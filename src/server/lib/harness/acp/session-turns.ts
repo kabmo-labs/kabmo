@@ -46,6 +46,7 @@ import type { AcpTurns, AcpTurnEndInfo } from '@/server/lib/harness/acp/turn';
 import { driveAcpGoalAfterTurn } from '@/server/lib/harness/acp/acp-goal-driver.server';
 import type { AcpGoalHost } from '@/server/lib/harness/acp/acp-goal.server';
 import { assistantTextOf, spawnsBackgroundWork } from '@/server/lib/harness/acp/background-work';
+import { isLostSession } from '@/server/lib/harness/acp/session-lost';
 
 /** What a turn reads and moves on the session. */
 export interface AcpTurnTarget {
@@ -62,6 +63,9 @@ export interface AcpTurnTarget {
   isAlive(): boolean;
   isBusy(): boolean;
   send(command: Record<string, unknown>): Promise<unknown>;
+  /** Drop this session when the agent says it no longer has it, so the next
+   *  command respawns and resumes. */
+  dropLostSession?: () => void;
 }
 
 /** What the turn-end bookkeeping moves on the session. */
@@ -151,6 +155,13 @@ export async function settleAcpTurn(
   // error, and `session_answers` is what `kabmo session output` prints.
   if (finalText && status === 'completed') {
     void saveSessionAnswer(target.sessionId, finalText).catch(() => {});
+  }
+  // A lost agent session is not recoverable in THIS process: every later prompt
+  // answers the same refusal. Dropping the session lets the route respawn it and
+  // resume from the agent's own history — the alternative is a chat that can
+  // never send again.
+  if (isLostSession(info.failure) && target.dropLostSession) {
+    target.dropLostSession();
   }
   const reported = noteChildOutcome({
     sessionId: target.sessionId,

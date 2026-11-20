@@ -68,6 +68,15 @@ describe('normalizeInitializeResult', () => {
     const v1 = { protocolVersion: 1, agentCapabilities: { loadSession: true } };
     expect(normalizeInitializeResult(v1)).toBe(v1 as never);
   });
+
+  test('a peer that reports 2 but answers in v1 shape is spoken to as v1', () => {
+    const init = normalizeInitializeResult({
+      protocolVersion: 2,
+      agentCapabilities: { loadSession: true, promptCapabilities: { image: true } },
+    });
+    expect(init.protocolVersion).toBe(1);
+    expect(init.agentCapabilities?.loadSession).toBe(true);
+  });
 });
 
 describe('normalizeConfigOptions', () => {

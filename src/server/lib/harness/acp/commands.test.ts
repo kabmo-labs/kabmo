@@ -61,6 +61,25 @@ function host(): AcpCommandHost & { writes: [string, string | boolean][]; access
 }
 
 describe('ACP dispatchCommand', () => {
+  test('a steer on an agent with no mid-turn channel is held for the next turn', async () => {
+    const stub = host();
+    const queued: [string, unknown][] = [];
+    stub.queueTurnInput = (message, images) => {
+      queued.push([message, images]);
+    };
+    expect(await dispatchCommand(stub, { type: 'steer', message: 'also do this' })).toEqual({ queued: true });
+    expect(queued).toEqual([['also do this', undefined]]);
+  });
+
+  test('a follow-up on an agent with no mid-turn channel is held too', async () => {
+    const stub = host();
+    const queued: string[] = [];
+    stub.queueTurnInput = (message) => {
+      queued.push(message);
+    };
+    expect(await dispatchCommand(stub, { type: 'follow_up', message: 'then that' })).toEqual({ queued: true });
+    expect(queued).toEqual(['then that']);
+  });
   test('set_model / set_thinking_level / set_mode write the selector ids', async () => {
     const stub = host();
     await dispatchCommand(stub, { type: 'set_model', provider: 'p', modelId: 'n' });

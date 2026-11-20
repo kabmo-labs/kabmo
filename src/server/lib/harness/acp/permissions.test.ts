@@ -63,4 +63,13 @@ describe('allowOption', () => {
     expect(allowOption([{ optionId: 'deny', kind: 'reject_once' }])).toBeNull();
     expect(allowOption([])).toBeNull();
   });
+
+  test('a GRANTED call asks for the standing option first', () => {
+    expect(
+      allowOption([
+        { optionId: 'once', kind: 'allow_once' },
+        { optionId: 'always', kind: 'allow_always' },
+      ], 'always'),
+    ).toBe('always');
+  });
 });

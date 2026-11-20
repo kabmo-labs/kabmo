@@ -25,7 +25,7 @@
  * already on disk is left alone rather than journaled as a no-op.
  *
  * The trace is read BEFORE the first `await` in `#end`: `EventFanout` strips it
- * from the frame in place right after the raw listeners return.
+ * from the frame right after the raw listeners return.
  */
 
 import { isRecord } from '@/shared/lib/util/guards';
@@ -51,6 +51,7 @@ import { isBuildPath, isExcludedTempPath, isInside } from '@/server/lib/changes/
 import { captureTargets } from '@/server/lib/changes/capture-targets';
 import { reconstructEdit, resolveRacedWrite } from '@/server/lib/changes/capture-write.server';
 import { MAX_BLOB_BYTES } from '@/server/lib/changes/blobs.server';
+import { clientWriteCall, clientWriteSides, clientWriteTarget } from '@/server/lib/changes/capture-client-write.server';
 
 export class ChangeCapture {
   readonly #pending = new Map<string, PendingCall>();
@@ -88,7 +89,22 @@ export class ChangeCapture {
       case 'subagent_event':
         this.#subagent(event);
         break;
+      case 'fs_write':
+        // An ACP agent that writes through the CLIENT (`fs/write_text_file`)
+        // runs no tool of its own, so there is no start/end pair to journal. The
+        // write carries both sides, which is the whole record.
+        this.#track(this.#clientWrite(event));
+        break;
     }
+  }
+
+  /** Journal one write the AGENT performed through this client. */
+  async #clientWrite(event: AgentEvent): Promise<void> {
+    const target = clientWriteTarget(event);
+    if (!target) return;
+    const call = clientWriteCall(event, { runId: this.#runId, runAt: this.#runAt });
+    const { before, after } = clientWriteSides(event);
+    await this.#writeChange(call, target, before, after, 'tool');
   }
 
   /** Await every in-flight capture and the journal's own append chain. */
@@ -194,8 +210,7 @@ export class ChangeCapture {
     if (!pending) return;
     this.#pending.delete(toolCallId);
     // Read the trace BEFORE the first await: `EventFanout` strips it from the
-    // frame in place right after the raw listeners return, and this function
-    // resumes later.
+    // frame right after the raw listeners return, and this resumes later.
     const trace = extractTrace(event);
     await pending.ready;
     const isShell = pending.tool === 'bash' || typeof pending.args.command === 'string';
@@ -206,8 +221,8 @@ export class ChangeCapture {
   async #endFileTool(pending: PendingCall): Promise<void> {
     const targets = captureTargets(pending, this.deps.cwd);
     if (targets.length === 0) {
-      // A read-only tool (`read`, `glob`, `grep`) has no adapter and no
-      // mutation; only a tool whose NAME promises a write is worth a note.
+      // A read-only tool has no adapter and no mutation; only a tool whose NAME
+      // promises a write is worth a note.
       if (MUTATING_TOOL.test(pending.tool)) {
         await this.deps.journal.recordNote({
           at: Date.now(),

@@ -133,3 +133,16 @@ describe('fs/write_text_file', () => {
     expect(answer).toMatchObject({ answered: false, code: ACP_ERROR.invalidParams });
   });
 });
+
+describe('ACP fs/write_text_file reporting', () => {
+  test('the write carries both sides so the change journal can record it', async () => {
+    const base = await workspace();
+    const target = join(base.cwd, 'note.txt');
+    await Bun.write(target, 'old');
+    const events: Array<Record<string, unknown> & { type: string }> = [];
+    const host: AcpFsHost = { ...base, emit: (event) => events.push(event) };
+    const answer = await handleAcpFsRequest(host, 'fs/write_text_file', { sessionId: 's1', path: target, content: 'new' });
+    expect(answer).toEqual({ answered: true, result: {} });
+    expect(events).toEqual([{ type: 'fs_write', path: target, before: 'old', after: 'new' }]);
+  });
+});

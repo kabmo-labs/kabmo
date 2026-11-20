@@ -6,9 +6,7 @@
 /**
  * The life of an ACP turn: one prompt, its frames, and how it ends.
  *
- * Split out of `AcpSession` because the rules here are the ones that took a bug
- * each to learn, and a session that also owns spawning, config selectors and
- * client requests buried them:
+ * Three rules, each a bug that had to be learned:
  *
  *  - **a prompt is CHAINED, never raced.** ACP has no queue: a second
  *    `session/prompt` while one is open CANCELS the first (measured, twice).
@@ -22,7 +20,10 @@ import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
 import { AcpRequestError } from '@/server/lib/harness/acp/calls';
 import { turnEndFrame } from '@/server/lib/harness/acp/frames';
 import { TurnSilence } from '@/server/lib/harness/acp/turn-silence';
-import { deriveTurnError } from '@/shared/lib/omp/session/turn-error';
+import { CancelSettle } from '@/server/lib/harness/acp/turn-cancel';
+import { TurnQueue } from '@/server/lib/harness/acp/turn-queue';
+import { promptWithBusyRetry, SESSION_BUSY_WAIT_MS } from '@/server/lib/harness/acp/turn-dispatch';
+import { reasonSuppressed, turnVerdict } from '@/server/lib/harness/acp/turn-verdict';
 
 const STRANDED_REASON = 'The agent stopped reporting progress; the turn was closed after a long silence.';
 
@@ -83,9 +84,16 @@ export class AcpTurns {
   private awaitingCancellation = false;
   /** The silence ceiling for the open turn — see `turn-silence.ts`. */
   readonly #silence: TurnSilence;
+  /** Settles the prompt after a cancel the agent never answered. */
+  readonly #cancelSettle: CancelSettle;
+  /** Inputs held for an agent with no mid-turn channel. */
+  readonly #queue = new TurnQueue();
+  readonly #busyWaitMs: number;
 
-  constructor(private readonly seams: AcpTurnSeams, options: { silenceMs?: number } = {}) {
+  constructor(private readonly seams: AcpTurnSeams, options: { silenceMs?: number; busyWaitMs?: number } = {}) {
     this.#silence = new TurnSilence(() => this.strand(), options.silenceMs);
+    this.#cancelSettle = new CancelSettle(() => this.seams.abandonPrompt());
+    this.#busyWaitMs = options.busyWaitMs ?? SESSION_BUSY_WAIT_MS;
   }
 
   /** Any frame from the agent defers the silence ceiling. */
@@ -111,6 +119,9 @@ export class AcpTurns {
     }
     this.seq += 1;
     const turnId = this.seq;
+    // A new prompt IS the decision that a cancelled turn is over: free the chain
+    // now rather than waiting out the grace window.
+    this.#cancelSettle.flush();
     this.promptText = message;
     this.awaitingCancellation = false;
     this.isPromptRunning = true;
@@ -122,9 +133,18 @@ export class AcpTurns {
     const request = (this.request ?? Promise.resolve())
       .catch(() => undefined)
       .then(() => {
+        // Stop pressed while this turn queued behind the previous prompt: the
+        // flags were cleared, so the prompt must never reach the agent.
+        if (!this.isPromptRunning || !this.isStreaming) return undefined;
         this.open = turnId;
         this.seams.resetMapper();
-        return this.seams.prompt(message, images);
+        // `-32003 session_busy` is the agent still finishing its previous turn,
+        // not a failure: wait for it instead of reporting an error the operator
+        // can only work around by waiting.
+        return promptWithBusyRetry(() => this.seams.prompt(message, images), {
+          waitMs: this.#busyWaitMs,
+          isActive: () => this.open === turnId && this.isPromptRunning,
+        });
       });
     this.request = request;
     void request
@@ -158,30 +178,60 @@ export class AcpTurns {
     return { agentInvoked: true };
   }
 
-  /**
-   * Stop the turn AND close it here.
+  /** Stop the turn AND close it here.
    *
-   * Nothing guarantees the agent answers the cancel, and a session whose agent
-   * never does stayed `isStreaming` forever: the spinner cleared, and the NEXT
-   * prompt was refused with "Agent is already processing". The agent's own
-   * prompt request is settled locally for the same reason — it is what the next
-   * turn is chained behind.
-   */
+   *  Nothing guarantees the agent answers the cancel, and a session whose agent
+   *  never does stays `isStreaming` forever — the NEXT prompt is refused as
+   *  "already processing". The outstanding prompt is settled after a grace
+   *  window for the same reason: it is what the next turn is chained behind. */
   cancel(): void {
     this.awaitingCancellation = true;
+    this.#cancelSettle.disarm();
     if (this.open === null) {
-      // Nothing dispatched yet, but a turn may be queued behind the previous
-      // request: clear its flags too, or Stop leaves the session permanently
-      // "processing".
+      // The prompt is still queued behind the previous request (or was never
+      // dispatched): clear the flags or Stop leaves the session permanently
+      // "processing", and tell the agent anyway — a cancel with nothing to stop
+      // is a no-op, while a prompt that slips out afterwards is what hangs the
+      // NEXT send.
+      if (this.isPromptRunning || this.isStreaming) {
+        this.abandonOnStop();
+        this.finish({ stopReason: 'cancelled' });
+      }
       this.isPromptRunning = false;
       this.isStreaming = false;
+      this.#silence.stop();
       return;
     }
     this.open = null;
     this.#silence.stop();
     this.seams.cancelAgent();
-    this.seams.abandonPrompt();
     this.finish({ stopReason: 'cancelled' });
+    // A held input is the operator's NEXT intent and must not wait out the
+    // grace window; otherwise let the agent end its own turn first.
+    if (this.#queue.size > 0) this.seams.abandonPrompt();
+    else this.#cancelSettle.arm();
+  }
+
+  /** Hold an input until the running turn ends. */
+  queue(message: string, images: unknown): void {
+    this.#queue.push({ message, images });
+  }
+
+  /** Take the next held input; the SESSION dispatches it, so counters and the
+   *  run marker stay on its own path. */
+  takeQueued(): { message: string; images: unknown } | undefined {
+    return this.#queue.shift();
+  }
+
+  /** The grace window is still open: a Stop that has not been answered yet. */
+  pendingCancel(): boolean {
+    return this.#cancelSettle.pending();
+  }
+
+  /** The prompt that a Stop must free, dispatched or still queued. */
+  private abandonOnStop(): void {
+    this.seams.cancelAgent();
+    this.seams.abandonPrompt();
   }
 
   /** Is a turn accepting the agent's frames right now? */
@@ -189,23 +239,18 @@ export class AcpTurns {
     return this.open !== null;
   }
 
-  /**
-   * v2's turn boundary: an idle `state_update` ends foreground work.
+  /** v2's turn boundary: an idle `state_update` ends foreground work.
    *
-   * `running`/`requires_action` do not open a turn: a prompt that is still being
-   * inserted is already open, and agent-initiated work without a prompt is not
-   * represented as a Kabmo turn yet. Repeats are idempotent because `settle`
-   * matches the turn id.
-   */
+   *  `running`/`requires_action` do not open a turn when a prompt is still being
+   *  inserted; agent-initiated work with no prompt does. Repeats are idempotent
+   *  because `settle` matches the turn id. */
   onStateUpdate(update: Record<string, unknown>): void {
     if (this.completion !== 'state') return;
     const state = typeof update.state === 'string' ? update.state : '';
     if (state !== 'idle') {
-      // The cancelled run may still report running/requires_action before its
-      // idle; those are not a new foreground interval.
+      // A cancelled run's running/requires_action is not a new interval;
+      // foreground work with no prompt (a goal) does open one.
       if (this.awaitingCancellation) return;
-      // v2 allows foreground work with no prompt (a goal, a follow-up on a
-      // background task). Open a turn so its frames are accepted and rendered.
       if (this.open === null && !this.isPromptRunning && !this.isStreaming) this.beginAgentTurn();
       return;
     }
@@ -270,34 +315,18 @@ export class AcpTurns {
     for (const toolCallId of abandoned) {
       this.seams.emit({ type: 'tool_execution_end', toolCallId, isError: true, result: { output: 'Cancelled' } });
     }
-    // A prompt that ends with no message and no tool call is a SILENT failure on
-    // most agents (measured on pi-acp: it answers `session/prompt` with `{}` and
-    // sends no frames at all when its provider call fails). Reporting it beats
-    // leaving an empty bubble that reads as "the agent had nothing to say".
-    // Whitespace-only chunks are the same failure with a frame attached: the
-    // row renders no text, so the operator still sees nothing. Slash commands
-    // are exempt: an extension command is answered locally and correctly
-    // produces nothing, and a user's Stop is not a failure either.
-    const answered = hasRenderableAnswer(closed) || abandoned.length > 0;
-    const cancelled = result?.stopReason === 'cancelled';
-    const slash = this.promptText.trimStart().startsWith('/');
-    // v2 says clients cannot infer failure from an idle without a stop reason;
-    // the "silent answer is a failure" rule is a v1 agent behaviour (pi-acp).
-    // `stopReason: 'error'` is a failure even when the agent DID send a partial
-    // message: a v1 agent answers `{stopReason: 'error'}` with whatever it had
-    // streamed, and reading only "did it answer" reported that turn as
-    // completed — so a delegated worker whose provider failed mid-answer told
-    // its coordinator it had finished.
-    const failed = !cancelled && !slash
-      && (stranded || reported || result?.stopReason === 'error' || (this.completion === 'response' && !answered));
-    const reason = failed
-      ? failure ?? (stranded
-        ? STRANDED_REASON
-        : closedFailure(closed) ?? (result?.stopReason === 'error'
-          ? 'The agent ended the turn with an error'
-          : 'The agent ended the turn without sending an answer'))
-      : null;
-    if (failed && !reported && !slash) {
+    const { failed, cancelled, reason } = turnVerdict({
+      closed,
+      abandoned: abandoned.length,
+      result,
+      reported,
+      stranded,
+      promptText: this.promptText,
+      completion: this.completion,
+      strandedReason: STRANDED_REASON,
+      ...(failure ? { failure } : {}),
+    });
+    if (failed && !reported && !reasonSuppressed(this.promptText)) {
       this.seams.emit({
         type: 'prompt_error',
         errorMessage: reason ?? 'The agent ended the turn without sending an answer',
@@ -315,35 +344,4 @@ export class AcpTurns {
       ...(failed ? { failed: true, failure: reason } : {}),
     });
   }
-}
-
-/**
- * The reason the CLOSED message names, when it named one.
- *
- * The same rule as omp's: an agent records `stopReason` / `errorMessage` flat on
- * the assistant message, and reading only the envelope's stop reason threw the
- * provider's own words away — a coordinator was told "the agent ended the turn
- * with an error" over a transcript that said which.
- */
-function closedFailure(message: unknown): string | null {
-  if (!message || typeof message !== 'object' || Array.isArray(message)) return null;
-  const error = deriveTurnError(message as Record<string, unknown>);
-  return error?.message?.trim() || null;
-}
-
-/** Does the closed message carry anything the timeline draws? A whitespace-only
- *  chunk (or one that carried only an empty text block) opens a message row
- *  that renders nothing, which is the same operator-visible failure as no frame
- *  at all. Thinking and tool calls are content: they render as their own
- *  blocks. */
-function hasRenderableAnswer(message: unknown): boolean {
-  if (!message || typeof message !== 'object' || !('content' in message)) return false;
-  const content = message.content;
-  if (!Array.isArray(content)) return false;
-  return content.some((block) => {
-    if (!block || typeof block !== 'object') return false;
-    if ('text' in block && typeof block.text === 'string') return block.text.trim().length > 0;
-    if ('thinking' in block && typeof block.thinking === 'string') return block.thinking.trim().length > 0;
-    return 'type' in block && block.type === 'toolCall';
-  });
 }

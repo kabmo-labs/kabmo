@@ -19,6 +19,7 @@
 
 import type { AcpId } from '@/server/lib/harness/acp/protocol';
 import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
+import { PermissionGrants } from '@/server/lib/harness/acp/grants';
 
 export interface PermissionOption {
   optionId: string;
@@ -35,18 +36,40 @@ export interface PendingPermission {
   options: PermissionOption[];
 }
 
-/** What `extension_ui_request` carries for one pending approval. */
+/** What `extension_ui_request` carries for one pending approval.
+ *
+ *  `options`/`optionIds` are parallel arrays: the client draws the labels and
+ *  answers with the id, so "Always allow" is a decision it can actually make.
+ *  The labels alone cannot name an option — two may read alike, and omp frames
+ *  that have no ids (every non-ACP producer) stay a yes/no confirm. */
 export interface PermissionDialog {
   type: 'extension_ui_request';
   id: string;
   method: 'confirm';
   title: string;
   message: string;
-  options: { id: string; label: string }[];
+  options: string[];
+  optionIds: string[];
+}
+
+/** One dialog, from the request it parks. Shared by `add` and the replay so a
+ *  reattaching client sees exactly what the live one did. */
+function dialogFor(entry: PendingPermission): PermissionDialog {
+  return {
+    type: 'extension_ui_request',
+    id: entry.requestId,
+    method: 'confirm',
+    title: typeof entry.toolCall?.title === 'string' ? entry.toolCall.title : 'Approve this action',
+    message: describePermission(entry.toolCall),
+    options: entry.options.map((option) => option.name ?? option.optionId),
+    optionIds: entry.options.map((option) => option.optionId),
+  };
 }
 
 export class PendingPermissions {
   private readonly entries: PendingPermission[] = [];
+  /** Standing "always allow" decisions, keyed by the call the dialog showed. */
+  readonly grants = new PermissionGrants();
 
   /** Register one agent request and describe the dialog the client must draw. */
   add(id: AcpId, sessionId: string, params: Record<string, unknown>): PermissionDialog {
@@ -61,48 +84,36 @@ export class PendingPermissions {
       options: Array.isArray(params.options) ? (params.options as PermissionOption[]) : [],
     };
     this.entries.push(entry);
-    return {
-      type: 'extension_ui_request',
-      id: entry.requestId,
-      method: 'confirm',
-      title: typeof toolCall?.title === 'string' ? toolCall.title : 'Approve this action',
-      message: describePermission(toolCall),
-      options: entry.options.map((option) => ({ id: option.optionId, label: option.name ?? option.optionId })),
-    };
+    return dialogFor(entry);
   }
 
   /** Every dialog still waiting — a reattaching client replays these. */
   pendingDialogs(): PermissionDialog[] {
-    return this.entries.map((entry) => ({
-      type: 'extension_ui_request',
-      id: entry.requestId,
-      method: 'confirm',
-      title: typeof entry.toolCall?.title === 'string' ? entry.toolCall.title : 'Approve this action',
-      message: describePermission(entry.toolCall),
-      options: entry.options.map((option) => ({ id: option.optionId, label: option.name ?? option.optionId })),
-    }));
+    return this.entries.map(dialogFor);
   }
 
-  /** The entry a dialog id names, without removing it. */
+  /** The entry a dialog id names, removing it so one request is answered once. */
   take(dialogId: string): PendingPermission | undefined {
     const index = this.entries.findIndex((entry) => entry.requestId === dialogId);
     if (index === -1) return undefined;
     return this.entries.splice(index, 1)[0];
   }
 
-  /** Answer one dialog through `answer`, or cancel it when it is unknown. */
-  resolve(dialogId: string, answer: (dialogId: string, confirmed: boolean) => unknown, confirmed = false): unknown {
-    if (!this.entries.some((entry) => entry.requestId === dialogId)) {
-      return answer(dialogId, false);
-    }
-    return answer(dialogId, confirmed);
-  }
-
-  /** The option a decision maps to, preferring the exact once-only kind. */
+  /** The option a decision maps to, IN THAT DIRECTION ONLY.
+   *
+   *  The previous fallback (`options[0]` for confirm, the last option for deny)
+   *  guessed from POSITION, and an agent whose list ran `[reject_once, …]` made
+   *  Confirm reject while a dismissed dialog ("Esc") selected an `allow_*` that
+   *  happened to be last. Undefined is the honest answer when the agent offered
+   *  no option pointing the way the operator chose; the caller answers
+   *  `cancelled`. */
   optionFor(entry: PendingPermission, confirmed: boolean): PermissionOption | undefined {
-    return confirmed
-      ? entry.options.find((option) => option.kind === 'allow_once') ?? entry.options[0]
-      : entry.options.find((option) => option.kind === 'reject_once') ?? entry.options[entry.options.length - 1];
+    const kinds = confirmed ? ['allow_once', 'allow_always'] : ['reject_once', 'reject_always'];
+    for (const kind of kinds) {
+      const found = entry.options.find((option) => option.kind === kind);
+      if (found) return found;
+    }
+    return undefined;
   }
 
   clear(): void {
@@ -153,9 +164,18 @@ export function autoApproval(mode: ApprovalMode, toolCall: Record<string, unknow
 }
 
 /** The `allow_*` option id an auto-approval selects, or null when the agent
- *  offered none — a request with no allow option still has to reach the user. */
-export function allowOption(options: readonly PermissionOption[]): string | null {
-  const option = options.find((entry) => entry.kind === 'allow_once')
-    ?? options.find((entry) => typeof entry.kind === 'string' && entry.kind.startsWith('allow_'));
-  return option?.optionId ?? null;
+ *  offered none — a request with no allow option still has to reach the user.
+ *  `prefer: 'always'` is used for a GRANTED call, where the standing decision
+ *  is exactly "always" and no dialog will follow. */
+export function allowOption(
+  options: readonly PermissionOption[],
+  prefer: 'once' | 'always' = 'once',
+): string | null {
+  const kinds = prefer === 'always' ? ['allow_always', 'allow_once'] : ['allow_once', 'allow_always'];
+  for (const kind of kinds) {
+    const found = options.find((entry) => entry.kind === kind);
+    if (found) return found.optionId;
+  }
+  const any = options.find((entry) => typeof entry.kind === 'string' && entry.kind.startsWith('allow_'));
+  return any?.optionId ?? null;
 }
