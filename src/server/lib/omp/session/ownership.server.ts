@@ -10,8 +10,9 @@
  * ## Why this exists
  *
  * omp 18.5.0 introduced a per-session ownership lease
- * (`~/.omp/run/session-owners/<id>.lock`, an OS `flock` held for the life of
- * the omp process that opened the session). A second omp process that resumes a
+ * (`~/.omp/run/session-owners/<id>.lock`, an OS lock held for the life of the
+ * omp process that opened the session; `flock` on macOS, an
+ * open-file-description lock on Linux since 19.0.1). A second omp that resumes a
  * file whose lease is already held is NOT allowed to mix its entries in: it
  * moves itself to a sibling file with a new session id and `parentSession`
  * pointing at the old one (`reason: "open-elsewhere"`).
@@ -28,8 +29,9 @@
  *
  * ## Two questions, both answered without a subprocess
  *
- *   - "Is the lease held?" — a non-blocking `flock` (`lease-flock.server.ts`),
- *     the same primitive omp takes.
+ *   - "Is the lease held?" — the platform's own lock primitive
+ *     (`lease-probe.server.ts`): `flock` on macOS, an open-file-description
+ *     lock on Linux since omp 19.0.1.
  *   - "Who holds it?" — the pid with an open descriptor on the lease file,
  *     found by walking the process table (`lease-holder.server.ts`, FFI on
  *     macOS, `/proc` on Linux). This is what `lsof -t` answers, asked directly.
@@ -45,7 +47,7 @@ import path from 'path';
 import { isProcessAlive } from '@/server/lib/lifecycle/identity';
 import { getConfigRoot } from '@/server/lib/omp/core/paths';
 import { listInstanceRecords, type InstanceRecord } from '@/server/lib/lifecycle/instance';
-import { leaseHeldByAnother } from '@/server/lib/omp/session/lease-flock.server';
+import { leaseHeldByAnother } from '@/server/lib/omp/session/lease-probe.server';
 import { fileHolderPid } from '@/server/lib/omp/session/lease-holder.server';
 import { processParentPid } from '@/server/lib/lifecycle/identity';
 

@@ -6,8 +6,9 @@
 /**
  * The per-pid lease that tells the Stats panel which chat an ACP child is.
  *
- * omp's RPC hosts hold an OS `flock` on `~/.omp/run/session-owners/<id>.lock`,
- * and the panel reads that descriptor to name a session. An ACP agent holds no
+ * omp's RPC hosts hold an OS lock on `~/.omp/run/session-owners/<id>.lock`
+ * (`flock` on macOS, an open-file-description lock on Linux since 19.0.1), and
+ * the panel reads that descriptor to name a session. An ACP agent holds no
  * such lease: its id lives in Kabmo's `harness_sessions` table and its
  * transcript lives behind the agent, so a panel that only knew argv drew every
  * `claude`/`codex`/`opencode` chat as a bare `npx` row inside Kabmo's own group

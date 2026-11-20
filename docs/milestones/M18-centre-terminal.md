@@ -16,10 +16,11 @@ it. Should that terminal render with **xterm** or **Ghostty**?
    xterm (theme switching, Nerd Font atlas, WebGL lifecycle, fit/replay, key bar,
    bracketed paste) would be re-earned from scratch.
 3. **If "terminal view" means showing omp's TUI for the same session: it cannot
-   coexist with Kabmo's chat.** omp holds a per-session ownership lease (`flock`);
+   coexist with Kabmo's chat.** omp holds a per-session ownership lease (`flock`
+   on macOS, an open-file-description lock on Linux since 19.0.1);
    a second omp that resumes that file forks itself to a new session id
    (`reason: "open-elsewhere"`). See `src/server/lib/omp/session/ownership.server.ts`
-   and `lease-flock.server.ts`.
+   and `lease-probe.server.ts`.
 4. **Subagents already have a first-class surface.** The timeline exposes
    `?subagent=<id>` → `SubagentView` (live transcript + steer/cancel) and the
    sidebar has the roster (`components/common/subagent-list`). A terminal is not
@@ -181,7 +182,7 @@ so `TERM=xterm-256color` + `COLORTERM=truecolor` is the whole truth.
 An xterm only renders bytes; the subagent TUI is drawn by an **omp TUI process**. To get
 it, that process must own the session — and Kabmo's RPC child already does:
 
-- omp takes a per-session `flock` (`ownership.server.ts`, `lease-flock.server.ts`);
+- omp takes a per-session OS lock (`ownership.server.ts`, `lease-probe.server.ts`);
   a second omp that resumes the file moves itself to a new session id with
   `parentSession` and `reason: "open-elsewhere"`.
 - So typing `omp --resume <id>` inside Kabmo's terminal produces a second session file,

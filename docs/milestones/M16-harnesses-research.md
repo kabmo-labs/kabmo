@@ -344,7 +344,7 @@ boot; every harness's event model needed its own translation table.
 
 ## 7. Risks
 
-- **Ownership.** omp writes a session lease (`lease-flock.server.ts`) that makes
+- **Ownership.** omp writes a session lease (`lease-probe.server.ts`) that makes
   multi-instance peer relay safe. Nothing else does. ACP/opencode/codex adapters
   need a Kabmo-side lease keyed by `(harness, native session id)` or the second
   instance will double-drive a session.

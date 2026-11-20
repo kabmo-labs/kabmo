@@ -33,7 +33,7 @@ import {
   sessionLeasePath,
   sessionOwnersDir,
 } from '@/server/lib/omp/session/ownership.server';
-import { holdLeaseForTest, leaseHeldByAnother } from '@/server/lib/omp/session/lease-flock.server';
+import { holdLeaseForTest, leaseHeldByAnother } from '@/server/lib/omp/session/lease-probe.server';
 import { fileHolderPid } from '@/server/lib/omp/session/lease-holder.server';
 import { getRpcSession, startRpcSession } from '@/server/lib/omp/rpc/session-registry';
 import { removeDir } from '@/test-support/remove-dir';
@@ -75,7 +75,7 @@ function holdLease(sessionId: string): string {
 async function holdLeaseInChild(sessionId: string): Promise<number> {
   const lease = makeLeaseFile(sessionId);
   const script = `
-    const { holdLeaseForTest } = await import(${JSON.stringify(`${import.meta.dir}/lease-flock.server.ts`)});
+    const { holdLeaseForTest } = await import(${JSON.stringify(`${import.meta.dir}/lease-probe.server.ts`)});
     holdLeaseForTest(process.argv[1]);
     await Promise.withResolvers().promise;
   `;
@@ -216,17 +216,20 @@ describe('sessionLeasePath', () => {
 });
 
 describe('leaseHeldByAnother', () => {
-  // Every case that names a HOLDER reaches `flock(2)` (`holdLeaseForTest` throws
-  // `flock unavailable on this host` on Windows), and a lease file that EXISTS
+  // Every case that names a HOLDER takes the platform's real lock
+  // (`holdLeaseForTest` throws on Windows and on an architecture whose
+  // `struct flock` this module does not know), and a lease file that EXISTS
   // but is not held reads back `null` (cannot answer) rather than "free". Only
   // the missing-file case is portable: absence is free on every host.
-  testPosix('a file held by this process reads as held', () => {
-    const lease = holdLease('flock-held');
+  const probeUnknown = leaseHeldByAnother(makeLeaseFile('probe-capability')) === null;
+
+  testPosix.skipIf(probeUnknown)('a file held by this process reads as held', () => {
+    const lease = holdLease('lease-held');
     expect(leaseHeldByAnother(lease)).toBe(true);
   });
 
-  testPosix('an existing file with no holder reads as free', () => {
-    expect(leaseHeldByAnother(makeLeaseFile('flock-free'))).toBe(false);
+  testPosix.skipIf(probeUnknown)('an existing file with no holder reads as free', () => {
+    expect(leaseHeldByAnother(makeLeaseFile('lease-free'))).toBe(false);
   });
 
   test('a missing file reads as free, never unknown', () => {

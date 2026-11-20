@@ -23,7 +23,7 @@ import { join } from 'node:path';
 
 import type { RealtimeConnection } from '@/server/lib/realtime/hub.server';
 import { sessionLeasePath } from '@/server/lib/omp/session/ownership.server';
-import { leaseHeldByAnother } from '@/server/lib/omp/session/lease-flock.server';
+import { leaseHeldByAnother } from '@/server/lib/omp/session/lease-probe.server';
 import { isProcessAlive, processParentPid } from '@/server/lib/lifecycle/identity';
 import type { RealtimeServerFrame } from '@/shared/lib/realtime/protocol';
 
@@ -207,7 +207,7 @@ export async function holdLeaseInForeignProcess(sessionId: string): Promise<Fore
   const lease = sessionLeasePath(sessionId);
   writeFileSync(lease, '');
   const script = `
-    const { holdLeaseForTest } = await import(${JSON.stringify(join(import.meta.dir, '..', 'server/lib/omp/session/lease-flock.server.ts'))});
+    const { holdLeaseForTest } = await import(${JSON.stringify(join(import.meta.dir, '..', 'server/lib/omp/session/lease-probe.server.ts'))});
     holdLeaseForTest(process.argv[1]);
     await Promise.withResolvers().promise;
   `;

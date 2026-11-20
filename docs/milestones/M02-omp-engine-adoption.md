@@ -1245,7 +1245,7 @@ string[]}`). `RpcAgentEvent`, `RpcInbound`, `RpcServerFrame`, `RpcNotification`,
 byte-identical.
 
 Not adopted. Kabmo already answers both halves of the lease question with the
-same primitive omp uses: `lease-flock.server.ts` probes the `flock` and
+same primitive omp uses: `lease-probe.server.ts` probes the `flock` and
 `lease-holder.server.ts` names the holding pid, which RPC cannot (the report
 lists ids, not owners). Replacing that with an RPC round-trip would lose the
 pid, and the pid is what maps a holder to the Kabmo instance a client must be
@@ -2439,3 +2439,102 @@ the commit/hook fixes, the browser/computer fixes and the LSP inotify pruning.
 | R104 | intent tracing off in RPC | none needed; absent intent already handled | `job-progress.ts` falls back to the label |
 | R105 | empty-answer ask timeout | none needed; card renders unanswered | `parseAskResult` returns no answers |
 | R106 | host-side changes | none needed | roles, tool names and slash registry identical |
+
+# omp 19.0.1 adoption (2026-11-20)
+
+The pin moved **19.0.0 → 19.0.1**, a patch release. No breaking change: the RPC
+wire is byte-identical (74 commands / 301 definitions), every settings domain is
+byte-identical (638 settings / 477 entries, `omp:schema:check` passes on the
+regenerated file), and `MODEL_ROLES`, the 29 builtin tool names and the slash
+registry did not move.
+
+## Method
+
+- `npm pack @oh-my-pi/pi-coding-agent@19.0.0` and `@19.0.1` (plus `pi-tui`,
+  `pi-utils`, `pi-natives`) into temp trees, then `diff -rq` over `src/` — 27
+  entries differ (26 changed, 1 added: `utils/stream-newlines.ts`).
+  `rpc-wire.schema.json` compared whole: identical.
+- The schema generator run against the pinned 19.0.1 produces 10 tabs / 477
+  entries, byte-identical to the file in the tree.
+
+## Findings
+
+### R107 — Linux session leases are OFD locks, not `flock` (code)
+
+Upstream replaced the abstract-socket lease on Linux with an
+open-file-description lock on `<session-owners>/<id>.lock` (`pi-utils/src/
+file-lock.ts`, `pi-natives` `FileLock`). The file existing is not the fact that
+matters: **Linux keeps `flock(2)` and record locks in separate spaces**, so the
+probe Kabmo used (`flock(LOCK_EX|LOCK_NB)`) acquires successfully while another
+omp holds the OFD write lock, and answers "free". Measured in a Linux container
+(bun 1.4.4, 2026-11-20) with a second process holding the lease:
+
+```
+flock says held? false
+ofd getlk l_type: 1 => held? true      # F_WRLCK
+free: flock held? false  ofd l_type: 2 # F_UNLCK
+```
+
+`lease-flock.server.ts` therefore became `lease-probe.server.ts`: `flock` on
+macOS (unchanged), `F_OFD_GETLK` on Linux — a query, so it no longer takes the
+lock it is asked about. `holdLeaseForTest` takes the same primitive per platform,
+so the test's second holder is a holder omp would recognise. A 32-bit Linux
+`struct flock` is a different layout and is refused (`null`, "cannot answer")
+rather than guessed at.
+
+The guard was already blind on Linux before this release (19.0.0 wrote no file
+there at all), so this is the release that makes the fix observable.
+
+### R108 — the ownership lease survives a missing session directory (no code)
+
+`--resume <id>` under `--mode rpc`/`rpc-ui`/`acp` no longer fails at start when
+the session's recorded directory is gone: protocol modes are handed
+`keepSessionInPlace` instead of a move prompt, so the session opens where it is
+stored with the launch directory as its working directory. Kabmo passes
+`--resume <file>` (an absolute path, which `SessionManager.open` takes directly
+and never prompts on), so the affected path was never reachable from a Kabmo
+child; a `--resume <id>` run outside Kabmo now starts instead of exiting.
+
+### R109 — `snapcompactShape` is a per-model `models.yml` field (no code)
+
+`snapcompactShape` (`{variant, frameSize}`) is accepted on a `models.yml` model,
+on `modelOverrides.<id>` and on an extension `registerProvider` model, and
+travels through `custom-models.ts`/`model-patch.ts` into the registry. Kabmo's
+only `models.yml` writer touches `maxTokens` and `thinking` through `setIn`, so a
+value written by omp survives a round trip, and `models-validation.ts` ignores
+unknown model keys exactly as omp's schema does.
+
+### R110 — a `\r\n` split across PTY reads no longer adds a blank line (no code)
+
+`bash-executor.ts` and `bash-interactive.ts` now feed chunks through a
+`StreamNewlineNormalizer` instead of a per-chunk `replace(/\r\n?/gu, "\n")`,
+which could not see a `\r` and its `\n` in two different reads. Kabmo renders the
+`bash` tool's text verbatim; the minimize `details` record is unchanged.
+
+### R111 — host-side and TUI fixes (no action)
+
+`^model` mentions in queued messages (`steer`/`follow_up`, ACP steering,
+extension `sendUserMessage({deliverAs})`) expand instead of reaching the model as
+literal text, and the "`m<N>` now available" notice is no longer repeated per
+queued message; `/loop` and `/goal` wait for a yielding run's background jobs;
+gateway-advertised input modalities and output caps are read during discovery,
+and a `transport: pi-native` provider skips the provider's own model discovery
+(keeping the bundled and cached models); the first turn after a compaction no
+longer carries a spurious cache-miss marker; plan review measures "approve and
+keep context" against the tier in the slider; `/session` reports the `local://`
+directory and `/copy local` copies it; the browser relay degrades instead of
+dying without the `downloads` permission; a plugin manifest with a non-string
+`extensions` entry loads its valid entries instead of throwing; the Windows
+shell `dirname` builtin and Windows bash minimizing are fixed; a session lease
+probe of a directory nobody created yet answers instead of throwing; native dock
+order and the bundled `omp://tools` docs moved.
+
+## 19.0.1 outcomes
+
+| # | Finding | Action | Verification |
+|---|---|---|---|
+| R107 | Linux lease is an OFD lock | `lease-probe.server.ts` asks `F_OFD_GETLK` on Linux, `flock` on macOS; rename + callers updated | `ownership.server.test.ts` passes on macOS and in a Linux container (14/14, incl. the detached foreign-holder case) |
+| R108 | `--resume` survives a missing cwd | none needed; Kabmo passes a file path | `--resume <file>` unchanged in `rpc/constants.ts` |
+| R109 | `snapcompactShape` | none needed; Kabmo writes `setIn` keys only | `models-validation.test.ts` ignores unknown keys |
+| R110 | split `\r\n` in PTY output | none needed; text is rendered verbatim | `details` shape unchanged |
+| R111 | host-side/TUI fixes | none needed | wire, roles, tool names, slash registry, settings identical |

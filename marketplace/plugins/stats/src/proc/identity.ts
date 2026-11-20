@@ -18,10 +18,11 @@
  *   fixed at spawn (`buildSessionSpawnArgs('')` carries no `--resume`), so a
  *   host that ADOPTED a prewarm keeps the prewarm's argv forever — measured on
  *   this machine, three rows that read as idle prewarms were live sessions with
- *   titles and hundreds of messages. omp takes an OS `flock` on
+ *   titles and hundreds of messages. omp takes an OS lock on
  *   `<configRoot>/run/session-owners/<sessionId>.lock` for the life of the
- *   process that opened the session, so an open descriptor on that file IS the
- *   answer. Measured: 0.70 ms for 9 pids.
+ *   process that opened the session (`flock` on macOS, an
+ *   open-file-description lock on Linux since 19.0.1), so an open descriptor on
+ *   that file IS the answer. Measured: 0.70 ms for 9 pids.
  *
  * ## Why a second libproc handle
  *

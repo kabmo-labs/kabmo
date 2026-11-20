@@ -652,7 +652,57 @@ fi
 # schema/result changes, `/restart` re-execing through the launcher, the
 # `--continue` breadcrumb rule, the commit/hook fixes, the browser/computer
 # fixes and the LSP inotify pruning — host-side or model-facing.
-OMP_VERSION="${OMP_VERSION:-19.0.0}"
+# 19.0.1 (2026-11-20) is a PATCH release: no breaking change, no RPC wire
+# change (`rpc-wire.schema.json` is byte-identical — 74 commands, 301
+# definitions), no settings change (every `*-settings` domain is byte-identical,
+# so the panel stays at 638 settings / 477 entries and `omp:schema:check` passes
+# on the regenerated file). 27 files under `pi-coding-agent/src` differ (26
+# changed, 1 added `utils/stream-newlines.ts`).
+#
+# ONE upstream break reaches a Kabmo surface, and it is the lease probe:
+#
+#   On Linux the session ownership lease is now an open-file-description lock on
+#   `<session-owners>/<id>.lock` instead of an abstract socket, so the file Kabmo
+#   probes finally exists there — but the primitive is NOT `flock`. Linux keeps
+#   `flock(2)` and record locks in separate spaces, so a `flock` probe acquires a
+#   lease another omp holds and reports "free" (measured in a Linux container,
+#   bun 1.4.4: `flock` said free, `F_OFD_GETLK` said `F_WRLCK`). Kabmo would
+#   then spawn a second writer on a session another instance owns, and omp forks
+#   the session. `lease-flock.server.ts` became `lease-probe.server.ts`: `flock`
+#   on macOS, `F_OFD_GETLK` on Linux, and `holdLeaseForTest` takes the same
+#   primitive per platform so the test's holder is one omp recognises.
+#
+# Two more fixes reach a Kabmo surface and need no code:
+#   - A PTY transcript no longer gains a blank line when a `\r\n` ending is
+#     split across two terminal reads (`bash-executor.ts` now runs the chunk
+#     through `StreamNewlineNormalizer` instead of a per-chunk `replace`).
+#     Kabmo renders the `bash` tool text verbatim; the minimize `details` are
+#     unchanged.
+#   - `--resume <id>` under `--mode rpc` no longer fails at start when the
+#     session's recorded directory is gone; it opens in place. Kabmo passes
+#     `--resume <file>` for a reattached session (`rpc/constants.ts`), a path
+#     `SessionManager.open` takes directly, so that prompt never ran here.
+#
+# One additive `models.yml` field, no code: `snapcompactShape` (`{variant,
+# frameSize}`) on a model, on `modelOverrides.<id>` and on an extension
+# `registerProvider` model. Kabmo's only `models.yml` writer sets `maxTokens`
+# and `thinking` through `setIn`, so a value omp wrote survives the round trip,
+# and `models-validation.ts` ignores unknown model keys (omp's schema does too).
+#
+# Also fixed upstream, host-side or TUI: `^model` mentions in queued messages
+# (`steer`/`follow_up`, ACP steering) expand instead of reaching the model as
+# literal text, and the "m<N> now available" notice is no longer repeated;
+# `/loop` and `/goal` wait for a yielding run's background jobs; a gateway's
+# advertised modalities and output cap are read (and a `transport: pi-native`
+# provider skips the provider's own model discovery); the first turn after a
+# compaction loses its spurious cache-miss marker; plan review measures "approve
+# and keep context" against the selected tier; `/session` reports the `local://`
+# directory and `/copy local` copies it; the browser relay survives a browser
+# without the `downloads` permission; a plugin manifest with a non-string
+# `extensions` entry loads instead of throwing; the Windows shell `dirname`
+# builtin and Windows bash minimizing are fixed; native dock order and the
+# `omp://tools` docs moved.
+OMP_VERSION="${OMP_VERSION:-19.0.1}"
 PACKAGE="@oh-my-pi/pi-coding-agent"
 WANTED="omp/${OMP_VERSION}"
 
