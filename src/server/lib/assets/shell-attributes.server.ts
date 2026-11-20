@@ -18,14 +18,16 @@
  * - **`data-theme` and `data-theme-variant` are ALWAYS written.** They are the
  *   palette; `applyDocumentTheme` owns them after hydration, and a document
  *   served without them keeps `:root`'s shipped palette.
- * - **The two style attributes are written only when the style is not the one
- *   CSS paints with no attribute** (`classic` / `monochrome`). The client's
- *   `applySurfaceStyle` / `applyIconStyle` remove the attribute for exactly
- *   those values, so emitting `data-surface="classic"` here would make the
- *   server and the client disagree about the document's own state — and every
- *   CSS rule keys on the value, not on its absence. This is NOT the same test
- *   as `DEFAULT_*`: the defaults are now `glass` / `color`, and those must be
- *   emitted so the first frame is already frosted and coloured.
+ * - **The three presentation-style attributes are written only when the style
+ *   is not the one CSS paints with no attribute** (`classic` / `monochrome` /
+ *   `hairline`). The client's `applySurfaceStyle` / `applyIconStyle` /
+ *   `applyBorderStyle` remove the attribute for exactly those values, so
+ *   emitting `data-surface="classic"` here would make the server and the client
+ *   disagree about the document's own state — and every CSS rule keys on the
+ *   value, not on its absence. This is NOT the same test as `DEFAULT_*`: the
+ *   defaults are `glass` / `color` / `hairline`, and the first two must be
+ *   emitted so the first frame is already frosted and coloured while the third
+ *   must not, because `hairline` IS the absent state.
  */
 
 import type { ThemePalette } from '@/shared/types/theme';
@@ -41,12 +43,19 @@ import {
   SURFACE_STYLE_WITHOUT_ATTRIBUTE,
   resolveSurfaceStyle,
 } from '@/shared/lib/theme/surface-style';
+import {
+  BORDER_ATTRIBUTE,
+  BORDER_STYLE_WITHOUT_ATTRIBUTE,
+  resolveBorderStyle,
+} from '@/shared/lib/theme/border-style';
 
 export interface ShellDocumentFacts {
   palette: ThemePalette;
   /** The stored surface style, unresolved — any value this build cannot draw
    *  falls to the default rather than to an attribute no rule matches. */
   surfaceStyle: unknown;
+  /** The stored hairline set, same rule. */
+  borderStyle: unknown;
   iconStyle: unknown;
   /** The `<meta name="theme-color">` value for this request. */
   chromeColor: string;
@@ -58,11 +67,18 @@ const TEMPLATE_VARIANT = 'data-theme-variant="light"';
 const TEMPLATE_META = '<meta name="theme-color" content="#faf8f3" />';
 
 /** The extra `<html>` attributes for the stored presentation styles. */
-export function styleAttributes(surfaceStyle: unknown, iconStyle: unknown, palette?: ThemePalette): string {
+export function styleAttributes(
+  surfaceStyle: unknown,
+  iconStyle: unknown,
+  palette?: ThemePalette,
+  borderStyle?: unknown,
+): string {
   const surface = resolveSurfaceStyle(surfaceStyle);
   const icon = resolveIconStyle(iconStyle);
+  const border = resolveBorderStyle(borderStyle);
   const parts: string[] = [];
   if (surface !== SURFACE_STYLE_WITHOUT_ATTRIBUTE) parts.push(`${SURFACE_ATTRIBUTE}="${surface}"`);
+  if (border !== BORDER_STYLE_WITHOUT_ATTRIBUTE) parts.push(`${BORDER_ATTRIBUTE}="${border}"`);
   if (icon !== ICON_STYLE_WITHOUT_ATTRIBUTE) parts.push(`${ICON_STYLE_ATTRIBUTE}="${icon}"`);
   // The paper bucket is written for EVERY light palette, including the default
   // one, because it is not a preference: without it the first frame paints the
@@ -83,7 +99,7 @@ export function applyShellDocumentFacts(html: string, facts: ShellDocumentFacts)
   return html
     .replace(
       TEMPLATE_THEME,
-      `data-theme="${facts.palette.id}"${styleAttributes(facts.surfaceStyle, facts.iconStyle, facts.palette)}`,
+      `data-theme="${facts.palette.id}"${styleAttributes(facts.surfaceStyle, facts.iconStyle, facts.palette, facts.borderStyle)}`,
     )
     .replace(TEMPLATE_VARIANT, `data-theme-variant="${facts.palette.variant}"`)
     .replace(TEMPLATE_META, `<meta name="theme-color" content="${facts.chromeColor}" />`);

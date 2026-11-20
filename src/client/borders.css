@@ -1,0 +1,143 @@
+/**
+ * @license
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
+ * The BORDERLESS hairline set, as one table.
+ *
+ * `:root[data-borders="borderless"]` on `<html>` removes the app's structural
+ * rules: the rule under a header, the rule beside a column, a table row's rule,
+ * the outline around a dialog, a card or a chip. Nothing moves — only the 1px
+ * ink alpha goes — so this is a paint change, never a layout one.
+ *
+ * **Why a class-level override and not a token.** 2,126 `border-*` classes
+ * across 403 files write their rung by hand; there is no single `--hairline`
+ * they read (see `shared/lib/theme/border-style.ts` for the measurement). One
+ * unlayered rule per rung is the only way to reach every surface, including the
+ * views and plugins added later.
+ *
+ * **Why COLOUR and never `border-width: 0`.** `box-sizing: border-box` is set
+ * globally (`tailwind.css`), so a 1px border on each side already sits inside
+ * every measured box. A width of 0 would shorten each side by 2px and shift the
+ * whole layout; a transparent colour keeps the geometry and paints nothing.
+ * Every rule below writes `border-color` only, and a test asserts the width and
+ * `border` shorthands never appear here.
+ *
+ * **Why these rungs.** Measured per class string, the rung is the ROLE:
+ *
+ *   | Rung        | What it draws                                              |
+ *   |-------------|------------------------------------------------------------|
+ *   | `/5`–`/12`  | separators: a header's `border-b`, a column's `border-r`     |
+ *   | `/15`       | a panel's outer edge AND a chip's edge                      |
+ *   | `/20`       | a card's outline, a chip's outline, an input's edge          |
+ *   | `/25`–`/60` | interaction: hover, focus, focus-within, an active chip      |
+ *
+ * So `/5`–`/20` is the structural layer and is cleared; `/25` and above is
+ * interaction and stays. That cut is what makes the setting usable rather than
+ * a way to delete every edge in the product: hover and focus still light their
+ * control up, because those are DIFFERENT utility classes (`.hover\:border-
+ * ink\/40:hover`), never the base rung.
+ *
+ * Four things are deliberately not rungs and stay untouched: `border-ink` with
+ * no alpha (100 uses: a selected chip, a checked mark), the signal colours
+ * (`border-error`, `-warning`, `-success`, `-info`; 129 uses of validation and
+ * status), `ring-*` (a focus or drop-target ring is not a border), and
+ * `border-dashed` (a drop zone's 1px box IS its affordance).
+ *
+ * **Form controls are exempt, and only form controls.** A field with no edge is
+ * not a calmer field: measured on the running app, the settings search box and
+ * every `border-ink/20` input composite to the paper behind them, and the
+ * control disappears. `input`, `textarea`, `select`, `kbd` and the switch knob
+ * therefore keep their rung. The exclusion is stated once, in the same `:not()`
+ * as the rung list, rather than as a second "restore" rule — the pattern
+ * `glass.css` already learned with the switch knob, where the restore rule lost
+ * a specificity race and every knob painted nothing.
+ *
+ * **Specificity and order are load-bearing.** These rules are UNLAYERED, so they
+ * beat Tailwind's `@layer utilities`; they are imported AFTER `glass.css`, so
+ * they also win the (0,2,0) tie with `[data-surface="glass"] .glass-chrome` and
+ * its two siblings; and `:root` puts them at (0,2,0) rather than (0,1,0), which
+ * is what a plugin's `@scope`d stylesheet (0,1,0) has to lose against — a
+ * plugin must not bring a hairline back into a borderless shell.
+ *
+ * The published hairline tokens are cleared too, because a component that reads
+ * one of them directly (the chrome rim, a dialog's rim) would otherwise keep the
+ * one line the utility rules no longer paint.
+ */
+
+:root[data-borders="borderless"] {
+  --ink-hairline: transparent;
+  --glass-hairline: transparent;
+}
+
+/*
+ * The structural rungs: `/5 /6 /8 /10 /12 /15 /20`.
+ *
+ * `:is()` lists the classes Tailwind emits; the escaped slashes are why each one
+ * is spelled out rather than generated.
+ */
+:root[data-borders="borderless"] :is(
+  .border-ink\/5,
+  .border-ink\/6,
+  .border-ink\/8,
+  .border-ink\/10,
+  .border-ink\/12,
+  .border-ink\/15,
+  .border-ink\/20
+):not(
+  input,
+  textarea,
+  select,
+  kbd,
+  [role="switch"],
+  [contenteditable="true"],
+  .border-dashed
+) {
+  border-color: transparent;
+}
+
+/*
+ * Dividers are the row-level form of the same fact and carry the same rungs, so
+ * they clear together. A row is still a row without a rule: it keeps its hover
+ * and active states.
+ */
+:root[data-borders="borderless"] :where(
+  .divide-ink\/5,
+  .divide-ink\/6,
+  .divide-ink\/8,
+  .divide-ink\/10,
+  .divide-ink\/12,
+  .divide-ink\/15,
+  .divide-ink\/20
+) > :not(:last-child) {
+  border-color: transparent;
+}
+
+/*
+ * The resizer's idle line is painted with a background, not a border — the one
+ * hairline the utilities above cannot reach (`desktop-layout/ResizeHandle.tsx`).
+ * It goes with the rest, or a borderless shell keeps one visible rule down each
+ * column edge. The hover and drag states stay: they report a live pointer and a
+ * drag in progress, which is not decoration.
+ */
+:root[data-borders="borderless"] [data-separator] > .bg-ink\/10 {
+  background-color: transparent;
+}
+
+/*
+ * A dialog and a popover keep an edge. Their body is `bg-paper`, and over a
+ * borderless chrome that fill is what still separates them from the page — but
+ * in the glass material the panel's tint is close enough to the plane that the
+ * rim is what makes the edge findable.
+ *
+ * `outline`, not `box-shadow`: every carrier already states its own elevation
+ * (`shadow-2xl`, `shadow-xl`, `--glass-shadow`), and a `box-shadow` here would
+ * REPLACE it — a flattened dialog, which is a worse failure than a missing rim.
+ * Negative offset draws it inside the panel's box, so it cannot be clipped by
+ * the overflow a long body needs.
+ */
+:root[data-borders="borderless"] :is(.glass-overlay, .glass-popover) {
+  outline: 1px solid color-mix(in srgb, var(--theme-ink) 8%, transparent);
+  outline-offset: -1px;
+}

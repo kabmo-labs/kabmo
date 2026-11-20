@@ -25,6 +25,7 @@ import { FIRST_FRAME_STYLE_ELEMENT_ID } from '@/shared/lib/theme/first-frame';
 import { applyShellDocumentFacts } from '@/server/lib/assets/shell-attributes.server';
 import { splitShellSettings } from '@/server/lib/assets/shell-settings.server';
 import { SURFACE_STYLE_SETTING_KEY } from '@/shared/lib/theme/surface-style';
+import { BORDER_STYLE_SETTING_KEY } from '@/shared/lib/theme/border-style';
 import { ICON_STYLE_SETTING_KEY } from '@/shared/lib/theme/icon-style';
 import { windowChromeColor } from '@/shared/lib/theme/chrome';
 import { THEME_CSS_ROUTE, serveThemeCss } from '@/server/lib/assets/theme-css.server';
@@ -272,10 +273,12 @@ export const ssrRoutes = new Elysia({ name: 'ssr' }).get('*', async ({ request }
     new Response(
       applyShellDocumentFacts(shellHtml, {
         palette: theme,
-        // The two presentation styles are read from the same blob as the
-        // palette, so the FIRST frame is already the material the user chose:
-        // without this a glass install paints one opaque frame and swaps.
+        // The presentation styles are read from the same blob as the palette,
+        // so the FIRST frame is already the material, the hairline set and the
+        // paint the user chose: without this a glass install paints one opaque
+        // frame and swaps, and a borderless one paints every separator first.
         surfaceStyle: readSettingsBlob(settings)[SURFACE_STYLE_SETTING_KEY],
+        borderStyle: readSettingsBlob(settings)[BORDER_STYLE_SETTING_KEY],
         iconStyle: readSettingsBlob(settings)[ICON_STYLE_SETTING_KEY],
         chromeColor: chrome,
       })

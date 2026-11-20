@@ -6,6 +6,7 @@ import { primeKabmoSettings } from '@/shared/lib/settings/client';
 import { initDocumentTheme } from '@/client/hooks/ui/theme';
 import { initChatWidthMode } from '@/client/hooks/chat/timeline/width-mode';
 import { initSurfaceStyle } from '@/client/hooks/ui/surface-style';
+import { initBorderStyle } from '@/client/hooks/ui/border-style';
 import { initIconStyle } from '@/client/hooks/ui/icon-style';
 import { primeWindowChrome } from '@/client/hooks/ui/window-chrome';
 import { installAuthFetchBridge, primeAuthState } from '@/client/hooks/ui/auth';
@@ -26,6 +27,7 @@ import { installDeviceFiles } from '@/client/lib/launch/device-files';
 
 import '@/client/tailwind.css';
 import '@/client/glass.css';
+import '@/client/borders.css';
 import '@/shared/lib/markdown/katex-fonts.css';
 import '@/shared/lib/markdown/fira-code-fonts.css';
 import '@/shared/lib/fonts/nerd-symbols.css';
@@ -48,11 +50,14 @@ primeKabmoSettings(bootstrap?.appSettings);
 // lazily mounted subtree, and a hook would not run until it mounted.
 initChatWidthMode();
 
-// The surface material and the brand-mark paint, also before the first render:
-// a glass install that painted the opaque shell first would swap every panel
-// one frame later, and a colour install would draw ink marks and then repaint
-// them. Both write an attribute CSS reads — no event, no re-render.
+// The surface material, the hairline set and the brand-mark paint, also before
+// the first render: a glass install that painted the opaque shell first would
+// swap every panel one frame later, a borderless install would paint every
+// separator and then erase it, and a colour install would draw ink marks and
+// then repaint them. All three write an attribute CSS reads — no event, no
+// re-render.
 initSurfaceStyle();
+initBorderStyle();
 initIconStyle();
 
 // BEFORE the theme init, which writes the chrome meta: a phone that repainted

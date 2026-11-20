@@ -36,6 +36,7 @@ import { applySidebarStyle } from '@/client/hooks/workspace/sidebar-style';
 import { applyPanelNav } from '@/client/hooks/workspace/panel-nav';
 import { applyComposerStyle } from '@/client/hooks/chat/composer/style';
 import { applySurfaceStyle } from '@/client/hooks/ui/surface-style';
+import { applyBorderStyle } from '@/client/hooks/ui/border-style';
 import { applyIconStyle } from '@/client/hooks/ui/icon-style';
 import { EDITOR_FONT_CHANGED_EVENT } from '@/client/hooks/editor/font';
 import { EDITOR_THEME_CHANGED_EVENT } from '@/client/hooks/editor/theme';
@@ -109,12 +110,17 @@ export function applySettingsSideEffects(previous: SettingsState, next: Settings
     applyComposerStyle(next.composerStyle);
   }
 
-  // The surface material and the brand-mark paint are CSS-only: one attribute
-  // each on `<html>`, which every rule already keys on. Written here so the
-  // panels behind the modal repaint on the click, and so the next render cannot
-  // show a style the document does not carry.
+  // The surface material, the hairline set and the brand-mark paint are
+  // CSS-only: one attribute each on `<html>`, which every rule already keys on.
+  // Written here so the panels BEHIND the modal repaint on the click — this is
+  // the one settings card whose effect the user watches happen — and so the
+  // next render cannot show a style the document does not carry.
   if (next.surfaceStyle !== previous.surfaceStyle) {
     applySurfaceStyle(next.surfaceStyle);
+  }
+
+  if (next.borderStyle !== previous.borderStyle) {
+    applyBorderStyle(next.borderStyle);
   }
 
   if (next.iconStyle !== previous.iconStyle) {

@@ -54,6 +54,17 @@ describe('styleAttributes', () => {
     expect(styleAttributes('glass', 'color')).toBe(' data-surface="glass" data-icon-style="color"');
   });
 
+  test('borderless is written, hairline is the absence of the attribute', () => {
+    // `hairline` IS what CSS paints with no attribute, so emitting
+    // `data-borders="hairline"` would make the served document disagree with
+    // the one the client's own writer produces.
+    expect(styleAttributes('classic', 'monochrome', undefined, 'hairline')).toBe('');
+    expect(styleAttributes('classic', 'monochrome', undefined, 'borderless')).toBe(' data-borders="borderless"');
+    expect(styleAttributes('glass', 'color', undefined, 'borderless')).toBe(
+      ' data-surface="glass" data-borders="borderless" data-icon-style="color"',
+    );
+  });
+
   test('a light palette carries its icon paper bucket, even at the default styles', () => {
     // Not a preference: without it the first frame paints the `deep` tone table
     // on a `mid` paper, one step darker than the palette allows, and the client's
@@ -69,6 +80,7 @@ describe('applyShellDocumentFacts', () => {
     const html = applyShellDocumentFacts(TEMPLATE, {
       palette: light,
       surfaceStyle: undefined,
+      borderStyle: undefined,
       iconStyle: undefined,
       chromeColor: '#123456',
     });
@@ -83,6 +95,7 @@ describe('applyShellDocumentFacts', () => {
     const html = applyShellDocumentFacts(TEMPLATE, {
       palette: light,
       surfaceStyle: 'glass',
+      borderStyle: undefined,
       iconStyle: 'color',
       chromeColor: '#123456',
     });
@@ -92,6 +105,18 @@ describe('applyShellDocumentFacts', () => {
     );
   });
 
+  test('a stored borderless style lands on the FIRST frame too', () => {
+    const html = applyShellDocumentFacts(TEMPLATE, {
+      palette: light,
+      surfaceStyle: undefined,
+      borderStyle: 'borderless',
+      iconStyle: undefined,
+      chromeColor: '#123456',
+    });
+
+    expect(html).toContain('data-borders="borderless"');
+  });
+
   test('a document without the template markers is returned untouched, not thrown', () => {
     const stale = '<html><head></head><body>an older build</body></html>';
 
@@ -99,6 +124,7 @@ describe('applyShellDocumentFacts', () => {
       applyShellDocumentFacts(stale, {
         palette: light,
         surfaceStyle: 'glass',
+        borderStyle: undefined,
         iconStyle: 'color',
         chromeColor: '#123456',
       }),

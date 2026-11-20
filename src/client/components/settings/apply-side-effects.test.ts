@@ -116,6 +116,23 @@ describe('applySettingsSideEffects', () => {
     expect(root.hasAttribute('data-surface')).toBe(false);
   });
 
+  test('the hairline set is written to the document, and only when it moves', () => {
+    installDom();
+    const root = globalThis.document.documentElement;
+
+    applySettingsSideEffects(state({ borderStyle: 'hairline' }), state({ borderStyle: 'borderless' }));
+    expect(root.getAttribute('data-borders')).toBe('borderless');
+
+    // Same value again: the attribute must survive an unrelated re-render
+    // untouched (hairline is written as the attribute's absence, so a stray
+    // call would clear it and repaint every separator).
+    applySettingsSideEffects(state({ borderStyle: 'borderless' }), state({ borderStyle: 'borderless', goalDefaultBudget: 1 }));
+    expect(root.getAttribute('data-borders')).toBe('borderless');
+
+    applySettingsSideEffects(state({ borderStyle: 'borderless' }), state({ borderStyle: 'hairline' }));
+    expect(root.hasAttribute('data-borders')).toBe(false);
+  });
+
   test('the brand-mark style is written to the document, and only when it moves', () => {
     installDom();
     const root = globalThis.document.documentElement;

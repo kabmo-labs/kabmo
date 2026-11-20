@@ -25,6 +25,7 @@ import { primeKabmoSettings } from '@/shared/lib/settings/client';
 import { DEFAULT_SETTINGS } from '@/shared/lib/settings/defaults';
 import { SURFACE_STYLE_SETTING_KEY } from '@/shared/lib/theme/surface-style';
 import { ICON_STYLE_SETTING_KEY } from '@/shared/lib/theme/icon-style';
+import { BORDER_STYLE_SETTING_KEY } from '@/shared/lib/theme/border-style';
 
 const DOM_GLOBALS = ['window', 'document'] as const;
 const nativeGlobals: Partial<Record<(typeof DOM_GLOBALS)[number], unknown>> = {};
@@ -54,6 +55,7 @@ describe('the stored keys', () => {
   // other. `defaults.ts` proves the FIELDS exist; this proves the KEYS name them.
   test('each key names a real settings field', () => {
     expect(Object.keys(DEFAULT_SETTINGS)).toContain(SURFACE_STYLE_SETTING_KEY);
+    expect(Object.keys(DEFAULT_SETTINGS)).toContain(BORDER_STYLE_SETTING_KEY);
     expect(Object.keys(DEFAULT_SETTINGS)).toContain(ICON_STYLE_SETTING_KEY);
   });
 });

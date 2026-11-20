@@ -5,6 +5,7 @@ import type { SidebarStyle } from '@/shared/lib/workspace/sidebar-style';
 import type { PanelNavStyle } from '@/shared/lib/workspace/panel-nav';
 import type { ComposerStyle } from '@/shared/lib/chat/composer/style';
 import type { SurfaceStyle } from '@/shared/lib/theme/surface-style';
+import type { BorderStyle } from '@/shared/lib/theme/border-style';
 import type { IconStyle } from '@/shared/lib/theme/icon-style';
 import type { TrayIconStyle } from '@/shared/lib/theme/tray-icon-style';
 import type { SettingsSection } from '@/shared/lib/settings/sections';
@@ -222,6 +223,21 @@ export interface SettingsState {
    * call site each. `classic` is the default so an upgrade restyles nothing.
    */
   surfaceStyle: SurfaceStyle;
+  /**
+   * How the app's HAIRLINES are drawn (`hairline` | `borderless`). A
+   * presentation choice over one shell: both styles draw the same panels, rows
+   * and controls, and `borderless` removes only the 1px rules between them —
+   * never a control's own edge, a validation colour, a drop zone or a focus
+   * ring, because those are facts and affordances rather than decoration. The
+   * table lives in `shared/lib/theme/border-style.ts`; the pixels are the
+   * `[data-borders="borderless"]` block in `src/client/borders.css`.
+   *
+   * It reaches the document as `data-borders` on `<html>`, for the same reason
+   * as the surface material: the sidebar, navbar, composer and every modal are
+   * separate subtrees. `hairline` is what CSS paints with no attribute, so an
+   * upgrade removes nothing.
+   */
+  borderStyle: BorderStyle;
   /**
    * How EVERY icon is painted (`monochrome` | `color`): functional Lucide
    * glyphs, provider/model marks and file-type marks. `color` gives each glyph
