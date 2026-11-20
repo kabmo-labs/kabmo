@@ -6,30 +6,24 @@
 /**
  * Work an ACP agent keeps doing AFTER it has answered `session/prompt`.
  *
- * antigravity's `invoke_subagent` returns immediately: the tool call is marked
- * `completed`, the agent says "sedang membuatkan…", and `session/prompt`
- * resolves with `end_turn` while the subagent is still running. Measured on agy
- * 1.5.3, the subagent's later completion and the agent's follow-up answer are
- * written to its transcript but **no `session/update` frame is sent while the
- * connection is idle**; the frames are held until the next request (upstream
- * issue google-antigravity/antigravity-cli#1461). The operator then sees a
- * stopped chat with no notice.
+ * Measured on agy 1.5.3: `invoke_subagent` returns immediately, the call is
+ * marked `completed`, the agent writes "sedang membuatkan…", and
+ * `session/prompt` resolves `end_turn` while the child still runs. The child's
+ * answer is written to the agent's transcript but **no `session/update` frame
+ * is sent while the connection is idle** — it is held until the next request
+ * (google-antigravity/antigravity-cli#1461), so the operator saw a stopped chat.
  *
  * `session/load` is the one request that replays that transcript, so the turn
- * that spawned the subagent is followed by a load probe: replay frames are
- * collected instead of folded (they repeat the whole chat), and the text past
- * the answer the operator already has is emitted as the agent's continuation.
+ * is followed by a probe: replay frames are collected instead of folded, and the
+ * part past the answer already on screen is delivered as the continuation.
  *
- * **Text is not the only evidence.** Measured on agy 1.5.3 against a real chat
- * (155 s of work): its replay carried `read_file` and a failed `run_command`
- * AFTER the holding sentence and **no** new `agent_message_chunk` at all. A
- * probe that waited for prose therefore sat on a finished run until the ten
- * minute ceiling and the operator saw nothing. New TOOL calls are progress too,
- * so they are surfaced as a notice — and each one that lands means the child is
- * still working, which is what re-arms the ceiling.
+ * **Text is not the only evidence.** In a real 155 s run the replay carried
+ * `read_file` and a failed `run_command` and NO new `agent_message_chunk`, so a
+ * probe waiting for prose reported nothing before its ceiling. New tool calls
+ * are progress too, and each one re-arms the quiet window.
  *
- * The probe backs off (2s → 30s) and gives up after ten minutes past the last
- * evidence of work; it never substitutes a failure for an answer it did not see.
+ * Backs off 2s → 30s; gives up ten minutes past the last work evidence, an hour
+ * after the turn regardless. Never invents a failure for an answer it missed.
  */
 
 import { collectReplayFrame, newToolNotice, type ReplaySegment } from '@/server/lib/harness/acp/background-replay';
@@ -60,12 +54,25 @@ export const BACKGROUND_FIRST_DELAY_MS = 2_000;
 export const BACKGROUND_MAX_DELAY_MS = 30_000;
 export const BACKGROUND_TIMEOUT_MS = 10 * 60_000;
 /** The absolute ceiling, independent of how often new work re-arms the quiet
- *  window. A probe holds the session out of the idle reclaim (`resetIdle`), so
- *  an agent that reports a tool every minute must not keep it alive forever.
- *  One hour is the repo's own precedent for "silence means a wedged turn"
- *  (`turn-silence.ts`). */
+ *  window: a probe holds the session out of the idle reclaim, so an agent
+ *  reporting a tool every minute must not keep it alive forever. One hour is
+ *  the precedent `turn-silence.ts` already set. */
 export const BACKGROUND_MAX_LIFETIME_MS = 60 * 60_000;
 export const BACKGROUND_LOAD_TIMEOUT_MS = 120_000;
+
+/** The tool-call ids the closed message already shows, so a replay of them is
+ *  not reported as news. */
+export function toolIdsOf(message: unknown): string[] {
+  if (!message || typeof message !== 'object' || !('content' in message)) return [];
+  const content = (message as { content?: unknown }).content;
+  if (!Array.isArray(content)) return [];
+  return content.flatMap((block) => {
+    if (!block || typeof block !== 'object') return [];
+    const record = block as Record<string, unknown>;
+    if (record.type !== 'toolCall') return [];
+    return typeof record.id === 'string' && record.id ? [record.id] : [];
+  });
+}
 
 /** Did this turn hand work to a background worker? Read from the closed
  *  assistant message, which is the only place the tool call survives. */
@@ -131,6 +138,7 @@ export function backgroundNoticeFrames(text: string): AgentEvent[] {
 export interface BackgroundNoticeHost {
   sessionId: string;
   runModel: { provider: string; modelId: string } | null;
+  /** Written: the notice IS one more assistant row. */
   messageCount: number;
   assistantCount: number;
   emit: (event: AgentEvent) => void;
@@ -184,7 +192,7 @@ export class AcpBackgroundProbe {
   private inFlight = false;
   /** Consecutive `session/load` failures; a lost agent is not retried forever. */
   private failures = 0;
-  private queued: string | null = null;
+  private queued: { baseline: string; known: string[] } | null = null;
   /** Tool calls already reported for this probe, so a notice is not repeated. */
   private reportedTools = new Set<string>();
 
@@ -201,15 +209,20 @@ export class AcpBackgroundProbe {
     this.delay = this.firstDelayMs;
   }
 
-  /** Watch for the delayed answer to a turn that spawned background work. */
-  start(baseline: string): void {
+  /** Watch for the delayed answer to a turn that spawned background work.
+   *
+   *  `knownTools` are the ids the CLOSED message already shows: the replay
+   *  repeats them, and reporting the turn's own `invoke_subagent` as "the
+   *  subagent continued working" is noise the operator has already seen on the
+   *  card (measured against a real agy chat). */
+  start(baseline: string, knownTools: readonly string[] = []): void {
     this.baseline = baseline.trim();
     this.pendingNotice = null;
-    this.reportedTools = new Set();
+    this.reportedTools = new Set(knownTools);
     // A previous probe's load can still be running. Queue this turn instead of
     // interleaving two replays; the queued baseline starts when that load ends.
     if (this.inFlight) {
-      this.queued = this.baseline;
+      this.queued = { baseline: this.baseline, known: [...this.reportedTools] };
       return;
     }
     this.stopped = false;
@@ -319,9 +332,9 @@ export class AcpBackgroundProbe {
     }
 
     if (this.queued !== null) {
-      const baseline = this.queued;
+      const next = this.queued;
       this.queued = null;
-      this.start(baseline);
+      this.start(next.baseline, next.known);
     }
   }
 }

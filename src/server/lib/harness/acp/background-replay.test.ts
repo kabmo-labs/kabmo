@@ -26,12 +26,16 @@ describe('replay collection', () => {
     expect(s.tools).toEqual([{ id: 't1', name: 'read_file', status: 'completed' }]);
   });
 
-  test('a user chunk starts a new segment', () => {
+  test('a user chunk starts a new segment — text AND tools', () => {
     const s = seg();
     collectReplayFrame(s, { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'old' } });
+    collectReplayFrame(s, { sessionUpdate: 'tool_call', toolCallId: 'old1', name: 'ask_question', status: 'completed' });
     collectReplayFrame(s, { sessionUpdate: 'user_message_chunk', content: { type: 'text', text: 'q' } });
     expect(s.text).toBe('');
+    expect(s.tools).toEqual([]);
     expect(s.sawUser).toBe(true);
+    collectReplayFrame(s, { sessionUpdate: 'tool_call', toolCallId: 'new1', name: 'read_file', status: 'completed' });
+    expect(newToolNotice(s, new Set())).toBe('The subagent continued working:\n✓ read_file');
   });
 
   test('the notice marks status and is reported once per call', () => {
@@ -135,5 +139,16 @@ describe('the absolute ceiling', () => {
     expect(emitted.length).toBeGreaterThanOrEqual(2);
     // The ceiling stops it; nothing is scheduled after it.
     expect(scheduled).toHaveLength(0);
+  });
+});
+
+describe('the turn that spawned the subagent', () => {
+  test('its own tool calls are not reported as new work', () => {
+    const s = seg();
+    // The replay repeats the turn's `invoke_subagent` plus genuinely new work.
+    collectReplayFrame(s, { sessionUpdate: 'user_message_chunk', content: { type: 'text', text: 'q' } });
+    collectReplayFrame(s, { sessionUpdate: 'tool_call', toolCallId: 'own-call', name: 'invoke_subagent', status: 'completed' });
+    collectReplayFrame(s, { sessionUpdate: 'tool_call', toolCallId: 'new-read', name: 'read_file', status: 'completed' });
+    expect(newToolNotice(s, new Set(['own-call']))).toBe('The subagent continued working:\n✓ read_file');
   });
 });

@@ -60,8 +60,13 @@ export function collectReplayFrame(segment: ReplaySegment, update: unknown): voi
   const kind = typeof record.sessionUpdate === 'string' ? record.sessionUpdate : '';
   if (kind === 'user_message_chunk') {
     // A new user turn starts a new assistant segment; everything before it is
-    // history this probe does not need.
+    // history this probe does not need. The TOOLS reset with the text — a
+    // replay repeats every call of the chat, and reporting those as "the
+    // subagent continued working" told the operator about turns that had
+    // already finished (measured on the real agy replay: seven calls listed,
+    // five of them from earlier turns).
     segment.text = '';
+    segment.tools = [];
     segment.sawUser = true;
     return;
   }

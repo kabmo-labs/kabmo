@@ -45,7 +45,7 @@ import type { HarnessId } from '@/shared/lib/harness/catalog';
 import type { AcpTurns, AcpTurnEndInfo } from '@/server/lib/harness/acp/turn';
 import { driveAcpGoalAfterTurn } from '@/server/lib/harness/acp/acp-goal-driver.server';
 import type { AcpGoalHost } from '@/server/lib/harness/acp/acp-goal.server';
-import { assistantTextOf, spawnsBackgroundWork } from '@/server/lib/harness/acp/background-work';
+import { assistantTextOf, spawnsBackgroundWork, toolIdsOf } from '@/server/lib/harness/acp/background-work';
 import { isLostSession } from '@/server/lib/harness/acp/session-lost';
 
 /** What a turn reads and moves on the session. */
@@ -73,7 +73,7 @@ export interface AcpTurnEndHost
   extends Omit<AcpTurnTarget, 'runModel' | 'sessionId' | 'isAlive' | 'isBusy' | 'send'>, AcpGoalHost {
   assistantCount: number;
   usage: { endTurn(): void };
-  background: { start(baseline: string): void };
+  background: { start(baseline: string, knownTools?: readonly string[]): void };
 }
 
 /**
@@ -91,7 +91,8 @@ export function endAcpTurn(host: AcpTurnEndHost, info: AcpTurnEndInfo): Promise<
   // `end_turn` right after `invoke_subagent`, and its completion is held until
   // the next request (upstream #1461). Probe the transcript instead.
   if (!info.cancelled && info.failed !== true && spawnsBackgroundWork(info.message)) {
-    host.background.start(assistantTextOf(info.message));
+    // The replay repeats this turn's own calls; only work that is NEW is news.
+    host.background.start(assistantTextOf(info.message), toolIdsOf(info.message));
   }
   void driveAcpGoalAfterTurn(host, info.message, { cancelled: info.cancelled === true }).catch(() => {});
   return reported;

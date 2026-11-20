@@ -42,8 +42,15 @@ export interface AcpWiringHost extends BackgroundNoticeHost {
   onTurnEnded(info: AcpTurnEndInfo): void;
 }
 
-/** The wiring a session builds for itself: live getters, so the handshake's id
- *  and model reach the turn machine without a second assignment. */
+/** The wiring a session builds for itself.
+ *
+ *  `sessionId`/`runModel` getters keep the handshake's late assignment visible
+ *  to the turn machine. The two COUNTS are accessors in BOTH directions: the
+ *  background notice emits a synthetic assistant row and increments them, and a
+ *  getter-only property made that throw `Attempted to assign to readonly
+ *  property` at the moment the notice was finally delivered — measured against
+ *  a real agy chat, after the whole "did the subagent report back" path had
+ *  already been exercised for 200 s. */
 export function acpWiringFor(session: {
   cwd: string;
   sessionId: string;
@@ -61,7 +68,9 @@ export function acpWiringFor(session: {
     get sessionId() { return session.sessionId; },
     get runModel() { return session.runModel; },
     get messageCount() { return session.messageCount; },
+    set messageCount(count: number) { session.messageCount = count; },
     get assistantCount() { return session.assistantCount; },
+    set assistantCount(count: number) { session.assistantCount = count; },
     emit: (event) => session.emit(event),
     onTurnEnded: (info) => void session.onTurnEnded(info),
   };
