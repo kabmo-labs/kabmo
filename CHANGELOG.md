@@ -4,6 +4,31 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.44.0](https://github.com/kabmo-labs/kabmo/compare/v0.43.1...v0.44.0) — 2026-11-20
+
+### Added
+
+* **appearance:** added a borderless rule set behind a presentation setting ([eda7901](https://github.com/kabmo-labs/kabmo/commit/eda7901865fcac95d48ce8364990ee1718192a18)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **browser:** gave the user's browser tabs and a two-row toolbar ([11e0edf](https://github.com/kabmo-labs/kabmo/commit/11e0edf0ac82461fa5a5536edab2b49331a03fc1)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **chat:** made the chat column width draggable and globally stored ([989c041](https://github.com/kabmo-labs/kabmo/commit/989c041429c680447bd4a0aef0cc657239894f26)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **layout:** hide the whole right side with one toggle and move the editor switch onto the panel ([7dc31d3](https://github.com/kabmo-labs/kabmo/commit/7dc31d331562b8bbaa25afdb8bba51d8971bd3bc)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **panel-tabs:** let each desktop panel column be navigated by a browser-style tab strip ([4c5bd18](https://github.com/kabmo-labs/kabmo/commit/4c5bd18c007b72d0320ede979604c3e418385cb5)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **settings:** grouped Appearance into palette, shell and editor panes ([f835e40](https://github.com/kabmo-labs/kabmo/commit/f835e4013521f6e9ec194d6238aafae37d338cde)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **sidebar:** moved the mobile-view switch into the session sidebar footer ([1985905](https://github.com/kabmo-labs/kabmo/commit/19859058cddee5b6adaceb5452363a1491bfed80)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **acp:** deliver the background notice intact, and only for NEW work ([e1d76b0](https://github.com/kabmo-labs/kabmo/commit/e1d76b0c1dbbb79a40f9a3fb206ff25706a1b201)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **context-ring:** draw the dial on lucide's grid so it matches the row's icons ([5bf6367](https://github.com/kabmo-labs/kabmo/commit/5bf63672587af623a031088cd2f4d983de4a8f2c)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **context-ring:** fill the 24-unit grid at a 2.5-unit stroke so it matches the row ([7f56bbd](https://github.com/kabmo-labs/kabmo/commit/7f56bbd819b77e62e43f59852f91dd82f52ba288)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **file-explorer:** painted the folder dot in the same tone as the folder name ([c541713](https://github.com/kabmo-labs/kabmo/commit/c541713ecd73dd3ca3769a93a2d89aa798a55a79)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **git:** open the commit history collapsed and let a row toggle itself ([85c35ce](https://github.com/kabmo-labs/kabmo/commit/85c35ceda6369897e2b0eb85b653d066376bd16d)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **header:** let the navbar switch a plugin's entry off ([d5a69ff](https://github.com/kabmo-labs/kabmo/commit/d5a69ffc3c00a189fda479cdc5a30fb2420a3f70)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **layout:** use plain panel glyph for both sidebar toggles ([ea9b2c5](https://github.com/kabmo-labs/kabmo/commit/ea9b2c57508c2cedbe5d3348251c2b4f1770c1cf)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **omp:** bumped the pin to 19.0.1 and made the session lease probe platform-correct ([66b20f2](https://github.com/kabmo-labs/kabmo/commit/66b20f2802594926383244153e7f811a7fa979a5)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **settings:** aligned every pane band to one 4rem rule line ([c410b6c](https://github.com/kabmo-labs/kabmo/commit/c410b6c2e1f8f18a6840892399f5a7c04224b820)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **workspace:** keep the repo picker label and list readable ([77c9109](https://github.com/kabmo-labs/kabmo/commit/77c910911b1a692c58dd6c07793d4ed24d8d43ba)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.43.1](https://github.com/kabmo-labs/kabmo/compare/v0.43.0...v0.43.1) — 2026-11-20
 
 ### Fixed
