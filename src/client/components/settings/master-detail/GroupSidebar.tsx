@@ -42,7 +42,15 @@ export function GroupSidebar<Id extends string>({
 }: GroupSidebarProps<Id>) {
   return (
     <div className="w-full md:w-64 md:border-r border-ink/10 h-full flex flex-col bg-paper/50 flex-shrink-0 select-none">
-      <div className={`${SETTINGS_BAND} px-3.5 justify-between`} style={{ height: SETTINGS_BAND_HEIGHT }}>
+      {/* The count band is a DESKTOP fact: there it sits beside the detail
+          pane's title and closes the two-column seam. A phone already has the
+          sheet's band naming the category, and a second row saying "4 groups"
+          above a list of four groups is the same repeat the drilled panes lost
+          (measured: 163px of an 844px screen on three stacked bars). */}
+      <div
+        className={`${SETTINGS_BAND} hidden md:flex px-3.5 justify-between`}
+        style={{ height: SETTINGS_BAND_HEIGHT }}
+      >
         <span className="text-xs font-semibold text-ink">
           {groups.length} group{groups.length === 1 ? '' : 's'}
         </span>

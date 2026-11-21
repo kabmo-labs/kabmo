@@ -107,16 +107,29 @@ describe('settings pane bands', () => {
     expect(topBand(root).style.height).toBe(SETTINGS_BAND_HEIGHT);
   });
 
-  test('a grouped category matches the drawer band on both panes', () => {
+  /**
+   * A grouped category's bands are DESKTOP chrome.
+   *
+   * A phone draws ONE band (the sheet's, `settings/Band.tsx`) and the panes
+   * register their label with it, so their own bands are `hidden md:flex` — the
+   * height is still the shared one for the width that draws them, and the
+   * phone cannot re-grow the three stacked bars that measured 163px of an 844px
+   * screen.
+   */
+  test('a grouped category matches the drawer band on a desktop and hides it on a phone', () => {
     const groups = [
       { id: 'palette' as const, label: 'Palette', hint: 'The console’s colours', icon: (() => null) as never },
     ];
     const sidebar = mount(
       h(GroupSidebar, { groups, activeGroupId: 'palette' as const, onSelectGroup: () => {} }),
     );
-    expect(topBand(sidebar).style.height).toBe(SETTINGS_BAND_HEIGHT);
+    const sidebarBand = topBand(sidebar);
+    expect(sidebarBand.style.height).toBe(SETTINGS_BAND_HEIGHT);
+    expect(sidebarBand.className).toContain('hidden md:flex');
 
     const detail = mount(h(GroupDetail, { group: { label: 'Palette', description: 'Colours' }, children: null }));
-    expect(topBand(detail).style.height).toBe(SETTINGS_BAND_HEIGHT);
+    const detailBand = topBand(detail);
+    expect(detailBand.style.height).toBe(SETTINGS_BAND_HEIGHT);
+    expect(detailBand.className).toContain('hidden md:flex');
   });
 });

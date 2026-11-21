@@ -32,20 +32,34 @@ import { act } from 'preact/test-utils';
 import { AppearanceSettings } from '@/client/components/settings/categories/AppearanceSettings';
 import { APPEARANCE_GROUPS } from '@/client/components/settings/categories/appearance-settings/groups';
 import { DEFAULT_SETTINGS } from '@/shared/lib/settings/defaults';
+import {
+  SettingsDrillProvider,
+  type SettingsDrill,
+} from '@/client/components/settings/drill';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
 
 let container: HTMLElement;
 let updates = 0;
+/** What the category published to the sheet's ONE band. */
+let drill: SettingsDrill | null = null;
 
 function mount(): void {
   act(() => {
     render(
-      h(AppearanceSettings, {
-        settings: DEFAULT_SETTINGS,
-        onUpdate: () => {
-          updates += 1;
+      h(
+        SettingsDrillProvider,
+        {
+          register: (next: SettingsDrill | null) => {
+            drill = next;
+          },
+          children: h(AppearanceSettings, {
+            settings: DEFAULT_SETTINGS,
+            onUpdate: () => {
+              updates += 1;
+            },
+          }),
         },
-      }),
+      ),
       container,
     );
   });
@@ -122,23 +136,35 @@ describe('AppearanceSettings master/detail', () => {
     }
   });
 
-  test('on a phone the chosen group replaces the list, and the back bar returns to it', () => {
+  /**
+   * On a phone the chosen group replaces the list, and the SHEET's one band
+   * names it. The pane draws no bar of its own: three stacked bars (the sheet's,
+   * the master/detail back bar, the group band) were measured at 163px of an
+   * 844px screen, two of them a back control. The registration IS the contract —
+   * the band draws the label and calls `back`.
+   */
+  test('on a phone the chosen group replaces the list and registers with the sheet band', () => {
     mount();
     const { list, detail } = panes();
 
     expect(list.className).not.toContain('hidden');
     expect(detail.className).toContain('hidden');
+    // The list is the screen, so the band keeps naming the category.
+    expect(drill).toBeNull();
 
     act(() => groupRow('Editor').click());
 
     expect(list.className).toContain('hidden');
     expect(detail.className).not.toContain('hidden');
+    expect(drill?.label).toBe('Editor');
+    expect(drill?.backLabel).toBe('Back to Appearance settings');
+    // And the pane draws no second bar of its own.
+    expect(container.querySelector('button[aria-label="Back to Appearance settings"]')).toBeNull();
 
-    const back = container.querySelector('button[aria-label="Back to Appearance settings"]');
-    expect(back).not.toBeNull();
-    act(() => (back as HTMLButtonElement).click());
+    act(() => drill?.back());
 
     expect(list.className).not.toContain('hidden');
     expect(detail.className).toContain('hidden');
+    expect(drill).toBeNull();
   });
 });

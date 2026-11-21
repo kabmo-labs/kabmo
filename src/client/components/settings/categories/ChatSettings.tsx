@@ -68,6 +68,8 @@ export function ChatSettings({ settings, onUpdate }: ChatSettingsProps) {
       pane={masterDetail.pane}
       onBack={masterDetail.back}
       listLabel="Chat settings"
+      detailLabel={group.label}
+      detailDescription={group.description}
       list={
         <GroupSidebar
           groups={CHAT_SETTING_GROUPS}

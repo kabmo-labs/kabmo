@@ -80,6 +80,8 @@ export function AppearanceSettings({ settings, onUpdate }: AppearanceSettingsPro
       pane={masterDetail.pane}
       onBack={masterDetail.back}
       listLabel="Appearance settings"
+      detailLabel={group.label}
+      detailDescription={group.description}
       list={
         <GroupSidebar
           groups={APPEARANCE_GROUPS}

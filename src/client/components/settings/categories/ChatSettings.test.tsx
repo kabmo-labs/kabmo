@@ -25,20 +25,34 @@ import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { ChatSettings } from '@/client/components/settings/categories/ChatSettings';
 import { DEFAULT_SETTINGS } from '@/shared/lib/settings/defaults';
+import {
+  SettingsDrillProvider,
+  type SettingsDrill,
+} from '@/client/components/settings/drill';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
 
 let container: HTMLElement;
 let updates = 0;
+/** What the category published to the sheet's ONE band. */
+let drill: SettingsDrill | null = null;
 
 function mount(): void {
   act(() => {
     render(
-      h(ChatSettings, {
-        settings: DEFAULT_SETTINGS,
-        onUpdate: () => {
-          updates += 1;
+      h(
+        SettingsDrillProvider,
+        {
+          register: (next: SettingsDrill | null) => {
+            drill = next;
+          },
+          children: h(ChatSettings, {
+            settings: DEFAULT_SETTINGS,
+            onUpdate: () => {
+              updates += 1;
+            },
+          }),
         },
-      }),
+      ),
       container,
     );
   });
@@ -99,23 +113,32 @@ describe('ChatSettings master/detail', () => {
     expect(updates).toBe(0);
   });
 
-  test('on a phone the chosen group replaces the list, and the back bar returns to it', () => {
+  /**
+   * The phone's drill, through the SHEET's one band. The pane draws no bar of
+   * its own (three stacked bars were measured at 163px of a 844px screen), so
+   * the registration is what a test can pin: the label, the back control's name,
+   * and that calling it returns to the list.
+   */
+  test('on a phone the chosen group replaces the list and registers with the sheet band', () => {
     mount();
     const { list, detail } = panes();
 
     expect(list.className).not.toContain('hidden');
     expect(detail.className).toContain('hidden');
+    expect(drill).toBeNull();
 
     act(() => groupRow('Sessions').click());
 
     expect(list.className).toContain('hidden');
     expect(detail.className).not.toContain('hidden');
+    expect(drill?.label).toBe('Sessions');
+    expect(drill?.backLabel).toBe('Back to Chat settings');
+    expect(container.querySelector('button[aria-label="Back to Chat settings"]')).toBeNull();
 
-    const back = container.querySelector('button[aria-label="Back to Chat settings"]');
-    expect(back).not.toBeNull();
-    act(() => (back as HTMLButtonElement).click());
+    act(() => drill?.back());
 
     expect(list.className).not.toContain('hidden');
     expect(detail.className).toContain('hidden');
+    expect(drill).toBeNull();
   });
 });
