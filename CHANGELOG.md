@@ -4,6 +4,13 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.45.1](https://github.com/kabmo-labs/kabmo/compare/v0.45.0...v0.45.1) — 2026-11-21
+
+### Fixed
+
+* **ci:** move every workflow action pin onto a Node 24 runtime ([d3bd956](https://github.com/kabmo-labs/kabmo/commit/d3bd956b8b4dd0095628918b74dbfbd49dadb394)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **e2e:** gate the find reload spec on the write that carries the query ([6ad402d](https://github.com/kabmo-labs/kabmo/commit/6ad402d805785c5360e46573286924493a6f26eb)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.45.0](https://github.com/kabmo-labs/kabmo/compare/v0.44.0...v0.45.0) — 2026-11-21
 
 ### Added
