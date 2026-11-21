@@ -87,8 +87,20 @@ export function PanelHome({ panels, openIds, onPick, title }: PanelHomeProps) {
                   size={PANEL_MARK_SIZE + 4}
                 />
                 <span className="line-clamp-1 text-[11px] font-semibold text-ink">{panel.label}</span>
-                <span className="line-clamp-2 text-[10px] leading-snug text-ink/50">
-                  {opened ? 'Sudah terbuka' : panel.title}
+                {/* The second line earns its place or is dropped: `panel.title`
+                    REPEATED `panel.label` on ten of the twelve views ("Search" over
+                    "Search"), which read as a duplicated word. It is printed only
+                    when it says something the label did not — otherwise the card
+                    falls back to a fact about the view. The floor keeps a row of
+                    cards level when one of them has nothing to add. */}
+                <span className="line-clamp-2 min-h-[26px] text-[10px] leading-snug text-ink/50">
+                  {opened
+                    ? 'Sudah terbuka'
+                    : panel.title !== panel.label
+                      ? panel.title
+                      : panel.requiresWorkspace
+                        ? 'Butuh folder kerja'
+                        : ''}
                 </span>
               </button>
             );

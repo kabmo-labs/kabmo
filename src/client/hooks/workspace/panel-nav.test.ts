@@ -28,9 +28,15 @@ import {
   applyPanelNav,
   currentPanelNav,
 } from '@/client/hooks/workspace/panel-nav';
+import {
+  MOBILE_RIGHT_PANEL_NAV_CHANGED_EVENT,
+  MOBILE_RIGHT_PANEL_NAV_SETTING_KEY,
+  applyMobileRightPanelNav,
+  currentMobileRightPanelNav,
+} from '@/client/hooks/workspace/mobile-right-panel-nav';
 
 /** The events dispatched while the current test ran; `detail` may be absent. */
-const dispatched: Array<{ side?: unknown; style?: unknown }> = [];
+const dispatched: unknown[] = [];
 
 // `applyPanelNav` bails out in a process with no window; give this file one so
 // the dispatch path is the real one, and stand in for the settings write.
@@ -98,5 +104,37 @@ describe('applyPanelNav', () => {
       { side: 'left', style: 'tabs' },
       { side: 'right', style: 'tabs' },
     ]);
+  });
+});
+
+describe('the phone drawer setting', () => {
+  afterEach(() => dispatched.length = 0);
+
+  test('reads its own key, so a desktop column cannot answer for it', () => {
+    primeKabmoSettings({ leftPanelNav: 'tabs', rightPanelNav: 'tabs', mobileRightPanelNav: 'classic' });
+    expect(currentMobileRightPanelNav()).toBe('classic');
+  });
+
+  test('an unset or unreadable value is the shipped default', () => {
+    primeKabmoSettings({ mobileRightPanelNav: 'from-a-newer-build' });
+    expect(currentMobileRightPanelNav()).toBe('classic');
+  });
+
+  test('the key matches the settings field it persists under', () => {
+    expect(MOBILE_RIGHT_PANEL_NAV_SETTING_KEY).toBe('mobileRightPanelNav');
+  });
+
+  test('it announces on its OWN event, not the desktop one', () => {
+    applyMobileRightPanelNav('tabs');
+    // Its detail is the resolved STYLE, not `{side, style}`: the phone has one
+    // drawer, so there is no side for the listener to compare.
+    expect(dispatched).toEqual(['tabs']);
+    expect(MOBILE_RIGHT_PANEL_NAV_CHANGED_EVENT).toBe('omp:mobile-right-panel-nav-changed');
+    expect(MOBILE_RIGHT_PANEL_NAV_CHANGED_EVENT).not.toBe(PANEL_NAV_CHANGED_EVENT);
+  });
+
+  test('an unreadable value is announced as the default, never as itself', () => {
+    applyMobileRightPanelNav('whatever');
+    expect(dispatched).toEqual(['classic']);
   });
 });

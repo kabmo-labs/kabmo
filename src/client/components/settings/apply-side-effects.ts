@@ -34,6 +34,7 @@ import { applyToolRenderMode } from '@/client/hooks/chat/timeline/tool-render-mo
 import { applyShowChangedFiles } from '@/client/hooks/chat/timeline/changed-files-setting';
 import { applySidebarStyle } from '@/client/hooks/workspace/sidebar-style';
 import { applyPanelNav } from '@/client/hooks/workspace/panel-nav';
+import { applyMobileRightPanelNav } from '@/client/hooks/workspace/mobile-right-panel-nav';
 import { applyComposerStyle } from '@/client/hooks/chat/composer/style';
 import { applySurfaceStyle } from '@/client/hooks/ui/surface-style';
 import { applyBorderStyle } from '@/client/hooks/ui/border-style';
@@ -103,6 +104,11 @@ export function applySettingsSideEffects(previous: SettingsState, next: Settings
   }
   if (next.rightPanelNav !== previous.rightPanelNav) {
     applyPanelNav('right', next.rightPanelNav);
+  }
+  // The phone's drawer is its own screen and may not be mounted behind the
+  // modal, so this event is what keeps a mounted one honest.
+  if (next.mobileRightPanelNav !== previous.mobileRightPanelNav) {
+    applyMobileRightPanelNav(next.mobileRightPanelNav);
   }
 
   // The composer style reorders the card's rows. The composer is NOT visible

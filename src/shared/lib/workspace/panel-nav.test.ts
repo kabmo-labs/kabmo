@@ -22,12 +22,17 @@
 
 import { describe, expect, test } from 'bun:test';
 import {
+  DEFAULT_MOBILE_RIGHT_PANEL_NAV,
   DEFAULT_PANEL_NAV,
+  MOBILE_RIGHT_PANEL_NAVS,
+  MOBILE_RIGHT_PANEL_NAV_KEY,
   PANEL_NAV_COPY,
   PANEL_NAV_SETTING_KEYS,
   PANEL_NAV_STYLES,
   isPanelNavSide,
   isPanelNavStyle,
+  isMobileRightPanelNav,
+  resolveMobileRightPanelNav,
   resolvePanelNav,
 } from '@/shared/lib/workspace/panel-nav';
 import {
@@ -158,5 +163,36 @@ describe('withPinnedTab', () => {
 
   test('the pinned view cannot be duplicated by a stored list', () => {
     expect(withPinnedTab(['git', 'sessions'], 'sessions')).toEqual(['sessions', 'git']);
+  });
+});
+
+describe('the phone drawer is its own axis', () => {
+  test('the shipped default is classic, so an upgrade rearranges nothing', () => {
+    expect(DEFAULT_MOBILE_RIGHT_PANEL_NAV).toBe('classic');
+  });
+
+  test('both styles resolve to themselves', () => {
+    for (const style of MOBILE_RIGHT_PANEL_NAVS) {
+      expect(resolveMobileRightPanelNav(style)).toBe(style);
+    }
+  });
+
+  test('an unknown value falls back to classic, not to a renderer that is missing', () => {
+    for (const value of ['rail', '', 'Classic', null, undefined, 0, {}, []]) {
+      expect(resolveMobileRightPanelNav(value)).toBe(DEFAULT_MOBILE_RIGHT_PANEL_NAV);
+    }
+  });
+
+  test('the guard agrees with the resolver and refuses the desktop-only value', () => {
+    expect(isMobileRightPanelNav('classic')).toBe(true);
+    expect(isMobileRightPanelNav('tabs')).toBe(true);
+    // `rail` is the desktop's word; a phone has no rail to draw.
+    expect(isMobileRightPanelNav('rail')).toBe(false);
+  });
+
+  test('the key is its own, so the phone cannot overwrite a desktop column', () => {
+    expect(MOBILE_RIGHT_PANEL_NAV_KEY).toBe('mobileRightPanelNav');
+    expect(PANEL_NAV_SETTING_KEYS.left).not.toBe(MOBILE_RIGHT_PANEL_NAV_KEY);
+    expect(PANEL_NAV_SETTING_KEYS.right).not.toBe(MOBILE_RIGHT_PANEL_NAV_KEY);
   });
 });

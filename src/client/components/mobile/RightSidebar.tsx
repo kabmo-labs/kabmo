@@ -1,11 +1,13 @@
 import { Suspense } from 'preact/compat';
-import { useCallback, useEffect } from 'preact/hooks';
+import { useCallback, useEffect, useMemo } from 'preact/hooks';
 import { X } from 'lucide-preact';
 import { usePanelCatalog, type PanelBodyProps } from '@/client/components/workspace/plugin-panel/resolve';
 import { PanelHostProvider } from '@kabmo-labs/kabmo-ui';
 import { useGitStatus } from '@/client/hooks/workspace/git-status';
 import { useResolvedRepo } from '@/client/hooks/workspace/repo-scope';
 import { useSharedSessionState } from '@/client/hooks/workspace/session-state';
+import { useSessionStateContext } from '@/client/hooks/workspace/session-state/context';
+import { getSessionValue } from '@/shared/lib/workspace/session-state/store';
 import { useLeftDock } from '@/client/hooks/workspace/left-dock';
 import { SESSIONS_VIEW_ID } from '@/shared/lib/workspace/left-dock';
 import { phoneRightPanels } from '@/shared/lib/workspace/mobile-dock';
@@ -16,6 +18,9 @@ import {
 } from '@/client/components/workspace/terminal-panel/soft-keyboard';
 import { releaseSoftKeyboard } from '@/client/lib/ui/soft-keyboard';
 import { PanelChips } from '@/client/components/mobile/panel-chips';
+import { PanelTabsColumn } from '@/client/components/workspace/panel-tabs';
+import { usePanelTabs } from '@/client/hooks/workspace/panel-tabs';
+import { useMobileRightPanelNav } from '@/client/hooks/workspace/mobile-right-panel-nav';
 import { VisibilityMenu } from '@/client/components/layout/VisibilityMenu';
 import { usePanelVisibilityMenu } from '@/client/hooks/workspace/panel-visibility-menu';
 import { titlebarPaddingLeft, titlebarPaddingRight } from '@/shared/lib/ui/titlebar';
@@ -56,6 +61,7 @@ export function MobileRightSidebar({
   // the user never asked for a search. Restoring the tab they left also keeps
   // the phone and the desktop on the same view.
   const [activeTab, setActiveTab] = useSharedSessionState<string>('layout.mobileRightPanel', DEFAULT_RIGHT_PANEL_TYPE);
+  const { sessionId } = useSessionStateContext();
   // ONE catalog, the same one the desktop bars read, and deliberately `all`:
   // a phone has ONE drawer, so a plugin panel the user placed on the left must
   // stay reachable here — reading only the right column would make placing a
@@ -73,6 +79,70 @@ export function MobileRightSidebar({
   // drawer that has views would be a wrong answer — the first view is drawn
   // instead, and the stored id is replaced on the next click.
   const activePanel = catalog.find((panel) => panel.id === activeTab) ?? catalog[0];
+
+  /**
+   * The chrome the drawer navigates with.
+   *
+   * `classic` is the strip of the whole catalog this drawer always had. `tabs`
+   * is the desktop's WORKING SET on a phone: the strip holds only opened views
+   * and a home page lists the rest, so a drawer that used to open on eleven
+   * chips opens on what the user was actually using. The set is the SAME key the
+   * desktop right column writes (`layout.rightPanelTabs`) — one working set
+   * across the layouts, which is why switching device does not lose the tabs.
+   */
+  const navStyle = useMobileRightPanelNav();
+  const tabsMode = navStyle === 'tabs';
+  const known = useMemo(() => new Set(catalog.map((panel) => panel.id)), [catalog]);
+  const tabsState = usePanelTabs('right', known, null);
+  const { open: openTab, tabs: openTabIds } = tabsState;
+  // Whether the session's blob actually holds a right-drawer view. Read through
+  // the store (not the hook's fallback), because "unset" and "set to the
+  // default" are different facts here.
+  const hasStoredTab = getSessionValue<string>(sessionId, 'layout.mobileRightPanel') !== undefined;
+
+  /**
+   * Every gesture that CHANGES the view must arm the soft keyboard before the
+   * terminal mounts (`soft-keyboard.ts`); the tap that opened the drawer arms it
+   * optimistically and the drawer releases it when another view lands. A card
+   * and a chip are both such a gesture, so both go through here rather than
+   * straight to the hook.
+   */
+  const arm = (id: string) => {
+    if (id !== activePanel?.id) armTerminalSoftKeyboard(id);
+  };
+  const tabHandle = {
+    ...tabsState,
+    select: (id: string) => {
+      arm(id);
+      tabsState.select(id);
+    },
+    open: (id: string) => {
+      arm(id);
+      tabsState.open(id);
+    },
+  };
+  // The drawer is a SCREEN, so only the active view may be mounted and a delete
+  // of the whole set must not leave the last one behind it. `activeTab` stays
+  // the stored mirror: the layout's `omp:open-panel` writes it and the keyboard
+  // arming reads it.
+  useEffect(() => {
+    if (!tabsMode) return;
+    if (tabsState.active !== null && tabsState.active !== activeTab) setActiveTab(tabsState.active);
+  }, [tabsMode, tabsState.active, activeTab, setActiveTab]);
+  useEffect(() => {
+    if (!tabsMode || tabsState.home) return;
+    // A RESTORED selection is not a request, the same rule the desktop column
+    // follows: `layout.mobileRightPanel` falls back to `files`, so seeding from
+    // it unconditionally opened a Files tab on every fresh chat and the home
+    // page never appeared. Only a value the SESSION actually stores is adopted;
+    // a fresh drawer starts on its catalog.
+    if (!hasStoredTab) return;
+    // Only a view this drawer can DRAW becomes a tab; an id the catalog dropped
+    // (a panel moved to the left rail, a plugin unloaded) would be filtered
+    // straight back out and re-opened on the next render.
+    if (openTabIds.includes(activeTab) || !known.has(activeTab)) return;
+    openTab(activeTab);
+  }, [tabsMode, tabsState.home, hasStoredTab, activeTab, openTabIds, openTab, known]);
   // Same source the desktop activity bar uses — the Source Control view's own
   // repo pick, read shared so switching repos moves this dot too. Polls only
   // while this drawer is the mounted screen (the poll is visibility-gated).
@@ -125,6 +195,24 @@ export function MobileRightSidebar({
     layout: 'phone',
   };
 
+  /**
+   * The active view's body, and the "nothing selected" sentence.
+   *
+   * A plugin component renders in the host's tree like any other view, so it
+   * needs no workspace folder and no session: it reads whatever the host
+   * published and draws what it can. Gating it here would hide a panel that
+   * works.
+   */
+  const renderActiveBody = () => (activePanel ? (
+    <Suspense fallback={<div className="h-full flex items-center justify-center text-ink/40"><span className="text-xs font-mono">Loading…</span></div>}>
+      <PanelHostProvider value={mobileBody}>{activePanel.render(mobileBody)}</PanelHostProvider>
+    </Suspense>
+  ) : (
+    <div className="h-full flex items-center justify-center text-ink/40">
+      <span className="text-xs font-mono text-muted">No session selected</span>
+    </div>
+  ));
+
   return (
     <div className="flex flex-col h-full w-full bg-paper text-ink relative select-none">
 
@@ -149,12 +237,21 @@ export function MobileRightSidebar({
             `app-region` inherits, and a control inside a drag region is a drag
             handle that swallows its own click on Windows. */}
         <div className="flex items-center min-w-0 titlebar-no-drag">
-          <PanelChips
-            panels={catalog}
-            activeId={activePanel?.id ?? activeTab}
-            onSelect={handleSelectTab}
-            hasGitChanges={hasGitChanges}
-          />
+          {tabsMode ? (
+            // The header keeps its height and its close button; the strip is a
+            // second row, because a phone's title row cannot hold eleven chips
+            // and a close target at once.
+            <span className="truncate text-[11px] font-semibold uppercase tracking-wider text-ink/60 font-mono">
+              Panel
+            </span>
+          ) : (
+            <PanelChips
+              panels={catalog}
+              activeId={activePanel?.id ?? activeTab}
+              onSelect={handleSelectTab}
+              hasGitChanges={hasGitChanges}
+            />
+          )}
         </div>
 
         <button
@@ -167,6 +264,16 @@ export function MobileRightSidebar({
           <X size={20} strokeWidth={1.8} />
         </button>
       </div>
+
+      {tabsMode ? (
+        <div className="flex-1 min-h-0 flex flex-col">
+          <PanelTabsColumn catalog={catalog} tabs={tabHandle} homeTitle="Panel kanan">
+            <div className="h-full w-full">
+              {renderActiveBody()}
+            </div>
+          </PanelTabsColumn>
+        </div>
+      ) : null}
 
       {panelMenu.anchor ? (
         <VisibilityMenu
@@ -185,24 +292,17 @@ export function MobileRightSidebar({
           whole drawer: a todo list and a plan both belong to the SESSION, not to
           the folder its cwd resolves to, so those stay reachable for a session
           running outside every registered workspace. */}
-      <div
-        className="flex-1 min-h-0 overflow-hidden relative"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
-      >
-        {activePanel ? (
-          // A plugin component renders in the host's tree like any other view,
-          // so it needs no workspace folder and no session: it reads whatever
-          // the host published and draws what it can. Gating it here would hide
-          // a panel that works.
-          <Suspense fallback={<div className="h-full flex items-center justify-center text-ink/40"><span className="text-xs font-mono">Loading…</span></div>}>
-            <PanelHostProvider value={mobileBody}>{activePanel.render(mobileBody)}</PanelHostProvider>
-          </Suspense>
-        ) : (
-          <div className="h-full flex items-center justify-center text-ink/40">
-            <span className="text-xs font-mono text-muted">No session selected</span>
-          </div>
-        )}
-      </div>
+      {/* Under `tabs` the strip and the home page are the drawer's chrome, so the
+          body lives inside `PanelTabsColumn`; under `classic` the chip strip in
+          the header is that chrome and the body is the whole remaining screen. */}
+      {tabsMode ? null : (
+        <div
+          className="flex-1 min-h-0 overflow-hidden relative"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+        >
+          {renderActiveBody()}
+        </div>
+      )}
 
     </div>
   );

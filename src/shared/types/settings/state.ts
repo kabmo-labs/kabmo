@@ -2,7 +2,7 @@ import type { ThemeId } from '@/shared/lib/theme/catalog';
 import type { ChatWidthMode } from '@/shared/lib/chat/timeline/width-mode';
 import type { ToolRenderMode } from '@/shared/lib/chat/timeline/tool-render-mode';
 import type { SidebarStyle } from '@/shared/lib/workspace/sidebar-style';
-import type { PanelNavStyle } from '@/shared/lib/workspace/panel-nav';
+import type { MobileRightPanelNav, PanelNavStyle } from '@/shared/lib/workspace/panel-nav';
 import type { ComposerStyle } from '@/shared/lib/chat/composer/style';
 import type { SurfaceStyle } from '@/shared/lib/theme/surface-style';
 import type { BorderStyle } from '@/shared/lib/theme/border-style';
@@ -208,6 +208,14 @@ export interface SettingsState {
    * the other. Desktop-only, like its left counterpart.
    */
   rightPanelNav: PanelNavStyle;
+  /**
+   * How the PHONE's right drawer navigates its views (`classic` | `tabs`).
+   *
+   * Its own axis, not a reuse of the desktop values: a phone has no rail to put
+   * beside a drawer that already is the screen, so the choice is between "every
+   * view is a chip" and "the strip holds what is open, over a home page".
+   */
+  mobileRightPanelNav: MobileRightPanelNav;
   /**
    * How the chat composer is drawn (`classic` | `calm` | `console` | `stage`).
    * A PRESENTATION choice over one composer: every style renders the same

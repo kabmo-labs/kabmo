@@ -103,3 +103,46 @@ export const PANEL_NAV_SETTING_KEYS: Record<PanelNavSide, 'leftPanelNav' | 'righ
   left: 'leftPanelNav',
   right: 'rightPanelNav',
 };
+
+/**
+ * How the PHONE's right drawer navigates its panel views.
+ *
+ * A separate axis from the desktop columns because a phone has no rail: there
+ * is nowhere to put a 44px strip of marks beside a drawer that already IS the
+ * screen. The two answers are therefore about the DRAWER's own chrome:
+ *
+ *  - `classic` — the chip strip the drawer ships today: every view is a chip
+ *    and tapping one swaps the body. It has no memory of what is open, so the
+ *    strip is the whole catalog every time.
+ *  - `tabs` — the desktop's working set on a phone: the strip holds only the
+ *    views the user opened, a home page draws the catalog as cards, and the
+ *    drawer reopens on what was open rather than on the whole list.
+ *
+ * **`classic` is the default**, like the desktop's `rail`: an upgrade
+ * rearranges nothing, and a user who wants the drawer to behave like the
+ * desktop column opts in.
+ */
+export type MobileRightPanelNav = 'classic' | 'tabs';
+
+/** Every mobile style, in the order the settings control lists them. */
+export const MOBILE_RIGHT_PANEL_NAVS = ['classic', 'tabs'] as const;
+
+export const DEFAULT_MOBILE_RIGHT_PANEL_NAV: MobileRightPanelNav = 'classic';
+
+export function isMobileRightPanelNav(value: unknown): value is MobileRightPanelNav {
+  return value === 'classic' || value === 'tabs';
+}
+
+/** A stored value this build cannot draw resolves to the default. */
+export function resolveMobileRightPanelNav(value: unknown): MobileRightPanelNav {
+  return isMobileRightPanelNav(value) ? value : DEFAULT_MOBILE_RIGHT_PANEL_NAV;
+}
+
+/**
+ * The `app_settings` key the phone's choice lives under.
+ *
+ * `satisfies keyof SettingsState` at the reader, like every other key module:
+ * the key and the field name must be the same string or the setting silently
+ * never persists.
+ */
+export const MOBILE_RIGHT_PANEL_NAV_KEY = 'mobileRightPanelNav' as const;
