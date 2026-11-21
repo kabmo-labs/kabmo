@@ -1,0 +1,30 @@
+{
+  "name": "github-actions",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Monitors a repository's GitHub Actions runs: the list, each run's jobs and steps, job logs, and the cancel/re-run verbs.",
+  "type": "module",
+  "kabmo": {
+    "id": "github-actions",
+    "name": "Actions",
+    "version": "0.1.0",
+    "description": "Monitors a repository's GitHub Actions runs: the list, each run's jobs and steps, job logs, and the cancel/re-run verbs.",
+    "app": "dist/app.js",
+    "server": "dist/server.js",
+    "icon": "icon.svg",
+    "color": "#60a5fa",
+    "author": { "name": "Kabmo Labs", "url": "https://github.com/kabmo-labs" },
+    "slots": ["rightPanel", "headerPanel"],
+    "capabilities": ["server", "storage", "rpc", "realtime", "settings", "repo-scope"]
+  },
+  "peerDependencies": {
+    "@kabmo-labs/kabmo-sdk": "*",
+    "@kabmo-labs/kabmo-ui": "*",
+    "preact": "^10.29.8"
+  },
+  "peerDependenciesMeta": {
+    "@kabmo-labs/kabmo-sdk": { "optional": true },
+    "@kabmo-labs/kabmo-ui": { "optional": true },
+    "preact": { "optional": true }
+  }
+}

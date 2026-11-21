@@ -30,6 +30,13 @@
       "description": "Reads and acts on a repository's issues, pull/merge requests and releases on GitHub, GitLab, Gitea or Bitbucket.",
       "category": "utility",
       "author": { "name": "Kabmo Labs", "url": "https://github.com/kabmo-labs" }
+    },
+    {
+      "name": "github-actions",
+      "source": "plugins/github-actions",
+      "description": "Monitors a repository's GitHub Actions runs: the list, each run's jobs and steps, job logs, and the cancel/re-run verbs.",
+      "category": "utility",
+      "author": { "name": "Kabmo Labs", "url": "https://github.com/kabmo-labs" }
     }
   ]
 }

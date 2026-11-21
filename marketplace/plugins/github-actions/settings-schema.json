@@ -1,0 +1,33 @@
+{
+  "token": {
+    "type": "string",
+    "label": "GitHub token",
+    "description": "Optional. Reading runs and jobs works anonymously on a public repository; job logs and the cancel/re-run verbs need a token. GITHUB_TOKEN / GH_TOKEN in the server's environment, or a logged-in `gh`, is tried before this.",
+    "secret": true,
+    "default": ""
+  },
+  "apiBase": {
+    "type": "string",
+    "label": "API base URL",
+    "description": "Only for GitHub Enterprise, e.g. https://github.example.com/api/v3. Empty means api.github.com.",
+    "default": ""
+  },
+  "perPage": {
+    "type": "number",
+    "label": "Runs per read",
+    "description": "How many runs one read asks for (1-100). A page that comes back full is reported as truncated rather than pretending the list is complete.",
+    "default": 30
+  },
+  "pollSeconds": {
+    "type": "number",
+    "label": "Poll interval (seconds)",
+    "description": "How often a watched repository is re-read. An unchanged read answers 304 and costs no API quota.",
+    "default": 60
+  },
+  "logTailKb": {
+    "type": "number",
+    "label": "Log tail (KB)",
+    "description": "How much of a job log the panel keeps. The full log is still available on request.",
+    "default": 64
+  }
+}
