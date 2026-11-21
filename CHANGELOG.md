@@ -4,6 +4,25 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.45.0](https://github.com/kabmo-labs/kabmo/compare/v0.44.0...v0.45.0) — 2026-11-21
+
+### Added
+
+* **actions:** add the GitHub Actions panel plugin ([ad30a9d](https://github.com/kabmo-labs/kabmo/commit/ad30a9d6cc9444ffba3af0cab12ca5eff3b43e6f)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **actions:** drop the navbar readout and the poller that fed it ([9aa28a4](https://github.com/kabmo-labs/kabmo/commit/9aa28a4a46c3f6852cd42cbd4f6a00c1908a2c1e)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **mobile:** dropped the tabs drawer header and aligned the strip with the top navbar ([94c8887](https://github.com/kabmo-labs/kabmo/commit/94c888753904fafa5d68dff9f9bbeee37b1ab190)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **mobile:** let the phone's right drawer hold only the views you opened ([3ea27dd](https://github.com/kabmo-labs/kabmo/commit/3ea27ddb8eb40b80ba2b7d9e613c0e0453dddabf)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Changed
+
+* **milestones:** recorded M24, the GitHub Actions viewer ([d5bcd40](https://github.com/kabmo-labs/kabmo/commit/d5bcd40827f12cc9058dcabcaf489cf80ee4f1eb)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **mobile:** hold the classic chip strip to the touch floor ([df9a098](https://github.com/kabmo-labs/kabmo/commit/df9a0980da81a558b2f7fc460166a25754f3bf4b)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **mobile:** stopped the right drawer reopening a tab the user closed ([9f28456](https://github.com/kabmo-labs/kabmo/commit/9f284561679b1838a814d3bf2ff68b149aa3079e)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **panel-tabs:** give a touch device a reachable tab close control ([7b3dd97](https://github.com/kabmo-labs/kabmo/commit/7b3dd97baccba962136dddf2170553fd078ef9c9)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.44.0](https://github.com/kabmo-labs/kabmo/compare/v0.43.1...v0.44.0) — 2026-11-20
 
 ### Added
