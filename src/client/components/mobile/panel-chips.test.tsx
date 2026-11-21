@@ -112,6 +112,18 @@ async function mountStrip(panels: ResolvedPanel[], activeId: string, onSelect = 
   });
 }
 
+describe('PanelChips touch target', () => {
+  test('every chip carries the touch floor, active and idle alike', () => {
+    // Measured in Chromium at 390px without it: 32x32 idle and 73x28 active —
+    // the active chip is the SHORTER one, so a thumb aiming at the view it is
+    // already on had the least to hit.
+    render(h(PanelChips, { panels: [panel('files'), panel('git')], activeId: 'files', onSelect: () => {} }), container);
+    const chips = [...container.querySelectorAll('[aria-pressed]')];
+    expect(chips.length).toBe(2);
+    for (const chip of chips) expect(chip.className).toContain('tap-chip');
+  });
+});
+
 describe('PanelChips', () => {
   test('draws one chip per panel, in the order it is given', async () => {
     await mountStrip([panel('sessions'), panel('plugin:demo:rightPanel', { builtin: false, name: 'demo', title: 'Demo — demo' })], 'sessions');

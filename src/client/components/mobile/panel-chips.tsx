@@ -133,7 +133,11 @@ export function PanelChips({ panels, activeId, onSelect, hasGitChanges = false }
             // "Resources" after it — a control that renames itself when used is
             // unusable to a screen reader and unfindable to a spec.
             aria-label={panel.title}
-            className={`relative flex shrink-0 items-center transition-all cursor-pointer ${
+            /* `tap-chip` is the app's touch floor (44x44 under
+               `@media (pointer:coarse)`). Measured without it in Chromium at
+               390px: an idle chip was 32x32 and the ACTIVE one 73x28 — a
+               control that is only 28px tall is a control a thumb misses. */
+            className={`tap-chip relative flex shrink-0 items-center transition-all cursor-pointer ${
               active
                 ? 'space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-ink text-canvas shadow-sm'
                 : 'p-2 rounded-lg text-ink/70 hover:bg-ink/5'
