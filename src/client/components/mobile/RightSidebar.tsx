@@ -1,8 +1,5 @@
-import { Suspense } from 'preact/compat';
-import { useCallback, useEffect, useMemo } from 'preact/hooks';
-import { X } from 'lucide-preact';
+import { useCallback, useEffect, useMemo, useRef } from 'preact/hooks';
 import { usePanelCatalog, type PanelBodyProps } from '@/client/components/workspace/plugin-panel/resolve';
-import { PanelHostProvider } from '@kabmo-labs/kabmo-ui';
 import { useGitStatus } from '@/client/hooks/workspace/git-status';
 import { useResolvedRepo } from '@/client/hooks/workspace/repo-scope';
 import { useSharedSessionState } from '@/client/hooks/workspace/session-state';
@@ -17,14 +14,17 @@ import {
   panelWantsSoftKeyboard,
 } from '@/client/components/workspace/terminal-panel/soft-keyboard';
 import { releaseSoftKeyboard } from '@/client/lib/ui/soft-keyboard';
-import { PanelChips } from '@/client/components/mobile/panel-chips';
 import { PanelTabsColumn } from '@/client/components/workspace/panel-tabs';
+import {
+  DrawerBody,
+  DrawerCloseAction,
+  DrawerHeader,
+  drawerStripProps,
+} from '@/client/components/mobile/mobile-right-sidebar/Chrome';
 import { usePanelTabs } from '@/client/hooks/workspace/panel-tabs';
 import { useMobileRightPanelNav } from '@/client/hooks/workspace/mobile-right-panel-nav';
 import { VisibilityMenu } from '@/client/components/layout/VisibilityMenu';
 import { usePanelVisibilityMenu } from '@/client/hooks/workspace/panel-visibility-menu';
-import { titlebarPaddingLeft, titlebarPaddingRight } from '@/shared/lib/ui/titlebar';
-import { dragRegionProps, titlebarInsetLeft } from '@/client/lib/desktop/titlebar';
 
 interface MobileRightSidebarProps {
   enabled?: boolean;
@@ -230,80 +230,44 @@ export function MobileRightSidebar({
   };
 
   /**
-   * The active view's body, and the "nothing selected" sentence.
+   * The drawer's chrome, and the reason there are two shapes of it.
    *
-   * A plugin component renders in the host's tree like any other view, so it
-   * needs no workspace folder and no session: it reads whatever the host
-   * published and draws what it can. Gating it here would hide a panel that
-   * works.
+   * `classic` has a HEADER because the header IS its navigation: the chip strip
+   * lives in it, so it must be tall enough to hold a 44px touch target and it
+   * has to say what the drawer is. `tabs` has no header at all — the strip above
+   * the body already names the view on every chip, and a second row stating
+   * "Panel" plus a close button cost 56px of a phone screen to repeat what the
+   * strip says. That is also what the desktop column does: under `tabs` the
+   * strip is the whole chrome.
+   *
+   * Two things the header carried survive its removal under `tabs`: the WINDOW
+   * contract (`data-drag-region`, the shell's traffic-light inset, the safe-area
+   * top) and the close control, which moves into the strip's trailing actions.
    */
-  const renderActiveBody = () => (activePanel ? (
-    <Suspense fallback={<div className="h-full flex items-center justify-center text-ink/40"><span className="text-xs font-mono">Loading…</span></div>}>
-      <PanelHostProvider value={mobileBody}>{activePanel.render(mobileBody)}</PanelHostProvider>
-    </Suspense>
-  ) : (
-    <div className="h-full flex items-center justify-center text-ink/40">
-      <span className="text-xs font-mono text-muted">No session selected</span>
-    </div>
-  ));
-
   return (
     <div className="flex flex-col h-full w-full bg-paper text-ink relative select-none">
-
-      {/* Top Header & Tab Navigation Bar. It is the window's title bar while
-          this drawer is the mounted screen: a desktop shell window narrowed
-          past the layout breakpoint shows it, and without `data-drag-region`
-          there is nothing left to move the window by. The chip strip inside is
-          the `titlebar-no-drag` cluster. */}
-      <div
-        className="border-b border-ink/10 flex items-center justify-between px-3 flex-shrink-0 bg-canvas titlebar-drag-region select-none"
-        {...dragRegionProps()}
-        {...panelMenu.surfaceProps}
-        style={{
-          height: 'calc(3.5rem + env(safe-area-inset-top, 0px))',
-          paddingTop: 'env(safe-area-inset-top, 0px)',
-          paddingLeft: titlebarInsetLeft(titlebarPaddingLeft('0.75rem', true)),
-          paddingRight: titlebarPaddingRight('0.75rem', true),
-        }}
-      >
-
-        {/* The header is now a drag region, so its controls must say so —
-            `app-region` inherits, and a control inside a drag region is a drag
-            handle that swallows its own click on Windows. */}
-        <div className="flex items-center min-w-0 titlebar-no-drag">
-          {tabsMode ? (
-            // The header keeps its height and its close button; the strip is a
-            // second row, because a phone's title row cannot hold eleven chips
-            // and a close target at once.
-            <span className="truncate text-[11px] font-semibold uppercase tracking-wider text-ink/60 font-mono">
-              Panel
-            </span>
-          ) : (
-            <PanelChips
-              panels={catalog}
-              activeId={activePanel?.id ?? activeTab}
-              onSelect={handleSelectTab}
-              hasGitChanges={hasGitChanges}
-            />
-          )}
-        </div>
-
-        <button
-          type="button"
-          onClick={onClose}
-          className="p-1.5 rounded-lg hover:bg-ink/5 active:bg-ink/10 text-ink transition-colors flex-shrink-0 ml-2 titlebar-no-drag"
-          title="Close right sidebar"
-          aria-label="Close right sidebar"
-        >
-          <X size={20} strokeWidth={1.8} />
-        </button>
-      </div>
+      {tabsMode ? null : (
+        <DrawerHeader
+          catalog={catalog}
+          activeId={activePanel?.id ?? activeTab}
+          onSelect={handleSelectTab}
+          hasGitChanges={hasGitChanges}
+          onClose={onClose}
+          menuProps={panelMenu.surfaceProps}
+        />
+      )}
 
       {tabsMode ? (
         <div className="flex-1 min-h-0 flex flex-col">
-          <PanelTabsColumn catalog={catalog} tabs={tabHandle} homeTitle="Panel kanan">
+          <PanelTabsColumn
+            catalog={catalog}
+            tabs={tabHandle}
+            homeTitle="Panel kanan"
+            stripProps={drawerStripProps(panelMenu.surfaceProps)}
+            actions={<DrawerCloseAction onClose={onClose} />}
+          >
             <div className="h-full w-full">
-              {renderActiveBody()}
+              <DrawerBody panel={activePanel} body={mobileBody} />
             </div>
           </PanelTabsColumn>
         </div>
@@ -322,9 +286,9 @@ export function MobileRightSidebar({
 
       {/* Main Tab Content — the same catalog entries the desktop stack draws,
           through the same `render`, so the two layouts cannot hand a view
-          different props. The workspace gate below applies per VIEW, not to the
-          whole drawer: a todo list and a plan both belong to the SESSION, not to
-          the folder its cwd resolves to, so those stay reachable for a session
+          different props. The workspace gate applies per VIEW, not to the whole
+          drawer: a todo list and a plan both belong to the SESSION, not to the
+          folder its cwd resolves to, so those stay reachable for a session
           running outside every registered workspace. */}
       {/* Under `tabs` the strip and the home page are the drawer's chrome, so the
           body lives inside `PanelTabsColumn`; under `classic` the chip strip in
@@ -334,7 +298,7 @@ export function MobileRightSidebar({
           className="flex-1 min-h-0 overflow-hidden relative"
           style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
         >
-          {renderActiveBody()}
+          <DrawerBody panel={activePanel} body={mobileBody} />
         </div>
       )}
 

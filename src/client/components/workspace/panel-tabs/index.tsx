@@ -29,7 +29,7 @@
 import type { ReactNode } from 'preact/compat';
 import type { ResolvedPanel } from '@/client/components/workspace/plugin-panel/catalog';
 import type { PanelTabsHandle } from '@/client/hooks/workspace/panel-tabs';
-import { PanelTabStrip } from '@/client/components/workspace/panel-tabs/TabStrip';
+import { PanelTabStrip, type PanelTabStripProps } from '@/client/components/workspace/panel-tabs/TabStrip';
 import { PanelHome } from '@/client/components/workspace/panel-tabs/Home';
 
 interface PanelTabsColumnProps {
@@ -48,6 +48,12 @@ interface PanelTabsColumnProps {
   children: ReactNode;
   /** Column actions in the strip's trailing edge (refresh, collapse). */
   actions?: ReactNode;
+  /**
+   * Strip chrome the CALLER owns, because only it knows whether the strip is the
+   * window's own title bar. The phone's right drawer passes its insets and the
+   * drag region here; a desktop column passes nothing and keeps its defaults.
+   */
+  stripProps?: Pick<PanelTabStripProps, 'dragRegion' | 'layout' | 'style' | 'rootProps'>;
 }
 
 export function PanelTabsColumn({
@@ -57,6 +63,7 @@ export function PanelTabsColumn({
   homeTitle,
   children,
   actions,
+  stripProps,
 }: PanelTabsColumnProps) {
   const byId = new Map(catalog.map((panel) => [panel.id, panel]));
   const openIds = new Set(tabs.tabs);
@@ -75,6 +82,7 @@ export function PanelTabsColumn({
         onClose={tabs.close}
         onReorder={tabs.setOrder}
         {...(actions !== undefined ? { actions } : {})}
+        {...stripProps}
       />
       <div className="relative min-h-0 flex-1">
         <div

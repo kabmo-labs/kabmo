@@ -79,6 +79,39 @@ export const ACTIVITY_BAR_WIDTH_PX = 44;
 export const CONTROL_BOX_PX: Record<ControlLayout, number> = { desktop: 28, mobile: 36 };
 
 /**
+ * The height of a chrome row, per layout — the TOP NAVBAR's own row.
+ *
+ * A panel column's tab strip is that navbar's PEER, not a second band beside
+ * it: on the desktop it sits under the navbar at `h-10`, and on the phone the
+ * strip IS the title bar, so it takes the header's 56px plus the notch. Stating
+ * both here is what stops the strip inventing a third height — it has been 38px,
+ * then 40px on a phone whose own header was 56px, which is exactly the "not
+ * aligned with the top navbar" that a reader sees as a broken edge.
+ *
+ * The notch is height AND padding on the phone, because `box-sizing` is
+ * border-box globally: height alone leaves the content pinned to y=0 (chips
+ * under the status bar), padding alone collapses the content box.
+ */
+export const CONTROL_ROW_HEIGHT: Record<ControlLayout, string> = {
+  desktop: 'h-10',
+  mobile: 'h-[calc(3.5rem+env(safe-area-inset-top,0px))] pt-[env(safe-area-inset-top,0px)]',
+};
+
+/**
+ * The horizontal inset of that row.
+ *
+ * A phone header is `px-3` and its controls are 36px boxes, so the outermost
+ * control's centre is 30px from the edge. A strip that insets 6px instead puts
+ * its own control's centre at 26px — the 4px misalignment measured between the
+ * chat header's hamburger and the drawer's add control. The desktop columns are
+ * interior edges with no shared alignment target, so they keep the dense 6px.
+ */
+export const CONTROL_ROW_INSET: Record<ControlLayout, string> = {
+  desktop: 'px-1.5',
+  mobile: 'px-3',
+};
+
+/**
  * The right padding that centres a `lastControlPx`-wide control on the activity
  * rail below it: `(rail - control) / 2`.
  *

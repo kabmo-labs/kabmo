@@ -64,7 +64,9 @@ describe('window-drag contract', () => {
       'src/client/components/layout/session-sidebar/Header.tsx',
       'src/client/components/mobile/mobile-main-view/Header.tsx',
       'src/client/components/mobile/mobile-session-sidebar/Header.tsx',
-      'src/client/components/mobile/RightSidebar.tsx',
+      // The right drawer's chrome moved out of `RightSidebar` when that file
+      // crossed the line ceiling; the window contract lives with the chrome.
+      'src/client/components/mobile/mobile-right-sidebar/Chrome.tsx',
     ]) {
       const file = source(path);
       expect(file).toContain('dragRegionProps()');
@@ -85,7 +87,7 @@ describe('window-drag contract', () => {
     for (const path of [
       'src/client/components/mobile/mobile-main-view/Header.tsx',
       'src/client/components/mobile/mobile-session-sidebar/Header.tsx',
-      'src/client/components/mobile/RightSidebar.tsx',
+      'src/client/components/mobile/mobile-right-sidebar/Chrome.tsx',
     ]) {
       expect(source(path)).toContain('titlebarInsetLeft(');
     }
@@ -98,7 +100,7 @@ describe('window-drag contract', () => {
    */
   test('a drag-region header marks its controls no-drag', () => {
     const pairs: Array<[string, string]> = [
-      ['src/client/components/mobile/RightSidebar.tsx', 'titlebar-no-drag'],
+      ['src/client/components/mobile/mobile-right-sidebar/Chrome.tsx', 'titlebar-no-drag'],
       ['src/client/components/common/header-controls/index.tsx', 'titlebar-no-drag'],
     ];
     for (const [path, marker] of pairs) expect(source(path)).toContain(marker);

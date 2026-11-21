@@ -37,6 +37,8 @@ import { MobileHeader } from '@/client/components/mobile/mobile-main-view/Header
 import { MobileSessionHeader } from '@/client/components/mobile/mobile-session-sidebar/Header';
 import { MobileRightSidebar } from '@/client/components/mobile/RightSidebar';
 import { SessionStateProvider } from '@/client/components/common/session-state-provider/index';
+import { primeKabmoSettings } from '@/shared/lib/settings/client';
+import { CONTROL_ROW_HEIGHT, CONTROL_ROW_INSET } from '@/client/lib/ui/control-plate';
 import { silenceRealtime, restoreRealtime } from '@/test-support/silent-socket';
 
 const DOM_GLOBALS = [
@@ -104,6 +106,9 @@ beforeEach(() => {
   // origin answers nothing, and a refused dial fails asynchronously — after
   // this suite has restored the globals, which reports against the NEXT file.
   silenceRealtime();
+  // Settings are primed per mount; a suite-level default keeps a style written
+  // by one test from deciding the next one's chrome.
+  primeKabmoSettings({});
   container = document.createElement('div');
   document.body.appendChild(container);
 });
@@ -176,6 +181,7 @@ describe('phone headers as a shell title bar', () => {
   });
 
   test('the right drawer header is a drag region whose controls are not', async () => {
+    // `classic` still has a header — the chip strip lives in it.
     await mountAsMacShell(() =>
       h(MobileRightSidebar, { enabled: false, onClose: () => {} }),
     );
@@ -187,6 +193,30 @@ describe('phone headers as a shell title bar', () => {
     // The close button is a control in a drag region: without this it is a
     // drag handle on Windows and its click never fires.
     expect(close.className).toContain('titlebar-no-drag');
+  });
+
+  /**
+   * Under `tabs` there is no header: the strip above the body is the whole
+   * chrome, exactly as on the desktop. It inherits the window contract the
+   * header used to carry, and the close control moves into its trailing
+   * actions — so a narrowed shell window still has a handle AND a way out.
+   */
+  test('under tabs the strip is the title bar and owns the close control', async () => {
+    primeKabmoSettings({ mobileRightPanelNav: 'tabs' });
+    await mountAsMacShell(() =>
+      h(MobileRightSidebar, { enabled: false, onClose: () => {} }),
+    );
+    const drag = container.querySelector('[data-drag-region]') as HTMLElement;
+    expect(drag).toBeTruthy();
+    expect(drag.getAttribute('role')).toBe('tablist');
+    expect(drag.className).toContain('titlebar-drag-region');
+    expect(drag.style.paddingLeft).toContain('5rem');
+    // No second row: the only horizontal chrome is the strip.
+    expect(container.querySelectorAll('header').length).toBe(0);
+    // The close control is still here, now in the strip's trailing actions.
+    const close = drag.querySelector('button[aria-label="Close right sidebar"]') as HTMLElement;
+    expect(close).toBeTruthy();
+    expect(close.closest('.titlebar-no-drag')).not.toBeNull();
   });
 
   test('a right-click on the right drawer header opens the panel switch', async () => {
@@ -204,6 +234,68 @@ describe('phone headers as a shell title bar', () => {
     expect(menu!.textContent).toContain('Files');
     expect(menu!.textContent).not.toContain('Sessions');
     menu!.parentElement?.remove();
+  });
+
+  test('under tabs a right-click on the strip opens the same switch', async () => {
+    primeKabmoSettings({ mobileRightPanelNav: 'tabs' });
+    await mountAsMacShell(() =>
+      h(MobileRightSidebar, { enabled: false, onClose: () => {} }),
+    );
+    const strip = container.querySelector('[role="tablist"]') as HTMLElement;
+    act(() => {
+      strip.dispatchEvent(new win.MouseEvent('contextmenu', { bubbles: true, cancelable: true }) as unknown as Event);
+    });
+    const menu = document.querySelector('[role="menu"][aria-label="Panels visibility"]');
+    expect(menu).not.toBeNull();
+    menu!.parentElement?.remove();
+  });
+
+  /**
+   * The strip is the phone's title bar, so it carries the SAFE AREA the way
+   * every other phone header does — `height: calc(row + inset)` AND
+   * `padding-top: inset`.
+   *
+   * Both are load-bearing and they are not interchangeable: with only the
+   * height, the row grows but its content stays pinned to y=0, so every chip
+   * sits under the status bar; with only the padding, `box-sizing: border-box`
+   * eats the padding out of the row and the chips are squeezed into a 16px
+   * content box. `MobileHeader` and `MobileSessionHeader` state the pair, and
+   * this strip is their peer.
+   */
+  test('the tabs strip reserves the notch as height AND padding, like the other headers', async () => {
+    primeKabmoSettings({ mobileRightPanelNav: 'tabs' });
+    await mountAsMacShell(() =>
+      h(MobileRightSidebar, { enabled: false, onClose: () => {} }),
+    );
+    const strip = container.querySelector('[role="tablist"]') as HTMLElement;
+    // Asserted against the SHARED constants, not a class spelling: the row
+    // height is the phone header's 56px plus the notch, stated once in
+    // `control-plate.ts` so this strip cannot drift to a third density.
+    expect(strip.className).toContain(CONTROL_ROW_HEIGHT.mobile);
+    expect(strip.className).toContain(CONTROL_ROW_INSET.mobile);
+    // Both halves of the notch are in that one string: height AND padding.
+    expect(CONTROL_ROW_HEIGHT.mobile).toContain('3.5rem');
+    expect(CONTROL_ROW_HEIGHT.mobile).toContain('pt-[env(safe-area-inset-top,0px)]');
+  });
+
+  /**
+   * The close control is the plain panel mark, NOT `PanelRightClose`.
+   *
+   * That icon draws a chevron inside the panel (`m8 9 3 3-3 3`), which reads as
+   * "collapse this column" — a second meaning on a strip whose chips already
+   * carry their own `X`. Asserted on the rendered glyph so swapping the import
+   * back cannot pass.
+   */
+  test('the strip close control draws the plain panel icon, with no chevron', async () => {
+    primeKabmoSettings({ mobileRightPanelNav: 'tabs' });
+    await mountAsMacShell(() =>
+      h(MobileRightSidebar, { enabled: false, onClose: () => {} }),
+    );
+    const close = container.querySelector('button[aria-label="Close right sidebar"]') as HTMLElement;
+    expect(close).not.toBeNull();
+    const paths = [...close.querySelectorAll('path')].map((p) => p.getAttribute('d') ?? '');
+    expect(paths).toContain('M15 3v18');
+    expect(paths.some((d) => d.includes('3-3'))).toBe(false);
   });
 
   /** A browser tab has no shell, so nothing is reserved and nothing is marked. */
