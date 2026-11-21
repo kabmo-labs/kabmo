@@ -2,8 +2,8 @@ import { X } from 'lucide-preact';
 import { BrandWordmark } from '@/client/components/common/brand-wordmark';
 import { ServerControl } from '@/client/components/common/server-control';
 import type { VisibilityMenuSurfaceProps } from '@/client/hooks/ui/visibility-menu-trigger';
-import { titlebarPaddingLeft, titlebarPaddingRight } from '@/shared/lib/ui/titlebar';
-import { dragRegionProps, titlebarInsetLeft } from '@/client/lib/desktop/titlebar';
+import { dragRegionProps } from '@/client/lib/desktop/titlebar';
+import { phoneRowStyle } from '@/client/lib/ui/phone-row';
 
 /**
  * The session drawer's title bar.
@@ -42,17 +42,15 @@ export function MobileSessionHeader({
       {...dragRegionProps()}
       {...menuProps}
       style={{
-        height: 'calc(3.5rem + env(safe-area-inset-top, 0px))',
         // `px-3`, the toolbar's own inset: the wordmark above and the New
         // Session button below share one left edge, which the header's old
         // 14px did not — and the SHELL's own inset, because a desktop shell
         // window narrowed past the layout breakpoint shows this drawer, whose
-        // wordmark would otherwise sit under macOS's traffic lights.
-        paddingLeft: titlebarInsetLeft(titlebarPaddingLeft('0.75rem', true)),
-        // The drawer is the full window width, so on a desktop showing the
-        // mobile layout its close button sits under the window controls too.
-        paddingRight: titlebarPaddingRight('0.75rem', true),
-        paddingTop: 'env(safe-area-inset-top, 0px)',
+        // wordmark would otherwise sit under macOS's traffic lights. The row's
+        // height, notch and window insets are the ONE phone-row fact
+        // (`lib/ui/phone-row`), so this drawer cannot drift from the chat
+        // header it is opened from.
+        ...phoneRowStyle(),
       }}
     >
       <div className="flex items-center space-x-2.5 titlebar-no-drag min-w-0">

@@ -14,8 +14,8 @@ import { VisibilityMenu } from '@/client/components/layout/VisibilityMenu';
 import { NAVBAR_CONTROL, navbarControlItems, useNavbarControls } from '@/client/hooks/ui/navbar-controls';
 import { useVisibilityMenuTrigger } from '@/client/hooks/ui/visibility-menu-trigger';
 import { anchorRectOf, type AnchorRect } from '@/shared/lib/ui/menu-anchor';
-import { titlebarPaddingLeft, titlebarPaddingRight } from '@/shared/lib/ui/titlebar';
-import { dragRegionProps, titlebarInsetLeft } from '@/client/lib/desktop/titlebar';
+import { dragRegionProps } from '@/client/lib/desktop/titlebar';
+import { phoneRowStyle } from '@/client/lib/ui/phone-row';
 import { CONTROL_CLUSTER_GAP } from '@/client/lib/ui/control-plate';
 
 interface MobileHeaderProps {
@@ -105,19 +105,7 @@ export function MobileHeader({
       className={`flex-shrink-0 bg-canvas border-b border-ink/10 flex items-center justify-between ${CONTROL_CLUSTER_GAP} px-3 z-20 titlebar-drag-region select-none`}
       {...dragRegionProps()}
       {...visibility.surfaceProps}
-      style={{
-        height: 'calc(3.5rem + env(safe-area-inset-top, 0px))',
-        // The shell's own inset, not only the PWA's. `titlebarPaddingLeft` reads
-        // `env(titlebar-area-x)`, which a native WKWebView never defines — so on
-        // macOS this header's hamburger and wordmark were drawn UNDER the
-        // traffic lights, in the 76px the shell reserves for them. `titlebarInsetLeft`
-        // is what the desktop navbar and the sidebar header already use; a
-        // desktop shell window narrowed past the layout breakpoint lands on this
-        // header, which is why it needs the same treatment.
-        paddingLeft: titlebarInsetLeft(titlebarPaddingLeft('0.75rem', true)),
-        paddingRight: titlebarPaddingRight('0.75rem', true),
-        paddingTop: 'env(safe-area-inset-top, 0px)',
-      }}
+      style={phoneRowStyle()}
     >
       {/* Left: hamburger, app title & session dropdown.
           `flex-1 min-w-0` is what makes the title the ONLY part that gives up
@@ -126,14 +114,14 @@ export function MobileHeader({
           inside it. Without `flex-1` the row kept its max-content width and
           the picker's 150px button spilled over the reload control.
 
-          The wordmark and its slash are DROPPED below 420px. They are fixed
-          chrome (53px + 4px + 16px of gaps = 73px, 19% of a 390px header) that
-          competes with the one functional thing in the row: the session title.
-          With a password set the cluster is 140px wide (reload, context, lock,
-          panel), which leaves the title `vw − 285px` — measured 89px at 390,
-          59px at 360 and 19px at 320. The brand is not lost: the drawer header
-          draws it, as does the desktop navbar. Same decision, same reason, as
-          the desktop navbar's `hidden sm:flex` on its own wordmark. */}
+          The wordmark is drawn at EVERY width, and the width it needs is paid
+          for by the control cluster rather than by the title: reload and sign
+          out live in the `⋯` menu (`HeaderControls`), which is what keeps this
+          row to the panel control plus that menu. Measured with a password set
+          the cluster is 140px wide, leaving the title `vw − 285px` — 89px at
+          390, 59px at 360. The earlier rule dropped the wordmark below 420px
+          and kept reload/lock in the row instead; the brand was drawn on every
+          other surface, so a phone read as a different app. */}
       <div className="flex items-center space-x-2 flex-1 min-w-0 titlebar-no-drag">
         <button
           type="button"

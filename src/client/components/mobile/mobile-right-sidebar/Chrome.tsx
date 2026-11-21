@@ -31,13 +31,10 @@ import { PanelHostProvider } from '@kabmo-labs/kabmo-ui';
 import type { ResolvedPanel } from '@/client/components/workspace/plugin-panel/catalog';
 import type { PanelBodyProps } from '@/client/components/workspace/panels/builtin';
 import { PanelChips } from '@/client/components/mobile/panel-chips';
-import { dragRegionProps, titlebarInsetLeft } from '@/client/lib/desktop/titlebar';
+import { dragRegionProps } from '@/client/lib/desktop/titlebar';
+import { phoneRowStyle } from '@/client/lib/ui/phone-row';
 import type { VisibilityMenuSurfaceProps } from '@/client/hooks/ui/visibility-menu-trigger';
-import { titlebarPaddingLeft, titlebarPaddingRight } from '@/shared/lib/ui/titlebar';
 import { CONTROL_BOX, CONTROL_GLYPH_PX } from '@/client/lib/ui/control-plate';
-
-/** The height a `classic` header needs to hold a 44px chip and its padding. */
-const HEADER_HEIGHT = 'calc(3.5rem + env(safe-area-inset-top, 0px))';
 
 export function DrawerHeader({
   catalog,
@@ -59,12 +56,7 @@ export function DrawerHeader({
       className="border-b border-ink/10 flex items-center justify-between px-3 flex-shrink-0 bg-canvas titlebar-drag-region select-none"
       {...dragRegionProps()}
       {...menuProps}
-      style={{
-        height: HEADER_HEIGHT,
-        paddingTop: 'env(safe-area-inset-top, 0px)',
-        paddingLeft: titlebarInsetLeft(titlebarPaddingLeft('0.75rem', true)),
-        paddingRight: titlebarPaddingRight('0.75rem', true),
-      }}
+      style={phoneRowStyle()}
     >
       {/* The header is a drag region, so its controls must say so —
           `app-region` inherits, and a control inside a drag region is a drag

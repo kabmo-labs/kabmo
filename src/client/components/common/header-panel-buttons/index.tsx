@@ -5,6 +5,7 @@ import { useSessionStateContext } from '@/client/hooks/workspace/session-state/c
 import { PluginRenderBoundary } from '@/client/components/common/plugin-render-boundary';
 import { requestOpenPanel } from '@/shared/lib/workspace/panel-open';
 import { CONTROL_BOX, CONTROL_ROW_GAP } from '@/client/lib/ui/control-plate';
+import { PHONE_ROW_HEIGHT } from '@/client/lib/ui/phone-row';
 import {
   MOBILE_HEADER_ENTRY_MAX_PX,
   type HeaderEntry,
@@ -193,7 +194,10 @@ function HeaderEntryControl({ entry, layout, sessionId, open, onToggle, onClose 
     : 'absolute right-0 top-full mt-1 w-80 max-h-96 overflow-auto bg-paper border border-ink/15 rounded shadow-lg z-50';
   const panelStyle = layout === 'mobile'
     ? {
-        top: 'calc(3.5rem + env(safe-area-inset-top, 0px) + 0.375rem)',
+        // Under the header, from the ONE phone-row fact: the row's height plus
+        // the notch is `PHONE_ROW_HEIGHT`, so a plugin's dropdown cannot hang
+        // 4px off a header whose height was changed somewhere else.
+        top: `calc(${PHONE_ROW_HEIGHT} + 0.375rem)`,
         right: 'max(0.75rem, env(safe-area-inset-right, 0px))',
       }
     : undefined;

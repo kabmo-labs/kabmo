@@ -28,6 +28,7 @@
  *    reason a tab is unavailable.
  */
 
+import type { ComponentChildren } from 'preact';
 import { HarnessGlyph, HARNESS_GLYPH_SIZE } from '@/client/components/common/harness-glyph';
 import { harnessBadgeLabel } from '@/shared/lib/harness/catalog';
 import type { HarnessSummary } from '@/shared/types/harness';
@@ -42,6 +43,12 @@ interface HarnessTabsProps {
   onSelect: (harness: string) => void;
   /** Opens the settings page for a harness that needs install or login. */
   onFix?: (harness: string) => void;
+  /**
+   * Trailing controls on the strip's own row — the full-screen picker's close
+   * button. The strip is the frame's FIRST row, so a control here is what keeps
+   * the picker to one chrome band instead of a header plus a strip.
+   */
+  actions?: ComponentChildren;
 }
 
 export interface HarnessBlock {
@@ -174,7 +181,7 @@ function tabTone(isActive: boolean, blocked: boolean, editable: boolean): string
   return `text-ink/65 hover:bg-ink/5 hover:text-ink ${cursor}`;
 }
 
-export function HarnessTabs({ harnesses, active, editable, onSelect, onFix }: HarnessTabsProps) {
+export function HarnessTabs({ harnesses, active, editable, onSelect, onFix, actions }: HarnessTabsProps) {
   if (harnesses.length === 0) return null;
   return (
     <div
@@ -183,15 +190,18 @@ export function HarnessTabs({ harnesses, active, editable, onSelect, onFix }: Ha
       // collapsed to 5px — the tabs were in the DOM and painted 1px tall
       // (measured: `elementFromPoint` on the first tab answered the row BELOW
       // it). The list scrolls inside itself; the strip must not.
-      className="flex-none flex items-stretch gap-0.5 overflow-x-auto border-b border-ink/10 bg-canvas/40 px-1 pt-1 scrollbar-overlay-container"
-      role="tablist"
-      aria-label="Harness"
-      // The one surface where a harness HUE is not decoration: with no label in
-      // the tab, colour is the only thing separating `omp` (RPC) from `omp`
-      // (ACP), so `icon-paint-css.ts` keeps these two marks painted even in
-      // monochrome mode. The attribute is that rule's scope.
-      data-harness-tabs=""
+      className="flex-none flex items-stretch border-b border-ink/10 bg-canvas/40"
     >
+      <div
+        className="flex min-w-0 flex-1 items-stretch gap-0.5 overflow-x-auto px-1 pt-1 scrollbar-overlay-container"
+        role="tablist"
+        aria-label="Harness"
+        // The one surface where a harness HUE is not decoration: with no label in
+        // the tab, colour is the only thing separating `omp` (RPC) from `omp`
+        // (ACP), so `icon-paint-css.ts` keeps these two marks painted even in
+        // monochrome mode. The attribute is that rule's scope.
+        data-harness-tabs=""
+      >
       {harnesses.map((summary) => {
         const state: HarnessTabState = {
           block: harnessBlock(summary),
@@ -285,6 +295,17 @@ export function HarnessTabs({ harnesses, active, editable, onSelect, onFix }: Ha
           </button>
         );
       })}
+      </div>
+
+      {/* The frame's trailing controls, on the strip's own row. `flex-none` so a
+          strip full of tabs never scrolls the close button away, and
+          `titlebar-no-drag` because the row above it is the window's handle in a
+          native shell. */}
+      {actions ? (
+        <div className="flex flex-none items-center gap-0.5 px-1.5 pb-1 titlebar-no-drag">
+          {actions}
+        </div>
+      ) : null}
     </div>
   );
 }

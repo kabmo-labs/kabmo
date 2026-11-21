@@ -3,7 +3,7 @@ import { FileIcon } from '@/client/components/common/file-icon';
 import { DiffPanel } from '@/client/components/workspace/diff-panel';
 import { getGitStatusInfo } from '@/shared/lib/fs/git-status';
 import { diffTabId, journalDiffTabId } from '@/shared/lib/workspace/file-tab-id';
-import { titlebarPaddingLeft, titlebarPaddingRight } from '@/shared/lib/ui/titlebar';
+import { phoneRowStyle } from '@/client/lib/ui/phone-row';
 import type { JournalDiffRef } from '@/shared/types/fs';
 
 interface MobileFullDiffProps {
@@ -38,12 +38,7 @@ export function MobileFullDiff({ diff, onClose, onFileSaved }: MobileFullDiffPro
     <div className="fixed inset-x-0 top-0 h-dvh z-[60] bg-paper flex flex-col">
       <header
         className="bg-canvas border-b border-ink/10 flex items-center justify-between px-3 flex-shrink-0"
-        style={{
-          height: 'calc(3rem + env(safe-area-inset-top, 0px))',
-          paddingTop: 'env(safe-area-inset-top, 0px)',
-          paddingLeft: titlebarPaddingLeft('0.75rem', true),
-          paddingRight: titlebarPaddingRight('0.75rem', true),
-        }}
+        style={phoneRowStyle()}
       >
         <div className="flex items-center space-x-2 min-w-0 pr-2">
           <button

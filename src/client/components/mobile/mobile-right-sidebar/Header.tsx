@@ -1,6 +1,45 @@
-import { ArrowLeft, Check, Copy, Download, Eye, EyeOff, MessageSquare, Save, Search, WrapText, ZoomIn, ZoomOut } from 'lucide-preact';
+/**
+ * @license
+ * SPDX-License-Identifier: MIT
+ */
+
+/**
+ * Mobile editor top bar: back/close, file identity, and the file actions.
+ *
+ * **Nine controls never fit one 390px row.** They used to try, at `p-1.5` each,
+ * which measured every control at **27x27** — under the 36px phone-chrome box
+ * the rest of the app uses and 17px under the 44px touch floor — and left five of
+ * them with a `title` but no accessible name. The row now draws the controls a
+ * reader reaches for mid-read (find, preview/review, the overflow) at the shared
+ * plate size, and folds the rest into a menu: wrap and the two zoom steps, which
+ * are settings a reader changes once, plus copy and download, which are
+ * one-shot exports.
+ *
+ * The fold is a WIDTH decision, not a device class — the same rule the header
+ * cluster and the sidebar toolbar follow — so a wider phone or a rotated one
+ * gets them back in the row.
+ */
+
+import { useMemo } from 'preact/hooks';
+import {
+  ArrowLeft,
+  Check,
+  Copy,
+  Download,
+  Eye,
+  EyeOff,
+  MessageSquare,
+  Save,
+  Search,
+  WrapText,
+  ZoomIn,
+  ZoomOut,
+} from 'lucide-preact';
 import { FileIcon } from '@/client/components/common/file-icon';
-import { titlebarPaddingLeft, titlebarPaddingRight } from '@/shared/lib/ui/titlebar';
+import { EditorAction, EDITOR_ACTION_GLYPH_PX } from '@/client/components/mobile/mobile-right-sidebar/Action';
+import { EditorOverflowMenu } from '@/client/components/mobile/mobile-right-sidebar/Overflow';
+import { phoneRowStyle } from '@/client/lib/ui/phone-row';
+import { useViewportAtLeast } from '@/client/hooks/ui/media-query';
 
 interface EditorHeaderProps {
   fileName: string;
@@ -32,7 +71,16 @@ interface EditorHeaderProps {
   onDownload: () => void;
 }
 
-/** Mobile editor top bar: back/close, file identity, and the file actions. */
+/**
+ * The width below which the one-shot actions fold.
+ *
+ * Measured on the real bar: close (36) + name + find (36) + preview (36) +
+ * overflow (36) + the row's own padding fits a 360px phone with ~40px to spare
+ * for the file name. Copy and download are the two that never need to be one tap
+ * away — a reader who copies a file's contents is done reading it.
+ */
+const FOLD_BELOW_PX = 420;
+
 export function EditorHeader({
   fileName,
   hasPreview,
@@ -55,143 +103,99 @@ export function EditorHeader({
   onCopy,
   onDownload,
 }: EditorHeaderProps) {
+  // A hook, so it is called before any early return (there is none here, but the
+  // rule is the reason it sits at the top).
+  const roomy = useViewportAtLeast(FOLD_BELOW_PX);
+
+  const folded = useMemo(() => {
+    const actions = [];
+    if (!byteViewer) {
+      actions.push(
+        { id: 'wrap', label: wordWrap ? 'Word wrap: on' : 'Word wrap: off', icon: WrapText, onSelect: onToggleWrap },
+        { id: 'zoom-out', label: 'Decrease font size', icon: ZoomOut, onSelect: onZoomOut },
+        { id: 'zoom-in', label: 'Increase font size', icon: ZoomIn, onSelect: onZoomIn },
+      );
+    }
+    if (!roomy) {
+      actions.push(
+        { id: 'copy', label: copied ? 'Copied' : 'Copy content', icon: copied ? Check : Copy, onSelect: onCopy },
+        { id: 'download', label: 'Download file', icon: Download, onSelect: onDownload },
+      );
+    }
+    return actions;
+  }, [byteViewer, roomy, wordWrap, copied, onToggleWrap, onZoomOut, onZoomIn, onCopy, onDownload]);
+
   return (
     <header
-      className="bg-canvas border-b border-ink/10 flex items-center justify-between px-3 flex-shrink-0"
-      style={{
-        height: 'calc(3rem + env(safe-area-inset-top, 0px))',
-        paddingTop: 'env(safe-area-inset-top, 0px)',
-        paddingLeft: titlebarPaddingLeft('0.75rem', true),
-        paddingRight: titlebarPaddingRight('0.75rem', true),
-      }}
+      className="bg-canvas border-b border-ink/10 flex items-center justify-between gap-1 px-3 flex-shrink-0 titlebar-drag-region"
+      style={phoneRowStyle()}
     >
-      <div className="flex items-center space-x-2 min-w-0 pr-2">
-        <button
-          type="button"
-          onClick={onClose}
-          className="p-1.5 rounded-lg hover:bg-ink/10 text-ink transition-colors active:scale-90 flex-shrink-0 cursor-pointer"
-          title="Close editor"
-          aria-label="Close editor"
-        >
-          <ArrowLeft size={18} strokeWidth={2} />
-        </button>
+      <div className="flex items-center gap-1 min-w-0 titlebar-no-drag">
+        <EditorAction label="Close editor" onClick={onClose}>
+          <ArrowLeft size={EDITOR_ACTION_GLYPH_PX} strokeWidth={2} />
+        </EditorAction>
 
-        <div className="flex items-center space-x-1.5 truncate">
+        <div className="flex min-w-0 items-center gap-1.5">
           <FileIcon name={fileName} size={15} className={`flex-shrink-0${missing ? ' text-error' : ''}`} />
-          <span className={`font-semibold text-xs truncate${missing ? ' text-error line-through' : ' text-ink'}`}>{fileName}</span>
+          <span className={`truncate font-semibold text-xs${missing ? ' text-error line-through' : ' text-ink'}`}>
+            {fileName}
+          </span>
         </div>
       </div>
 
-      <div className="flex items-center space-x-1 text-ink/70 flex-shrink-0">
+      <div className="flex flex-none items-center gap-0.5 text-ink/70 titlebar-no-drag">
         {/* Only while the file is gone. With it present the debounced autosave
             and the closing flush already own every write, and a Save here would
             be a second way to do what typing already did. Missing is the one
             state where autosave stands down, so the explicit Save is the only
             route back — it opens the confirmation. */}
         {missing && onSave && (
-          <button
-            type="button"
-            onClick={onSave}
-            className="p-1.5 rounded bg-error text-canvas hover:bg-error/90 transition-colors cursor-pointer"
-            title="Save and recreate the file"
-            aria-label="Save and recreate the file"
-          >
-            <Save size={15} />
-          </button>
+          <EditorAction label="Save and recreate the file" onClick={onSave} danger>
+            <Save size={EDITOR_ACTION_GLYPH_PX} />
+          </EditorAction>
         )}
 
         {!byteViewer && (
-          <button
-            type="button"
-            onClick={onToggleFind}
-            className={`p-1.5 rounded hover:bg-ink/10 transition-colors cursor-pointer ${findOpen ? 'bg-ink text-canvas' : ''}`}
-            title={findOpen ? 'Close find' : 'Find in file'}
-            aria-label={findOpen ? 'Close find' : 'Find in file'}
-            aria-pressed={findOpen}
-          >
-            <Search size={15} />
-          </button>
+          <EditorAction label={findOpen ? 'Close find' : 'Find in file'} onClick={onToggleFind} active={findOpen}>
+            <Search size={EDITOR_ACTION_GLYPH_PX} />
+          </EditorAction>
         )}
 
         {/* Beside the eye, and only while the RENDERED document is on screen:
             reviewing the source has no blocks to judge. */}
         {hasReview && (
-          <button
-            type="button"
+          <EditorAction
+            label={isReviewing ? 'Exit review mode' : 'Review this document'}
             onClick={onToggleReview}
-            className={`p-1.5 rounded hover:bg-ink/10 transition-colors cursor-pointer ${isReviewing ? 'bg-ink text-canvas' : ''}`}
-            title={isReviewing ? 'Exit review mode' : 'Review this document'}
-            aria-label={isReviewing ? 'Exit review mode' : 'Review this document'}
-            aria-pressed={isReviewing}
+            active={isReviewing}
           >
-            <MessageSquare size={15} />
-          </button>
+            <MessageSquare size={EDITOR_ACTION_GLYPH_PX} />
+          </EditorAction>
         )}
 
         {hasPreview && (
-          <button
-            type="button"
+          <EditorAction
+            label={isPreview ? 'View source' : 'Show preview'}
             onClick={onTogglePreview}
-            className={`p-1.5 rounded hover:bg-ink/10 transition-colors cursor-pointer ${isPreview ? 'bg-ink text-canvas' : ''}`}
-            // The rendered form is not always markdown (a CSV grid, an SVG
-            // picture), so the words name the TOGGLE rather than one document
-            // kind — and the icon-only button carries an aria-label for the
-            // same reason every toolbar action does.
-            title={isPreview ? 'View source' : 'Show preview'}
-            aria-label={isPreview ? 'View source' : 'Show preview'}
+            active={isPreview}
           >
-            {isPreview ? <EyeOff size={15} /> : <Eye size={15} />}
-          </button>
+            {isPreview ? <EyeOff size={EDITOR_ACTION_GLYPH_PX} /> : <Eye size={EDITOR_ACTION_GLYPH_PX} />}
+          </EditorAction>
         )}
 
-        {!byteViewer && (
+        {/* The one-shot exports, only while the row can hold them. */}
+        {roomy && (
           <>
-            <button
-              type="button"
-              onClick={onToggleWrap}
-              className={`p-1.5 rounded hover:bg-ink/10 transition-colors cursor-pointer ${wordWrap ? 'text-ink' : ''}`}
-              title="Toggle word wrap"
-            >
-              <WrapText size={15} />
-            </button>
-
-            <button
-              type="button"
-              onClick={onZoomOut}
-              className="p-1.5 rounded hover:bg-ink/10 transition-colors cursor-pointer"
-              title="Decrease font size"
-            >
-              <ZoomOut size={15} />
-            </button>
-
-            <button
-              type="button"
-              onClick={onZoomIn}
-              className="p-1.5 rounded hover:bg-ink/10 transition-colors cursor-pointer"
-              title="Increase font size"
-            >
-              <ZoomIn size={15} />
-            </button>
+            <EditorAction label="Copy content" onClick={onCopy}>
+              {copied ? <Check size={EDITOR_ACTION_GLYPH_PX} className="text-success" /> : <Copy size={EDITOR_ACTION_GLYPH_PX} />}
+            </EditorAction>
+            <EditorAction label="Download file" onClick={onDownload}>
+              <Download size={EDITOR_ACTION_GLYPH_PX} />
+            </EditorAction>
           </>
         )}
 
-        <button
-          type="button"
-          onClick={onCopy}
-          className="p-1.5 rounded hover:bg-ink/10 transition-colors cursor-pointer"
-          title="Copy content"
-        >
-          {copied ? <Check size={15} className="text-success" /> : <Copy size={15} />}
-        </button>
-
-        <button
-          type="button"
-          onClick={onDownload}
-          className="p-1.5 rounded hover:bg-ink/10 transition-colors cursor-pointer"
-          title="Download file"
-        >
-          <Download size={15} />
-        </button>
+        {folded.length > 0 && <EditorOverflowMenu actions={folded} />}
       </div>
     </header>
   );

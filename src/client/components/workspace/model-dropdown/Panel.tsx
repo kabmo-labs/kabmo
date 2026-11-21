@@ -10,6 +10,7 @@ import type { PickerRow } from '@/client/components/workspace/model-dropdown/gro
 import { HarnessTabs } from '@/client/components/workspace/model-dropdown/HarnessTabs';
 import { usePopoverSize } from '@/client/components/workspace/model-dropdown/use-popover-size';
 import { ModelFullscreen } from '@/client/components/workspace/model-dropdown/Fullscreen';
+import { PickerCloseButton } from '@/client/components/workspace/model-dropdown/CloseButton';
 import type { HarnessSummary } from '@/shared/types/harness';
 
 interface ModelDropdownPanelProps {
@@ -53,8 +54,15 @@ interface ModelDropdownPanelProps {
   unprobedHarness?: boolean;
   /** Why the active tab cannot run (auth, missing binary), in the agent's words. */
   harnessBlocked?: string;
-  /** Dismiss the full-screen picker. Required on a phone, where it owns the screen. */
-  onClose?: () => void;
+  /**
+   * Dismiss the picker.
+   *
+   * REQUIRED, not optional: the full-screen placement draws this as its close
+   * control, and an optional handler let a caller omit it and get an `X` that
+   * did nothing — a button that promises a dismissal it cannot perform. The
+   * popover closes through the click-outside guard and ignores it.
+   */
+  onClose: () => void;
   /** Take the whole screen instead of hanging beside the trigger. Decided ONCE
    *  by the picker (`useFullscreenPicker`) and passed in, so the panel never
    *  holds a second answer to the same question. */
@@ -151,7 +159,12 @@ export function ModelDropdownPanel({
         >
         {/* The harness tab strip sits ABOVE the search field: the tab changes
             what the list IS, so the search that follows applies to the list the
-            tab selected. */}
+            tab selected.
+
+            In the full-screen placement the strip is the FRAME's first row, so
+            it carries the close control — the picker draws no header of its own.
+            A picker with no tabs (the New Chat preview) has no strip, and its
+            close control rides the search row instead. */}
         {harnesses.length > 0 && (
           <HarnessTabs
             harnesses={harnesses}
@@ -159,12 +172,14 @@ export function ModelDropdownPanel({
             editable={harnessEditable}
             onSelect={onSelectHarness ?? (() => {})}
             onFix={onFixHarness}
+            {...(fullscreen ? { actions: <PickerCloseButton onClose={onClose} /> } : {})}
           />
         )}
         <ModelDropdownHeader
           search={search}
           onSearchChange={onSearchChange}
           onAddProvider={onAddProvider}
+          {...(fullscreen && harnesses.length === 0 ? { actions: <PickerCloseButton onClose={onClose} /> } : {})}
         />
 
         {/* Scrollable Model Lists. Deliberately no top padding: Chrome's
@@ -291,7 +306,7 @@ export function ModelDropdownPanel({
   // `Fullscreen.tsx` states why each placement wins where it does, and why the
   // overlay must portal out of the composer's containing block.
   if (fullscreen) {
-    return <ModelFullscreen open onClose={onClose ?? (() => {})}>{card}</ModelFullscreen>;
+    return <ModelFullscreen open>{card}</ModelFullscreen>;
   }
 
   return (
