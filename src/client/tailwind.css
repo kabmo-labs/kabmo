@@ -1670,10 +1670,24 @@ html :is(span, div, p, a, li, td, th, h1, h2, h3, h4, h5, h6, label, strong, em,
  * `prefers-reduced-motion` drops the TRANSITION, not the state: an instant
  * 3% shrink is feedback, not motion, and a control that stops acknowledging a
  * press is worse than one that does it without easing.
+ *
+ * **A link styled as a button answers like one.** 20 `<a>` elements ship, and
+ * 10 of them are controls — the wiki panel's nav rows, its external-link plates,
+ * the web-search source chip, the About dialog's social rows, the update popup's
+ * "release notes" button, the pairing QR download. All were inert on press.
+ *
+ * They are matched by a DISPLAY check, because `scale` does not apply to a
+ * non-replaced `display: inline` box: measured in Chromium, an inline anchor
+ * computes `scale: 0.97` and its rect does not move at all, so listing every
+ * `<a>` would promise a press on 9 prose links that cannot show one. The
+ * `:where(…)` guard keeps the list to boxes that can be transformed, matched by
+ * exact class TOKEN (`[class~=…]`) — a substring match would accept
+ * `flex-shrink-0`, which is still an inline box. A bare inline link keeps the
+ * text colour transition it already had.
  * ------------------------------------------------------------------------- */
 :is(button, summary, [role='button'], [role='tab'], [role='option'], [role='menuitem'],
   [role='menuitemradio'], [role='menuitemcheckbox'], [role='radio'], [role='checkbox'],
-  [role='switch']):not(:disabled) {
+  [role='switch'], a[href]:where([class~='flex'], [class~='inline-flex'], [class~='block'], [class~='inline-block'], [class~='grid'], [class~='inline-grid'])):not(:disabled) {
   transition-property: color, background-color, border-color, outline-color, text-decoration-color,
     fill, stroke, opacity, box-shadow, transform, translate, scale, rotate;
   transition-duration: 120ms;
@@ -1682,7 +1696,7 @@ html :is(span, div, p, a, li, td, th, h1, h2, h3, h4, h5, h6, label, strong, em,
 
 :is(button, summary, [role='button'], [role='tab'], [role='option'], [role='menuitem'],
   [role='menuitemradio'], [role='menuitemcheckbox'], [role='radio'], [role='checkbox'],
-  [role='switch']):not(:disabled):active {
+  [role='switch'], a[href]:where([class~='flex'], [class~='inline-flex'], [class~='block'], [class~='inline-block'], [class~='grid'], [class~='inline-grid'])):not(:disabled):active {
   scale: 0.97;
 }
 
