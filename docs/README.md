@@ -37,6 +37,7 @@ is not documentation and does not move.
 | 21 | [Terminal emulator migration](milestones/M21-terminal-ghostty-web-migration.md) | the right-panel terminal moved from xterm.js to ghostty-web, with the theme/scrollback workarounds and the transport fix it uncovered | partial |
 | 22 | [Session MCP server](milestones/M22-session-mcp.md) | the typed control plane over the session tree: the tree-scoped agent token shipped, with the four tools and the stdio injection path specified | partial |
 | 23 | [Change journal](milestones/M23-change-journal.md) | a Kabmo-owned JSONL journal for every mutation, including the `bash` writes omp never records: the writer, reader, classifier, git scan pass and tests | partial |
+| 24 | [GitHub Actions viewer](milestones/M24-github-actions-viewer.md) | the Actions panel plugin — list, run drill with jobs and steps, job logs, cancel/re-run, header readout — over measured payloads and a free conditional poll | partial |
 
 ### What still owes
 
@@ -51,6 +52,7 @@ is not documentation and does not move.
 | 21 | the phone/WebView run, the hidden-terminal memory number, and upstream theme/scrollback/reset fixes | the renderer swap, its workarounds and the paint benchmark shipped; the device run and the upstream fixes that would delete the workarounds remain |
 | 22 | `kabmo mcp serve`, ACP injection, the adapter matrix | the tree-scoped token rule shipped; the MCP server and its injection are specified, not implemented |
 | 23 | the parity test on a real session, the blob prune, `apply_patch`/MCP write adapters | the writer, reader, classifier, scan pass and run separation shipped; the remaining items are listed in §10.4 |
+| 24 | the shared-core extraction (P0/D1) and the run-level log archive (P7) | the plugin, its 51 tests and the browser smoke shipped; the extraction and the archive did not |
 
 Declined, and recorded as such rather than left open: plugin-platform **P6** (component registry,
 declined in M04 and re-declined in M05/W6) and the editor's **format-on-save** (M14).
