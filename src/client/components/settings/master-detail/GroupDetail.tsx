@@ -4,13 +4,18 @@
  */
 
 /**
- * The detail pane of a grouped settings category: the active group's name and
- * description in a fixed header, then the group's sections in one scroller.
+ * The detail pane of a grouped settings category: the group's sections in one
+ * scroller, under a header band on a DESKTOP only.
  *
- * The header is outside the scroller on purpose — a reader five cards into the
- * Editor group can still see which group they are in without scrolling back.
+ * The band is outside the scroller on a desktop on purpose — a reader five cards
+ * into the Editor group can still see which group they are in without scrolling
+ * back. A PHONE draws no band here: the sheet has one, and this pane's group name
+ * is what it names (`settings/drill.tsx`). Drawing it here as well produced
+ * three stacked bars on one screen (measured 64 + 35 + 64px on
+ * Settings → Appearance → Palette), two of which were a back control.
+ *
  * The sections are children, so each category keeps owning WHICH components a
- * group draws (its `Record<SectionId, …>`) while the frame is stated once.
+ * group draws while the frame is stated once.
  */
 
 import type { ComponentChildren } from 'preact';
@@ -25,7 +30,10 @@ interface GroupDetailProps {
 export function GroupDetail({ group, children }: GroupDetailProps) {
   return (
     <div className="flex-1 h-full overflow-hidden flex flex-col text-xs text-ink">
-      <div className={`${SETTINGS_BAND} items-start flex-col justify-center px-3.5`} style={{ height: SETTINGS_BAND_HEIGHT }}>
+      <div
+        className={`${SETTINGS_BAND} hidden md:flex items-start flex-col justify-center px-3.5`}
+        style={{ height: SETTINGS_BAND_HEIGHT }}
+      >
         <span className="text-xs font-semibold text-ink/75">{group.label}</span>
         <p className="w-full text-[11px] text-ink/60 leading-snug mt-0.5 truncate">{group.description}</p>
       </div>

@@ -15,7 +15,8 @@ import { SettingsSidebar, settingsCategoriesFor } from '@/client/components/sett
 import { useHarnesses } from '@/client/hooks/models/use-harnesses';
 import { CategoryContent } from '@/client/components/settings/category-content';
 import type { CatalogTab } from '@/client/components/settings/categories/SkillCatalogSettings';
-import { SETTINGS_BAND, SETTINGS_BAND_HEIGHT_INSET } from '@/client/components/settings/pane-header';
+import { SettingsBand } from '@/client/components/settings/Band';
+import { SettingsDrillProvider, useSettingsDrillState } from '@/client/components/settings/drill';
 
 export interface SettingsModalProps {
   isOpen: boolean;
@@ -39,6 +40,9 @@ export function SettingsModal({
   const [autoOpenAdd, setAutoOpenAdd] = useState(autoOpenAddProvider);
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileDrilled, setIsMobileDrilled] = useState(false);
+  // What the sheet's one band says on a phone: a category registers its drilled
+  // pane here instead of drawing a bar of its own.
+  const { register: registerDrill, drill } = useSettingsDrillState();
   const writeKabmoSettings = useKabmoSettingsWriter();
   const { isReloading, reload: reloadEngine } = useReloadOmpEngine();
   const { isRestarting, restart: restartKabmo } = useRestartKabmo();
@@ -192,25 +196,6 @@ export function SettingsModal({
                 <ChevronLeft size={20} />
               </button>
 
-              <div className="truncate">
-                <h3 className="font-semibold text-base tracking-tight text-ink leading-tight">
-                  {currentCategoryDef.label}
-                </h3>
-                <p className="text-[11px] text-ink/60 truncate hidden sm:block">
-                  {currentCategoryDef.description}
-                </p>
-              </div>
-            </div>
-
-            {/* Modal Close Button */}
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-1.5 rounded-lg text-ink/50 hover:text-ink hover:bg-ink/5 transition-colors cursor-pointer"
-              aria-label="Close settings"
-            >
-              <X size={18} strokeWidth={2.2} />
-            </button>
           </div>
 
           {/* Scrollable Settings Body - Full Width across all categories */}
