@@ -14,17 +14,14 @@
  *   rest of the window is not looking at.
  * - **The list.** It comes from the plugin's own server half, which is the only
  *   part that holds a credential and can reach GitHub.
- * - **A poll.** Reads happen when the panel opens, when the filter moves, on
- *   Refresh, and when the server's watcher publishes a new snapshot. A panel
- *   timer would fire against a view nobody is looking at.
- *
- * The watch is armed on mount and released on unmount. A plugin panel is
- * unmounted when another view is on screen, so "unmounted" is exactly "nobody is
- * looking" — the server's tick then makes no request at all.
+ * - **A poll.** Reads happen when the panel opens, when the scope or the filter
+ *   moves, on Refresh, and after a write. A timer would fire against a view
+ *   nobody is looking at, and a run that finishes while the panel is closed is
+ *   answered by the next open.
  */
 
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { usePanelHost, useRepoScope, useRpc, useSessionState } from '@kabmo-labs/kabmo-ui';
+import { RepoPicker, usePanelHost, useRepoScope, useRpc, useSessionState } from '@kabmo-labs/kabmo-ui';
 
 import {
   RPC,
@@ -71,8 +68,6 @@ export function ActionsPanel() {
   const list = useRpc<ListInput, RunPage>(RPC.list);
   const run = useRpc<{ root: string; repo: string; id: number }, RunDetail>(RPC.run);
   const act = useRpc<ActInput, ActResult>(RPC.act);
-  const watch = useRpc<ListInput, unknown>(RPC.watch);
-  const unwatch = useRpc<ListInput, unknown>(RPC.unwatch);
 
   // `useRpc` hands back a fresh object per render, so putting `call` in a
   // dependency list re-runs the read on every render — the unbounded loop the
@@ -84,10 +79,6 @@ export function ActionsPanel() {
   runCall.current = run.call;
   const actCall = useRef(act.call);
   actCall.current = act.call;
-  const watchCall = useRef(watch.call);
-  watchCall.current = watch.call;
-  const unwatchCall = useRef(unwatch.call);
-  unwatchCall.current = unwatch.call;
 
   const filterKey = `${filter.branch}\u0000${filter.status}`;
 
@@ -100,24 +91,25 @@ export function ActionsPanel() {
         setPage(outcome.value as RunPage);
         setError(null);
       } else {
+        // A failed read must not leave the PREVIOUS scope's rows on screen under
+        // a moved picker — `.wiki` would draw the parent repo's thirty runs.
+        setPage(null);
         setError(outcome.error.message);
       }
     });
   };
 
+  // The scope and the filter are what a page answers; when either moves, the
+  // page on hand describes a different question and is dropped before the read.
+  useEffect(() => {
+    setPage(null);
+    setError(null);
+  }, [`${root}\u0000${repo}\u0000${filterKey}`]);
+
   useEffect(() => {
     if (!host.active) return;
     readList();
   }, [root, repo, filterKey, host.active, host.refreshKey]);
-
-  useEffect(() => {
-    if (!host.active || !root) return;
-    const input = { root, repo, filter };
-    void watchCall.current(input);
-    return () => {
-      void unwatchCall.current(input);
-    };
-  }, [root, repo, filterKey, host.active]);
 
   const readDetail = (id: number): void => {
     if (!root) return;
@@ -192,6 +184,9 @@ export function ActionsPanel() {
   return (
     <div class="flex min-h-0 h-full flex-col">
       <div class="flex flex-wrap items-center gap-1.5 border-b border-ink/10 px-3 py-1.5">
+        {/* The SHARED picker, not a copy: a repo chosen here moves Files, Search,
+            Source Control, Terminal and Forge, and theirs moves this one. */}
+        <RepoPicker scope={scope} className="max-w-[50%]" />
         <input
           value={branchDraft}
           placeholder="any branch"
@@ -218,7 +213,7 @@ export function ActionsPanel() {
           ))}
         </select>
         <span class="font-mono text-[10px] text-ink/40">
-          {page ? `${page.runs.length}${page.total !== null ? `/${page.total}` : ''} · ${repo}` : ''}
+          {page ? `${page.runs.length}${page.total !== null ? `/${page.total}` : ''}` : ''}
         </span>
         <button
           type="button"

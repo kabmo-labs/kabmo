@@ -8,9 +8,9 @@
  *
  * A second read of an unchanged resource is a `304`, and GitHub does not charge
  * a conditional request that answers `304` against the primary limit — measured
- * on this repository: six consecutive conditional polls left
- * `x-ratelimit-remaining` untouched. That is the whole reason a 60-second poll is
- * affordable, so the ETag is stored with the body rather than derived from it.
+ * on this repository: six consecutive conditional reads left
+ * `x-ratelimit-remaining` untouched. That is why every list, run and jobs read
+ * is conditional, so the ETag is stored with the body rather than derived from it.
  *
  * A failure is a SENTENCE, not a status code: "rate limited, try after 14:20" and
  * "this endpoint needs a token even on a public repository" are different things

@@ -18,8 +18,6 @@ export const RPC = {
   run: 'run',
   log: 'log',
   act: 'act',
-  watch: 'watch',
-  unwatch: 'unwatch',
 } as const;
 
 /** The four states a badge can be, after every host word is mapped. */
@@ -123,28 +121,10 @@ export interface ActResult {
   message: string;
 }
 
-/** One repository's latest read, as the header readout and the panel see it. */
-export interface Snapshot {
-  at: string;
-  runs: RunRow[];
-  failing: number;
-  running: number;
-}
-
-/** The plugin's one realtime topic: a snapshot per watched repository. */
-export interface Snapshots {
-  entries: Record<string, Snapshot>;
-}
-
 /** What a read is narrowed to. Empty strings mean "not narrowed". */
 export interface RunFilter {
   branch: string;
   status: string;
-}
-
-/** The key a snapshot is stored under on both sides of the wire. */
-export function repoKey(root: string, repo: string): string {
-  return `${root}\u0000${repo}`;
 }
 
 /** What the panel asks the server for. */

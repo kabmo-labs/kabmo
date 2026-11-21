@@ -1,8 +1,8 @@
 # M24 — GitHub Actions viewer: a panel plugin that monitors a repository's runs
 
 Status: **partial** — the plugin shipped and is smoke-tested in a real browser (list, run drill, job
-logs, the three verbs, header readout, 51 tests); the shared-core extraction (P0 / D1) and the
-run-level log archive remain (2026-11-21).
+logs, the three verbs, 53 tests); the shared-core extraction (P0 / D1), the run-level log archive and
+the removed navbar readout's resurrection (P8) remain (2026-11-21).
 
 The shipped code is `marketplace/plugins/github-actions/`; its README is the operator-facing contract,
 and §13 records what the smoke run observed.
@@ -21,12 +21,13 @@ document without the same run reproducing it.
 | Plugin name | `Actions` |
 | Panel title | `Runs` (the activity bar reads `Runs — Actions`) |
 | Directory | `marketplace/plugins/github-actions/` |
-| Visible surfaces | ONE `rightPanel` (the runs list → run → job → log drill) and ONE `headerPanel` (a failing-count readout that opens the panel) |
+| Visible surfaces | ONE `rightPanel` (the runs list → run → job → log drill). The `headerPanel` it shipped with was removed on request — see §14 |
 | Bundled store | installed from Settings → Plugins Kabmo like the four shipped plugins; a `marketplace.json` row is documentation only |
-| Capabilities | `["server", "storage", "rpc", "realtime", "settings", "repo-scope"]` — every one of them is in `HOST_CAPABILITIES` today |
+| Capabilities | `["server", "storage", "rpc", "settings", "repo-scope"]` — every one of them is in `HOST_CAPABILITIES` today (no `realtime` after §14: the only topic consumer was the readout) |
 | Registration sizing | `minWidth: 420`; a run row carries state, title, branch, number, actor and age |
 
-`rightPanel` and `headerPanel` are two SLOTS, so one plugin can hold both without a second manifest.
+`rightPanel` and `headerPanel` are two SLOTS, so one plugin can hold both without a second manifest — a
+fact this milestone used once, and §14 removed.
 
 ---
 
@@ -122,30 +123,23 @@ Two consequences follow immediately:
 flowchart TD
     subgraph host["Kabmo host (browser)"]
         P["rightPanel: ActionsPanel"]
-        H["headerPanel: CiReadout"]
     end
     subgraph srv["server half (Bun, in Kabmo's process)"]
-        R["rpc: list · run · log · watch · unwatch · act"]
+        R["rpc: list · run · log · act"]
         S["scope.ts<br/>root+repo → dir → origin"]
         G["github.ts<br/>runs · run · jobs · logs · writes"]
         C["http.ts<br/>conditional GET (ETag)"]
         T["token.ts<br/>setting → env → gh CLI"]
-        W["poller.ts<br/>60 s, watchers only"]
         Z["logtext.ts<br/>clean + tail"]
     end
-    P -- "useRpc / useRealtime" --> R
-    H -- "useRpc + topic" --> R
+    P -- "useRpc" --> R
     R --> S --> G
     G --> C --> T
     G --> Z
-    W --> C
-    W -- "realtime.publish" --> P
-    W -- "realtime.publish" --> H
 ```
 
-`storage.kv` holds the ETag cache (one entry per URL, as `git-forge` already does), the last snapshot
-per repo, and the per-workflow duration samples used for an ETA. `settings-schema.json` declares
-`token` (secret), `apiBase`, `perPage`, `pollSeconds`, `monitor`, `logTailKb`.
+`storage.kv` holds the ETag cache (one entry per URL, as `git-forge` already does).
+`settings-schema.json` declares `token` (secret), `apiBase`, `perPage`, `logTailKb`.
 
 ### Flow A — read the list
 
@@ -187,8 +181,6 @@ flowchart LR
     D --> G["progress: 14/31 jobs"]
     E --> G
     F --> H["state = worstCi(conclusions)"]
-    G --> I["publish snapshot on the plugin topic"]
-    H --> I
 ```
 
 There is **no percentage field in the API**. The honest presentation is `14/31 jobs`, plus `step 7/13`
@@ -210,8 +202,13 @@ stateDiagram-v2
     Idle --> Idle: tick is a no-op, zero requests
 ```
 
-The watcher count lives in the plugin's server half, exactly as `stats` counts its samplers. A tick
-with no watchers does not call GitHub at all — which is the only reason a header readout is affordable.
+The watcher count lived in the plugin's server half, exactly as `stats` counts its samplers, and a
+tick with no watchers called GitHub at all — which is the only reason a header readout was affordable.
+
+**Removed in §14.** With the readout gone the topic had no reader, so the watcher count, the poller,
+`watch`/`unwatch` and the snapshot publish were removed with it: a poll whose result nobody draws is
+a request per minute spent on nothing. What remains is Flow A's read, on open / scope change / filter
+change / Refresh / after a write.
 
 ### Flow D — logs
 
@@ -263,12 +260,12 @@ says otherwise.
 |---|---|---|
 | A. Runs list | **done** | `list` RPC, `runOf`, empty/failed/truncated states, per-URL ETag cache (`kvCache`) |
 | B. Run progress | **done** | `run` + `jobs` RPC, `progressOf`, step list, failing roll-up (`worstState`) |
-| C. Watch / poll | **done** | server poller behind `watch`/`unwatch`, conditional reads, `plugin:github-actions` topic, visibility gate in the readout |
+| C. Watch / poll | **removed** (§14) | was: server poller behind `watch`/`unwatch`, `plugin:github-actions` topic, visibility gate in the readout |
 | D. Logs | **done** (job granularity) | `redirect: 'manual'` then a bare request, `cleanLog`, byte cap, tail, "Whole log" |
 | E. Writes | **done** | capability gate by token + state, consequence confirmation, GitHub's own 409/403 sentence |
-| F. Header readout | **done** | failing/running counts from the snapshot, `—` before the first answer, watch released while the tab is hidden |
+| F. Header readout | **removed** (§14) | was: failing/running counts from the snapshot, `—` before the first answer, watch released while the tab was hidden |
 | G. Shared plumbing | **copied, extraction owed** | its own `token.ts` / `http.ts` / `remote.ts` / `scope.ts` (~460 lines) — see D1 |
-| H. Tests | **done** | 51 assertions over the vocabulary, progress, log text, the adapter and the assembled panel |
+| H. Tests | **done** | 53 assertions over the vocabulary, progress, log text, the adapter and the assembled panel |
 
 ---
 
@@ -314,20 +311,23 @@ bundle is its own package, while anything under `src/**` in the host stays on `@
 ```
 marketplace/plugins/github-actions/
   package.json          kabmo: { id, name, version, app, server, icon, color, slots, capabilities }
-  settings-schema.json  token(secret) · apiBase · perPage · pollSeconds · monitor · logTailKb
-  icon.svg              Lucide geometry copied verbatim (the Glyph rule in the panel kit)
+  settings-schema.json  token(secret) · apiBase · perPage · logTailKb
+  icon.svg              GitHub's own `github-action` Octicon (MIT), copied path for path
   README.md             the forge README's shape: surfaces, limits, what it does not do, tests
   src/protocol.ts       Run · Job · Step · Progress · LogTail · Filter · RPC
   src/state.ts          one vocabulary (success/failure/pending/neutral) shared by both halves
-  src/app.tsx           rightPanel: Runs · headerPanel: failing count, opensPanel: 'rightPanel'
-  src/header.tsx        the navbar readout and its visibility gate
-  src/panel/index.tsx   filter → list → drill; watch/unwatch; session-persisted pick
+  src/app.tsx           rightPanel: Runs
+  src/panel/index.tsx   filter → list → drill; session-persisted pick
   src/panel/Row.tsx     one run row: state mark, workflow, #n, subject, branch/event/actor
   src/panel/RunView.tsx run header, progress, jobs, steps, log
   src/panel/LogView.tsx tail viewer, "Whole log", plain text only
   src/panel/Actions.tsx cancel / rerun / rerun-failed + consequence confirmation
   src/panel/format.ts   duration, age, progress line, state mark/tone — pure
-  src/server.ts         factory: rpc, realtime, background.service(poller)
+  src/panel/test-harness.tsx  the DOM + faked kit a panel suite mounts through
+  src/panel/test-fixtures.ts  the run bodies every panel suite reads
+  src/panel/index.test.tsx    the assembled panel: scope read, rows, drill, refusals
+  src/panel/picker.test.tsx   the shared repo picker writes the shared slot
+  src/server.ts         factory: the four rpc handlers
   src/server/github.ts  the one adapter over the endpoints in §4
   src/server/json.ts    the guards an unknown body is read through
   src/server/progress.ts  jobs+steps → progress and failing list — pure
@@ -338,7 +338,7 @@ marketplace/plugins/github-actions/
   src/server/scope.ts   containment plus `origin`
 ```
 
-Shipped: **2,323 lines of source** plus **940 of tests** (51 assertions across 6 files); the largest
+Shipped: **2,076 lines of source** plus **1,076 of tests** (53 assertions across 7 files); the largest
 file is 309 lines, under the 350 ceiling.
 
 ---
@@ -350,11 +350,12 @@ file is 309 lines, under the 350 ceiling.
 | **P0** | D1 extraction into a published package + `git-forge` migrated, copies deleted | **owed** |
 | **P1** | plugin skeleton: manifest, settings schema, `list` RPC, panel list with the four states | **done** |
 | **P2** | run drill: `run` + `jobs` RPC, progress and per-step status | **done** |
-| **P3** | watch: poller, `watch`/`unwatch`, topic, header readout | **done** |
+| **P3** | watch: poller, `watch`/`unwatch`, topic, header readout | **removed** (§14) |
 | **P4** | logs: redirect-without-auth, sanitizer, tail cap, whole-log action | **done** (job granularity) |
 | **P5** | writes: capability gate, consequence confirmation, 409/403 surfacing | **done** |
 | **P6** | tests + browser smoke | **done** (§13) |
 | **P7** | run-level log archive (one zip for every job of a run) | **owed** |
+| **P8** | a navbar readout, if it is ever wanted again — needs a host surface that keeps a poll honest | **owed, not planned** |
 
 ---
 
@@ -365,8 +366,7 @@ file is 309 lines, under the 350 ceiling.
 
 The browser proof is not optional: the plugin is only correct if a real panel on a real repository
 draws the runs, the progress, the tail, and the refusal sentences. A unit test over recorded bodies
-cannot show that the host unmounted the panel and stopped the poller, or that the header readout
-survived a hide.
+cannot show that a hidden panel makes no request at all.
 
 ---
 
@@ -381,25 +381,26 @@ survived a hide.
 - Job logs at step granularity (the step endpoint returns 302 as well; the tail of the whole job is
   what a reader wants first).
 - GitLab pipelines, Gitea Actions, Bitbucket Pipelines (D2).
-- Notifications: the kit has no toast or OS notification surface, so "tell me when it goes red" is the
-  header readout, not a popup.
+- Notifications: the kit has no toast or OS notification surface, and this plugin draws no navbar
+  badge (§14) — a red `main` is seen by opening the panel.
 
 ---
 
 ## 12. Where this plan can be wrong
 
-1. **The readout's honest value may be zero.** A monitor whose only output is a number in the navbar
-   is one the user must already be looking at Kabmo to see. If the requirement really is "notify me",
-   this milestone is the wrong shape and the work belongs in a host notification service first.
+1. **The readout's honest value may be zero — and it was.** A monitor whose only output is a number in
+   the navbar is one the user must already be looking at Kabmo to see. The surface was removed on
+   request (§14); if the requirement really is "notify me", the work belongs in a host notification
+   service first, not in a plugin badge.
 2. **D1 was deferred, and the copies will drift.** The plugin ships its own credential ladder and
    conditional cache (§7), so a change to `git-forge`'s ladder now has to be made twice. That is the
    cost this decision bought, and P0 is how it is paid back.
 3. **`per_page=30` may still feel slow** on a cold list (481 KB, ~1.6 s ⟦measured⟧, from this network).
    If so, the list belongs behind a workflow filter (per-workflow runs are 171 KB for ten) or behind
    the GraphQL rollup (4 KB for twenty commits), at the cost of a second vocabulary.
-4. **The 60 s cadence may be wrong in both directions.** `x-poll-interval` is absent, so nothing tells
-   the plugin what GitHub wants; 60 s is chosen from `Cache-Control: max-age=60` and the measured
-   free `304`. A first poll that is too fast would be invisible until the quota notice appears.
+4. **The panel is only fresh when it is opened.** With the poller gone (§14) a run that finishes while
+   the panel is closed is learned at the next open, scope change, filter change, Refresh or write.
+   That is the deliberate trade: the alternative was a request per minute for a readout nobody drew.
 
 ---
 
@@ -408,7 +409,7 @@ survived a hide.
 Gates, all green at `9c4f1a2`-equivalent working tree (2026-11-21):
 
 ```
-bun test marketplace/plugins/github-actions/    51 pass, 0 fail (6 files)
+bun test marketplace/plugins/github-actions/    53 pass, 0 fail (7 files)
 bun run lint                                    clean
 bunx tsc --noEmit --noUnusedLocals --noUnusedParameters   clean
 bun run typecheck:consumer                      clean
@@ -423,11 +424,11 @@ the repository of this checkout as the workspace:
 |---|---|
 | `POST /api/panels/install` (bundled id) | `built: true`; `GET /api/panels/bundle/github-actions` → `200`, 17,892 B |
 | `rpc/list` over the wire | `ok: true`, slug `kabmo-labs/kabmo`, `authenticated: true` (token from `gh`), 30 runs |
-| header readout without a session | `✕ 11 failing` — a real count, from the server's published snapshot |
-| opening the panel from the readout | 30 rows of 594, `Showing 30 runs; GitHub has more.` |
+| opening the panel | 30 rows of 594, `Showing 30 runs; GitHub has more.` |
 | opening run `#186` | `31/31 jobs · 2 failing`, 31 job rows, back control, verbs `Re-run` + `Re-run failed` |
 | opening a failing job's log | 65,518 characters, **no ISO prefix, no ESC byte**, `0/…` steps listed above it |
-| `Re-run failed` → confirm | sentence `Re-run only the failed jobs and their dependents?`, then `Re-run of the failed jobs requested.` (GitHub `201`), progress re-read as `0/0 jobs`, readout fell to `✕ 10 failing` |
+| `Re-run failed` → confirm | sentence `Re-run only the failed jobs and their dependents?`, then `Re-run of the failed jobs requested.` (GitHub `201`), progress re-read as `0/0 jobs` |
+| ~~header readout without a session~~ | ~~`✕ 11 failing`~~ — observed on the surface §14 removed |
 
 Two defects this run caught, both now fixed and pinned:
 
@@ -440,3 +441,40 @@ Two defects this run caught, both now fixed and pinned:
 Not verified in the browser, and therefore still owed rather than claimed: a cancel against a finished
 run (`409`) — the adapter test and a direct `POST` pin the sentence, but the button only renders on a
 run that is still pending.
+
+---
+
+## 14. Removal — the navbar readout (2026-11-21)
+
+The `headerPanel` was removed on request. It was not a cosmetic deletion: the readout was the **only**
+consumer of the plugin's realtime topic, and the topic was the only reason a server-side poller ran.
+Removing the surface while leaving the machinery would have kept a conditional GitHub read firing
+every 60 seconds for a number nothing draws, so the whole path came out.
+
+| Removed | Why |
+|---|---|
+| `app.headerPanel({ id: 'ci', … })` in `src/app.tsx` | the surface itself |
+| `src/header.tsx` (82 lines) | the readout and its `useDocumentVisible` gate |
+| `"headerPanel"` in `package.json` `slots`, `"realtime"` in `capabilities` | a declared slot and capability nothing uses is a store card that lies |
+| `RPC.watch` / `RPC.unwatch`, `Snapshot`, `Snapshots`, `repoKey` in `src/protocol.ts` | the wire shapes existed only to feed the readout |
+| the watcher map, `publish`, `remember`, `pass()`, `background.service('poller')`, `onDispose` in `src/server.ts` | a poll whose result has no reader is a request per minute spent on nothing |
+| `pollSeconds` in `settings-schema.json` | a knob for a loop that no longer exists |
+| the panel's `watch`/`unwatch` effect and its two `useRpc` handles | the panel now reads on open / scope / filter / Refresh / after a write, which is what it already did |
+
+What did **not** change: the ETag cache and the conditional reads. A second read of an unchanged
+resource still answers `304` and costs no quota ⟦measured⟧; the difference is that the reads are now
+driven by a reader rather than by a timer.
+
+`src/server.ts` fell from 290 to 165 lines and `contextFor` now returns the `GithubContext` directly
+instead of `{ context, key }` — the key existed to index the snapshot map.
+
+The same change had to split `src/panel/index.test.tsx`: the two shared-picker tests added earlier in
+this milestone had taken it to **357 lines**, past the 350 ceiling. The DOM/kit harness moved to
+`src/panel/test-harness.tsx` (mount, click, the faked `UiKitServices`), the bodies to
+`src/panel/test-fixtures.ts`, and the picker's two facts to `src/panel/picker.test.tsx` — the split
+`git-forge` already uses (`test-fixtures.ts` + one suite per subject). The suite count went 6 → 7 with
+the same 53 tests.
+
+Verified after the removal: `bun test` (53 tests across 7 files, the two `RepoPicker` tests from
+§13 unchanged), `bun src/cli/kabmo.js plugin build marketplace/plugins/github-actions`, and
+`tsc --noEmit --noUnusedLocals` over the plugin's sources.

@@ -6,8 +6,8 @@
 /**
  * The panel's formatting, with no Preact in it.
  *
- * Every string a reader sees for a state comes from here, so the list, the run
- * view and the header readout cannot describe the same run two ways. The MARK is
+ * Every string a reader sees for a state comes from here, so the list and the run
+ * view cannot describe the same run two ways. The MARK is
  * a text character rather than an SVG because a plugin bundle is handed only the
  * SDK and the kit — it cannot import the host's icon set — and a tick, a cross, a
  * dot and a dash are legible at 11 px without one.

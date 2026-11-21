@@ -14,7 +14,7 @@
     "icon": "icon.svg",
     "color": "#60a5fa",
     "author": { "name": "Kabmo Labs", "url": "https://github.com/kabmo-labs" },
-    "slots": ["rightPanel", "headerPanel"],
+    "slots": ["rightPanel"],
     "capabilities": ["server", "storage", "rpc", "realtime", "settings", "repo-scope"]
   },
   "peerDependencies": {

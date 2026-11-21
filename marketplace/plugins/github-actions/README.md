@@ -12,7 +12,10 @@ this shows what the host is doing with it.
 | Surface | What it draws |
 |---|---|
 | `rightPanel` — **Runs** | filter (`branch`, state) → run list → one run's jobs and steps → a job's log; cancel / re-run / re-run failed |
-| `headerPanel` | `3 failing`, `2 running`, `CI ok`, `no runs`, `—`; clicking it opens the panel |
+
+There is no navbar readout. A failing-count badge would have to keep a poll
+running for a number nobody is looking at, and the panel is the only reader of
+what it would print.
 
 The repository is the **shared pick** (`useRepoScope`), so switching repos in
 Files, Search, Source Control, Terminal or Forge moves this panel too.
@@ -32,9 +35,8 @@ Measured on this repository (591 runs, 23 workflows) with a token carrying
 | the whole run's log archive (not fetched) | 2.1 MB zipped, 8.5 MB inflated, 179 entries |
 
 A second read of an unchanged resource answers `304` and is **free**: six
-consecutive conditional polls left `x-ratelimit-remaining` untouched. That is why
-a 60-second poll is affordable, and why the list, the run and the jobs are all
-read conditionally.
+consecutive conditional reads left `x-ratelimit-remaining` untouched. That is why
+the list, the run and the jobs are all read conditionally.
 
 ## Progress is counted, not invented
 
@@ -90,7 +92,8 @@ sure?". A refusal is GitHub's own sentence, verbatim.
 ## What it does not do
 
 - **No webhooks.** A webhook needs ingress and a secret; Kabmo is usually behind
-  NAT. Conditional polling is free while nothing changes, so it is the mechanism.
+  NAT. The panel reads when it opens and on Refresh, and an unchanged read is a
+  free `304`, so a reader always sees the state the last read proved.
 - **No artifacts, deployments or workflow dispatch.** Dispatch exists in the API
   (a request without `ref` answers `422`), but its inputs are the workflow file's
   own schema — a second feature.
@@ -100,8 +103,8 @@ sure?". A refusal is GitHub's own sentence, verbatim.
 - **No percentage, no ETA** (see above), and no cross-repository list.
 - **No GitLab/Gitea/Bitbucket.** Actions is GitHub's vocabulary; another host is
   refused by name.
-- **No notifications.** The kit has no toast or OS-notification surface; the
-  header readout is the answer to "tell me when it goes red".
+- **No notifications.** The kit has no toast or OS-notification surface, and this
+  plugin draws no navbar badge: a red `main` is seen by opening the panel.
 
 ## Settings
 
@@ -110,7 +113,6 @@ sure?". A refusal is GitHub's own sentence, verbatim.
 | GitHub token | empty | Read before the environment and `gh`. Stored as a secret. |
 | API base URL | empty | GitHub Enterprise, e.g. `https://github.example.com/api/v3`. |
 | Runs per read | 30 | 1–100. A full page is reported as truncated. |
-| Poll interval | 60 s | Clamped to 15–300 s. Only fires while something is watching. |
 | Log tail | 64 KB | The tail kept by default; "Whole log" asks for more. |
 
 ## Tests
@@ -132,3 +134,9 @@ Each suite owns a rule that fails silently:
   nothing new; a changed one replaces the body.
 - `panel/index.test.tsx` — the assembled panel: rows open a run, a failed read is
   not an empty list, a log refusal names the token.
+- `panel/picker.test.tsx` — a repo pick writes the SHARED slot, and a pick that
+  cannot be read drops the previous scope's rows instead of leaving them on
+  screen under a moved trigger.
+
+The panel suites mount through `panel/test-harness.tsx` (real DOM, faked kit
+services) and read the bodies in `panel/test-fixtures.ts`.
