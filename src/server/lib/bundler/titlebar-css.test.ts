@@ -84,13 +84,22 @@ describe('window-drag contract', () => {
    * the phone header's hamburger and wordmark sat UNDER the traffic lights.
    */
   test('the phone headers use the shell inset', () => {
+    // ONE module states it, and every phone title bar takes its row from there.
+    // Asserting the helper per file was the weaker form: a header could satisfy
+    // it while stating a different height, which is how the editor's row ended
+    // up 8px shorter than the chat header's.
+    expect(source('src/client/lib/ui/phone-row.ts')).toContain('titlebarInsetLeft(');
     for (const path of [
       'src/client/components/mobile/mobile-main-view/Header.tsx',
       'src/client/components/mobile/mobile-session-sidebar/Header.tsx',
       'src/client/components/mobile/mobile-right-sidebar/Chrome.tsx',
+      'src/client/components/mobile/mobile-right-sidebar/Header.tsx',
+      'src/client/components/mobile/mobile-right-sidebar/FullDiff.tsx',
     ]) {
-      expect(source(path)).toContain('titlebarInsetLeft(');
+      expect(source(path)).toContain('phoneRowStyle(');
     }
+    // A full-screen frame is not a row: it takes the insets without the height.
+    expect(source('src/client/components/workspace/model-dropdown/Fullscreen.tsx')).toContain('phoneFrameStyle(');
   });
 
   /**

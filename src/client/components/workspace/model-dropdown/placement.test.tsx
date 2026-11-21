@@ -111,17 +111,19 @@ describe('the full-screen frame', () => {
     expect(document.querySelector('[role="dialog"]')).toBeNull();
   });
 
-  test('the content is the picker’s own, and the close control dismisses it', () => {
+  test('the content is the picker’s own, and the frame draws no header row', () => {
     // One tree, two frames: a full-screen view that re-implemented the list
     // would drift from the popover (a new section landing in only one of them).
     const children = h('div', { 'data-testid': 'picker-content' }, 'rows');
-    let closed = 0;
-    act(() => render(h(ModelFullscreen, { open: true, onClose: () => { closed += 1; }, children }), container));
+    act(() => render(h(ModelFullscreen, { open: true, children }), container));
 
     expect(document.querySelector('[data-testid="picker-content"]')?.textContent).toBe('rows');
-    const close = document.querySelector<HTMLButtonElement>('button[aria-label="Close"]');
-    expect(close).not.toBeNull();
-    act(() => close?.click());
-    expect(closed).toBe(1);
+    // The frame used to own a 36px band whose only content was the word "Model"
+    // and an `X`, sitting above the harness strip — two chrome rows where every
+    // other phone surface has one. The close control now rides the picker's
+    // first row (`ModelDropdownPanel`), so the frame has no header at all.
+    const dialog = document.querySelector('[role="dialog"][aria-label="Select model"]') as HTMLElement;
+    expect(dialog.querySelector('header')).toBeNull();
+    expect(dialog.textContent).not.toContain('Model');
   });
 });
