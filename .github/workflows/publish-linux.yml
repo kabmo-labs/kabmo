@@ -331,7 +331,7 @@ jobs:
       # `.AppImage` and its `.zsync`. A pattern that named only `*.tar.gz` would
       # build the packages and then throw them away.
       - name: Upload the app artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: kabmo-linux-app-${{ matrix.arch }}
           path: |
@@ -364,7 +364,7 @@ jobs:
       # architecture, and `merge-multiple` puts both archives in one directory so a
       # single `gh release upload` carries the pair.
       - name: Download the app artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: kabmo-linux-app-*
           merge-multiple: true

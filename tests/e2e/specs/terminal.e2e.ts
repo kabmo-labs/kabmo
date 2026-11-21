@@ -38,6 +38,22 @@
 import { test, expect, openApp, skipOnWindows } from '../fixtures/app';
 import { seedWorkspace } from '../fixtures/seed';
 
+/**
+ * One blue background block read off the terminal canvas, in device pixels.
+ *
+ * `y0`/`y1` are the block's first and last painted row, `inkTop`/`inkBottom` the
+ * first and last near-black glyph row inside it, and `height` the block in CSS
+ * px so the assertion is the cell height itself rather than twice it on a 2x
+ * display.
+ */
+interface PaintedBlock {
+  y0: number;
+  y1: number;
+  height: number;
+  inkTop: number;
+  inkBottom: number;
+}
+
 test.describe('terminal', () => {
   test('opens a shell and the shell answers a command', async ({ harness, page }) => {
     const server = await harness('real');
@@ -206,7 +222,7 @@ test.describe('terminal', () => {
     await page.getByRole('button', { name: 'Terminal (Bun)' }).click();
     await expect(page.locator('[data-terminal-root]')).toBeVisible({ timeout: 20_000 });
 
-    const painted = () =>
+    const painted = (): Promise<PaintedBlock | null> =>
       page.evaluate(() => {
         const canvas = document.querySelector('[data-terminal-root] canvas');
         if (!(canvas instanceof HTMLCanvasElement)) return null;
@@ -279,20 +295,39 @@ test.describe('terminal', () => {
     await page.keyboard.type("clear; printf '\\033[44m    ggyypp    \\033[0m\\n'");
     await page.keyboard.press('Enter');
 
-    // Poll on the block itself, not on "something is painted": the cursor is a
-    // one-pixel-high band while the command is still being typed.
+    // Poll on the WHOLE invariant, and let the poll's own message be the
+    // failure: a poll that returns the first read it accepted is the only way
+    // to assert on the same canvas snapshot the predicate saw.
+    //
+    // This used to poll for `height >= 14` and then call `painted()` a second
+    // time to assert on. Those are two reads of a canvas the panel REPAINTS: a
+    // re-fit (font load, box settle) clears it and paints again on the next
+    // frame, so the second read could land in the cleared window and return
+    // `null` after the poll had already seen a good block. That is exactly how
+    // this failed on the 2026-11-21 release run — `the painted block was not
+    // found` on attempt 1, green on the retry. `painted()` is a single
+    // `getImageData` of the whole canvas, so one call IS a consistent snapshot;
+    // the bug was taking two.
+    //
+    // The height is part of the predicate because the cursor is a
+    // one-pixel-high band while the command is still being typed, and the ink
+    // checks are what the cell box is being measured for: at 12 px Fira Code
+    // the cell is 15 px — 11 px of ink plus 2.5 px above and 1 px below (the
+    // vendor's own measurement gives 13) — so a descender must not end on the
+    // block's last pixel and the cap must not start on its first.
     await expect
-      .poll(async () => (await painted())?.height ?? 0, { timeout: 20_000 })
-      .toBeGreaterThanOrEqual(14);
-    const block = await painted();
-    if (!block) throw new Error('the painted block was not found');
-
-    // A descender must not end on the block's last pixel, and the cap must not
-    // start on its first: at 12 px Fira Code the cell is 15 px — 11 px of ink
-    // plus 2.5 px above and 1 px below (the vendor's own measurement gives 13).
-    expect(block.height).toBeGreaterThanOrEqual(15);
-    expect(block.inkTop).toBeGreaterThan(block.y0);
-    expect(block.inkBottom).toBeLessThan(block.y1);
+      .poll(async () => {
+        const seen = await painted();
+        if (seen === null) return 'no painted block';
+        if (seen.height < 15) return `the block is ${seen.height}px tall`;
+        // `inkTop` is `Infinity` when no glyph pixel was found, and that would
+        // pass the `> y0` comparison below — so an inkless read is its own case.
+        if (seen.inkBottom < 0) return 'the block carries no glyph ink';
+        if (seen.inkTop <= seen.y0) return 'the ink starts on the block’s first pixel';
+        if (seen.inkBottom >= seen.y1) return 'the ink ends on the block’s last pixel';
+        return 'ok';
+      }, { timeout: 20_000 })
+      .toBe('ok');
 
     workspace.dispose();
   });

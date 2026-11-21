@@ -270,7 +270,7 @@ jobs:
       # Both shapes ride in it — a pattern naming only `*.zip` would build the
       # `.dmg` and then throw it away.
       - name: Upload the app artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: kabmo-macos-app-${{ matrix.arch }}
           path: |
@@ -301,7 +301,7 @@ jobs:
       # architecture, and `merge-multiple` puts both archives in one directory so
       # a single `gh release upload` carries the pair.
       - name: Download the app artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: kabmo-macos-app-*
           merge-multiple: true

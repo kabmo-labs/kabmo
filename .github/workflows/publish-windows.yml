@@ -153,13 +153,13 @@ jobs:
       # but pinning the channel is what makes the build reproducible rather than a
       # property of the image.
       #
-      # No `architecture` input: `setup-dotnet@v4` does not declare one, and it is
+      # No `architecture` input: `setup-dotnet@v6` does not declare one, and it is
       # not needed — the SDK is installed per image in the image's OWN architecture
       # (verified: the `windows-11-arm` readme lists .NET 8.0.131 … 8.0.425), so
       # `8.0.x` resolves to the host build and downloads nothing. The TARGET
       # architecture is `-r` below, and the artifact's PE header is what proves it.
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '8.0.x'
 
@@ -306,7 +306,7 @@ jobs:
       # (or a dispatch's own attach), so a longer window would only clutter the run's
       # artifacts with binaries nothing reads.
       - name: Upload the app artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: kabmo-windows-app-${{ matrix.arch }}
           path: build/installer/*.exe
@@ -335,7 +335,7 @@ jobs:
       # architecture, and `merge-multiple` puts both installers in one directory so
       # a single `gh release upload` carries the pair.
       - name: Download the app artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: kabmo-windows-app-*
           merge-multiple: true

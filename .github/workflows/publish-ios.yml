@@ -193,7 +193,7 @@ jobs:
       # one pipeline rather than two independent builds. Retention is a day: the only
       # consumer is the attach call in this same run.
       - name: Upload the IPA artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: kabmo-ios-ipa
           path: ./*.ipa
@@ -217,7 +217,7 @@ jobs:
       contents: write
     steps:
       - name: Download the IPA artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: kabmo-ios-ipa
           path: .
