@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { ChevronLeft, X } from 'lucide-preact';
 import type { SettingsCategoryId, SettingsState } from '@/shared/types';
 import { mergeKabmoSettings } from '@/shared/lib/settings/client';
 import { diffSettings } from '@/shared/lib/settings/diff';
@@ -152,6 +151,7 @@ export function SettingsModal({
         className="glass-overlay relative bg-paper border border-ink/15 md:rounded-2xl shadow-2xl w-full h-full md:max-w-5xl lg:max-w-6xl xl:max-w-[1280px] md:h-[min(90vh,900px)] md:max-h-[92vh] flex flex-col md:flex-row overflow-hidden text-ink"
         onClick={(e) => e.stopPropagation()}
       >
+        <SettingsDrillProvider register={registerDrill}>
         {/* DESKTOP VIEW: 2-Column Split */}
         <div className="hidden md:flex w-72 flex-shrink-0 h-full">
           <SettingsSidebar
@@ -169,33 +169,41 @@ export function SettingsModal({
           />
         </div>
 
-        {/* DESKTOP & MOBILE DETAIL VIEW */}
-        <div className={`flex-1 flex-col h-full overflow-hidden ${isMobileDrilled ? 'flex' : 'hidden md:flex'}`}>
-          {/* Header Bar. Its height is the sheet's one band height, so the rule
-              under the drawer's search field continues across this seam.
-              The inset carries the safe area on a phone: the modal is
-              full-screen below `md`, so without it the back button and the
-              title sit under the status bar / notch. */}
-          <div
-            className={`${SETTINGS_BAND} px-6 justify-between`}
-            style={{
-              height: SETTINGS_BAND_HEIGHT_INSET,
-              paddingTop: 'env(safe-area-inset-top, 0px)',
-              paddingLeft: 'max(1.5rem, env(safe-area-inset-left, 0px))',
-              paddingRight: 'max(1.5rem, env(safe-area-inset-right, 0px))',
-            }}
-          >
-            <div className="flex items-center space-x-3 min-w-0">
-              {/* Mobile Back Button */}
-              <button
-                type="button"
-                onClick={() => setIsMobileDrilled(false)}
-                className="md:hidden p-1.5 -ml-2 rounded-lg hover:bg-ink/5 active:bg-ink/10 text-ink"
-                aria-label="Back to categories"
-              >
-                <ChevronLeft size={20} />
-              </button>
+        {/* THE PHONE'S ONE BAND. It used to be drawn three times (the sheet's
+            bar, the master/detail back bar, the group band — measured 64 + 35 +
+            64px), and two of the three were a back control. It now names
+            whatever screen is up: "Settings" at the root, the category once
+            opened, and the drilled pane's own label when a category registers
+            one (`settings/drill.tsx`). The back control appears only when there
+            is somewhere to go. */}
+        <div className="md:hidden flex-shrink-0 bg-canvas">
+          <SettingsBand
+            root={!isMobileDrilled || drill === null}
+            label={!isMobileDrilled ? 'Settings' : drill?.label ?? currentCategoryDef.label}
+            {...(!isMobileDrilled
+              ? {}
+              : { description: drill?.description ?? currentCategoryDef.description })}
+            {...(isMobileDrilled
+              ? {
+                  onBack: drill?.back ?? (() => setIsMobileDrilled(false)),
+                  backLabel: drill?.backLabel ?? 'Back to categories',
+                }
+              : {})}
+            onClose={onClose}
+          />
+        </div>
 
+        {/* DESKTOP & MOBILE DETAIL VIEW. On a phone this is ONE screen under
+            that band; on a desktop the band is the detail column's own, naming
+            the category (both panes are visible, so there is no screen to
+            leave). */}
+        <div className={`flex-1 flex-col h-full overflow-hidden min-w-0 ${isMobileDrilled ? 'flex' : 'hidden md:flex'}`}>
+          <div className="hidden md:block flex-shrink-0">
+            <SettingsBand
+              label={currentCategoryDef.label}
+              description={currentCategoryDef.description}
+              onClose={onClose}
+            />
           </div>
 
           {/* Scrollable Settings Body - Full Width across all categories */}
@@ -223,28 +231,9 @@ export function SettingsModal({
           </div>
         </div>
 
-        {/* MOBILE CATEGORY LIST VIEW (When not drilled into detail) */}
-        <div className={`flex-1 flex-col h-full bg-canvas md:hidden ${isMobileDrilled ? 'hidden' : 'flex'}`}>
-          <div
-            className={`${SETTINGS_BAND} px-4 justify-between bg-canvas`}
-            style={{
-              height: SETTINGS_BAND_HEIGHT_INSET,
-              paddingTop: 'env(safe-area-inset-top, 0px)',
-              paddingLeft: 'max(1rem, env(safe-area-inset-left, 0px))',
-              paddingRight: 'max(1rem, env(safe-area-inset-right, 0px))',
-            }}
-          >
-            <span className="font-bold text-sm tracking-tight text-ink">Settings</span>
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-1.5 rounded-lg text-ink/50 hover:text-ink"
-              aria-label="Close"
-            >
-              <X size={18} />
-            </button>
-          </div>
-
+        {/* MOBILE CATEGORY LIST VIEW (When not drilled into detail). Under the
+            same one band, so the root screen is a list, not a second header. */}
+        <div className={`flex-1 flex-col h-full bg-canvas md:hidden min-h-0 ${isMobileDrilled ? 'hidden' : 'flex'}`}>
           <div
             className="flex-1 overflow-hidden"
             style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
@@ -263,6 +252,7 @@ export function SettingsModal({
             />
           </div>
         </div>
+        </SettingsDrillProvider>
       </div>
     </div>
   );
