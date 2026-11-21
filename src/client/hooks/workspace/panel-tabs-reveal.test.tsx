@@ -47,7 +47,9 @@ let container: HTMLElement;
 /** The column's props, driven from outside by the hook cases. */
 let column = { open: false, view: 'files', enabled: true, known: new Set(['files', 'git', 'todo']) };
 /** What the probe last rendered. */
-let seen: { tabs: readonly string[]; active: string | null; home: boolean } | null = null;
+let seen: { tabs: readonly string[]; active: string | null; home: boolean; chosenHome: boolean } | null = null;
+/** The probe's writer, so a test can close a tab the way the strip does. */
+let actions: { open: (id: string) => void; close: (id: string) => void } | null = null;
 
 function Probe() {
   const tabs = usePanelTabs('right', column.known, null);
@@ -56,10 +58,12 @@ function Probe() {
     revealed: useRevealEdge(column.open),
     view: column.view,
     home: tabs.home,
+    chosenHome: tabs.chosenHome,
     openTab: tabs.open,
     known: column.known,
   });
-  seen = { tabs: tabs.tabs, active: tabs.active, home: tabs.home };
+  seen = { tabs: tabs.tabs, active: tabs.active, home: tabs.home, chosenHome: tabs.chosenHome };
+  actions = { open: tabs.open, close: tabs.close };
   return h('div', null, JSON.stringify(seen));
 }
 
@@ -119,6 +123,7 @@ afterEach(() => {
     container.remove();
   }
   seen = null;
+  actions = null;
 });
 
 /** The rule, as data: only the reveal edge on a home page with a drawable view. */
@@ -126,6 +131,7 @@ describe('revealTabId', () => {
   const base: RevealTabInput = {
     revealed: true,
     home: true,
+    chosenHome: false,
     view: 'files',
     known: new Set(['files', 'git']),
     enabled: true,
@@ -133,6 +139,13 @@ describe('revealTabId', () => {
 
   test('a reveal on the home page opens the stored view', () => {
     expect(revealTabId(base)).toBe('files');
+  });
+
+  test('a home page the user closed a tab down to is not reopened', () => {
+    // The reported defect: closing the right panel's tab and then toggling the
+    // panel brought that tab back. A close is an answer; the reveal must not
+    // read the resulting catalog as "nothing was ever open".
+    expect(revealTabId({ ...base, chosenHome: true })).toBeNull();
   });
 
   test('a column that was already open is not a reveal', () => {
@@ -193,17 +206,19 @@ describe('the column, mounted and toggled', () => {
     // A restored selection is not a request (`useRightOpenRequest` owns that),
     // and a fresh tab-style install must not open Files by itself.
     currentSession = 'reveal-mount-open';
-    hydrateSession(currentSession, { 'layout.rightPanelTabs': { tabs: [], active: null, home: true } });
+    hydrateSession(currentSession, {});
     column.open = true;
     mount(currentSession);
-    expect(seen).toEqual({ tabs: [], active: null, home: true });
+    expect(seen).toEqual({ tabs: [], active: null, home: true, chosenHome: false });
   });
 
   test('putting the side away and bringing it back opens the stored view', async () => {
+    // A session that has NEVER held a tab: the empty strip is the default home
+    // page, not something the user chose, so the toggle brings its view back.
     currentSession = 'reveal-edge';
-    hydrateSession(currentSession, { 'layout.rightPanelTabs': { tabs: [], active: null, home: true } });
+    hydrateSession(currentSession, {});
     mount(currentSession);
-    expect(seen).toEqual({ tabs: [], active: null, home: true });
+    expect(seen).toEqual({ tabs: [], active: null, home: true, chosenHome: false });
 
     column.open = true;
     await rerender();
@@ -214,6 +229,29 @@ describe('the column, mounted and toggled', () => {
     // The write is the strip's own, so the persisted shape is a real tab.
     const stored = getSessionValue<{ tabs: string[]; active: string; home: boolean }>(currentSession, 'layout.rightPanelTabs');
     expect(stored).toEqual({ tabs: ['files'], active: 'files', home: false });
+  });
+
+  test('a tab closed by the user stays closed across a toggle', async () => {
+    // The reported defect: closing the right panel's last tab and toggling the
+    // panel back brought that tab out of the catalog, because the empty strip
+    // was read as "this session never opened one".
+    currentSession = 'reveal-closed';
+    hydrateSession(currentSession, {});
+    mount(currentSession);
+
+    column.open = true;
+    await rerender();
+    expect(seen?.tabs).toEqual(['files']);
+
+    act(() => actions!.close('files'));
+    expect(seen).toEqual({ tabs: [], active: null, home: true, chosenHome: true });
+
+    column.open = false;
+    await rerender();
+    column.open = true;
+    await rerender();
+
+    expect(seen).toEqual({ tabs: [], active: null, home: true, chosenHome: true });
   });
 
   test('a column that already had a tab is only revealed, never re-opened', async () => {
@@ -228,18 +266,18 @@ describe('the column, mounted and toggled', () => {
 
     // Nothing appended, nothing selected differently: revealing a column that
     // already shows a view is the whole of the click.
-    expect(seen).toEqual({ tabs: ['git'], active: 'git', home: false });
+    expect(seen).toEqual({ tabs: ['git'], active: 'git', home: false, chosenHome: false });
   });
 
   test('a rail column ignores the toggle entirely', async () => {
     currentSession = 'reveal-rail';
-    hydrateSession(currentSession, { 'layout.rightPanelTabs': { tabs: [], active: null, home: true } });
+    hydrateSession(currentSession, {});
     column.enabled = false;
     mount(currentSession);
 
     column.open = true;
     await rerender();
 
-    expect(seen).toEqual({ tabs: [], active: null, home: true });
+    expect(seen).toEqual({ tabs: [], active: null, home: true, chosenHome: false });
   });
 });

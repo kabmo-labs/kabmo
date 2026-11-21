@@ -44,6 +44,15 @@ export interface PanelTabsHandle {
   active: string | null;
   /** The catalog is on screen. The strip and the selection stay behind it. */
   home: boolean;
+  /**
+   * The home page was ASKED for — `+`, or closing the last tab — as opposed to
+   * a column that has simply never held a tab.
+   *
+   * `home` cannot answer this: it is also true for an empty strip, which is how
+   * a fresh session starts. A reveal may leave the default home page, but it
+   * must never undo a close.
+   */
+  chosenHome: boolean;
   /** Open a view (or focus it when it is already open) and select it. */
   open: (id: string) => void;
   /** Select a tab that is already open; a no-op for an id that is not. */
@@ -89,7 +98,11 @@ function readStored(value: unknown): ColumnTabs {
   const tabs = Array.isArray(raw.tabs)
     ? raw.tabs.filter((id): id is string => typeof id === 'string')
     : [];
-  if (tabs.length === 0) return EMPTY;
+  // `home` survives an EMPTY strip, and it must: closing the last tab writes
+  // `{ tabs: [], home: true }`, and collapsing that to `EMPTY` (which spells
+  // `home: false`) erased the one fact that says the user CHOSE the catalog.
+  // The reveal rule then read it as a fresh session and reopened the tab they
+  // had just closed. An empty list is not a corrupt blob; only a non-object is.
   const active = typeof raw.active === 'string' ? raw.active : null;
   return { tabs, active, home: raw.home === true };
 }
@@ -135,6 +148,10 @@ export function usePanelTabs(
   // pinned column that was closed down to its pinned tab only if the user asked
   // for it — which is the stored `home` flag, not a consequence.
   const home = stored.home || tabs.length === 0;
+  // The stored flag, WITHOUT the empty-strip fallback: a reveal must be able to
+  // tell "the user closed the last tab" (keep the catalog) from "this session
+  // has never opened one" (leaving the catalog for a view is the toggle's job).
+  const chosenHome = stored.home;
 
   const write = useCallback((next: ColumnTabs) => setStored(next), [setStored]);
 
@@ -190,5 +207,5 @@ export function usePanelTabs(
     [tabs, active, home, pinned, write],
   );
 
-  return { tabs, active, home, open, select, close, setOrder, showHome };
+  return { tabs, active, home, chosenHome, open, select, close, setOrder, showHome };
 }

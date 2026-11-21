@@ -131,6 +131,7 @@ export function RightColumn({
     revealed,
     view: shownPanel,
     home: tabsState.home,
+    chosenHome: tabsState.chosenHome,
     openTab: tabsState.open,
     known,
   });

@@ -160,6 +160,7 @@ export function LeftColumn({
     revealed,
     view,
     home: tabsState.home,
+    chosenHome: tabsState.chosenHome,
     openTab: tabsState.open,
     known,
   });
