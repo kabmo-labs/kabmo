@@ -110,15 +110,40 @@ export function MobileRightSidebar({
   const arm = (id: string) => {
     if (id !== activePanel?.id) armTerminalSoftKeyboard(id);
   };
+
+  /**
+   * A tab change the DRAWER itself made — a chip, a card, a close — as opposed
+   * to one that arrived from outside.
+   *
+   * `layout.mobileRightPanel` is BOTH the mirror of the strip's selection and
+   * the slot an outside caller writes to ask for a view (`omp:open-panel`, the
+   * layout's own handler). The seed effect below cannot tell "the user just
+   * closed this tab" from "something asked for this view": a close writes
+   * `active` to the neighbour while `activeTab` is still one render behind, so
+   * the seed re-opened the tab that had just been closed — and an open did the
+   * same to the view the user was leaving. That is the reported "the active
+   * panel will not close, and the previous one comes back with the next one".
+   *
+   * The flag marks the commit that follows a gesture from here; the seed effect
+   * consumes it and skips exactly that one. A mount and an outside request
+   * never set it, so both still seed.
+   */
+  const ownGesture = useRef(false);
   const tabHandle = {
     ...tabsState,
     select: (id: string) => {
+      ownGesture.current = true;
       arm(id);
       tabsState.select(id);
     },
     open: (id: string) => {
+      ownGesture.current = true;
       arm(id);
       tabsState.open(id);
+    },
+    close: (id: string) => {
+      ownGesture.current = true;
+      tabsState.close(id);
     },
   };
   // The drawer is a SCREEN, so only the active view may be mounted and a delete
@@ -131,6 +156,15 @@ export function MobileRightSidebar({
   }, [tabsMode, tabsState.active, activeTab, setActiveTab]);
   useEffect(() => {
     if (!tabsMode || tabsState.home) return;
+    // A commit the drawer made ITSELF (a chip, a card, a close) is already the
+    // answer, not a request: re-seeding it would reopen the tab that was just
+    // closed, or the view the user is leaving. Only a commit that came from
+    // outside (the drawer mounting, `omp:open-panel` writing the key while the
+    // drawer is closed) seeds.
+    if (ownGesture.current) {
+      ownGesture.current = false;
+      return;
+    }
     // A RESTORED selection is not a request, the same rule the desktop column
     // follows: `layout.mobileRightPanel` falls back to `files`, so seeding from
     // it unconditionally opened a Files tab on every fresh chat and the home

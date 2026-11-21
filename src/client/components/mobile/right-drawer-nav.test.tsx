@@ -28,6 +28,7 @@ import { act } from 'preact/test-utils';
 import { MobileRightSidebar } from '@/client/components/mobile/RightSidebar';
 import { SessionStateProvider } from '@/client/components/common/session-state-provider/index';
 import { primeKabmoSettings } from '@/shared/lib/settings/client';
+import { resetSessionStateStore } from '@/shared/lib/workspace/session-state/store';
 import { silenceRealtime, restoreRealtime } from '@/test-support/silent-socket';
 
 const DOM_GLOBALS = [
@@ -66,6 +67,9 @@ afterAll(async () => {
 
 beforeEach(() => {
   silenceRealtime();
+  // The store is a module singleton: a close left behind by one test would
+  // otherwise seed the next one's drawer.
+  resetSessionStateStore();
   container = document.createElement('div');
   document.body.appendChild(container);
   primeKabmoSettings({});
@@ -171,5 +175,84 @@ describe('the home page is the empty state', () => {
   test('classic has no home page at all', async () => {
     await mount('classic');
     expect(container.textContent).not.toContain('Klik kartu');
+  });
+});
+
+/**
+ * A tab the user closed must stay closed, and the next open must not bring it
+ * back.
+ *
+ * `layout.mobileRightPanel` is TWO things at once: the mirror of the strip's
+ * selection, and the slot an outside caller writes to ask for a view. Closing a
+ * tab writes the neighbour into it, but the mirror (`activeTab`) is one render
+ * behind — so the seed effect read the just-closed id as a request and reopened
+ * it. That is the reported pair of symptoms: the active tab would not close, and
+ * opening a new panel brought the previous one back with it.
+ *
+ * Both cases are here, and each fails without the drawer marking its own
+ * gestures (`ownGesture`).
+ */
+describe('closing a tab', () => {
+  /** Click a home-page card by its view title. */
+  async function openCard(title: string) {
+    const card = [...container.querySelectorAll('[aria-label^="Buka "]')].find(
+      (element) => element.getAttribute('aria-label') === `Buka ${title}`,
+    ) as HTMLElement | undefined;
+    expect(card).toBeDefined();
+    await act(() => {
+      card?.click();
+    });
+    await settle();
+  }
+
+  /** Re-open the catalog from the strip's add control. */
+  async function showCatalog() {
+    const add = container.querySelector('[aria-label="Tambah tab"]') as HTMLElement | undefined;
+    expect(add).not.toBeNull();
+    await act(() => {
+      add?.click();
+    });
+    await settle();
+  }
+
+  /** Two tabs open, the second one on screen. */
+  async function openTwoTabs() {
+    await mount('tabs');
+    await openCard('Files');
+    await showCatalog();
+    await openCard('Source Control');
+    expect(stripChips().length).toBe(2);
+  }
+
+  test('closing the ACTIVE tab removes it', async () => {
+    await openTwoTabs();
+    // The chip states the view's LABEL, and the close control is named after it.
+    const active = stripChips()[1] ?? '';
+    const close = container.querySelector(`[aria-label="Tutup tab ${active}"]`) as
+      | HTMLElement
+      | null;
+    expect(close).not.toBeNull();
+    await act(() => {
+      close?.click();
+    });
+    await settle();
+    expect(stripChips()).toEqual(['Files']);
+  });
+
+  test('a closed tab does not reopen when the next one is opened', async () => {
+    await openTwoTabs();
+    const active = stripChips()[1] ?? '';
+    const close = container.querySelector(`[aria-label="Tutup tab ${active}"]`) as
+      | HTMLElement
+      | null;
+    await act(() => {
+      close?.click();
+    });
+    await settle();
+
+    // The report's second half: opening another view must not resurrect it.
+    await showCatalog();
+    await openCard('Search');
+    expect(stripChips()).toEqual(['Files', 'Search']);
   });
 });
