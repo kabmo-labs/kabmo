@@ -105,7 +105,7 @@ export const PANEL_NAV_SETTING_KEYS: Record<PanelNavSide, 'leftPanelNav' | 'righ
 };
 
 /**
- * How the PHONE's right drawer navigates its panel views.
+ * How a PHONE drawer navigates its panel views (`classic` | `tabs`).
  *
  * A separate axis from the desktop columns because a phone has no rail: there
  * is nowhere to put a 44px strip of marks beside a drawer that already IS the
@@ -118,31 +118,42 @@ export const PANEL_NAV_SETTING_KEYS: Record<PanelNavSide, 'leftPanelNav' | 'righ
  *    views the user opened, a home page draws the catalog as cards, and the
  *    drawer reopens on what was open rather than on the whole list.
  *
+ * ONE type for BOTH drawers, and two stored keys (`MOBILE_PANEL_NAV_KEYS`):
+ * the shape of the choice is the same fact, while which drawer it applies to
+ * is per side — the desktop columns are split the same way
+ * (`PANEL_NAV_SETTING_KEYS`).
+ *
  * **`classic` is the default**, like the desktop's `rail`: an upgrade
  * rearranges nothing, and a user who wants the drawer to behave like the
  * desktop column opts in.
  */
-export type MobileRightPanelNav = 'classic' | 'tabs';
+export type MobilePanelNav = 'classic' | 'tabs';
 
 /** Every mobile style, in the order the settings control lists them. */
-export const MOBILE_RIGHT_PANEL_NAVS = ['classic', 'tabs'] as const;
+export const MOBILE_PANEL_NAVS = ['classic', 'tabs'] as const;
 
-export const DEFAULT_MOBILE_RIGHT_PANEL_NAV: MobileRightPanelNav = 'classic';
+export const DEFAULT_MOBILE_PANEL_NAV: MobilePanelNav = 'classic';
 
-export function isMobileRightPanelNav(value: unknown): value is MobileRightPanelNav {
+export function isMobilePanelNav(value: unknown): value is MobilePanelNav {
   return value === 'classic' || value === 'tabs';
 }
 
 /** A stored value this build cannot draw resolves to the default. */
-export function resolveMobileRightPanelNav(value: unknown): MobileRightPanelNav {
-  return isMobileRightPanelNav(value) ? value : DEFAULT_MOBILE_RIGHT_PANEL_NAV;
+export function resolveMobilePanelNav(value: unknown): MobilePanelNav {
+  return isMobilePanelNav(value) ? value : DEFAULT_MOBILE_PANEL_NAV;
 }
 
 /**
- * The `app_settings` key the phone's choice lives under.
+ * The `app_settings` key each drawer's choice is stored under.
  *
  * `satisfies keyof SettingsState` at the reader, like every other key module:
  * the key and the field name must be the same string or the setting silently
  * never persists.
  */
-export const MOBILE_RIGHT_PANEL_NAV_KEY = 'mobileRightPanelNav' as const;
+export const MOBILE_PANEL_NAV_KEYS: Record<
+  PanelNavSide,
+  'mobileLeftPanelNav' | 'mobileRightPanelNav'
+> = {
+  left: 'mobileLeftPanelNav',
+  right: 'mobileRightPanelNav',
+};

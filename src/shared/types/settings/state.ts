@@ -2,7 +2,7 @@ import type { ThemeId } from '@/shared/lib/theme/catalog';
 import type { ChatWidthMode } from '@/shared/lib/chat/timeline/width-mode';
 import type { ToolRenderMode } from '@/shared/lib/chat/timeline/tool-render-mode';
 import type { SidebarStyle } from '@/shared/lib/workspace/sidebar-style';
-import type { MobileRightPanelNav, PanelNavStyle } from '@/shared/lib/workspace/panel-nav';
+import type { MobilePanelNav, PanelNavStyle } from '@/shared/lib/workspace/panel-nav';
 import type { ComposerStyle } from '@/shared/lib/chat/composer/style';
 import type { SurfaceStyle } from '@/shared/lib/theme/surface-style';
 import type { BorderStyle } from '@/shared/lib/theme/border-style';
@@ -194,9 +194,10 @@ export interface SettingsState {
    * already has; `tabs` is a browser-style strip of opened views over a home
    * page that draws the whole catalog as a card grid.
    *
-   * **Independent of `rightPanelNav`**, and desktop-only: a phone has one drawer
-   * per side and keeps its chip strip, so `mobile/**` never reads either value.
-   * `rail` is the default so an upgrade rearranges nothing.
+   * **Independent of `rightPanelNav`**, and desktop-only: the phone's left
+   * drawer has its own axis (`mobileLeftPanelNav`), because a drawer is a screen
+   * with no rail to put beside it. `rail` is the default so an upgrade
+   * rearranges nothing.
    */
   leftPanelNav: PanelNavStyle;
   /**
@@ -209,13 +210,24 @@ export interface SettingsState {
    */
   rightPanelNav: PanelNavStyle;
   /**
+   * How the PHONE's LEFT drawer navigates its views (`classic` | `tabs`).
+   *
+   * Independent of `mobileRightPanelNav`, for the same reason the desktop
+   * columns are split: the left drawer is the session list plus placed panels,
+   * the right is a working set opened and closed all day, so one column's best
+   * shape is not the other's. Under `tabs` the session list is the PINNED first
+   * chip, exactly as it is on the desktop — a drawer with no way back to another
+   * chat is a dead end.
+   */
+  mobileLeftPanelNav: MobilePanelNav;
+  /**
    * How the PHONE's right drawer navigates its views (`classic` | `tabs`).
    *
    * Its own axis, not a reuse of the desktop values: a phone has no rail to put
    * beside a drawer that already is the screen, so the choice is between "every
    * view is a chip" and "the strip holds what is open, over a home page".
    */
-  mobileRightPanelNav: MobileRightPanelNav;
+  mobileRightPanelNav: MobilePanelNav;
   /**
    * How the chat composer is drawn (`classic` | `calm` | `console` | `stage`).
    * A PRESENTATION choice over one composer: every style renders the same

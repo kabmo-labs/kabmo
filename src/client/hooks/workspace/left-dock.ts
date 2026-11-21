@@ -57,6 +57,25 @@ function publish(): void {
   for (const listener of listeners) listener();
 }
 
+/**
+ * Turn the rail on because a setting just made it load-bearing.
+ *
+ * The phone's LEFT drawer only has a strip while the rail is on
+ * (`use-dock.ts` mirrors `LeftColumn`'s `railEnabled && style === 'tabs'`), so
+ * choosing `tabs` with the rail off produced a card that said "active" over a
+ * drawer that drew nothing — the switch had no effect and the setting looked
+ * broken. The coupling lives here, with the store, for the same reason
+ * `persistPanelSide` does: a second caller must not be able to produce a style
+ * nobody can see.
+ *
+ * A no-op when the rail is already on, so it cannot publish a spurious change.
+ */
+export function revealLeftDock(): void {
+  if (readLeftDock().enabled) return;
+  writeLeftDock({ enabled: true });
+  publish();
+}
+
 export interface LeftDockHandle extends LeftDockState {
   /** Draw the dock's activity bar. Off by default. */
   setEnabled: (enabled: boolean) => void;

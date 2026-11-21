@@ -1,7 +1,5 @@
 import { useState } from 'preact/hooks';
 import { MobileSessionHeader } from '@/client/components/mobile/mobile-session-sidebar/Header';
-import { ClassicDrawer } from '@/client/components/mobile/mobile-session-sidebar/ClassicDrawer';
-import { ModernSidebarView } from '@/client/components/layout/session-sidebar/modern';
 import { MobileSessionFooter } from '@/client/components/mobile/mobile-session-sidebar/Footer';
 import { useMobileUpdateFlow } from '@/client/hooks/ui/updates/mobile-flow';
 import { useToasts } from '@/client/hooks/ui/toasts';
@@ -11,14 +9,17 @@ import { useSidebarStyle } from '@/client/hooks/workspace/sidebar-style';
 import { openKeyBindingHelp } from '@/client/lib/commands/overlays';
 import { useScheduledTaskCount } from '@/client/hooks/workspace/scheduled-tasks';
 import { phoneLeftStripVisible } from '@/shared/lib/workspace/mobile-dock';
-import { MobileDockBody, MobileDockStrip } from '@/client/components/mobile/mobile-session-sidebar/Dock';
+import { SESSIONS_VIEW_ID } from '@/shared/lib/workspace/left-dock';
+import { MobileDockStrip } from '@/client/components/mobile/mobile-session-sidebar/Dock';
+import { DrawerBody } from '@/client/components/mobile/mobile-session-sidebar/Body';
+import { PanelTabsColumn } from '@/client/components/workspace/panel-tabs';
+import { useMobileDrawerTabs } from '@/client/components/mobile/mobile-session-sidebar/use-drawer-tabs';
+import { drawerStripProps } from '@/client/components/mobile/drawer-strip';
 import { MobileDrawerDialogs } from '@/client/components/mobile/mobile-session-sidebar/Dialogs';
 import { useDrawerState } from '@/client/components/mobile/mobile-session-sidebar/use-drawer';
 import { archiveOutcomeMessage } from '@/client/hooks/workspace/batch-archive';
-import { BatchActionBar } from '@/client/components/common/batch-selection/BatchActionBar';
 import { VisibilityMenu } from '@/client/components/layout/VisibilityMenu';
 import { usePanelVisibilityMenu } from '@/client/hooks/workspace/panel-visibility-menu';
-import type { SessionSidebarVariantProps } from '@/client/components/layout/session-sidebar/variant-props';
 
 /**
  * The phone's session drawer — the dispatcher, exactly like the desktop
@@ -56,6 +57,16 @@ interface MobileSessionSidebarProps {
   refreshKey?: number;
   onRefresh?: () => void;
   onOpenFile?: (file: unknown) => void;
+  /**
+   * A header control asked for this drawer.
+   *
+   * The session screen stays MOUNTED while the chat is on screen (its status-ack
+   * effect must run), so the drawer has no mount edge to read — this counter,
+   * bumped only by the header's own control, is what says "a reveal gesture
+   * landed". Without it the reopen drew the catalog (`Panel kiri`) over a chat
+   * the user had just asked to see the panel beside.
+   */
+  revealSignal?: number;
 }
 
 export function MobileSessionSidebar({
@@ -71,6 +82,7 @@ export function MobileSessionSidebar({
   refreshKey = 0,
   onRefresh,
   onOpenFile,
+  revealSignal = 0,
 }: MobileSessionSidebarProps) {
   const { controller, batch, expandedFolders, toggleFolder, optionsRef, dock, dockBody } = useDrawerState({
     appSettings,
@@ -81,27 +93,11 @@ export function MobileSessionSidebar({
     onRefresh,
     onOpenFile,
   });
-  const {
-    initializing,
-    failed,
-    refreshNow,
-    isRefreshing,
-    searchQuery,
-    setSearchQuery,
-    showArchived,
-    setShowArchived,
-    optionsOpen,
-    setOptionsOpen,
-    sortOption,
-    handleSortChange,
-    harnessFilter,
-    setHarnessFilter,
-    harnessOptions,
-    processedFolders,
-    sessionStatus,
-    handleSelectSession,
-  } = controller;
-  const { selection, deleteRun, archiveRun, binding: batchBinding, scopeFolder, available, selected } = batch;
+  // Only what the CHROME needs: the list's own fields belong to `DrawerBody`,
+  // which reads the controller itself. Re-destructuring them here is how the
+  // two would drift about which of them the drawer owns.
+  const { showArchived, setShowArchived } = controller;
+  const { selection, deleteRun, archiveRun, selected, scopeFolder } = batch;
   const sidebarStyle = useSidebarStyle();
 
   // The phone's right-click: a long press on the drawer's title or its chip
@@ -123,6 +119,10 @@ export function MobileSessionSidebar({
     openAbout: () => setAboutOpen(true),
     pushToast,
   });
+
+  // The strip's state machine, including the reveal a header press asks for and
+  // the flag that keeps a close from being read as a request.
+  const { tabs: tabHandle } = useMobileDrawerTabs(dock, revealSignal);
 
   const handleNewSessionAndClose = () => {
     onNewSession();
@@ -165,63 +165,105 @@ export function MobileSessionSidebar({
 
   // The same contract the desktop dispatcher hands its two styles, so the phone
   // and the desktop cannot describe a folder, a row or an action differently.
-  const modernProps: SessionSidebarVariantProps = {
-    // Fills the drawer between the header and the batch bar, the same way the
-    // desktop dispatcher sizes its chrome.
-    className: 'flex-1 min-h-0 w-full',
-    folders: processedFolders,
-    initializing,
-    failed,
-    activeSessionId,
-    sessionStatus,
-    searchQuery,
-    onSearchChange: setSearchQuery,
-    showArchived,
-    onToggleArchived: handleToggleArchived,
-    sortOption,
-    optionsOpen,
-    onToggleOptions: () => setOptionsOpen(!optionsOpen),
-    onCloseOptions: () => setOptionsOpen(false),
-    onSortChange: handleSortChange,
-    harnessFilter,
-    onHarnessFilterChange: setHarnessFilter,
-    harnessOptions,
-    onRefresh: refreshNow,
-    refreshing: isRefreshing,
-    scheduledCount,
-    onNewSession: handleNewSessionAndClose,
-    onNewWorkspace: () => setNewWorkspaceOpen(true),
-    onScheduler: () => setSchedulerOpen(true),
-    onSelectSession: handleSelectSession,
-    onNewSessionForFolder: handleNewSessionForFolderAndClose,
-    onNewWorktreeSession: closeAfterWorktree,
-    onToast: pushToast,
-    onCancelWait: cancelWait,
-    batch: batchBinding,
-    onSelectWorkspaces: batch.toggleWorkspaceSelection,
-    onStartSessionSelection: (folderId) => selection.begin('session', folderId),
-  };
+  /**
+   * The view stack, built once and handed to whichever chrome is drawing.
+   *
+   * A COMPONENT rather than inline JSX (`mobile-session-sidebar/Body`): the same
+   * node is the screen under `classic` and the body of `PanelTabsColumn` under
+   * `tabs`, and the session list inside it must stay MOUNTED while another view
+   * is on screen — its folder expansion, scroll position and batch selection
+   * live in it.
+   */
+  const drawerBody = (
+    <DrawerBody
+      sidebarStyle={sidebarStyle}
+      controller={controller}
+      batch={batch}
+      dock={dock}
+      dockBody={dockBody}
+      expandedFolders={expandedFolders}
+      optionsRef={optionsRef}
+      activeSessionId={activeSessionId}
+      scheduledCount={scheduledCount}
+      onToggleFolder={toggleFolder}
+      onNewSession={handleNewSessionAndClose}
+      onNewWorkspace={() => setNewWorkspaceOpen(true)}
+      onScheduler={() => setSchedulerOpen(true)}
+      onToggleArchived={handleToggleArchived}
+      onNewSessionForFolder={handleNewSessionForFolderAndClose}
+      {...(closeAfterWorktree ? { onNewWorktreeSession: closeAfterWorktree } : {})}
+      onToast={pushToast}
+      onArchiveSelected={handleArchiveSelected}
+      onCancelWait={cancelWait}
+    />
+  );
 
   return (
     <div className="flex flex-col h-full w-full bg-canvas text-ink relative select-none">
 
+      {/* The title bar is drawn in BOTH chromes, because the LEFT column's is
+          not the strip: it carries the wordmark, the server chip and the close
+          control, and the desktop column draws exactly the same pair — a title
+          row across the column, then the strip under it (`LeftColumn`:
+          40 + 38 + 40). Removing it under `tabs` left the drawer with no way
+          back to the chat except the Android back gesture, and no wordmark at
+          all; the RIGHT drawer is the one that has no header, because there the
+          strip is the whole chrome. */}
       <MobileSessionHeader
         onClose={onClose}
         viewLabel={dock.showingSessions ? 'Sessions' : dock.activePanel?.label ?? 'Panel'}
         menuProps={panelMenu.surfaceProps}
       />
 
-      {/* The strip is the phone's RAIL, so it follows the switch: with the rail
-          on it always draws, exactly like the desktop column's rail (which
-          always holds Sessions). Requiring a second destination made the
-          Settings switch a no-op on a phone with nothing placed. */}
-      {phoneLeftStripVisible(dock.enabled) ? (
+      {/* Under `tabs` the strip is the drawer's whole chrome (`PanelTabsColumn`
+          below), so the classic chip row is not drawn on top of it. Under
+          `classic` the strip is the phone's RAIL and follows the switch: with the
+          rail on it always draws, exactly like the desktop column's rail (which
+          always holds Sessions). Requiring a second destination made the Settings
+          switch a no-op on a phone with nothing placed. */}
+      {!dock.tabsMode && phoneLeftStripVisible(dock.enabled) ? (
         <MobileDockStrip
           panels={dock.catalog}
           activeId={dock.activeView}
           onSelect={dock.setActiveView}
           menuProps={panelMenu.surfaceProps}
         />
+      ) : null}
+
+      {/* The desktop column's shape, on a phone: the strip and its home page are
+          the drawer's chrome, and the view stack is the body under them. The
+          session list is the PINNED first chip (`usePanelTabs` is given
+          `SESSIONS_VIEW_ID`), so closing every other tab lands back on the
+          catalog with Sessions still one tap away — the same dead-end rule the
+          desktop column follows. */}
+      {/* No trailing action. A refresh here is either redundant or dead:
+          the four views that read `refreshKey` (Files, GIT, Context, WIKI) each
+          draw their own refresh control in their own toolbar — where it sits
+          beside the repo picker it re-reads — and the other five (Search,
+          Terminal, Usage, Todos, Plan) ignore `refreshKey` entirely, so the
+          button would do nothing at all. The session list has its own too
+          (`MobileSessionToolbar`'s "Refresh sessions"). Measured on the running
+          drawer with Files open: one click issued zero requests.
+          The desktop column keeps its strip refresh because the desktop's
+          session list does NOT draw one; the phone's does. */}
+      {dock.tabsMode && tabHandle ? (
+        <div className="flex-1 min-h-0 flex flex-col">
+          <PanelTabsColumn
+          catalog={dock.catalog}
+          tabs={tabHandle}
+          pinned={SESSIONS_VIEW_ID}
+          homeTitle="Panel kiri"
+          // The strip is this drawer's title bar, so it carries the WINDOW
+          // contract the header used to: the drag region the shells hit-test,
+          // the notch as height AND padding, and the shell's traffic-light
+          // inset. The right drawer states the same thing through the same
+          // helper; without it here a narrowed shell window lost its drag
+          // handle and a phone put the chips under the status bar.
+          stripProps={drawerStripProps(panelMenu.surfaceProps)}
+        >
+            <div className="h-full w-full">{drawerBody}</div>
+          </PanelTabsColumn>
+        </div>
       ) : null}
 
       {panelMenu.anchor ? (
@@ -234,76 +276,9 @@ export function MobileSessionSidebar({
         />
       ) : null}
 
-      {/* The list is HIDDEN, never unmounted, while a panel is on screen — the
-          same rule the desktop dock follows (`LeftDockView`): its folder
-          expansion, scroll position and batch selection must survive a look at
-          another view, and a re-mount would also re-seed every expansion from
-          the server's flags. */}
-      <div className={dock.showingSessions ? 'contents' : 'hidden'}>
-        {sidebarStyle === 'modern' ? (
-          <ModernSidebarView {...modernProps} touch />
-        ) : (
-          <ClassicDrawer
-            folders={processedFolders}
-            initializing={initializing}
-            failed={failed}
-            activeSessionId={activeSessionId}
-            expandedFolders={expandedFolders}
-            sessionStatus={sessionStatus}
-            searchQuery={searchQuery}
-            sortOption={sortOption}
-            optionsOpen={optionsOpen}
-            showArchived={showArchived}
-            harnessFilter={harnessFilter}
-            onHarnessFilterChange={setHarnessFilter}
-            harnessOptions={harnessOptions}
-            optionsRef={optionsRef}
-            scheduledCount={scheduledCount}
-            refreshing={isRefreshing}
-            selecting={selection.mode !== null}
-            batch={batchBinding}
-            onNewSession={handleNewSessionAndClose}
-            onNewWorkspace={() => setNewWorkspaceOpen(true)}
-            onScheduler={() => setSchedulerOpen(true)}
-            onRefresh={refreshNow}
-            onToggleOptions={() => setOptionsOpen(!optionsOpen)}
-            onSortChange={handleSortChange}
-            onResetSort={() => handleSortChange('A-Z')}
-            onToggleArchived={handleToggleArchived}
-            onHideArchived={() => setShowArchived(false)}
-            onSearchChange={setSearchQuery}
-            onClearSearch={() => setSearchQuery('')}
-            onSelectWorkspaces={batch.toggleWorkspaceSelection}
-            onSelectSession={handleSelectSession}
-            onNewSessionForFolder={handleNewSessionForFolderAndClose}
-            onNewWorktreeSession={closeAfterWorktree}
-            onToggleFolder={toggleFolder}
-            onToast={pushToast}
-            onStartSessionSelection={(folderId) => selection.begin('session', folderId)}
-            onCancelWait={cancelWait}
-          />
-        )}
-
-        {selection.mode && (
-          <BatchActionBar
-            drawer
-            mode={selection.mode}
-            count={selected.length}
-            total={available.length}
-            busy={deleteRun.isDeleting}
-            archiving={archiveRun.isArchiving}
-            scopeLabel={scopeFolder?.name}
-            onSelectAll={() => selection.selectAllOf(available)}
-            onUnselectAll={() => selection.unselectAllOf(available)}
-            onDelete={() => deleteRun.request(selected)}
-            onArchive={handleArchiveSelected}
-            onCancel={selection.end}
-          />
-        )}
-      </div>
-      {dock.showingSessions ? null : (
-        <MobileDockBody panelKey={dock.activeView} panel={dock.activePanel} body={dockBody} />
-      )}
+      {/* The `classic` chrome: the chip row above is the rail, so the stack is
+          the whole remaining screen. */}
+      {dock.tabsMode ? null : <div className="contents">{drawerBody}</div>}
 
       <MobileSessionFooter
         onSettings={() => window.dispatchEvent(new CustomEvent('omp:open-settings', { detail: {} }))}

@@ -23,7 +23,7 @@ import { DEFAULT_THEME_ID } from '@/shared/lib/theme/catalog';
 import { DEFAULT_CHAT_WIDTH_MODE, DEFAULT_CUSTOM_CHAT_COLUMN_WIDTH } from '@/shared/lib/chat/timeline/width-mode';
 import { DEFAULT_TOOL_RENDER_MODE } from '@/shared/lib/chat/timeline/tool-render-mode';
 import { DEFAULT_SIDEBAR_STYLE } from '@/shared/lib/workspace/sidebar-style';
-import { DEFAULT_MOBILE_RIGHT_PANEL_NAV, DEFAULT_PANEL_NAV } from '@/shared/lib/workspace/panel-nav';
+import { DEFAULT_MOBILE_PANEL_NAV, DEFAULT_PANEL_NAV } from '@/shared/lib/workspace/panel-nav';
 import { DEFAULT_COMPOSER_STYLE } from '@/shared/lib/chat/composer/style';
 import { DEFAULT_SURFACE_STYLE } from '@/shared/lib/theme/surface-style';
 import { DEFAULT_BORDER_STYLE } from '@/shared/lib/theme/border-style';
@@ -59,7 +59,8 @@ export const DEFAULT_SETTINGS = {
   sidebarStyle: DEFAULT_SIDEBAR_STYLE,
   leftPanelNav: DEFAULT_PANEL_NAV,
   rightPanelNav: DEFAULT_PANEL_NAV,
-  mobileRightPanelNav: DEFAULT_MOBILE_RIGHT_PANEL_NAV,
+  mobileLeftPanelNav: DEFAULT_MOBILE_PANEL_NAV,
+  mobileRightPanelNav: DEFAULT_MOBILE_PANEL_NAV,
   composerStyle: DEFAULT_COMPOSER_STYLE,
   surfaceStyle: DEFAULT_SURFACE_STYLE,
   borderStyle: DEFAULT_BORDER_STYLE,

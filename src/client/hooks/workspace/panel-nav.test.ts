@@ -29,11 +29,11 @@ import {
   currentPanelNav,
 } from '@/client/hooks/workspace/panel-nav';
 import {
-  MOBILE_RIGHT_PANEL_NAV_CHANGED_EVENT,
-  MOBILE_RIGHT_PANEL_NAV_SETTING_KEY,
-  applyMobileRightPanelNav,
-  currentMobileRightPanelNav,
-} from '@/client/hooks/workspace/mobile-right-panel-nav';
+  MOBILE_PANEL_NAV_CHANGED_EVENT,
+  MOBILE_PANEL_NAV_SETTING_KEY,
+  applyMobilePanelNav,
+  currentMobilePanelNav,
+} from '@/client/hooks/workspace/mobile-panel-nav';
 
 /** The events dispatched while the current test ran; `detail` may be absent. */
 const dispatched: unknown[] = [];
@@ -110,31 +110,52 @@ describe('applyPanelNav', () => {
 describe('the phone drawer setting', () => {
   afterEach(() => dispatched.length = 0);
 
-  test('reads its own key, so a desktop column cannot answer for it', () => {
-    primeKabmoSettings({ leftPanelNav: 'tabs', rightPanelNav: 'tabs', mobileRightPanelNav: 'classic' });
-    expect(currentMobileRightPanelNav()).toBe('classic');
+  test('reads each drawer from its own key, so neither can answer for the other', () => {
+    primeKabmoSettings({
+      leftPanelNav: 'tabs',
+      rightPanelNav: 'tabs',
+      mobileLeftPanelNav: 'classic',
+      mobileRightPanelNav: 'tabs',
+    });
+    expect(currentMobilePanelNav('left')).toBe('classic');
+    expect(currentMobilePanelNav('right')).toBe('tabs');
+  });
+
+  test('a desktop column cannot answer for a drawer', () => {
+    primeKabmoSettings({ leftPanelNav: 'tabs', rightPanelNav: 'tabs' });
+    expect(currentMobilePanelNav('left')).toBe('classic');
+    expect(currentMobilePanelNav('right')).toBe('classic');
   });
 
   test('an unset or unreadable value is the shipped default', () => {
-    primeKabmoSettings({ mobileRightPanelNav: 'from-a-newer-build' });
-    expect(currentMobileRightPanelNav()).toBe('classic');
+    primeKabmoSettings({ mobileLeftPanelNav: 'from-a-newer-build', mobileRightPanelNav: null });
+    expect(currentMobilePanelNav('left')).toBe('classic');
+    expect(currentMobilePanelNav('right')).toBe('classic');
   });
 
-  test('the key matches the settings field it persists under', () => {
-    expect(MOBILE_RIGHT_PANEL_NAV_SETTING_KEY).toBe('mobileRightPanelNav');
+  test('the keys match the settings fields they persist under', () => {
+    expect(MOBILE_PANEL_NAV_SETTING_KEY.left).toBe('mobileLeftPanelNav');
+    expect(MOBILE_PANEL_NAV_SETTING_KEY.right).toBe('mobileRightPanelNav');
   });
 
-  test('it announces on its OWN event, not the desktop one', () => {
-    applyMobileRightPanelNav('tabs');
-    // Its detail is the resolved STYLE, not `{side, style}`: the phone has one
-    // drawer, so there is no side for the listener to compare.
-    expect(dispatched).toEqual(['tabs']);
-    expect(MOBILE_RIGHT_PANEL_NAV_CHANGED_EVENT).toBe('omp:mobile-right-panel-nav-changed');
-    expect(MOBILE_RIGHT_PANEL_NAV_CHANGED_EVENT).not.toBe(PANEL_NAV_CHANGED_EVENT);
+  test('it announces on its OWN event, carrying the side', () => {
+    applyMobilePanelNav('left', 'tabs');
+    expect(dispatched).toEqual([{ side: 'left', style: 'tabs' }]);
+    expect(MOBILE_PANEL_NAV_CHANGED_EVENT).toBe('omp:mobile-panel-nav-changed');
+    expect(MOBILE_PANEL_NAV_CHANGED_EVENT).not.toBe(PANEL_NAV_CHANGED_EVENT);
+  });
+
+  test('two changes addressed to different drawers stay separate events', () => {
+    applyMobilePanelNav('left', 'tabs');
+    applyMobilePanelNav('right', 'classic');
+    expect(dispatched).toEqual([
+      { side: 'left', style: 'tabs' },
+      { side: 'right', style: 'classic' },
+    ]);
   });
 
   test('an unreadable value is announced as the default, never as itself', () => {
-    applyMobileRightPanelNav('whatever');
-    expect(dispatched).toEqual(['classic']);
+    applyMobilePanelNav('right', 'whatever');
+    expect(dispatched).toEqual([{ side: 'right', style: 'classic' }]);
   });
 });

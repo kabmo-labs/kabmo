@@ -34,7 +34,8 @@ import { applyToolRenderMode } from '@/client/hooks/chat/timeline/tool-render-mo
 import { applyShowChangedFiles } from '@/client/hooks/chat/timeline/changed-files-setting';
 import { applySidebarStyle } from '@/client/hooks/workspace/sidebar-style';
 import { applyPanelNav } from '@/client/hooks/workspace/panel-nav';
-import { applyMobileRightPanelNav } from '@/client/hooks/workspace/mobile-right-panel-nav';
+import { applyMobilePanelNav } from '@/client/hooks/workspace/mobile-panel-nav';
+import { revealLeftDock } from '@/client/hooks/workspace/left-dock';
 import { applyComposerStyle } from '@/client/hooks/chat/composer/style';
 import { applySurfaceStyle } from '@/client/hooks/ui/surface-style';
 import { applyBorderStyle } from '@/client/hooks/ui/border-style';
@@ -105,10 +106,20 @@ export function applySettingsSideEffects(previous: SettingsState, next: Settings
   if (next.rightPanelNav !== previous.rightPanelNav) {
     applyPanelNav('right', next.rightPanelNav);
   }
-  // The phone's drawer is its own screen and may not be mounted behind the
-  // modal, so this event is what keeps a mounted one honest.
+  // The phone's drawers are their own screens and may not be mounted behind the
+  // modal, so this event is what keeps a mounted one honest. Each side is
+  // announced separately, like the desktop columns above: one drawer's change
+  // must not re-mount the other's tree.
+  if (next.mobileLeftPanelNav !== previous.mobileLeftPanelNav) {
+    applyMobilePanelNav('left', next.mobileLeftPanelNav);
+    // The left drawer only HAS a strip while the rail is on, so choosing the
+    // tab style with the rail off would draw nothing at all — a card marked
+    // "active" over a drawer that never changes. Same coupling the placement
+    // store already applies when a panel is dropped on the dock.
+    if (next.mobileLeftPanelNav === 'tabs') revealLeftDock();
+  }
   if (next.mobileRightPanelNav !== previous.mobileRightPanelNav) {
-    applyMobileRightPanelNav(next.mobileRightPanelNav);
+    applyMobilePanelNav('right', next.mobileRightPanelNav);
   }
 
   // The composer style reorders the card's rows. The composer is NOT visible

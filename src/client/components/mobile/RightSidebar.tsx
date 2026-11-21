@@ -15,14 +15,11 @@ import {
 } from '@/client/components/workspace/terminal-panel/soft-keyboard';
 import { releaseSoftKeyboard } from '@/client/lib/ui/soft-keyboard';
 import { PanelTabsColumn } from '@/client/components/workspace/panel-tabs';
-import {
-  DrawerBody,
-  DrawerCloseAction,
-  DrawerHeader,
-  drawerStripProps,
-} from '@/client/components/mobile/mobile-right-sidebar/Chrome';
+import { DrawerBody, DrawerHeader } from '@/client/components/mobile/mobile-right-sidebar/Chrome';
+import { DrawerCloseAction, drawerStripProps } from '@/client/components/mobile/drawer-strip';
 import { usePanelTabs } from '@/client/hooks/workspace/panel-tabs';
-import { useMobileRightPanelNav } from '@/client/hooks/workspace/mobile-right-panel-nav';
+import { useRevealPanelTab, useRevealSignal } from '@/client/hooks/workspace/panel-tabs-reveal';
+import { useMobilePanelNav } from '@/client/hooks/workspace/mobile-panel-nav';
 import { VisibilityMenu } from '@/client/components/layout/VisibilityMenu';
 import { usePanelVisibilityMenu } from '@/client/hooks/workspace/panel-visibility-menu';
 
@@ -34,6 +31,13 @@ interface MobileRightSidebarProps {
   onRefresh?: () => void;
   onOpenFile?: (file: unknown) => void;
   onClose: () => void;
+  /**
+   * A header control asked for this drawer. The drawer unmounts when it closes,
+   * so its mount is also what a screen change for any other reason produces —
+   * this counter is the only thing that can say "a reveal gesture landed", which
+   * is what makes it show a VIEW instead of its catalog (`panel-tabs-reveal`).
+   */
+  revealSignal?: number;
 }
 
 /**
@@ -52,7 +56,8 @@ export function MobileRightSidebar({
   refreshKey = 0,
   onRefresh,
   onOpenFile,
-  onClose
+  onClose,
+  revealSignal = 0
 }: MobileRightSidebarProps) {
   // The tab is persisted, and that is a performance decision as much as a
   // convenience one: the drawer UNMOUNTS when it closes, so whichever view is
@@ -90,10 +95,22 @@ export function MobileRightSidebar({
    * desktop right column writes (`layout.rightPanelTabs`) — one working set
    * across the layouts, which is why switching device does not lose the tabs.
    */
-  const navStyle = useMobileRightPanelNav();
+  const navStyle = useMobilePanelNav('right');
   const tabsMode = navStyle === 'tabs';
   const known = useMemo(() => new Set(catalog.map((panel) => panel.id)), [catalog]);
   const tabsState = usePanelTabs('right', known, null);
+  // The header's "Open Right Panel" is a reveal, so it must show a VIEW rather
+  // than the catalog — the same rule the desktop column follows, and the same
+  // one the Stats readout already satisfies by naming a panel.
+  useRevealPanelTab({
+    enabled: tabsMode,
+    revealed: useRevealSignal(revealSignal),
+    view: activeTab,
+    home: tabsState.home,
+    chosenHome: tabsState.chosenHome,
+    openTab: tabsState.open,
+    known,
+  });
   const { open: openTab, tabs: openTabIds } = tabsState;
   // Whether the session's blob actually holds a right-drawer view. Read through
   // the store (not the hook's fallback), because "unset" and "set to the
@@ -264,7 +281,7 @@ export function MobileRightSidebar({
             tabs={tabHandle}
             homeTitle="Panel kanan"
             stripProps={drawerStripProps(panelMenu.surfaceProps)}
-            actions={<DrawerCloseAction onClose={onClose} />}
+            actions={<DrawerCloseAction side="right" onClose={onClose} />}
           >
             <div className="h-full w-full">
               <DrawerBody panel={activePanel} body={mobileBody} />

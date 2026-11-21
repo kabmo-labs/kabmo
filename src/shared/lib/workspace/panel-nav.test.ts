@@ -22,17 +22,17 @@
 
 import { describe, expect, test } from 'bun:test';
 import {
-  DEFAULT_MOBILE_RIGHT_PANEL_NAV,
+  DEFAULT_MOBILE_PANEL_NAV,
   DEFAULT_PANEL_NAV,
-  MOBILE_RIGHT_PANEL_NAVS,
-  MOBILE_RIGHT_PANEL_NAV_KEY,
+  MOBILE_PANEL_NAVS,
+  MOBILE_PANEL_NAV_KEYS,
   PANEL_NAV_COPY,
   PANEL_NAV_SETTING_KEYS,
   PANEL_NAV_STYLES,
   isPanelNavSide,
   isPanelNavStyle,
-  isMobileRightPanelNav,
-  resolveMobileRightPanelNav,
+  isMobilePanelNav,
+  resolveMobilePanelNav,
   resolvePanelNav,
 } from '@/shared/lib/workspace/panel-nav';
 import {
@@ -166,33 +166,40 @@ describe('withPinnedTab', () => {
   });
 });
 
-describe('the phone drawer is its own axis', () => {
+describe('the phone drawers are their own axis', () => {
   test('the shipped default is classic, so an upgrade rearranges nothing', () => {
-    expect(DEFAULT_MOBILE_RIGHT_PANEL_NAV).toBe('classic');
+    expect(DEFAULT_MOBILE_PANEL_NAV).toBe('classic');
   });
 
   test('both styles resolve to themselves', () => {
-    for (const style of MOBILE_RIGHT_PANEL_NAVS) {
-      expect(resolveMobileRightPanelNav(style)).toBe(style);
+    for (const style of MOBILE_PANEL_NAVS) {
+      expect(resolveMobilePanelNav(style)).toBe(style);
     }
   });
 
   test('an unknown value falls back to classic, not to a renderer that is missing', () => {
     for (const value of ['rail', '', 'Classic', null, undefined, 0, {}, []]) {
-      expect(resolveMobileRightPanelNav(value)).toBe(DEFAULT_MOBILE_RIGHT_PANEL_NAV);
+      expect(resolveMobilePanelNav(value)).toBe(DEFAULT_MOBILE_PANEL_NAV);
     }
   });
 
   test('the guard agrees with the resolver and refuses the desktop-only value', () => {
-    expect(isMobileRightPanelNav('classic')).toBe(true);
-    expect(isMobileRightPanelNav('tabs')).toBe(true);
+    expect(isMobilePanelNav('classic')).toBe(true);
+    expect(isMobilePanelNav('tabs')).toBe(true);
     // `rail` is the desktop's word; a phone has no rail to draw.
-    expect(isMobileRightPanelNav('rail')).toBe(false);
+    expect(isMobilePanelNav('rail')).toBe(false);
   });
 
-  test('the key is its own, so the phone cannot overwrite a desktop column', () => {
-    expect(MOBILE_RIGHT_PANEL_NAV_KEY).toBe('mobileRightPanelNav');
-    expect(PANEL_NAV_SETTING_KEYS.left).not.toBe(MOBILE_RIGHT_PANEL_NAV_KEY);
-    expect(PANEL_NAV_SETTING_KEYS.right).not.toBe(MOBILE_RIGHT_PANEL_NAV_KEY);
+  test('each drawer has its OWN key, so one cannot overwrite the other', () => {
+    expect(MOBILE_PANEL_NAV_KEYS.left).toBe('mobileLeftPanelNav');
+    expect(MOBILE_PANEL_NAV_KEYS.right).toBe('mobileRightPanelNav');
+    // And neither can overwrite a desktop column: the four keys are distinct.
+    const all = [
+      PANEL_NAV_SETTING_KEYS.left,
+      PANEL_NAV_SETTING_KEYS.right,
+      MOBILE_PANEL_NAV_KEYS.left,
+      MOBILE_PANEL_NAV_KEYS.right,
+    ];
+    expect(new Set(all).size).toBe(4);
   });
 });
