@@ -37,7 +37,7 @@ export function WikiNavTrigger({ open, onClick }: WikiNavTriggerProps) {
       title="Browse wiki pages"
       aria-label="Browse wiki pages"
       aria-expanded={open}
-      className="absolute bottom-3 right-3 z-20 flex h-9 w-9 items-center justify-center rounded-full border border-ink/20 bg-paper text-ink/60 shadow-sm transition-all hover:bg-ink/5 hover:text-ink active:scale-95"
+      className="absolute bottom-3 right-3 z-20 flex h-9 w-9 items-center justify-center rounded-full border border-ink/20 bg-paper text-ink/60 shadow-sm transition-all hover:bg-ink/5 hover:text-ink"
     >
       <ListTree size={16} />
     </button>

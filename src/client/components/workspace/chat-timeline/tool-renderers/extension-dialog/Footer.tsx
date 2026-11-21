@@ -80,7 +80,7 @@ export function ExtensionDialogFooter({
           type="button"
           onClick={onSubmit}
           disabled={isSelectDisabled}
-          className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-ink px-4 py-1.5 text-[12px] font-semibold text-paper shadow-xs transition-all hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-35"
+          className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-ink px-4 py-1.5 text-[12px] font-semibold text-paper shadow-xs transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-35"
         >
           <span>
             {method === 'confirm'

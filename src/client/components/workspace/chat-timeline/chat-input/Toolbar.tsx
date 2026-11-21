@@ -85,7 +85,7 @@ const ACTION_BASE =
   'tap-target flex items-center justify-center rounded-lg flex-shrink-0 cursor-pointer ' +
   'transition duration-150 ' +
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/50 ' +
-  'focus-visible:ring-offset-2 focus-visible:ring-offset-paper active:scale-95';
+  'focus-visible:ring-offset-2 focus-visible:ring-offset-paper';
 
 /**
  * Bottom config row of the composer: model + thinking + access + plan/goal

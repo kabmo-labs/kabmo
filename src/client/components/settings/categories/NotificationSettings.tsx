@@ -248,7 +248,7 @@ export function NotificationSettings({ settings, onUpdate }: NotificationSetting
           <button
             type="button"
             onClick={handleTestSound}
-            className={`px-3 py-1.5 rounded-md border border-ink/20 bg-paper hover:bg-ink/5 text-ink font-medium text-[11px] flex items-center gap-1.5 transition-all shadow-xs active:scale-95 ${
+            className={`px-3 py-1.5 rounded-md border border-ink/20 bg-paper hover:bg-ink/5 text-ink font-medium text-[11px] flex items-center gap-1.5 transition-all shadow-xs ${
               isPlayingTest ? 'border-ink bg-ink/10' : ''
             }`}
           >

@@ -184,7 +184,7 @@ export const RealtimeTerminalView = forwardRef<RealtimeTerminalHandle, RealtimeT
           <button
             type="button"
             onClick={scrollToBottom}
-            className="absolute bottom-3 right-4 z-20 flex items-center space-x-1.5 px-2.5 py-1 bg-paper hover:bg-canvas text-ink border border-ink/20 rounded-full shadow-lg text-[11px] font-mono transition-all animate-fade-in cursor-pointer active:scale-95"
+            className="absolute bottom-3 right-4 z-20 flex items-center space-x-1.5 px-2.5 py-1 bg-paper hover:bg-canvas text-ink border border-ink/20 rounded-full shadow-lg text-[11px] font-mono transition-all animate-fade-in cursor-pointer"
             title="Scroll to latest output (Shift+End)"
           >
             <ArrowDown size={12} className="text-warning" />

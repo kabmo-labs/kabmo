@@ -172,6 +172,13 @@ the platform genuinely cannot do it, and then the phone says so in words.
   pulse. Everything else is a 120-200ms colour or width transition. `prefers-reduced-motion`
   stops the ambient animation once, globally (`tailwind.css`): pulses park, spinners breathe
   slowly, nothing is left spinning at full speed for a user who asked it not to.
+- **Every control acknowledges a press, the same way.** One unlayered rule in `tailwind.css`
+  scales `button:not(:disabled)` and `[role='button']` to `0.97` over 120ms; a call site does not
+  restate it. 0.97 is the smallest travel still visible on the densest control (0.84px on a 28px
+  icon button), where the 0.98 the phone toolbar used moved 0.56px and read as nothing. A disabled
+  control does not move, a row containing the pressed control does not shrink with it, and
+  reduced motion drops the easing rather than the feedback. Full measurements and the WebKit
+  `duration-*` caveat: `Codebase-Rules` §12.
 - **Glass is one surface style, not the default.** `data-surface="glass"` blurs the window plane
   and tints the chrome; the classic surface is opaque. Both ship, both must stay legible: the
   translucent chrome is tinted for contrast, never blurred into illegibility.

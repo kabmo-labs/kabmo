@@ -40,7 +40,7 @@ export function PermissionNotice({ canOpenSettings }: PermissionNoticeProps) {
         <button
           type="button"
           onClick={() => void openNotificationSettings()}
-          className="px-3 py-1.5 rounded-md border border-ink/20 bg-paper hover:bg-ink/5 text-ink font-medium text-[11px] transition-all shadow-xs active:scale-95"
+          className="px-3 py-1.5 rounded-md border border-ink/20 bg-paper hover:bg-ink/5 text-ink font-medium text-[11px] transition-all shadow-xs"
         >
           Open system settings
         </button>

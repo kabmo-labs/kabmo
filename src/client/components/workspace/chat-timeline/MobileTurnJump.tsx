@@ -53,7 +53,7 @@ export function MobileTurnJump({ turns, jumping, onJumpTurn }: MobileTurnJumpPro
           aria-label={`Jump to your message (${turns.length} turns)`}
           aria-busy={jumping}
           title="Jump to your message"
-          className={`flex items-center justify-center w-9 h-9 rounded-full border border-ink/20 bg-paper text-ink/60 shadow-sm transition-all ${jumping ? 'animate-pulse' : 'hover:text-ink hover:bg-ink/5 active:scale-95'}`}
+          className={`flex items-center justify-center w-9 h-9 rounded-full border border-ink/20 bg-paper text-ink/60 shadow-sm transition-all ${jumping ? 'animate-pulse' : 'hover:text-ink hover:bg-ink/5'}`}
         >
           <ListOrdered size={16} />
         </button>

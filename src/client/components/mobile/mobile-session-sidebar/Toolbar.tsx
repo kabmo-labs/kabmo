@@ -39,7 +39,7 @@ export interface MobileSessionToolbarProps {
 
 /** One phone control's box — `w-9.5 h-9.5` with the toolbar's own border/shadow. */
 const CONTROL_CLASS =
-  'w-9.5 h-9.5 rounded-xl border active:scale-95 flex items-center justify-center transition-all flex-shrink-0 cursor-pointer shadow-xs';
+  'w-9.5 h-9.5 rounded-xl border flex items-center justify-center transition-all flex-shrink-0 cursor-pointer shadow-xs';
 const CONTROL_IDLE = 'border-ink/15 bg-paper hover:bg-ink/5 text-ink/80 hover:text-ink';
 const CONTROL_ACTIVE = 'bg-ink/10 text-ink border-ink/30';
 
@@ -123,7 +123,7 @@ export function MobileSessionToolbar({
           onClick={onNewSession}
           aria-label="New Session"
           title="New Session"
-          className="flex-1 min-w-0 h-9.5 flex items-center justify-center space-x-2 px-3.5 rounded-xl bg-ink text-canvas hover:bg-ink/90 active:scale-[0.98] text-xs font-semibold transition-all shadow-xs"
+          className="flex-1 min-w-0 h-9.5 flex items-center justify-center space-x-2 px-3.5 rounded-xl bg-ink text-canvas hover:bg-ink/90 text-xs font-semibold transition-all shadow-xs"
         >
           <Plus size={15} strokeWidth={2.4} className="shrink-0" />
           <span className="min-w-0 truncate">New Session</span>

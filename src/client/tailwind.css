@@ -1619,3 +1619,85 @@ html :is(span, div, p, a, li, td, th, h1, h2, h3, h4, h5, h6, label, strong, em,
     min-height: 44px;
   }
 }
+
+/* ============================================================================
+ * The press state: one scale, on every button.
+ *
+ * Every control in the app answers a HOVER (295 call sites) and a press only
+ * sometimes: 13 buttons carried their own `active:scale-*` at four different
+ * values — 0.90, 0.95, 0.98, and one `active:scale-98` that Tailwind never
+ * emitted, so that button had no press state at all — while the remaining ~880
+ * answered a click with nothing. A control that looks identical while held
+ * reads as "the press did not land".
+ *
+ * Stated HERE rather than at 898 call sites: a second copy of the value is how
+ * one button ends up shrinking 5% beside a neighbour that shrinks 2%. `scale`
+ * is the individual property, not `transform`, so it composes with any
+ * transform a call site already sets instead of replacing it.
+ *
+ * **0.97 is the number.** Measured as the smallest travel that is still visible
+ * on the app's densest control: a 28px icon button moves 0.84px, where the
+ * 0.98 the phone toolbar used moved 0.56px and read as nothing. 0.95 — the old
+ * idiom, kept on the filled buttons — is a visible bounce on a full-width row,
+ * and a row that detaches from both its edges while held is louder than the
+ * click it acknowledges.
+ *
+ * **UNLAYERED, deliberately.** Tailwind's `transition-*` utilities set
+ * `transition-property` themselves, so a layered rule loses to them at each of
+ * the 264 buttons that carry one and the scale would snap instead of easing.
+ * The property list therefore restates the colour properties those utilities
+ * animate — nothing that transitions today stops transitioning.
+ *
+ * **120ms and one easing, as literals.** `var(--tw-duration, …)` would have kept
+ * `duration-200` authoritative on the two settings switches, but WebKit — the
+ * macOS shell's WKWebView — drops a LAYERED custom property on `<button>`
+ * (measured in WebKit: `.duration-200` reads `--tw-duration: ''` and
+ * `transition-duration: 0.12s` on a button, `.2s` on a div; Chromium resolves
+ * `.2s` on both). A duration that changes per engine is the same defect as a
+ * scale that changes per component, so the value is stated once.
+ *
+ * `prefers-reduced-motion` drops the TRANSITION, not the state: an instant
+ * 3% shrink is feedback, not motion, and a control that stops acknowledging a
+ * press is worse than one that does it without easing.
+ * ------------------------------------------------------------------------- */
+button:not(:disabled),
+[role='button'] {
+  transition-property: color, background-color, border-color, outline-color, text-decoration-color,
+    fill, stroke, opacity, box-shadow, transform, translate, scale, rotate;
+  transition-duration: 120ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+button:not(:disabled):active,
+[role='button']:active {
+  scale: 0.97;
+}
+
+/* A row that CONTAINS the pressed control does not shrink with it.
+ *
+ * The model picker's row is a `role=button` div holding two real buttons (the
+ * favourite star and the thinking cycle). Both matched the press rule, so a
+ * press on the star scaled the row AND the star — measured on the production
+ * build, `rowScale: 0.97` and `innerScale: 0.97` from one press, a compounded
+ * 6% shrink of the row for a control that is 46px wide inside it. Only the
+ * control under the pointer answers a press.
+ *
+ * Specificity, not source order, is what makes this win: this selector is
+ * (0,3,0) — one attribute, plus `:has()` taking its argument's
+ * `:is(button, [role='button']):active` at (0,2,0) — against the press rule's
+ * (0,2,0). */
+[role='button']:has(:is(button, [role='button']):active) {
+  scale: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Same list MINUS `scale`: the press still lands (an instant 3% shrink is
+   * feedback, not motion) while every colour transition a call site already
+   * asked for keeps running. Dropping the duration instead would make hover
+   * and focus snap for a user who only asked for less movement. */
+  button:not(:disabled),
+  [role='button'] {
+    transition-property: color, background-color, border-color, outline-color,
+      text-decoration-color, fill, stroke, opacity, box-shadow, transform, translate, rotate;
+  }
+}

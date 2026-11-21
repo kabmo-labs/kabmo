@@ -87,7 +87,7 @@ export function ToolbarOverflowMenu({
         onClick={() => setOpen(!open)}
         className={`inline-flex items-center justify-center transition-colors cursor-pointer ${
           mobile
-            ? 'w-9.5 h-9.5 rounded-xl border active:scale-95 shadow-xs'
+            ? 'w-9.5 h-9.5 rounded-xl border shadow-xs'
             : 'w-7 h-7 rounded border'
         } ${
           open

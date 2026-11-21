@@ -79,7 +79,7 @@ export function MobileOutlineButton({ path, symbols, total, truncated, emptyNoti
           onClick={() => setOpen(true)}
           aria-label={`Outline (${total} symbols)`}
           title="Outline"
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-ink/20 bg-paper text-ink/60 shadow-sm transition-all hover:bg-ink/5 hover:text-ink active:scale-95"
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-ink/20 bg-paper text-ink/60 shadow-sm transition-all hover:bg-ink/5 hover:text-ink"
         >
           <ListTree size={16} />
         </button>
