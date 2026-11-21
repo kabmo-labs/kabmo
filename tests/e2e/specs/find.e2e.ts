@@ -156,9 +156,27 @@ test.describe('editor find', () => {
     // The query lives in the session state, whose write is debounced; the POST
     // is the gate rather than a duration — and it is armed BEFORE the edits, so
     // a write the first keystroke schedules cannot land ahead of the wait.
-    const write = page.waitForResponse(
-      (response) => response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith('/state'),
-    );
+    //
+    // The predicate reads the BODY, not just the method and the path. Every
+    // session-state write POSTs the whole blob to the same URL, and the file
+    // open that precedes this test's edits schedules one too: a predicate that
+    // matched the first POST resolved on the `layout.openedFiles` write, which
+    // carries no `editor.findQuery`, so the reload then restored an empty query.
+    // Measured on the release run of 2026-11-21 (`44894283498`, shard `2/4`):
+    // `expected "beta", received ""` on BOTH attempts — deterministic, not a
+    // flake, and invisible on a fast machine only because the debounced
+    // file-open write happened to land before the gate was armed.
+    const write = page.waitForResponse((response) => {
+      if (response.request().method() !== 'POST') return false;
+      if (!new URL(response.url()).pathname.endsWith('/state')) return false;
+      const body = response.request().postDataJSON() as { state?: Record<string, unknown> } | null;
+      const state = body?.state;
+      // Both keys the assertions below read, because the click on `Match case`
+      // schedules its own write: waiting on the query alone can resolve on a
+      // blob that predates the option.
+      return state?.['editor.findQuery'] === 'beta'
+        && (state['editor.findOptions'] as { matchCase?: boolean } | undefined)?.matchCase === true;
+    });
     await panel.locator('.cm-content').click();
     await page.keyboard.press('ControlOrMeta+f');
     await panel.getByRole('textbox', { name: 'Find', exact: true }).fill('beta');
