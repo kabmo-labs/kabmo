@@ -1621,7 +1621,7 @@ html :is(span, div, p, a, li, td, th, h1, h2, h3, h4, h5, h6, label, strong, em,
 }
 
 /* ============================================================================
- * The press state: one scale, on every button.
+ * The press state: one scale, on every control.
  *
  * Every control in the app answers a HOVER (295 call sites) and a press only
  * sometimes: 13 buttons carried their own `active:scale-*` at four different
@@ -1631,7 +1631,7 @@ html :is(span, div, p, a, li, td, th, h1, h2, h3, h4, h5, h6, label, strong, em,
  * reads as "the press did not land".
  *
  * Stated HERE rather than at 898 call sites: a second copy of the value is how
- * one button ends up shrinking 5% beside a neighbour that shrinks 2%. `scale`
+ * one control ends up shrinking 5% beside a neighbour that shrinks 2%. `scale`
  * is the individual property, not `transform`, so it composes with any
  * transform a call site already sets instead of replacing it.
  *
@@ -1648,6 +1648,17 @@ html :is(span, div, p, a, li, td, th, h1, h2, h3, h4, h5, h6, label, strong, em,
  * The property list therefore restates the colour properties those utilities
  * animate — nothing that transitions today stops transitioning.
  *
+ * **A `<button>` is not the only control.** Counted across `src/client`: 15
+ * interactive elements are NOT buttons — 9 `div[role='button']` (the settings
+ * cards, the model row, the editor tabs), 2 `div[role='tab']` (the panel strip's
+ * chip, the harness tabs), 1 `div[role='option']` (the composer picker's rows)
+ * and 3 native `<summary>` (the settings disclosures). A button-only rule missed
+ * all of them; measured on the production build, the Files panel's chip and the
+ * MCP section's `<summary>` both computed `scale: none` while held. The list
+ * below is the whole family, so a toggle answers a press whatever element it is.
+ * `:not(:disabled)` is harmless on a non-form element (it never matches one),
+ * so the same list serves both.
+ *
  * **120ms and one easing, as literals.** `var(--tw-duration, …)` would have kept
  * `duration-200` authoritative on the two settings switches, but WebKit — the
  * macOS shell's WKWebView — drops a LAYERED custom property on `<button>`
@@ -1660,33 +1671,56 @@ html :is(span, div, p, a, li, td, th, h1, h2, h3, h4, h5, h6, label, strong, em,
  * 3% shrink is feedback, not motion, and a control that stops acknowledging a
  * press is worse than one that does it without easing.
  * ------------------------------------------------------------------------- */
-button:not(:disabled),
-[role='button'] {
+:is(button, summary, [role='button'], [role='tab'], [role='option'], [role='menuitem'],
+  [role='menuitemradio'], [role='menuitemcheckbox'], [role='radio'], [role='checkbox'],
+  [role='switch']):not(:disabled) {
   transition-property: color, background-color, border-color, outline-color, text-decoration-color,
     fill, stroke, opacity, box-shadow, transform, translate, scale, rotate;
   transition-duration: 120ms;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-button:not(:disabled):active,
-[role='button']:active {
+:is(button, summary, [role='button'], [role='tab'], [role='option'], [role='menuitem'],
+  [role='menuitemradio'], [role='menuitemcheckbox'], [role='radio'], [role='checkbox'],
+  [role='switch']):not(:disabled):active {
   scale: 0.97;
 }
 
-/* A row that CONTAINS the pressed control does not shrink with it.
+/* A control that CONTAINS the pressed control does not shrink with it.
  *
  * The model picker's row is a `role=button` div holding two real buttons (the
- * favourite star and the thinking cycle). Both matched the press rule, so a
- * press on the star scaled the row AND the star — measured on the production
- * build, `rowScale: 0.97` and `innerScale: 0.97` from one press, a compounded
- * 6% shrink of the row for a control that is 46px wide inside it. Only the
- * control under the pointer answers a press.
+ * favourite star and the thinking cycle), and the panel strip's chip is a
+ * `role=tab` div wrapping the tab button plus its close button. Both matched
+ * the press rule, so a press on the inner control scaled the outer one too —
+ * measured on the production build, `rowScale: 0.97` and `innerScale: 0.97`
+ * from one press, a compounded 6% shrink of a 46px target inside a 498px row.
+ * Only the control under the pointer answers a press.
  *
  * Specificity, not source order, is what makes this win: this selector is
- * (0,3,0) — one attribute, plus `:has()` taking its argument's
- * `:is(button, [role='button']):active` at (0,2,0) — against the press rule's
- * (0,2,0). */
-[role='button']:has(:is(button, [role='button']):active) {
+ * (0,3,0) — `:is()` at (0,1,0) plus `:has()` taking its argument's `:active`
+ * at (0,2,0) — against the press rule's (0,2,0).
+ *
+ * `[role='tab']` is deliberately NOT in this list. A panel chip is ONE control
+ * whose inner button is its hit area (`flex-1`, no fill of its own), so
+ * suppressing the chip made the label shrink inside a static background —
+ * measured: chip `scale: none` with the inner button at `0.97`, a 2px text
+ * twitch instead of a press. The chip carries the background, the border and
+ * the radius, so the chip is what moves, and the rule below stops its inner
+ * buttons from compounding on top of that. */
+:is([role='button'], [role='option'], [role='menuitem']):has(
+    :is(button, [role='button'], [role='tab'], [role='option']):active
+  ) {
+  scale: none;
+}
+
+/* A chip's inner buttons ride the chip's press, whichever one is under the
+ * pointer (the select area, or the close button).
+ *
+ * `:not(:disabled)` is here for SPECIFICITY, not for its condition: the press
+ * rule is (0,3,0), so this has to reach (0,4,0) to win. Measured before the
+ * fix: `inner` computed `0.97` and squeezed the label inside a chip that was
+ * not moving. */
+[role='tab'] :is(button, [role='button']):not(:disabled):active {
   scale: none;
 }
 
@@ -1695,8 +1729,9 @@ button:not(:disabled):active,
    * feedback, not motion) while every colour transition a call site already
    * asked for keeps running. Dropping the duration instead would make hover
    * and focus snap for a user who only asked for less movement. */
-  button:not(:disabled),
-  [role='button'] {
+  :is(button, summary, [role='button'], [role='tab'], [role='option'], [role='menuitem'],
+    [role='menuitemradio'], [role='menuitemcheckbox'], [role='radio'], [role='checkbox'],
+    [role='switch']):not(:disabled) {
     transition-property: color, background-color, border-color, outline-color,
       text-decoration-color, fill, stroke, opacity, box-shadow, transform, translate, rotate;
   }
