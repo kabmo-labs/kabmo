@@ -188,7 +188,11 @@ export function PanelTabStrip({
 
   return (
     <div
-      className="flex h-[38px] flex-none items-center gap-1 border-b border-ink/10 bg-canvas/60 pr-1.5 pl-1.5 select-none"
+      // 38px and 28px chips on a pointer; a TOUCH device gets 44/36/28 boxes
+      // instead. The desktop strip is measured against a 40px rail, but a 20px
+      // close target is under the 44px touch floor — measured in Chromium at
+      // 390px: the X was 20x20 inside a 28px chip.
+      className="flex h-[38px] flex-none items-center gap-1 border-b border-ink/10 bg-canvas/60 pr-1.5 pl-1.5 select-none pointer-coarse:h-11"
       role="tablist"
       aria-label="Panel views"
       onKeyDown={onKeyDown}
@@ -248,7 +252,7 @@ export function PanelTabStrip({
                   if (!reorderable) return;
                   reorder.onDragEnd();
                 }}
-                className={`group relative flex h-7 min-w-[80px] max-w-[170px] flex-none items-center rounded-md transition-colors ${
+                className={`group relative flex h-7 min-w-[80px] max-w-[170px] flex-none items-center rounded-md transition-colors pointer-coarse:h-9 ${
                   isActive ? 'bg-ink/[0.08] text-ink' : 'text-ink/60 hover:bg-ink/5 hover:text-ink'
                 } ${reorderable && closable ? 'cursor-grab active:cursor-grabbing' : ''} ${
                   reorder.draggingId === id ? 'opacity-40' : ''
@@ -260,7 +264,7 @@ export function PanelTabStrip({
                   onClick={() => onSelect(id)}
                   title={panel.title}
                   aria-label={panel.title}
-                  className="flex h-full min-w-0 flex-1 cursor-pointer items-center gap-1.5 py-1 pr-6 pl-2 text-left"
+                  className="flex h-full min-w-0 flex-1 cursor-pointer items-center gap-1.5 py-1 pr-6 pl-2 text-left pointer-coarse:pr-8"
                 >
                   <PanelMark
                     className="inline-flex flex-none"
@@ -287,7 +291,7 @@ export function PanelTabStrip({
                        it also made the ACTIVE chip look like the only closable
                        one, which is the report this fixes. The tint still dims
                        a background tab so the strip reads in one pass. */
-                    className={`absolute top-1 right-1 flex h-5 w-5 cursor-pointer items-center justify-center rounded transition-colors hover:bg-ink/10 hover:text-ink ${
+                    className={`absolute top-1 right-1 flex h-5 w-5 cursor-pointer items-center justify-center rounded transition-colors hover:bg-ink/10 hover:text-ink pointer-coarse:top-0.5 pointer-coarse:right-0.5 pointer-coarse:h-7 pointer-coarse:w-7 ${
                       isActive ? 'text-ink/45' : 'text-ink/30'
                     }`}
                   >

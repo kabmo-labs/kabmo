@@ -212,6 +212,21 @@ describe('PanelTabStrip', () => {
     expect(chips.map((chip) => chip.getAttribute('draggable'))).toEqual([null, null]);
   });
 
+  test('a TOUCH device gets a bigger chip and close target than a mouse does', () => {
+    mount();
+    // Measured in Chromium at 390px: the close control was 20x20 inside a 28px
+    // chip, both under the 44px touch floor. The coarse variants are the fix, and
+    // a DOM test can only pin the CONTRACT — the pixel sizes are the stylesheet's
+    // (verified in the built CSS, under `@media (pointer:coarse)`).
+    const strip = container.querySelector('[role="tablist"]') as HTMLElement;
+    const chip = container.querySelector('[role="tab"]') as HTMLElement;
+    const close = container.querySelector('[aria-label^="Tutup tab"]') as HTMLElement;
+    expect(strip.className).toContain('pointer-coarse:h-11');
+    expect(chip.className).toContain('pointer-coarse:h-9');
+    expect(close.className).toContain('pointer-coarse:h-7');
+    expect(close.className).toContain('pointer-coarse:w-7');
+  });
+
   test('a column action lands outside the scroller, so a narrow strip cannot clip it', () => {
     mount({ actions: h('button', { type: 'button', 'aria-label': 'Muat ulang view' }, 'x') });
     const action = container.querySelector('[aria-label="Muat ulang view"]');
