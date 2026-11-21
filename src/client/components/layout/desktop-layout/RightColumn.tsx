@@ -41,6 +41,7 @@ import { PanelTabsColumn } from '@/client/components/workspace/panel-tabs';
 import { usePanelDropTarget } from '@/client/hooks/workspace/panel-drop-target';
 import { useLeftDock } from '@/client/hooks/workspace/left-dock';
 import { usePanelTabs } from '@/client/hooks/workspace/panel-tabs';
+import { useRevealEdge, useRevealPanelTab } from '@/client/hooks/workspace/panel-tabs-reveal';
 import { useSessionStateContext } from '@/client/hooks/workspace/session-state/context';
 import { resolvePanelNav, type PanelNavStyle } from '@/shared/lib/workspace/panel-nav';
 
@@ -119,6 +120,20 @@ export function RightColumn({
   // stored tab instead of rendering an empty body.
   const known = new Set(catalog.map((panel) => panel.id));
   const tabsState = usePanelTabs('right', known, null);
+  // A column REVEALED from the navbar's toggle (or `⌥⌘J`) must show a view, not
+  // the catalog: the button's promise is "bring the panel back", and the home
+  // page is a fresh session's empty state rather than something the click asked
+  // for. The Stats readout, which names a panel, already opened one — this is
+  // the same answer for the click that names no view. See `panel-tabs-reveal`.
+  const revealed = useRevealEdge(open);
+  useRevealPanelTab({
+    enabled: tabsMode,
+    revealed,
+    view: shownPanel,
+    home: tabsState.home,
+    openTab: tabsState.open,
+    known,
+  });
   // In tabs mode the OPEN set is the mounted set; under the rail it is the
   // whole catalog (minus plugins, which were never kept mounted).
   const openIds = new Set(tabsState.tabs);

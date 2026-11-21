@@ -43,6 +43,7 @@ import { LeftDockView } from '@/client/components/layout/LeftDock';
 import { PanelTabsColumn } from '@/client/components/workspace/panel-tabs';
 import { usePanelCatalog } from '@/client/components/workspace/plugin-panel/catalog';
 import { usePanelTabs } from '@/client/hooks/workspace/panel-tabs';
+import { useRevealEdge, useRevealPanelTab } from '@/client/hooks/workspace/panel-tabs-reveal';
 import { SESSIONS_VIEW_ID } from '@/shared/lib/workspace/left-dock';
 import type { PanelNavStyle } from '@/shared/lib/workspace/panel-nav';
 import { useLeftDock } from '@/client/hooks/workspace/left-dock';
@@ -149,6 +150,19 @@ export function LeftColumn({
   const known = useMemo(() => new Set(catalog.map((panel) => panel.id)), [catalog]);
   const tabsState = usePanelTabs('left', known, SESSIONS_VIEW_ID);
   const tabsMode = railEnabled && navStyle === 'tabs';
+  // The same reveal rule as the right column: the sidebar's expand toggle (and
+  // `⌘B`) brings the column back, so it must bring a VIEW back rather than the
+  // catalog the strip shows on a fresh session. The session list is pinned, so
+  // this is the one column where the answer is always its own view.
+  const revealed = useRevealEdge(open);
+  useRevealPanelTab({
+    enabled: tabsMode,
+    revealed,
+    view,
+    home: tabsState.home,
+    openTab: tabsState.open,
+    known,
+  });
 
   /**
    * A view opened from a card must reach the BODY, not only the strip, so the
