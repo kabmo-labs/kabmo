@@ -82,49 +82,44 @@ export function ShellUpdateModal({ download, phase, message, onConfirm, onClose 
       onClose={onClose}
       maxWidthClass="max-w-sm"
       header={<h2 className="text-sm font-semibold text-ink">{label}</h2>}
+      // ONE dismissal: `Modal`'s named close is the way out, exactly as in the
+      // notification dialog. The footer used to repeat it as a "Close" button in
+      // the `done` and `error` phases, both running the same `onClose` — two
+      // controls for one action, and two buttons a screen reader (or a strict
+      // locator) cannot tell apart. The footer keeps only the ACTIONS.
       footer={
-        <div className="flex items-center justify-end gap-2 px-5 pb-4">
-          {phase === 'confirm' && (
-            <>
-              <button type="button" className={SECONDARY} onClick={onClose}>
-                Cancel
-              </button>
-              <button type="button" className={PRIMARY} onClick={onConfirm}>
-                <Download size={13} />
-                <span>Install update</span>
-              </button>
-            </>
-          )}
+        phase === 'done' ? undefined : (
+          <div className="flex items-center justify-end gap-2 px-5 pb-4">
+            {phase === 'confirm' && (
+              <>
+                <button type="button" className={SECONDARY} onClick={onClose}>
+                  Cancel
+                </button>
+                <button type="button" className={PRIMARY} onClick={onConfirm}>
+                  <Download size={13} />
+                  <span>Install update</span>
+                </button>
+              </>
+            )}
 
-          {phase === 'working' && (
-            <button type="button" className={PRIMARY} disabled>
-              <Loader2 size={13} className="animate-spin motion-reduce:animate-none" />
-              <span>Installing…</span>
-            </button>
-          )}
-
-          {phase === 'done' && (
-            <button type="button" className={PRIMARY} onClick={onClose}>
-              <Check size={13} />
-              <span>Close</span>
-            </button>
-          )}
-
-          {phase === 'error' && (
-            <>
-              <button type="button" className={SECONDARY} onClick={onClose}>
-                Close
+            {phase === 'working' && (
+              <button type="button" className={PRIMARY} disabled>
+                <Loader2 size={13} className="animate-spin motion-reduce:animate-none" />
+                <span>Installing…</span>
               </button>
-              {/* Retry re-runs the SAME offer: the release is still the one the
-                  console read, and a failure here is the shell's download or its
-                  verification, not a stale version. */}
+            )}
+
+            {phase === 'error' && (
+              // Retry re-runs the SAME offer: the release is still the one the
+              // console read, and a failure here is the shell's download or its
+              // verification, not a stale version.
               <button type="button" className={PRIMARY} onClick={onConfirm}>
                 <Download size={13} />
                 <span>Try again</span>
               </button>
-            </>
-          )}
-        </div>
+            )}
+          </div>
+        )
       }
     >
       <div className="px-5 py-4 space-y-3 text-[11px] leading-5 text-ink/70">

@@ -174,7 +174,10 @@ describe('a shell that can install its own update', () => {
 
     expect(dialog()?.textContent).toContain('The downloaded file is not a signed Kabmo build.');
     expect(buttonByText('Try again')).not.toBeNull();
-    expect(buttonByText('Close')).not.toBeNull();
+    // ONE dismissal: the shell's named close. A footer "Close" beside it was a
+    // second control for the same action (and made a role/name locator ambiguous).
+    expect(buttonByText('Close')).toBeNull();
+    expect(byName('Close')).not.toBeNull();
   });
 
   test('closing after a failure, then reopening, starts at the confirmation again', async () => {
@@ -184,7 +187,7 @@ describe('a shell that can install its own update', () => {
     await mount(DESKTOP);
     await click(byName('Update Kabmo 0.3.2 for macOS'));
     await click(buttonByText('Install update'));
-    await click(buttonByText('Close'));
+    await click(byName('Close'));
     expect(dialog()).toBeNull();
 
     await click(byName('Update Kabmo 0.3.2 for macOS'));
