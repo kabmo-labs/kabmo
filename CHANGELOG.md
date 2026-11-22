@@ -4,6 +4,33 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.46.0](https://github.com/kabmo-labs/kabmo/compare/v0.45.1...v0.46.0) — 2026-11-22
+
+### Added
+
+* **mobile:** gave the phone left drawer its own rail-or-tabs setting ([95f7536](https://github.com/kabmo-labs/kabmo/commit/95f7536a3be36e030c80d38e579482d45c204123)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **mobile:** one phone chrome row for every surface, and one chrome band per screen ([ee1cabd](https://github.com/kabmo-labs/kabmo/commit/ee1cabd85f98c36d573cda32cb7bb5431d6a300e)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **omp:** bump the pin to 19.1.0 and adopt its tool commands and ask form ([7da70e1](https://github.com/kabmo-labs/kabmo/commit/7da70e1f80dfa01d89b7ccd0becb569fb20d6f14)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **settings:** one header band per phone screen instead of three stacked bars ([f150a32](https://github.com/kabmo-labs/kabmo/commit/f150a32c784a879e013933dd1610da5ecd873ea8)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **ui:** give every button the same soft press state ([38d2864](https://github.com/kabmo-labs/kabmo/commit/38d2864f8c29ee59bdfc0037d6ec60416eeca30a)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Changed
+
+* **mobile:** leave the right drawer's chrome to the one module that owns it ([0f5c1ba](https://github.com/kabmo-labs/kabmo/commit/0f5c1ba6b872781a3a79cad53a424f1e61eb6d37)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **settings:** register the drilled pane's label instead of drawing a second bar ([fdeaa0d](https://github.com/kabmo-labs/kabmo/commit/fdeaa0dbb386e8e8da1bed5e6bc1bbbe705b8922)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **composer:** align the attach button with the harness mark ([25fd3e9](https://github.com/kabmo-labs/kabmo/commit/25fd3e97c29b431955075fcfd8c6d9a5aefe5448)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **mobile:** reveal a view when the header opens a drawer ([67ffcdc](https://github.com/kabmo-labs/kabmo/commit/67ffcdce6829c695ef92d41fbe707eb9134062fa)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **panel-tabs:** keep a closed tab closed when the panel is toggled back ([78274f6](https://github.com/kabmo-labs/kabmo/commit/78274f6d0b5f6f194b7ef573713be90eb32bd67d)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **panel-tabs:** reveal a tab-style column on its view, not its catalog ([f20c5f1](https://github.com/kabmo-labs/kabmo/commit/f20c5f125a2f2cf3d0b657ab6c44345248c82cf4)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **settings:** close the drill provider around the sheet's panes ([640bf00](https://github.com/kabmo-labs/kabmo/commit/640bf005beec5ef77f55a50eae48e1177907ec9e)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **ui:** give every centred dialog the same safe-area gutter ([127184e](https://github.com/kabmo-labs/kabmo/commit/127184e7b1905b7709ce39ad5eb66d7dd8605527)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **ui:** let a link styled as a control answer a press ([3a4b914](https://github.com/kabmo-labs/kabmo/commit/3a4b9140281b62537b5409d071cff0df2c89d5f6)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **ui:** make the press state cover every control, not only buttons ([96144f5](https://github.com/kabmo-labs/kabmo/commit/96144f59f5b156dc7d4e74276ed52b890eb607d2)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **update:** keep one dismissal in the shell update dialog ([8b60c2e](https://github.com/kabmo-labs/kabmo/commit/8b60c2eb2e4ba1759b2e06e20cab1eabe51e9ead)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.45.1](https://github.com/kabmo-labs/kabmo/compare/v0.45.0...v0.45.1) — 2026-11-21
 
 ### Fixed
