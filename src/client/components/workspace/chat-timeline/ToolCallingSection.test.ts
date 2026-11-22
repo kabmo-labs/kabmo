@@ -22,7 +22,7 @@
  * section's children are only headings and cards.
  */
 
-import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
@@ -33,7 +33,7 @@ import type { ToolCallData } from '@/shared/types/chat';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'HTMLInputElement', 'Event', 'MouseEvent', 'KeyboardEvent'] as const;
 const nativeGlobals: Partial<Record<(typeof DOM_GLOBALS)[number], unknown>> = {};
-let container: HTMLElement;
+let container: HTMLElement | undefined;
 
 beforeAll(() => {
   const win = new Window({ url: 'http://localhost' });
@@ -50,6 +50,22 @@ afterAll(() => {
     if (nativeGlobals[key] === undefined) delete target[key];
     else target[key] = nativeGlobals[key];
   }
+});
+
+/**
+ * Unmount the tree each case mounted.
+ *
+ * A card subscribes to the router store and the per-session store, and a tree
+ * left mounted here kept re-rendering in a LATER file — with that file's window,
+ * or after this file's `afterAll` had already removed it. Bun reports the throw
+ * as "Unhandled error between tests" in a suite that names neither file
+ * (measured on the Windows gate: ten `list-slots` cases failed while the real
+ * error came from here).
+ */
+afterEach(() => {
+  if (container) render(null, container);
+  container?.remove();
+  container = undefined;
 });
 
 /**
@@ -70,18 +86,19 @@ function tool(id: string, intent: string | undefined, title = 'Bash'): ToolCallD
 }
 
 async function mount(tools: ToolCallData[]) {
-  container = document.createElement('div');
-  document.body.appendChild(container);
+  const host = document.createElement('div');
+  document.body.appendChild(host);
+  container = host;
   await act(async () => {
     render(
       h(SessionStateProvider, {
         sessionId: 'test',
         children: h(ToolCallingSection, { tools }),
       }),
-      container,
+      host,
     );
   });
-  return container;
+  return host;
 }
 
 /**
