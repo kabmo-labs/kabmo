@@ -67,12 +67,29 @@ export function AttachmentToolbar({ attachments, onFilesSelected, onRemove, mode
           header, the draft and the toolbar read as one panel. A hairline over
           a tinted strip made the composer look like three stacked bars. */}
       <div className="composer-attach-row flex items-center flex-wrap gap-1.5 px-3 py-2 text-ink/60">
+        {/* `px-2 py-1` is not decoration: it is the SAME inset the toolbar row's
+            leading chip (`ModelDropdown`'s trigger) uses, so the two rows' first
+            marks share one column. With `p-1` the paperclip's ink started at
+            18.75px from the card's edge while the harness mark below it started
+            at 21.6px — a 3px staircase down the composer's left gutter (measured
+            at 1400x900, card 684px).
+
+            `justify-start` is what keeps that column on a touch screen: the
+            44px floor from `.tap-target` widens this button past its content, and
+            a centred glyph slid 8.75px off the harness mark under the Pixel 7
+            profile. The extra hit area has to grow to the RIGHT of the glyph,
+            never around it. */}
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="tap-target flex items-center justify-center hover:bg-ink/5 p-1 rounded transition-colors text-ink/60 hover:text-ink shrink-0"
+          className="tap-target flex items-center justify-start hover:bg-ink/5 px-2 py-1 rounded transition-colors text-ink/60 hover:text-ink shrink-0"
           title="Attach file or image"
         >
-          <Paperclip size={14} />
+          {/* `-ml-0.5` is the lucide art's own bearing, not a layout fix: the
+              paperclip's path starts 1.75px inside its 14px box (24-unit
+              viewBox, ink from 3), while the harness mark's viewBox is cropped
+              to its path and starts at 0. Without it the ink column read 22.75
+              vs 21. */}
+          <Paperclip size={14} className="-ml-0.5" />
         </button>
 
         {/* The compact composer's own placeholder. The textarea is not rendered
