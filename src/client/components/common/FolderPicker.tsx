@@ -88,7 +88,7 @@ export function FolderPicker({ initialPath, onSelect, onClose }: FolderPickerPro
 
   return (
     <div
-      className="fixed inset-0 modal-scrim z-[60] flex items-center justify-center p-4"
+      className="fixed inset-0 modal-scrim z-[60] flex items-center justify-center modal-safe"
       onClick={onClose}
     >
       <div

@@ -67,7 +67,7 @@ export function PlanReviewPanel({ proposal, deciding, error, onDecide, onDismiss
     .join('\n\n');
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center modal-scrim p-4">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center modal-scrim modal-safe">
       <div className="glass-overlay flex h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl border border-ink/15 bg-paper shadow-2xl">
         <div className="flex items-center justify-between border-b border-ink/10 px-4 py-3">
           <div className="flex min-w-0 items-center gap-2">

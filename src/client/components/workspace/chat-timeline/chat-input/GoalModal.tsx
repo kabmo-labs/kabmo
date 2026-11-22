@@ -137,7 +137,7 @@ export function GoalModal({ open, goal, goalRecord, pending, defaultBudget = nul
   // such ancestor; the same reason `Toast`, `anchored-menu` and `diagram-viewer`
   // portal.
   return createPortal(
-    <div className="fixed inset-0 z-[60] flex items-center justify-center modal-scrim p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center modal-scrim modal-safe" onClick={onClose}>
       <div
         className="glass-overlay w-full max-w-lg overflow-hidden rounded-xl border border-ink/15 bg-paper shadow-xl"
         onClick={(event) => event.stopPropagation()}

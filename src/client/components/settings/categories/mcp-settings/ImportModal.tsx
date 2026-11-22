@@ -57,7 +57,7 @@ export const McpImportModal: FunctionComponent<McpImportModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 modal-scrim backdrop-blur-[2px] z-50 flex items-center justify-center p-4 animate-in fade-in duration-150">
+    <div className="fixed inset-0 modal-scrim backdrop-blur-[2px] z-50 flex items-center justify-center modal-safe animate-in fade-in duration-150">
       <div className="glass-overlay w-full max-w-lg rounded-lg border border-ink/20 bg-paper text-ink p-5 shadow-2xl space-y-4 max-h-full overflow-y-auto scrollbar-overlay-container">
         <div className="flex items-center justify-between pb-3 border-b border-ink/10">
           <div className="flex items-center gap-2">

@@ -77,7 +77,7 @@ export function PairDialog({ code, error, busy, secondsLeft, onClose, onRetry }:
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-ink/40 p-4 backdrop-blur-[2px]"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-ink/40 modal-safe backdrop-blur-[2px]"
       onClick={onClose}
     >
       <div

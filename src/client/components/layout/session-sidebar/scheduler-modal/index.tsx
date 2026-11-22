@@ -128,7 +128,7 @@ export function SchedulerModal({
 
   return (
     <div
-      className="fixed inset-0 modal-scrim backdrop-blur-[2px] z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 modal-scrim backdrop-blur-[2px] z-50 flex items-center justify-center modal-safe"
       onClick={busy ? undefined : onClose}
       role="dialog"
       aria-modal="true"

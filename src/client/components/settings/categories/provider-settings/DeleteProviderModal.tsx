@@ -56,7 +56,7 @@ export function DeleteProviderModal({
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center modal-scrim backdrop-blur-[2px] p-4"
+      className="fixed inset-0 z-[70] flex items-center justify-center modal-scrim backdrop-blur-[2px] modal-safe"
       onClick={isDeleting ? undefined : onClose}
       role="dialog"
       aria-modal="true"

@@ -171,6 +171,21 @@
   background-color: color-mix(in srgb, var(--theme-ink) 40%, transparent);
 }
 
+/* The gutter a centred dialog keeps from the viewport's edges.
+ *
+ * `p-4` is 16px on every surface, but a `viewport-fit: cover` phone draws its
+ * status bar and home indicator OVER the page — so a tall dialog's header sat
+ * under the notch and its footer under the indicator. Every dialog that can
+ * reach an edge takes this instead: the SAME 16px on a desktop (`env()` is 0
+ * there), the safe area where there is one. Stated once so the next dialog
+ * cannot ship a `p-4` that only looks right on a desk. */
+.modal-safe {
+  padding-top: max(1rem, env(safe-area-inset-top, 0px));
+  padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+  padding-left: max(1rem, env(safe-area-inset-left, 0px));
+  padding-right: max(1rem, env(safe-area-inset-right, 0px));
+}
+
 [data-theme-variant='dark'] .modal-scrim {
   /* 58% black put the dialog at 1.01:1 against its own scrim — measured, the
    * panel disappeared into the veil. The veil's job is to recede, not to match:

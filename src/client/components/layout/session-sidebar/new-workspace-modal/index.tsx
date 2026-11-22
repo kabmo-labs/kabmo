@@ -136,7 +136,7 @@ function NewWorkspaceForm({
   };
 
   return (
-    <div className="fixed inset-0 modal-scrim z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 modal-scrim z-50 flex items-center justify-center modal-safe">
       <div className="glass-overlay bg-paper border border-ink/10 rounded-lg shadow-xl w-[30rem] max-w-full max-h-full overflow-y-auto flex flex-col">
         <div className="flex justify-between items-center px-4 pt-4 pb-2 border-b border-ink/10">
           <h3 className="font-semibold text-sm">New Workspace</h3>

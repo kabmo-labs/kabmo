@@ -35,7 +35,7 @@ interface NewFileModalProps {
 export function FileCreateModal({ folderPath, kind, value, error, isLoading, onChange, onCancel, onSubmit }: NewFileModalProps) {
   const label = kind === 'folder' ? 'Folder' : 'File';
   return createPortal(
-    <div className="fixed inset-0 modal-scrim z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 modal-scrim z-[100] flex items-center justify-center modal-safe backdrop-blur-sm">
       <form onSubmit={onSubmit} className="glass-overlay bg-paper rounded shadow-xl p-4 w-full max-w-sm border border-ink/10 font-sans">
         <h3 className="font-semibold text-ink mb-3 text-sm">New {label}</h3>
         <div className="flex items-center gap-1 mb-1 text-xs font-mono text-ink/50 min-w-0">
@@ -95,7 +95,7 @@ interface DeleteModalProps {
 export function FileDeleteModal({ fileName, displayName, isFolder, count = 1, isLoading, onCancel, onConfirm }: DeleteModalProps) {
   const multiple = count > 1;
   return createPortal(
-    <div className="fixed inset-0 modal-scrim z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 modal-scrim z-[100] flex items-center justify-center modal-safe backdrop-blur-sm">
       <div className="glass-overlay bg-paper rounded shadow-xl p-4 w-full max-w-sm border border-ink/10 font-sans">
         <h3 className="font-semibold text-ink mb-2 text-sm">Delete {multiple ? `${count} Items` : isFolder ? 'Folder' : 'File'}</h3>
         <p className="text-xs text-ink/70 mb-4">
@@ -163,7 +163,7 @@ interface RenameModalProps {
  */
 export function FileRenameModal({ isFolder, renameValue, originalPath, displayName, error, isLoading, onChange, onCancel, onSubmit }: RenameModalProps) {
   return createPortal(
-    <div className="fixed inset-0 modal-scrim z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 modal-scrim z-[100] flex items-center justify-center modal-safe backdrop-blur-sm">
       <form onSubmit={onSubmit} className="glass-overlay bg-paper rounded shadow-xl p-4 w-full max-w-sm border border-ink/10 font-sans">
         <h3 className="font-semibold text-ink mb-3 text-sm">Rename {isFolder ? 'Folder' : 'File'}</h3>
         <input 
@@ -220,7 +220,7 @@ interface HistoryModalProps {
 export function FileHistoryModal({ filePath, fetcherState, fetcherData, onClose }: HistoryModalProps) {
   const rows = fetcherData?.type === 'history' ? fetcherData.data : undefined;
   return createPortal(
-    <div className="fixed inset-0 modal-scrim z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 modal-scrim z-[100] flex items-center justify-center modal-safe backdrop-blur-sm">
       <div className="glass-overlay bg-paper rounded-lg shadow-xl w-full max-w-4xl border border-ink/10 flex flex-col max-h-[85vh]">
         <div className="flex items-center justify-between p-4 border-b border-ink/10">
           <h3 className="text-sm font-semibold text-ink flex items-center space-x-2">

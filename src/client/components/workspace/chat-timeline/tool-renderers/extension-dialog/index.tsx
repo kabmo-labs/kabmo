@@ -137,7 +137,7 @@ export function ExtensionDialog({ request, onRespond }: ExtensionDialogProps) {
 
   return (
     <div
-      className="extension-dialog-backdrop modal-scrim fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 backdrop-blur-[8px]"
+      className="extension-dialog-backdrop modal-scrim fixed inset-0 z-50 flex items-center justify-center modal-safe sm:p-6 backdrop-blur-[8px]"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) cancel();
       }}

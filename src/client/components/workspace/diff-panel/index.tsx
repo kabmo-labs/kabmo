@@ -278,7 +278,7 @@ export function DiffPanel({
 
       {/* Discard Confirmation Modal */}
       {showDiscardConfirm && (
-        <div className="fixed inset-0 modal-scrim z-50 flex items-center justify-center p-4 backdrop-blur-xs">
+        <div className="fixed inset-0 modal-scrim z-50 flex items-center justify-center modal-safe backdrop-blur-xs">
           <div className="glass-overlay bg-paper rounded-lg shadow-xl p-4 w-full max-w-sm border border-ink/15">
             <h3 className="font-semibold text-ink mb-1.5 text-sm">Discard Changes?</h3>
             <p className="text-xs text-ink/70 mb-4">

@@ -2,7 +2,6 @@ import { useId, useRef } from 'preact/hooks';
 import type { FormEvent, ReactNode } from 'preact/compat';
 import { X } from 'lucide-preact';
 import { useDialogBehaviour } from '@/client/hooks/ui/dialog-behaviour';
-import { safeAreaPadding } from '@/shared/lib/ui/safe-area';
 
 export interface ModalProps {
   /** Backdrop click / close-button handler. */
@@ -60,8 +59,10 @@ export function Modal({
 
   return (
     <div
-      className={`fixed inset-0 modal-scrim backdrop-blur-[2px] ${zClass} flex items-center justify-center p-4`}
-      style={safeAreaPadding(1)}
+      // The shared gutter (`tailwind.css`), not an inline `safeAreaPadding`:
+      // one declaration for every dialog, so a phone's notch and home indicator
+      // are reserved the same way here as in the hand-rolled shells.
+      className={`fixed inset-0 modal-scrim backdrop-blur-[2px] ${zClass} flex items-center justify-center modal-safe`}
       onClick={onClose}
     >
       {/* `role="dialog"` + `aria-modal`: every modal built on this shell (the
@@ -84,9 +85,13 @@ export function Modal({
           <div id={headerId} className="min-w-0">
             {header}
           </div>
+          {/* Named, because an icon-only control with no name is unreachable to
+              a screen reader — and this is the shell's only dismissal, so the
+              name is the way out of every dialog built on it. */}
           <button
             type="button"
             onClick={onClose}
+            aria-label="Close"
             className="p-1 rounded text-ink/40 hover:text-ink hover:bg-ink/5 transition-colors cursor-pointer"
           >
             <X size={16} />

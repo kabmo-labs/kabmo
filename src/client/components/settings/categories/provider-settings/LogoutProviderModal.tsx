@@ -79,7 +79,7 @@ export function LogoutProviderModal({ isOpen, provider, onClose, onSignedOut }: 
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center modal-scrim backdrop-blur-[2px] p-4"
+      className="fixed inset-0 z-[70] flex items-center justify-center modal-scrim backdrop-blur-[2px] modal-safe"
       onClick={busyId !== null ? undefined : onClose}
       role="dialog"
       aria-modal="true"

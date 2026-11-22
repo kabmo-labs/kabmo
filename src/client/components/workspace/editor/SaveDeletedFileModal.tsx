@@ -33,7 +33,7 @@ export function SaveDeletedFileModal({ fileName, filePath, onClose, onConfirm }:
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center modal-scrim animate-in fade-in duration-200 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center modal-scrim animate-in fade-in duration-200 modal-safe"
       onClick={onClose}
       role="dialog"
       aria-modal="true"

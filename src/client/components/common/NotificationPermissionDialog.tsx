@@ -103,15 +103,13 @@ export function NotificationPermissionDialog() {
           </div>
         </div>
       }
+      // ONE dismissal control. The footer used to offer "Not now" beside the
+      // shell's own `X`, and both ran the same `close()` — two controls, one
+      // action, on the dialog that exists to be answered. The shell's close is
+      // the dismissal (it is named, and it is where every other dialog's is);
+      // the footer keeps only the ACTIONS, which is what a footer is for.
       footer={
         <div className="flex flex-wrap justify-end gap-2 border-t border-ink/10 px-5 py-3">
-          <button
-            type="button"
-            onClick={close}
-            className="rounded-md border border-ink/20 bg-paper px-3 py-1.5 text-[11px] font-medium text-ink hover:bg-ink/5 active:scale-95"
-          >
-            Not now
-          </button>
           {grant === 'denied' ? (
             canOpenSettings ? (
               <button
@@ -120,7 +118,7 @@ export function NotificationPermissionDialog() {
                   close();
                   void openNotificationSettings();
                 }}
-                className="rounded-md border border-ink bg-ink px-3 py-1.5 text-[11px] font-medium text-paper hover:bg-ink/90 active:scale-95"
+                className="rounded-md border border-ink bg-ink px-3 py-1.5 text-[11px] font-medium text-paper hover:bg-ink/90"
               >
                 Open system settings
               </button>
@@ -130,7 +128,7 @@ export function NotificationPermissionDialog() {
               type="button"
               onClick={() => void ask()}
               disabled={asking}
-              className="rounded-md border border-ink bg-ink px-3 py-1.5 text-[11px] font-medium text-paper hover:bg-ink/90 active:scale-95 disabled:opacity-60"
+              className="rounded-md border border-ink bg-ink px-3 py-1.5 text-[11px] font-medium text-paper hover:bg-ink/90 disabled:opacity-60"
             >
               {asking ? 'Asking…' : 'Allow notifications'}
             </button>

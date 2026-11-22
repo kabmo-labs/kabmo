@@ -35,7 +35,7 @@ export function UndoConfirmModal({ content, isOmpSession, undoing, error, onClos
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center modal-scrim animate-in fade-in duration-200 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center modal-scrim animate-in fade-in duration-200 modal-safe"
       onClick={undoing ? undefined : onClose}
       role="dialog"
       aria-modal="true"

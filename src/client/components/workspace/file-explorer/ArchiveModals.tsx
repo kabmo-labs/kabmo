@@ -43,7 +43,7 @@ interface ShellProps {
 
 function ArchiveDialogShell({ title, subject, error, busy, submitLabel, busyLabel, onSubmit, onCancel, children }: ShellProps) {
   return createPortal(
-    <div className="fixed inset-0 modal-scrim z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 modal-scrim z-[100] flex items-center justify-center modal-safe backdrop-blur-sm">
       <form onSubmit={onSubmit} className="glass-overlay bg-paper rounded shadow-xl p-4 w-full max-w-sm border border-ink/10 font-sans">
         <h3 className="font-semibold text-ink mb-1 text-sm">{title}</h3>
         <p className="text-[11px] text-ink/50 mb-3 break-words">{subject}</p>

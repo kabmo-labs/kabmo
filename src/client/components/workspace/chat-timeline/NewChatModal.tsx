@@ -69,7 +69,7 @@ export function NewChatModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center modal-scrim animate-in fade-in duration-200 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center modal-scrim animate-in fade-in duration-200 modal-safe">
       <div 
         className="glass-overlay bg-canvas border border-ink/15 rounded-xl shadow-xl w-full flex flex-col overflow-hidden"
         style={maximized ? MODAL_EXPANDED_STYLE : MODAL_DEFAULT_STYLE}

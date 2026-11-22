@@ -91,7 +91,10 @@ describe('NotificationPermissionDialog', () => {
 
     const host = await mount();
     expect(host.ownerDocument.body.textContent).toContain('Notifications are turned off');
-    expect(host.ownerDocument.body.textContent).toContain('Not now');
+    // ONE way out: the shell's named close control. The footer used to repeat it
+    // as "Not now", which ran the same handler — two controls, one action.
+    expect(host.ownerDocument.body.textContent).not.toContain('Not now');
+    expect(document.querySelector('button[aria-label="Close"]')).not.toBeNull();
 
     act(() => buttonNamed('Open system settings')?.click());
     expect(calls.map((call) => call.method)).toContain('notification_settings_open');
@@ -129,12 +132,14 @@ describe('NotificationPermissionDialog', () => {
     expect(buttonNamed('Open system settings')).toBeDefined();
   });
 
-  test('Not now dismisses it without touching the grant', async () => {
+  test('the close control dismisses it without touching the grant', async () => {
     primeKabmoSettings({ notifyOnError: true });
     const calls = shellAnswering('denied');
 
     await mount();
-    act(() => buttonNamed('Not now')?.click());
+    const close = document.querySelector<HTMLButtonElement>('button[aria-label="Close"]');
+    expect(close).not.toBeNull();
+    act(() => close?.click());
 
     expect(document.body.textContent).not.toContain('Notifications are turned off');
     expect(calls.map((call) => call.method)).not.toContain('notification_request');

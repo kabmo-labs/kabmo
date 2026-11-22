@@ -90,7 +90,7 @@ export const PWAInstallButton: FunctionComponent = () => {
           <Download size={16} />
         </button>
         {showIOSGuide && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center modal-scrim p-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center modal-scrim modal-safe">
             <div className="glass-overlay w-full max-w-sm rounded bg-paper border border-ink/10 p-6 shadow-xl text-ink">
               <h3 className="text-sm font-semibold">Install on iPhone / iPad</h3>
               <p className="mt-2 text-xs opacity-80">

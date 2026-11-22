@@ -19,7 +19,6 @@ import { useDialogBehaviour } from '@/client/hooks/ui/dialog-behaviour';
 import { UPDATE_POPUP_OPEN_EVENT } from '@/shared/lib/updates/popup-state';
 import type { UpdateTarget } from '@/shared/types/updates';
 import { MAX_WIDTH as CARD_MAX_WIDTH } from '@/client/components/workspace/model-dropdown/popover-metrics';
-import { safeAreaPadding } from '@/shared/lib/ui/safe-area';
 
 export interface AboutModalProps {
   isOpen: boolean;
@@ -101,12 +100,11 @@ export function AboutModal({ isOpen, onClose, updates, onToast }: AboutModalProp
 
           Full-bleed on a phone was the bug: `h-full w-full` with no gutters put
           the header at the viewport's top edge, which a `viewport-fit: cover`
-          surface draws UNDER the phone's status bar. The scrim's padding is
-          `safeAreaPadding` — one rule, shared with the `Modal` shell. The
-          desktop keeps its FIXED 880px two-column card. */}
+          surface draws UNDER the phone's status bar. The scrim's gutter is the
+          shared `.modal-safe` rule in `tailwind.css`, the same one every other
+          dialog takes. The desktop keeps its FIXED 880px two-column card. */}
       <div
-        className="fixed inset-0 modal-scrim z-50 flex items-center justify-center md:backdrop-blur-[2px] animate-in fade-in duration-200"
-        style={safeAreaPadding()}
+        className="fixed inset-0 modal-scrim z-50 flex items-center justify-center modal-safe md:backdrop-blur-[2px] animate-in fade-in duration-200"
         onClick={onClose}
       >
         <div
