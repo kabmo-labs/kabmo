@@ -3,6 +3,7 @@ import { useSearchParams } from '@/client/lib/router/search-params';
 import { clearBranchParams, newSessionParams } from '@/client/lib/router/branch-params';
 import { useKabmoEvent } from '@/client/hooks/ui/window-event';
 import { useMobileBackStack } from '@/client/hooks/workspace/mobile-back';
+import { useMobileDrawerReveals, type MobileScreen } from '@/client/components/mobile/mobile-drawer-reveals';
 import type { JournalDiffRef, SettingsCategoryId } from '@/shared/types';
 import { MobileMainView } from '@/client/components/mobile/MainView';
 import { WindowAura } from '@/client/components/layout/WindowAura';
@@ -24,18 +25,12 @@ import { PluginBootstrap } from '@/client/lib/plugins/bootstrap';
 import { mobileEditorFileFrom, mobileProbeTabs, type MobileEditorFile } from '@/client/components/mobile/open-file-payload';
 import { useLeftDock } from '@/client/hooks/workspace/left-dock';
 import { useSessionStateContext } from '@/client/hooks/workspace/session-state/context';
-import { setSessionKey, getSessionValue } from '@/shared/lib/workspace/session-state/store';
-import { DEFAULT_RIGHT_PANEL_TYPE } from '@/shared/lib/workspace/right-panels';
-import { armTerminalSoftKeyboard } from '@/client/components/workspace/terminal-panel/soft-keyboard';
 import { startWorktreeSession } from '@/client/components/mobile/worktree-session';
-import { OPEN_PANEL_EVENT, phoneDrawerForPanel, type OpenPanelDetail } from '@/shared/lib/workspace/panel-open';
 
 interface MobileLayoutWrapperProps {
   onDesktopToggle?: () => void;
   appSettings?: Record<string, any>;
 }
-
-export type MobileScreen = 'main' | 'session' | 'right';
 
 export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: MobileLayoutWrapperProps) {
   const { folders, isMock } = useSidebarData();
@@ -51,6 +46,10 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
   const folderId = folderParam ? (Number.isNaN(Number(folderParam)) ? folderParam : Number(folderParam)) : null;
 
   const [currentScreen, setCurrentScreen] = useState<MobileScreen>('main');
+  // The two drawers as SCREENS: which one a request opens, and whether that
+  // request was a header REVEAL (which must show a view, not the catalog). One
+  // hook, because a named open and a header press are the same two facts.
+  const drawers = useMobileDrawerReveals({ dock, sessionId: stateSessionId, currentScreen, setCurrentScreen });
   const [mobileEditorFile, setMobileEditorFile] = useState<MobileEditorFile | null>(null);
   const [mobileDiff, setMobileDiff] = useState<{ path: string; status?: string; staged?: boolean; repo?: string; root?: string; journal?: JournalDiffRef } | null>(null);
   // Bumped whenever a write lands so the workspace panels (explorer, git,
@@ -149,32 +148,6 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
   // transcript opens behind the drawer and the tap reads as a no-op.
   useKabmoEvent('omp:view-subagent', () => setCurrentScreen('main'));
 
-  /**
-   * A plugin's navbar readout asking for its own panel. A phone has no rail, so
-   * "show this panel" is two decisions — which DRAWER reaches it and which chip
-   * inside it — both answered by `phoneDrawerForPanel` from the PLACEMENT, never
-   * from the panel's slot. The tab is written through the store because the
-   * drawer mounts on this screen change and reads the stored tab; an `editor`
-   * takeover resolves to null and the click does nothing rather than opening a
-   * drawer that cannot show it.
-   */
-  useKabmoEvent(OPEN_PANEL_EVENT, (event) => {
-    const panelKey = (event as CustomEvent<OpenPanelDetail>).detail?.panelKey;
-    if (!panelKey) return;
-    const drawer = phoneDrawerForPanel(panelKey, dock);
-    if (!drawer) return;
-    // Same gesture rule as the header's button: arm the keyboard before the
-    // terminal mounts, but never for the view already on screen (it is focused).
-    const stored = getSessionValue<string>(stateSessionId, 'layout.mobileRightPanel');
-    if (drawer === 'right' && (currentScreen !== 'right' || stored !== panelKey)) {
-      armTerminalSoftKeyboard(panelKey);
-    }
-    // The phone's two drawers are SCREENS, not columns: the session screen
-    // draws the left dock and the right screen draws the panel drawer.
-    setSessionKey(stateSessionId, drawer === 'left' ? 'layout.mobileLeftPanel' : 'layout.mobileRightPanel', panelKey);
-    setCurrentScreen(drawer === 'left' ? 'session' : 'right');
-  });
-
   // Settings requests (e.g. the model dropdown asking for Settings → Providers
   // when no provider is configured) arrive on the same global channel the
   // desktop layout listens on. SettingsModal itself only reads the payload and
@@ -235,15 +208,6 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
     if (next) setMobileEditorFile(next);
   }, [activeProjectPath]);
 
-  // The right drawer is a SCREEN: opening it is the tap that can summon the
-  // keyboard, but the terminal mounts after it. Arm it for the tab the drawer
-  // will open on; the drawer releases it if another view resolves.
-  const handleOpenRightSidebar = useCallback(() => {
-    const stored = getSessionValue<string>(stateSessionId, 'layout.mobileRightPanel') ?? DEFAULT_RIGHT_PANEL_TYPE;
-    armTerminalSoftKeyboard(stored);
-    setCurrentScreen('right');
-  }, [stateSessionId]);
-
   return (
     <div
       data-testid="app-root"
@@ -274,8 +238,8 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
           activeSessionId={sessionId}
           onSelectSession={handleSelectSession}
           onNewSession={handleNewSession}
-          onOpenSessionSidebar={() => setCurrentScreen('session')}
-          onOpenRightSidebar={handleOpenRightSidebar}
+          onOpenSessionSidebar={drawers.openSessionDrawer}
+          onOpenRightSidebar={drawers.openRightDrawer}
           appSettings={appSettings}
         />
       </div>
@@ -294,6 +258,7 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
           refreshKey={refreshKey}
           onRefresh={handleWorkspaceChanged}
           onOpenFile={handleOpenFile}
+          revealSignal={drawers.left}
         />
       </div>
 
@@ -312,6 +277,7 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
             onRefresh={handleWorkspaceChanged}
             onOpenFile={handleOpenFile}
             onClose={() => setCurrentScreen('main')}
+            revealSignal={drawers.right}
           />
         </div>
       )}

@@ -100,9 +100,9 @@ export function useRevealEdge(open: boolean): boolean {
  * A drawer unmounts when it closes, so its mount IS the open, and it can mount
  * AFTER the header bumped its counter — which is why the baseline is `0` rather
  * than the value at mount: a drawer that mounts with a non-zero counter was
- * asked for by the control that bumped it. The layout resets the counter when
- * the drawer closes, so opening it another way (a plugin readout, a screen
- * change) mounts with `0` and lands on the catalog as before.
+ * asked for by the control that bumped it. A named open CLEARS the counter
+ * (`useMobileDrawerReveals`), because it already says which view it wants, so a
+ * drawer mounted that way reads no reveal and opens on the stored tab.
  *
  * The same hook serves the LEFT drawer, which stays mounted: there the counter
  * moves while the hook is alive, and the comparison is an ordinary edge.
