@@ -42,7 +42,7 @@ interface Harness {
   /** Delays any timer the extension armed would have fired at. */
   timerArms: number[];
   planEnabled: () => boolean;
-  /** The promise omp awaits as the `write xd://propose` tool result. Set by
+  /** The promise omp awaits as the `propose` tool result. Set by
    *  `propose`, and the thing every choice must settle. */
   toolCall: Promise<unknown> | null;
 }
@@ -131,7 +131,7 @@ async function propose(h: Harness): Promise<void> {
 }
 
 /**
- * The parked proposal is module-level state (omp permits one `xd://propose` at
+ * The parked proposal is module-level state (omp permits one `propose` at
  * a time per session), so a test that proposes and does not decide would leave
  * its proposal parked for the next one. Cleared through the extension's own
  * public teardown — the same call `plan off` makes.
@@ -152,7 +152,7 @@ function decisionOf(h: Harness): Record<string, unknown> | undefined {
   return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : undefined;
 }
 
-/** The `details` bag of a settled `xd://propose` result, narrowed rather than
+/** The `details` bag of a settled `propose` result, narrowed rather than
  *  asserted: the promise's value is `unknown`, so the read is checked. */
 function planDetailsOf(result: unknown): { planFilePath?: string; title?: string } | undefined {
   if (!result || typeof result !== 'object' || !('details' in result)) return undefined;
@@ -205,7 +205,7 @@ describe('decidePlan', () => {
   /**
    * The invariant the approve branches were missing.
    *
-   * The parked promise IS the model's open `write xd://propose` tool call —
+   * The parked promise IS the model's open `propose` tool call —
    * omp awaits the handler's return value as that call's result. A choice that
    * returns without resolving leaves the call open, so the planning turn never
    * ends: the child streams forever, `agent_end` never arrives, and the next

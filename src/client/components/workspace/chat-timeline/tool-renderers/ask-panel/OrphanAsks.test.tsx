@@ -18,7 +18,8 @@ import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:tes
 import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
-import { AskFramesContext, splitAskFrames, type AskFramesHandle } from '@/client/hooks/chat/timeline/ask-frames';
+import { splitAskFrames } from '@/client/hooks/chat/timeline/ask-frames';
+import { AskFramesContext, type AskFramesHandle } from '@/client/hooks/chat/timeline/ask-frames-context';
 import { OrphanAsks } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/OrphanAsks';
 import type { ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
@@ -66,7 +67,7 @@ describe('an ask dialog with no tool card', () => {
 
   test('renders inline with every question and its own submit', () => {
     const split = splitWithoutCards([ORPHAN]);
-    const handle: AskFramesHandle = { framesByTool: split.framesByTool, looseByTool: split.looseByTool, orphanAsks: split.orphanAsks, respond: () => {} };
+    const handle: AskFramesHandle = { framesByTool: split.framesByTool, looseByTool: split.looseByTool, orphanAsks: split.orphanAsks, formByTool: new Map(), respond: () => {} };
 
     act(() => {
       render(h(AskFramesContext.Provider, { value: handle }, h(OrphanAsks, {})), container);
@@ -87,7 +88,7 @@ describe('an ask dialog with no tool card', () => {
     const handle: AskFramesHandle = {
       framesByTool: split.framesByTool,
       looseByTool: split.looseByTool,
-      orphanAsks: split.orphanAsks,
+      orphanAsks: split.orphanAsks, formByTool: new Map(),
       respond: (_request, response) => sent.push(response),
     };
 
@@ -158,7 +159,7 @@ describe('an ask dialog with no tool card', () => {
     const handle: AskFramesHandle = {
       framesByTool: split.framesByTool,
       looseByTool: split.looseByTool,
-      orphanAsks: split.orphanAsks,
+      orphanAsks: split.orphanAsks, formByTool: new Map(),
       respond: () => {},
     };
     act(() => { render(h(AskFramesContext.Provider, { value: handle }, h(OrphanAsks, {})), container); });

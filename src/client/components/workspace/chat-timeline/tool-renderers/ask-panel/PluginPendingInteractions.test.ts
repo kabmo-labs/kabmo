@@ -33,7 +33,7 @@ import { AskPanel } from '@/client/components/workspace/chat-timeline/tool-rende
 import { GroupedAsk } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/GroupedAsk';
 import { PluginPendingInteractions } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/PluginPendingInteractions';
 import type { ExtensionDialogResponse } from '@/client/components/workspace/chat-timeline/tool-renderers/extension-dialog/Lazy';
-import { AskFramesContext, type AskFramesHandle } from '@/client/hooks/chat/timeline/ask-frames';
+import { AskFramesContext, type AskFramesHandle } from '@/client/hooks/chat/timeline/ask-frames-context';
 import { registerListSlot, resetListSlots } from '@/client/lib/plugins/list-slots';
 import type { ToolCallData } from '@/shared/types';
 import type { ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
@@ -112,7 +112,7 @@ function mount(tool: ToolCallData, groups: ExtensionUiDialogRequest[][]): void {
   const handle: AskFramesHandle = {
     framesByTool: new Map([[tool.id, groups]]),
     looseByTool: new Map(),
-    orphanAsks: [],
+    orphanAsks: [], formByTool: new Map(),
     respond: (request, response) => calls.push({ request, response }),
   };
   act(() => {

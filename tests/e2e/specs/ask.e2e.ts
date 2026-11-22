@@ -113,4 +113,44 @@ test.describe('ask tool', () => {
 
     workspace.dispose();
   });
+
+  test('answers omp 19.1.0\'s single form dialog in one reply', async ({ harness, page }) => {
+    const server = await harness('real');
+    const workspace = await seedWorkspace(server, 'e2e-ask-form-dialog');
+
+    await openApp(page, `${server.baseURL}/?folderId=${workspace.id}`);
+    await expect(page.getByText('e2e-ask-form-dialog').first()).toBeVisible();
+
+    const input = page.locator(`[data-testid="${TESTID.composerInput}"]`);
+    await input.fill('form-dialog:Choose a flavour');
+    await input.press('Enter');
+
+    // omp 19.1.0 sends the whole form as ONE `method:"form"` frame. The card
+    // claims it by the `html` the tool call carries, so both controls appear at
+    // once — and the frame must never become a modal, which has no form body.
+    await expect(page.getByText('Choose a flavour').first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText('Flavour').first()).toBeVisible();
+    await expect(page.getByText('Serving')).toBeVisible();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+
+    // Submit is disabled until the required field is answered.
+    const submit = page.getByRole('button', { name: 'Submit answers' });
+    await expect(submit).toBeDisabled();
+
+    await page.getByRole('button', { name: /^No\b/ }).click();
+    const serving = page.getByRole('textbox', { name: 'Your answer for question 2' });
+    await serving.fill('3');
+    await expect(submit).toBeEnabled();
+    await submit.click();
+
+    // The reply is ONE `{ data }` object by control name; omp echoes it back in
+    // the result, which is what the card reads its answers from.
+    const rows = page.locator('[data-answer-row]');
+    await expect(rows).toHaveCount(2);
+    await expect(rows.nth(0)).toHaveText('No');
+    await expect(rows.nth(1)).toHaveText('3');
+    await expect(page.getByText('Waiting for the previous answer…')).toHaveCount(0);
+
+    workspace.dispose();
+  });
 });

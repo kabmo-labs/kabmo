@@ -3,7 +3,8 @@ import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { AskPanel } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel';
-import { AskFramesContext, splitAskFrames, type AskFramesHandle } from '@/client/hooks/chat/timeline/ask-frames';
+import { splitAskFrames } from '@/client/hooks/chat/timeline/ask-frames';
+import { AskFramesContext, type AskFramesHandle } from '@/client/hooks/chat/timeline/ask-frames-context';
 import { createOmpAgentCallbacks, type OmpAgentCallbacksDeps } from '@/shared/lib/chat/timeline/omp-callbacks';
 import { resetListSlots } from '@/client/lib/plugins/list-slots';
 import type { ChatMessageData, ToolCallData } from '@/shared/types';
@@ -46,7 +47,7 @@ function mountFromFrame(frame: IncomingExtensionUiRequest): ExtensionUiDialogReq
   createOmpAgentCallbacks(deps).onExtensionUiRequest?.(frame);
 
   const split = splitAskFrames([MESSAGE], queue, true);
-  const handle: AskFramesHandle = { framesByTool: split.framesByTool, looseByTool: split.looseByTool, orphanAsks: [], respond: () => {} };
+  const handle: AskFramesHandle = { framesByTool: split.framesByTool, looseByTool: split.looseByTool, orphanAsks: [], formByTool: new Map(), respond: () => {} };
   act(() => { render(h(AskFramesContext.Provider, { value: handle }, h(AskPanel, { tool: ASK_TOOL })), container); });
   return queue;
 }
@@ -54,7 +55,7 @@ function mountFromFrame(frame: IncomingExtensionUiRequest): ExtensionUiDialogReq
 /** Mount the card with an explicit frame queue and tool, keeping it mounted. */
 function paint(queue: ExtensionUiDialogRequest[], tool: ToolCallData = ASK_TOOL): void {
   const split = splitAskFrames([MESSAGE], queue, true);
-  const handle: AskFramesHandle = { framesByTool: split.framesByTool, looseByTool: split.looseByTool, orphanAsks: [], respond: () => {} };
+  const handle: AskFramesHandle = { framesByTool: split.framesByTool, looseByTool: split.looseByTool, orphanAsks: [], formByTool: new Map(), respond: () => {} };
   act(() => { render(h(AskFramesContext.Provider, { value: handle }, h(AskPanel, { tool })), container); });
 }
 

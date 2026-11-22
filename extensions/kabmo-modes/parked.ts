@@ -4,7 +4,7 @@
  */
 
 /**
- * The parked `xd://propose`: the slot it lives in, the plan body it carries,
+ * The parked `propose`: the slot it lives in, the plan body it carries,
  * and the ways it can be released.
  *
  * Split from `plan.ts` so the review surface owns only the DECISION (which of
@@ -13,10 +13,11 @@
  *
  * ## The parking contract
  *
- * Plan mode's approval path is a `write` to `xd://propose`, which omp dispatches
- * to whatever `setPlanProposalHandler` installed. The TUI's handler opens the
- * full-screen review overlay and resolves when the operator picks; the model's
- * tool call stays open the whole time. That is exactly what Kabmo needs —
+ * Plan mode's approval path is `propose <title>` — a bash tool command since
+ * omp 19.1.0 (`write xd://propose` before it) — which omp dispatches to whatever
+ * `setPlanProposalHandler` installed. The TUI's handler opens the full-screen
+ * review overlay and resolves when the operator picks; the model's tool call
+ * stays open the whole time. That is exactly what Kabmo needs —
  * the operator reviews in the web console, and the decision travels back — so
  * the handler parks the promise the same way.
  *
@@ -58,9 +59,9 @@ export interface ParkedProposal {
   resolve: (result: unknown) => void;
 }
 
-/** The single parked proposal for this process. omp permits one `xd://propose`
- *  at a time per session (the handler is replaced, never stacked), so a slot
- *  rather than a map is the honest shape. */
+/** The single parked proposal for this process. omp permits one `propose` at a
+ *  time per session (the handler is replaced, never stacked), so a slot rather
+ *  than a map is the honest shape. */
 let parked: ParkedProposal | null = null;
 
 /** Resolvers waiting for the next proposal to park. See `awaitParkedProposal`. */
@@ -150,7 +151,7 @@ export function releaseForRefinement(reason: string): void {
   const current = takeParkedProposal();
   if (!current) return;
   current.resolve({
-    content: [{ type: 'text', text: `${reason} Update the plan file, then write its title to xd://propose again.` }],
+    content: [{ type: 'text', text: `${reason} Update the plan file, then submit its title with \`propose\` again.` }],
     details: { planFilePath: current.planFilePath, title: current.title, planExists: true },
   });
 }

@@ -29,7 +29,7 @@
 
 import { HelpCircle } from 'lucide-preact';
 import type { ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
-import { useAskFrames } from '@/client/hooks/chat/timeline/ask-frames';
+import { useAskFrames } from '@/client/hooks/chat/timeline/ask-frames-context';
 import { GroupedAsk } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/GroupedAsk';
 import { LooseFieldAsk } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/LooseFieldAsk';
 import type { ExtensionDialogResponse } from '@/client/components/workspace/chat-timeline/tool-renderers/extension-dialog/Lazy';

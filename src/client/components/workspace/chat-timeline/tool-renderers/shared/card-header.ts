@@ -156,10 +156,11 @@ export function toolCardHeader(tool: ToolCallData, toolKey: string): ToolCardHea
  * and a device call's target IS the URL.
  */
 export function toolCardSubtitle(tool: ToolCallData, header: ToolCardHeader): string | undefined {
-  if (header.subtitle && (!header.subtitle.startsWith('xd://') || isXdDocRead(tool))) return header.subtitle;
+  const isDocUrl = (value: string) => value.startsWith('xd://') || value.startsWith('help://');
+  if (header.subtitle && (!isDocUrl(header.subtitle) || isXdDocRead(tool))) return header.subtitle;
   const target = resolveTargetFile(tool);
-  if (target && !target.startsWith('xd://')) return target;
+  if (target && !isDocUrl(target)) return target;
   if (header.subtitle) return undefined;
-  if (tool.detail && !tool.detail.startsWith('xd://')) return tool.detail;
+  if (tool.detail && !isDocUrl(tool.detail)) return tool.detail;
   return undefined;
 }

@@ -1,15 +1,27 @@
 import { CheckCircle2, FileText, XCircle } from 'lucide-preact';
 import type { ToolCallData } from '@/shared/types';
+import { soleInnerDetails, soleToolCommand } from '@/shared/lib/chat/tool/tool-commands';
 
-/** Panel untuk tool `resolve` dan `reject` (AST proposal resolution via xd://resolve / xd://reject). */
+/**
+ * Panel untuk `resolve` dan `reject` — keputusan atas staged proposal.
+ *
+ * Dua bentuk yang sama-sama harus tampil di sini: tool command omp 19.1.0
+ * (`bash` yang menjalankan `resolve "…"`, dengan hasil tool aslinya di
+ * `details.toolCommands[].inner`) dan pemanggilan tool langsung (tanpa `bash`
+ * aktif). Bentuk `write xd://resolve` yang lama tetap dibaca karena sesi yang
+ * tersimpan sebelum pin masih menyimpannya.
+ */
 export function Resolve({ tool }: { tool: ToolCallData }) {
   const details = (tool.details ?? {}) as Record<string, any>;
   const xdev = (details.xdev ?? {}) as Record<string, any>;
-  const inner = (xdev.inner ?? {}) as Record<string, any>;
+  const command = soleToolCommand(tool);
+  const inner = (soleInnerDetails(tool) ?? xdev.inner ?? {}) as Record<string, any>;
+  const args = (command?.args ?? xdev.args ?? {}) as Record<string, any>;
   const input = typeof tool.input === 'object' && tool.input !== null ? (tool.input as Record<string, any>) : undefined;
+  const name = command?.dispatch.tool ?? tool.name;
 
   const isReject =
-    tool.name === 'reject' ||
+    name === 'reject' ||
     tool.target?.includes('reject') ||
     xdev.tool === 'reject' ||
     inner.action === 'reject' ||
@@ -17,7 +29,7 @@ export function Resolve({ tool }: { tool: ToolCallData }) {
 
   const reason =
     inner.reason ||
-    xdev.args?.reason ||
+    args.reason ||
     (typeof input?.content === 'string' ? input.content : '') ||
     (typeof tool.input === 'string' ? tool.input : '');
 

@@ -43,49 +43,14 @@
  * modal — never the card claim — until there is a timeline to decide against.
  */
 
-import { createContext, useContext } from 'preact/compat';
 import type { ChatMessageData } from '@/shared/types';
 import type { ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
-import { askQuestionForFrame, askQuestionForOptions, askQuestionForTitle, askQuestionSharesText, groupAskFrames, isAskSettled, isAskToolCall, normalizeAskText, parseAskQuestions } from '@/shared/lib/chat/ask-questions';
-import { parseAskResult } from '@/shared/lib/chat/ask-results';
-import type { AskQuestion } from '@/shared/lib/chat/ask-form/types';
+import { askQuestionForFrame, askQuestionForOptions, askQuestionForTitle, askQuestionSharesText, normalizeAskText } from '@/shared/lib/chat/ask-questions';
+import { bucketAskFrames } from '@/client/hooks/chat/timeline/ask-frame-buckets';
+import type { AskFramesSplit } from '@/client/hooks/chat/timeline/ask-frames-context';
+import { collectAsks } from '@/client/hooks/chat/timeline/ask-frame-asks';
+import { claimFormFrame } from '@/client/hooks/chat/timeline/ask-form-frame';
 import { isApprovalGateFrame } from '@/shared/lib/chat/omp/approval-gate';
-import type { ExtensionDialogResponse } from '@/client/components/workspace/chat-timeline/tool-renderers/extension-dialog/Lazy';
-
-export interface AskFramesSplit {
-  /** The ask's dialogs, bucketed per question, keyed by ask tool-call id. */
-  framesByTool: Map<string, ExtensionUiDialogRequest[][]>;
-  /**
-   * Field dialogs that belong to an open ask but matched no question, keyed by
-   * tool id. A form parser can drift from omp's on a shape neither was written
-   * for; the frame must still be answerable on the card, and the modal has no
-   * field body. The card draws these last, as the live control.
-   */
-  looseByTool: Map<string, ExtensionUiDialogRequest[]>;
-  /** Ask dialogs no card can own — the timeline draws them inline. */
-  orphanAsks: ExtensionUiDialogRequest[];
-  /** Oldest non-ask request nothing claimed — the one the modal renders. */
-  modalRequest: ExtensionUiDialogRequest | null;
-}
-
-export interface AskFramesHandle {
-  framesByTool: AskFramesSplit['framesByTool'];
-  /** Ask field dialogs a card owns but no question matched (see `looseByTool`). */
-  looseByTool: AskFramesSplit['looseByTool'];
-  /** Ask dialogs with no tool card to render them (see `orphanAsks`). */
-  orphanAsks: AskFramesSplit['orphanAsks'];
-  /** Answer one ask dialog and drop it from the pending queue. */
-  respond: (request: ExtensionUiDialogRequest, response: ExtensionDialogResponse) => void;
-}
-
-const EMPTY: AskFramesHandle = { framesByTool: new Map(), looseByTool: new Map(), orphanAsks: [], respond: () => {} };
-
-export const AskFramesContext = createContext<AskFramesHandle>(EMPTY);
-
-/** Pending ask dialogs for the timeline that provides them. */
-export function useAskFrames(): AskFramesHandle {
-  return useContext(AskFramesContext);
-}
 
 export function splitAskFrames(
   messages: ChatMessageData[],
@@ -96,7 +61,8 @@ export function splitAskFrames(
 ): AskFramesSplit {
   const framesByTool = new Map<string, ExtensionUiDialogRequest[][]>();
   const looseByTool = new Map<string, ExtensionUiDialogRequest[]>();
-  if (pending.length === 0) return { framesByTool, looseByTool, orphanAsks: [], modalRequest: null };
+  const formByTool = new Map<string, ExtensionUiDialogRequest>();
+  if (pending.length === 0) return { framesByTool, looseByTool, orphanAsks: [], formByTool, modalRequest: null };
 
   // Match against the asks that can still own a dialog: a reloaded session
   // reads its tool calls back from the JSONL, where a call still parked on a
@@ -110,23 +76,7 @@ export function splitAskFrames(
   // ask, and one whose every question already carries a recorded answer, is
   // therefore not a candidate at all. A parked call read back from the JSONL is
   // neither: omp writes no result until the question is answered.
-  const openAsks: { toolId: string; questions: AskQuestion[] }[] = [];
-  // Every ask, settled ones included: a dialog whose call just failed is still
-  // the ask's dialog, so it belongs on the timeline (an inline orphan), never
-  // in the modal. Keeping them apart from `openAsks` is what lets ownership
-  // prefer the live call while recognition still avoids the modal.
-  const allAsks: { toolId: string; questions: AskQuestion[] }[] = [];
-  for (const message of messages) {
-    for (const tool of message.toolCalls ?? []) {
-      if (!isAskToolCall(tool)) continue;
-      const questions = parseAskQuestions(tool);
-      if (questions.length === 0) continue;
-      allAsks.push({ toolId: tool.id, questions });
-      if (isAskSettled(tool)) continue;
-      if (parseAskResult(tool, questions).every((answer) => answer !== null)) continue;
-      openAsks.push({ toolId: tool.id, questions });
-    }
-  }
+  const { openAsks, allAsks } = collectAsks(messages);
 
   const owned = new Map<string, ExtensionUiDialogRequest[]>();
   const handled = new Set<ExtensionUiDialogRequest>();
@@ -188,6 +138,27 @@ export function splitAskFrames(
       // timeline and then move it onto its card. The frame stays queued, so
       // nothing is lost — the split simply re-runs.
       if (!groupedOwner && historyLoaded) {
+        orphanAsks.push(request);
+        handled.add(request);
+      }
+      continue;
+    }
+
+    // A FORM frame (omp 19.1.0's `ui.formDialog`, which the `ask` tool now
+    // uses) carries no `title` and no per-question ids: its `html` is the SAME
+    // string the tool call's arguments carry, which makes it the exact key.
+    // It answers every control of the form in one `{ data }` reply, so it
+    // belongs to the call as a whole rather than to one question.
+    if (request.method === 'form' && typeof request.html === 'string') {
+      const owner = claimFormFrame(request.html, openAsks);
+      if (owner) {
+        handled.add(request);
+        lastOwner = owner.toolId;
+        formByTool.set(owner.toolId, request);
+      } else if (historyLoaded) {
+        // Cardless: an extension's own `formDialog` (not the ask tool) has no
+        // card of its own. The timeline draws it inline rather than the modal,
+        // which has no form body.
         orphanAsks.push(request);
         handled.add(request);
       }
@@ -286,39 +257,9 @@ export function splitAskFrames(
 
   for (const [toolId, frames] of owned) {
     const questions = openAsks.find((candidate) => candidate.toolId === toolId)?.questions ?? [];
-    // A grouped frame is ONE dialog that covers every question, so it belongs
-    // on each question it names rather than in a single bucket.
-    const placed: ExtensionUiDialogRequest[][] = questions.map((): ExtensionUiDialogRequest[] => []);
-    const loose: ExtensionUiDialogRequest[] = [];
-    const unmatched = new Set(unplaced.get(toolId) ?? []);
-    for (const frame of frames) {
-      if (Array.isArray(frame.questions) && frame.questions.length > 0) {
-        for (const grouped of frame.questions) {
-          const index = questions.findIndex((question) => question.id === grouped.id);
-          if (index >= 0) placed[index].push(frame);
-          else loose.push(frame);
-        }
-        continue;
-      }
-      // A frame claimed by its rows already knows the question it belongs to.
-      const byOptions = optionPlacements.get(frame);
-      if (byOptions !== undefined) {
-        if (placed[byOptions]) placed[byOptions].push(frame);
-        else loose.push(frame);
-        continue;
-      }
-      // A frame with neither a title nor a row match has no question to walk
-      // to; the card draws it as the live control (see `looseByTool`) rather
-      // than guessing a question and printing the wrong one as open.
-      if (unmatched.has(frame)) continue;
-      loose.push(frame);
-    }
-    // Everything that was not part of a grouped frame keeps the per-question
-    // walk it has always used.
-    const walked = groupAskFrames(questions, loose);
-    framesByTool.set(toolId, questions.map((_, index) => [...placed[index], ...walked[index]]));
-    const unplacedFrames = unplaced.get(toolId);
-    if (unplacedFrames && unplacedFrames.length > 0) looseByTool.set(toolId, unplacedFrames);
+    const buckets = bucketAskFrames(questions, frames, new Set(unplaced.get(toolId) ?? []), optionPlacements);
+    framesByTool.set(toolId, buckets.perQuestion);
+    if (buckets.unmatched.length > 0) looseByTool.set(toolId, buckets.unmatched);
   }
 
   // The frame stays queued either way — only the modal waits for the history,
@@ -326,8 +267,10 @@ export function splitAskFrames(
   // in BOTH states: it is answered by a card or by the orphan row, and the
   // modal has no body for it. Anything this split already handed to an inline
   // surface is excluded too — a dialog must never be drawn twice.
+  // A `form` frame is excluded for the same reason as `ask`: the modal has no
+  // form body, so an unclaimed one is drawn inline by the timeline.
   const modalRequest = historyLoaded
-    ? pending.find((request) => !handled.has(request) && request.method !== 'ask') ?? null
+    ? pending.find((request) => !handled.has(request) && request.method !== 'ask' && request.method !== 'form') ?? null
     : null;
-  return { framesByTool, looseByTool, orphanAsks, modalRequest };
+  return { framesByTool, looseByTool, orphanAsks, formByTool, modalRequest };
 }

@@ -246,7 +246,7 @@ export default function kabmoModes(api: ModeApi): void {
   // Releasing is the same refinement `plan off` performs: the model learns the
   // review was abandoned rather than the operator's choice being invented. The
   // `clear: true` teardown would ALSO uninstall the handler, which a still-active
-  // plan mode needs for the next `xd://propose`.
+  // plan mode needs before the model submits it with `propose`.
   api.on?.('agent_end', (event: unknown, ctx: ExtensionCtx) => {
     // A run that already scheduled a continuation is not over; its tool call may
     // still be the parked one.

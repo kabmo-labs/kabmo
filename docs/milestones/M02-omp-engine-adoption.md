@@ -2538,3 +2538,191 @@ order and the bundled `omp://tools` docs moved.
 | R109 | `snapcompactShape` | none needed; Kabmo writes `setIn` keys only | `models-validation.test.ts` ignores unknown keys |
 | R110 | split `\r\n` in PTY output | none needed; text is rendered verbatim | `details` shape unchanged |
 | R111 | host-side/TUI fixes | none needed | wire, roles, tool names, slash registry, settings identical |
+
+# omp 19.1.0 adoption (2026-11-21)
+
+The pin moved **19.0.1 → 19.1.0**, a BREAKING release upstream. The RPC wire
+goes 74 → 77 commands and 301 → 308 definitions, the settings panel 638 → 643
+rows / 477 → 482 entries, and `xd://` tool devices are replaced by bash tool
+commands. `MODEL_ROLES`, the 29 builtin tool names and the slash registry did
+not move.
+
+## Method
+
+- `npm pack @oh-my-pi/pi-coding-agent@19.0.1` and `@19.1.0` (plus `pi-tui`,
+  `pi-utils`, `pi-natives`) into temp trees, then `diff -rq` over `src/` — 342
+  entries differ (10 added under `src/binja`, `src/mcp/host`, `src/tools/
+  tool-commands.ts`, `src/internal-urls/help-protocol.ts`, the browser relay's
+  native host, the transcript index).
+- `rpc-wire.schema.json` compared whole and as a set: 3 commands added
+  (`abort_and_deliver_queue`, `resume`, `get_model_picker`), 7 definitions added
+  (`AbortAndDeliverQueueResult`, `DataUiResponse`, `FormUiRequest`,
+  `GetModelPickerParams`, `ModelPickerResult`, `ModelPickerRole`,
+  `ModelPickerRow`), plus additive fields on `set_model` (`thinkingLevel`,
+  `role`), `set_thinking_level` (`ConfiguredThinkingLevel`, so `auto` is
+  accepted) and `RpcSessionState` (`configuredThinkingLevel`,
+  `thinkingLevels`).
+- The schema generator run against the pinned 19.1.0 produces 10 tabs / 482
+  entries, byte-identical to the file in the tree (`omp:schema:check` passes).
+
+## Findings
+
+### R112 — the `ask` tool now sends its form as ONE `method:"form"` frame (code)
+
+`RpcExtensionUIContext` gained a real `formDialog` member
+(`modes/rpc/rpc-mode.ts`, `requestRpcFormDialog`), and `tools/ask.ts` prefers it
+over `askFieldByField`. The consequence is a WIRE change, not a cosmetic one:
+the form arrives as
+
+```
+{ type: "extension_ui_request", id, method: "form", html, timeout? }
+```
+
+with no `title` and no `questions`, and is answered by ONE
+`{ type: "extension_ui_response", id, data }` whose `data` is validated against
+the form omp parsed (`parseFormDialogResponse`): an unknown key, a value no
+enabled option carries, an array where a single string is expected (or the
+reverse), and a missing `required` field each THROW, which cancels the dialog
+and leaves the run parked. The frame is also size-checked against
+`frameEncoder.maxIntactFrameBytes` before it is sent, so a form that does not fit
+never reaches the host at all.
+
+Kabmo listed no `form` method anywhere. `ANSWERABLE_UI_METHODS` decides BOTH
+halves of the bridge (the server's `PendingUiDialogs`, so a reattaching client is
+offered the request, and the client's dialog queue), so the frame was dropped by
+both: nothing rendered, the agent stayed blocked, and a reload could not recover
+it. Fixed with the bump:
+
+- `form` is an answerable method (`shared/lib/omp/dialog-methods.ts`).
+- `ExtensionUiDialogRequest` carries `html` (and `title` became optional — a
+  `form` frame has none), and `ExtensionDialogResponse` gained `{ data }`.
+- `splitAskFrames` claims the frame by its `html`, the exact string the tool
+  call's arguments carry, falling back to the single open ask when a child
+  normalizes the HTML on the way out. It is never modal material, exactly like
+  the grouped `ask` frame; a form no ask raised (an extension's own
+  `formDialog`) is drawn inline as an orphan.
+- `FormDialog` draws the whole form with one Submit, and `buildFormData`
+  (`shared/lib/chat/ask-form/data.ts`) builds the reply: labels are mapped back
+  to the form's own `value` attributes, a disabled option is dropped, a
+  checkbox group/multi-select submits an array while every other choice submits
+  one string, "Other" text joins a group as an extra entry and stands in for a
+  single choice, and a `required` field left empty names its question instead of
+  sending a frame omp would refuse. Submit stays disabled until the payload is
+  valid, because a refused reply is a parked run, not a validation message.
+
+The parser also gained what the validation needs: `required` on `AskQuestion`
+(merged across a radio group, as omp does) and `disabled` on `AskOption`.
+
+### R113 — `resolve`/`reject`/`propose` are bash tool commands (code)
+
+`src/tools/xdev.ts` is gone; `src/tools/tool-commands.ts` replaces it. A
+discoverable tool is unmounted from the request and installed as a bare command
+of the embedded shell, so:
+
+- `resolve "<reason>"` / `reject "<reason>"` / `propose <slug>` (and
+  `report_issue`, `lsp`, `ast_edit`, MCP tools) run through `bash`;
+- `<tool> --help` prints usage derived from the tool's JSON schema;
+- each invocation is recorded on the result as
+  `details.toolCommands[] = {tool, mode: "help" | "execute", exitCode, args?,
+  inner?}`, `inner` being the wrapped tool's own result details;
+- `read xd://<tool>` (the device listing and docs) is gone; doc topics moved to
+  `help://<tool>/<topic>`;
+- `tools.xdev`, `tools.xdevDocs`, `tools.xdevInlineDevices` and
+  `tools.xdevNotices` became `tools.commands`, `tools.commandDocs`,
+  `tools.commandInline` and `tools.commandNotices` (omp's own migration deletes
+  the old keys, so a panel still writing them edits nothing).
+
+A proposal decision therefore arrives as a `bash` call, and Kabmo's panels read
+only `details.xdev` — which no longer exists. Without a fix the `resolve` card
+would have drawn a terminal console over the decision, the `ast_edit` card lost
+its staged diff and paths, the `lsp` card lost `action: "capabilities"`, and the
+MCP card lost its parsed arguments.
+
+`shared/lib/chat/tool/tool-commands.ts` owns the reading: `isSoleInvocation`
+mirrors omp's own rule (the line starts with the tool word and carries no pipe,
+redirect, substitution, compound separator or background job outside quotes), so
+a call that IS one tool command renders as that tool, while a script that
+happened to invoke one keeps its terminal card. `Resolve`, `AstEdit`, `Lsp`,
+`Mcp`, `toolPanelKind`, `resolveToolKey` and the activity phrase
+(`tool-verbs.ts`) all read it; the `xd://` shapes stay supported because a
+session recorded before the pin still carries them.
+
+### R114 — the preview reminder names the command, not the device (code)
+
+`prompts/system/resolve-device-reminder.md` became `resolve-reminder.md`, and its
+text is now `run \`resolve "<reason>"\`` (with `bash`) or `call \`resolve\``
+(without). `SystemNotice` recognised the old reminder by the literal
+`xd://resolve`, so the new wording fell through to a generic notice row.
+
+### R115 — `help://` replaces `xd://` for tool docs (code)
+
+`read xd://<tool>` (listing) and `read xd://<tool>/<topic>` became
+`read help://<tool>/<topic>` (`internal-urls/help-protocol.ts`,
+`tools/doc-topics.ts`). The doc-read path (`registry.ts` `xdDocPath`) accepts
+both schemes: the new one is what the pin emits, the old one is what a stored
+transcript carries, and both must render as prose rather than as a code block.
+
+### R116 — additive RPC commands and model selectors (no code)
+
+- `abort_and_deliver_queue` aborts the run and continues it with the queued
+  input; Kabmo's Stop is `abort` and its queue is its own, so nothing calls it.
+- `resume` continues the agent (the TUI's `.` shortcut); no Kabmo surface.
+- `get_model_picker` returns omp's own picker rows; Kabmo's picker is its
+  catalog (`/api/models`), so adopting it would be a second source for one fact.
+- `set_model` takes optional `thinkingLevel` and `role`; Kabmo sends the pair
+  only and applies the level with `set_thinking_level`, which still works.
+- `set_thinking_level` now takes `ConfiguredThinkingLevel`, so `auto` is a valid
+  value. Kabmo already treats `auto` as "leave omp alone" and never sends it
+  (`actions.ts`, `deferred-model.ts`, `queue/payload.ts`), which stays correct.
+- `RpcSessionState` gained `configuredThinkingLevel` and `thinkingLevels`;
+  Kabmo reads `thinkingLevel` and the model's own ladder, so nothing changes.
+
+### R117 — `tools.commands` mounts MCP tools too (no code beyond R113)
+
+The MCP panel is reached through `details.toolCommands[].tool` starting with
+`mcp__` (handled in R113); omp's own MCP host move (`mcp.shared`,
+`mcp.idleStopMinutes`, the daemon module) is not adopted — Kabmo never manages
+MCP servers, it only renders what a session ran.
+
+### R118 — the first JOB wait in a top-level session skips the 5 s floor (no code)
+
+`wait.ts` takes the top rung on the first job wait when `endTurn` is set (the
+interactive top-level session), because an early return there can only end its
+turn. Kabmo parses the window from omp's sentence (`No job finished within …`),
+never from the rung index, so the card's `idle 4m` label follows without a code
+change; only the doc comment on `WAIT_LADDER_MS` moved.
+
+### R119 — settings the panel gains and loses (schema)
+
+Added: `tools.commands`, `tools.commandDocs`, `tools.commandInline`,
+`tools.commandNotices`, `pty.notify`, `mcp.shared`, `mcp.idleStopMinutes`,
+`edit.magic.model`, `binja.installDir`, `binja.python`, and `binja` as a
+`disassembler.backend` value (never chosen by `auto`). Removed:
+`tui.completeScrollback`, `tools.xdev*`. `edit.mode` gains `magic`.
+
+### R120 — host-side, TUI and model-facing changes (no action)
+
+Archive full-text search and `archive.search` semantics, extension provider
+overrides (`stream`/`generateImage`/`webSearch`/`discoverModels`/`rules`), MCP
+2026-07-28 and the native browser-relay host (Kabmo runs no
+`omp browser-relay`), collab session controls, the `magic` edit mode's own
+prompts, `pty.notify`, job-stream FILES in `proc://<id>/streams` (Kabmo reads
+pipes; the file rows are additive text), `parentToolCallId` on extension tool
+events, approval records in session files, transcript search indexing,
+selective-commit attribution, Spotlight shaping, TTSR evaluation timing, retry
+visibility, `--plan` argument parsing, `/usage` lock handling, iCloud/Drive
+access, and the browser/computer fixes.
+
+## 19.1.0 outcomes
+
+| # | Finding | Action | Verification |
+|---|---|---|---|
+| R112 | `ask` form is one `method:"form"` frame | `form` added to `ANSWERABLE_UI_METHODS`; `html`/`{data}` on the wire types; `splitAskFrames.formByTool` claims by HTML; `FormDialog` + `buildFormData` build the reply; `required`/`disabled` threaded through the parser | `ask-frames-form.test.ts` (14 tests: claim, orphan, re-indented fallback, value mapping, Other text, required, disabled, empty payload); `tsc` clean |
+| R113 | `resolve`/`reject`/`propose` are bash tool commands | `shared/lib/chat/tool/tool-commands.ts`; `Resolve`/`AstEdit`/`Lsp`/`Mcp`, `toolPanelKind`, `resolveToolKey`, `tool-verbs.ts` read `details.toolCommands[]`; extension wording updated | `tool-commands.test.ts` (10 tests incl. every non-sole shape); `bun test extensions/kabmo-modes` 72/72 |
+| R114 | preview reminder wording | `SystemNotice` accepts the `resolve`/`reject` spelling alongside `xd://resolve` | `tsc`; notice path covered by the existing reminder tests |
+| R115 | `help://` doc topics | `xdDocPath` accepts `help://` and `xd://`; `card-header` hides both as transport | `tsc`; `Read.test.ts` doc-read cases unchanged |
+| R116 | additive RPC commands | none needed; Kabmo calls none of them | wire diff: 3 commands / 7 definitions, all additive |
+| R117 | MCP through tool commands | covered by R113 (`mcp__` → MCP panel) | `tool-commands.test.ts` |
+| R118 | first job wait skips the floor | none needed; the window is parsed from prose | `wait-idle.ts` comment; `wait-idle.test.ts` unchanged |
+| R119 | settings added/removed | schema regenerated (643 settings / 482 entries) | `omp:schema:check`; `schema-releases.test.ts` pins the new ids and asserts the old ones are gone |
+| R120 | host-side/TUI fixes | none needed | wire, roles, tool names, slash registry diffed |

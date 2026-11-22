@@ -4,7 +4,7 @@ import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { useMemo, useState } from 'preact/hooks';
 import { AskPanel } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel';
-import { AskFramesContext, type AskFramesHandle } from '@/client/hooks/chat/timeline/ask-frames';
+import { AskFramesContext, type AskFramesHandle } from '@/client/hooks/chat/timeline/ask-frames-context';
 import { resetListSlots } from '@/client/lib/plugins/list-slots';
 import type { ToolCallData } from '@/shared/types';
 import type { ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
@@ -63,7 +63,7 @@ function Harness({
   const handle = useMemo<AskFramesHandle>(() => ({
     framesByTool: new Map([[TOOL.id, groups]]),
     looseByTool: new Map(),
-    orphanAsks: [],
+    orphanAsks: [], formByTool: new Map(),
     respond: (frame, response) => {
       onSent(frame, response);
       setGroups(next ? [[], [next]] : [[], []]);
@@ -144,7 +144,7 @@ describe('the grouped form for a per-field ask', () => {
       const handle = useMemo<AskFramesHandle>(() => ({
         framesByTool: new Map([[checkedTool.id, groups]]),
         looseByTool: new Map(),
-        orphanAsks: [],
+        orphanAsks: [], formByTool: new Map(),
         respond: (_request, response) => {
           sent.push(response);
           setGroups([[], []]);
@@ -186,7 +186,7 @@ describe('the grouped form for a per-field ask', () => {
       const handle = useMemo<AskFramesHandle>(() => ({
         framesByTool: new Map([[multiTool.id, groups]]),
         looseByTool: new Map(),
-        orphanAsks: [],
+        orphanAsks: [], formByTool: new Map(),
         respond: (_frame, response) => {
           sent.push(response);
           step += 1;

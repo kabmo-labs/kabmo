@@ -7,7 +7,7 @@
  * The parked-proposal slot: what fills it, what empties it, and the rule that
  * nothing empties it on a clock.
  *
- * The slot is module-level state (omp permits one `xd://propose` at a time per
+ * The slot is module-level state (omp permits one `propose` at a time per
  * session), so every test here takes it through the module's own API and leaves
  * it empty — a leaked slot would make the NEXT test's `peek` lie.
  */
@@ -94,7 +94,7 @@ describe('releases that are not a decision', () => {
     expect(resolved[0]?.content[0]?.text).toContain('The run was interrupted.');
     // The model is told to re-propose, which is what keeps plan mode useful:
     // the path it should rewrite is carried back.
-    expect(resolved[0]?.content[0]?.text).toContain('xd://propose');
+    expect(resolved[0]?.content[0]?.text).toContain('`propose`');
     expect(resolved[0]?.details.planFilePath).toBe('local://migrate-importer-plan.md');
     expect(peekParkedProposal()).toBeNull();
   });

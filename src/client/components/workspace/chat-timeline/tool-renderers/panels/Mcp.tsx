@@ -1,6 +1,7 @@
 import { useMemo } from 'preact/hooks';
 import { Boxes, Braces } from 'lucide-preact';
 import type { ToolCallData } from '@/shared/types';
+import { soleToolCommand } from '@/shared/lib/chat/tool/tool-commands';
 import { tryParseJson } from '@/shared/lib/code/syntax-highlight';
 import { isRecord } from '@/shared/lib/util/guards';
 import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
@@ -90,19 +91,27 @@ function ObjectNode({ data }: { data: Record<string, unknown> }) {
   );
 }
 
-/** Panel untuk tool MCP — dipanggil agent sebagai `write xd://mcp__<tool>`
- *  (argumen JSON di `input.content`) atau langsung bernama `mcp__<tool>`.
- *  Argumen JSON dirender per key; value non-JSON sebagai markdown;
- *  JSON list sebagai list. Output fallback ke FallbackOutput, atau per-key
- *  bila hasilnya juga JSON object/list. */
+/** Panel untuk tool MCP. Tiga bentuk pemanggilan, satu panel: `write xd://mcp__<tool>`
+ *  (sesi sebelum 19.1.0), `mcp__<tool>` top-level, dan tool command
+ *  (`bash` yang menjalankan `mcp__<tool> --flag …`, dengan argumen terurai di
+ *  `details.toolCommands[].args`). Argumen dirender per key; value non-JSON
+ *  sebagai markdown; JSON list sebagai list. Output fallback ke FallbackOutput,
+ *  atau per-key bila hasilnya juga JSON object/list. */
 export function Mcp({ tool }: { tool: ToolCallData }) {
   const inputObj =
     typeof tool.input === 'object' && tool.input !== null ? (tool.input as Record<string, unknown>) : undefined;
 
+  const command = soleToolCommand(tool);
   const path = typeof inputObj?.path === 'string' ? inputObj.path : tool.target || '';
-  const name = typeof tool.name === 'string' ? tool.name : '';
+  const name = command?.dispatch.tool ?? (typeof tool.name === 'string' ? tool.name : '');
   const device = (path ? path.replace(/^xd:\/\//, '') : name).replace(/^mcp__/, '');
-  const content = typeof inputObj?.content === 'string' ? inputObj.content : '';
+  // A tool command's arguments were parsed against the tool's schema; the
+  // legacy `write` shape carries them as JSON text in `content`.
+  const content = command
+    ? JSON.stringify(command.args, null, 2)
+    : typeof inputObj?.content === 'string'
+      ? inputObj.content
+      : '';
 
   const parsedArgs = useMemo(() => (content ? tryParseJson(content) : { isValid: false }), [content]);
   const argsData = parsedArgs.isValid ? parsedArgs.data : undefined;

@@ -1,5 +1,5 @@
 {
-  "source": "@oh-my-pi/pi-coding-agent 10 tabs / 638 settings",
+  "source": "@oh-my-pi/pi-coding-agent 10 tabs / 643 settings",
   "tabs": [
     {
       "id": "appearance",
@@ -99,7 +99,8 @@
         "Extensions",
         "Disassembler",
         "IDA Pro",
-        "Ghidra"
+        "Ghidra",
+        "Binary Ninja"
       ]
     },
     {
@@ -526,16 +527,6 @@
             "description": "Repaint only the viewport and keep history wrapped at its old width"
           }
         ]
-      }
-    },
-    "tui.completeScrollback": {
-      "type": "boolean",
-      "default": false,
-      "ui": {
-        "tab": "appearance",
-        "group": "Display",
-        "label": "Complete Scrollback",
-        "description": "Send transcript rows pushed off screen by a growing HUD or dialog straight to scrollback; when it shrinks, blank rows sit between the transcript and the input until new output fills them"
       }
     },
     "terminal.showProgress": {
@@ -1694,6 +1685,20 @@
         "description": "Notify when the ask tool is waiting for input"
       }
     },
+    "pty.notify": {
+      "type": "enum",
+      "default": "on",
+      "values": [
+        "on",
+        "off"
+      ],
+      "ui": {
+        "tab": "interaction",
+        "group": "Notifications",
+        "label": "Console Notification",
+        "description": "Notify when an interactive console (bash `pty`) is waiting on you"
+      }
+    },
     "recap.enabled": {
       "type": "boolean",
       "default": true,
@@ -2059,7 +2064,7 @@
         "tab": "model",
         "group": "Thinking",
         "label": "Tool-Call Loop Exempt Tools",
-        "description": "Tool names, or xd:// device names of write dispatches (for example mcp__peers_wait), that may repeat consecutively without triggering the cross-turn loop guard"
+        "description": "Tool names, including tools run as commands through bash (for example mcp__peers_wait), that may repeat consecutively without triggering the cross-turn loop guard"
       }
     },
     "inlineToolDescriptors": {
@@ -2714,7 +2719,7 @@
         "tab": "model",
         "group": "Retry & Fallback",
         "label": "Max Retry Delay",
-        "description": "Maximum wait between retries, in ms. When the provider asks us to wait longer than this and no credential or model fallback succeeds, the request fails fast instead of sleeping (e.g. 3-hour Anthropic rate-limit windows). 0 disables the ceiling — to let the session auto-resume through provider-stated quota resets."
+        "description": "Maximum wait between retries, in ms. When the retry would wait longer and no credential or model fallback succeeds, the request fails fast instead of sleeping (e.g. 3-hour Anthropic rate-limit windows). 0 disables the ceiling."
       }
     },
     "retry.waitForUsageReset": {
@@ -2724,7 +2729,7 @@
         "tab": "model",
         "group": "Retry & Fallback",
         "label": "Wait For Usage Reset",
-        "description": "When a provider reports usage-limit exhaustion with a reset time (5-hour or weekly quota windows on any provider), sleep until the reset instead of failing fast past retry.maxDelayMs. Waits are abortable (Esc) but also hold subagents, so leave off for unattended runs."
+        "description": "Usage-limit waits within retry.maxDelayMs are already allowed. Enable this to also wait past that cap when the provider reports a reset time, such as a 5-hour or weekly quota window. Waits are abortable (Esc) but also hold subagents, so leave off for unattended runs."
       }
     },
     "retry.modelFallback": {
@@ -5860,13 +5865,23 @@
         "patch",
         "replace",
         "sloppy",
+        "magic",
         "none"
       ],
       "ui": {
         "tab": "files",
         "group": "Editing",
         "label": "Edit Mode",
-        "description": "Select the edit tool variant (replace, patch, hashline, or apply_patch); none removes the edit tool and keeps bash enabled"
+        "description": "Select the edit tool variant (replace, patch, hashline, or apply_patch); magic takes described changes that a fast model writes; none removes the edit tool and keeps bash enabled"
+      }
+    },
+    "edit.magic.model": {
+      "type": "string",
+      "ui": {
+        "tab": "files",
+        "group": "Editing",
+        "label": "Magic Edit Model",
+        "description": "Model selector or role alias (@slow) for the model that applies magic-mode changes, empty = smol role"
       }
     },
     "edit.fuzzyMatch": {
@@ -6755,12 +6770,12 @@
         "tab": "tools",
         "group": "Available Tools",
         "label": "Find (semantic grep)",
-        "description": "Enable the find tool: natural-language search for files and line ranges, judged by the judge model role. Auto enables it only when the judge role resolves to a native TypeSafe jev model",
+        "description": "Enable the find tool: natural-language search for files and line ranges, judged by the judge model role. Auto enables it when the first usable judge is native",
         "options": [
           {
             "value": "auto",
             "label": "Auto",
-            "description": "Enable when the judge role resolves to a native TypeSafe jev model"
+            "description": "Enable when the first usable judge is native"
           },
           {
             "value": "on",
@@ -6812,7 +6827,7 @@
         "tab": "tools",
         "group": "Available Tools",
         "label": "Generate Image",
-        "description": "Enable the generate_image tool (text-to-image generation and editing). Exposed as an xd:// device when tools.xdev is on."
+        "description": "Enable the generate_image tool (text-to-image generation and editing). Mounted as a tool command when tools.commands is on."
       }
     },
     "computer.enabled": {
@@ -7177,17 +7192,17 @@
         "description": "Draw a live widget for each running background job (charts, bars, status grids derived from its output) in the wait card, the jobs pill and the jobs sheet, and caption long shell commands with one line on what they do. The `widget` model role (default: `smol`) writes one spec and at most one caption per job; updates need no further model calls"
       }
     },
-    "tools.xdev": {
+    "tools.commands": {
       "type": "boolean",
       "default": true,
       "ui": {
         "tab": "tools",
         "group": "Discovery & MCP",
-        "label": "xd:// Tools",
-        "description": "Mount rarely-used (discoverable) tools under xd:// device URLs driven via read/write instead of shipping their schemas on every request. Sessions whose explicit tool list grants read but omits write mount devices through a device-only write transport (only local:// scratch stays writable besides devices). Disable to expose every enabled tool top-level."
+        "label": "Tool Commands",
+        "description": "Mount rarely-used (discoverable) tools as bash commands with schema-derived `--help` instead of shipping their schemas on every request. Needs the bash tool: sessions without it keep every enabled tool top-level. Disable to expose every enabled tool top-level."
       }
     },
-    "tools.xdevDocs": {
+    "tools.commandDocs": {
       "type": "enum",
       "default": "catalog",
       "values": [
@@ -7198,45 +7213,45 @@
       "ui": {
         "tab": "tools",
         "group": "Discovery & MCP",
-        "label": "xd:// Prompt Docs",
-        "description": "Choose which mounted-device docs and schemas are inlined in the system prompt. Built-ins keeps core tools inline while MCP and extension tools stay on-demand.",
+        "label": "Tool Command Prompt Docs",
+        "description": "Choose which mounted commands get their `--help` text inlined in the system prompt. Built-ins keeps core tools inline while MCP and extension tools stay on demand.",
         "options": [
           {
             "value": "inline",
-            "label": "All Devices",
-            "description": "Inline docs and schemas for every mounted device."
+            "label": "All Commands",
+            "description": "Inline help for every mounted command."
           },
           {
             "value": "builtins",
             "label": "Built-ins Only",
-            "description": "Inline built-in docs; fetch MCP and extension docs on demand."
+            "description": "Inline built-in help; MCP and extension help on demand."
           },
           {
             "value": "catalog",
             "label": "Catalog Only",
-            "description": "List every device; fetch all docs on demand."
+            "description": "List every command; run `--help` on demand."
           }
         ]
       }
     },
-    "tools.xdevInlineDevices": {
+    "tools.commandInline": {
       "type": "array",
       "default": [],
       "ui": {
         "tab": "tools",
         "group": "Discovery & MCP",
-        "label": "xd:// Inline Devices",
-        "description": "When xd:// Prompt Docs is Built-ins Only, inline dynamic devices whose names match these glob patterns (for example mcp__context_mode_*). Catalog Only ignores this setting."
+        "label": "Tool Command Inline Help",
+        "description": "When Tool Command Prompt Docs is Built-ins Only, also inline dynamic commands whose names match these glob patterns (for example mcp__context_mode_*). Catalog Only ignores this setting."
       }
     },
-    "tools.xdevNotices": {
+    "tools.commandNotices": {
       "type": "boolean",
       "default": true,
       "ui": {
         "tab": "tools",
         "group": "Discovery & MCP",
-        "label": "xd:// Mount Notices",
-        "description": "Show an `xd://: mounted …` notice when MCP or extension tools are mounted or unmounted. The model still learns of the change with its next prompt."
+        "label": "Tool Command Mount Notices",
+        "description": "Show a notice when MCP or extension tools are mounted or unmounted as commands; the model still learns of the change with its next prompt."
       }
     },
     "dev.autoqa": {
@@ -7246,7 +7261,7 @@
         "tab": "tools",
         "group": "Developer",
         "label": "Auto QA",
-        "description": "Automated tool issue reporting (xd://report_issue). On by default; the first report asks for consent, and denying it disables reporting until re-enabled explicitly"
+        "description": "Automated tool issue reporting (`report_issue`). On by default; the first report asks for consent, and denying it disables reporting until re-enabled explicitly"
       }
     },
     "dev.autoqaPush.endpoint": {
@@ -8595,7 +8610,7 @@
         "tab": "tools",
         "group": "Grep & Browser",
         "label": "Browser Relay",
-        "description": "Drive your own Chrome tabs through the omp browser relay. Install the extension once (`omp browser-relay install`); the relay server auto-starts when the browser prelude needs it. Takes precedence over Browser CDP URL; set PI_BROWSER_RELAY=0 or PI_BROWSER_RELAY=1 to override. Subagents skip it unless an open passes app: \"relay\"."
+        "description": "Drive your own Chrome tabs through the omp browser relay. Install the extension once (`omp browser-relay install`); its native host serves the relay while Chrome runs. Takes precedence over Browser CDP URL; set PI_BROWSER_RELAY=0 or PI_BROWSER_RELAY=1 to override, or PI_BROWSER_RELAY=only to make it the only browser (sessions started from the extension's side panel). Subagents skip it unless an open passes app: \"relay\" or the relay is the only browser."
       }
     },
     "browser.relayUrl": {
@@ -8604,7 +8619,7 @@
         "tab": "tools",
         "group": "Grep & Browser",
         "label": "Browser Relay URL",
-        "description": "omp browser relay endpoint (default http://127.0.0.1:9224)."
+        "description": "Override local browser relay discovery, for example to reach a relay forwarded from another machine."
       }
     },
     "browser.headless": {
@@ -8710,18 +8725,19 @@
         "auto",
         "ghidra",
         "ida",
+        "binja",
         "none"
       ],
       "ui": {
         "tab": "tools",
         "group": "Available Tools",
         "label": "Disassembler",
-        "description": "Backend for analysis selectors in read and eval's dsm namespace; bare executable reads show metadata only. Auto uses IDA Pro when installed, else Ghidra (downloaded on first analysis)",
+        "description": "Backend for analysis selectors in read and eval's dsm namespace; bare executable reads show metadata only. Auto uses IDA Pro when installed, else Ghidra (downloaded on first analysis); Binary Ninja is used only when selected",
         "options": [
           {
             "value": "auto",
             "label": "Auto",
-            "description": "IDA Pro when an install with idalib is found, otherwise Ghidra"
+            "description": "IDA Pro when an install with idalib is found, otherwise Ghidra; never Binary Ninja"
           },
           {
             "value": "ghidra",
@@ -8732,6 +8748,11 @@
             "value": "ida",
             "label": "IDA Pro",
             "description": "IDA Pro via idalib; analysis disabled when no install is found"
+          },
+          {
+            "value": "binja",
+            "label": "Binary Ninja",
+            "description": "Binary Ninja via its headless Python API (needs a headless-capable licence); never chosen by Auto; analysis disabled when no install is found"
           },
           {
             "value": "none",
@@ -8748,7 +8769,7 @@
         "tab": "tools",
         "group": "Disassembler",
         "label": "Max Open Databases",
-        "description": "Most databases (omp.ida.* / omp.ghidra.* daemons in omp ps) open at once per project; opening another evicts an unreferenced idle one. Close retained dsm handles when done",
+        "description": "Most databases open at once per project (each is a disasm unit in omp ps, labelled with its backend and binary); opening another evicts an unreferenced idle one. Close retained dsm handles when done",
         "options": [
           {
             "value": "2",
@@ -8841,6 +8862,26 @@
         "description": "Python interpreter that can import pyghidra; empty uses a managed venv built from the install's bundled wheels"
       }
     },
+    "binja.installDir": {
+      "type": "string",
+      "default": "",
+      "ui": {
+        "tab": "tools",
+        "group": "Binary Ninja",
+        "label": "Binary Ninja Install Dir",
+        "description": "Directory containing the Binary Ninja core library, or the macOS .app bundle; empty uses $BN_INSTALL_DIR, the lastrun file in the Binary Ninja user folder, then the default install locations"
+      }
+    },
+    "binja.python": {
+      "type": "string",
+      "default": "",
+      "ui": {
+        "tab": "tools",
+        "group": "Binary Ninja",
+        "label": "Binary Ninja Python",
+        "description": "Python 3 interpreter that can load the Binary Ninja API from the install's python directory; empty auto-detects"
+      }
+    },
     "mcp.enableProjectConfig": {
       "type": "boolean",
       "default": true,
@@ -8861,6 +8902,26 @@
         "description": "Wait this many milliseconds for initial MCP tool discovery; 0 waits until connections settle"
       }
     },
+    "mcp.shared": {
+      "type": "boolean",
+      "default": true,
+      "ui": {
+        "tab": "tools",
+        "group": "Discovery & MCP",
+        "label": "Shared MCP Servers",
+        "description": "Run MCP servers through the daemon so every omp instance shares one process per server and a cached tool catalog. Servers that hold a session keep one process per instance (falls back to private servers when unavailable)"
+      }
+    },
+    "mcp.idleStopMinutes": {
+      "type": "number",
+      "default": 5,
+      "ui": {
+        "tab": "tools",
+        "group": "Discovery & MCP",
+        "label": "MCP Idle Stop",
+        "description": "Stop a shared MCP server after this many minutes without use; it restarts on the next request"
+      }
+    },
     "mcp.evalNamespaces": {
       "type": "boolean",
       "default": false,
@@ -8868,7 +8929,7 @@
         "tab": "tools",
         "group": "Discovery & MCP",
         "label": "MCP Eval Namespaces",
-        "description": "Expose each MCP server as an eval global (github.create_issue(...)) instead of top-level or xd:// tools"
+        "description": "Expose each MCP server as an eval global (github.create_issue(...)) instead of top-level tools or tool commands"
       }
     },
     "mcp.builtinTransforms": {

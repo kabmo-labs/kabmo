@@ -4,7 +4,7 @@
  */
 
 /**
- * Plan review: the five ways out of a parked `xd://propose`.
+ * Plan review: the five ways out of a parked `propose`.
  *
  * The parked proposal itself — its slot, its plan body, and the releases that
  * are not a decision (teardown, refinement) — lives in `parked.ts`. This module
@@ -21,7 +21,7 @@
  * ## Every choice must SETTLE the parked proposal
  *
  * The promise `parkProposal` holds is the model's open tool call: omp awaits the
- * handler's return value as the `write xd://propose` result. A choice that
+ * handler's return value as the `propose` result. A choice that
  * returns without resolving leaves that call open, and the planning turn then
  * never ends — the child streams forever, `agent_end` never arrives, and the
  * next prompt is refused `agent_busy`. So a branch that resolves is the rule,
@@ -165,7 +165,7 @@ export async function decidePlan(
   if (choice === 'Refine plan') {
     const note = feedback.trim() || 'The operator asked for another pass.';
     current.resolve({
-      content: [{ type: 'text', text: `${note}\n\nUpdate the plan file, then write its title to xd://propose again.` }],
+      content: [{ type: 'text', text: `${note}\n\nUpdate the plan file, then submit its title with \`propose\` again.` }],
       details: { planFilePath: current.planFilePath, title: current.title, planExists: true },
     });
     // The review surface closes on this marker, NOT on the request returning:
@@ -231,13 +231,13 @@ export async function decidePlan(
     }
   }
 
-  // The approval has to SETTLE the parked `xd://propose`: the model's tool call
+  // The approval has to SETTLE the parked `propose`: the model's tool call
   // is `await handler(title)` (omp's `dispatchResolutionDevice`), so an
   // unsettled promise is a planning turn that never ends. Measured on omp
   // 18.11.2 through the real RPC path with the approve branches returning
   // without a resolve: the child reported `isStreaming: true` for the life of
   // the session, no `agent_end` ever arrived, the transcript stopped at the
-  // `xd://propose` tool call, and the next prompt was refused `agent_busy` —
+  // `propose` tool call, and the next prompt was refused `agent_busy` —
   // recoverable only by Stop. Twice per variant, on every variant that returns
   // without settling.
   //
@@ -255,7 +255,7 @@ export async function decidePlan(
   //
   // The ORDER is load-bearing: settling resumes the planning turn, and a model
   // that wakes up still in plan mode is required to end its turn with a tool
-  // call — so it would write `xd://propose` again and re-park the review it just
+  // call — so it would run `propose` again and re-park the review it just
   // got an answer to. `leavePlanMode()` and the handler teardown above run
   // first, so the turn resumes outside plan mode, where the queued
   // `plan-mode-reference` steer (below) is what it acts on. That is the same

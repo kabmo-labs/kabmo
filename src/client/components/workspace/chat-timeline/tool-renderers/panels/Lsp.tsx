@@ -1,6 +1,7 @@
 import { useMemo } from 'preact/hooks';
 import { AlertCircle, AlertTriangle, CheckCircle2, Cpu, Info, Server } from 'lucide-preact';
 import type { ToolCallData } from '@/shared/types';
+import { soleToolCommand } from '@/shared/lib/chat/tool/tool-commands';
 import { FallbackOutput } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/FallbackOutput';
 import { getToolInputAction } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/tool-input';
 
@@ -155,7 +156,11 @@ export function Lsp({ tool }: { tool: ToolCallData }) {
   const details = (tool.details ?? {}) as Record<string, any>;
   const output = tool.output ?? '';
 
+  // omp 19.1.0 runs `lsp` as a bash tool command; its parsed arguments ride
+  // `details.toolCommands[].args` instead of `details.xdev.args`.
+  const commandArgs = soleToolCommand(tool)?.args;
   const isCapabilities =
+    commandArgs?.action === 'capabilities' ||
     details.xdev?.args?.action === 'capabilities' ||
     getToolInputAction(tool.input) === 'capabilities' ||
     output.includes('capabilities:');

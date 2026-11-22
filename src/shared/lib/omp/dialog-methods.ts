@@ -35,6 +35,12 @@ export const ANSWERABLE_UI_METHODS: Record<string, true> = {
   input: true,
   editor: true,
   ask: true,
+  // omp 19.1.0 gave the RPC host a real `formDialog`, so the `ask` tool sends
+  // its whole HTML form as ONE `method:"form"` frame and parks on the reply.
+  // Without this entry neither half remembers the request: the server forgets
+  // what a reattaching client must answer, and the client never queues it, so
+  // the agent stays blocked with nothing on screen.
+  form: true,
 };
 
 /** True for a request method the agent is parked on. */

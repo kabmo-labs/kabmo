@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'preact/hooks';
 import { useSearchParams } from '@/client/lib/router/search-params';
-import { AskFramesContext, splitAskFrames, type AskFramesHandle } from '@/client/hooks/chat/timeline/ask-frames';
+import { splitAskFrames } from '@/client/hooks/chat/timeline/ask-frames';
+import { AskFramesContext, type AskFramesHandle } from '@/client/hooks/chat/timeline/ask-frames-context';
 import type { ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
 import type { UserTurnRef } from '@/shared/types/chat';
 import type { ExtensionDialogResponse } from '@/client/components/workspace/chat-timeline/tool-renderers/extension-dialog/Lazy';
@@ -106,18 +107,13 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
   // blocked on (an approval gate, an extension picker) has no card and keeps
   // the modal. It also waits for committed history: a replayed dialog has no
   // card to match yet, and deciding early flashed the modal and withdrew it.
-  const { framesByTool, looseByTool, orphanAsks, modalRequest } = useMemo(
-    () => splitAskFrames(localMessages, extensionDialogs, !sessionLoading),
-    [localMessages, extensionDialogs, sessionLoading],
-  );
+  const { framesByTool, looseByTool, orphanAsks, formByTool, modalRequest } = useMemo(() => splitAskFrames(localMessages, extensionDialogs, !sessionLoading), [localMessages, extensionDialogs, sessionLoading]);
   const respondToFrame = useCallback((request: ExtensionUiDialogRequest, response: ExtensionDialogResponse) => {
     void respondToExtensionUi(request, response);
     resolveExtensionDialog(request.id);
   }, [respondToExtensionUi, resolveExtensionDialog]);
-  const askFrames = useMemo<AskFramesHandle>(
-    () => ({ framesByTool, looseByTool, orphanAsks, respond: respondToFrame }),
-    [framesByTool, looseByTool, orphanAsks, respondToFrame],
-  );
+  // `formByTool` rides along: an ask card answers omp 19.1.0's whole-form dialog through this responder too.
+  const askFrames = useMemo<AskFramesHandle>(() => ({ framesByTool, looseByTool, orphanAsks, formByTool, respond: respondToFrame }), [framesByTool, looseByTool, orphanAsks, formByTool, respondToFrame]);
 
   const newChat = useNewChatOpen({ folders, sessionId, selectedFolderId, ...(activeHarness.harness ? { harness: activeHarness.harness } : {}) });
   const { pendingUndo, undoing, error: undoError, requestUndo: handleRequestUndo, closeUndoConfirm, confirmUndo } = useUndoConfirmation(handleUndo);

@@ -21,6 +21,7 @@
 
 import type { ToolCallData } from '@/shared/types';
 import { isRecord } from '@/shared/lib/util/guards';
+import { isSoleInvocation } from '@/shared/lib/chat/tool/tool-commands';
 import { parseProcUrl, procRequestOp } from '@/shared/lib/omp/session/proc';
 import { DEVICE_VERBS, PHASE_VERBS, TOOL_ALIASES, TOOL_VERBS, asString, pick, subjectFor, truncate } from '@/shared/lib/chat/timeline/tool-phrases';
 
@@ -49,12 +50,27 @@ function argsOf(tool: ToolActivity): Record<string, unknown> {
   return args;
 }
 
-/** Inner `xd://<device>` name carried by a write call, if any. */
+/** The tool a bash TOOL COMMAND (omp 19.1.0) ran as the whole call, if any. */
 function xdDeviceOf(args: Record<string, unknown>, tool: ToolActivity): string | undefined {
   const candidate = pick(args, ['path', 'target']) ?? asString(tool.target) ?? asString(tool.command);
   if (!candidate || !candidate.startsWith('xd://')) return undefined;
   const device = candidate.slice('xd://'.length).split(/[/?#\s]/)[0];
   return device || undefined;
+}
+
+/**
+ * The tool a bash call IS, when the whole line is one tool command
+ * (`resolve "…"`, `lsp --help`). omp 19.1.0 replaced its `xd://` devices with
+ * these, so the activity phrase must name the wrapped tool — "Running bash"
+ * over a staged-proposal decision says nothing.
+ */
+function toolCommandOf(tool: ToolActivity): string | undefined {
+  const dispatches = (tool as { details?: Record<string, unknown> }).details?.toolCommands;
+  if (!Array.isArray(dispatches) || dispatches.length !== 1) return undefined;
+  const dispatch = dispatches[0] as Record<string, unknown>;
+  if (dispatch?.mode !== 'execute' || typeof dispatch.tool !== 'string') return undefined;
+  const command = asString(tool.command) ?? pick(argsOf(tool), ['command']);
+  return isSoleInvocation(command, dispatch.tool) ? dispatch.tool : undefined;
 }
 
 /** Inner device arguments: a `write xd://…` payload is JSON in `content`.
@@ -101,6 +117,17 @@ export function describeToolActivity(tool: ToolActivity): string {
               ? 'Reading process'
               : 'Listing processes';
     return truncate(proc.id ? `${verb} ${proc.id}` : verb);
+  }
+
+  // A sole tool command names its own tool: `resolve "…"` is a proposal
+  // decision, not a shell run.
+  const commanded = toolCommandOf(tool);
+  if (commanded) {
+    const verb = DEVICE_VERBS[commanded] ?? TOOL_VERBS[commanded] ?? `Running ${commanded}`;
+    const subject = subjectFor(commanded, args);
+    if (subject) return truncate(`${verb} ${subject}`);
+    if (intent) return truncate(intent);
+    return truncate(verb);
   }
 
   const device = xdDeviceOf(args, tool);

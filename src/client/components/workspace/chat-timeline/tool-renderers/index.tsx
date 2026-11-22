@@ -43,7 +43,7 @@ import { Wait } from '@/client/components/workspace/chat-timeline/tool-renderers
 import { hashlineTargetPath } from '@/shared/lib/omp/session/hashline-patch';
 import { procPathOf } from '@/shared/lib/omp/session/proc';
 import { getToolInputPath } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/tool-input';
-import { isXdDocRead, toolPanelKind, type ToolPanelKind } from '@/client/components/workspace/chat-timeline/tool-renderers/registry';
+import { effectiveToolName, isXdDocRead, toolPanelKind, type ToolPanelKind } from '@/client/components/workspace/chat-timeline/tool-renderers/registry';
 
 /** One panel component per kind. A kind with no entry falls back to generic
  *  Input/Output rendering; the record is total so a missing one is a type error. */
@@ -118,6 +118,10 @@ export function resolveToolKey(tool: ToolCallData): string {
   // `read xd://<device>` is the device's docs: the key is `read`, so the glyph
   // and the header describe a read rather than the device it documents.
   if (isXdDocRead(tool)) return 'read';
+  // A sole tool command (`resolve "…"`, `lsp --help`) is that tool's call, not
+  // a shell run: the glyph and title must name what it did.
+  const commanded = effectiveToolName(tool);
+  if (commanded && commanded !== tool.name) return commanded.toLowerCase();
 
   const details = tool.details as Record<string, unknown> | undefined;
   const xdev = details?.xdev;

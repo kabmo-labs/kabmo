@@ -702,7 +702,65 @@ fi
 # `extensions` entry loads instead of throwing; the Windows shell `dirname`
 # builtin and Windows bash minimizing are fixed; native dock order and the
 # `omp://tools` docs moved.
-OMP_VERSION="${OMP_VERSION:-19.0.1}"
+#
+# 19.1.0 (2026-11-21) is a BREAKING release upstream: `xd://` tool DEVICES are
+# gone, replaced by tool COMMANDS. Rarely-used tools are unmounted from the
+# request and installed as bare commands of the embedded shell, so the model
+# runs `resolve "<reason>"`, `propose <slug>` or `lsp --help` through `bash`;
+# each invocation is recorded on `details.toolCommands[]` as
+# `{tool, mode, exitCode, args?, inner?}`, with the wrapped tool's own result in
+# `inner`. Doc topics moved from `xd://<tool>/<topic>` to
+# `help://<tool>/<topic>`, and `tools.xdev`/`xdevDocs`/`xdevInlineDevices`/
+# `xdevNotices` were renamed to `tools.commands`/`commandDocs`/`commandInline`/
+# `commandNotices`. The RPC wire goes 74 → 77 commands and 301 → 308
+# definitions (additive: `abort_and_deliver_queue`, `resume`,
+# `get_model_picker`, `DataUiResponse`, `FormUiRequest`, `ModelPicker*`), and
+# the settings panel 638 → 643 rows / 477 → 482 entries.
+#
+# THREE upstream breaks reach a Kabmo surface, each fixed with the bump:
+#
+#   - THE ASK FORM. `RpcExtensionUIContext` now has a real `formDialog`, so the
+#     `ask` tool stops walking its HTML form one blocking dialog per control and
+#     sends the WHOLE form as one `extension_ui_request` with `method:"form"`
+#     (`{html, timeout?}`, no `title`), answered by ONE `extension_ui_response`
+#     carrying `{data}`. Neither half of Kabmo's bridge listed the method: the
+#     server forgot the request a reattaching client must answer and the client
+#     never queued it, so the agent parked forever with nothing on screen.
+#     `form` is now in `ANSWERABLE_UI_METHODS`; `splitAskFrames` claims the
+#     frame by its `html` (the exact string the tool call carries) and hands it
+#     to `FormDialog`, which builds the reply with `buildFormData` — mirroring
+#     omp's own validation (unknown keys, disabled options, array-vs-string
+#     choices and `required` fields are all refused with the field named).
+#   - THE STAGED PROPOSAL. `resolve`/`reject`/`propose` are tool commands now,
+#     so the decision arrives as a `bash` call whose result carries
+#     `details.toolCommands[]`. `Resolve`/`AstEdit`/`Lsp`/`Mcp` read the wrapped
+#     tool's `inner` details and parsed `args` through
+#     `shared/lib/chat/tool/tool-commands.ts`, and the panel registry treats a
+#     SOLE invocation (`resolve "x"`, nothing piped or redirected) as that
+#     tool's own call — otherwise a terminal console drew over the decision.
+#     The preview reminder also changed wording ("run `resolve`" instead of
+#     "write to `xd://resolve`"), which `SystemNotice` now recognises.
+#   - THE TOOL DOCS. `read xd://<tool>/<topic>` became
+#     `read help://<tool>/<topic>`; the doc-read path accepts both, because a
+#     session recorded before the pin still carries the old URL.
+#
+# Also adopted with no code: `set_thinking_level` accepts `auto` (Kabmo already
+# sends the ladder's own values and skips `auto` in a queue replay),
+# `set_model` takes an optional `thinkingLevel`/`role` (Kabmo passes neither),
+# and the first JOB wait in a top-level session skips the 5 s floor — the
+# window is still parsed from omp's sentence, never from the rung.
+#
+# Not adopted, deliberately: `abort_and_deliver_queue`, `resume` and
+# `get_model_picker` (Kabmo's Stop is `abort` and its picker is its own
+# catalog), the daemon-shared MCP host and its `mcp.shared`/`mcp.idleStopMinutes`
+# rows, the `magic` edit mode and `edit.magic.model`, Binary Ninja and
+# `binja.*`, the archive full-text index, extension provider overrides, the
+# `ask` form's option NOTES and images, MCP 2026-07-28, the native
+# browser-relay host (Kabmo runs no `omp browser-relay`), collab session
+# controls, `pty.notify`, the job-stream files in `proc://<id>/streams`, and the
+# transcript-search, selective-commit, Spotlight, TTSR, retry and browser
+# fixes — host-side or model-facing.
+OMP_VERSION="${OMP_VERSION:-19.1.0}"
 PACKAGE="@oh-my-pi/pi-coding-agent"
 WANTED="omp/${OMP_VERSION}"
 

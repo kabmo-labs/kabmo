@@ -1,6 +1,7 @@
 import { useMemo } from 'preact/hooks';
 import { ArrowRight, CheckCircle2, Clock, Wand2 } from 'lucide-preact';
 import type { ToolCallData } from '@/shared/types';
+import { soleInnerDetails, soleToolCommand } from '@/shared/lib/chat/tool/tool-commands';
 import { getLanguageFromPath } from '@/shared/lib/code/language';
 import { useDeferredHighlightLines } from '@/client/hooks/code/deferred-highlight';
 
@@ -29,8 +30,12 @@ function parseAstChanges(output: string): AstEditItem[] {
 export function AstEdit({ tool }: { tool: ToolCallData }) {
   const details = (tool.details ?? {}) as Record<string, any>;
   const xdev = (details.xdev ?? {}) as Record<string, any>;
-  const inner = (xdev.inner ?? {}) as Record<string, any>;
-  const args = (xdev.args ?? {}) as Record<string, any>;
+  // omp 19.1.0 runs `ast_edit` as a bash tool command: the wrapped tool's own
+  // result rides `details.toolCommands[].inner`, and its parsed arguments ride
+  // `dispatch.args`. The `xd://ast_edit` shape of older sessions still reads.
+  const command = soleToolCommand(tool);
+  const inner = (soleInnerDetails(tool) ?? xdev.inner ?? {}) as Record<string, any>;
+  const args = (command?.args ?? xdev.args ?? {}) as Record<string, any>;
   const output = tool.output ?? '';
 
   const isStaged =
@@ -62,7 +67,7 @@ export function AstEdit({ tool }: { tool: ToolCallData }) {
   );
   const diffHtml = useDeferredHighlightLines(diffCode, diffLang);
 
-  // If Staged Proposal Mode (oh-my-pi xd://ast_edit)
+  // If Staged Proposal Mode (oh-my-pi's `ast_edit` preview)
   if (isStaged || ops.length > 0 || diffLines.length > 0) {
     return (
       <div className="space-y-2 select-text">

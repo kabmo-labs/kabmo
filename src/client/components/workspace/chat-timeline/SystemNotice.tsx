@@ -71,9 +71,13 @@ export function SystemNotice({ notice, source, isMobile = false }: SystemNoticeP
   //    body underneath is the instruction omp injected.
   const reminderInfo = useMemo(() => {
     const envelope = unwrapXmlEnvelope(notice);
+    // omp 19.1.0 words the preview reminder around `resolve`/`reject` (a bash
+    // tool command) instead of `write xd://resolve`; both spellings reach this
+    // card, because a session recorded before the pin still carries the old one.
     const isNoticeLike =
       (envelope !== undefined && isReminderTag(envelope.tag))
       || notice.includes('xd://resolve')
+      || notice.includes('`resolve`')
       || notice.includes('`ast_edit` result');
     if (!isNoticeLike) return null;
 

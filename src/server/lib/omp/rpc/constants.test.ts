@@ -123,7 +123,12 @@ describe('command classification sets', () => {
     // HTML form in 18.18.3): the agent parks on it exactly as it does on a
     // `select`, so a list without it leaves the frame unremembered and the
     // question unanswerable after a reload.
-    expect(Object.keys(ANSWERABLE_UI_METHODS).sort()).toEqual(['ask', 'confirm', 'editor', 'input', 'select']);
+    //
+    // `form` is omp 19.1.0's `ui.formDialog`, which the `ask` tool now uses: the
+    // whole HTML form in ONE frame, answered by ONE `{ data }` reply. A list
+    // without it parks the run with nothing on screen, because neither the
+    // server nor the client half recognises the request.
+    expect(Object.keys(ANSWERABLE_UI_METHODS).sort()).toEqual(['ask', 'confirm', 'editor', 'form', 'input', 'select']);
     // Fire-and-forget methods must never block a turn waiting for a response.
     expect(ANSWERABLE_UI_METHODS.notify).toBeUndefined();
     expect(ANSWERABLE_UI_METHODS.cancel).toBeUndefined();

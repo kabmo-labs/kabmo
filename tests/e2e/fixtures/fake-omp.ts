@@ -222,6 +222,8 @@ async function runTurn(prompt: string, requestId: string) {
   const wait = /wait:(\d+)/.exec(prompt);
   const waitLimit = prompt.includes('waitcap');
   const formAsk = /form-ask:(.+)/.exec(prompt);
+  // omp 19.1.0: the whole form in ONE dialog, answered by ONE `{ data }` reply.
+  const formDialogPrompt = /form-dialog:(.+)/.exec(prompt);
   const ask = /ask:(.+)/.exec(prompt);
   // A grouped ask with no tool call behind it — what a subagent or an
   // extension's own `askDialog` produces. The card cannot exist, so the dialog
@@ -252,7 +254,8 @@ async function runTurn(prompt: string, requestId: string) {
   if (tool) await streamToolCall(tool[1], cmd?.[1].trim());
   if (editRows) await streamEditCall(Number(editRows[1]));
   // `form-ask:` and `orphan-ask:` both contain `ask:`, so they are tested first.
-  if (formAsk) await runFormAsk(formAsk[1].trim());
+  if (formDialogPrompt) await runFormDialog(formDialogPrompt[1].trim());
+  else if (formAsk) await runFormAsk(formAsk[1].trim());
   else if (orphanAsk) await runAsk(orphanAsk[1].trim(), false);
   else if (ask) await runAsk(ask[1].trim());
 
@@ -305,6 +308,18 @@ const pendingAsks = new Map<string, (answers: AskAnswer[]) => void>();
 
 /** Parked `select`/`input` dialogs the form walk blocks on, keyed by request id. */
 const pendingFieldDialogs = new Map<string, (value: string | undefined) => void>();
+
+/** Parked whole-form dialogs (omp 19.1.0's `method:"form"`), by request id. */
+const pendingFormDialogs = new Map<string, (data: Record<string, string | string[]>) => void>();
+
+/** Send one `form` frame and wait for its `{ data }` reply, as omp 19.1.0 does. */
+function formDialog(html: string): Promise<Record<string, string | string[]>> {
+  const uiRequestId = `ui-${crypto.randomUUID().slice(0, 8)}`;
+  const { promise, resolve } = Promise.withResolvers<Record<string, string | string[]>>();
+  pendingFormDialogs.set(uiRequestId, resolve);
+  write({ type: 'extension_ui_request', id: uiRequestId, method: 'form', html });
+  return promise;
+}
 
 /** Send one blocking dialog and wait for its value, as the RPC form walk does. */
 function fieldDialog(frame: Record<string, unknown>): Promise<string | undefined> {
@@ -372,6 +387,63 @@ async function runFormAsk(text: string) {
           { name: 'flavour', question: 'Flavour', answer: flavour === 'No' ? 'No' : 'Yes' },
           { name: 'serving', question: 'Serving', answer: serving ?? '1' },
         ],
+      },
+      isError: false,
+    },
+    isError: false,
+  });
+}
+
+/**
+ * omp 19.1.0's `ask` shape: the WHOLE form as one `method:"form"` dialog.
+ *
+ * The tool call carries `{ html }` exactly as the frame does, which is the key
+ * the card claims it by, and the reply is ONE `{ data }` object whose keys are
+ * the form's control names. A frame nobody answers parks the run, so the
+ * fixture blocks on the response the same way omp does.
+ */
+async function runFormDialog(text: string) {
+  const callId = `call-${crypto.randomUUID().slice(0, 8)}`;
+  const messageId = `msg-${crypto.randomUUID().slice(0, 8)}`;
+  const html = `<form>
+    <p>${text}</p>
+    <fieldset>
+      <legend>Flavour</legend>
+      <label><input type="radio" name="flavour" value="yes" checked> Yes</label>
+      <label><input type="radio" name="flavour" value="no"> No</label>
+    </fieldset>
+    <label>Serving <input type="number" name="serving" value="1" required></label>
+  </form>`;
+  const args = { html };
+  const block = { type: 'toolCall', id: callId, name: 'ask', arguments: args, partialArgs: JSON.stringify(args), streamIndex: 0 };
+  const message = { ...assistantMessage('', 'toolUse', messageId), content: [block] };
+
+  write({ type: 'message_start', messageId, message });
+  write({ type: 'message_end', messageId, message });
+  write({ type: 'turn_end', message, toolResults: [] });
+  write({ type: 'tool_execution_start', toolCallId: callId, toolName: 'ask', args });
+
+  const data = await formDialog(html);
+
+  // omp renders `details.answers[].answer` from the form's own LABELS
+  // (`formAnswers`/`answerText` in pi-tui), never from the submitted values, so
+  // a fixture echoing the raw `no` would make the card look wrong when it is not.
+  const labels: Record<string, string> = { yes: 'Yes', no: 'No' };
+  const answerText = (value: string | string[]): string =>
+    (Array.isArray(value) ? value : [value]).map((entry) => labels[entry] ?? entry).join(', ');
+
+  write({
+    type: 'tool_execution_end',
+    toolCallId: callId,
+    toolName: 'ask',
+    result: {
+      content: [{ type: 'text', text: `User answers:\n${JSON.stringify(data, null, 2)}` }],
+      details: {
+        answers: Object.entries(data).map(([name, value]) => ({
+          name,
+          question: name,
+          answer: answerText(value),
+        })),
       },
       isError: false,
     },
@@ -565,6 +637,14 @@ function handleCommand(frame: Record<string, unknown>) {
       return;
     case 'extension_ui_response': {
       const targetId = typeof frame.id === 'string' ? frame.id : '';
+      // omp 19.1.0's whole-form reply: `{ data }` by control name.
+      const resolveForm = pendingFormDialogs.get(targetId);
+      if (resolveForm) {
+        pendingFormDialogs.delete(targetId);
+        const data = frame.data;
+        resolveForm(data && typeof data === 'object' ? (data as Record<string, string | string[]>) : {});
+        return;
+      }
       // A field dialog of the form walk answers with `{ value }` (or
       // `{ cancelled }`); the child then opens the next field.
       const resolveField = pendingFieldDialogs.get(targetId);

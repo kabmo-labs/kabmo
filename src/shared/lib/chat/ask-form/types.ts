@@ -21,6 +21,12 @@ export interface AskOption {
    * must draw the default rather than an empty set.
    */
   checked?: boolean;
+  /**
+   * The `<form>` marks the option `disabled`. omp refuses a submission that
+   * carries it ("carries disabled option"), so the card must not offer the row
+   * and the payload builder must drop it.
+   */
+  disabled?: boolean;
 }
 
 export interface AskQuestion {
@@ -39,6 +45,12 @@ export interface AskQuestion {
    * where every question was a choice.
    */
   kind?: 'choice' | 'text';
+  /**
+   * The control carries the `required` attribute, so omp refuses a `form`
+   * submission that leaves it empty. Only the form-frame path reads it; the
+   * per-field walk enforces the same rule with its own dialog loop.
+   */
+  required?: boolean;
 }
 
 export interface AskAnswer {

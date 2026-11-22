@@ -21,6 +21,7 @@
 
 import type { ToolCallData } from '@/shared/types/chat';
 import { procPathOf } from '@/shared/lib/omp/session/proc';
+import { soleToolCommand } from '@/shared/lib/chat/tool/tool-commands';
 
 /** Legacy Kabmo/MOCK alias → canonical omp tool name. */
 export const TOOL_ALIASES: Record<string, string> = {
@@ -115,27 +116,29 @@ export function xdDevice(tool: ToolCallData): string | undefined {
   return path.slice('xd://'.length).split(/[/?#\s]/)[0].toLowerCase() || undefined;
 }
 
-/** The `xd://` path a READ names, if any — the device's documentation URL.
+/** The documentation URL a READ names, if any.
  *
- * omp answers a read of `xd://` (the listing), `xd://<device>` and
- * `xd://<device>/<topic>` with `xdevDocs`, and its own reader draws all three as
- * an ordinary read — `xd://` has no read card there, unlike `proc://` and
- * `cfg://`. Dispatching by device instead sent it to the device's panel:
- * `read xd://lsp` drew the LSP diagnostics card and `read xd://mcp__…` the MCP
- * argument/result card, both over a page of prose. The write transport is the
- * opposite — `write xd://lsp` IS a call and must reach the device's panel.
+ * omp 19.1.0 moved tool doc topics from `xd://<tool>/<topic>` to
+ * `help://<tool>/<topic>` (and the device listing went with the devices). Both
+ * spellings are read: a session recorded before the pin still carries the old
+ * one, and its prose must not render as a code block.
  *
- * The FULL path is returned, not the device: `xd://eval/browser` is the browser
- * topic of the `eval` device, and `xdDevice` would report only `eval`. */
+ * omp's own reader draws all of them as an ordinary read — neither scheme has a
+ * read card, unlike `proc://` and `cfg://`. Dispatching by device instead sent
+ * it to the device's panel: `read xd://lsp` drew the LSP diagnostics card over
+ * a page of prose.
+ *
+ * The FULL path is returned, not the device: `help://eval/browser` is the
+ * browser topic of the `eval` tool, and `xdDevice` would report only `eval`. */
 export function xdDocPath(tool: ToolCallData): string | undefined {
   const raw = (tool.name || tool.type || '').toLowerCase();
   if ((TOOL_ALIASES[raw] ?? raw) !== 'read') return undefined;
   const input = inputRecord(tool);
   const path = typeof input?.path === 'string' ? input.path : tool.target ?? '';
-  return path.startsWith('xd://') ? path : undefined;
+  return path.startsWith('xd://') || path.startsWith('help://') ? path : undefined;
 }
 
-/** True for a read of a `xd://` documentation URL. */
+/** True for a read of a tool-documentation URL (`help://`, or `xd://` before 19.1.0). */
 export function isXdDocRead(tool: ToolCallData): boolean {
   return xdDocPath(tool) !== undefined;
 }
@@ -154,6 +157,19 @@ export function toolPanelKind(tool: ToolCallData): ToolPanelKind | null {
   if (procPathOf(tool)) return 'proc';
   if (isXdDocRead(tool)) return 'read';
 
+  // omp 19.1.0 runs rarely-used tools as bash commands: `resolve "reason"`,
+  // `lsp --help`, `ast_edit …`. When the call IS that invocation and nothing
+  // else, the wrapped tool names the panel — drawing a terminal console over a
+  // staged proposal's decision would lose the panel the decision lives on.
+  const sole = soleToolCommand(tool);
+  if (sole) {
+    // An MCP tool mounted as a command keeps its server/tool name, which is
+    // what the MCP panel draws.
+    if (sole.dispatch.tool.startsWith('mcp__')) return 'mcp';
+    const inner = DEVICE_KINDS[sole.dispatch.tool];
+    if (inner) return inner;
+  }
+
   const device = xdDevice(tool);
   if (device) {
     if (device.startsWith('mcp__')) return 'mcp';
@@ -164,4 +180,13 @@ export function toolPanelKind(tool: ToolCallData): ToolPanelKind | null {
   const raw = (tool.name || tool.type || '').toLowerCase();
   if (raw.startsWith('mcp__')) return 'mcp';
   return PANEL_KINDS[TOOL_ALIASES[raw] ?? raw] ?? null;
+}
+
+/**
+ * The tool a call's panel should describe: the tool command it ran when that
+ * command is the whole call, else its own name. Used by the header, which
+ * otherwise says "Bash" over a staged proposal's approval.
+ */
+export function effectiveToolName(tool: ToolCallData): string {
+  return soleToolCommand(tool)?.dispatch.tool ?? tool.name ?? tool.type ?? '';
 }

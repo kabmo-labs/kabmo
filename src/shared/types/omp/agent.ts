@@ -229,7 +229,7 @@ export interface OmpAgentHandle extends OmpAgentState {
 }
 
 /** Frame `extension_ui_request` dari omp (ask dialog, approval, OAuth). */
-export type ExtensionUiDialogMethod = 'select' | 'confirm' | 'input' | 'editor' | 'ask';
+export type ExtensionUiDialogMethod = 'select' | 'confirm' | 'input' | 'editor' | 'ask' | 'form';
 
 /** One question inside a grouped `ask` request (omp's `AskQuestion`). */
 export interface ExtensionAskQuestion {
@@ -247,7 +247,8 @@ export interface ExtensionUiDialogRequest {
   type: 'extension_ui_request';
   id: string;
   method: ExtensionUiDialogMethod;
-  title: string;
+  /** The dialog's question. Absent on a `form` frame, which carries `html`. */
+  title?: string;
   options?: string[];
   /** Ids parallel to `options`, when the producer has them (ACP permission
    *  requests). The dialog answers with the id, never the label. */
@@ -279,6 +280,15 @@ export interface ExtensionUiDialogRequest {
    * per question. Absent on every other method.
    */
   questions?: ExtensionAskQuestion[];
+  /**
+   * The whole HTML form of one `ui.formDialog` call, present only on
+   * `method: "form"`. omp 19.1.0 made this the RPC host's form surface, so the
+   * `ask` tool no longer walks its fields one dialog at a time: it sends the
+   * same `html` the tool call carries and expects the submitted data back in
+   * ONE `{ data }` response. `title` is absent — the form itself is the
+   * question, which is why the card matches this frame by its HTML.
+   */
+  html?: string;
 }
 
 export type IncomingExtensionUiRequest =
@@ -295,4 +305,11 @@ export type ExtensionDialogResponse =
   | { optionId: string }
   | { cancelled: true }
   /** One `ask` answer per question, in question order (grouped ask mode). */
-  | { answers: { id: string; selectedOptions: string[]; customInput?: string }[] };
+  | { answers: { id: string; selectedOptions: string[]; customInput?: string }[] }
+  /**
+   * A `form` frame's submitted values, by control `name`. omp validates the
+   * object against the form it sent — an unknown key, a value no option
+   * carries, or a missing required field is refused with the field named — so
+   * this must carry exactly the controls' names and the values they offered.
+   */
+  | { data: Record<string, string | number | string[]> };

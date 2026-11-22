@@ -33,9 +33,13 @@ import { formatToolMs } from '@/shared/lib/chat/tool/labels';
  *
  * omp 19.0.0 cut the five-rung ladder (5 s / 10 s / 30 s / 60 s / 5 min) to two:
  * a first idle wait gets 5 s, every back-to-back one 4 minutes
- * (`WAIT_LADDER_MS` in `tools/wait.ts`). A session recorded before the pin
- * still names the old windows, so this list is a reference for the current pin
- * only — the window a result reports is always parsed from omp's sentence.
+ * (`WAIT_LADDER_MS` in `tools/wait.ts`). 19.1.0 skips the floor for JOB waits
+ * in a top-level interactive session — an early return there can only end its
+ * turn, one request more than blocking for the result — so the first job wait
+ * in a Kabmo chat already reports the 4-minute window. A session recorded
+ * before the pin still names the old windows, so this list is a reference for
+ * the current pin only: the window a result reports is always parsed from
+ * omp's sentence, never derived from the rung index.
  */
 export const WAIT_LADDER_MS = [5_000, 240_000] as const;
 

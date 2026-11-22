@@ -160,7 +160,7 @@ export async function ensureGoalTool(api: ModeApi, session: ModeSession): Promis
  * Enter plan mode the way the TUI does: publish the state BEFORE widening the
  * tool set, because plan mode's read-only guarantee is enforced by the built-in
  * write/edit guard reading exactly that state — and the model needs `write` to
- * draft its plan file and to submit it through `xd://propose`.
+ * draft its plan file before submitting it with `propose`.
  */
 export async function enterPlanMode(session: ModeSession, planFilePath: string): Promise<boolean> {
   if (typeof session.setPlanModeState !== 'function') return false;
@@ -178,7 +178,7 @@ export async function enterPlanMode(session: ModeSession, planFilePath: string):
   return true;
 }
 
-/** Leave plan mode. Clears the proposal handler first so a late `xd://propose`
+/** Leave plan mode. Clears the proposal handler first so a late `propose`
  *  cannot reach a handler whose review surface is gone. */
 export function exitPlanMode(session: ModeSession): void {
   session.setPlanProposalHandler?.(null);

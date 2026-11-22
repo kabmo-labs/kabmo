@@ -29,11 +29,12 @@ import type { ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
 import { isAskSettled, parseAskQuestions } from '@/shared/lib/chat/ask-questions';
 import type { AskQuestion } from '@/shared/lib/chat/ask-form/types';
 import { parseAskResult } from '@/shared/lib/chat/ask-results';
-import { useAskFrames } from '@/client/hooks/chat/timeline/ask-frames';
+import { useAskFrames } from '@/client/hooks/chat/timeline/ask-frames-context';
 import { liveFrame, useAskDrafts } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/drafts';
 import { QuestionBlock } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/QuestionBlock';
 import { GroupedAsk } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/GroupedAsk';
 import { FormAsk } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/FormAsk';
+import { FormDialog } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/FormDialog';
 import { LooseFieldAsk } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/LooseFieldAsk';
 import { PluginPendingInteractions } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/PluginPendingInteractions';
 import type { ExtensionDialogResponse } from '@/client/components/workspace/chat-timeline/tool-renderers/extension-dialog/Lazy';
@@ -60,15 +61,19 @@ interface SubmittedAsk {
 export function AskPanel({ tool }: { tool: ToolCallData }) {
   const questions = parseAskQuestions(tool);
   const recorded = parseAskResult(tool, questions);
-  const { framesByTool, looseByTool, respond } = useAskFrames();
+  const { framesByTool, looseByTool, formByTool, respond } = useAskFrames();
   const groups = framesByTool.get(tool.id) ?? NO_GROUPS;
   const loose = looseByTool.get(tool.id) ?? NO_FRAMES;
   const settled = isAskSettled(tool);
+  // omp 19.1.0's whole-form dialog answers every control in ONE `{ data }`
+  // reply; it is not part of the per-field walk at all.
+  const formFrame = formByTool.get(tool.id) ?? null;
   // Two or more open fields are answered by ONE Submit (`FormAsk`). The
   // per-question draft bookkeeper must not run in that mode: it auto-sends a
   // restored draft the moment its frame arrives, which would answer question 1
   // before the user could reach the form's Submit.
-  const groupedForm = !settled && questions.length > 1 && recorded.some((answer) => answer === null);
+  const groupedForm =
+    !formFrame && !settled && questions.length > 1 && recorded.some((answer) => answer === null);
   const [submitted, setSubmitted] = useState<SubmittedAsk | null>(null);
   const { drafts, multiSelected, commit, toggleMulti } = useAskDrafts({
     toolId: tool.id,
@@ -93,7 +98,9 @@ export function AskPanel({ tool }: { tool: ToolCallData }) {
   // mid-ask reads its still-blocking tool call back from the JSONL as
   // `success` (omp writes no result until the question is answered), and that
   // question must stay answerable.
-  const waiting = !settled && groups.some((frames, index) => frames.length > 0 && !recorded[index]);
+  const waiting =
+    !settled &&
+    (formFrame !== null || groups.some((frames, index) => frames.length > 0 && !recorded[index]));
   // omp asks in order and blocks on each, so the earliest question holding a
   // dialog is the only open one: everything before it is answered, whether or
   // not this client still has the text.
@@ -141,6 +148,35 @@ export function AskPanel({ tool }: { tool: ToolCallData }) {
               frame={card}
               recorded={questions.map((_, index) => recorded[index] !== null)}
               onRespond={answer}
+            />
+          }
+        />
+      </div>
+    );
+  }
+
+  // omp 19.1.0's `method:"form"` frame: ONE dialog for the whole form, answered
+  // by one `{ data }` reply. It carries no per-question dialogs, so it is drawn
+  // before the per-field branches — those have nothing to show here.
+  if (formFrame) {
+    return (
+      <div className="space-y-2">
+        {waiting && (
+          <div className="flex items-center gap-1.5 text-[10.5px] text-ink/50">
+            <HelpCircle size={11} className="shrink-0" />
+            <span>Input needed: the agent is blocked until you answer.</span>
+          </div>
+        )}
+        <FormDialog
+          frame={formFrame}
+          questions={questions}
+          recorded={recorded.map((answer) => (answer ? [...answer.selectedOptions, ...(answer.customInput ? [answer.customInput] : [])] : null))}
+          onRespond={(response) => respond(formFrame, response)}
+          interactions={
+            <PluginPendingInteractions
+              frame={formFrame}
+              recorded={questions.map((_, index) => recorded[index] !== null)}
+              onRespond={(response) => respond(formFrame, response)}
             />
           }
         />

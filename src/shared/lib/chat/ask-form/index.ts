@@ -93,6 +93,10 @@ export function parseAskForm(html: string): AskQuestion[] {
       const group = groups.get(key);
       if (group) {
         group.options.push(option);
+        // omp does the same (`group.field.required ||= required`): one member of
+        // the group marking it required is enough, and sending a group without
+        // its required pick is refused.
+        group.required ||= 'required' in attrs;
         return;
       }
       const field: DraftField = {
@@ -106,6 +110,7 @@ export function parseAskForm(html: string): AskQuestion[] {
         multiline: false,
         caption,
         section,
+        required: 'required' in attrs,
       };
       groups.set(key, field);
       addField(field);
@@ -122,6 +127,7 @@ export function parseAskForm(html: string): AskQuestion[] {
       multiline: false,
       caption,
       section,
+      required: 'required' in attrs,
     });
   };
 
@@ -156,6 +162,7 @@ export function parseAskForm(html: string): AskQuestion[] {
       multiline: false,
       caption,
       section,
+      required: 'required' in attrs,
     });
   };
 
@@ -309,6 +316,7 @@ export function parseAskForm(html: string): AskQuestion[] {
           multiline: true,
           caption,
           section,
+          required: 'required' in token.attrs,
         });
         index = close;
         continue;

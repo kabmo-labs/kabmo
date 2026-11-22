@@ -41,6 +41,8 @@ export interface DraftField {
   /** Caption in force when the field appeared, and its section's legend. */
   caption: string;
   section: string;
+  /** The control carries `required`; omp refuses a form submission that leaves it empty. */
+  required: boolean;
 }
 
 /** Named fields, in document order, as the questions the card renders. */
@@ -54,6 +56,7 @@ export function toQuestions(fields: DraftField[]): AskQuestion[] {
       label: option.label || option.value,
       value: option.value,
       ...(option.checked ? { checked: true } : {}),
+      ...(option.disabled ? { disabled: true } : {}),
     }));
     if (
       field.kind === 'choice' &&
@@ -71,6 +74,7 @@ export function toQuestions(fields: DraftField[]): AskQuestion[] {
       multi: field.multi,
       kind: field.kind,
       recommended: field.kind === 'choice' && !field.multi && checked >= 0 ? checked : undefined,
+      ...(field.required ? { required: true } : {}),
     });
   }
   return questions;

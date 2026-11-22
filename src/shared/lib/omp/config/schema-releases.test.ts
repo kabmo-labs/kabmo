@@ -184,7 +184,9 @@ describe('OMP_SCHEMA release rows', () => {
         entry: want,
       });
     }
-    expect(OMP_SCHEMA.entries['disassembler.backend']?.values).toEqual(['auto', 'ghidra', 'ida', 'none']);
+    // 19.1.0 adds `binja` between `ida` and `none`; Binary Ninja is never
+    // chosen by `auto`, so the option carries that in its own description.
+    expect(OMP_SCHEMA.entries['disassembler.backend']?.values).toEqual(['auto', 'ghidra', 'ida', 'binja', 'none']);
     expect(OMP_SCHEMA.entries['ida.enabled']).toBeUndefined();
     // `worktree.onExit` gained `force`, which removes every worktree without
     // asking; a stale ladder would hide the only uncoverable value.
@@ -218,5 +220,36 @@ describe('OMP_SCHEMA release rows', () => {
     for (const key of ['live.apiKey', 'mnemopi.embeddingApiKey', 'mnemopi.llmApiKey', 'hindsight.apiToken']) {
       expect({ key, credential: OMP_SCHEMA.entries[key]?.credential }).toEqual({ key, credential: true });
     }
+  });
+
+  test("19.1.0's renamed and added rows are offered under their new ids", () => {
+    // The `xd://` DEVICES became tool commands, and the four switches that
+    // shaped them were renamed with them. A panel still writing `tools.xdev`
+    // would edit a key omp deletes on read (its own migration strips it), so
+    // the new ids are the only reachable ones.
+    const expected: Record<string, { type: SchemaEntry['type']; tab: string; group: string; default: unknown }> = {
+      'tools.commands': { type: 'boolean', tab: 'tools', group: 'Discovery & MCP', default: true },
+      'tools.commandDocs': { type: 'enum', tab: 'tools', group: 'Discovery & MCP', default: 'catalog' },
+      'mcp.shared': { type: 'boolean', tab: 'tools', group: 'Discovery & MCP', default: true },
+      'mcp.idleStopMinutes': { type: 'number', tab: 'tools', group: 'Discovery & MCP', default: 5 },
+      'pty.notify': { type: 'enum', tab: 'interaction', group: 'Notifications', default: 'on' },
+      'edit.magic.model': { type: 'string', tab: 'files', group: 'Editing', default: undefined },
+      'binja.installDir': { type: 'string', tab: 'tools', group: 'Binary Ninja', default: '' },
+    };
+    for (const [key, want] of Object.entries(expected)) {
+      const entry = OMP_SCHEMA.entries[key];
+      expect({ key, entry: entry && { type: entry.type, tab: entry.ui.tab, group: entry.ui.group, default: entry.default } }).toEqual({
+        key,
+        entry: want,
+      });
+    }
+    // The old ids are gone from omp's registry: a row for one is an editor
+    // whose write is refused.
+    for (const key of ['tools.xdev', 'tools.xdevDocs', 'tools.xdevInlineDevices', 'tools.xdevNotices', 'tui.completeScrollback']) {
+      expect(`${key}: ${String(OMP_SCHEMA.entries[key])}`).toBe(`${key}: undefined`);
+    }
+    // The new edit mode is a value of `edit.mode`, and a stale ladder would
+    // hide it from the panel's own dropdown.
+    expect(OMP_SCHEMA.entries['edit.mode']?.values).toContain('magic');
   });
 });
