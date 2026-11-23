@@ -6,7 +6,6 @@ import { useEditorFontStack } from '@/client/hooks/editor/font';
 import { useEditorTheme } from '@/client/hooks/editor/theme';
 import type { CodeSurfaceHandle } from '@/client/components/common/code-surface';
 import { useActiveEditorPanel } from '@/client/components/workspace/plugin-panel/resolve';
-import { EditorBody } from '@/client/components/workspace/editor/Body';
 import { PluginColumn } from '@/client/components/workspace/editor/PluginColumn';
 import { EmptyEditor } from '@/client/components/workspace/editor/EmptyEditor';
 
@@ -30,6 +29,7 @@ import { useCloseGuard } from '@/client/hooks/editor/use-close-guard';
 import { useFileReviewMode } from '@/client/hooks/editor/use-file-review-mode';
 import { useEditorPanelUi } from '@/client/hooks/editor/use-editor-panel-ui';
 import type { EditorProps } from '@/client/components/workspace/editor/props';
+import { BodyLazy } from '@/client/components/workspace/editor/BodyLazy';
 
 export function Editor({ 
   className = '', 
@@ -319,7 +319,7 @@ export function Editor({
       conflict={editor.conflict}
       onReload={editor.resolveConflictByReload}
       onKeepMine={editor.keepMineAgainstDisk}
-      body={<EditorBody {...bodyProps} />}
+      body={<BodyLazy {...bodyProps} />}
       saveAsOpen={panelUi.saveAsOpen}
       onSaveAsClose={() => panelUi.setSaveAsOpen(false)}
       onSavedAs={(path) => {

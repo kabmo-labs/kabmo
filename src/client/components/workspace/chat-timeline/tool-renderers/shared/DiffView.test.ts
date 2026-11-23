@@ -50,12 +50,25 @@ afterAll(() => {
 /** omp's excerpt diff, long enough to overflow any ceiling. */
 const EXCERPT = Array.from({ length: 120 }, (_, i) => `${i + 1}|line ${i + 1}`).join('\n');
 
+/**
+ * The merge view is `lazy()` (it carries CodeMirror, and that is what keeps the
+ * editor out of the boot chunk). Hold the same module promise the lazy import
+ * resolves, so the test can await the chunk instead of sleeping on it.
+ */
+const MERGE_VIEW = import('@/client/components/workspace/diff-panel/MergeDiffView');
+
 async function mount(text = EXCERPT) {
   container = document.createElement('div');
   document.body.appendChild(container);
   await act(async () => {
     render(h(DiffView, { text, path: 'src/x.ts' }), container);
   });
+  // The assertions below are about the mounted view, not the fallback text:
+  // settle the lazy chunk, then let Preact's retry render flush.
+  await act(async () => {
+    await MERGE_VIEW;
+  });
+  await act(async () => {});
   return container;
 }
 

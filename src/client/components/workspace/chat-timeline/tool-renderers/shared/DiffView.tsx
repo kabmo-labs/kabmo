@@ -25,15 +25,30 @@
  */
 
 import { useMemo, useState } from 'preact/hooks';
-import type { ReactNode } from 'preact/compat';
+import { Suspense, lazy, type ReactNode } from 'preact/compat';
 import { Columns2, Rows3, WrapText } from 'lucide-preact';
 import { patchSides } from '@/shared/lib/fs/patch-sides';
 import { excerptDiffToUnified, isExcerptDiff } from '@/shared/lib/fs/excerpt-diff';
 import { getLanguageFromPath } from '@/shared/lib/code/language';
 import { CopyButton } from '@/client/components/common/CopyButton';
-import { MergeDiffView } from '@/client/components/workspace/diff-panel/MergeDiffView';
 import { useEditorFontStack } from '@/client/hooks/editor/font';
 import { EDITOR_DEFAULT_FONT_SIZE } from '@/shared/lib/code/editor/typography';
+
+/**
+ * The merge view is CodeMirror, and a diff card is the ONLY thing on the boot
+ * path that pulled the editor in: `MergeDiffView` → `diff-panel/folding.ts` →
+ * `@codemirror/{view,state,language,merge}` was 302 KB of the 2.05 MB boot
+ * chunk, paid by every console load whether or not a chat ever drew a diff.
+ *
+ * `lazy()` here is what keeps that out of the entry: the chat's own card is the
+ * first thing to need it, so the chunk is fetched with the transcript instead
+ * of ahead of it. The fallback is the same patch as readable text, not a
+ * spinner — a card that is already on screen should show its bytes while the
+ * editor loads.
+ */
+const MergeDiffView = lazy(() =>
+  import('@/client/components/workspace/diff-panel/MergeDiffView').then((m) => ({ default: m.MergeDiffView })),
+);
 
 /** A small icon-only toolbar button, `aria-pressed` for its own state. */
 function ToggleButton({
@@ -157,22 +172,30 @@ export function DiffView({ text, path = '', maxHeightClass = 'max-h-72' }: DiffV
         {/* No tab key: this diff lives inside a chat card, and the timeline —
             not the card — is what the reader scrolls. No counts either: the
             header above already prints them from the patch. */}
-        <MergeDiffView
-          original={sides.original}
-          next={sides.next}
-          language={language}
-          viewMode={split ? 'split' : 'unified'}
-          // Collapsed gaps: the reconstructed sides carry blank padding up to
-          // each hunk's real line, so showing every row would draw thousands of
-          // empty lines between two changes.
-          contentMode="diff"
-          wordWrap={wordWrap}
-          ignoreWhitespace={false}
-          tabKey={null}
-          empty={false}
-          fontFamily={editorFontFamily}
-          fontSize={EDITOR_DEFAULT_FONT_SIZE}
-        />
+        <Suspense
+          fallback={(
+            <pre className="h-full w-full overflow-auto p-2 font-mono text-[11px] leading-relaxed whitespace-pre-wrap break-all text-ink/70 select-text">
+              {unified}
+            </pre>
+          )}
+        >
+          <MergeDiffView
+            original={sides.original}
+            next={sides.next}
+            language={language}
+            viewMode={split ? 'split' : 'unified'}
+            // Collapsed gaps: the reconstructed sides carry blank padding up to
+            // each hunk's real line, so showing every row would draw thousands of
+            // empty lines between two changes.
+            contentMode="diff"
+            wordWrap={wordWrap}
+            ignoreWhitespace={false}
+            tabKey={null}
+            empty={false}
+            fontFamily={editorFontFamily}
+            fontSize={EDITOR_DEFAULT_FONT_SIZE}
+          />
+        </Suspense>
       </div>
     </div>
   );
