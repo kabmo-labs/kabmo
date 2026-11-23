@@ -36,8 +36,14 @@ export function ThemeCard({ theme, selected, onSelect }: ThemeCardProps) {
           : 'border-ink/20 bg-paper hover:border-ink/40 hover:bg-ink/5'
       }`}
     >
-      <div className="flex items-center gap-2">
-        <span className="truncate font-semibold text-ink" title={theme.name}>
+      {/* `min-w-0` on the name and the badge as a group: a flex item's default
+          `min-width: auto` is its min-content width, so the name refused to
+          shrink and the selected card's check was painted past the pane's own
+          edge — measured at a 768px window, where this card is 83px wide and
+          the check landed 6px outside the dialog (which is `overflow-hidden`,
+          so it was clipped rather than scrolled). */}
+      <div className="flex min-w-0 items-center gap-2">
+        <span className="min-w-0 truncate font-semibold text-ink" title={theme.name}>
           {theme.name}
         </span>
         <span className="shrink-0 rounded-full border border-ink/15 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wider text-ink/50">

@@ -85,7 +85,9 @@ export function EditorThemeSection({ settings, onUpdate }: EditorThemeSectionPro
   );
 
   return (
-    <section className="space-y-3">
+    // `@container`, for the reason `ThemeGrid` states: the card grid's density
+    // follows the PANE, and the pane is 174px wide at a 768px window.
+    <section className="@container space-y-3">
       <div>
         <h4 className="flex items-center gap-2 text-sm font-semibold text-ink">
           <Palette size={15} className="text-ink/60" />
@@ -98,7 +100,9 @@ export function EditorThemeSection({ settings, onUpdate }: EditorThemeSectionPro
         </p>
       </div>
 
-      <div className="flex items-center gap-1.5">
+      {/* Same row, same wrap as the palette grid's: the pane is 174px wide at
+          a 768px window, where three filters plus the count overflow it. */}
+      <div className="flex flex-wrap items-center gap-1.5">
         {FILTERS.map((option) => (
           <button
             key={option.id}
@@ -115,12 +119,12 @@ export function EditorThemeSection({ settings, onUpdate }: EditorThemeSectionPro
             {option.label}
           </button>
         ))}
-        <span className="ml-auto font-mono text-[11px] text-ink/50">
+        <span className="ml-auto min-w-0 font-mono text-[11px] text-ink/50 whitespace-nowrap">
           {filter === 'all' ? `${themes.length} themes` : `${themes.length} shown`}
         </span>
       </div>
 
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-2 @[320px]:grid-cols-2 @[560px]:grid-cols-3">
         {/* `Auto` is a card rather than a checkbox: it is one of the choices,
             and a checkbox beside a grid makes the default look like an
             override of the thing it is a peer of. It is drawn under EVERY

@@ -44,8 +44,19 @@ export function ThemeGrid({ selectedId, onSelect }: ThemeGridProps) {
   const themes = useMemo(() => filterThemes(filter), [filter]);
 
   return (
-    <div className="space-y-3 pb-6">
-      <div className="flex items-center gap-1.5">
+    // `@container` on the section: the grid's density is a fact about THIS
+    // pane, not about the window. At a 768px window the settings modal is 720
+    // wide and the palette pane gets 174px, where `sm:grid-cols-2` (a VIEWPORT
+    // query) drew two 83px cards and pushed the selected card's check past the
+    // dialog's clipped edge.
+    <div className="@container space-y-3 pb-6">
+      {/* `flex-wrap` + a `min-w-0` count: at a 768px window the settings modal
+          is 720 wide and this pane gets 174px, where the three filters and the
+          count measured 138 client against 191 scroll — the count painted 30px
+          past the dialog's own edge and was clipped, since the modal is
+          `overflow-hidden`. Wrapping costs one row on a narrow pane and nothing
+          on a wide one. */}
+      <div className="flex flex-wrap items-center gap-1.5">
         {FILTERS.map((option) => (
           <button
             key={option.id}
@@ -62,10 +73,10 @@ export function ThemeGrid({ selectedId, onSelect }: ThemeGridProps) {
             {option.label}
           </button>
         ))}
-        <span className="ml-auto font-mono text-[11px] text-ink/50">{themes.length} themes</span>
+        <span className="ml-auto min-w-0 font-mono text-[11px] text-ink/50 whitespace-nowrap">{themes.length} themes</span>
       </div>
 
-      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-2.5 @[320px]:grid-cols-2 @[560px]:grid-cols-3">
         {themes.map((theme) => (
           <ThemeCard
             key={theme.id}

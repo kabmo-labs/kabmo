@@ -164,4 +164,25 @@ describe('editor theme picker', () => {
     // Auto is a choice, not a light/dark theme, so a variant filter keeps it.
     expect(labels.some((label) => label.startsWith('Auto'))).toBe(true);
   });
+
+  /**
+   * The grid's density is a fact about the PANE, not the window.
+   *
+   * `sm:grid-cols-2 lg:grid-cols-3` read the VIEWPORT: at a 768px window the
+   * settings modal is 720 wide and this pane gets 174px, where two 83px cards
+   * were drawn and the selected card's check measured 6px outside the dialog
+   * (which is `overflow-hidden`, so it was clipped). A DOM test cannot measure
+   * Tailwind, so this pins the contract the markup must keep: the section is
+   * the container and the grid's breakpoints are container queries.
+   */
+  test('the card grid asks its PANE, never the viewport', async () => {
+    const root = await mount(EDITOR_AUTO_THEME_ID);
+    const grid = root.querySelector('.grid');
+    expect(grid).not.toBeNull();
+    const classes = grid?.className ?? '';
+    expect(classes).toContain('grid-cols-1');
+    expect(classes).toContain('@[320px]:grid-cols-2');
+    expect(classes).not.toMatch(/(^|\s)(sm|md|lg|xl):/);
+    expect(root.querySelector('section')?.className).toContain('@container');
+  });
 });
