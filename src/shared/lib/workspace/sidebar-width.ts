@@ -52,6 +52,39 @@ export const MIN_LEFT_PANEL_WIDTH = 264;
 export const MAX_LEFT_PANEL_WIDTH = 500;
 
 /**
+ * The most of the WINDOW the left column may take.
+ *
+ * The 264–500 range above is a statement about the column, not about the
+ * screen: a width the user dragged on a 1440px display is still 414px on a
+ * 900px one, where it is 46% of the window. Measured on this install
+ * (`omp_left_dock_widths.sessions = 414`) at a 768px window: sidebar 414, chat
+ * 148, composer 116 — the toolbar was a stack of clipped chips. The panel that
+ * has to give way on a narrow window is the one that is not the conversation.
+ *
+ * 0.32 leaves the chat and the workspace two thirds of the window at every
+ * width: 1024 → 328, 900 → 288, and the floor takes over below ~825. It never
+ * touches the shipped 280 default until the window is under 875px, and it
+ * never overrides the user's own 414 until the window is under 1294px — where
+ * that width would cost the chat more than a third of the screen.
+ *
+ * Applied to the RENDERED width and to the separator's ceiling, never to the
+ * stored value: the width the user chose comes back on a wider window.
+ */
+export const MAX_SIDEBAR_VIEWPORT_SHARE = 0.32;
+
+/**
+ * The sidebar's width for the window it is being drawn in.
+ *
+ * A pure function of the stored width and the viewport, so the panel, the
+ * separator's ceiling and the tests cannot disagree about the cap.
+ */
+export function sidebarWidthForViewport(px: number, viewportWidth: number): number {
+  if (!Number.isFinite(viewportWidth) || viewportWidth <= 0) return Math.round(px);
+  const cap = Math.max(MIN_LEFT_PANEL_WIDTH, Math.round(viewportWidth * MAX_SIDEBAR_VIEWPORT_SHARE));
+  return Math.min(Math.round(px), cap);
+}
+
+/**
  * Every read and every write of this slot is clamped, so a value from an older
  * build cannot open the panel outside the range its separator allows.
  */

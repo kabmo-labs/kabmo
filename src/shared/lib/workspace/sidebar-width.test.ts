@@ -29,6 +29,7 @@ import {
   MIN_LEFT_PANEL_WIDTH,
   resolveSidebarWidth,
   saveSidebarWidth,
+  sidebarWidthForViewport,
 } from '@/shared/lib/workspace/sidebar-width';
 
 const WIDTH_KEY = 'omp_sidebar_width';
@@ -107,5 +108,38 @@ describe('sidebar-width', () => {
     saveSidebarWidth(333.6);
     expect(readKabmoSetting<number>(WIDTH_KEY)).toBe(334);
     expect(resolveSidebarWidth()).toBe(334);
+  });
+});
+
+describe('the width a narrow WINDOW may give the column', () => {
+  /**
+   * A width dragged on a 1440px display is still 414px on a 768px window, where
+   * it took 54% of the screen and left the chat 148px with a 116px composer
+   * (measured on the running console). The cap is a share of the viewport, and
+   * it is applied to the RENDERED width so the chosen one comes back on a wider
+   * window.
+   */
+  test('a wide window keeps the stored width untouched', () => {
+    expect(sidebarWidthForViewport(414, 1440)).toBe(414);
+    expect(sidebarWidthForViewport(DEFAULT_LEFT_PANEL_WIDTH, 1920)).toBe(DEFAULT_LEFT_PANEL_WIDTH);
+  });
+
+  test('a narrow window caps it as a share of the viewport', () => {
+    expect(sidebarWidthForViewport(414, 1024)).toBe(328);
+    expect(sidebarWidthForViewport(414, 900)).toBe(288);
+  });
+
+  test('the column floor wins over the share, so the list stays usable', () => {
+    // 0.32 x 768 is 246 and 0.32 x 600 is 192, both under the 264 floor the
+    // session list reads at — below ~825 the floor is what binds, and 768 is
+    // the narrowest window the DESKTOP layout is drawn in at all.
+    expect(sidebarWidthForViewport(414, 768)).toBe(MIN_LEFT_PANEL_WIDTH);
+    expect(sidebarWidthForViewport(414, 600)).toBe(MIN_LEFT_PANEL_WIDTH);
+  });
+
+  test('an unmeasured viewport leaves the width alone', () => {
+    // The first paint can happen before any window is measured; a 0 would
+    // otherwise collapse the column to its floor.
+    expect(sidebarWidthForViewport(414, 0)).toBe(414);
   });
 });

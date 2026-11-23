@@ -61,7 +61,8 @@ import { useUpdates } from '@/client/hooks/ui/updates';
 import { UPDATE_REQUEST_EVENT } from '@/shared/lib/updates/popup-state';
 import { useUpdateCheckRequest } from '@/client/hooks/ui/updates/check-request';
 import { openKeyBindingHelp } from '@/client/lib/commands/overlays';
-import { MAX_LEFT_PANEL_WIDTH } from '@/shared/lib/workspace/sidebar-width';
+import { MAX_LEFT_PANEL_WIDTH, sidebarWidthForViewport } from '@/shared/lib/workspace/sidebar-width';
+import { useViewportWidth } from '@/client/hooks/ui/media-query';
 import { updateOutcomeTone } from '@/shared/lib/ui/toast-duration';
 import type { AgentStreamStatus } from '@/shared/lib/chat/omp/status';
 
@@ -213,14 +214,22 @@ export function LeftColumn({
   // not.
   useUpdateCheckRequest(updates, pushToast);
 
+  // The stored width is a CHOICE, the rendered one is a choice that fits THIS
+  // window: a 414px column on a 768px window leaves the chat 148px (measured),
+  // so the column gives way as a share of the viewport and the chosen width
+  // comes back on a wider window (`sidebarWidthForViewport`). The separator's
+  // ceiling follows, or a drag would push straight back past the cap.
+  const viewportWidth = useViewportWidth();
+  const renderedWidth = sidebarWidthForViewport(width, viewportWidth);
+
   return (
     <>
       <Panel
         panelRef={panelRef}
         id="left-panel"
-        defaultSize={width}
+        defaultSize={renderedWidth}
         minSize={minWidth}
-        maxSize={MAX_LEFT_PANEL_WIDTH}
+        maxSize={Math.max(minWidth, sidebarWidthForViewport(MAX_LEFT_PANEL_WIDTH, viewportWidth))}
         collapsed={!open}
       >
         {/* The column is three ROWS, and the order is what makes it read as one

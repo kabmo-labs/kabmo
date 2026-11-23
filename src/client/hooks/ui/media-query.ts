@@ -21,6 +21,33 @@
 
 import { useEffect, useState } from 'preact/hooks';
 
+/**
+ * The window's current width, subscribed.
+ *
+ * `useViewportAtLeast` answers a yes/no question, which is all a control that
+ * folds or not needs. The desktop sidebar asks a different one — how many
+ * pixels the window has, so its own width can be capped as a SHARE of them
+ * (`sidebarWidthForViewport`) — and a boolean cannot answer that.
+ */
+export function useViewportWidth(): number {
+  const [width, setWidth] = useState(() => (typeof window === 'undefined' ? 0 : window.innerWidth));
+
+  useEffect(() => {
+    const update = () => setWidth(window.innerWidth);
+    // Read once on the way in: a window resized between the first render and
+    // this effect would otherwise keep the stale value until the next resize.
+    update();
+    window.addEventListener('resize', update);
+    window.addEventListener('orientationchange', update);
+    return () => {
+      window.removeEventListener('resize', update);
+      window.removeEventListener('orientationchange', update);
+    };
+  }, []);
+
+  return width;
+}
+
 export function useViewportAtLeast(px: number): boolean {
   const query = `(min-width: ${px}px)`;
   const [matches, setMatches] = useState(() =>
