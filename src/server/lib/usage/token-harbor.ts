@@ -26,7 +26,7 @@
  */
 
 import { readOmpProviderApiKey } from '@/server/lib/omp/core/auth-credentials';
-import { resolveProviderEndpoint } from '@/server/lib/usage/provider-key';
+import { resolveProviderEndpoint, resolveStoredKey } from '@/server/lib/usage/provider-key';
 import { fetchProviderJson } from '@/server/lib/usage/vendor-http';
 import { num } from '@/server/lib/usage/window';
 import type {
@@ -38,10 +38,6 @@ import type {
 import { isRecord } from '@/shared/lib/util/guards';
 
 const ORIGIN = 'https://tokenharbor.ai';
-/** A masked placeholder from the provider overlay must never be sent as a key. */
-const MASKED_KEY_PATTERN = /•{3,}/;
-/** omp reads a bare variable name in `apiKey` from the environment. */
-const ENV_NAME_PATTERN = /^[A-Z][A-Z0-9_]*$/;
 
 /** Whether a provider's base URL is Token Harbor (its `/v1` path is implied). */
 export function isTokenHarborBaseUrl(baseUrl: string): boolean {
@@ -115,22 +111,6 @@ export function parseTokenHarborAllowance(payload: unknown): TokenHarborAllowanc
 }
 
 /**
- * The key to send: a literal when the store holds one, the environment value
- * when it holds a variable NAME. The docs' own omp snippet writes
- * `apiKey: TOKENHARBOR_API_KEY`, which omp resolves from the environment; a
- * usage read that sent the variable name itself would answer 401 for a working
- * setup.
- */
-function resolveKey(value: string | null): string | null {
-  if (!value) return null;
-  const trimmed = value.trim();
-  if (!trimmed || MASKED_KEY_PATTERN.test(trimmed)) return null;
-  if (!ENV_NAME_PATTERN.test(trimmed)) return trimmed;
-  const fromEnv = Bun.env[trimmed];
-  return fromEnv && fromEnv.trim() ? fromEnv.trim() : null;
-}
-
-/**
  * The allowance as the generic `UsageLimitWindow` list the provider summary
  * carries, so every consumer that only understands quota windows (the sidebar
  * hint, any future panel) still sees Token Harbor's numbers.
@@ -183,7 +163,7 @@ async function resolveCredential(
   slug: string,
 ): Promise<{ apiKey: string; url: string } | null> {
   const endpoint = await resolveProviderEndpoint(slug);
-  const apiKey = resolveKey(endpoint?.apiKey ?? (await readOmpProviderApiKey(slug)));
+  const apiKey = resolveStoredKey(endpoint?.apiKey ?? (await readOmpProviderApiKey(slug)));
   if (!apiKey) return null;
   // A stored base URL decides identity; without one (agent.db only) the slug is
   // all there is, and a wrong guess here would show one account's allowance

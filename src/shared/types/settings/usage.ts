@@ -143,8 +143,43 @@ export interface TokenHarborUsageReport {
   error?: string;
 }
 
-/** Unit of a provider-reported quota amount (mirrors omp's `UsageUnit`). */
-export type UsageUnit = 'percent' | 'tokens' | 'requests' | 'credits' | 'usd' | 'minutes' | 'bytes' | 'unknown';
+/**
+ * The wallet TokenPortal reports for one API key (`GET /v1/key`).
+ *
+ * The endpoint is OpenRouter-shaped, but the numbers are the vendor's own: both
+ * money fields are whole units of the `currency` it names (IDR on the live
+ * endpoint), NOT cents — `balance` is what is left, `limit` the key's cap, and
+ * `limitRemaining` what is left under that cap.
+ */
+export interface TokenPortalBalance {
+  /** The key's own label ("Kabmo"), when the endpoint names it. */
+  label: string | null;
+  /** ISO 4217 code the amounts are denominated in. */
+  currency: string;
+  /** Money left on this key, in whole `currency` units. */
+  balance: number;
+  /** The key's spending cap, when the operator set one. */
+  limit: number | null;
+  /** Money left under that cap, as the vendor reports it. */
+  limitRemaining: number | null;
+  /** True while the key is on the free tier. */
+  isFreeTier: boolean;
+  /** A per-session cap, when the operator set one. */
+  sessionBudget: number | null;
+}
+
+/** TokenPortal wallet; present only when TokenPortal has a credential. */
+export interface TokenPortalUsageReport {
+  balance?: TokenPortalBalance;
+  error?: string;
+}
+
+/**
+ * Unit of a provider-reported quota amount (mirrors omp's `UsageUnit`, plus
+ * `idr` for the Rupiah wallets Kabmo reads itself — an IDR amount formatted as
+ * USD would misstate the balance by four orders of magnitude).
+ */
+export type UsageUnit = 'percent' | 'tokens' | 'requests' | 'credits' | 'usd' | 'idr' | 'minutes' | 'bytes' | 'unknown';
 
 /** Coarse state of one quota window. */
 export type UsageWindowStatus = 'ok' | 'warning' | 'exhausted' | 'unknown';
@@ -222,6 +257,8 @@ export interface UsageProviderSummary {
   deepseek?: DeepSeekUsageReport;
   /** Rich Token Harbor report (Pass + free allowance percentages). */
   tokenHarbor?: TokenHarborUsageReport;
+  /** Rich TokenPortal report (wallet, key cap, session budget). */
+  tokenPortal?: TokenPortalUsageReport;
 }
 
 /** Response body of `GET /api/settings/usage`. */

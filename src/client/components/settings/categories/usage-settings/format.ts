@@ -87,6 +87,26 @@ export function formatUsd(value: number): string {
 }
 
 /**
+ * One money amount in the currency the vendor named. IDR and USD delegate to
+ * the two formatters above so a Rupiah balance reads identically wherever it
+ * appears (the kenari wallet, the TokenPortal wallet); any other ISO code falls
+ * back to `Intl` and, if the runtime does not know it, prints the raw number and
+ * the code rather than inventing a symbol.
+ */
+export function formatCurrency(value: number, currency: string): string {
+  if (!Number.isFinite(value)) return '—';
+  const code = currency.trim().toUpperCase();
+  if (code === 'IDR') return formatRp(value);
+  if (code === 'USD') return formatUsd(value);
+  if (!code) return '—';
+  try {
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: code }).format(value);
+  } catch {
+    return `${formatNumber(value)} ${code}`;
+  }
+}
+
+/**
  * Render one quota amount in its own unit. `percent` amounts arrive as 0..100
  * (omp's `used`/`limit` for percent units), everything else as a raw count.
  */
@@ -97,6 +117,8 @@ export function formatUsageAmount(value: number, unit: string): string {
       return `${new Intl.NumberFormat('id-ID', { maximumFractionDigits: 1 }).format(value)}%`;
     case 'usd':
       return formatUsd(value);
+    case 'idr':
+      return formatRp(value);
     case 'tokens':
     case 'bytes':
       return formatCompactTokens(value);

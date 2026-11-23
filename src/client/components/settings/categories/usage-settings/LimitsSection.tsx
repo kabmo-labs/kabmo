@@ -85,12 +85,19 @@ interface LimitsSectionProps {
   tracked: boolean;
   /** omp tracks this provider but its endpoint returned nothing. */
   unavailable?: boolean;
+  /**
+   * Why there are no windows, when the provider itself explains it better than
+   * the generic three-way copy. Command Code's adapter skips an OAuth login, so
+   * "an invalid or expired credential" would send the user to rotate a
+   * credential that is working.
+   */
+  emptyReason?: string;
   /** Provider-wide caveats shown above the windows. */
   notes?: string[];
 }
 
 /** Generic quota windows for any provider omp reports usage for. */
-export function LimitsSection({ providerId, limits, tracked, unavailable, notes }: LimitsSectionProps) {
+export function LimitsSection({ providerId, limits, tracked, unavailable, emptyReason, notes }: LimitsSectionProps) {
   const groups = groupProviderLimits(providerId, limits);
 
   return (
@@ -109,11 +116,11 @@ export function LimitsSection({ providerId, limits, tracked, unavailable, notes 
             Quota windows
           </h4>
           <p className="text-[11px] text-ink/50">
-            {!tracked
+            {emptyReason ?? (!tracked
               ? 'No quota source for this provider: omp ships no usage adapter for it and it exposes no balance endpoint Kabmo knows.'
               : unavailable
                 ? 'omp tracks this provider but its usage endpoint returned no data — an invalid or expired credential, an unreachable endpoint, or a plan without quota windows.'
-                : 'No quota windows were reported for this provider.'}
+                : 'No quota windows were reported for this provider.')}
           </p>
         </>
       ) : (

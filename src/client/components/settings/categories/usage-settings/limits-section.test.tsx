@@ -115,4 +115,20 @@ describe('LimitsSection sections', () => {
     expect(headings(dom)).toEqual(['Quota windows']);
     expect(dom.textContent).toContain('No quota source for this provider');
   });
+
+  test('a provider-supplied empty reason replaces the generic credential copy', () => {
+    // Command Code's adapter skips an OAuth login, so "an invalid or expired
+    // credential" would send the user to rotate a credential that works.
+    const dom = mount(
+      <LimitsSection
+        providerId="commandcode"
+        tracked
+        unavailable
+        limits={[]}
+        emptyReason="needs an API key created in Studio"
+      />,
+    );
+    expect(dom.textContent).toContain('needs an API key created in Studio');
+    expect(dom.textContent).not.toContain('invalid or expired credential');
+  });
 });

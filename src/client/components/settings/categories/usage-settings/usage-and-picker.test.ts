@@ -23,6 +23,7 @@ import { describe, expect, test } from 'bun:test';
 import {
   formatAmount,
   formatCompactTokens,
+  formatCurrency,
   formatDate,
   formatDateTime,
   formatFractionPercent,
@@ -119,9 +120,18 @@ describe('usage number formatting', () => {
     expect(formatUsd(Number.NaN)).toBe('$0,00');
   });
 
+  test('formatCurrency delegates IDR and USD, and never invents a symbol', () => {
+    expect(formatCurrency(8827, 'IDR').replace(/\s/g, '')).toBe('Rp8.827');
+    expect(formatCurrency(12.5, 'usd')).toBe('$12,50');
+    // An unknown ISO code must not throw inside a render.
+    expect(formatCurrency(5, 'ZZZ')).toContain('ZZZ');
+    expect(formatCurrency(Number.NaN, 'IDR')).toBe('—');
+  });
+
   test('formatUsageAmount dispatches on the unit and guards non-finite values', () => {
     expect(formatUsageAmount(50, 'percent')).toBe('50%');
     expect(formatUsageAmount(12.5, 'usd')).toBe('$12,50');
+    expect(formatUsageAmount(8827, 'idr').replace(/\s/g, '')).toBe('Rp8.827');
     expect(formatUsageAmount(61950, 'tokens')).toBe('61,95K');
     expect(formatUsageAmount(61950, 'bytes')).toBe('61,95K');
     expect(formatUsageAmount(61950, 'requests')).toBe('61.950');
@@ -188,6 +198,52 @@ describe('buildProviders', () => {
       ],
     })[0];
     expect(entry?.hint).toBe('USD 12,34');
+  });
+
+  test('a TokenPortal wallet is the hint, in the currency the endpoint named', () => {
+    const entry = buildProviders({
+      isMock: false,
+      generatedAt: '',
+      providers: [
+        summary({
+          id: 'tokenportal',
+          name: 'Tokenportal',
+          tokenPortal: {
+            balance: {
+              label: 'Kabmo',
+              currency: 'IDR',
+              balance: 8827,
+              limit: null,
+              limitRemaining: 8827,
+              isFreeTier: false,
+              sessionBudget: null,
+            },
+          },
+        }),
+      ],
+    })[0];
+    // Rp, not $: the live endpoint reports whole Rupiah.
+    expect(entry?.hint.replace(/\s/g, '')).toBe('Rp8.827');
+  });
+
+  test('a Rupiah credit window with no rich report keeps its Rupiah hint', () => {
+    const entry = buildProviders({
+      isMock: false,
+      generatedAt: '',
+      providers: [summary({ limits: [window({ unit: 'idr', remaining: 15000, label: 'Credit' })] })],
+    })[0];
+    expect(entry?.hint.replace(/\s/g, '')).toBe('Rp15.000left');
+  });
+
+  test('a tracked Command Code with an OAuth login asks for an API key', () => {
+    const entry = buildProviders({
+      isMock: false,
+      generatedAt: '',
+      providers: [summary({ id: 'commandcode', name: 'Command Code', tracked: true, limitsUnavailable: true })],
+    })[0];
+    // "No quota reported" would claim the plan has none; the credential type is
+    // what is missing.
+    expect(entry?.hint).toBe('API key needed');
   });
 
   test('the hint reports the WORST used fraction, not the first window', () => {

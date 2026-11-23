@@ -27,8 +27,15 @@ export async function fetchProviderJson(url: string, apiKey: string, label: stri
   } catch (error) {
     throw new Error(error instanceof Error ? error.message : `${label} balance request failed`);
   }
-  if (response.status === 401 || response.status === 403) {
-    throw new Error(`${label} rejected the API key (HTTP ${response.status}).`);
+  if (response.status === 401) {
+    throw new Error(`${label} rejected the API key (HTTP 401).`);
+  }
+  if (response.status === 403) {
+    // A group-restricted gateway authenticates the key and THEN refuses the
+    // endpoint: kiosapi answers "No permission to access group …" on both
+    // /v1/dashboard/billing/* and /v1/models for a valid key. Saying "rejected
+    // the API key" here sends the user to rotate a credential that is fine.
+    throw new Error(`${label} refused this endpoint for the key (HTTP 403).`);
   }
   if (response.status < 200 || response.status >= 300) {
     throw new Error(`${label} balance request failed (HTTP ${response.status}).`);

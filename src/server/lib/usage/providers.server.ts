@@ -25,6 +25,7 @@ import { buildDeepSeekReport } from '@/server/lib/usage/deepseek';
 import { buildKenariReport } from '@/server/lib/usage/kenari';
 import { buildNewApiReports } from '@/server/lib/usage/new-api';
 import { allowanceWindows, buildTokenHarborReports } from '@/server/lib/usage/token-harbor';
+import { buildTokenPortalReports, tokenPortalWindows } from '@/server/lib/usage/token-portal';
 import { fetchOmpUsageSnapshot, type OmpUsageSnapshot } from '@/server/lib/usage/omp-usage.server';
 import { fetchVendorBalance, type VendorBalance } from '@/server/lib/usage/vendor-balance.server';
 import { kenariProviderSlugs, listCredentialedProviders, type CredentialedProvider } from '@/server/lib/usage/provider-key';
@@ -125,7 +126,7 @@ export async function buildUsageProviders(options: { force?: boolean } = {}): Pr
   // one (`kenari2`) with no quota card while its key was never read. DeepSeek
   // still resolves by its canonical slug.
   const kenariSlugs = await kenariProviderSlugs(credentials.keys());
-  const [kenariReports, deepseek, balances, gateways, tokenHarbor] = await Promise.all([
+  const [kenariReports, deepseek, balances, gateways, tokenHarbor, tokenPortal] = await Promise.all([
     Promise.all([...kenariSlugs].map(async (slug) => [slug, await buildKenariReport(slug)] as const)),
     credentials.has('deepseek') ? buildDeepSeekReport() : Promise.resolve(null),
     loadVendorBalances([...credentials.keys()]),
@@ -133,6 +134,7 @@ export async function buildUsageProviders(options: { force?: boolean } = {}): Pr
     // live in `vendor-balance`'s fixed-URL table.
     buildNewApiReports(credentials.keys()),
     buildTokenHarborReports(credentials.keys()),
+    buildTokenPortalReports(credentials.keys()),
   ]);
   const kenariBySlug = new Map<string, KenariUsageReport>();
   for (const [slug, report] of kenariReports) {
@@ -146,6 +148,8 @@ export async function buildUsageProviders(options: { force?: boolean } = {}): Pr
     const gateway = gateways.get(slug);
     const harbor = tokenHarbor.get(slug);
     const harborWindows = harbor?.allowance ? allowanceWindows(harbor.allowance) : [];
+    const portal = tokenPortal.get(slug);
+    const portalWindows = portal?.balance ? tokenPortalWindows(portal.balance) : [];
     const { tracked, limitsUnavailable } = resolveUsageTracking(slug, snapshot);
     const summary: UsageProviderSummary = {
       id: slug,
@@ -153,8 +157,18 @@ export async function buildUsageProviders(options: { force?: boolean } = {}): Pr
       ...(iconUrls.get(slug) ? { iconUrl: iconUrls.get(slug) } : {}),
       credentialSources: sources,
       // A vendor balance is real quota data even when omp has no adapter for it.
-      tracked: tracked || Boolean(balance?.limits.length) || Boolean(gateway?.limits.length) || harborWindows.length > 0,
-      limits: [...(report?.limits ?? []), ...(balance?.limits ?? []), ...(gateway?.limits ?? []), ...harborWindows],
+      tracked: tracked
+        || Boolean(balance?.limits.length)
+        || Boolean(gateway?.limits.length)
+        || harborWindows.length > 0
+        || portalWindows.length > 0,
+      limits: [
+        ...(report?.limits ?? []),
+        ...(balance?.limits ?? []),
+        ...(gateway?.limits ?? []),
+        ...harborWindows,
+        ...portalWindows,
+      ],
       ...(limitsUnavailable ? { limitsUnavailable: true } : {}),
       ...(report?.notes ? { notes: report.notes } : {}),
     };
@@ -169,6 +183,9 @@ export async function buildUsageProviders(options: { force?: boolean } = {}): Pr
     } else if (harbor) {
       summary.tokenHarbor = harbor;
       if (harbor.error) summary.error = harbor.error;
+    } else if (portal) {
+      summary.tokenPortal = portal;
+      if (portal.error) summary.error = portal.error;
     } else if (gateway?.error) {
       summary.error = gateway.error;
     } else if (balance?.error && !summary.error) {

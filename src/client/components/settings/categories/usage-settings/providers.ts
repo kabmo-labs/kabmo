@@ -1,5 +1,8 @@
 import type { UsageLimitWindow, UsageProviderSummary, UsageReport } from '@/shared/types';
-import { formatAmount, formatUsd } from '@/client/components/settings/categories/usage-settings/format';
+import {
+  formatAmount,
+  formatCurrency,
+} from '@/client/components/settings/categories/usage-settings/format';
 
 /**
  * Providers surfaced in the Settings → Usage sidebar and the Usage right panel.
@@ -31,9 +34,14 @@ function limitHint(limits: UsageLimitWindow[]): string | undefined {
   const used = limits.filter((limit) => limit.usedFraction !== undefined);
   if (used.length === 0) {
     // A credit balance has no limit to take a fraction of; the remaining
-    // amount IS the whole story.
-    const credit = limits.find((limit) => limit.unit === 'usd' && limit.remaining !== undefined);
-    if (credit) return `${formatUsd(credit.remaining ?? 0)} left`;
+    // amount IS the whole story — in the currency the window names, because an
+    // IDR wallet formatted as USD understates it by four orders of magnitude.
+    const credit = limits.find(
+      (limit) => (limit.unit === 'usd' || limit.unit === 'idr') && limit.remaining !== undefined,
+    );
+    if (credit) {
+      return `${formatCurrency(credit.remaining ?? 0, credit.unit === 'idr' ? 'IDR' : 'USD')} left`;
+    }
     return limits[0]?.label;
   }
   const binding = used.reduce((worst, limit) =>
@@ -61,6 +69,8 @@ export function buildProviders(report: UsageReport): ProviderEntry[] {
 function providerHint(summary: UsageProviderSummary): string {
   const plan = summary.kenari?.quota?.planName;
   if (plan) return plan;
+  const wallet = summary.tokenPortal?.balance;
+  if (wallet) return formatCurrency(wallet.balance, wallet.currency);
   const balance = summary.deepseek?.balance?.entries[0];
   if (balance) return `${balance.currency} ${formatAmount(balance.totalBalance)}`;
   const harbor = summary.tokenHarbor?.allowance;
@@ -72,6 +82,9 @@ function providerHint(summary: UsageProviderSummary): string {
     if (harbor.onPlan) return `${harbor.planName ?? 'Pass'} · ${harbor.planUsedPct ?? 0}% · 7d`;
     return `${harbor.usedPct ?? 0}% free · 7d`;
   }
+  // "No quota reported" would read as a provider with no quota at all; this
+  // account HAS quota, and the missing piece is the credential type.
+  if (summary.id === 'commandcode' && summary.limitsUnavailable) return 'API key needed';
   return limitHint(summary.limits) ?? 'No quota reported';
 }
 

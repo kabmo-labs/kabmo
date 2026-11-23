@@ -7,6 +7,24 @@ import { isRecord } from '@/shared/lib/util/guards';
 
 const SETTINGS_KEY = 'omp_providers_config';
 const MASKED_KEY_PATTERN = /•{3,}/;
+/** omp reads a bare variable name in `apiKey` from the environment. */
+const ENV_NAME_PATTERN = /^[A-Z][A-Z0-9_]*$/;
+
+/**
+ * A stored key value turned into the literal to send: a text key passes
+ * through, a masked placeholder is refused, and a bare environment-variable
+ * NAME is resolved (omp's own docs write `apiKey: TOKENPORTAL_API_KEY`, which
+ * omp resolves from the environment; sending the variable name itself answers
+ * 401 for a working setup).
+ */
+export function resolveStoredKey(value: string | null): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed || MASKED_KEY_PATTERN.test(trimmed)) return null;
+  if (!ENV_NAME_PATTERN.test(trimmed)) return trimmed;
+  const fromEnv = Bun.env[trimmed];
+  return fromEnv && fromEnv.trim() ? fromEnv.trim() : null;
+}
 
 export interface ProviderEntry {
   name: string;
