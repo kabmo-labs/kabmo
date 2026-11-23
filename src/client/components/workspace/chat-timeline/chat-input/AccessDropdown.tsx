@@ -36,7 +36,13 @@ export function AccessDropdown({ value, onSelect, harness }: AccessDropdownProps
         className="tap-chip flex items-center space-x-1 hover:bg-ink/5 px-2 py-1 rounded transition-colors text-xs text-muted"
       >
         <LockKeyhole size={12} className="text-ink/60" />
-        <span className="hidden lg:inline">{copy.labels[value]}</span>
+        {/* A CONTAINER query, not `lg:`: the composer lives in a chat column
+            that can be 320px on a 1440px window (measured: 400px chat beside
+            the editor and the right panel), and `lg:` read the WINDOW, so the
+            label stayed on and wrapped the chip to two lines inside a 366px
+            card. `Toolbar`'s row is the `@container`; `ModeToggles` states the
+            same 420px. */}
+        <span className="hidden @[420px]:inline whitespace-nowrap">{copy.labels[value]}</span>
       </button>
       {showAccess && (
         <div className={`glass-popover absolute bottom-full left-0 mb-1 ${copy.note ? 'w-56' : 'w-40'} bg-paper border border-ink/20 rounded-md shadow-lg z-50 py-1 text-xs`}>

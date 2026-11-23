@@ -27,7 +27,9 @@ export function ThinkingLevelDropdown({ thinkingLevels, currentThinking, onSelec
         title={thinkingLevels.length === 0 ? 'This model exposes no thinking levels' : `Thinking Level: ${currentThinking}`}
       >
         <Brain size={12} className="text-ink/60" />
-        <span className="hidden lg:inline">{currentThinking}</span>
+        {/* Same axis as `AccessDropdown` and `ModeToggles`: the chip's room is
+            the COMPOSER's width, not the window's. */}
+        <span className="hidden @[420px]:inline whitespace-nowrap">{currentThinking}</span>
       </button>
       {showThinking && thinkingLevels.length > 0 && (
         <div className="glass-popover absolute bottom-full left-0 mb-1 w-40 bg-paper border border-ink/20 rounded-md shadow-lg z-50 py-1 text-xs">

@@ -44,6 +44,27 @@ async function open(harness?: string): Promise<HTMLElement> {
   return container;
 }
 
+describe('AccessDropdown label', () => {
+  /**
+   * The chip's label is hidden by the COMPOSER's width, not the window's.
+   *
+   * `hidden lg:inline` read the viewport, so a 1440px window kept the label on
+   * inside a 366px card (the chat column beside the editor and the right panel)
+   * and wrapped the chip to two lines — measured, `Always ask` at h=40 against
+   * the row's 24px controls. `Toolbar`'s row is the `@container`, so the class
+   * has to be a container query.
+   */
+  test('the label folds on the COMPOSER width, never a viewport breakpoint', async () => {
+    const el = await open('omp-rpc');
+    const label = [...el.querySelectorAll('span')].find((span) => span.textContent === 'Always ask');
+    expect(label).toBeDefined();
+    const classes = label?.className ?? '';
+    expect(classes).toContain('hidden');
+    expect(classes).toContain('@[420px]:inline');
+    expect(classes).not.toMatch(/(^|\s)(sm|md|lg|xl):/);
+  });
+});
+
 describe('AccessDropdown copy', () => {
   test('omp keeps the restricted-folder promise', async () => {
     const el = await open('omp-rpc');
