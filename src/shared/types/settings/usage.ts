@@ -95,6 +95,54 @@ export interface DeepSeekUsageReport {
   error?: string;
 }
 
+/**
+ * The allowance Token Harbor reports for one account
+ * (`GET https://tokenharbor.ai/api/cli/free-tier`).
+ *
+ * Percentages only, by contract: the endpoint states how much of each allowance
+ * is used and never a dollar remainder, so a card built from it must not imply
+ * an amount. A Pass allowance and the free-model allowance are metered
+ * separately but share ONE 7-day window, hence a single `resetAt`.
+ */
+export interface TokenHarborAllowance {
+  /** "Agent Pass" | "Office Pass" | "Frontier Pass", or null without a Pass. */
+  planName: string | null;
+  /** False when the account holds no Pass: there is no Pass allowance to draw. */
+  onPlan: boolean;
+  /** Percent of the 7-day Pass allowance used (0-100), null on schema drift. */
+  planUsedPct: number | null;
+  /**
+   * The Pass allowance is spent for this window. Authoritative over
+   * `planUsedPct`: the percentage is rounded, so it can read 100 on a request
+   * that is still covered and 99 on the one that is refused.
+   */
+  planExhausted: boolean;
+  /** Percent of the free-model allowance used (0-100), null on schema drift. */
+  usedPct: number | null;
+  /** The free allowance is spent for this window. */
+  exhausted: boolean;
+  /** False until the first request starts the 7-day window. */
+  activated: boolean;
+  /** When both allowances come back in full; null before the first request. */
+  resetAt: string | null;
+  periodStartedAt: string | null;
+  periodEndsAt: string | null;
+  /**
+   * The `:free` ids the key can call right now, as the endpoint spells them.
+   * Kept verbatim: the docs show a `:free` suffix the live response omits, so
+   * rebuilding ids from these would invent a model that does not resolve.
+   */
+  freeModels: string[];
+  /** False when free models are switched off for the account (calls get 403). */
+  modelsEnabled: boolean;
+}
+
+/** Token Harbor allowance; present only when Token Harbor has a credential. */
+export interface TokenHarborUsageReport {
+  allowance?: TokenHarborAllowance;
+  error?: string;
+}
+
 /** Unit of a provider-reported quota amount (mirrors omp's `UsageUnit`). */
 export type UsageUnit = 'percent' | 'tokens' | 'requests' | 'credits' | 'usd' | 'minutes' | 'bytes' | 'unknown';
 
@@ -172,6 +220,8 @@ export interface UsageProviderSummary {
   kenari?: KenariUsageReport;
   /** Rich DeepSeek report (prepaid balance). */
   deepseek?: DeepSeekUsageReport;
+  /** Rich Token Harbor report (Pass + free allowance percentages). */
+  tokenHarbor?: TokenHarborUsageReport;
 }
 
 /** Response body of `GET /api/settings/usage`. */

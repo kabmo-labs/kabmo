@@ -23,6 +23,7 @@ import { describe, expect, test } from 'bun:test';
 import {
   formatAmount,
   formatCompactTokens,
+  formatDate,
   formatDateTime,
   formatFractionPercent,
   formatNumber,
@@ -68,6 +69,15 @@ describe('usage number formatting', () => {
   test('formatDateTime formats a real timestamp and echoes an unparseable one', () => {
     expect(formatDateTime('2024-03-05T10:30:00Z')).toContain('2024');
     expect(formatDateTime('not-a-date')).toBe('not-a-date');
+  });
+
+  test('formatDate keeps the year and drops the clock, in any locale', () => {
+    // Cutting `formatDateTime` at a comma would lose the year wherever the
+    // locale puts it after the comma (en-US: "Mar 5, 2024, 5:30 PM").
+    const date = formatDate('2024-03-05T10:30:00Z');
+    expect(date).toContain('2024');
+    expect(date).not.toContain(':');
+    expect(formatDate('not-a-date')).toBe('not-a-date');
   });
 
   test('usedPercent clamps to 0..100 and divides by zero safely', () => {

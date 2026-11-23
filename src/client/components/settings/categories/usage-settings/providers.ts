@@ -63,6 +63,15 @@ function providerHint(summary: UsageProviderSummary): string {
   if (plan) return plan;
   const balance = summary.deepseek?.balance?.entries[0];
   if (balance) return `${balance.currency} ${formatAmount(balance.totalBalance)}`;
+  const harbor = summary.tokenHarbor?.allowance;
+  if (harbor) {
+    // The Pass percentage is the one that decides whether covered calls keep
+    // working, so it is the number the row carries; a window that never started
+    // must not read "0%".
+    if (!harbor.activated) return `${harbor.planName ?? 'Free'} · not started`;
+    if (harbor.onPlan) return `${harbor.planName ?? 'Pass'} · ${harbor.planUsedPct ?? 0}% · 7d`;
+    return `${harbor.usedPct ?? 0}% free · 7d`;
+  }
   return limitHint(summary.limits) ?? 'No quota reported';
 }
 

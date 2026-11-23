@@ -19,6 +19,8 @@ const dateTimeFormatter = new Intl.DateTimeFormat('id-ID', {
   timeStyle: 'short',
 });
 
+const dateFormatter = new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium' });
+
 export function formatRp(value: number): string {
   return rupiahFormatter.format(value);
 }
@@ -32,6 +34,17 @@ export function formatDateTime(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
   return dateTimeFormatter.format(date);
+}
+
+/**
+ * The date alone, for a reset that is days away and needs no clock time. Derived
+ * from its own formatter rather than by cutting `formatDateTime` at a comma: the
+ * comma position is locale data, and en-US puts the year after it.
+ */
+export function formatDate(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return dateFormatter.format(date);
 }
 
 /** Percentage of `used` out of `total`, clamped to 0–100 for progress bars. */

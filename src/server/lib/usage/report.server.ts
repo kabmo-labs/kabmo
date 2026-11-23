@@ -69,6 +69,30 @@ export function mockUsageReport(): UsageReport {
       },
     },
     {
+      id: 'token-harbour',
+      name: 'Token Harbor',
+      credentialSources: ['models.yml'],
+      // No omp adapter; the allowance comes from Token Harbor's own endpoint.
+      tracked: false,
+      limits: [],
+      tokenHarbor: {
+        allowance: {
+          planName: 'Agent Pass',
+          onPlan: true,
+          planUsedPct: 37,
+          planExhausted: false,
+          usedPct: 12,
+          exhausted: false,
+          activated: true,
+          resetAt: '2026-11-30T07:45:14.048+00:00',
+          periodStartedAt: '2026-11-23T07:45:14.048+00:00',
+          periodEndsAt: '2026-11-30T07:45:14.048+00:00',
+          freeModels: ['deepseek-v4-flash', 'mimo-v2.6-flash', 'mimo-v2.5', 'deepseek-v4.1-flash'],
+          modelsEnabled: true,
+        },
+      },
+    },
+    {
       id: 'deepseek',
       name: 'DeepSeek',
       credentialSources: ['agent.db'],
