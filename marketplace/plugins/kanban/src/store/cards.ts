@@ -58,7 +58,12 @@ export async function listCards(dataDir: string): Promise<{ cards: CardSummary[]
     } catch (cause) {
       // A file an agent broke is REPORTED with its path, never skipped: a board
       // that silently drops a card is worse than one that says which is bad.
-      errors.push({ path: path.join('cards', name), message: messageOf(cause) });
+      //
+      // Board-relative, with a forward slash on EVERY platform: this string is
+      // read by a person and by an agent (`cards/<id>.json` is what the board's
+      // README names), so `path.join` — which answers `cards\k-abcdef.json` on
+      // Windows — would make the sentence depend on the host it was written on.
+      errors.push({ path: `cards/${name}`, message: messageOf(cause) });
     }
   }
   return { cards, errors };

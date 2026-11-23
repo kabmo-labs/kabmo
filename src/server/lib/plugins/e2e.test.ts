@@ -21,7 +21,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { cp, mkdir, mkdtemp, rm } from 'fs/promises';
 import { readdirSync } from 'node:fs';
 import { tmpdir } from 'os';
-import { join } from 'path';
+import { isAbsolute, join } from 'path';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { packageDir } from '@/server/lib/fs/package-root';
 import { invalidatePanelScan } from '@/server/lib/panels/registry.server';
@@ -148,7 +148,10 @@ describe('the host facts a plugin is handed', () => {
     // install and a second copy of a fact `getDataDir()` owns.
     const record = await loadPluginServer(PLUGIN_ID);
     expect(record.api.paths.dataDir).toBe(getDataDir());
-    expect(record.api.paths.dataDir.startsWith('/')).toBe(true);
+    // ABSOLUTE, asked portably: `startsWith('/')` is a POSIX assumption and this
+    // gate runs on Windows too, where the answer is `D:\…` (measured on the
+    // Windows leg, which failed the whole case on the drive letter alone).
+    expect(isAbsolute(record.api.paths.dataDir)).toBe(true);
   });
 
   test('a relocated data dir is what a freshly loaded plugin sees', async () => {
