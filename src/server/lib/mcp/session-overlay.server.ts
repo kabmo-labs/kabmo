@@ -114,10 +114,13 @@ export async function ensureSessionMcpOverlay(
 
     const servers = await mcpServerEntriesFor(cwd, {
       overrides,
-      // Only the sources omp's RPC mode can actually read: its own `mcp.json`
-      // files. App-local rows and plugin contributions are ACP-only today, and
-      // materializing them here would silently change that delivery.
-      sources: ['user', 'project'],
+      // omp's RPC mode reads ONE `mcp.json`, so anything a session should see
+      // has to be materialized into this file. `plugin` is included because a
+      // plugin's `api.mcp.register` is the only way a third party contributes a
+      // tool server, and ACP-only delivery meant an `omp-rpc` chat silently had
+      // none of it. App-local rows (`custom`) stay out: they are the settings
+      // pane's own list and ACP-only by design.
+      sources: ['user', 'project', 'plugin'],
     });
     const mcpServers: Record<string, unknown> = {};
     for (const server of servers) {

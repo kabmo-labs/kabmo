@@ -228,6 +228,37 @@ describe('buildSessionSpawnArgs', () => {
     expect(buildSessionSpawnArgs('')).toEqual(['--config', titleModelOverlayPath(), ...kabmoExtensionArgs()]);
   });
 
+  test('a stage prompt is APPENDED, never substituted, and rides before the extension load', () => {
+    // `--system-prompt` would replace omp's own coding prompt and with it the
+    // tool contract; only `--append-system-prompt` keeps the agent usable.
+    expect(buildSessionSpawnArgs('', 'write', undefined, { systemPrompt: 'Review the change.' })).toEqual([
+      '--config',
+      titleModelOverlayPath(),
+      '--approval-mode',
+      'write',
+      '--append-system-prompt',
+      'Review the change.',
+      ...kabmoExtensionArgs(),
+    ]);
+  });
+
+  test('skill globs narrow the catalog in one comma-separated flag', () => {
+    expect(buildSessionSpawnArgs('', undefined, undefined, { skills: ['review-*', 'pr-*'] })).toEqual([
+      '--config',
+      titleModelOverlayPath(),
+      '--skills=review-*,pr-*',
+      ...kabmoExtensionArgs(),
+    ]);
+  });
+
+  test('an empty prompt and an empty glob list add no argv at all', () => {
+    expect(buildSessionSpawnArgs('', undefined, undefined, { systemPrompt: '', skills: [] })).toEqual([
+      '--config',
+      titleModelOverlayPath(),
+      ...kabmoExtensionArgs(),
+    ]);
+  });
+
   test('the overlay file EXISTS by the time the argv names it', () => {
     // omp's `--config` loader is strict: a missing file is a hard error, so the
     // file has to be there before the spawn reads the argv.

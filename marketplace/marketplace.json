@@ -1,42 +1,69 @@
 {
   "name": "Kabmo",
   "description": "Panels bundled with Kabmo, plus the ones you install from a git URL.",
-  "owner": { "name": "Kabmo" },
+  "owner": {
+    "name": "Kabmo"
+  },
   "plugins": [
     {
       "name": "session-info",
       "source": "plugins/session-info",
       "description": "Shows the active workspace and keeps a note per session.",
       "category": "utility",
-      "author": { "name": "Kabmo Labs", "url": "https://github.com/kabmo-labs" }
+      "author": {
+        "name": "Kabmo Labs",
+        "url": "https://github.com/kabmo-labs"
+      }
     },
     {
       "name": "stats",
       "source": "plugins/stats",
-      "description": "CPU and RAM used by the omp stack — Kabmo, every omp child, the daemons and the shells.",
+      "description": "CPU and RAM used by the omp stack \u2014 Kabmo, every omp child, the daemons and the shells.",
       "category": "utility",
-      "author": { "name": "Kabmo Labs", "url": "https://github.com/kabmo-labs" }
+      "author": {
+        "name": "Kabmo Labs",
+        "url": "https://github.com/kabmo-labs"
+      }
     },
     {
       "name": "command-runner",
       "source": "plugins/command-runner",
       "description": "Lists a repository's commands and runs them, in the foreground or as background jobs.",
       "category": "utility",
-      "author": { "name": "Kabmo Labs", "url": "https://github.com/kabmo-labs" }
+      "author": {
+        "name": "Kabmo Labs",
+        "url": "https://github.com/kabmo-labs"
+      }
     },
     {
       "name": "git-forge",
       "source": "plugins/git-forge",
       "description": "Reads and acts on a repository's issues, pull/merge requests and releases on GitHub, GitLab, Gitea or Bitbucket.",
       "category": "utility",
-      "author": { "name": "Kabmo Labs", "url": "https://github.com/kabmo-labs" }
+      "author": {
+        "name": "Kabmo Labs",
+        "url": "https://github.com/kabmo-labs"
+      }
     },
     {
       "name": "github-actions",
       "source": "plugins/github-actions",
       "description": "Monitors a repository's GitHub Actions runs: the list, each run's jobs and steps, job logs, and the cancel/re-run verbs.",
       "category": "utility",
-      "author": { "name": "Kabmo Labs", "url": "https://github.com/kabmo-labs" }
+      "author": {
+        "name": "Kabmo Labs",
+        "url": "https://github.com/kabmo-labs"
+      }
+    },
+    {
+      "name": "kanban",
+      "source": "plugins/kanban",
+      "description": "A board that drives work: a card carries a prompt, an agent and a stage, and an agent moves its own cards through MCP.",
+      "category": "utility",
+      "author": {
+        "name": "Kabmo Labs",
+        "url": "https://github.com/kabmo-labs"
+      }
     }
   ]
 }

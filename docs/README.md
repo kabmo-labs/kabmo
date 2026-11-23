@@ -38,6 +38,7 @@ is not documentation and does not move.
 | 22 | [Session MCP server](milestones/M22-session-mcp.md) | the typed control plane over the session tree: the tree-scoped agent token shipped, with the four tools and the stdio injection path specified | partial |
 | 23 | [Change journal](milestones/M23-change-journal.md) | a Kabmo-owned JSONL journal for every mutation, including the `bash` writes omp never records: the writer, reader, classifier, git scan pass and tests | partial |
 | 24 | [GitHub Actions viewer](milestones/M24-github-actions-viewer.md) | the Actions panel plugin — list, run drill with jobs and steps, job logs, cancel/re-run, header readout — over measured payloads and a free conditional poll | partial |
+| 25 | [Kanban board](milestones/M25-kanban-plugin.md) | a board that drives work: a card is a prompt + agent + stage, `Start work` spawns the chat, stage prompts become a real system prompt, and an agent moves its own cards through MCP | done |
 
 ### What still owes
 

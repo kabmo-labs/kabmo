@@ -19,6 +19,7 @@
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { cp, mkdir, mkdtemp, rm } from 'fs/promises';
+import { readdirSync } from 'node:fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
@@ -26,10 +27,17 @@ import { packageDir } from '@/server/lib/fs/package-root';
 import { invalidatePanelScan } from '@/server/lib/panels/registry.server';
 import { buildPanelPlugin } from '@/server/lib/panels/build.server';
 import { toManifest } from '@/server/lib/panels/manifest';
-import { loadPluginServer, disposePlugin, loadedPluginIds, pluginLoadErrors } from '@/server/lib/plugins/loader.server';
+import {
+  loadPluginServer,
+  disposePlugin,
+  loadedPluginIds,
+  pluginLoadErrors,
+} from '@/server/lib/plugins/loader.server';
+import { importPluginModule } from '@/server/lib/plugins/module-import.server';
 import { callRpcMethod } from '@/server/lib/plugins/rpc.server';
 import { pluginTopicValue } from '@/server/lib/plugins/realtime.server';
 import { findHttpRoute } from '@/server/lib/plugins/http.server';
+import { getDataDir } from '@/server/lib/lifecycle/paths';
 
 const PLUGIN_ID = 'session-info';
 let marketplaceRoot = '';
@@ -130,5 +138,63 @@ describe('a real plugin server half', () => {
     });
     expect(after.ok).toBe(false);
     if (!after.ok) expect(after.error.code).toBe('unknown_method');
+  });
+});
+
+describe('the host facts a plugin is handed', () => {
+  test('paths.dataDir is the host resolution, not a plugin guess', async () => {
+    // The bug this pins: a plugin that keeps files had to re-derive
+    // `KABMO_DATA_DIR`/`~/.kabmo` itself, which is wrong on every relocated
+    // install and a second copy of a fact `getDataDir()` owns.
+    const record = await loadPluginServer(PLUGIN_ID);
+    expect(record.api.paths.dataDir).toBe(getDataDir());
+    expect(record.api.paths.dataDir.startsWith('/')).toBe(true);
+  });
+
+  test('a relocated data dir is what a freshly loaded plugin sees', async () => {
+    // A plugin is loaded ONCE and its API object is kept, so the relocation is
+    // observable only after a dispose — which is exactly the reload path a
+    // `bun --hot` save or a disable/enable takes.
+    const previous = Bun.env.KABMO_DATA_DIR;
+    Bun.env.KABMO_DATA_DIR = join(marketplaceRoot, 'relocated');
+    try {
+      await disposePlugin(PLUGIN_ID);
+      const record = await loadPluginServer(PLUGIN_ID);
+      expect(record.api.paths.dataDir).toBe(join(marketplaceRoot, 'relocated'));
+    } finally {
+      if (previous === undefined) delete Bun.env.KABMO_DATA_DIR;
+      else Bun.env.KABMO_DATA_DIR = previous;
+      await disposePlugin(PLUGIN_ID);
+    }
+  });
+});
+
+describe('a rebuilt bundle is not masked by the module cache', () => {
+  test('importPluginModule reads the file again when it changed', async () => {
+    // Measured: Bun keys an ESM module by its resolved URL, so a plain
+    // `import(entry)` returned the FIRST copy after a Rebuild — the plugin kept
+    // running its previous code until the process restarted, and the UI had no
+    // way to say so.
+    const dir = await mkdtemp(join(tmpdir(), 'plugin-bust-'));
+    const file = join(dir, 'bundle.js');
+    await Bun.write(file, 'export default function factory() { return 1; }\n');
+    const first = await importPluginModule(file);
+    const firstModule = first.module as { default: () => number };
+    expect(firstModule.default()).toBe(1);
+
+    await Bun.write(file, 'export default function factory() { return 2; }\n');
+    const second = await importPluginModule(file);
+    const secondModule = second.module as { default: () => number };
+    expect(secondModule.default()).toBe(2);
+    expect(secondModule).not.toBe(firstModule);
+
+    // The copy outlives the import on purpose (a plugin may spawn itself from
+    // `import.meta.url`) and goes away with the plugin.
+    const copies = readdirSync(dir).filter((name) => name.includes('.load-'));
+    expect(copies.length).toBe(2);
+    await first.cleanup();
+    expect(readdirSync(dir).filter((name) => name.includes('.load-')).length).toBe(1);
+    await second.cleanup();
+    await rm(dir, { recursive: true, force: true });
   });
 });

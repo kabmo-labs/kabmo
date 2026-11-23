@@ -12,7 +12,7 @@
  */
 
 import { RpcProcess } from '@/server/lib/omp/rpc/process';
-import { buildSessionSpawnArgs } from '@/server/lib/omp/rpc/constants';
+import { buildSessionSpawnArgs, type SessionPromptArgs } from '@/server/lib/omp/rpc/constants';
 import { AgentSessionWrapper } from '@/server/lib/omp/rpc/manager';
 import { syncDiscoveryRootsWatch } from '@/server/lib/omp/config/roots-watch.server';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
@@ -20,11 +20,9 @@ import { localRuns } from '@/server/lib/omp/session/local-runs.server';
 import { recordSpawnProvenance } from '@/server/lib/omp/rpc/spawn-provenance';
 import { registerSpawnedSession } from '@/server/lib/omp/rpc/session-registration';
 import { resolveSessionOwnership, SessionOwnedElsewhereError } from '@/server/lib/omp/session/ownership.server';
-import { claimPrewarmedSession } from '@/server/lib/omp/rpc/prewarm-pool';
-import { mintAgentEnvironment, rememberAgentToken } from '@/server/lib/sessions/agent-token.server';
 import { sessionMcpSpawn } from '@/server/lib/omp/rpc/spawn-mcp';
 import { isUnrestorableModelFailure, resolveResumableModel } from '@/server/lib/omp/session/resumable-model.server';
-import { DEFAULT_APPROVAL_MODE, type ApprovalMode } from '@/shared/lib/omp/config/access-mode';
+import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 import type { SelectedModel } from '@/shared/types/models';
 import { claimHarness, harnessOf } from '@/server/lib/harness/registry';
 import { saveHarnessSession } from '@/server/lib/harness/session-store.server';
@@ -171,6 +169,7 @@ export async function startRpcSession(
   approvalMode?: ApprovalMode,
   modeEnv?: Record<string, string>,
   resumeModel?: SelectedModel,
+  promptArgs?: SessionPromptArgs,
 ): Promise<{ session: AgentSessionWrapper; realSessionId: string }> {
   const registry = getRegistry();
   const locks = getLocks();
@@ -200,7 +199,7 @@ export async function startRpcSession(
   const inflight = locks.get(sessionId);
   if (inflight) return inflight;
 
-  const starting = spawnOnce(sessionId, sessionFile, cwd, recordedCwd, approvalMode, modeEnv)
+  const starting = spawnOnce(sessionId, sessionFile, cwd, recordedCwd, approvalMode, modeEnv, undefined, promptArgs)
     .catch(async (error) => {
       // omp restores the model the session's transcript records, and it does
       // NOT fall back when that model is gone: the child exits(1) with
@@ -221,7 +220,7 @@ export async function startRpcSession(
       if (!isUnrestorableModelFailure(error)) throw error;
       const replacement = await resolveResumableModel(resumeModel);
       if (!replacement) throw error;
-      return spawnOnce(sessionId, sessionFile, cwd, recordedCwd, approvalMode, modeEnv, replacement);
+      return spawnOnce(sessionId, sessionFile, cwd, recordedCwd, approvalMode, modeEnv, replacement, promptArgs);
     })
     .finally(() => locks.delete(sessionId));
 
@@ -238,6 +237,7 @@ async function spawnOnce(
   approvalMode: ApprovalMode | undefined,
   modeEnv: Record<string, string> | undefined,
   resumeModel?: SelectedModel | undefined,
+  promptArgs?: SessionPromptArgs,
 ): Promise<{ session: AgentSessionWrapper; realSessionId: string }> {
   const registry = getRegistry();
   const holder: { wrapper?: AgentSessionWrapper } = {};
@@ -245,7 +245,10 @@ async function spawnOnce(
   const mcp = await sessionMcpSpawn(sessionId, cwd, modeEnv);
   const proc = new RpcProcess({
     cwd,
-    extraArgs: [...buildSessionSpawnArgs(sessionFile, approvalMode, resumeModel), ...mcp.extraArgs],
+    extraArgs: [
+      ...buildSessionSpawnArgs(sessionFile, approvalMode, resumeModel, promptArgs),
+      ...mcp.extraArgs,
+    ],
     env: mcp.env,
     onExit: ({ stderrTail }) => holder.wrapper?.handleProcessExit(stderrTail),
   });
@@ -304,46 +307,16 @@ async function spawnOnce(
 // of the live-session map below.
 // ============================================================================
 
-/** Consume the prewarmed process for `cwd` when its approval mode matches, or
- *  spawn a fresh session. The returned wrapper is already registered under its
- *  real session id, mirroring startRpcSession's bookkeeping. */
-export async function startNewRpcSession(
-  cwd: string,
-  approvalMode?: ApprovalMode,
-  modeEnv?: Record<string, string>,
-): Promise<{ session: AgentSessionWrapper; realSessionId: string }> {
-  const mode = approvalMode ?? DEFAULT_APPROVAL_MODE;
-  // Mint here, not at the route: the prewarmed entry and the cold spawn both
-  // get a callback credential, and no caller can forget it.
-  const { token, env: agentEnv } = mintAgentEnvironment();
-  const env = { ...(modeEnv ?? {}), ...agentEnv };
-  const wrapper = await claimPrewarmedSession(cwd, mode, env);
-
-  if (!wrapper) {
-    const started = await startRpcSession(`__new__${Bun.randomUUIDv7()}`, '', cwd, undefined, mode, env);
-    await rememberAgentToken(started.realSessionId, token).catch((cause: unknown) => {
-      console.error(`[sessions] could not record the agent token for ${started.realSessionId}:`, cause);
-    });
-    return started;
-  }
-
-  // A claimed prewarmed process recorded its own token before entering the
-  // pool; recording this call's token would invalidate the child's environment.
-
-  const registry = getRegistry();
-  const realSessionId = wrapper.sessionId;
-  // The same registration the cold path uses: it installs the destroy cleanup
-  // AND starts the change journal, so a prewarmed session is not a second
-  // convention.
-  registerSpawnedSession(registry, wrapper, realSessionId, realSessionId);
-  // A prewarmed process is adopted here, not in `startRpcSession`, so this is
-  // the only spawn path that sees it — a session's cwd may sit outside every
-  // registered workspace, and the discovery watcher has to learn it. Awaited
-  // for the same reason as in `startRpcSession`: the attach is asynchronous,
-  // and the caller's first write must not land before the watch exists.
-  await syncDiscoveryRootsWatch();
-  // Same as `startRpcSession`: a topic subscribed against the pre-spawn id (or
-  // a placeholder) needs a fresh snapshot now that a child is reachable.
-  emitRealtimeSignal('session-attached', realSessionId);
-  return { session: wrapper, realSessionId };
+/**
+ * The live-session map, for the module that adopts a prewarmed child.
+ *
+ * Exported rather than re-derived: `startNewRpcSession` lives in its own file
+ * (`session-new.ts`) to keep this one under the repo's ceiling, and it must
+ * register into the SAME map — a second one would make `getRpcSession` miss
+ * every prewarmed session.
+ */
+export function ompSessionRegistry(): Map<string, LiveSession> {
+  return getRegistry();
 }
+
+export { startNewRpcSession } from '@/server/lib/omp/rpc/session-new';

@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "types": [],
+    "allowArbitraryExtensions": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@kabmo-labs/kabmo-sdk": ["../../../packages/kabmo-sdk/src/index.ts"],
+      "@kabmo-labs/kabmo-sdk/app": ["../../../packages/kabmo-sdk/src/app.ts"],
+      "@kabmo-labs/kabmo-sdk/testing": ["../../../packages/kabmo-sdk/src/testing/index.ts"],
+      "@kabmo-labs/kabmo-sdk/testing/app": ["../../../packages/kabmo-sdk/src/testing/app.tsx"],
+      "@kabmo-labs/kabmo-ui": ["../../../packages/kabmo-ui/src/index.tsx"],
+      "@kabmo-labs/kabmo-ui/components": ["../../../packages/kabmo-ui/src/components.tsx"]
+    }
+  },
+  "include": ["src"]
+}

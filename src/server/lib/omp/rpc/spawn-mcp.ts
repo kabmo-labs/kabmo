@@ -17,6 +17,7 @@
 
 import { readSessionMcpOverrides } from '@/server/lib/mcp/session-state.server';
 import { ensureSessionMcpOverlay, type SessionMcpOverlay } from '@/server/lib/mcp/session-overlay.server';
+import { pluginMcpServers } from '@/server/lib/plugins/mcp.server';
 
 export interface SessionMcpSpawn {
   /** Extra CLI args for the child (`--config <overlay>`). */
@@ -33,7 +34,13 @@ export async function sessionMcpSpawn(
   modeEnv: Record<string, string> | undefined,
 ): Promise<SessionMcpSpawn> {
   const overrides = await readSessionMcpOverrides(sessionId);
-  const overlay = await ensureSessionMcpOverlay(sessionId, cwd, overrides);
+  // A session with no overrides used to skip the overlay entirely — which also
+  // skipped the PLUGIN servers, because the overlay is the only path that
+  // materializes them for omp's RPC child. So the overlay is built whenever a
+  // plugin contributes a server, even with an empty override map.
+  const overlay = await ensureSessionMcpOverlay(sessionId, cwd, overrides, {
+    keep: pluginMcpServers().length > 0,
+  });
   if (!overlay) return { extraArgs: [], env: modeEnv };
   return {
     extraArgs: ['--config', overlay.configPath],

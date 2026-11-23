@@ -30,6 +30,7 @@ export const BUNDLED_PLUGINS = [
   { dir: 'marketplace/plugins/command-runner', id: 'command-runner' },
   { dir: 'marketplace/plugins/git-forge', id: 'git-forge' },
   { dir: 'marketplace/plugins/github-actions', id: 'github-actions' },
+  { dir: 'marketplace/plugins/kanban', id: 'kanban' },
   { dir: 'marketplace/plugins/session-info', id: 'session-info' },
   { dir: 'marketplace/plugins/stats', id: 'stats' },
 ];

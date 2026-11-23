@@ -12,7 +12,7 @@
  * merged list, and the project's own file switched off for the child.
  */
 
-import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -30,6 +30,7 @@ import {
 } from '@/server/lib/mcp/session-overlay.server';
 import { sessionMcpSpawn } from '@/server/lib/omp/rpc/spawn-mcp';
 import { cachedMcpProbe, probeMcpServer } from '@/server/lib/mcp/probe.server';
+import { clearPluginMcp, createPluginMcp } from '@/server/lib/plugins/mcp.server';
 import { mcpServerEntriesFor } from '@/server/lib/mcp/registry.server';
 
 const ROOT = path.join(os.tmpdir(), `kabmo-session-mcp-${process.pid}`);
@@ -160,5 +161,67 @@ describe('session MCP probe', () => {
     const result = await probeMcpServer(SESSION, broken, PROJECT);
     expect(result.ok).toBe(false);
     expect(cachedMcpProbe(SESSION, 'broken')).toEqual(result);
+  });
+});
+
+describe('plugin MCP delivery', () => {
+  // The bug these pin: `api.mcp.register` reached ACP harnesses only. omp's RPC
+  // child reads ONE `mcp.json`, and the overlay that writes it listed
+  // `user`/`project` sources and was skipped entirely without per-session
+  // overrides — so an `omp-rpc` chat saw none of a plugin's tools.
+  const PLUGIN = 'kanban-test';
+
+  afterEach(() => {
+    clearPluginMcp(PLUGIN);
+  });
+
+  test('a plugin server is part of the merged list only when plugin is asked for', async () => {
+    createPluginMcp(PLUGIN).register({
+      id: 'board',
+      transport: 'stdio',
+      command: 'bun',
+      args: ['/tmp/board.js', '--mcp'],
+      env: { KANBAN_DIR: '/tmp/kanban' },
+    });
+
+    const withPlugin = await mcpServerEntriesFor(PROJECT, { sources: ['user', 'project', 'plugin'] });
+    const board = withPlugin.find((entry) => entry.name === `${PLUGIN}:board`);
+    expect(board?.source).toBe('plugin');
+    expect(board?.config).toEqual({
+      command: 'bun',
+      args: ['/tmp/board.js', '--mcp'],
+      env: { KANBAN_DIR: '/tmp/kanban' },
+    });
+
+    // The pre-fix source list proves the delivery gap rather than assuming it.
+    const withoutPlugin = await mcpServerEntriesFor(PROJECT, { sources: ['user', 'project'] });
+    expect(withoutPlugin.some((entry) => entry.name === `${PLUGIN}:board`)).toBe(false);
+  });
+
+  test('a session with NO overrides still gets an overlay when a plugin contributes', async () => {
+    createPluginMcp(PLUGIN).register({ id: 'board', transport: 'stdio', command: 'bun', args: ['/tmp/board.js'] });
+
+    const spawn = await sessionMcpSpawn(SESSION, PROJECT, undefined);
+    const overlay = spawn.overlay;
+    if (!overlay) throw new Error('expected an overlay because a plugin contributes a server');
+    expect(spawn.extraArgs).toEqual(['--config', overlay.configPath]);
+
+    const written = JSON.parse(fs.readFileSync(path.join(overlay.dir, 'mcp.json'), 'utf8')) as {
+      mcpServers: Record<string, { command?: string; args?: string[] }>;
+    };
+    expect(written.mcpServers[`${PLUGIN}:board`]).toEqual({ command: 'bun', args: ['/tmp/board.js'] });
+    // The user's own servers still ride along, so the plugin does not replace them.
+    expect(written.mcpServers.alpha).toEqual({ command: 'alpha-cmd' });
+  });
+
+  test('a session override can switch a plugin server off', async () => {
+    createPluginMcp(PLUGIN).register({ id: 'board', transport: 'stdio', command: 'bun' });
+    await writeSessionMcpOverrides(SESSION, { [`${PLUGIN}:board`]: false });
+
+    const overlay = await ensureSessionMcpOverlay(SESSION, PROJECT, { [`${PLUGIN}:board`]: false });
+    const written = JSON.parse(fs.readFileSync(path.join(overlay?.dir ?? '', 'mcp.json'), 'utf8')) as {
+      mcpServers: Record<string, { enabled?: boolean }>;
+    };
+    expect(written.mcpServers[`${PLUGIN}:board`]?.enabled).toBe(false);
   });
 });

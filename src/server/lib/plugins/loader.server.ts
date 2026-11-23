@@ -34,6 +34,8 @@ import { readPluginManifest } from '@/server/lib/panels/files.server';
 import { toManifest } from '@/server/lib/panels/manifest';
 import { pluginSettingsDefinitions } from '@/server/lib/panels/settings-schema.server';
 import { createPluginStorage } from '@/server/lib/plugins/storage.server';
+import { getDataDir } from '@/server/lib/lifecycle/paths';
+import { importPluginModule } from '@/server/lib/plugins/module-import.server';
 import { createPluginSettings, clearPluginSettingListeners } from '@/server/lib/plugins/settings.server';
 import { registerRpcMethod, clearPluginRpcMethods } from '@/server/lib/plugins/rpc.server';
 import { createPluginHttp, clearPluginHttpRoutes } from '@/server/lib/plugins/http.server';
@@ -154,6 +156,16 @@ export function loadedPlugins(): LoadedPlugin[] {
  * only plugins reachable here are ones the scan already admitted — installed,
  * enabled, and compatible.
  */
+/**
+ * Import a plugin's server bundle, busting the module cache.
+ *
+ * Bun keys an ESM module by its resolved URL, so re-importing the SAME path
+ * returns the module it loaded the first time — measured: a rebuilt plugin kept
+ * serving its previous code until the whole process restarted, which made
+ * Rebuild look like a no-op and an update look like it did nothing. The query is
+ * the file's mtime + size, so a changed bundle is a changed URL and an unchanged
+ * one still hits the cache.
+ */
 export async function loadPluginServer(pluginId: string): Promise<LoadedPlugin> {
   const existing = loaded().get(pluginId);
   if (existing) return existing;
@@ -173,7 +185,8 @@ export async function loadPluginServer(pluginId: string): Promise<LoadedPlugin> 
   const settings = await pluginSettingsDefinitions(dir, parsed);
   if ('error' in settings) throw new Error(`plugin "${pluginId}" has an invalid settings schema: ${settings.error}`);
 
-  const module = (await import(entry)) as { default?: unknown };
+  const loadedModule = await importPluginModule(entry);
+  const module = loadedModule.module as { default?: unknown };
   if (typeof module.default !== 'function') {
     throw new Error(`plugin "${pluginId}" has no server factory default export (export default function plugin(api) {})`);
   }
@@ -207,12 +220,18 @@ export async function loadPluginServer(pluginId: string): Promise<LoadedPlugin> 
     events: events,
     background: background.api,
     mcp: createPluginMcp(pluginId),
+    // The host's own resolution, handed over rather than re-derived: a plugin
+    // that reads `~/.kabmo` itself is wrong on every XDG/relocated install.
+    paths: { dataDir: getDataDir() },
     onDispose(hook) {
       if (typeof hook !== 'function') throw new Error('onDispose expects a function');
       track(hook);
     },
   };
 
+  // Registered FIRST so it runs LAST: the module's own disposers may still read
+  // files beside the bundle (a copied entry that spawns itself).
+  track(loadedModule.cleanup);
   const record: LoadedPlugin = { pluginId, api, background: background.handle, disposers };
   // Registered BEFORE the factory runs: a factory that registers something and
   // then throws still needs its partial registrations disposed, and the only

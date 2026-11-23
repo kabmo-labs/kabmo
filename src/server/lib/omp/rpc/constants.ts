@@ -295,10 +295,19 @@ export async function resolveSpawnCwd(recordedCwd?: string | null): Promise<stri
  *  reaches omp's title generation: the child watches that path, so
  *  `rename-with-ai` rewrites the `tiny` role for the duration of one request.
  *  See `session/title-model-overlay.server.ts`. */
+/** A spawn-time system prompt and skill filter, for a session born from a stage. */
+export interface SessionPromptArgs {
+  /** Appended to omp's own coding-assistant prompt. */
+  systemPrompt?: string;
+  /** Comma-separated globs that narrow the skill catalog. */
+  skills?: readonly string[];
+}
+
 export function buildSessionSpawnArgs(
   sessionFile: string,
   approvalMode?: ApprovalMode,
   resumeModel?: SelectedModel,
+  promptArgs?: SessionPromptArgs,
 ): string[] {
   const args: string[] = [];
   ensureTitleModelOverlay();
@@ -322,6 +331,16 @@ export function buildSessionSpawnArgs(
     // Spawn-time only: omp exposes no RPC command to change the tool-approval
     // mode, so the flag is the sole lever. It works with or without --resume.
     args.push('--approval-mode', approvalMode);
+  }
+  // A stage's system prompt is APPENDED, not substituted: omp's own coding
+  // prompt carries the tool contract, and replacing it is how an agent stops
+  // using its tools correctly. Measured on omp 19.1.0: both flags are accepted
+  // in `--mode rpc-ui` and the child reaches `ready`.
+  if (promptArgs?.systemPrompt) {
+    args.push('--append-system-prompt', promptArgs.systemPrompt);
+  }
+  if (promptArgs?.skills && promptArgs.skills.length > 0) {
+    args.push(`--skills=${promptArgs.skills.join(',')}`);
   }
   args.push(...kabmoExtensionArgs());
   return args;

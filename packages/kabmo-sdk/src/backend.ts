@@ -319,6 +319,23 @@ export interface PluginHttpApi {
 }
 
 /**
+ * Where Kabmo keeps its own state, as the plugin sees it.
+ *
+ * A plugin that persists files needs the ONE answer the host already computed:
+ * `KABMO_DATA_DIR` when it was relocated, `~/.kabmo` otherwise (the legacy
+ * `OMPCHAMBER_DATA_DIR` included). Re-deriving that in a plugin was a second
+ * copy of a fact `getDataDir()` owns, and the two drift the first time the
+ * resolution changes — so the host hands it over instead.
+ *
+ * `dataDir` is an ABSOLUTE path and is created by the host, not by the plugin.
+ * A plugin writes under its own subdirectory (`<dataDir>/<pluginId>/…`), which
+ * is what keeps two plugins' files apart without a naming convention.
+ */
+export interface PluginPathsApi {
+  readonly dataDir: string;
+}
+
+/**
  * The API a plugin's `server.ts` receives.
  *
  * The default export is a factory — `export default function plugin(api) {}` —
@@ -338,6 +355,8 @@ export interface KabmoPluginApi {
   readonly events: PluginEventsApi;
   readonly background: PluginBackgroundApi;
   readonly mcp: PluginMcpApi;
+  /** Where the host keeps its state; see `PluginPathsApi`. */
+  readonly paths: PluginPathsApi;
   /**
    * Register cleanup, run on reload, disable and removal.
    *

@@ -759,6 +759,11 @@ export default function plugin(api: KabmoPluginApi) {
   api.storage.kv; // read / write / remove / keys
   api.storage.records; // put / get / list / remove / clear
 
+  // The host's OWN data directory (`KABMO_DATA_DIR`, else `~/.kabmo`). A plugin
+  // that keeps files uses this instead of re-deriving the resolution, which is
+  // wrong on every XDG/relocated install.
+  api.paths.dataDir;
+
   // Declared settings (see settings-schema.json), validated against their definitions.
   api.settings.read(); // + readOne / write / subscribe
 
@@ -771,16 +776,23 @@ export default function plugin(api: KabmoPluginApi) {
   // Long-lived work, declared rather than run: Kabmo owns the timer.
   api.background.schedule('refresh', '5m', async () => { /* … */ });
 
-  // A tool server every harness receives: ACP agents on `session/new`, omp
-  // through its own `mcp.json`. The name agents see is `<pluginId>:<id>`
-  // unless you state one.
-  api.mcp.register({ id: 'notes', transport: 'stdio', command: 'npx', args: ['-y', 'notes-mcp'] });
+  // A tool server every harness receives: ACP agents on `session/new`, and
+  // omp's RPC child through the per-session `mcp.json` overlay. The name agents
+  // see is `<pluginId>:<id>` unless you state one. There is no `cwd` field, so
+  // a stdio server that needs a path declares it in `env`.
+  api.mcp.register({
+    id: 'notes',
+    transport: 'stdio',
+    command: 'bun',
+    args: [new URL('./notes-mcp.js', import.meta.url).pathname],
+    env: { NOTES_DIR: api.paths.dataDir },
+  });
 
   api.onDispose(() => api.log.info('disposed'));
 }
 ```
 
-Four properties worth knowing:
+Five properties worth knowing:
 
 - **Everything is namespaced by the host.** Every storage call binds `plugin_id`
   from the id the host was given, so a plugin holds no string it could point at
@@ -802,9 +814,20 @@ and answers RPC but draws nothing.
 **MCP servers are a contribution, not a process.** `api.mcp.register` adds a
 server to the list every session receives; the host owns delivery, so a plugin
 never learns which harness the user picked and a reload cannot leave a second
-child behind. A malformed declaration (no `command` for `stdio`, no `url` for
-`http`) is refused at load by name, because a tool server that silently never
-appears is the failure this surface exists to prevent.
+child behind. **Delivery is real on both transports**: ACP agents receive the
+list on `session/new`, and omp's RPC child receives it through the per-session
+`mcp.json` overlay — the overlay is built even when the session has no MCP
+overrides of its own, because the plugin's contribution is the reason it exists.
+A malformed declaration (no `command` for `stdio`, no `url` for `http`) is
+refused at load by name, because a tool server that silently never appears is the
+failure this surface exists to prevent.
+
+**One bundle can be the plugin AND the MCP server.** `dist/server.js` is the only
+file built for Bun, so a plugin that ships tools guards its stdio loop with
+`import.meta.main` and registers `args: [fileURLToPath(import.meta.url), '--mcp']`.
+`import.meta.main` is what keeps Kabmo's own `import()` of that file from starting
+a server on the host's stdin. `.pathname` is not a substitute for
+`fileURLToPath`: it yields `/C:/…` on Windows.
 
 ### Testing a plugin
 
