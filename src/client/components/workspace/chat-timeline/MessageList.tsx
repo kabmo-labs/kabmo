@@ -150,7 +150,8 @@ export const MessageList = memo(function MessageList({
         // The run footer belongs to the run but NOT to its trace: it is a model
         // and duration stamp, not a step. Left inside the rail container it drew
         // the line 58px past the last node (measured), so it renders after the
-        // grouped rows instead.
+        // grouped rows instead — outside its row's rect, which is why the
+        // sibling below marks which row's measured slot it fills.
         const lastIdx = group.rows[group.rows.length - 1];
         const trailingFooter = footers[lastIdx];
         return (
@@ -215,26 +216,33 @@ export const MessageList = memo(function MessageList({
           })}
         </div>
         {trailingFooter && (
-          <RunFooter
-            msg={trailingFooter.msg}
-            provider={provider}
-            providerNames={providerNames}
-            modelName={modelName}
-            modelNames={modelNames}
-            thinkingLevel={thinkingLevel}
-            {...(harness ? { harness } : {})}
-            durationMs={trailingFooter.durationMs}
-            answerText={trailingFooter.answerText}
-            retryTargetId={trailingFooter.runUserId}
-            onRetry={onRetry}
-            onNewChat={onNewChat}
-            onFork={onFork}
-            isMobile={isMobile}
-            showActions={userActions}
-            changedFiles={changedFilesByOwner.get(trailingFooter.ownerIndex)}
-            sessionId={sessionId}
-            runWindow={runWindows.get(trailingFooter.ownerIndex)}
-          />
+          // `data-row-footer-for` is a measurement contract, not decoration:
+          // the footer is a SIBLING of the row above (the rail must not run
+          // through it), so it sits outside that row's rect — the row window
+          // attributes it back by this marker. `flow-root` so the footer's own
+          // `mt-2` is inside the rect the window measures.
+          <div data-row-footer-for={messages[lastIdx].id} style={{ display: 'flow-root' }}>
+            <RunFooter
+              msg={trailingFooter.msg}
+              provider={provider}
+              providerNames={providerNames}
+              modelName={modelName}
+              modelNames={modelNames}
+              thinkingLevel={thinkingLevel}
+              {...(harness ? { harness } : {})}
+              durationMs={trailingFooter.durationMs}
+              answerText={trailingFooter.answerText}
+              retryTargetId={trailingFooter.runUserId}
+              onRetry={onRetry}
+              onNewChat={onNewChat}
+              onFork={onFork}
+              isMobile={isMobile}
+              showActions={userActions}
+              changedFiles={changedFilesByOwner.get(trailingFooter.ownerIndex)}
+              sessionId={sessionId}
+              runWindow={runWindows.get(trailingFooter.ownerIndex)}
+            />
+          </div>
         )}
         </Fragment>
         );

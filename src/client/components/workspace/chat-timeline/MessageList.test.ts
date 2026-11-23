@@ -186,6 +186,17 @@ describe('MessageList mounted window', () => {
     expect(footers(el)).toBe(1);
   });
 
+  test('the trailing footer marks the row whose measured slot it fills', async () => {
+    // The footer is a sibling of the row group, outside the row's rect, so the
+    // row window learns its height from this marker only. Without it the
+    // content height changes when the row at the window's edge mounts — the
+    // up/down flicker at the end of a stream (pinned by `row-window.test.ts`).
+    const messages = [user('u1'), ai('a1'), user('u2'), ai('a2')];
+    const el = await mountWindowed(messages, window(0, 2, 0, 500));
+    const marker = el.querySelector('[data-row-footer-for]');
+    expect(marker?.getAttribute('data-row-footer-for')).toBe('a1');
+  });
+
   test('an errored answer renders the failure instead of an empty bubble', async () => {
     const el = await mount([
       user('u1'),

@@ -33,9 +33,7 @@ import type { RefObject } from 'preact/compat';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { layoutTimelineRows, rowIndex, timelineWindow } from '@/shared/lib/chat/timeline/row-window';
 import { createRevealRow, writeScrollTop } from '@/client/hooks/chat/timeline/row-window-reveal';
-
-/** A measurement is only adopted when it differs by more than this. */
-const MEASURE_EPSILON_PX = 0.5;
+import { measureRows } from '@/client/hooks/chat/timeline/row-measure';
 
 /** Distance from the bottom, in px, that makes a reader "at the tail". Mirrors
  *  `FOLLOW_BOTTOM_THRESHOLD_PX` in `scroll.ts`: below it, follow mode is on. */
@@ -206,30 +204,14 @@ export function useTimelineRowWindow({
   // row every frame, an accordion expands, an image decodes — and a stale height
   // there is a scrollbar that describes a session shorter than it is, which is
   // what makes a jump land short. `range` is a dependency because a new window
-  // means a new set of nodes to observe.
+  // means a new set of nodes to observe. The run footers are observed for the
+  // same reason: `changedFiles` lands in one a second after the turn, and its
+  // growth belongs to the row's slot (see `row-measure.ts`).
   useLayoutEffect(() => {
     if (!enabled) return;
     const el = element;
     if (!el) return;
-    const measure = (): { changed: boolean; above: boolean } => {
-      let changed = false;
-      let above = false;
-      for (const node of el.querySelectorAll<HTMLElement>('[data-row-id]')) {
-        const id = node.dataset.rowId;
-        if (!id) continue;
-        const rect = node.getBoundingClientRect();
-        const height = rect.height;
-        if (height <= 0) continue;
-        const previous = measuredRef.current.get(id);
-        if (previous !== undefined && Math.abs(previous - height) <= MEASURE_EPSILON_PX) continue;
-        measuredRef.current.set(id, height);
-        // A row at or above the viewport's top moves the content ABOVE the
-        // reader; the tail pin must not follow it (see `skipTailPinRef`).
-        if (rect.bottom <= 0) above = true;
-        changed = true;
-      }
-      return { changed, above };
-    };
+    const measure = () => measureRows(el, measuredRef.current);
     const adopt = (above: boolean): void => {
       // Which row the reader is looking at, under the geometry they are still
       // seeing: `el.scrollTop` has not moved yet (a browser does not adjust it
@@ -309,7 +291,7 @@ export function useTimelineRowWindow({
         if (result.changed) adopt(result.above);
       });
     });
-    for (const node of el.querySelectorAll('[data-row-id]')) observer.observe(node);
+    for (const node of el.querySelectorAll('[data-row-id], [data-row-footer-for]')) observer.observe(node);
     return () => {
       observer.disconnect();
       if (frame !== null) cancelAnimationFrame(frame);

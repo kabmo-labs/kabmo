@@ -84,6 +84,16 @@ function installScroller(top: number): HTMLDivElement {
   return el;
 }
 
+/** Mount `ROWS` stubbed row nodes, each reporting the rect `rectFor` returns. */
+function installRows(scroller: HTMLDivElement, rectFor: (index: number, id: string) => DOMRect): void {
+  for (let i = 0; i < ROWS; i += 1) {
+    const node = document.createElement('div');
+    node.dataset.rowId = `r-${i}`;
+    node.getBoundingClientRect = () => rectFor(i, node.dataset.rowId!);
+    scroller.appendChild(node);
+  }
+}
+
 interface JumpStub {
   active: { current: boolean };
   behavior: { current: ScrollBehavior };
@@ -236,12 +246,7 @@ describe('useTimelineRowWindow', () => {
     // is what lands the open in the commit that measured the rows instead of
     // one rAF later (measured in the browser: one painted frame 2 044 px short).
     const scroller = installScroller(20_000);
-    for (let i = 0; i < ROWS; i += 1) {
-      const node = document.createElement('div');
-      node.dataset.rowId = `r-${i}`;
-      node.getBoundingClientRect = () => ({ height: ROW_HEIGHT }) as DOMRect;
-      scroller.appendChild(node);
-    }
+    installRows(scroller, () => ({ height: ROW_HEIGHT }) as DOMRect);
     const tail = ROWS * ROW_HEIGHT - VIEWPORT;
     await mount(scroller, { active: { current: true }, behavior: { current: 'instant' } });
     await act(async () => {});
@@ -266,12 +271,7 @@ describe('useTimelineRowWindow', () => {
     // snapping shut).
     const scroller = installScroller(20_000);
     const heights = new Map<string, number>();
-    for (let i = 0; i < ROWS; i += 1) {
-      const node = document.createElement('div');
-      node.dataset.rowId = `r-${i}`;
-      node.getBoundingClientRect = () => ({ height: heights.get(node.dataset.rowId!) ?? ROW_HEIGHT }) as DOMRect;
-      scroller.appendChild(node);
-    }
+    installRows(scroller, (_i, id) => ({ height: heights.get(id) ?? ROW_HEIGHT }) as DOMRect);
     await mount(scroller);
     await act(async () => {});
     const opened = rowWindow!.start;
@@ -298,15 +298,10 @@ describe('useTimelineRowWindow', () => {
     // must win, and the geometry pin must stand down for that delivery.
     const scroller = installScroller(ROWS * ROW_HEIGHT - VIEWPORT);
     const heights = new Map<string, number>();
-    for (let i = 0; i < ROWS; i += 1) {
-      const node = document.createElement('div');
-      node.dataset.rowId = `r-${i}`;
-      node.getBoundingClientRect = () => {
-        const height = heights.get(node.dataset.rowId!) ?? ROW_HEIGHT;
-        return { height, bottom: i * ROW_HEIGHT + height - scroller.scrollTop } as DOMRect;
-      };
-      scroller.appendChild(node);
-    }
+    installRows(scroller, (i, id) => {
+      const height = heights.get(id) ?? ROW_HEIGHT;
+      return { height, bottom: i * ROW_HEIGHT + height - scroller.scrollTop } as DOMRect;
+    });
     const skip = { current: false };
     const jump = { active: { current: true }, behavior: { current: 'instant' as ScrollBehavior } };
     await mount(scroller, jump, skip);
@@ -323,5 +318,30 @@ describe('useTimelineRowWindow', () => {
     // follows the anchor (the content above stays put) instead of the tail.
     expect(scroller.scrollTop).toBe(before + 1_000);
     expect(skip.current).toBe(true);
+  });
+
+  test('a run footer is measured into the slot of the row it closes', async () => {
+    // The reported up/down flicker at the end of a stream: the footer is a
+    // SIBLING of the row group (the rail must not run through it), so its
+    // height is outside the row's rect. Left out of the layout, the content
+    // height depended on the mounted window — the row at its edge pulled the
+    // footer in with it, the total grew by the footer's height, the tail pin
+    // followed, and the next frame's window started one row later and dropped
+    // it again (measured in Chromium: scrollTop 1938 → 1968 → 1938 with
+    // scrollHeight 2236 → 2266 → 2236). The spacer must carry it instead.
+    const scroller = installScroller(20_000);
+    installRows(scroller, () => ({ height: ROW_HEIGHT }) as DOMRect);
+    const footer = document.createElement('div');
+    footer.dataset.rowFooterFor = 'r-150';
+    footer.getBoundingClientRect = () => ({ height: 30 }) as DOMRect;
+    scroller.appendChild(footer);
+
+    await mount(scroller);
+    await act(async () => {});
+
+    // `r-150` is above the mounted window, so its slot (row + footer) is
+    // inside `padTop`: the spacer describes the session, not the window.
+    expect(rowWindow!.start).toBeGreaterThan(150);
+    expect(rowWindow!.padTop).toBe(rowWindow!.start * ROW_HEIGHT + 30);
   });
 });
