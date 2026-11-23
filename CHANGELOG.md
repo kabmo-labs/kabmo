@@ -4,6 +4,14 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.46.1](https://github.com/kabmo-labs/kabmo/compare/v0.46.0...v0.46.1) — 2026-11-23
+
+### Fixed
+
+* **chat:** stop the timeline flickering when a stream settles ([1a14823](https://github.com/kabmo-labs/kabmo/commit/1a1482331f0694d341e9b466d5c64043aed7f6b4)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **panel-tabs:** keep a fresh session on its catalog ([fa184cf](https://github.com/kabmo-labs/kabmo/commit/fa184cf808b1f408566e1c7572f7a2107c44143e)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **panel-tabs:** keep an explicit open request ahead of the strip ([1623835](https://github.com/kabmo-labs/kabmo/commit/1623835ce32b4cd2018b4b768e169d51e248e7e4)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.46.0](https://github.com/kabmo-labs/kabmo/compare/v0.45.1...v0.46.0) — 2026-11-22
 
 ### Added
