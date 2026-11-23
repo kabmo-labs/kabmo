@@ -11,6 +11,7 @@ import { buildEditorClusters } from '@/client/components/workspace/editor/toolba
 import { ACTION_CLASS } from '@/client/components/workspace/editor/toolbar-toggle';
 import { writeKabmoSettings } from '@/shared/lib/settings/client';
 import { EDITOR_BLAME_CHANGED_EVENT, currentEditorBlame, useEditorBlame } from '@/client/hooks/editor/blame-settings';
+import { CONTROL_ROW_HEIGHT } from '@/client/lib/ui/control-plate';
 
 export type EditorSaveStatus = 'idle' | 'saving' | 'saved' | 'error' | 'needs-permission';
 
@@ -244,7 +245,12 @@ export function EditorToolbar({
     // viewport. At the editor panel's 320px floor the path would be a truncated
     // fragment of a filename — not information, and the tab above already
     // carries it.
-    <div className="@container flex items-center justify-between gap-2 px-3 py-2 border-b border-ink/10 bg-paper flex-shrink-0">
+    //
+    // The row is the shared chrome row (`CONTROL_ROW_HEIGHT.desktop`, not
+    // `py-2` around 27px of controls) because it is the peer of the right
+    // column's `PanelHeader`: two columns' second chrome rows have to end on the
+    // same line or the panels look staggered.
+    <div className={`@container ${CONTROL_ROW_HEIGHT.desktop} flex items-center justify-between gap-2 px-3 border-b border-ink/10 bg-paper flex-shrink-0`}>
       {/* Left status */}
       <div className="hidden @[420px]:flex items-center space-x-2 text-xs font-mono text-ink/40 min-w-0">
         <span className="truncate max-w-[300px]" title={path}>{path}</span>

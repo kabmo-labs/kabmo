@@ -8,6 +8,7 @@ import { splitCandidate } from '@/shared/lib/workspace/split-editor';
 import { PanelRight } from 'lucide-preact';
 import { EditorHideButton } from '@/client/components/workspace/editor/EditorHideButton';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
+import { CONTROL_ROW_HEIGHT } from '@/client/lib/ui/control-plate';
 import { getGitStatusInfo } from '@/shared/lib/fs/git-status';
 import type { OpenedFile } from '@/shared/types/fs';
 
@@ -111,7 +112,12 @@ export function EditorTabs({
   }
 
   return (
-    <div className="flex bg-ink/10 w-full relative border-b border-ink/10" ref={tabsContainerRef}>
+    // The strip is the column's CHROME ROW: `CONTROL_ROW_HEIGHT.desktop`, the
+    // same 40px as the right column's strip and its `PanelHeader` beneath it.
+    // Sized from its own chips (`py-1.5` + `border-t-2`) it measured 31px, so
+    // the two columns' separators landed on different lines (measured in
+    // Chromium at 1365x768: 71 against 80).
+    <div className={`${CONTROL_ROW_HEIGHT.desktop} flex bg-ink/10 w-full relative border-b border-ink/10`} ref={tabsContainerRef}>
       <div className="flex overflow-hidden">
         {visibleTabs.map(file => {
           const isActive = file.id === activeFileId;

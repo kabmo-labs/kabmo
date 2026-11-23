@@ -20,6 +20,7 @@ import type { ComponentChildren } from 'preact';
 import { act } from 'preact/test-utils';
 
 import { PanelHeader } from '@/client/components/workspace/panel-header';
+import { CONTROL_ROW_HEIGHT } from '@/client/lib/ui/control-plate';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'Event'] as const;
 const nativeGlobals: Partial<Record<(typeof DOM_GLOBALS)[number], unknown>> = {};
@@ -75,6 +76,6 @@ describe('PanelHeader', () => {
     const el = await mount(h('span', null, 'picker'), undefined, 'border-b-0');
     const strip = el.firstElementChild as HTMLElement;
     expect(strip.className).toContain('border-b-0');
-    expect(strip.className).toContain('h-10');
+    expect(strip.className).toContain(CONTROL_ROW_HEIGHT.desktop);
   });
 });
