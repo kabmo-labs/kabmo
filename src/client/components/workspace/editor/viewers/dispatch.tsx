@@ -45,6 +45,9 @@ const ImageView = lazy(() =>
 const DrawioView = lazy(() =>
   import('@/client/components/workspace/editor/viewers/DrawioView').then((m) => ({ default: m.DrawioView })),
 );
+const HtmlPreview = lazy(() =>
+  import('@/client/components/workspace/editor/viewers/HtmlPreview').then((m) => ({ default: m.HtmlPreview })),
+);
 
 /** What a viewer is handed: the file's identity, its bytes and its text. */
 export interface ViewerProps {
@@ -54,8 +57,11 @@ export interface ViewerProps {
   name: string;
   /** Byte source for the byte-drawing viewers. */
   source: ByteSource;
-  /** Text buffer, for the viewers that read it (CSV, SVG). */
+  /** Text buffer, for the viewers that read it (CSV, SVG, HTML). */
   content: string;
+  /** The file's workspace scope, so a rendered document resolves its relatives. */
+  root?: string | null;
+  repo?: string | null;
   /** Bumped to force a re-parse (a workspace refresh). */
   revision: number;
   /** Write an edited TEXT buffer back (the CSV grid's cells are text). */
@@ -75,7 +81,8 @@ export function hasViewerSurface(kind: ViewerKind): boolean {
     kind === 'spreadsheet' ||
     kind === 'csv' ||
     kind === 'svg' ||
-    kind === 'drawio'
+    kind === 'drawio' ||
+    kind === 'html'
   );
 }
 
@@ -98,6 +105,8 @@ export function ViewerSurface({
   name,
   source,
   content,
+  root = null,
+  repo = null,
   revision,
   onContentChange,
   onSaveBytes,
@@ -156,6 +165,13 @@ export function ViewerSurface({
     return (
       <Suspense fallback={<Loading />}>
         <DrawioView content={content} name={name} />
+      </Suspense>
+    );
+  }
+  if (kind === 'html') {
+    return (
+      <Suspense fallback={<Loading />}>
+        <HtmlPreview content={content} name={name} path={path} root={root} repo={repo} />
       </Suspense>
     );
   }

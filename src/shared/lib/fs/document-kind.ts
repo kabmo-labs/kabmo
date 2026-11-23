@@ -20,7 +20,7 @@
  * file has a rendered form.
  */
 
-import { getFileExtension, getImageMimeType } from '@/shared/lib/fs/file-kind';
+import { getFileExtension, getImageMimeType } from '@/shared/lib/fs/mime';
 
 /**
  * The surface that draws a file.
@@ -31,6 +31,7 @@ import { getFileExtension, getImageMimeType } from '@/shared/lib/fs/file-kind';
 export type ViewerKind =
   | 'code'
   | 'markdown'
+  | 'html'
   | 'svg'
   | 'csv'
   | 'image'
@@ -55,6 +56,9 @@ const CSV_EXTENSIONS: Record<string, true> = { csv: true, tsv: true };
 /** Markdown, whose preview is the rendered document. */
 const MARKDOWN_EXTENSIONS: Record<string, true> = { md: true, markdown: true, mdx: true };
 
+/** Web pages, whose preview is the document the browser draws. */
+const HTML_EXTENSIONS: Record<string, true> = { html: true, htm: true };
+
 /**
  * drawio diagrams. `.dio` is the same format under the older extension; the
  * `.drawio.svg`/`.drawio.png` exports are NOT here — those are an SVG and a
@@ -78,6 +82,7 @@ export const BINARY_VIEWERS: Record<ViewerKind, true | undefined> = {
   spreadsheet: true,
   code: undefined,
   markdown: undefined,
+  html: undefined,
   svg: undefined,
   csv: undefined,
   drawio: undefined,
@@ -90,9 +95,13 @@ export const BINARY_VIEWERS: Record<ViewerKind, true | undefined> = {
  * the preview and the raw text is the code surface, which is exactly the pair
  * the toggle switches between. `image` and the document kinds are not — they
  * have no text form to toggle to.
+ *
+ * This answers "is there a toggle", NOT "which side opens first" — that is
+ * `DEFAULT_PREVIEW`, and an HTML page is the case where the two answers differ.
  */
 export const RENDERED_VIEWERS: Record<ViewerKind, true | undefined> = {
   markdown: true,
+  html: true,
   svg: true,
   csv: true,
   drawio: true,
@@ -102,6 +111,43 @@ export const RENDERED_VIEWERS: Record<ViewerKind, true | undefined> = {
   docx: undefined,
   spreadsheet: undefined,
 };
+
+/**
+ * The side a rendered kind opens on, when the user has not chosen one.
+ *
+ * A markdown page, a CSV grid, an SVG and a drawio diagram open RENDERED: that
+ * is what the user opened them to read. An HTML page opens its SOURCE instead,
+ * because editing one is the common case and a page that runs scripts would
+ * otherwise start doing so the instant the tab appears.
+ *
+ * Kept separate from `RENDERED_VIEWERS` because the two questions are different
+ * and collapsing them makes the eye button disappear from the one kind whose
+ * default is the source.
+ */
+export const DEFAULT_PREVIEW: Record<ViewerKind, true | undefined> = {
+  markdown: true,
+  svg: true,
+  csv: true,
+  drawio: true,
+  html: undefined,
+  code: undefined,
+  image: undefined,
+  pdf: undefined,
+  docx: undefined,
+  spreadsheet: undefined,
+};
+
+/**
+ * Whether a kind opens on its rendered side when the user has not chosen.
+ *
+ * The single spelling of `DEFAULT_PREVIEW[kind] === true`, because both editors
+ * need the answer and "the table's entry is undefined" is not a fact a call site
+ * should have to re-derive: one of them would eventually write `?? hasPreview`
+ * and quietly turn HTML back into a preview-on-open file.
+ */
+export function opensInPreview(kind: ViewerKind): boolean {
+  return DEFAULT_PREVIEW[kind] === true;
+}
 
 /**
  * The word a status strip prints for a viewer kind.
@@ -115,6 +161,7 @@ export const RENDERED_VIEWERS: Record<ViewerKind, true | undefined> = {
 export const VIEWER_LABELS: Record<ViewerKind, string> = {
   code: 'Text',
   markdown: 'Markdown',
+  html: 'HTML',
   svg: 'SVG',
   csv: 'CSV',
   image: 'Image',
@@ -139,6 +186,7 @@ export function viewerKindFor(filePath: string | undefined | null): ViewerKind {
   if (ext === 'svg') return 'svg';
   if (DRAWIO_EXTENSIONS[ext]) return 'drawio';
   if (MARKDOWN_EXTENSIONS[ext]) return 'markdown';
+  if (HTML_EXTENSIONS[ext]) return 'html';
   if (getImageMimeType(filePath)) return 'image';
   if (ext === 'pdf') return 'pdf';
   if (DOCX_EXTENSIONS[ext]) return 'docx';

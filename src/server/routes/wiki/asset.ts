@@ -22,7 +22,7 @@
 import { json, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { resolveRoot } from '@/server/lib/fs/root';
 import { scopeToRepo } from '@/server/lib/fs/repo-scope';
-import { getImageMimeType } from '@/shared/lib/fs/file-kind';
+import { getImageMimeType } from '@/shared/lib/fs/mime';
 import { gitRun } from '@/server/lib/wiki/git';
 import { ensureWikiMirror, readWikiAsset } from '@/server/lib/wiki/mirror.server';
 import { parseWikiRemote } from '@/server/lib/wiki/remote';

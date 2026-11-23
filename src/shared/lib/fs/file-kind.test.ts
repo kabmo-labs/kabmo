@@ -18,17 +18,23 @@
 import { describe, expect, test } from 'bun:test';
 
 import {
+  classifyEditorFile,
+  getImageMimeFromBytes,
+  looksLikeSvg,
+} from '@/shared/lib/fs/file-kind';
+// The MIME answers live in `mime.ts`; they are asserted here because the
+// classifier is their consumer and a wrong table is what makes a picture paint
+// as mojibake.
+import {
   DOCUMENT_MIME_BY_EXT,
   getDocumentMimeType,
   getFileExtension,
-  getImageMimeFromBytes,
   getImageMimeType,
   getPaintableImageMimeType,
   getRawContentType,
   IMAGE_MIME_BY_EXT,
-  looksLikeSvg,
   SVG_MIME,
-} from '@/shared/lib/fs/file-kind';
+} from '@/shared/lib/fs/mime';
 
 const bytes = (...values: number[]): Uint8Array => new Uint8Array(values);
 
@@ -179,6 +185,27 @@ describe('getRawContentType', () => {
   test('a text file has no raw content type', () => {
     expect(getRawContentType('a.ts')).toBeNull();
     expect(getRawContentType(undefined)).toBeNull();
+  });
+
+  // The HTML preview's frame is sandboxed, and a sandboxed frame is an opaque
+  // origin where the browser applies strict MIME checking: a stylesheet or
+  // script answered as `application/octet-stream` is refused, so a page with a
+  // relative `<link>` or `<script>` painted unstyled.
+  test('a web asset a rendered page loads is named', () => {
+    expect(getRawContentType('style.css')).toBe('text/css; charset=utf-8');
+    expect(getRawContentType('app.js')).toBe('text/javascript; charset=utf-8');
+    expect(getRawContentType('app.mjs')).toBe('text/javascript; charset=utf-8');
+    expect(getRawContentType('data.json')).toBe('application/json; charset=utf-8');
+    expect(getRawContentType('font.woff2')).toBe('font/woff2');
+  });
+
+  // And naming them here must NOT reclassify them: a stylesheet stays an
+  // editable text file rather than becoming a byte document the editor refuses
+  // to edit.
+  test('a web asset is still classified as text', () => {
+    expect(getDocumentMimeType('style.css')).toBeNull();
+    expect(classifyEditorFile({ path: 'style.css', size: 64 })).toBe('text');
+    expect(classifyEditorFile({ path: 'app.js', size: 64 })).toBe('text');
   });
 });
 

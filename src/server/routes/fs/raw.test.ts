@@ -117,6 +117,18 @@ describe('fs raw route', () => {
     expect(res.headers.get('content-disposition')).toContain('report.pdf');
   });
 
+  // The HTML preview loads a page's relative assets through this route, inside
+  // a sandboxed frame where the browser enforces strict MIME checking: a
+  // stylesheet served as `application/octet-stream` is refused and the page
+  // paints unstyled.
+  test('a stylesheet is served with a stylesheet type', async () => {
+    write('style.css', new TextEncoder().encode('body { color: red; }'));
+    const res = await raw('style.css');
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toBe('text/css; charset=utf-8');
+  });
+
   test('a missing file is a 404', async () => {
     const res = await raw('ghost.pdf');
     expect(res.status).toBe(404);

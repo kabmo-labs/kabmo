@@ -12,7 +12,7 @@ import {
 } from 'lucide-preact';
 import type { ReactNode } from 'preact/compat';
 import { BRAND_ICONS, BRAND_VIEWBOX, type BrandIconName } from '@/shared/lib/icons/file-brand-paths';
-import { getImageMimeType } from '@/shared/lib/fs/file-kind';
+import { getImageMimeType } from '@/shared/lib/fs/mime';
 
 interface FileIconProps {
   name: string;

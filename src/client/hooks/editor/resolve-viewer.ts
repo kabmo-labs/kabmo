@@ -21,7 +21,7 @@
  *    object.
  */
 
-import { getImageMimeType } from '@/shared/lib/fs/file-kind';
+import { getImageMimeType } from '@/shared/lib/fs/mime';
 import { BINARY_VIEWERS, viewerKindFor, type ViewerKind } from '@/shared/lib/fs/document-kind';
 import { buildFsRawUrl } from '@/shared/lib/fs/paths';
 import { byteSourceFor, type ByteSource } from '@/client/components/workspace/editor/viewers/bytes';

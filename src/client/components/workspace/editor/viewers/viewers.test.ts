@@ -52,6 +52,10 @@ beforeAll(async () => {
   ({ DocxView } = await import('@/client/components/workspace/editor/viewers/DocxView'));
   ({ SheetView } = await import('@/client/components/workspace/editor/viewers/SheetView'));
   ({ DrawioView } = await import('@/client/components/workspace/editor/viewers/DrawioView'));
+  // Evaluated here for the same reason every viewer above is: the module binds
+  // DOM globals at load time, which `installDomGlobals` only just installed.
+  // Importing it also lets the lazy branch in `dispatch` resolve immediately.
+  await import('@/client/components/workspace/editor/viewers/HtmlPreview');
   ({ ViewerSurface, hasViewerSurface } = await import('@/client/components/workspace/editor/viewers/dispatch'));
 });
 
@@ -228,7 +232,7 @@ describe('DocxView', () => {
 
 describe('hasViewerSurface', () => {
   test('the drawn kinds have a surface; text kinds do not', () => {
-    for (const kind of ['image', 'pdf', 'docx', 'spreadsheet', 'csv', 'svg', 'drawio'] as const) {
+    for (const kind of ['image', 'pdf', 'docx', 'spreadsheet', 'csv', 'svg', 'drawio', 'html'] as const) {
       expect(hasViewerSurface(kind)).toBe(true);
     }
     for (const kind of ['code', 'markdown'] as const) {
@@ -264,6 +268,15 @@ describe('ViewerSurface routing', () => {
     // drawing itself is pinned in `drawio-pages.test.ts`; here the claim is the
     // dispatch — the drawio kind reached the diagram surface, not the code one.
     expect(container.querySelector('.drawio-preview svg')).not.toBeNull();
+  });
+
+  // An HTML page reads the TEXT buffer and paints in a sandboxed frame, so the
+  // dispatch must reach HtmlPreview with no byte source at all.
+  test('an html kind draws the page in a frame from the text buffer', async () => {
+    await mount(
+      h(ViewerSurface, { kind: 'html', path: 'page.html', name: 'page.html', source: noSource, content: '<h1>Hi</h1>', revision: 0 }),
+    );
+    expect(container.querySelector('iframe')?.getAttribute('srcdoc')).toContain('<h1>Hi</h1>');
   });
 
   test('a kind with no surface here renders nothing', async () => {

@@ -13,13 +13,24 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { BINARY_VIEWERS, RENDERED_VIEWERS, VIEWER_LABELS, viewerKindFor, type ViewerKind } from '@/shared/lib/fs/document-kind';
+import {
+  BINARY_VIEWERS,
+  DEFAULT_PREVIEW,
+  RENDERED_VIEWERS,
+  VIEWER_LABELS,
+  opensInPreview,
+  viewerKindFor,
+  type ViewerKind,
+} from '@/shared/lib/fs/document-kind';
 import { MAX_CSV_COLUMNS, MAX_CSV_ROWS, parseCsv, sniffDelimiter } from '@/shared/lib/fs/csv';
 
 describe('viewerKindFor', () => {
   test('each family maps to its viewer', () => {
     expect(viewerKindFor('a.md')).toBe('markdown');
     expect(viewerKindFor('a.markdown')).toBe('markdown');
+    expect(viewerKindFor('page.html')).toBe('html');
+    expect(viewerKindFor('page.htm')).toBe('html');
+    expect(viewerKindFor('PAGE.HTML')).toBe('html');
     expect(viewerKindFor('a.csv')).toBe('csv');
     expect(viewerKindFor('a.tsv')).toBe('csv');
     expect(viewerKindFor('a.png')).toBe('image');
@@ -59,10 +70,11 @@ describe('viewerKindFor', () => {
   });
 
   test('every kind has a row in both lookup tables', () => {
-    const kinds: ViewerKind[] = ['code', 'markdown', 'svg', 'csv', 'image', 'pdf', 'docx', 'spreadsheet', 'drawio'];
+    const kinds: ViewerKind[] = ['code', 'markdown', 'html', 'svg', 'csv', 'image', 'pdf', 'docx', 'spreadsheet', 'drawio'];
     for (const kind of kinds) {
       expect(kind in BINARY_VIEWERS).toBe(true);
       expect(kind in RENDERED_VIEWERS).toBe(true);
+      expect(kind in DEFAULT_PREVIEW).toBe(true);
       // The status strip's word has to exist for every kind too, or a byte
       // viewer's footer prints `undefined` where the viewer's name belongs.
       expect(VIEWER_LABELS[kind].length).toBeGreaterThan(0);
@@ -78,10 +90,35 @@ describe('viewerKindFor', () => {
     // form — the eye toggle's pair — and no byte fetch.
     expect(RENDERED_VIEWERS.drawio).toBe(true);
     expect(BINARY_VIEWERS.drawio).toBeUndefined();
+    // An HTML page is editable text with a rendered form, exactly like markdown.
+    expect(RENDERED_VIEWERS.html).toBe(true);
+    expect(BINARY_VIEWERS.html).toBeUndefined();
+    expect(VIEWER_LABELS.html).toBe('HTML');
     // A byte viewer's label is its document kind, never the language badge the
     // empty buffer would otherwise produce.
     expect(VIEWER_LABELS.pdf).toBe('PDF');
     expect(VIEWER_LABELS.code).toBe('Text');
+  });
+});
+
+describe('opensInPreview', () => {
+  // What the user opened the file to READ opens rendered; an HTML page opens
+  // its source, because editing one is the common case and a page that runs
+  // scripts must not start doing so the instant the tab appears.
+  test('a document opens rendered; an html page opens its source', () => {
+    for (const kind of ['markdown', 'svg', 'csv', 'drawio'] as const) {
+      expect(opensInPreview(kind)).toBe(true);
+    }
+    expect(opensInPreview('html')).toBe(false);
+    expect(opensInPreview('code')).toBe(false);
+    expect(opensInPreview('pdf')).toBe(false);
+  });
+
+  // The two tables answer different questions, and collapsing them would hide
+  // the eye button on the one kind whose default is the source.
+  test('html keeps its toggle even though it opens on source', () => {
+    expect(RENDERED_VIEWERS.html).toBe(true);
+    expect(DEFAULT_PREVIEW.html).toBeUndefined();
   });
 });
 

@@ -3,7 +3,7 @@ import { FileCode, FileImage, FolderOpen, Info, Loader2 } from 'lucide-preact';
 import { getLanguageFromPath } from '@/shared/lib/code/language';
 import { useDeferredHighlightLines } from '@/client/hooks/code/deferred-highlight';
 import { parseDirListing, parseNumberedCode } from '@/shared/lib/code/parser';
-import { getPaintableImageMimeType, SVG_MIME } from '@/shared/lib/fs/file-kind';
+import { getPaintableImageMimeType, SVG_MIME } from '@/shared/lib/fs/mime';
 import { buildFsRawUrl, isVirtualPath, stripReadSelector } from '@/shared/lib/fs/paths';
 import { toolImageSrc } from '@/shared/lib/omp/session/tool-images';
 import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';

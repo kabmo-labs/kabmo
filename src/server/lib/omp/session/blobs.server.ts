@@ -28,7 +28,8 @@ import * as fsp from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import * as path from 'node:path';
 import { getAgentDir } from '@/server/lib/omp/core/paths';
-import { getImageMimeFromBytes, getPaintableImageMimeType } from '@/shared/lib/fs/file-kind';
+import { getImageMimeFromBytes } from '@/shared/lib/fs/file-kind';
+import { getPaintableImageMimeType } from '@/shared/lib/fs/mime';
 
 const BLOB_PREFIX = 'blob:sha256:';
 

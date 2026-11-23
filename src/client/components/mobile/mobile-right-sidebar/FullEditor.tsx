@@ -29,7 +29,13 @@ import { indentUnitFor, useEditorIndent } from '@/client/hooks/editor/indent-set
 import { useEditorTyping } from '@/client/hooks/editor/typing-settings';
 import { useFileReviewMode } from '@/client/hooks/editor/use-file-review-mode';
 import { MOBILE_SCROLL_POSITIONS_KEY } from '@/shared/lib/workspace/scroll-positions';
-import { BINARY_VIEWERS, RENDERED_VIEWERS, VIEWER_LABELS, viewerKindFor } from '@/shared/lib/fs/document-kind';
+import {
+  BINARY_VIEWERS,
+  RENDERED_VIEWERS,
+  VIEWER_LABELS,
+  opensInPreview,
+  viewerKindFor,
+} from '@/shared/lib/fs/document-kind';
 import type { MobileFullEditorProps } from '@/client/components/mobile/mobile-right-sidebar/editor-props';
 
 export function MobileFullEditor({ file, missing = false, onClose, onFileSaved, onDropResult }: MobileFullEditorProps) {
@@ -57,8 +63,10 @@ export function MobileFullEditor({ file, missing = false, onClose, onFileSaved, 
   const hasPreview = RENDERED_VIEWERS[viewerKind] === true;
   const fileKey = file.path ?? file.name;
   // The picture/grid/prose is what the file was opened to read, so a rendered
-  // kind defaults to its preview and only a user's own toggle moves it.
-  const isPreview = previewOverrides[fileKey] ?? hasPreview;
+  // kind defaults to its preview and only a user's own toggle moves it. An HTML
+  // page is the exception: it opens its SOURCE, which is why the default is its
+  // own table rather than "has a preview at all".
+  const isPreview = previewOverrides[fileKey] ?? opensInPreview(viewerKind);
   // Review mode is the same per-tab toggle the desktop pane uses (one key, one
   // rule), and it exists only where a rendered markdown document is on screen —
   // a CSV grid and an SVG picture have no markdown blocks to judge.

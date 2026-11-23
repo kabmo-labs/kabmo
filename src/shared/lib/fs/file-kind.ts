@@ -4,114 +4,17 @@
  */
 
 import { formatBytes } from '@/shared/lib/format/number';
-import { stripReadSelector } from '@/shared/lib/fs/paths';
+import { getDocumentMimeType, getFileExtension, getImageMimeType, SVG_MIME } from '@/shared/lib/fs/mime';
 
 /**
- * File-kind classification shared by the server read routes and every client
- * viewer (desktop editor, mobile editor, chat tool panels).
+ * What the editor can DO with a file, decided from the path, its size and its
+ * leading bytes — the ONE classification the read route, the editor surface and
+ * the drop target all branch on.
  *
- * A raster image is not text: decoding its bytes as UTF-8 yields replacement
- * characters, so the editor used to paint a PNG as mojibake. The extension is
- * the only signal available before reading the file, and it is the same signal
- * the Files panel already uses to pick an icon — keeping it in one module means
- * the reader, the icon, and the viewer can never disagree about which files are
- * pictures.
- *
- * SVG is deliberately absent: it is editable XML text and stays on the
- * syntax-highlighted code path.
+ * The MIME tables this reads live in `mime.ts`, which is the module the icon,
+ * the viewer and `/api/fs/raw` also read, so "which files are pictures" has one
+ * answer.
  */
-export const IMAGE_MIME_BY_EXT: Record<string, string> = {
-  png: 'image/png',
-  apng: 'image/apng',
-  jpg: 'image/jpeg',
-  jpeg: 'image/jpeg',
-  jfif: 'image/jpeg',
-  gif: 'image/gif',
-  webp: 'image/webp',
-  avif: 'image/avif',
-  bmp: 'image/bmp',
-  ico: 'image/x-icon',
-  tif: 'image/tiff',
-  tiff: 'image/tiff',
-};
-
-/** Lower-cased extension of a path or name, query/fragment/line suffix removed. */
-export function getFileExtension(filePath: string | undefined | null): string {
-  if (!filePath) return '';
-  const clean = stripReadSelector(filePath).split(/[/\\]/).pop() ?? '';
-  const dot = clean.lastIndexOf('.');
-  return dot > 0 ? clean.slice(dot + 1).toLowerCase() : '';
-}
-
-/**
- * MIME types for the documents the editor renders rather than edits — the ones
- * `/api/fs/raw` must label correctly, because the browser decides whether to
- * paint or download from `content-type`.
- *
- * These are NOT in `IMAGE_MIME_BY_EXT`: an image is classified `image` (streamed,
- * size-exempt) while these are classified `document` (bytes fetched whole by the
- * viewer, size-checked like text). One table for the MIME, one list for the
- * classification, so the two questions cannot drift.
- */
-export const DOCUMENT_MIME_BY_EXT: Record<string, string> = {
-  pdf: 'application/pdf',
-  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  xls: 'application/vnd.ms-excel',
-  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  xlsm: 'application/vnd.ms-excel.sheet.macroEnabled.12',
-};
-
-/**
- * SVG's MIME. Kept out of every classification table on purpose: an SVG is
- * editable XML text and stays on the code path (see the module doc), but
- * `/api/fs/raw` still has to name it, or an `<img>` pointed at it downloads the
- * file instead of painting it.
- */
-export const SVG_MIME = 'image/svg+xml';
-
-/**
- * MIME type for a raster image path, or null when the extension is not one.
- * Null is the "treat as text" answer, so every caller branches on this single
- * check instead of re-deriving the extension list.
- */
-export function getImageMimeType(filePath: string | undefined | null): string | null {
-  return IMAGE_MIME_BY_EXT[getFileExtension(filePath)] ?? null;
-}
-
-/**
- * MIME type for a document the viewer paints (PDF, DOCX, XLSX/XLSM), or null.
- * Null is the "not one of those" answer, the same shape `getImageMimeType` uses.
- */
-export function getDocumentMimeType(filePath: string | undefined | null): string | null {
-  return DOCUMENT_MIME_BY_EXT[getFileExtension(filePath)] ?? null;
-}
-
-/**
- * MIME type for a path an `<img>` can PAINT — every raster image plus SVG — or
- * null.
- *
- * The chat `read` card is the caller that needs this third answer: it paints the
- * file a tool returned, and an SVG is a picture there even though the editor
- * keeps it on the code path (`getImageMimeType` stays raster-only for that
- * reason). One function, so the read panel and `/api/fs/raw` cannot disagree
- * about which files are previewable.
- */
-export function getPaintableImageMimeType(filePath: string | undefined | null): string | null {
-  return getImageMimeType(filePath) ?? (getFileExtension(filePath) === 'svg' ? SVG_MIME : null);
-}
-
-/**
- * The `content-type` `/api/fs/raw` should answer a path with, or null when the
- * bytes have no picture/document type (the route falls back to
- * `application/octet-stream`).
- *
- * SVG is named through `getPaintableImageMimeType` rather than by
- * `getImageMimeType` because the classifier must keep it on the text path while
- * the raw route serves it to an `<img>`.
- */
-export function getRawContentType(filePath: string | undefined | null): string | null {
-  return getPaintableImageMimeType(filePath) ?? getDocumentMimeType(filePath);
-}
 
 /** Leading bytes → MIME, longest signature first so `webp`'s `RIFF`/`WEBP`
  *  pair is checked before a bare container match could accept it. */

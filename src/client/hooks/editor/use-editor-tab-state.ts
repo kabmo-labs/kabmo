@@ -22,7 +22,7 @@
 
 import { useEffect } from 'preact/hooks';
 
-import { RENDERED_VIEWERS, viewerKindFor } from '@/shared/lib/fs/document-kind';
+import { opensInPreview, viewerKindFor } from '@/shared/lib/fs/document-kind';
 import { getSessionValue } from '@/shared/lib/workspace/session-state/store';
 import { setDirtyTabs } from '@/client/lib/editor-dirty-tabs';
 import type { OpenedFile } from '@/shared/types/fs';
@@ -57,9 +57,10 @@ export function useEditorTabState({
     if (!previewReady) return;
     const id = activeFile?.id;
     if (!activeFile || id === undefined || id === null) return;
-    // Only a file with a RENDERED view has a default worth setting; a code file has
-    // no preview to open.
-    if (!RENDERED_VIEWERS[viewerKindFor(activeFile.name)]) return;
+    // Only a file that OPENS rendered has a default worth setting; a code file
+    // has no preview to open, and an HTML page defaults to its source even
+    // though it has one.
+    if (!opensInPreview(viewerKindFor(activeFile.name))) return;
     const stored = getSessionValue<Record<string | number, boolean>>(sessionId, 'editor.previewMode');
     if (stored && stored[id] !== undefined) return;
     setPreviewMode((previous) => (previous[id] === undefined ? { ...previous, [id]: true } : previous));

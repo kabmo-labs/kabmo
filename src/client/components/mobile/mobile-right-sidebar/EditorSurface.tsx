@@ -123,6 +123,8 @@ export function MobileEditorSurface({
         name={file.name}
         source={editor.byteSource}
         content={editor.content}
+        root={file.root}
+        repo={file.repo}
         revision={editor.revision}
         onContentChange={editor.onChange}
         onSaveBytes={editor.deviceBacked ? undefined : saveBytes}

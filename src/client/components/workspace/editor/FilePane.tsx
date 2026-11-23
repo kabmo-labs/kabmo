@@ -12,7 +12,7 @@ import type { UseFileEditorResult } from '@/client/hooks/editor/use-file-editor'
 import type { EditorFindState } from '@/client/hooks/editor/use-editor-find';
 import type { EditorCommand } from '@/shared/lib/code/editor/keymap';
 import { EDITOR_MAX_FONT_SIZE, EDITOR_MIN_FONT_SIZE } from '@/shared/lib/code/editor/typography';
-import { RENDERED_VIEWERS, type ViewerKind } from '@/shared/lib/fs/document-kind';
+import { BINARY_VIEWERS, RENDERED_VIEWERS, type ViewerKind } from '@/shared/lib/fs/document-kind';
 import type { OpenedFile } from '@/shared/types/fs';
 import { isProbeableTab } from '@/client/hooks/workspace/missing-files';
 import { saveFileBytes } from '@/client/hooks/editor/save-bytes';
@@ -98,7 +98,7 @@ export function FilePane({
 }: FilePaneProps) {
   // A byte viewer owns the whole surface and has no buffer, so Save, find,
   // wrap and font zoom are all hidden — the toolbar reads this same flag.
-  const byteViewer = viewerKind === 'image' || viewerKind === 'pdf' || viewerKind === 'docx' || viewerKind === 'spreadsheet';
+  const byteViewer = BINARY_VIEWERS[viewerKind] === true;
   // The rendered text views are the ones the eye toggle switches.
   const hasPreview = RENDERED_VIEWERS[viewerKind] === true;
 
@@ -294,6 +294,8 @@ export function FilePane({
           name={activeFile.name}
           source={editor.byteSource}
           content={editor.content}
+          root={activeFile.root ?? rootPath}
+          repo={activeFile.repo ?? repoPath}
           revision={editor.revision}
           onContentChange={editor.onChange}
           onSaveBytes={editor.deviceBacked ? undefined : saveBytes}
