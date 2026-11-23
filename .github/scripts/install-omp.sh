@@ -760,7 +760,38 @@ fi
 # controls, `pty.notify`, the job-stream files in `proc://<id>/streams`, and the
 # transcript-search, selective-commit, Spotlight, TTSR, retry and browser
 # fixes — host-side or model-facing.
-OMP_VERSION="${OMP_VERSION:-19.1.0}"
+# 19.1.1 (2026-11-23) is a PATCH release by wire and by panel: the RPC schema is
+# BYTE-IDENTICAL to 19.1.0 (77 commands, 308 definitions, same sha256) and
+# `builtin-names.ts`, `model-roles.ts`, the 89-spec slash registry and pi-tui's
+# `settings-defs.ts` did not move. The settings registry goes 643 → 644 and the
+# panel 482 → 483 entries, one net row: `computer.takeover` REPLACES
+# `computer.backgroundFallback` (four values, default `fallback`; omp carries a
+# stored `refuse` over and drops the rest, since the old `takeover` is the new
+# default), and `todo.backend` (string, default `native`, `options: "runtime"`)
+# names the extension that mirrors the todo list. Kabmo's panel reads both from
+# the regenerated schema and no code named the old key.
+#
+# Nothing else reaches a Kabmo surface, measured rather than assumed:
+#   - the `ask` split-radio refusal (one `name` per radio in one fieldset) sits
+#     BEFORE the host branch, so it applies to Kabmo's `method:"form"` host too —
+#     but it answers a plain tool result with no answers, which the ask card
+#     already renders through `FallbackOutput`, and Kabmo never authors a form.
+#   - background job labels are collapsed and bounded in one helper
+#     (`formatAsyncJobLabel`): same 120-character cap, newlines folded first.
+#     Kabmo draws the label verbatim, so a multi-line command reads as one line.
+#   - `model_change` records the routed model identity (`provider/model@upstream`)
+#     when a model is pinned to an openrouter/vercel-gateway route; every Kabmo
+#     consumer forwards `${provider}/${modelId}` back to omp, which resolves the
+#     exact selector, and `omp models --json` lists no routed rows, so the
+#     composer's catalog match behaves as before.
+#
+# Not adopted, deliberately: `/wt`'s post-checkout hook, the `tree` status
+# segment, `pi.registerTodoBackend()` and the `phasesChanged` mirror, the
+# gateway's discovered models for `pi-native` providers, the `column` shell
+# builtin, RPC-host MCP cleanup, the restored-job and exit-diagnostics fixes,
+# and the selective-commit, Spotlight, TTSR, browser, scraper and Magic Edit
+# work — host-side, TUI or model-facing.
+OMP_VERSION="${OMP_VERSION:-19.1.1}"
 PACKAGE="@oh-my-pi/pi-coding-agent"
 WANTED="omp/${OMP_VERSION}"
 

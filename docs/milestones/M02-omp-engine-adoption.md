@@ -2726,3 +2726,114 @@ access, and the browser/computer fixes.
 | R118 | first job wait skips the floor | none needed; the window is parsed from prose | `wait-idle.ts` comment; `wait-idle.test.ts` unchanged |
 | R119 | settings added/removed | schema regenerated (643 settings / 482 entries) | `omp:schema:check`; `schema-releases.test.ts` pins the new ids and asserts the old ones are gone |
 | R120 | host-side/TUI fixes | none needed | wire, roles, tool names, slash registry diffed |
+
+# omp 19.1.1 adoption (2026-11-23)
+
+The pin moved **19.1.0 → 19.1.1**, a patch release by wire and by panel: the
+RPC schema is byte-identical, the settings registry gains one net row, and
+`MODEL_ROLES`, the 29 builtin tool names, the slash registry and pi-tui's
+`SETTING_TABS` did not move.
+
+## Method
+
+- Both versions provisioned with `bun add @oh-my-pi/pi-coding-agent@<v>` into
+  `~/.cache/kabmo/omp-schema/{19.1.0,19.1.1}`, then `diff -rq` over `src/`:
+  **110 entries differ** — 104 changed, 5 added
+  (`edit/magic-{apply-feedback.md,calls.ts,tools.ts}`,
+  `prompts/tools/ask-split-radio-groups.md`, `prompts/tools/wait-idle-fork.md`),
+  1 removed (`edit/magic-lines.ts`).
+- `rpc-wire.schema.json` compared whole and by sha256:
+  `187849c4202ccac47ceabd612a4a3570d806e1ec4ec2be8d616237d166a929ba` in BOTH
+  trees — 77 commands and 308 definitions, 0 added, 0 removed, 0 changed.
+- `src/tools/builtin-names.ts`, `src/config/model-roles.ts` and pi-tui's
+  `src/overlays/settings-defs.ts` are byte-identical; the slash-command names
+  (89 specs, 47 TUI-only) are the same set.
+- The schema generator run against the pinned 19.1.1 produces **10 tabs / 644
+  settings / 483 panel entries** (was 643 / 482). `omp config list --json`
+  answers 644 keys and **0 of the 483 merged rows are rejected**.
+- Measured on the installed 19.1.1: `omp config get computer.takeover` →
+  `fallback`, `omp config get computer.backgroundFallback` →
+  `Unknown setting: computer.backgroundFallback`, `omp config get todo.backend`
+  → `native`.
+
+### R121 — `computer.takeover` replaces `computer.backgroundFallback`, `todo.backend` arrives (schema)
+
+`computer.backgroundFallback` (`takeover` | `refuse`) became
+`computer.takeover` (`fallback` | `foreground` | `always` | `refuse`, default
+`fallback`). omp's own migration (`config/settings.ts`) carries a stored
+`refuse` over and drops everything else, because the old `takeover` IS the new
+default. `todo.backend` is the string that names an extension's todo backend
+(`native` keeps the list in the session); it carries `options: "runtime"`, a
+list only omp can enumerate at runtime, so `RowEditor` renders it as a text
+field exactly like `theme.dark`, `theme.light` and `composer.shape`. Nothing in
+Kabmo named the old key — `rg backgroundFallback` matched the schema file only —
+so the regenerated schema is the whole change.
+
+### R122 — the split-radio refusal is omp's guard, ahead of every host (no code)
+
+`tools/ask.ts` now refuses a fieldset whose radios each carry their own `name`
+(HTML then submits a preselected option beside the user's pick as a second
+answer) with the `ask-split-radio-groups.md` text. The guard sits after the
+named-control check and **before** `context.ui`, so it applies to Kabmo's
+`method:"form"` host too, not just the field-by-field walk. It answers a plain
+tool RESULT — no `isError`, `details: { answers: [] }` — with the offending
+fieldsets named. Kabmo's ask card already degrades that shape to
+`FallbackOutput` (`questions.length === 0`), so omp's sentence is what the
+timeline shows; Kabmo never authors a form, so nothing here can produce one.
+The matching `prompts/tools/ask.md` addition teaches the model one `name` per
+question.
+
+### R123 — background job labels collapse before they are bounded (no code)
+
+`bash.ts` no longer slices the label inline; `formatAsyncJobLabel`
+(`async/job-manager.ts`) runs the command through `collapseCommand` and then
+`truncate(…, 120, "...")`. The 120-character cap is unchanged, so the `wait` and
+`proc://` cards draw the same field — a multi-line command now reads as one
+line instead of a label carrying its newlines.
+
+### R124 — a `model_change` entry can name an upstream route (no code)
+
+`appendModelChange` now writes `formatModelStringWithRouting(targetModel)`, so a
+model pinned to a gateway route (openrouter / vercelAIGateway compat) records
+`provider/model@upstream`; 19.1.0 wrote `provider/model`. Kabmo splits the
+recorded value at the FIRST `/`, so `modelId` keeps the `@upstream` tail.
+Consequences, both measured against the 19.1.1 binary and `omp models --json`:
+
+- the three Kabmo consumers that rebuild a selector — BTW's side question, the
+  goal auditor's model and the `/rename` title overlay — pass
+  `${provider}/${modelId}`, which is the exact routed selector omp resolves
+  (`resolveExactModelIdentity`). Dropping the tail would name a different model.
+- the composer's adoption match (`matchModel` against the catalog) finds no row
+  for a routed id, because `omp models --json` emits plain `provider/id` rows
+  (measured: 0 selectors contain `@`). The guard is `if (match)`, so the
+  composer keeps its current selection instead of switching.
+
+That path is only reachable when routing is pinned in omp's own config, which
+Kabmo's pickers never write, so no code changes here.
+
+### R125 — host-side, TUI and model-facing changes (no action)
+
+`/wt` runs the worktree's `post-checkout` hook; the opt-in `tree` status segment;
+`pi.registerTodoBackend()` with `todo.backend`, the `phasesChanged` mirror and
+the v3 startup-deferral cache; a `pi-native` gateway's discovered models;
+`computer.takeover`'s new modes and its settings dialog text; `column` as a shell
+builtin; the native shell Rust API storing indexed variables as `IndexedArray`
+(BREAKING upstream, extension-rust API only); RPC shutdown disposing the local
+MCP host; restored sessions reporting jobs whose outcome is unknown; the
+exit-diagnostics tail index and empty-stop retry logging; routed-model equality
+in prewalk/plan/retry/cycling; the tool-command host check when `bash` is
+replaced by an extension; `ask`'s headless fork; `read`'s line-number prompt
+variable; eval's documented 30 s deadline and its `agent://` ids in `wait()`;
+and the format-on-write, selective-commit, Spotlight, TTSR, browser, X/YouTube
+scraper, `/usage` lock and first-run-warning fixes — host-side, TUI or
+model-facing.
+
+## 19.1.1 outcomes
+
+| # | Finding | Action | Verification |
+|---|---|---|---|
+| R121 | takeover row replaces the background fallback; `todo.backend` added | schema regenerated (644 settings / 483 entries); `schema-releases.test.ts` pins both ids and asserts `computer.backgroundFallback` is gone | `omp:schema:check`; `bun test src/shared/lib/omp` 580 pass; 0/483 rows rejected by `omp config list --json` (644 keys); live `omp config get` shows `fallback` / `native` / `Unknown setting` |
+| R122 | split-radio refusal precedes the host branch | none needed; the result renders through `FallbackOutput` | guard position read in `tools/ask.ts`; ask card's `questions.length === 0` path |
+| R123 | job labels collapsed then bounded | none needed; the cap is still 120 | `formatAsyncJobLabel` call sites; label drawn verbatim |
+| R124 | `model_change` may carry `@upstream` | none needed; every forwarder passes the exact selector | `omp models --json` has 0 routed selectors; `splitUpstreamRouting` grammar read |
+| R125 | host/TUI/model-facing fixes | none needed | wire sha256, roles, tool names, slash registry, tabs and `settings-defs.ts` byte-identical |

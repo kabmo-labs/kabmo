@@ -252,4 +252,26 @@ describe('OMP_SCHEMA release rows', () => {
     // hide it from the panel's own dropdown.
     expect(OMP_SCHEMA.entries['edit.mode']?.values).toContain('magic');
   });
+
+  test("19.1.1's takeover row replaces the background fallback, and the todo backend is offered", () => {
+    // `computer.backgroundFallback` became `computer.takeover` with two new
+    // opt-in modes; omp migrates a stored `refuse` and drops the old key, so a
+    // panel that still wrote it would edit nothing. `todo.backend` names the
+    // extension that mirrors the todo list, a runtime list Kabmo cannot
+    // enumerate — the same shape as `theme.dark` and `composer.shape`.
+    const expected: Record<string, { type: SchemaEntry['type']; tab: string; group: string; default: unknown }> = {
+      'computer.takeover': { type: 'enum', tab: 'tools', group: 'Computer', default: 'fallback' },
+      'todo.backend': { type: 'string', tab: 'tools', group: 'Todos', default: 'native' },
+    };
+    for (const [key, want] of Object.entries(expected)) {
+      const entry = OMP_SCHEMA.entries[key];
+      expect({ key, entry: entry && { type: entry.type, tab: entry.ui.tab, group: entry.ui.group, default: entry.default } }).toEqual({
+        key,
+        entry: want,
+      });
+    }
+    expect(OMP_SCHEMA.entries['computer.takeover']?.values).toEqual(['fallback', 'foreground', 'always', 'refuse']);
+    expect(OMP_SCHEMA.entries['todo.backend']?.ui.options).toBe('runtime');
+    expect(OMP_SCHEMA.entries['computer.backgroundFallback']).toBeUndefined();
+  });
 });
