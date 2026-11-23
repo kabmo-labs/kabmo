@@ -4,6 +4,24 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.47.0](https://github.com/kabmo-labs/kabmo/compare/v0.46.1...v0.47.0) — 2026-11-23
+
+### Added
+
+* **editor:** preview HTML files in a sandboxed frame ([c9ddaf7](https://github.com/kabmo-labs/kabmo/commit/c9ddaf70c3f40d81be1565b8aa7b7a134dec9c6c)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **kanban:** a board that drives work, with MCP tools an agent can move cards with ([ccc2108](https://github.com/kabmo-labs/kabmo/commit/ccc210841179aa69e5a4deb7ab1dc93cad07f822)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **chat:** fold the composer's selector labels on the composer width ([884fad4](https://github.com/kabmo-labs/kabmo/commit/884fad44609ba2b6a65a67a0721f84f2bd439164)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **editor:** align the editor chrome rows with the right panel header ([7908da9](https://github.com/kabmo-labs/kabmo/commit/7908da90f00812ceeb0c4466119dccbe79841cdf)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **kanban:** name a broken card's path in board form on every platform ([76770c2](https://github.com/kabmo-labs/kabmo/commit/76770c2ddba734a8f87a13ccbe732232e175511e)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **layout:** cap the session sidebar at a share of the window ([cff59a8](https://github.com/kabmo-labs/kabmo/commit/cff59a8dd4661c6e7b838df345328c023adfc962)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **layout:** drop a workspace panel that cannot fit instead of clipping it ([c91bdcf](https://github.com/kabmo-labs/kabmo/commit/c91bdcf198c0b4099ae18796262c7038d01b2c53)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **layout:** keep the right rail while its panel is only closed ([d66ff8a](https://github.com/kabmo-labs/kabmo/commit/d66ff8a73a3c182855d0d47e9c55667e7f4709c3)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **router:** read a window without a location as no query string ([f17808c](https://github.com/kabmo-labs/kabmo/commit/f17808ca23f900a61c8a5706b2923b320051589f)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **settings:** size the theme grid from its pane, not the window ([7d65b32](https://github.com/kabmo-labs/kabmo/commit/7d65b324da141f260f37bb9399a37063058eeda2)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.46.1](https://github.com/kabmo-labs/kabmo/compare/v0.46.0...v0.46.1) — 2026-11-23
 
 ### Fixed
