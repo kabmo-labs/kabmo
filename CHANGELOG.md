@@ -4,6 +4,18 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.48.0](https://github.com/kabmo-labs/kabmo/compare/v0.47.0...v0.48.0) — 2026-11-23
+
+### Added
+
+* **omp:** bump the pin to 19.1.1 and adopt its takeover and todo-backend rows ([6899a2a](https://github.com/kabmo-labs/kabmo/commit/6899a2a482f3ebc56fbfa805aba49a710756f88e)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **usage:** add Token Harbor allowance card ([0300aaa](https://github.com/kabmo-labs/kabmo/commit/0300aaab959d9578db13d1ffa50a81d1879e2eba)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **usage:** read TokenPortal's Rupiah wallet and name Command Code's missing key ([7241984](https://github.com/kabmo-labs/kabmo/commit/7241984e7f2b07e5c1f3e5c5dd08af4a8a00c579)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Changed
+
+* **client:** keep CodeMirror out of the boot chunk ([e472c47](https://github.com/kabmo-labs/kabmo/commit/e472c470388158b941a53a63493cb7cae562d52b)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.47.0](https://github.com/kabmo-labs/kabmo/compare/v0.46.1...v0.47.0) — 2026-11-23
 
 ### Added
