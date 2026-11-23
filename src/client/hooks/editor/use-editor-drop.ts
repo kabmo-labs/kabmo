@@ -55,6 +55,20 @@ export interface EditorDropResult {
   message: string;
 }
 
+/**
+ * The toast a drop outcome earns.
+ *
+ * A refused drop names its reason ("outside every workspace", "not text") — a
+ * silent no-op reads as a broken target, which is the one thing a drop zone
+ * cannot afford. The TARGET that produced the result is `WorkspacePanels`, so
+ * the layout only relays what it reported.
+ */
+export function useDropOutcomeToast(
+  pushToast: (message: string, tone?: 'success' | 'error' | 'warning') => void,
+): (result: EditorDropResult) => void {
+  return useCallback((result: EditorDropResult) => pushToast(result.message, result.ok ? 'success' : 'error'), [pushToast]);
+}
+
 export interface UseEditorDropOptions {
   /** False when the column has no workspace to resolve against. */
   enabled?: boolean;

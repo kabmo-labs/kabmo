@@ -1,4 +1,4 @@
-import { useRef } from 'preact/hooks';
+import { useEffect, useRef } from 'preact/hooks';
 import { lazy } from 'preact/compat';
 import type { RefObject } from 'preact/compat';
 import { Group, Panel, type PanelImperativeHandle } from '@/client/components/layout/desktop-layout/resizer';
@@ -85,6 +85,14 @@ interface WorkspacePanelsProps {
   onHideEditor: () => void;
   onSessionTitle: (title: string | null) => void;
   onPanelWidths: (patch: PanelWidths) => void;
+  /**
+   * The right panel is asked for but the group has no room for it.
+   *
+   * Reported upward because the CONTROL that asked lives in the navbar: a
+   * toggle that flips a flag this layout ignores reads as a dead button, so the
+   * owner of the flag is the one that has to explain the refusal.
+   */
+  onRightPanelSuppressed?: (suppressed: boolean | null) => void;
 }
 
 export function WorkspacePanels(props: WorkspacePanelsProps) {
@@ -123,6 +131,7 @@ export function WorkspacePanels(props: WorkspacePanelsProps) {
     onHideEditor,
     onSessionTitle,
     onPanelWidths,
+    onRightPanelSuppressed,
   } = props;
 
   /**
@@ -174,6 +183,8 @@ export function WorkspacePanels(props: WorkspacePanelsProps) {
   const {
     editor: editorWidth,
     right: rightWidth,
+    rightShown: rightPanelShown,
+    rightSuppressed,
     editorMax: editorMaxSize,
     rightMax: rightMaxSize,
     rightMin: rightPanelMin,
@@ -188,6 +199,16 @@ export function WorkspacePanels(props: WorkspacePanelsProps) {
       showRightPanel,
       chatHidden,
     });
+
+  // The owner of the flag is the navbar's toggle, so the refusal travels up:
+  // a click that changes nothing visible is the defect this exists to prevent.
+  // `null` before the group is measured, so the first suppression of a load can
+  // be told apart from a panel being taken away.
+  useEffect(() => {
+    // `0` is the pre-measurement area as much as `null` is: the observer reports
+    // it on the first frame, and the resolver answers "fits" for both.
+    onRightPanelSuppressed?.(available == null || available <= 0 ? null : rightSuppressed);
+  }, [available, rightSuppressed, onRightPanelSuppressed]);
 
   /**
    * Widths of the fixed panels as they are right now, keyed by slot: the
@@ -243,7 +264,7 @@ export function WorkspacePanels(props: WorkspacePanelsProps) {
             available,
             reservedPx:
               (showEditor ? editorWidth : 0) +
-              (showRightPanel ? rightWidth : 0) +
+              (rightPanelShown ? rightWidth : 0) +
               handleCount * HANDLE_WIDTH,
           })}
         >
@@ -289,10 +310,10 @@ export function WorkspacePanels(props: WorkspacePanelsProps) {
           </div>
         </Panel>
 
-        {showRightPanel && <ResizeHandle />}
+        {rightPanelShown && <ResizeHandle />}
         <RightColumn
           panelRef={rightPanelRef}
-          open={showRightPanel}
+          open={rightPanelShown}
           width={rightWidth}
           minWidth={rightPanelMin}
           maxWidth={rightMaxSize}
@@ -312,8 +333,11 @@ export function WorkspacePanels(props: WorkspacePanelsProps) {
         />
       </Group>
 
-      {showRightSide && rightNav === 'rail' && (
-        <ActivityBar side="right" activePanel={shownRightPanel} onChangePanel={onChangeRightPanel} isPanelOpen={showRightPanel} hasActiveContext={hasActiveContext} activeProjectPath={activeProjectPath} />
+      {/* The rail is how a view is CHOSEN, so it goes with the panel it
+          chooses: a rail beside a suppressed panel is a column of marks that
+          switches nothing (and 44px the chat cannot spare). */}
+      {showRightSide && rightPanelShown && rightNav === 'rail' && (
+        <ActivityBar side="right" activePanel={shownRightPanel} onChangePanel={onChangeRightPanel} isPanelOpen={rightPanelShown} hasActiveContext={hasActiveContext} activeProjectPath={activeProjectPath} />
       )}
     </div>
   );

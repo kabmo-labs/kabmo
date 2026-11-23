@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'preact/hooks';
+import { useCallback, useRef, useState } from 'preact/hooks';
 import { Group, Panel, type PanelImperativeHandle } from '@/client/components/layout/desktop-layout/resizer';
 import { LeftColumn } from '@/client/components/layout/desktop-layout/LeftColumn';
 import { DesktopOverlays } from '@/client/components/layout/desktop-layout/DesktopOverlays';
@@ -21,16 +21,16 @@ import { useRightOpenRequest } from '@/client/hooks/workspace/right-open-request
 import { useLeftDock, useLeftDockWidth } from '@/client/hooks/workspace/left-dock';
 import { useEditorViewLayout } from '@/client/hooks/workspace/editor-view';
 import { useLeftDockView } from '@/client/components/workspace/plugin-panel/catalog';
-import type { EditorWidthMode } from '@/shared/lib/workspace/panel-widths';
 import { useSettingsModal } from '@/client/hooks/ui/settings-modal';
 import { useWorkspaceCommands } from '@/client/hooks/workspace/commands';
 import { PluginBootstrap } from '@/client/lib/plugins/bootstrap';
 import { useToasts } from '@/client/hooks/ui/toasts';
-import type { EditorDropResult } from '@/client/hooks/editor/use-editor-drop';
+import { useDropOutcomeToast } from '@/client/hooks/editor/use-editor-drop';
 import { useNavbarSessionActions } from '@/client/hooks/workspace/navbar-session-actions';
 import { useCopyTabPath } from '@/client/hooks/workspace/copy-tab-path';
 import { useRightSideLayout, type RightSideLayout } from '@/client/hooks/workspace/right-side';
 import { useActiveWorkspaceProject } from '@/client/hooks/workspace/active-project';
+import { useRightPanelPresence } from '@/client/hooks/workspace/right-panel-presence';
 
 interface DesktopLayoutProps {
   sessionId: string | null;
@@ -90,6 +90,7 @@ export function DesktopLayout({ sessionId, onMobileToggle, appSettings = {} }: D
   const {
     openedFiles,
     activeFileId,
+    widthMode: editorWidthMode,
     setActiveFileId,
     handleOpenFile,
     handleCloseFile,
@@ -130,13 +131,6 @@ export function DesktopLayout({ sessionId, onMobileToggle, appSettings = {} }: D
   // while the rail draws another.
   const rightSideShown = !rightSide.hidden;
 
-  // A diff wants room a source file does not, so the editor panel keeps a
-  // separate remembered width per tab kind.
-  const editorWidthMode: EditorWidthMode = useMemo(
-    () => (openedFiles.find(f => String(f.id) === String(activeFileId))?.isDiff ? 'diff' : 'editor'),
-    [openedFiles, activeFileId],
-  );
-
   /**
    * The editor's WIDTH mode (`compact` / `full`), entered from either toolbar.
    *
@@ -163,16 +157,16 @@ export function DesktopLayout({ sessionId, onMobileToggle, appSettings = {} }: D
 
   const { pushToast } = useToasts();
 
-  /**
-   * A refused drop names its reason ("outside every workspace", "not text") —
-   * a silent no-op reads as a broken target. The TARGET is `WorkspacePanels`':
-   * a layout-wide one would accept a drop over the sidebar and right panel too.
-   */
-  const handleDropResult = useCallback(
-    (result: EditorDropResult) => pushToast(result.message, result.ok ? 'success' : 'error'),
-    [pushToast],
-  );
+  const handleDropResult = useDropOutcomeToast(pushToast);
   const { menu: sessionActions, sessionDelete } = useNavbarSessionActions(folders, sessionId, pushToast);
+
+  // The side's presence and its refusal, one owner: `useRightPanelPresence`.
+  const rightPanel = useRightPanelPresence({
+    pushToast,
+    showEditor,
+    sideShown: rightSideShown,
+    toggleSide: rightSide.toggleRightSide,
+  });
 
   /**
    * Ask for the sidebar (or put it away).
@@ -199,7 +193,7 @@ export function DesktopLayout({ sessionId, onMobileToggle, appSettings = {} }: D
     toggleEditor: rightSide.toggleEditor,
     // The side's own switch, so the other chord and the navbar's button cannot
     // disagree about what "the right side" means.
-    toggleRightPanel: rightSide.toggleRightSide,
+    toggleRightPanel: rightPanel.toggle,
     openSettings: () => (settings.isOpen ? settings.close() : settings.open()),
   });
 
@@ -292,9 +286,9 @@ export function DesktopLayout({ sessionId, onMobileToggle, appSettings = {} }: D
                 sessionTitle={sessionTitle}
                 sessionId={sessionId}
                 showLeftPanel={sidebarOpen}
-                showRightSide={rightSideShown}
+                showRightSide={rightSideShown && rightPanel.sideVisible}
                 streamStatus={streamStatus}
-                onToggleRightSide={rightSide.toggleRightSide}
+                onToggleRightSide={rightPanel.toggle}
                 onToggleLeftPanel={() => handleToggleLeftPanel(!sidebarOpen)}
                 sessionActions={sessionActions}
               />
@@ -338,6 +332,7 @@ export function DesktopLayout({ sessionId, onMobileToggle, appSettings = {} }: D
                 onHideEditor={rightSide.hideEditor}
                 onSessionTitle={setSessionTitle}
                 onPanelWidths={commitWidths}
+                onRightPanelSuppressed={rightPanel.report}
               />
             </main>
           </Panel>

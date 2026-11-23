@@ -1,3 +1,4 @@
+import type { EditorWidthMode } from '@/shared/lib/workspace/panel-widths';
 import { useCallback, useEffect, useRef } from 'preact/hooks';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
 import { useSessionStateContext } from '@/client/hooks/workspace/session-state/context';
@@ -303,9 +304,18 @@ export function useFileTabs(
     handleOpenDiff(customEvent.detail);
   });
 
+  // A diff wants room a source file does not, so the editor panel keeps a
+  // separate remembered width per tab kind. Derived HERE because it is a
+  // property of the tab list: the layout was recomputing it from the same two
+  // values on every render.
+  const widthMode: EditorWidthMode = openedFiles.find((f) => String(f.id) === String(activeFileId))?.isDiff
+    ? 'diff'
+    : 'editor';
+
   return {
     openedFiles,
     activeFileId,
+    widthMode,
     setActiveFileId,
     handleOpenFile,
     handleOpenDiff,
