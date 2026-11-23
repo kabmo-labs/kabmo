@@ -86,8 +86,9 @@ interface ColumnTabs {
  * differ from the rail's default (which opens `Files`). A rail has to show
  * something — a column with no view is a column of buttons over nothing — while
  * a strip's empty state is its catalog, which is a real answer. So the stored
- * `layout.activeRightPanel` (`files`) does NOT seed a tab; only an explicit
- * request does (`useRightOpenRequest`).
+ * `layout.activeRightPanel` (`files`) does NOT seed a tab by itself: only an
+ * explicit request (`useRightOpenRequest`), or a reveal of a session that had
+ * already picked a view (`panel-tabs-reveal`), opens one.
  */
 const EMPTY: ColumnTabs = { tabs: [], active: null, home: false };
 

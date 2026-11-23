@@ -4,7 +4,8 @@
  */
 
 /**
- * A tab-style panel that is REVEALED shows a view, not its catalog.
+ * A tab-style panel that is REVEALED shows the view its session had, not its
+ * catalog — but a session that never picked a view keeps the catalog.
  *
  * A panel can be put away whole — the navbar's right-side toggle, the sidebar's
  * expand control, `⌥⌘J`, `⌘B`, and on a phone the same two header controls — and
@@ -17,8 +18,8 @@
  * opened `Resources` as a tab. Two clicks that both say "show me the panel" gave
  * two different answers, and the second one looked broken.
  *
- * So the rule is stated once, for every column and drawer, and it is a GESTURE,
- * not a state:
+ * So the rule is stated once, for every column and drawer, and it is a GESTURE
+ * over a STORED selection:
  *
  * - **Only a reveal counts.** Keying it on "the panel is open and on its home
  *   page" would fight the `+` control: pressing it to browse the catalog would be
@@ -27,8 +28,12 @@
  *   open — revealing it is enough.
  * - **A home page the user CHOSE is left alone.** Closing the last tab (or
  *   pressing `+`) is an answer, not an absence: reopening the closed tab on the
- *   next toggle is the defect this rule was extended for. Only a column that has
- *   never held a tab is brought back on its view.
+ *   next toggle is the defect this rule was extended for.
+ * - **A view the session never picked is not opened.** The resolved selection
+ *   falls back to `files`, and that fallback is not a request: a fresh chat whose
+ *   right drawer was opened from the header showed a `Files` tab on BOTH layouts
+ *   — the reported defect — because the default was indistinguishable from the
+ *   user's pick. With no stored view the catalog is the answer.
  * - **A view the panel cannot draw is not opened.** The stored selection can name
  *   a panel that is switched off, uninstalled, or whose bundle has not loaded;
  *   `open` would write an id `visiblePanelTabs` filters straight back out, which
@@ -53,12 +58,16 @@ export interface RevealTabInput {
   home: boolean;
   /**
    * The catalog is up because the user ASKED for it — `+`, or closing the last
-   * tab. A reveal leaves that alone; only a column that never held a tab is
-   * brought back on its view.
+   * tab. A reveal leaves that alone.
    */
   chosenHome: boolean;
-  /** The view the panel would show — its stored selection. */
-  view: string;
+  /**
+   * The view this SESSION stored, or `null` when it never picked one.
+   *
+   * The resolved fallback (`files`) is deliberately not accepted here: treating
+   * it as a pick is what opened the file explorer in every new chat.
+   */
+  storedView: string | null;
   /** Every id this panel could draw right now. */
   known: ReadonlySet<string>;
   /** Only the tab style has a home page to leave. */
@@ -66,14 +75,14 @@ export interface RevealTabInput {
 }
 
 /** The id a reveal must open, or `null` when there is nothing to do. */
-export function revealTabId({ revealed, home, chosenHome, view, known, enabled }: RevealTabInput): string | null {
+export function revealTabId({ revealed, home, chosenHome, storedView, known, enabled }: RevealTabInput): string | null {
   if (!enabled || !revealed) return null;
   if (!home) return null;
   // Closing the last tab IS the answer. Reopening it on the next toggle is the
   // reported defect: the tab came back after the user had closed it.
   if (chosenHome) return null;
-  if (!view || !known.has(view)) return null;
-  return view;
+  if (!storedView || !known.has(storedView)) return null;
+  return storedView;
 }
 
 /**
@@ -127,8 +136,11 @@ export interface RevealPanelTabOptions {
   enabled: boolean;
   /** A reveal gesture landed on this render — see `useRevealEdge`. */
   revealed: boolean;
-  /** The view to show when the strip has nothing on screen. */
-  view: string;
+  /**
+   * The view THIS SESSION stored, or `null` when it never picked one. Not the
+   * resolved fallback: see `RevealTabInput.storedView`.
+   */
+  storedView: string | null;
   /** The panel's strip is showing its catalog. */
   home: boolean;
   /** The catalog was ASKED for (see `RevealTabInput.chosenHome`). */
@@ -153,10 +165,10 @@ export interface RevealPanelTabOptions {
  * `enabled` flag is what keeps rail panels out of it, where there is no home page
  * and the stored selection is already on screen.
  */
-export function useRevealPanelTab({ enabled, revealed, view, home, chosenHome, openTab, known }: RevealPanelTabOptions): void {
+export function useRevealPanelTab({ enabled, revealed, storedView, home, chosenHome, openTab, known }: RevealPanelTabOptions): void {
   useEffect(() => {
     if (!openTab) return;
-    const id = revealTabId({ revealed, home, chosenHome, view, known, enabled });
+    const id = revealTabId({ revealed, home, chosenHome, storedView, known, enabled });
     if (id !== null) openTab(id);
-  }, [enabled, revealed, home, chosenHome, view, known, openTab]);
+  }, [enabled, revealed, home, chosenHome, storedView, known, openTab]);
 }

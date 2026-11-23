@@ -158,7 +158,8 @@ export function LeftColumn({
   useRevealPanelTab({
     enabled: tabsMode,
     revealed,
-    view,
+    // The left column pins the session list, so it always has a view to reveal.
+    storedView: view,
     home: tabsState.home,
     chosenHome: tabsState.chosenHome,
     openTab: tabsState.open,

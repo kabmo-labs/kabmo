@@ -45,7 +45,7 @@ const nativeFetch = Bun.fetch;
 let container: HTMLElement;
 
 /** The column's props, driven from outside by the hook cases. */
-let column = { open: false, view: 'files', enabled: true, known: new Set(['files', 'git', 'todo']) };
+let column = { open: false, storedView: 'files' as string | null, enabled: true, known: new Set(['files', 'git', 'todo']) };
 /** What the probe last rendered. */
 let seen: { tabs: readonly string[]; active: string | null; home: boolean; chosenHome: boolean } | null = null;
 /** The probe's writer, so a test can close a tab the way the strip does. */
@@ -56,7 +56,7 @@ function Probe() {
   useRevealPanelTab({
     enabled: column.enabled,
     revealed: useRevealEdge(column.open),
-    view: column.view,
+    storedView: column.storedView,
     home: tabs.home,
     chosenHome: tabs.chosenHome,
     openTab: tabs.open,
@@ -114,7 +114,7 @@ afterAll(() => {
 beforeEach(() => {
   // The store is a module singleton: a tab left by one case would seed the next.
   resetSessionStateStore();
-  column = { open: false, view: 'files', enabled: true, known: new Set(['files', 'git', 'todo']) };
+  column = { open: false, storedView: 'files', enabled: true, known: new Set(['files', 'git', 'todo']) };
 });
 
 afterEach(() => {
@@ -126,13 +126,13 @@ afterEach(() => {
   actions = null;
 });
 
-/** The rule, as data: only the reveal edge on a home page with a drawable view. */
+/** The rule, as data: only the reveal edge on a home page with a view the session picked. */
 describe('revealTabId', () => {
   const base: RevealTabInput = {
     revealed: true,
     home: true,
     chosenHome: false,
-    view: 'files',
+    storedView: 'files',
     known: new Set(['files', 'git']),
     enabled: true,
   };
@@ -165,8 +165,13 @@ describe('revealTabId', () => {
   test('a view this build cannot draw is not opened', () => {
     // Opening it would write an id `visiblePanelTabs` filters back out — a write
     // loop disguised as a sync.
-    expect(revealTabId({ ...base, view: 'ghost' })).toBeNull();
-    expect(revealTabId({ ...base, view: '' })).toBeNull();
+    expect(revealTabId({ ...base, storedView: 'ghost' })).toBeNull();
+  });
+
+  test('a session that never picked a view keeps its catalog', () => {
+    // The reported defect: a new chat's right drawer showed a `Files` tab on
+    // both layouts. The resolved fallback is not a pick.
+    expect(revealTabId({ ...base, storedView: null })).toBeNull();
   });
 });
 
@@ -212,23 +217,21 @@ describe('the column, mounted and toggled', () => {
     expect(seen).toEqual({ tabs: [], active: null, home: true, chosenHome: false });
   });
 
-  test('putting the side away and bringing it back opens the stored view', async () => {
-    // A session that has NEVER held a tab: the empty strip is the default home
-    // page, not something the user chose, so the toggle brings its view back.
+  test('a session that never picked a view stays on its catalog', async () => {
+    // A fresh chat: the empty strip is its home page. Revealing the panel must
+    // not turn the `files` fallback into a tab — the reported defect on both
+    // layouts.
     currentSession = 'reveal-edge';
     hydrateSession(currentSession, {});
+    column.storedView = null;
     mount(currentSession);
     expect(seen).toEqual({ tabs: [], active: null, home: true, chosenHome: false });
 
     column.open = true;
     await rerender();
 
-    expect(seen?.tabs).toEqual(['files']);
-    expect(seen?.active).toBe('files');
-    expect(seen?.home).toBe(false);
-    // The write is the strip's own, so the persisted shape is a real tab.
-    const stored = getSessionValue<{ tabs: string[]; active: string; home: boolean }>(currentSession, 'layout.rightPanelTabs');
-    expect(stored).toEqual({ tabs: ['files'], active: 'files', home: false });
+    expect(seen).toEqual({ tabs: [], active: null, home: true, chosenHome: false });
+    expect(getSessionValue(currentSession, 'layout.rightPanelTabs')).toBeUndefined();
   });
 
   test('a tab closed by the user stays closed across a toggle', async () => {
@@ -257,7 +260,7 @@ describe('the column, mounted and toggled', () => {
   test('a column that already had a tab is only revealed, never re-opened', async () => {
     currentSession = 'reveal-existing';
     hydrateSession(currentSession, { 'layout.rightPanelTabs': { tabs: ['git'], active: 'git', home: false } });
-    column.view = 'git';
+    column.storedView = 'git';
     mount(currentSession);
     expect(seen?.tabs).toEqual(['git']);
 

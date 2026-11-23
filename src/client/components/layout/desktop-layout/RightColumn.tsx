@@ -43,6 +43,7 @@ import { useLeftDock } from '@/client/hooks/workspace/left-dock';
 import { usePanelTabs } from '@/client/hooks/workspace/panel-tabs';
 import { useRevealEdge, useRevealPanelTab } from '@/client/hooks/workspace/panel-tabs-reveal';
 import { useSessionStateContext } from '@/client/hooks/workspace/session-state/context';
+import { getSessionValue } from '@/shared/lib/workspace/session-state/store';
 import { resolvePanelNav, type PanelNavStyle } from '@/shared/lib/workspace/panel-nav';
 
 export interface RightColumnProps {
@@ -126,10 +127,14 @@ export function RightColumn({
   // for. The Stats readout, which names a panel, already opened one — this is
   // the same answer for the click that names no view. See `panel-tabs-reveal`.
   const revealed = useRevealEdge(open);
+  // The view this session PICKED, not the fallback `files`: a fresh chat has
+  // never stored one, and treating the fallback as a pick is what opened the
+  // file explorer in every new session.
+  const storedView = getSessionValue<string>(sessionId, 'layout.activeRightPanel') ?? null;
   useRevealPanelTab({
     enabled: tabsMode,
     revealed,
-    view: shownPanel,
+    storedView,
     home: tabsState.home,
     chosenHome: tabsState.chosenHome,
     openTab: tabsState.open,

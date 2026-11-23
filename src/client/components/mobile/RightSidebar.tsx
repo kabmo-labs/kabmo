@@ -99,23 +99,25 @@ export function MobileRightSidebar({
   const tabsMode = navStyle === 'tabs';
   const known = useMemo(() => new Set(catalog.map((panel) => panel.id)), [catalog]);
   const tabsState = usePanelTabs('right', known, null);
-  // The header's "Open Right Panel" is a reveal, so it must show a VIEW rather
-  // than the catalog — the same rule the desktop column follows, and the same
-  // one the Stats readout already satisfies by naming a panel.
+  // Whether the session's blob actually holds a right-drawer view. Read through
+  // the store (not the hook's fallback), because "unset" and "set to the
+  // default" are different facts here — and only the former is a session the
+  // header's reveal may open a view for.
+  const hasStoredTab = getSessionValue<string>(sessionId, 'layout.mobileRightPanel') !== undefined;
+  // The header's "Open Right Panel" is a reveal, so it shows the view this
+  // session PICKED. A fresh chat never picked one (`activeTab` is the `files`
+  // fallback), so it keeps its catalog — the reported defect was a new chat
+  // opening a `Files` tab every time the drawer was revealed.
   useRevealPanelTab({
     enabled: tabsMode,
     revealed: useRevealSignal(revealSignal),
-    view: activeTab,
+    storedView: hasStoredTab ? activeTab : null,
     home: tabsState.home,
     chosenHome: tabsState.chosenHome,
     openTab: tabsState.open,
     known,
   });
   const { open: openTab, tabs: openTabIds } = tabsState;
-  // Whether the session's blob actually holds a right-drawer view. Read through
-  // the store (not the hook's fallback), because "unset" and "set to the
-  // default" are different facts here.
-  const hasStoredTab = getSessionValue<string>(sessionId, 'layout.mobileRightPanel') !== undefined;
 
   /**
    * Every gesture that CHANGES the view must arm the soft keyboard before the

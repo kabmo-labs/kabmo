@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 import { getSessionValue, hydrateSession, setSessionKey } from '@/shared/lib/workspace/session-state/store';
 import { subscribeSessionKey, subscribeSessionReplaced } from '@/shared/lib/workspace/session-state/listeners';
 import { useSessionStateContext } from '@/client/hooks/workspace/session-state/context';
@@ -23,21 +23,35 @@ type LoadedState = Record<string, unknown>;
  * move across an adoption (it was already true), so without the second
  * subscription a pending chat's opened panels and picked view were reset to
  * their defaults at the exact moment the spawn renamed the session.
+ *
+ * The local copy is KEYED by the session it was read for. A session switch
+ * happens one commit before the restore effect can run, and an unkeyed copy
+ * made that commit render the PREVIOUS chat's value under the NEW session id.
+ * Every reader that mirrors the value back into the store then persisted the
+ * old chat's state as the new one's — measured: opening a new chat while a
+ * right-panel tab strip was in `tabs` mode reopened `Files` in it, on both
+ * layouts, because the strip's selection was mirrored into the fresh session
+ * before its (empty) blob landed. A copy that belongs to another session is
+ * not a value this session may show; the store or the fallback is.
  */
 export function useSessionState<T>(key: string, fallback: T): [T, (value: T | ((prev: T) => T)) => void, boolean] {
   const { sessionId, ready } = useSessionStateContext();
   const stored = getSessionValue<T>(sessionId, key);
-  const [local, setLocal] = useState<T>(stored === undefined ? fallback : stored);
-  const sessionIdRef = useRef(sessionId);
+  const [local, setLocal] = useState<{ sessionId: string; value: T }>(() => ({
+    sessionId,
+    value: stored === undefined ? fallback : stored,
+  }));
+
+  // The copy belongs to another session: read this session's own value instead
+  // of carrying the previous chat's over. The restore effect below adopts it.
+  const current =
+    local.sessionId === sessionId ? local.value : stored === undefined ? fallback : stored;
 
   // Restore the stored value (or reset to fallback) on session change/load.
   useEffect(() => {
-    if (sessionIdRef.current !== sessionId) {
-      sessionIdRef.current = sessionId;
-    }
     if (!ready) return;
     const next = getSessionValue<T>(sessionId, key);
-    setLocal(next === undefined ? fallback : next);
+    setLocal({ sessionId, value: next === undefined ? fallback : next });
     // `key` and `fallback` are stable per call site; session/ready drive restore.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, ready, key]);
@@ -48,7 +62,7 @@ export function useSessionState<T>(key: string, fallback: T): [T, (value: T | ((
     () =>
       subscribeSessionReplaced(sessionId, () => {
         const next = getSessionValue<T>(sessionId, key);
-        setLocal(next === undefined ? fallback : next);
+        setLocal({ sessionId, value: next === undefined ? fallback : next });
       }),
     // `key` and `fallback` are stable per call site.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -56,17 +70,15 @@ export function useSessionState<T>(key: string, fallback: T): [T, (value: T | ((
   );
 
   const setValue = (value: T | ((prev: T) => T)) => {
-    const resolved = typeof value === 'function' ? (value as (prev: T) => T)(getSessionValue<T>(sessionId, key) ?? local) : value;
-    setLocal(resolved);
+    const resolved =
+      typeof value === 'function'
+        ? (value as (prev: T) => T)(getSessionValue<T>(sessionId, key) ?? current)
+        : value;
+    setLocal({ sessionId, value: resolved });
     setSessionKey(sessionId, key, resolved);
   };
 
-  // While the blob loads, surface the live in-memory value so a panel never
-  // renders stale fallback over a fresher local write.
-  if (!ready && stored !== undefined && stored !== local) {
-    return [stored, setValue, ready];
-  }
-  return [local, setValue, ready];
+  return [current, setValue, ready];
 }
 
 export const useSessionUiState = useSessionState;

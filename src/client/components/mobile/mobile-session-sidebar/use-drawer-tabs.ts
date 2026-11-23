@@ -46,7 +46,8 @@ export function useMobileDrawerTabs(dock: MobileDockState, revealSignal: number)
   useRevealPanelTab({
     enabled: dock.tabsMode,
     revealed: useRevealSignal(revealSignal),
-    view: dock.activeView,
+    // The left drawer pins the session list, so it always has a view to reveal.
+    storedView: dock.activeView,
     home: tabs?.home ?? false,
     chosenHome: tabs?.chosenHome ?? false,
     openTab: tabs?.open ?? null,
