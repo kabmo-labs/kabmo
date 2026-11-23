@@ -42,7 +42,15 @@ function emit(): void {
  * landing, failing a case that passes when its file runs alone.
  */
 function liveSearch(): string {
-  return typeof window === 'undefined' ? '' : window.location.search;
+  // `window` present but carrying no `location` is a real runtime shape, not a
+  // typo: `installDomGlobals({})` builds one on purpose (the SSR case), and a
+  // suite that restored its globals leaves a `globalThis`-as-window stand-in
+  // behind. Reading through the chain answers "no query string" there instead of
+  // throwing a TypeError — measured on the Windows gate, where exactly that
+  // killed `list-slots.test.ts` and `plugin-contributions.test.ts` with a stack
+  // naming neither of them.
+  const search = typeof window === 'undefined' ? undefined : window.location?.search;
+  return typeof search === 'string' ? search : '';
 }
 
 /**
@@ -60,11 +68,14 @@ function onPopState(): void {
 function bindToCurrentWindow(): void {
   const next = typeof window === 'undefined' ? undefined : window;
   if (next === boundWindow) return;
-  boundWindow?.removeEventListener('popstate', onPopState);
+  // Both calls are guarded the same way `liveSearch` is: a stub window (the
+  // SSR `{}`, a `globalThis` stand-in) has no listener API, and subscribing a
+  // component must not throw because the suite that owns the globals has ended.
+  if (typeof boundWindow?.removeEventListener === 'function') boundWindow.removeEventListener('popstate', onPopState);
   boundWindow = next;
   // Back/forward navigation. `pushState`/`replaceState` do NOT fire popstate,
   // so setParams notifies directly.
-  next?.addEventListener('popstate', onPopState);
+  if (typeof next?.addEventListener === 'function') next.addEventListener('popstate', onPopState);
 }
 
 function subscribe(listener: () => void): () => void {
