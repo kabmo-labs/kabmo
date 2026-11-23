@@ -1,13 +1,13 @@
 {
   "name": "kanban",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "A board that drives work: cards carry a prompt, an agent and a stage, and an agent can move its own cards through MCP.",
   "type": "module",
   "kabmo": {
     "id": "kanban",
     "name": "Kanban",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "A board that drives work: cards carry a prompt, an agent and a stage, and an agent can move its own cards through MCP.",
     "app": "dist/app.js",
     "server": "dist/server.js",
