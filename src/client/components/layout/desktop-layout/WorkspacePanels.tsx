@@ -20,7 +20,7 @@ import {
   type EditorWidthMode,
   type PanelWidths,
 } from '@/shared/lib/workspace/panel-widths';
-import { resolveWorkspacePanelWidths } from '@/shared/lib/workspace/workspace-panel-widths';
+import { railShown, resolveWorkspacePanelWidths } from '@/shared/lib/workspace/workspace-panel-widths';
 
 const Editor = lazy(() => import('@/client/components/workspace/editor/index').then((m) => ({ default: m.Editor })));
 
@@ -333,10 +333,13 @@ export function WorkspacePanels(props: WorkspacePanelsProps) {
         />
       </Group>
 
-      {/* The rail is how a view is CHOSEN, so it goes with the panel it
-          chooses: a rail beside a suppressed panel is a column of marks that
-          switches nothing (and 44px the chat cannot spare). */}
-      {showRightSide && rightPanelShown && rightNav === 'rail' && (
+      {/* The rail is how a view is CHOSEN, so it goes only where choosing one
+          can still put something on screen: a rail beside a SUPPRESSED panel is
+          a column of marks that switches nothing (and 44px the chat cannot
+          spare). A panel closed by its own control is not suppressed — the rail
+          is then the way back, and hiding it with the column left the column
+          unreachable except through the navbar's chord. */}
+      {railShown({ sideShown: showRightSide, nav: rightNav, rightSuppressed }) && (
         <ActivityBar side="right" activePanel={shownRightPanel} onChangePanel={onChangeRightPanel} isPanelOpen={rightPanelShown} hasActiveContext={hasActiveContext} activeProjectPath={activeProjectPath} />
       )}
     </div>

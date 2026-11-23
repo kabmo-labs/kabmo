@@ -27,6 +27,7 @@ import {
   type PanelWidths,
 } from '@/shared/lib/workspace/panel-widths';
 import { DEFAULT_RIGHT_PANEL_FRACTION } from '@/shared/lib/workspace/right-panels';
+import type { PanelNavStyle } from '@/shared/lib/workspace/panel-nav';
 
 /**
  * The width below which the chat column stops being a conversation, used to
@@ -202,4 +203,19 @@ export function resolveWorkspacePanelWidths(args: WorkspacePanelWidthsArgs): Wor
     handleCount,
     rightMin,
   };
+}
+
+/**
+ * Whether the right activity rail is on screen.
+ *
+ * The rail is how a view is CHOSEN, so it exists where choosing one can still
+ * put something on screen. That is `sideShown && !rightSuppressed` — NOT
+ * `rightPanelShown`: a panel closed by its own control is not suppressed, and
+ * taking the rail away with it left the column unreachable except through the
+ * navbar's chord (measured by `files-nested.e2e.ts`, whose `openFiles` reopens a
+ * collapsed column through the rail's chip and timed out once the rail went
+ * with it).
+ */
+export function railShown(args: { sideShown: boolean; nav: PanelNavStyle; rightSuppressed: boolean }): boolean {
+  return args.sideShown && !args.rightSuppressed && args.nav === 'rail';
 }

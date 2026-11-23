@@ -25,6 +25,7 @@ import { describe, expect, test } from 'bun:test';
 import { HANDLE_WIDTH, MIN_EDITOR_PANEL_WIDTH } from '@/shared/lib/workspace/panel-widths';
 import {
   MIN_CHAT_READING_WIDTH,
+  railShown,
   resolveWorkspacePanelWidths,
   rightPanelFits,
 } from '@/shared/lib/workspace/workspace-panel-widths';
@@ -101,5 +102,23 @@ describe('resolveWorkspacePanelWidths and the right panel', () => {
     // the user is not in.
     expect(resolved.rightSuppressed).toBe(false);
     expect(resolved.right).toBe(0);
+  });
+});
+
+describe('railShown', () => {
+  test('a panel closed by its own control keeps the rail, which is the way back', () => {
+    // The regression this pins: the rail was rendered from `rightPanelShown`,
+    // so closing the column took the control that reopens it. `files-nested.e2e.ts`
+    // timed out on `getByRole('button', { name: 'Files' })` for every case.
+    expect(railShown({ sideShown: true, nav: 'rail', rightSuppressed: false })).toBe(true);
+  });
+
+  test('a SUPPRESSED panel takes the rail with it: choosing a view would switch nothing', () => {
+    expect(railShown({ sideShown: true, nav: 'rail', rightSuppressed: true })).toBe(false);
+  });
+
+  test('the whole side put away, or the tabs style, has no rail either', () => {
+    expect(railShown({ sideShown: false, nav: 'rail', rightSuppressed: false })).toBe(false);
+    expect(railShown({ sideShown: true, nav: 'tabs', rightSuppressed: false })).toBe(false);
   });
 });
