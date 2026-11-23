@@ -5,6 +5,12 @@ All notable changes to this package are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0](https://github.com/kabmo-labs/kabmo/compare/kabmo-sdk/v0.4.0...kabmo-sdk/v0.5.0) — 2026-11-23
+
+### Added
+
+* **kanban:** a board that drives work, with MCP tools an agent can move cards with ([ccc2108](https://github.com/kabmo-labs/kabmo/commit/ccc210841179aa69e5a4deb7ab1dc93cad07f822)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.4.0](https://github.com/kabmo-labs/kabmo/compare/kabmo-sdk/v0.3.0...kabmo-sdk/v0.4.0) — 2026-11-14
 
 ### Added
