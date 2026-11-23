@@ -151,21 +151,6 @@ export function RightColumn({
   // would mark a view active behind the catalog, and a view that re-reads on
   // activation would fetch for a page nobody is looking at.
   const effectivePanel = tabsMode ? (tabsState.home ? null : tabsState.active) : shownPanel;
-  // Opening a tab from the home page happens through the strip, which writes the
-  // hook; the effect above then mirrors it into the stored selection. `pinned`
-  // is null here, so `active` is the user's own choice and may be `null`.
-  useEffect(() => {
-    if (!tabsMode || tabsState.home || tabsState.active === null) return;
-    if (tabsState.active !== shownPanel) onSelectPanel?.(tabsState.active);
-  }, [tabsMode, tabsState.home, tabsState.active, shownPanel, onSelectPanel]);
-
-  /**
-   * The OTHER direction, and it listens to a REQUEST rather than to
-   * `shownPanel` — see `openRequest`. A restored selection is not an opening:
-   * this column's default is the home page, so the only thing that may add a
-   * tab without the user pressing something in the strip is a caller that
-   * asked for a view by name.
-   */
   const { open: openTab } = tabsState;
   /**
    * Each request is applied ONCE, tracked by its nonce.
@@ -179,6 +164,37 @@ export function RightColumn({
   const appliedRequest = useRef<number | null>(null);
   const requestKey = openRequest?.panelKey;
   const requestNonce = openRequest?.nonce;
+  /**
+   * A request that has not been applied yet is AHEAD of the strip: it writes
+   * `layout.activeRightPanel` in its event handler, while the tab it names is
+   * only opened by the effect below. For that commit `shownPanel` names the
+   * requested view and `tabsState.active` names the one the user is leaving —
+   * the mirror effect would read that as a strip choice and request the OLD
+   * view right back. The two then alternate every commit: measured on a session
+   * whose strip held `Files`, clicking the Stats readout added `Resources` but
+   * left `Files` selected and drawn, and the still-pending request re-applied
+   * after a session switch — the tab appeared in the next chat too.
+   */
+  const requestPending = requestNonce !== undefined && appliedRequest.current !== requestNonce;
+  // Opening a tab from the home page happens through the strip, which writes the
+  // hook; the effect above then mirrors it into the stored selection. `pinned`
+  // is null here, so `active` is the user's own choice and may be `null`.
+  useEffect(() => {
+    if (!tabsMode || tabsState.home || tabsState.active === null) return;
+    if (tabsState.active === shownPanel) return;
+    // The divergence a pending request creates is not a strip choice; only the
+    // request may answer it, and it does so in the effect below.
+    if (requestPending) return;
+    onSelectPanel?.(tabsState.active);
+  }, [tabsMode, tabsState.home, tabsState.active, shownPanel, onSelectPanel, requestPending]);
+
+  /**
+   * The OTHER direction, and it listens to a REQUEST rather than to
+   * `shownPanel` — see `openRequest`. A restored selection is not an opening:
+   * this column's default is the home page, so the only thing that may add a
+   * tab without the user pressing something in the strip is a caller that
+   * asked for a view by name.
+   */
   useEffect(() => {
     if (!tabsMode || requestKey === undefined || requestNonce === undefined) return;
     if (appliedRequest.current === requestNonce) return;
