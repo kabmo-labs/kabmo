@@ -1,5 +1,5 @@
 {
-  "source": "@oh-my-pi/pi-coding-agent 10 tabs / 643 settings",
+  "source": "@oh-my-pi/pi-coding-agent 10 tabs / 644 settings",
   "tabs": [
     {
       "id": "appearance",
@@ -6600,6 +6600,17 @@
         ]
       }
     },
+    "todo.backend": {
+      "type": "string",
+      "default": "native",
+      "ui": {
+        "tab": "tools",
+        "group": "Todos",
+        "label": "Todo Backend",
+        "description": "Extension that the todo list is mirrored to; Native keeps it in the session only",
+        "options": "runtime"
+      }
+    },
     "tasks.todoClearDelay": {
       "type": "number",
       "default": 60,
@@ -6900,28 +6911,40 @@
         "description": "Maximum screenshot height in pixels"
       }
     },
-    "computer.backgroundFallback": {
+    "computer.takeover": {
       "type": "enum",
-      "default": "takeover",
+      "default": "fallback",
       "values": [
-        "takeover",
+        "fallback",
+        "foreground",
+        "always",
         "refuse"
       ],
       "ui": {
         "tab": "tools",
         "group": "Computer",
-        "label": "Computer Background Fallback",
-        "description": "What window input does when its background route is unavailable: rerun it in takeover and return focus to your app (macOS; elsewhere plain takeover), or refuse, which also keeps the agent from taking the foreground or opening macOS menus itself",
+        "label": "Computer Takeover",
+        "description": "When window input takes over (the real pointer and keyboard; your Escape stops it) instead of running in the background",
         "options": [
           {
-            "value": "takeover",
-            "label": "Takeover",
-            "description": "Briefly bring the target forward for that one call, then return focus to your app (on macOS even if you kept typing)"
+            "value": "fallback",
+            "label": "Fallback",
+            "description": "Background first; a call whose background route is unavailable briefly brings the target forward, then returns focus to your app (on macOS even if you kept typing). The agent may also ask for takeover on a call"
+          },
+          {
+            "value": "foreground",
+            "label": "Foreground",
+            "description": "omp, never the agent, decides: take over input to a window already in front of you, and a call whose background route is unavailable; stay in the background otherwise"
+          },
+          {
+            "value": "always",
+            "label": "Always",
+            "description": "omp, never the agent, decides: take over every window and element input call, bringing the target forward for that call and then returning focus to your app"
           },
           {
             "value": "refuse",
             "label": "Refuse",
-            "description": "Fail the call; nothing takes over, and the agent's own takeover, raise, activating open, desktop input and macOS menus (context menus, popup and menu buttons; they take your keyboard while open) are refused too"
+            "description": "Never take over: a call whose background route is unavailable fails, and the agent's own takeover, raise, activating open, desktop input and macOS menus (context menus, popup and menu buttons; they take your keyboard while open) are refused too"
           }
         ]
       }
