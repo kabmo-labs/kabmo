@@ -4,6 +4,29 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.49.0](https://github.com/kabmo-labs/kabmo/compare/v0.48.0...v0.49.0) — 2026-11-24
+
+### Added
+
+* **acp:** track subagent sessions and gate frames by session id ([4405fe6](https://github.com/kabmo-labs/kabmo/commit/4405fe6ff0161e98d224b124cbb8b2c394349b20)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **chat:** attach pasted files and write their filenames into the draft ([058d623](https://github.com/kabmo-labs/kabmo/commit/058d6234b67e0614b7657f8702a700ea61cbaf49)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **chat:** preview locally referenced images in the transcript ([3c0eff2](https://github.com/kabmo-labs/kabmo/commit/3c0eff2fcd38ab3a190a6ef7c40845419f53d395)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **dictation:** made the composer mic transcribe Indonesian and run on external engines ([175f10e](https://github.com/kabmo-labs/kabmo/commit/175f10e20ab78d8df4d400cad0bca18c9af048a1)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **panels:** require the kabmo-plugins- repository prefix and register repositories in marketplace.json ([070ace4](https://github.com/kabmo-labs/kabmo/commit/070ace41a97408378797be066244dd2ba98645ab)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **voice:** add spoken answers with footer speaker and autoplay ([1cb4725](https://github.com/kabmo-labs/kabmo/commit/1cb47251e2784894f91f9488ad7e837a42974469)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **acp:** draw a tool card before the prose the agent wrote after it ([be9681c](https://github.com/kabmo-labs/kabmo/commit/be9681c035c4c28d0fcde3d1fdfa753c448b9bba)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **acp:** drew the panel for the tool each adapter actually named ([09ba934](https://github.com/kabmo-labs/kabmo/commit/09ba934885c39835a11cc555bde5309c40b76d09)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **acp:** store a subagent's standing approval on the parent chat ([711c092](https://github.com/kabmo-labs/kabmo/commit/711c0927e028d0b81d70dcc3eafaf1e392c3eace)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **changes:** read omp 19's hunk journal and name why a side is unknown ([0a81d12](https://github.com/kabmo-labs/kabmo/commit/0a81d12e30e477c37e3466a9ecc6fc0d5f673cfa)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **chat:** keep the stream following the tail while a run streams ([d7d47e2](https://github.com/kabmo-labs/kabmo/commit/d7d47e27ef31a6586bd476b830d65f02367418ac)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **composer:** use the phone layout when a desktop composer is too narrow ([4e7dd89](https://github.com/kabmo-labs/kabmo/commit/4e7dd890c157441be6c8f99a1c6a529040a9c017)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **dictation:** named a speech worker that cannot talk to this omp build ([f5b232c](https://github.com/kabmo-labs/kabmo/commit/f5b232cb2b09c243c2af1771ba657c01bd8b389a)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **dictation:** recorded from the microphone inside the macOS shell ([7a7ef64](https://github.com/kabmo-labs/kabmo/commit/7a7ef649f763cd05aa1f88709abb3590b312bc99)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **panels:** named the plugin install field so a spec stops pinning its hint ([8b70551](https://github.com/kabmo-labs/kabmo/commit/8b705513be5ecbe511c95fcb640c338560c4d1e2)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.48.0](https://github.com/kabmo-labs/kabmo/compare/v0.47.0...v0.48.0) — 2026-11-23
 
 ### Added
