@@ -27,7 +27,7 @@ export function handleAgentStart(deps: OmpAgentCallbacksDeps): void {
   const { setGenerating, setGeneratingVerb, scrollToBottom, adoptedSessionIdRef, sessionIdRef, metaRefreshedRef, refreshSessionMeta } = deps;
   setGenerating(true);
   setGeneratingVerb(PHASE_VERBS.thinking);
-  setTimeout(() => scrollToBottom('smooth'), 50);
+  setTimeout(() => scrollToBottom('instant'), 50);
   const sid = adoptedSessionIdRef.current ?? sessionIdRef.current;
   if (!sid) return;
   if (metaRefreshedRef.current !== sid) {
@@ -66,7 +66,7 @@ export function handleResumeStream(deps: OmpAgentCallbacksDeps): void {
   const { setGenerating, setGeneratingVerb, activityRef, scrollToBottom } = deps;
   setGenerating(true);
   if (!activityRef.current) setGeneratingVerb(PHASE_VERBS.thinking);
-  setTimeout(() => scrollToBottom('smooth'), 50);
+  setTimeout(() => scrollToBottom('instant'), 50);
   // No sidebar signal: the run is live server-side, so its `stream` row is in
   // the status payload and the sidebar's spinner (and this indicator, through
   // `timelineRunning`) already report it.

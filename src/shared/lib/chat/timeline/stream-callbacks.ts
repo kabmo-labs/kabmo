@@ -45,15 +45,17 @@ export function createMockStreamCallbacks(deps: MockStreamCallbacksDeps): Stream
   } = deps;
 
   // Coalesce the SSE deltas into one commit per animation frame. Deltas are
-  // incremental, so every queued updater runs in arrival order; a smooth scroll
-  // fires once per frame, after the updates land.
+  // incremental, so every queued updater runs in arrival order; the follow
+  // write fires once per frame, after the updates land. INSTANT, for the same
+  // measured reason as the omp path (`stream-coalescer.ts`): a smooth scroll
+  // re-issued per frame never catches a tail that is still growing.
   let scrollPending = false;
   const batch = createRafBatch<ChatMessageData[]>(
     updater => setLocalMessages(updater),
     () => {
       if (!scrollPending) return;
       scrollPending = false;
-      scrollToBottom('smooth');
+      scrollToBottom('instant');
     },
   );
   const enqueue = (updater: (prev: ChatMessageData[]) => ChatMessageData[], scroll = false) => {
@@ -76,7 +78,7 @@ export function createMockStreamCallbacks(deps: MockStreamCallbacksDeps): Stream
             : m
         )
       );
-      setTimeout(() => scrollToBottom('smooth'), 50);
+      setTimeout(() => scrollToBottom('instant'), 50);
     },
     onThinkingChunk: (data) => {
       enqueue(prev =>
@@ -123,7 +125,7 @@ export function createMockStreamCallbacks(deps: MockStreamCallbacksDeps): Stream
           return m;
         })
       );
-      setTimeout(() => scrollToBottom('smooth'), 50);
+      setTimeout(() => scrollToBottom('instant'), 50);
     },
     onToolOutputChunk: (data) => {
       enqueue(prev =>
@@ -192,7 +194,7 @@ export function createMockStreamCallbacks(deps: MockStreamCallbacksDeps): Stream
       setGenerating(false);
       abortControllerRef.current = null;
       triggerChatCompletionSound(appSettings);
-      setTimeout(() => scrollToBottom('smooth'), 50);
+      setTimeout(() => scrollToBottom('instant'), 50);
     },
     onError: () => {
       setGenerating(false);

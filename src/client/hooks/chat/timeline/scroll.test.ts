@@ -49,8 +49,10 @@ describe('timeline scroll', () => {
     await p.updateProbe(probe, 'a', [p.message('a1'), p.message('a2')]);
     expect(probe.el.scrollTop).toBe(p.geometry.height - p.geometry.viewport);
 
-    // The user reads back — follow disengages, and that state outlives the
-    // session it was set in.
+    // The user reads back — a wheel is what makes the upward move THEIRS (see
+    // `handleScroll`: a layout correction may not take the viewport back).
+    // Follow disengages, and that state outlives the session it was set in.
+    await p.act(() => { probe.el.dispatchEvent(new Event('wheel')); });
     probe.el.scrollTop = 100;
     expect(scroll().followRef.current).toBe(false);
 
@@ -96,6 +98,43 @@ describe('timeline scroll', () => {
     expect(scroll().followRef.current).toBe(true);
     expect(probe.el.scrollTop).toBe(p.geometry.height - p.geometry.viewport);
     expect(scroll().jumpCountRef.current).toBe(2);
+    await p.unmountProbe(probe);
+  });
+
+  test('a layout correction may not stop the stream from following', async () => {
+    p.scrolled.length = 0;
+    p.geometry.top = 0;
+    p.geometry.height = 5000;
+    p.geometry.viewport = 500;
+    const probe = await p.mountProbe('a', [p.message('a1')]);
+    const scroll = () => probe.holder.current!;
+
+    // Pinned to the tail, no jump in flight: the state a running stream is in.
+    await p.act(() => { scroll().jumpToBottom('instant'); });
+    await p.act(() => { probe.el.scrollTo({ top: p.geometry.height, behavior: 'instant' }); });
+    await p.flushFrames(6);
+    expect(scroll().followRef.current).toBe(true);
+    expect(scroll().jumpActiveRef.current).toBe(false);
+
+    // The row window measured a row ABOVE the viewport 300 px shorter than its
+    // estimate, so the anchor correction moved the viewport UP with nobody
+    // behind it. Read as the reader taking the viewport back, that turned
+    // `follow` off for the rest of the run — the reported "the stream stops
+    // scrolling and I have to scroll down myself". No wheel, no touch: it is
+    // not the reader's.
+    probe.el.scrollTop = p.geometry.height - p.geometry.viewport - 300;
+    expect(scroll().followRef.current).toBe(true);
+
+    // The next chunk still lands the tail.
+    p.scrolled.length = 0;
+    await p.act(() => { scroll().scrollToBottom('instant'); });
+    expect(p.scrolled.length).toBe(1);
+    expect(probe.el.scrollTop).toBe(p.geometry.height - p.geometry.viewport);
+
+    // The reader's own upward move is the one that still disengages it.
+    await p.act(() => { probe.el.dispatchEvent(new Event('wheel')); });
+    probe.el.scrollTop = 100;
+    expect(scroll().followRef.current).toBe(false);
     await p.unmountProbe(probe);
   });
 
@@ -193,7 +232,9 @@ describe('timeline scroll', () => {
     expect(p.scrolled[0].behavior).toBe('instant');
     expect(probe.el.scrollTop).toBe(p.geometry.height - p.geometry.viewport);
 
-    // Reading back: the same growth must leave the viewport alone.
+    // Reading back (a wheel, then the viewport moves up): the same growth must
+    // leave the viewport alone.
+    await p.act(() => { probe.el.dispatchEvent(new Event('wheel')); });
     probe.el.scrollTop = 400;
     p.scrolled.length = 0;
     p.geometry.height += 800;

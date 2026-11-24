@@ -161,7 +161,9 @@ describe('createMockStreamCallbacks', () => {
     expect(h.messages[0].content).toBe('Hello');
     expect(h.verbs).toEqual(['Writing response', 'Writing response']);
     // Both deltas asked to follow the tail, but a burst scrolls once per frame.
-    expect(h.scrolled).toEqual(['smooth']);
+    // Instant, because a smooth write re-issued every frame cannot catch a
+    // growing tail (see `stream-callbacks.ts`).
+    expect(h.scrolled).toEqual(['instant']);
   });
 
   test('thinking chunks append deltas and the end stamps the final thought', () => {

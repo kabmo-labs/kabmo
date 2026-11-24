@@ -180,7 +180,11 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
     setGeneratingVerb(PHASE_VERBS.thinking);
     // An explicit send is user intent to watch the answer: re-engage follow
     // mode even if the user had scrolled away, then scroll to the tail.
-    setTimeout(() => jumpToBottom('smooth'), 50);
+    // INSTANT, like the session-open jump: the first stream chunk lands inside
+    // the 50 ms delay, and its own follow write is instant — a smooth flight
+    // would be snapped by it, and a smooth animation cannot catch a tail that
+    // is already growing (see `stream-coalescer.ts`).
+    setTimeout(() => jumpToBottom('instant'), 50);
 
     // Real mode: route through the omp agent RPC bridge + event stream.
     if (isOmpSession) {

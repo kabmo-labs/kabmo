@@ -15,6 +15,13 @@
  * (`bindStreamingCoalescer`), because that factory re-runs on every render
  * while the batch's scheduled frame must survive across renders. Split out of
  * omp-callbacks.ts so that file stays under the repo's per-file size ceiling.
+ *
+ * The sink's `afterFlush` is the stream's tail follow, and it must write
+ * INSTANTLY (`scrollToBottom('instant')`). It runs right after the commit, so
+ * the DOM still holds the previous chunk's height and the target is already
+ * stale; a SMOOTH write re-issued every frame therefore never arrives.
+ * Measured in Chromium, one line appended per frame for 120 frames: smooth
+ * left the viewport 3 120 px behind the tail, `instant` stayed at 0.
  */
 
 import type { Dispatch, SetStateAction } from 'preact/compat';

@@ -15,10 +15,23 @@
  * shows the button without a single scroll event.
  *
  * Streaming auto-scroll is stick-to-bottom: `scrollToBottom` only actually
- * moves the viewport while `follow` is engaged. The user scrolling away from
- * the tail disengages it (the scroll fight is gone — they can read while the
- * AI generates); scrolling back near the tail, or clicking the scroll-bottom
+ * moves the viewport while `follow` is engaged, and it writes INSTANTLY — a
+ * smooth write re-issued every frame cannot catch a tail that is still growing
+ * (measured in Chromium: one line per frame left the viewport 3 120 px behind
+ * after 120 frames, while `instant` stayed at 0). The reader scrolling away
+ * from the tail disengages it (the scroll fight is gone — they can read while
+ * the AI generates); scrolling back near the tail, or clicking the scroll-bottom
  * button, re-engages it. Programmatic jumps (`scrollTo`) never flip the mode.
+ *
+ * Only the READER'S OWN INPUT disengages it — a wheel, a finger, a pointer, a
+ * key (see `reader-input.ts`). An upward `scrollTop` alone is not evidence: the
+ * row window's anchor correction (a row above the viewport measured shorter
+ * than its estimate) moves the viewport up with nobody behind it, and read as
+ * intent it turned `follow` off for the REST OF THE RUN — the reported "the
+ * stream stopped scrolling and I had to scroll down myself". Nothing re-engages
+ * the flag except a scroll that lands back within the threshold, and the tail
+ * was already running away. (A browser CLAMP is harmless by comparison: it
+ * leaves the viewport at the tail, so the same handler re-engages it.)
  *
  * `jumpToBottom` is the unconditional bypass (`follow` is re-engaged, geometry
  * is re-baselined, and the paging trigger stands down until the landing
@@ -61,9 +74,10 @@ const FOLLOW_BOTTOM_THRESHOLD_PX = 100;
 const COMPACT_TRIGGER_PX = FOLLOW_BOTTOM_THRESHOLD_PX + 64;
 
 /** How long after a wheel/touch/pointer/key event an upward scroll still
- *  counts as the READER's. Only consulted while a jump is landing: a layout
- *  clamp moves `scrollTop` up with nobody behind it, and treating that as the
- *  reader taking the viewport back is what cancelled a jump mid-flight. */
+ *  counts as the READER's. A layout clamp moves `scrollTop` up with nobody
+ *  behind it, and treating that as the reader taking the viewport back is what
+ *  cancelled a jump mid-flight — and what silently stopped the stream's
+ *  auto-scroll for the rest of a run. */
 const READER_INPUT_WINDOW_MS = 600;
 
 export interface ChatTimelineScrollOptions {
@@ -227,14 +241,17 @@ export function useChatTimelineScroll(options: ChatTimelineScrollOptions = {}): 
       // mid-animation as content outgrows the animation. Re-engage whenever
       // the viewport is back near the tail, whichever way it got there.
       if (el.scrollTop < lastScrollTopRef.current - 1) {
-        // An upward move is not automatically the reader's: the row window
-        // replacing estimates with measured heights CLAMPS `scrollTop` up, and
-        // while a jump is landing that clamp used to cancel the jump outright —
-        // the animation stopped mid-flight, the button stayed up, and only the
-        // next click (or scrolling the rest of the way by hand) reached the
-        // tail. While the guard is up, only real input takes the viewport back.
-        const reader = performance.now() - readerInputAtRef.current < READER_INPUT_WINDOW_MS;
-        if (!jumpActiveRef.current || reader) {
+        // An upward move is not automatically the reader's: the row window's
+        // anchor correction writes the reader's row back after a row ABOVE the
+        // viewport was measured shorter than its estimate. While a jump is
+        // landing that move used to cancel the jump outright — the animation
+        // stopped mid-flight and only the next click reached the tail. OUTSIDE a
+        // jump it was worse and quieter: a correction larger than the follow
+        // threshold turned `follow` off for the rest of the run, so the stream
+        // stopped moving the viewport and only a manual scroll to the tail (or
+        // the button) brought it back. Only the reader's own input takes the
+        // viewport back; a layout correction never does.
+        if (performance.now() - readerInputAtRef.current < READER_INPUT_WINDOW_MS) {
           followRef.current = false;
           jumpActiveRef.current = false;
         }

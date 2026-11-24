@@ -84,7 +84,8 @@ export function createOmpAgentCallbacks(deps: OmpAgentCallbacksDeps): OmpAgentCa
     needsReloadRef,
   } = deps;
 
-  bindStreamingCoalescer(setLocalMessages, () => scrollToBottom('smooth'));
+  // Instant, never smooth: see the measured reason in `stream-coalescer.ts`.
+  bindStreamingCoalescer(setLocalMessages, () => scrollToBottom('instant'));
 
   return {
     onAgentStart: () => handleAgentStart(deps),
@@ -248,7 +249,7 @@ export function createOmpAgentCallbacks(deps: OmpAgentCallbacksDeps): OmpAgentCa
       optimisticUserIdRef.current = null;
       pendingUserDisplaysRef.current = [];
       triggerChatCompletionSound(appSettings);
-      setTimeout(() => scrollToBottom('smooth'), 50);
+      setTimeout(() => scrollToBottom('instant'), 50);
       // The sidebar's spinner is NOT released here: it never was armed from
       // this side. The server's `stream` row is released by its own terminal
       // `agent_end` fold (`markEndStatus`), which is what the sidebar and the
