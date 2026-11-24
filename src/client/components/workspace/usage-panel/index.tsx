@@ -1,13 +1,14 @@
-import { AlertCircle } from 'lucide-preact';
+import { AlertCircle, Filter } from 'lucide-preact';
 import { PanelHeader } from '@/client/components/workspace/panel-header';
 import { PanelHeading } from '@/client/components/workspace/panel-header/title-policy';
-import { RefreshButton } from '@/client/components/common/header-button';
+import { HeaderButton, RefreshButton } from '@/client/components/common/header-button';
 import { ProviderDetail } from '@/client/components/settings/categories/usage-settings/ProviderDetail';
-import { buildProviders } from '@/client/components/settings/categories/usage-settings/providers';
+import { buildProviders, hasUsageToShow } from '@/client/components/settings/categories/usage-settings/providers';
 import { formatDateTime } from '@/client/components/settings/categories/usage-settings/format';
 import { SavedResetsSection } from '@/client/components/settings/categories/usage-settings/SavedResetsSection';
 import { newestUsageReport } from '@/client/components/workspace/usage-panel/report';
 import { useUsageReport } from '@/client/hooks/settings/useUsageReport';
+import { useHideEmptyProviders } from '@/client/hooks/settings/hide-empty-providers';
 import { useRealtimeTopic } from '@/client/hooks/ui/realtime';
 import { TOPIC_USAGE } from '@/shared/lib/realtime/protocol';
 import type { UsageReport } from '@/shared/types';
@@ -21,7 +22,12 @@ interface UsagePanelProps {
   tabsMode?: boolean;
 }
 
-/** Right-panel Usage: every provider's quota and balance, one card each. */
+/**
+ * Right-panel Usage: every provider's quota and balance, one card each. The
+ * header's filter toggle drops the providers that report no quota usage at all
+ * (see `hasUsageToShow`) by default; the choice is a global preference, and a
+ * failed read is never hidden.
+ */
 export function UsagePanel({ className = '', active = true, tabsMode = false }: UsagePanelProps) {
   const { report: fetched, isLoading, error, reload } = useUsageReport();
 
@@ -34,6 +40,10 @@ export function UsagePanel({ className = '', active = true, tabsMode = false }: 
   const report = newestUsageReport(usage.data, fetched);
 
   const providers = report ? buildProviders(report) : [];
+  const [hideEmpty, setHideEmpty] = useHideEmptyProviders();
+  // The filter is a choice about the reader's own noise: a provider with a key
+  // but no quota source draws a card whose whole body is "nothing here".
+  const visible = hideEmpty ? providers.filter((provider) => hasUsageToShow(provider.summary)) : providers;
 
   if (error && !report) {
     return (
@@ -78,21 +88,47 @@ export function UsagePanel({ className = '', active = true, tabsMode = false }: 
           </>
         }
         right={
-          <RefreshButton
-            label="Refresh usage"
-            onClick={() => reload({ force: true })}
-            busy={isLoading || usage.refreshing}
-            disabled={isLoading}
-          />
+          <>
+            <HeaderButton
+              label="Hide providers without quota"
+              onClick={() => setHideEmpty(!hideEmpty)}
+              pressed={hideEmpty}
+            >
+              <Filter size={14} />
+            </HeaderButton>
+            <RefreshButton
+              label="Refresh usage"
+              onClick={() => reload({ force: true })}
+              busy={isLoading || usage.refreshing}
+              disabled={isLoading}
+            />
+          </>
         }
       />
 
       <div className="flex-1 min-w-0 min-h-0 w-full overflow-y-auto scrollbar-overlay-container p-3.5 space-y-4">
         {error && <p className="text-error text-xs">{error}</p>}
-        {providers.length > 0 ? (
-          providers.map((provider) => (
+        {visible.length > 0 ? (
+          visible.map((provider) => (
             <ProviderDetail key={provider.id} summary={provider.summary} />
           ))
+        ) : providers.length > 0 ? (
+          // Every provider is hidden by the filter — not "no credentials". The
+          // way back is here as well as in the header, because a panel that
+          // reads empty has no other clue about where its rows went.
+          <>
+            <p className="text-[11px] text-ink/50 leading-relaxed">
+              All {providers.length} providers with a detected credential report no quota usage, so none
+              are shown while that filter is on.
+            </p>
+            <button
+              type="button"
+              onClick={() => setHideEmpty(false)}
+              className="text-[11px] font-semibold text-ink/70 hover:text-ink underline underline-offset-2"
+            >
+              Show providers without quota
+            </button>
+          </>
         ) : (
           <p className="text-[11px] text-ink/50 leading-relaxed">
             No provider credentials detected. Add an API key in Settings → Providers and it will appear here.

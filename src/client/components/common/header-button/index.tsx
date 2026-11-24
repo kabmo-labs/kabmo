@@ -28,11 +28,18 @@ interface HeaderButtonProps {
   disabled?: boolean;
   /** Marks the control busy for assistive tech while its read is in flight. */
   busy?: boolean;
+  /**
+   * A toggle's ON state. Left undefined for a plain action — an unconditional
+   * `aria-pressed` would announce a state the button does not have. The pressed
+   * look holds the hover fill, so the state survives the pointer leaving.
+   */
+  pressed?: boolean;
   /** The glyph, drawn at 14px by the caller. */
   children: ReactNode;
 }
 
-export function HeaderButton({ label, onClick, disabled, busy, children }: HeaderButtonProps) {
+export function HeaderButton({ label, onClick, disabled, busy, pressed, children }: HeaderButtonProps) {
+  const pressedClass = pressed ? 'bg-ink/10 text-ink' : 'text-ink/80 hover:bg-ink/5';
   return (
     <button
       type="button"
@@ -41,7 +48,8 @@ export function HeaderButton({ label, onClick, disabled, busy, children }: Heade
       title={label}
       aria-label={label}
       aria-busy={busy || undefined}
-      className="flex-shrink-0 rounded-md p-1.5 text-ink/80 transition-colors hover:bg-ink/5 disabled:opacity-50"
+      aria-pressed={pressed === undefined ? undefined : pressed}
+      className={`flex-shrink-0 rounded-md p-1.5 transition-colors disabled:opacity-50 ${pressedClass}`}
     >
       {children}
     </button>

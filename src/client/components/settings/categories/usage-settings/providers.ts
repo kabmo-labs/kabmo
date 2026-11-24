@@ -51,6 +51,34 @@ function limitHint(limits: UsageLimitWindow[]): string | undefined {
   return binding.windowLabel ? `${percent}% · ${binding.windowLabel}` : `${percent}% used`;
 }
 
+/**
+ * Whether the Usage panel has anything to draw for this provider: native quota
+ * windows, or a rich report that came back with data (kenari wallet/quota/
+ * usage, DeepSeek or Token Portal balance, Token Harbor allowance).
+ *
+ * The rich objects count only by their payload. A report carrying just an
+ * `error` (the server returns `{ error }` when the upstream call failed) is a
+ * failure, never usage.
+ *
+ * A provider whose read FAILED is kept whatever else it has: the error is the
+ * card's content, and dropping it would hide the one row that explains why a
+ * configured provider is silent. Everything else with no data — an untracked
+ * gateway, or an adapter that returned nothing — is what the panel's
+ * "hide providers without quota" filter removes.
+ */
+export function hasUsageToShow(summary: UsageProviderSummary): boolean {
+  if (summary.error) return true;
+  if (summary.limits.length > 0) return true;
+  return Boolean(
+    summary.kenari?.balance
+    || summary.kenari?.usage
+    || summary.kenari?.quota
+    || summary.deepseek?.balance
+    || summary.tokenHarbor?.allowance
+    || summary.tokenPortal?.balance,
+  );
+}
+
 /** Derives the provider list (status + hint) from a usage report. */
 export function buildProviders(report: UsageReport): ProviderEntry[] {
   return report.providers.map((summary) => ({
