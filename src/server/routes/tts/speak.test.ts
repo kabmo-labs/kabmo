@@ -96,6 +96,25 @@ describe('POST /api/tts/speak', () => {
     });
   });
 
+  test('Gemini base64 audio becomes the response body', async () => {
+    await writeTtsApiKey('gemini', 'AIza-test');
+    stubFetch(() => new Response(JSON.stringify({
+      steps: [{ type: 'model_output', content: [{ type: 'audio', data: 'AQID', mime_type: 'audio/wav' }] }],
+    }), { headers: { 'content-type': 'application/json' } }));
+
+    const response = await run({
+      text: 'Halo, ini suara Indonesia.',
+      config: { engine: 'gemini', model: 'gemini-3.8-flash-tts', voice: 'Kore', speed: 1 },
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toBe('audio/wav');
+    expect([...new Uint8Array(await response.arrayBuffer())]).toEqual([1, 2, 3]);
+    expect(calls[0].url).toBe('https://generativelanguage.googleapis.com/v1beta/interactions');
+    const headers = new Headers(calls[0].init?.headers);
+    expect(headers.get('x-goog-api-key')).toBe('AIza-test');
+  });
+
   test('a keyless local OpenAI-compatible server works without a key', async () => {
     stubFetch(() => new Response(new Uint8Array([4]), {
       headers: { 'content-type': 'audio/mpeg' },

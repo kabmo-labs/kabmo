@@ -131,6 +131,14 @@ describe('SpeechSettings', () => {
     });
   });
 
+  test('Gemini states automatic language and hides the fixed speed control', () => {
+    stubServer();
+    const host = mount(() => {}, { engine: 'gemini' });
+    expect(host.textContent).toContain('Google Gemini TTS');
+    expect(host.textContent).toContain('Detects the answer’s language automatically');
+    expect(host.textContent).not.toContain('1 is normal');
+  });
+
   test('an engine with no Indonesian voice says which engines do', () => {
     stubServer();
     const omp = mount(() => {}, { engine: 'omp' });

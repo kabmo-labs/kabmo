@@ -23,6 +23,7 @@ import { synthesizeWithOpenAi } from '@/server/lib/tts/engines/openai';
 import { synthesizeWithElevenLabs } from '@/server/lib/tts/engines/elevenlabs';
 import { synthesizeWithDeepgram } from '@/server/lib/tts/engines/deepgram';
 import { synthesizeWithXai } from '@/server/lib/tts/engines/xai';
+import { synthesizeWithGemini } from '@/server/lib/tts/engines/gemini';
 import { synthesizeWithOmp } from '@/server/lib/tts/local.server';
 
 export interface SynthesizeOptions {
@@ -71,5 +72,7 @@ export async function synthesizeSpeech(options: SynthesizeOptions): Promise<TtsA
       return synthesizeWithDeepgram(input);
     case 'xai':
       return synthesizeWithXai(input);
+    case 'gemini':
+      return synthesizeWithGemini(input);
   }
 }

@@ -16,7 +16,15 @@
  * the user's omp install, and a future in-Kabmo engine would be a different id.
  */
 
-export type TtsEngine = 'omp' | 'openai' | 'elevenlabs' | 'deepgram' | 'xai';
+import {
+  DEEPGRAM_VOICES,
+  ELEVENLABS_VOICES,
+  GEMINI_VOICES,
+  OPENAI_VOICES,
+  XAI_VOICES,
+} from '@/shared/lib/tts/voices';
+
+export type TtsEngine = 'omp' | 'openai' | 'elevenlabs' | 'deepgram' | 'xai' | 'gemini';
 
 export interface TtsModelOption {
   id: string;
@@ -64,60 +72,13 @@ export interface TtsEngineSpec {
    * - `parameter`: sent as the provider's own language field when set.
    * - `instructions`: folded into the model's steering prompt (OpenAI's
    *   `gpt-4o-mini-tts`); engines without prompt steering ignore it.
+   * - `auto`: no parameter; the model detects the answer's language (Gemini).
    * - `none`: the engine has no language control (omp's local voices, Aura).
    */
-  language: 'required' | 'parameter' | 'instructions' | 'none';
+  language: 'required' | 'parameter' | 'instructions' | 'auto' | 'none';
   /** Where the provider documents the API, shown under the fields. */
   docs: string;
 }
-
-const OPENAI_VOICES: readonly TtsVoiceOption[] = [
-  { id: 'marin', label: 'Marin (recommended)' },
-  { id: 'cedar', label: 'Cedar (recommended)' },
-  { id: 'alloy', label: 'Alloy' },
-  { id: 'ash', label: 'Ash' },
-  { id: 'ballad', label: 'Ballad' },
-  { id: 'coral', label: 'Coral' },
-  { id: 'echo', label: 'Echo' },
-  { id: 'fable', label: 'Fable' },
-  { id: 'nova', label: 'Nova' },
-  { id: 'onyx', label: 'Onyx' },
-  { id: 'sage', label: 'Sage' },
-  { id: 'shimmer', label: 'Shimmer' },
-  { id: 'verse', label: 'Verse' },
-];
-
-const ELEVENLABS_VOICES: readonly TtsVoiceOption[] = [
-  { id: '21m00Tcm4TlvDq8ikWAM', label: 'Rachel (public)' },
-  { id: 'pNInz6obpgDQGcFmaJgB', label: 'Adam (public)' },
-  { id: 'EXAVITQu4vr4xnSDxMaL', label: 'Bella (public)' },
-  { id: 'JBFqnCBsd6RMkjVDRZzb', label: 'George (public)' },
-];
-
-const DEEPGRAM_VOICES: readonly TtsModelOption[] = [
-  { id: 'aura-2-thalia-en', label: 'Thalia (American female)', hint: 'Default; clear and neutral.' },
-  { id: 'aura-2-andromeda-en', label: 'Andromeda (American female)', hint: 'Warm and conversational.' },
-  { id: 'aura-2-helena-en', label: 'Helena (American female)', hint: 'Bright and friendly.' },
-  { id: 'aura-2-apollo-en', label: 'Apollo (American male)', hint: 'Confident, news-like.' },
-  { id: 'aura-2-arcas-en', label: 'Arcas (American male)', hint: 'Calm and steady.' },
-  { id: 'aura-2-orion-en', label: 'Orion (American male)', hint: 'Deep and measured.' },
-  { id: 'aura-2-zeus-en', label: 'Zeus (American male)', hint: 'Authoritative.' },
-  { id: 'aura-2-agustina-es', label: 'Agustina (Spanish female)', hint: 'Spanish.' },
-  { id: 'aura-2-alvaro-es', label: 'Alvaro (Spanish male)', hint: 'Spanish.' },
-  { id: 'aura-2-agathe-fr', label: 'Agathe (French female)', hint: 'French.' },
-  { id: 'aura-2-hector-fr', label: 'Hector (French male)', hint: 'French.' },
-  { id: 'aura-2-aurelia-de', label: 'Aurelia (German female)', hint: 'German.' },
-  { id: 'aura-2-julius-de', label: 'Julius (German male)', hint: 'German.' },
-  { id: 'aura-2-cesare-it', label: 'Cesare (Italian male)', hint: 'Italian.' },
-  { id: 'aura-2-livia-it', label: 'Livia (Italian female)', hint: 'Italian.' },
-  { id: 'aura-2-ama-ja', label: 'Ama (Japanese female)', hint: 'Japanese.' },
-  { id: 'aura-2-ebisu-ja', label: 'Ebisu (Japanese male)', hint: 'Japanese.' },
-];
-
-const XAI_VOICES: readonly TtsVoiceOption[] = [
-  { id: 'eve', label: 'Eve (default)' },
-  { id: 'ara', label: 'Ara' },
-];
 
 export const TTS_ENGINES: readonly TtsEngineSpec[] = [
   {
@@ -222,6 +183,32 @@ export const TTS_ENGINES: readonly TtsEngineSpec[] = [
     language: 'required',
     docs: 'https://docs.x.ai/docs/guides/voice',
   },
+  {
+    id: 'gemini',
+    label: 'Google Gemini TTS',
+    where: 'Text is uploaded to generativelanguage.googleapis.com.',
+    needsKey: true,
+    keyOptional: false,
+    editableBaseUrl: false,
+    baseUrl: 'https://generativelanguage.googleapis.com',
+    defaultModel: 'gemini-3.8-flash-tts',
+    defaultVoice: 'Kore',
+    models: [
+      { id: 'gemini-3.8-flash-tts', label: 'Gemini 3.8 Flash TTS', hint: 'Studio-grade, expressive; 130+ languages.' },
+      { id: 'gemini-3.8-flash-lite-tts', label: 'Gemini 3.8 Flash-Lite TTS', hint: 'Faster and cheaper; 100+ languages.' },
+      { id: 'gemini-3.1-flash-tts-preview', label: 'Gemini 3.1 Flash TTS (preview)', hint: 'Previous generation; low latency.' },
+      { id: 'gemini-2.5-flash-preview-tts', label: 'Gemini 2.5 Flash TTS (preview)', hint: 'Legacy preview model.' },
+    ],
+    voices: GEMINI_VOICES,
+    voiceEditable: true,
+    maxChars: 4000,
+    // Gemini exposes no speaking-rate field; style is steered with
+    // `speech_metadata` annotations instead. A fixed range keeps the control
+    // hidden rather than offering a slider that does nothing.
+    speed: { min: 1, max: 1 },
+    language: 'auto',
+    docs: 'https://ai.google.dev/gemini-api/docs/speech-generation',
+  },
 ];
 
 /** One-click endpoints for the OpenAI-compatible engine. */
@@ -269,7 +256,7 @@ export const TTS_PRESETS: readonly TtsPreset[] = [
   },
 ];
 
-/** Languages xAI accepts (BCP-47), plus `auto`. */
+/** Languages the tagged engines accept (BCP-47), plus `auto`. */
 export const TTS_LANGUAGES: readonly { id: string; label: string }[] = [
   { id: 'auto', label: 'Detect automatically' },
   { id: 'en', label: 'English' },

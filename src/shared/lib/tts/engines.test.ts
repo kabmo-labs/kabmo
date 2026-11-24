@@ -45,8 +45,9 @@ describe('TTS_ENGINES', () => {
 
   test('only the engines that document language support expose it', () => {
     expect(TTS_ENGINES.filter((engine) => engine.language !== 'none').map((engine) => engine.id))
-      .toEqual(['openai', 'elevenlabs', 'xai']);
+      .toEqual(['openai', 'elevenlabs', 'xai', 'gemini']);
     expect(ttsEngine('xai').language).toBe('required');
+    expect(ttsEngine('gemini').language).toBe('auto');
     expect(ttsEngine('omp').language).toBe('none');
   });
 

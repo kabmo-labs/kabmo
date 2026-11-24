@@ -36,6 +36,10 @@ function localVoiceLabel(id: string): string {
 export function SpeechVoiceSection({ config, onPatch }: SpeechVoiceSectionProps) {
   const spec = ttsEngine(config.engine);
   const modelIsVoice = config.engine === 'deepgram';
+  const fixedSpeed = spec.speed.min === spec.speed.max;
+  const takesLanguageTag = spec.language === 'required'
+    || spec.language === 'parameter'
+    || spec.language === 'instructions';
 
   return (
     <section className="space-y-3">
@@ -120,23 +124,25 @@ export function SpeechVoiceSection({ config, onPatch }: SpeechVoiceSectionProps)
           </label>
         )}
 
-        <label className="space-y-1">
-          <span className="block text-[11px] font-medium text-ink/70">Speed</span>
-          <input
-            type="number"
-            min={spec.speed.min}
-            max={spec.speed.max}
-            step={0.05}
-            value={config.speed}
-            onChange={(event) => onPatch({ speed: Number(event.currentTarget.value) })}
-            className={INPUT_CLASS}
-          />
-          <span className="block text-[10px] text-ink/50">
-            {spec.speed.min}–{spec.speed.max}; 1 is normal.
-          </span>
-        </label>
+        {!fixedSpeed && (
+          <label className="space-y-1">
+            <span className="block text-[11px] font-medium text-ink/70">Speed</span>
+            <input
+              type="number"
+              min={spec.speed.min}
+              max={spec.speed.max}
+              step={0.05}
+              value={config.speed}
+              onChange={(event) => onPatch({ speed: Number(event.currentTarget.value) })}
+              className={INPUT_CLASS}
+            />
+            <span className="block text-[10px] text-ink/50">
+              {spec.speed.min}–{spec.speed.max}; 1 is normal.
+            </span>
+          </label>
+        )}
 
-        {spec.language !== 'none' && (
+        {takesLanguageTag && (
           <label className="space-y-1">
             <span className="block text-[11px] font-medium text-ink/70">Language</span>
             <select
@@ -164,10 +170,16 @@ export function SpeechVoiceSection({ config, onPatch }: SpeechVoiceSectionProps)
         )}
       </div>
 
+      {spec.language === 'auto' && (
+        <p className="rounded-lg border border-ink/10 bg-ink/[0.03] px-3 py-2 text-[11px] leading-relaxed text-ink/70">
+          Detects the answer’s language automatically — Indonesian is supported.
+        </p>
+      )}
+
       {spec.language === 'none' && (
         <p className="rounded-lg border border-ink/10 bg-ink/[0.03] px-3 py-2 text-[11px] leading-relaxed text-ink/70">
           {spec.id === 'omp'
-            ? 'omp’s local voices are English. For Indonesian, pick ElevenLabs, xAI, or an OpenAI-compatible server with an Indonesian voice.'
+            ? 'omp’s local voices are English. For Indonesian, pick ElevenLabs, Gemini, xAI, or an OpenAI-compatible server with an Indonesian voice.'
             : 'Deepgram Aura has no Indonesian voice. Pick another engine for Indonesian.'}
         </p>
       )}

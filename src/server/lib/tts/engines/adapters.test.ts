@@ -22,6 +22,7 @@ import { openAiSpeechBody } from '@/server/lib/tts/engines/openai';
 import { elevenLabsBody, elevenLabsUrl } from '@/server/lib/tts/engines/elevenlabs';
 import { deepgramUrl } from '@/server/lib/tts/engines/deepgram';
 import { xaiBody } from '@/server/lib/tts/engines/xai';
+import { geminiAudioFrom, geminiBody, geminiUrl } from '@/server/lib/tts/engines/gemini';
 import { buildSayArgs } from '@/server/lib/tts/local.server';
 
 const INPUT = {
@@ -81,6 +82,27 @@ describe('request builders', () => {
   test('xAI always carries a language, defaulting to auto', () => {
     expect(xaiBody({ ...INPUT, language: '' })).toMatchObject({ language: 'auto', voice_id: 'voice' });
     expect(xaiBody({ ...INPUT, language: 'id' })).toMatchObject({ language: 'id' });
+  });
+
+  test('Gemini uses the Interactions shape and reads base64 audio back out', () => {
+    const body = geminiBody({ ...INPUT, model: 'gemini-3.8-flash-tts', voice: 'Kore' });
+    expect(body).toMatchObject({
+      model: 'gemini-3.8-flash-tts',
+      response_format: { type: 'audio' },
+      generation_config: { speech_config: [{ voice: 'Kore' }] },
+    });
+    expect(geminiUrl('https://generativelanguage.googleapis.com/'))
+      .toBe('https://generativelanguage.googleapis.com/v1beta/interactions');
+
+    const payload = {
+      steps: [{
+        type: 'model_output',
+        content: [{ type: 'audio', data: 'AQID', mime_type: 'audio/wav' }],
+      }],
+    };
+    expect(geminiAudioFrom(payload)).toEqual({ data: 'AQID', mimeType: 'audio/wav' });
+    expect(geminiAudioFrom({ output_audio: { data: 'BAUG' } })).toEqual({ data: 'BAUG', mimeType: 'audio/wav' });
+    expect(geminiAudioFrom({ steps: [] })).toBeNull();
   });
 
   test('the local argv uses a file, never the text as an argument', () => {
