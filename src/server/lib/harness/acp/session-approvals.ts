@@ -37,9 +37,13 @@ export function answerAcpDialog(
   dialogId: string,
   confirmed: boolean,
   optionId?: string,
+  /** The PARENT chat id: a child's grant is stored under the chat the operator
+   *  will reopen, not under an agent-side child id Kabmo cannot address. */
+  grantSessionId?: string,
 ): string | null {
   return settlePermissionDialog(permissions, responder, dialogId, {
     confirmed,
     ...(optionId ? { optionId } : {}),
+    ...(grantSessionId ? { grantSessionId } : {}),
   });
 }
