@@ -5,11 +5,13 @@
 
 /**
  * Dictation WebSocket: one utterance in, one transcript out, with model
- * download progress pushed while the first decode waits on a fetch.
+ * download progress pushed while a local first-run decode waits on a fetch.
  *
- * The transcription itself is omp's own local STT — this route only owns the
- * browser half (audio bytes and progress). See `omp-stt-worker.ts` for why the
- * work happens in a spawned worker rather than the agent RPC.
+ * The engine, the language and the model are fixed BEFORE the recording starts
+ * and arrive in the query string, so an unknown engine or an unusable language
+ * is refused at the upgrade instead of after a minute of audio. The audio itself
+ * is the single binary frame that follows — base64 in JSON cost a third more
+ * bytes and two conversions for nothing.
  *
  * Per-connection state lives on `ws.data`, not in a `WeakMap` keyed by the
  * `ws` object — Elysia hands a different wrapper to `message`/`close` than the
@@ -18,21 +20,30 @@
 
 import { Elysia } from 'elysia';
 import { isSameOriginUpgrade } from '@/server/lib/http/same-origin';
-import { sttWorker } from '@/server/lib/dictation/omp-stt-worker';
-import { resolveDictationLanguage } from '@/server/lib/dictation/language.server';
-import { pcm16ToFloat32 } from '@/shared/lib/dictation/audio';
+import { dictationEngine, resolveDictationModel } from '@/shared/lib/dictation/engines';
+import { resolveDictationTag } from '@/shared/lib/dictation/languages';
+import { readDictationConfig, readDictationApiKey } from '@/server/lib/dictation/settings.server';
+import { localDictationCapability } from '@/server/lib/dictation/capability.server';
+import { readOmpSttLanguage } from '@/server/lib/dictation/language.server';
+import { transcribeWithEngine } from '@/server/lib/dictation/engines';
+import { DictationEngineError } from '@/server/lib/dictation/engines/adapter';
+import { isSilent, utteranceMs } from '@/shared/lib/dictation/gate';
 import { summarizeProgress, type SttProgressSummary } from '@/shared/lib/dictation/models';
 import {
   DICTATION_MAX_AUDIO_BYTES,
+  decodeDictationQuery,
   encodeDictationFrame,
-  decodeDictationClientFrame,
+  type DictationRequest,
   type DictationServerFrame,
 } from '@/shared/lib/dictation/protocol';
 
 interface DictationState {
+  request: DictationRequest;
   /** Percent last reported, so a burst of file events does not flood the socket. */
   lastPercent: number | null;
   lastDecoding: boolean;
+  /** One utterance per socket. */
+  used: boolean;
 }
 
 type DictationWsData = { dictation?: DictationState };
@@ -53,13 +64,18 @@ export const dictationWsRoutes = new Elysia({ prefix: '/api/dictation' }).ws('/w
   },
 
   open(ws) {
-    (ws.data as unknown as DictationWsData).dictation = { lastPercent: null, lastDecoding: false };
+    (ws.data as unknown as DictationWsData).dictation = {
+      request: decodeDictationQuery(ws.data.query as Record<string, unknown> | undefined),
+      lastPercent: null,
+      lastDecoding: false,
+      used: false,
+    };
     ws.send(encodeDictationFrame({ type: 'ready' }));
   },
 
   async message(ws, raw) {
     const state = (ws.data as unknown as DictationWsData).dictation;
-    if (!state) return;
+    if (!state || state.used) return;
 
     const send = (frame: DictationServerFrame) => {
       try {
@@ -69,28 +85,77 @@ export const dictationWsRoutes = new Elysia({ prefix: '/api/dictation' }).ws('/w
       }
     };
 
-    // Elysia hands this an already-parsed object (see the decoder's docs).
-    const frame = decodeDictationClientFrame(raw);
-    if (!frame) return;
-
-    // base64 is 4/3 of the byte count; guard before decoding, not after.
-    if (frame.audio.length > (DICTATION_MAX_AUDIO_BYTES * 4) / 3) {
+    // The utterance is the binary frame; anything else is a protocol mistake.
+    if (!(raw instanceof Uint8Array)) {
+      send({ type: 'error', error: 'Expected the audio as a binary frame.', retryable: false });
+      return;
+    }
+    if (raw.byteLength === 0) {
+      send({ type: 'error', error: 'No audio was received.', retryable: true });
+      return;
+    }
+    if (raw.byteLength > DICTATION_MAX_AUDIO_BYTES) {
       send({ type: 'error', error: 'The recording is too long.', retryable: true });
       return;
     }
+    state.used = true;
 
-    // The wire carries compact PCM16; omp's worker takes normalized Float32 and
-    // rejects every other shape (see `shared/lib/dictation/audio.ts`).
-    const samples = pcm16ToFloat32(new Uint8Array(Buffer.from(frame.audio, 'base64')));
+    const config = await readDictationConfig();
+    const engine = state.request.engine ?? config.engine;
+    const spec = dictationEngine(engine);
+
+    if (utteranceMs(raw.byteLength) < config.minMs) {
+      send({
+        type: 'error',
+        error: `That was too short to transcribe (under ${config.minMs} ms).`,
+        retryable: true,
+      });
+      return;
+    }
+    if (isSilent(raw)) {
+      send({ type: 'error', error: 'No speech was detected in that recording.', retryable: true });
+      return;
+    }
+
+    if (engine === 'omp') {
+      const capability = await localDictationCapability();
+      if (!capability.available) {
+        send({ type: 'error', error: capability.reason ?? 'Local speech-to-text is unavailable.', retryable: false });
+        return;
+      }
+    }
+
+    const apiKey = engine === 'omp' ? undefined : ((await readDictationApiKey()) ?? undefined);
+    if (spec.needsKey && !apiKey) {
+      send({
+        type: 'error',
+        error: `${spec.label} needs an API key. Add one in Settings → Dictation.`,
+        retryable: false,
+      });
+      return;
+    }
+
+    const language = resolveDictationTag(
+      engine,
+      state.request.language ?? config.language,
+      engine === 'omp' ? await readOmpSttLanguage() : undefined,
+    );
+
+    if (engine !== 'omp') {
+      // A hosted engine has no model to download; the wait is the upload and
+      // the decode, and saying so is the whole status line.
+      send({ type: 'progress', percent: null, decoding: true });
+    }
 
     try {
-      // A language the CLIENT sent wins (nothing sends one today, but the frame
-      // carries the field); otherwise the session's configured `stt.language`
-      // decides. An absent value means auto-detect, which is what the worker
-      // does with no `language`.
-      const text = await sttWorker().transcribe(samples, {
-        modelKey: frame.modelKey,
-        language: frame.language ?? (await resolveDictationLanguage()),
+      const text = await transcribeWithEngine({
+        engine,
+        pcm16: raw,
+        model: resolveDictationModel(engine, state.request.model ?? config.model),
+        baseUrl: config.baseUrl,
+        prompt: config.prompt,
+        apiKey,
+        ...(language ? { language } : {}),
         onProgress: (event) => {
           const summary = summarizeProgress(event);
           if (!shouldEmitProgress(state, summary)) return;
@@ -109,7 +174,7 @@ export const dictationWsRoutes = new Elysia({ prefix: '/api/dictation' }).ws('/w
       send({
         type: 'error',
         error: error instanceof Error ? error.message : 'Speech transcription failed.',
-        retryable: true,
+        retryable: error instanceof DictationEngineError ? error.retryable : true,
       });
     }
   },

@@ -78,12 +78,13 @@ export const SCHEMA_EXTRAS: Record<string, SchemaEntry> = {
   // ── Speech ───────────────────────────────────────────────────────────────
   /**
    * Upstream declares `stt.language` with no `ui` block, so its own panel hides
-   * it while its OWN dictation reads it (`cfgSttLanguage`, default `"en"`). The
-   * Kabmo drives the same worker and previously sent no language at all,
-   * which left every decode auto-detecting — the one setting that decides
-   * whether a non-English utterance transcribes correctly was unreachable from
-   * either surface. The row restores it; the dictation route reads it as the
-   * default when the client sends none (see `dictation/ws.ts`).
+   * it while its OWN dictation reads it (`cfgSttLanguage`, default `"en"`).
+   *
+   * Kabmo's dictation now sends the language chosen in Settings → Dictation; this
+   * row stays because omp's own TUI reads the same key, and because it is the
+   * fallback for the LOCAL engine in "detect automatically" mode. Measured on
+   * 19.1.1: the local Whisper pipeline treats a MISSING language as English, so
+   * this value is never "auto" — it is the language that will be used.
    */
   'stt.language': {
     type: 'string',
@@ -91,9 +92,9 @@ export const SCHEMA_EXTRAS: Record<string, SchemaEntry> = {
     ui: {
       tab: 'interaction',
       group: 'Speech',
-      label: 'Speech-to-Text Language',
+      label: 'Speech-to-Text Language (omp)',
       description:
-        'Source language for dictation (ISO-639-1, e.g. "id", "en"). Sent to the recognizer as a hint; leave it as "en" only if your dictation is English.',
+        'ISO-639-1 language for omp’s own dictation, and the fallback for Kabmo’s local engine when Settings → Dictation is set to detect automatically. The local engine cannot auto-detect: a missing value decodes as English.',
     },
   },
 

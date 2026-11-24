@@ -14,38 +14,34 @@
  * `Unknown command`), nor is it a tool or slash command (absent from
  * `get_available_commands`).
  *
- * What it DOES expose is an internal worker, `omp __omp_worker_stt`, whose
- * transport is **Bun IPC** (`stdin`/`stdout` are `ignore`; frames arrive on the
- * `ipc` channel with `serialization: "advanced"`). The Kabmo runs on Bun, so
- * it can spawn that same worker and speak the same frames — which is what
- * `omp-stt-worker.ts` does. The result is omp's own models with no API key and
- * no second implementation of the inference stack.
+ * **Transport: newline-free binary frames on stdin/stdout.** omp 19 moved the
+ * worker behind a daemon tunnel whose payload is a length-prefixed frame
+ * (`u32 length | u8 kind | body`); the codec lives in `speech-frames.ts` with
+ * the layout and the measurement. The 18.x line used Bun IPC
+ * (`process.send` + `serialization: "advanced"`) instead, which on 19.1.1 makes
+ * the worker exit with SIGKILL ~25 ms after spawn — the process reads
+ * `Bun.stdin.stream()` and kills itself when that stream ends, and Kabmo spawned
+ * it with `stdin: 'ignore'`. That is why this module speaks the framing and
+ * nothing else: two transports for one undocumented protocol is two ways to be
+ * deaf, and the build pins 19.1.1.
  *
- * Protocol (JSON objects, request/response by `id`):
- *   → { type: 'ping', id }
- *   → { type: 'transcribe', id, modelKey, audio, language }
- *   ← { type: 'pong', id }
- *   ← { type: 'progress', id, event }        (model download / init)
- *   ← { type: 'transcription', id, text }
- *   ← { type: 'error', id, error }
+ * Measured on 19.1.1 (2026-11-24): ping answered in 24 ms; a 7 s Indonesian
+ * utterance transcribed in ~0.9 s on a warm model; and the transcript is
+ * identical to the same audio decoded in-process by transformers.js, which is
+ * what proves the frame codec neither shifts nor truncates the samples.
  *
- * `audio` is a **Float32Array of normalized samples at 16 kHz**, and it travels
- * as structured clone over the IPC channel — not as base64, and not as an
- * encoded file. Verified against omp 18.4.10 on real speech: a Float32Array
- * transcribes, while a base64 WAV string fails with "Unable to load audio from
- * path/URL since `AudioContext` is not available in your environment" and a
- * Uint8Array fails with "WhisperFeatureExtractor expects input to be a
- * Float32Array ... but got Uint8Array instead".
+ * `audio` is a **Float32Array of normalized 16 kHz samples**. The encoder moves
+ * it into the frame payload and names it with `$pcm`; sending the array inside
+ * the JSON instead turns it into `{"0":…}` and the worker answers
+ * `aud.subarray is not a function`.
  */
 
 import type { Subprocess } from 'bun';
 import { resolveOmpBin } from '@/server/lib/omp/core/cli';
 import { DEFAULT_STT_MODEL, isSttModelKey, type SttProgressEvent } from '@/shared/lib/dictation/models';
+import { SpeechFrameDecoder, encodeSpeechFrame, type SpeechFrame } from '@/server/lib/dictation/speech-frames';
 
-/** Same shape omp's worker uses; `ipc` only fires for object messages. */
-interface WorkerChild extends Subprocess<'ignore', 'ignore', 'ignore'> {
-  send(message: unknown): void;
-}
+type WorkerChild = Subprocess<'pipe', 'pipe', 'pipe'>;
 
 interface Pending {
   resolve: (text: string) => void;
@@ -57,8 +53,12 @@ interface Pending {
 const IDLE_SHUTDOWN_MS = 10 * 60 * 1000;
 const START_TIMEOUT_MS = 10_000;
 
+/** What the user sees when no transport answered. */
+const NO_ANSWER = 'The local speech-to-text worker did not answer.';
+
 class OmpSttWorker {
   private child: WorkerChild | null = null;
+  private decoder = new SpeechFrameDecoder();
   private readonly pending = new Map<string, Pending>();
   private nextId = 1;
   private idleTimer: ReturnType<typeof setTimeout> | undefined;
@@ -77,19 +77,16 @@ class OmpSttWorker {
 
     const child = Bun.spawn({
       cmd: [bin, '__omp_worker_stt'],
-      // Bun IPC replaces stdio: the two streams are deliberately ignored, and
-      // `serialization: "advanced"` is what makes the channel carry objects
-      // rather than strings.
-      stdin: 'ignore',
-      stdout: 'ignore',
-      stderr: 'ignore',
-      serialization: 'advanced',
+      stdin: 'pipe',
+      stdout: 'pipe',
+      stderr: 'pipe',
       env: process.env,
-      ipc: (message: unknown) => this.handleMessage(message),
       onExit: () => this.handleExit(),
     }) as unknown as WorkerChild;
 
     this.child = child;
+    this.decoder = new SpeechFrameDecoder();
+    void this.pump(child);
     this.ready = this.ping(child).catch((error) => {
       this.teardown();
       throw error;
@@ -99,12 +96,37 @@ class OmpSttWorker {
     return child;
   }
 
+  /** Read frames until the pipe closes or a frame is malformed. */
+  private async pump(child: WorkerChild): Promise<void> {
+    const reader = child.stdout.getReader();
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) return;
+        for (const frame of this.decoder.push(value)) this.handleFrame(frame);
+      }
+    } catch (error) {
+      this.fail(error instanceof Error ? error : new Error(String(error)));
+    }
+  }
+
+  private send(child: WorkerChild, frame: Record<string, unknown>): void {
+    try {
+      child.stdin.write(encodeSpeechFrame(frame));
+      // Buffered writes stay ordered; the flush is what puts the frame on the
+      // wire before a decode that can take a second.
+      void child.stdin.flush();
+    } catch {
+      // Closed pipe: the exit handler is what reports it.
+    }
+  }
+
   private ping(child: WorkerChild): Promise<void> {
     const id = this.newId();
     return new Promise<void>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
-        reject(new Error('STT worker did not respond to ping.'));
+        reject(new Error(`${NO_ANSWER} (no ping within ${START_TIMEOUT_MS / 1000}s)`));
       }, START_TIMEOUT_MS);
       this.pending.set(id, {
         resolve: () => {
@@ -116,7 +138,7 @@ class OmpSttWorker {
           reject(error);
         },
       });
-      child.send({ type: 'ping', id });
+      this.send(child, { type: 'ping', id });
     });
   }
 
@@ -124,16 +146,14 @@ class OmpSttWorker {
     return String(this.nextId++);
   }
 
-  private handleMessage(message: unknown): void {
-    if (!message || typeof message !== 'object') return;
-    const frame = message as { type?: string; id?: string; text?: string; error?: string; event?: unknown };
+  private handleFrame(frame: SpeechFrame): void {
+    if (frame.type === 'log') return;
+    const entry = frame.id ? this.pending.get(frame.id) : undefined;
 
     if (frame.type === 'pong') {
-      this.pending.get(frame.id ?? '')?.resolve('');
+      entry?.resolve('');
       return;
     }
-
-    const entry = frame.id ? this.pending.get(frame.id) : undefined;
 
     if (frame.type === 'progress') {
       entry?.onProgress?.(frame.event as SttProgressEvent);
@@ -143,7 +163,7 @@ class OmpSttWorker {
     if (frame.type === 'transcription') {
       if (!frame.id) return;
       this.pending.delete(frame.id);
-      entry?.resolve(frame.text ?? '');
+      entry?.resolve(typeof frame.text === 'string' ? frame.text : '');
       this.scheduleIdleShutdown();
       return;
     }
@@ -151,7 +171,7 @@ class OmpSttWorker {
     if (frame.type === 'error') {
       if (!frame.id) return;
       this.pending.delete(frame.id);
-      entry?.reject(new Error(frame.error ?? 'Speech transcription failed.'));
+      entry?.reject(new Error(typeof frame.error === 'string' ? frame.error : 'Speech transcription failed.'));
       this.scheduleIdleShutdown();
     }
   }
@@ -160,14 +180,26 @@ class OmpSttWorker {
     this.teardown();
   }
 
+  /** A broken stream: report its reason, then release the process. */
+  private fail(error: Error): void {
+    const child = this.child;
+    this.child = null;
+    this.ready = null;
+    this.clearIdle();
+    for (const entry of this.pending.values()) entry.reject(error);
+    this.pending.clear();
+    try {
+      child?.kill();
+    } catch {
+      // already gone
+    }
+  }
+
   private teardown(): void {
     const child = this.child;
     this.child = null;
     this.ready = null;
-    if (this.idleTimer) {
-      clearTimeout(this.idleTimer);
-      this.idleTimer = undefined;
-    }
+    this.clearIdle();
     for (const entry of this.pending.values()) {
       entry.reject(new Error('STT worker exited.'));
     }
@@ -179,8 +211,15 @@ class OmpSttWorker {
     }
   }
 
+  private clearIdle(): void {
+    if (this.idleTimer) {
+      clearTimeout(this.idleTimer);
+      this.idleTimer = undefined;
+    }
+  }
+
   private scheduleIdleShutdown(): void {
-    clearTimeout(this.idleTimer);
+    this.clearIdle();
     this.idleTimer = setTimeout(() => this.teardown(), IDLE_SHUTDOWN_MS);
     // Never hold the process open for the worker's sake.
     this.idleTimer.unref?.();
@@ -199,12 +238,11 @@ class OmpSttWorker {
     const id = this.newId();
     const modelKey = isSttModelKey(options.modelKey) ? options.modelKey : DEFAULT_STT_MODEL;
 
-    clearTimeout(this.idleTimer);
-    this.idleTimer = undefined;
+    this.clearIdle();
 
     return new Promise<string>((resolve, reject) => {
       this.pending.set(id, { resolve, reject, onProgress: options.onProgress });
-      child.send({
+      this.send(child, {
         type: 'transcribe',
         id,
         modelKey,
@@ -217,6 +255,25 @@ class OmpSttWorker {
   /** Whether a worker is currently alive (a ping answered, not yet idle-killed). */
   get alive(): boolean {
     return this.child !== null;
+  }
+
+  /**
+   * Start the worker and answer whether it came up.
+   *
+   * This is the only honest capability test: the process either answers a ping
+   * or it does not, and a version that changed its transport fails here in
+   * milliseconds instead of failing a user's first utterance. A successful
+   * probe schedules the idle shutdown, so a settings page visit does not pin a
+   * loaded model in memory.
+   */
+  async probe(): Promise<{ ok: boolean; error?: string }> {
+    try {
+      await this.ensureWorker();
+      this.scheduleIdleShutdown();
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    }
   }
 
   /** Stop the worker immediately (server teardown / engine reload). */
@@ -233,8 +290,7 @@ const globalStore = globalThis as typeof globalThis & { __kabmoSttWorker?: OmpSt
 
 /** The process-wide STT worker. */
 export function sttWorker(): OmpSttWorker {
-  globalStore.__kabmoSttWorker ??= new OmpSttWorker();
-  return globalStore.__kabmoSttWorker;
+  return (globalStore.__kabmoSttWorker ??= new OmpSttWorker());
 }
 
 /** Recycle the worker so the next request boots a fresh one (omp update / reload). */

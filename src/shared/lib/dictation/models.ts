@@ -34,7 +34,11 @@ export interface SttModel {
   key: SttModelKey;
   label: string;
   sizeHint: string;
-  /** Parakeet v3 covers 25 European languages only; the Whisper tiers are multilingual. */
+  /**
+   * Whether a `language` hint is applied. The Whisper tiers honour it; the
+   * sherpa checkpoints (Parakeet, Nemotron) ignore it entirely, so a language
+   * they do not cover cannot be fixed by the setting.
+   */
   multilingual: boolean;
 }
 
@@ -42,25 +46,25 @@ export const STT_MODELS: readonly SttModel[] = [
   {
     key: 'whisper-base',
     label: 'Fast (Whisper base)',
-    sizeHint: '~80 MB',
+    sizeHint: '~60 MB',
     multilingual: true,
   },
   {
     key: 'whisper-small',
     label: 'Balanced (Whisper small)',
-    sizeHint: '~250 MB',
+    sizeHint: '~190 MB',
     multilingual: true,
   },
   {
     key: 'whisper-large-v3-turbo',
     label: 'Turbo (Whisper large-v3)',
-    sizeHint: '~500 MB',
+    sizeHint: '~600 MB',
     multilingual: true,
   },
   {
     key: 'parakeet-tdt-0.6b-v3',
     label: 'Parakeet TDT v3 (SoTA)',
-    sizeHint: '~465 MB',
+    sizeHint: '~680 MB',
     multilingual: false,
   },
   {

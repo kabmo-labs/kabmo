@@ -39,6 +39,7 @@ is not documentation and does not move.
 | 23 | [Change journal](milestones/M23-change-journal.md) | a Kabmo-owned JSONL journal for every mutation, including the `bash` writes omp never records: the writer, reader, classifier, git scan pass and tests | partial |
 | 24 | [GitHub Actions viewer](milestones/M24-github-actions-viewer.md) | the Actions panel plugin — list, run drill with jobs and steps, job logs, cancel/re-run, header readout — over measured payloads and a free conditional poll | partial |
 | 25 | [Kanban board](milestones/M25-kanban-plugin.md) | a board that drives work: a card is a prompt + agent + stage, `Start work` spawns the chat, stage prompts become a real system prompt, and an agent moves its own cards through MCP | done |
+| 26 | [Dictation engines](milestones/M26-dictation-engines.md) | the engine seam and its settings page: explicit Indonesian/English, a 0600 key file, [OI]-compatible/Deepgram/ElevenLabs adapters, WAV, binary transport, and omp 19's local worker frame protocol | partial |
 
 ### What still owes
 
@@ -54,6 +55,7 @@ is not documentation and does not move.
 | 22 | `kabmo mcp serve`, ACP injection, the adapter matrix | the tree-scoped token rule shipped; the MCP server and its injection are specified, not implemented |
 | 23 | the parity test on a real session, the blob prune, `apply_patch`/MCP write adapters | the writer, reader, classifier, scan pass and run separation shipped; the remaining items are listed in §10.4 |
 | 24 | the shared-core extraction (P0/D1) and the run-level log archive (P7) | the plugin, its 51 tests and the browser smoke shipped; the extraction and the archive did not |
+| 26 | an AudioWorklet capture path, a real-mic Indonesian accuracy run | the engine seam, settings page, adapters, gates, binary transport and omp 19's worker frame protocol shipped; whisper-base garbles Indonesian on synthetic audio (identical in-process, so the model's ceiling) |
 
 Declined, and recorded as such rather than left open: plugin-platform **P6** (component registry,
 declined in M04 and re-declined in M05/W6) and the editor's **format-on-save** (M14).

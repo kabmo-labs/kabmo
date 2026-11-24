@@ -5,33 +5,43 @@
 
 /**
  * Composer dictation: capture the browser's microphone, hand the utterance to
- * Kabmo's dictation socket, and insert what omp's local STT returns.
+ * Kabmo's dictation socket, and insert what the configured engine returns.
  *
- * Audio is captured as raw PCM16LE mono @16 kHz — the rate omp's worker expects
- * — and sent as ONE frame on release, because omp's STT is not incremental (its
- * own TUI inserts text when the utterance ends). The socket's other direction
- * carries the reason a first request is slow: the model download.
+ * Audio is captured as raw PCM16LE mono @16 kHz — the rate every engine takes —
+ * and sent as ONE binary frame on release. The engine, the language and the
+ * model are fixed before recording starts and travel in the socket's query
+ * string, so the server can refuse an unusable combination at the upgrade rather
+ * than after a minute of audio.
  *
- * Capture uses `AudioContext` + `ScriptProcessorNode`. The node is deprecated
- * in favour of `AudioWorklet`, but it is the only capture path shipped by every
+ * Two local refusals happen BEFORE the round trip, because both are cheaper to
+ * answer here and both otherwise produce text nobody said: a recording shorter
+ * than `minMs`, and one whose level never rises above the silence floor (a
+ * ~100 ms tap is the classic input for a Whisper "Thank you." hallucination).
+ *
+ * Capture uses `AudioContext` + `ScriptProcessorNode`. The node is deprecated in
+ * favour of `AudioWorklet`, but it is the only capture path shipped by every
  * target browser (Safari included) without serving a separate worklet module;
- * `MediaRecorder` is not an option because it emits Opus/WebM, which the worker
- * cannot decode.
+ * `MediaRecorder` is not an option because it emits Opus/WebM, which not every
+ * engine accepts.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { concatSamples, float32ToPcm16 } from '@/shared/lib/dictation/audio';
 import { describeCaptureFailure } from '@/shared/lib/dictation/capture-failure';
-import { DICTATION_SAMPLE_RATE } from '@/shared/lib/dictation/protocol';
-import type { DictationServerFrame } from '@/shared/lib/dictation/protocol';
+import { isSilent, utteranceMs } from '@/shared/lib/dictation/gate';
+import {
+  DICTATION_SAMPLE_RATE,
+  decodeDictationServerFrame,
+  dictationSocketPath,
+  type DictationRequest,
+} from '@/shared/lib/dictation/protocol';
+import type { DictationConfig } from '@/shared/lib/dictation/settings';
 
 export interface UseSpeechToTextOptions {
   /** Called with the final transcript. */
   onResult: (text: string) => void;
-  /** omp model key; the server falls back to its default when omitted. */
-  modelKey?: string;
-  /** BCP 47 tag (`id-ID`, `en-US`). Omitted lets the model auto-detect. */
-  language?: string;
+  /** The stored preference; read live so a settings edit applies next time. */
+  config: DictationConfig;
 }
 
 export interface UseSpeechToTextReturn {
@@ -48,22 +58,21 @@ export interface UseSpeechToTextReturn {
   error: string | null;
 }
 
-/** Base64-encode bytes for the JSON frame. */
-function toBase64(bytes: Uint8Array): string {
-  let binary = '';
-  const chunk = 8192;
-  for (let i = 0; i < bytes.length; i += chunk) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
-  }
-  return btoa(binary);
+/** The socket path for this config: engine, language and model, no audio. */
+export function dictationRequestFor(config: DictationConfig): DictationRequest {
+  return {
+    engine: config.engine,
+    language: config.language,
+    ...(config.model.trim() ? { model: config.model.trim() } : {}),
+  };
 }
 
-function dictationUrl(): string {
+function dictationUrl(request: DictationRequest): string {
   const scheme = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  return `${scheme}//${location.host}/api/dictation/ws`;
+  return `${scheme}//${location.host}${dictationSocketPath(request)}`;
 }
 
-export function useSpeechToText({ onResult, modelKey, language }: UseSpeechToTextOptions): UseSpeechToTextReturn {
+export function useSpeechToText({ onResult, config }: UseSpeechToTextOptions): UseSpeechToTextReturn {
   const [isListening, setIsListening] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [progressText, setProgressText] = useState<string | null>(null);
@@ -76,12 +85,17 @@ export function useSpeechToText({ onResult, modelKey, language }: UseSpeechToTex
   const chunksRef = useRef<Float32Array[]>([]);
   const inputRateRef = useRef(DICTATION_SAMPLE_RATE);
   const socketRef = useRef<WebSocket | null>(null);
+  const autoStopRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  /** Set by `stopListening` below; the auto-stop timer needs a stable seam. */
+  const stopListeningRef = useRef<(() => void) | null>(null);
 
   const isSupported =
     typeof navigator !== 'undefined' && typeof navigator.mediaDevices?.getUserMedia === 'function';
 
   /** Stop capturing and release the microphone; returns the recorded samples. */
   const releaseCapture = useCallback((): Float32Array[] => {
+    clearTimeout(autoStopRef.current);
+    autoStopRef.current = undefined;
     processorRef.current?.disconnect();
     processorRef.current = null;
     sourceRef.current?.disconnect();
@@ -108,14 +122,93 @@ export function useSpeechToText({ onResult, modelKey, language }: UseSpeechToTex
     [releaseCapture],
   );
 
+  const send = useCallback(
+    (chunks: Float32Array[]) => {
+      const samples = concatSamples(chunks);
+      const pcm16 = float32ToPcm16(samples, inputRateRef.current, DICTATION_SAMPLE_RATE);
+      const bytes = new Uint8Array(pcm16.buffer, pcm16.byteOffset, pcm16.byteLength);
+
+      if (utteranceMs(bytes.byteLength) < config.minMs) {
+        fail(`That was too short to transcribe (under ${config.minMs} ms).`);
+        return;
+      }
+      if (isSilent(bytes)) {
+        fail('No speech was detected in that recording.');
+        return;
+      }
+
+      setIsTranscribing(true);
+      setProgressText('Transcribing…');
+
+      const socket = new WebSocket(dictationUrl(dictationRequestFor(config)));
+      socketRef.current = socket;
+      socket.binaryType = 'arraybuffer';
+
+      socket.onopen = () => {
+        // A copy: the buffer is a view over the resampled array and Bun's
+        // serializer wants an owned frame.
+        socket.send(bytes.slice().buffer);
+      };
+
+      socket.onmessage = (event) => {
+        const frame = decodeDictationServerFrame(event.data);
+        if (!frame) return;
+
+        if (frame.type === 'progress') {
+          setProgressText(
+            frame.decoding
+              ? 'Transcribing…'
+              : frame.percent !== null
+                ? `Downloading speech model ${frame.percent}%`
+                : 'Downloading speech model…',
+          );
+          return;
+        }
+
+        if (frame.type === 'final') {
+          setProgressText(null);
+          setIsTranscribing(false);
+          socket.close();
+          socketRef.current = null;
+          onResult(frame.text);
+          return;
+        }
+
+        if (frame.type === 'error') {
+          fail(frame.error);
+        }
+      };
+
+      socket.onerror = () => {
+        if (socketRef.current === socket) fail('Could not reach the dictation service.');
+      };
+
+      socket.onclose = () => {
+        // A close before a final/error frame means the transcription never landed.
+        if (socketRef.current === socket) fail('The dictation connection closed unexpectedly.');
+      };
+    },
+    [config, fail, onResult],
+  );
+
   const startListening = useCallback(() => {
     if (!isSupported) return;
     setError(null);
     setProgressText(null);
     chunksRef.current = [];
 
+    const deviceId = config.deviceId.trim();
     navigator.mediaDevices
-      .getUserMedia({ audio: true })
+      .getUserMedia({
+        audio: {
+          ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
+          // Speech capture: the three processors are what makes a laptop mic
+          // usable in a room, and every target browser supports them.
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      })
       .then((stream) => {
         streamRef.current = stream;
         try {
@@ -133,6 +226,12 @@ export function useSpeechToText({ onResult, modelKey, language }: UseSpeechToTex
           source.connect(processor);
           processor.connect(context.destination);
           setIsListening(true);
+
+          // A recording nobody stops would grow until the browser kills it.
+          autoStopRef.current = setTimeout(() => {
+            autoStopRef.current = undefined;
+            stopListeningRef.current?.();
+          }, config.maxMs);
         } catch {
           // The microphone IS open at this point, so the failure is the audio
           // graph, not the permission — and the stream has to be released or
@@ -143,70 +242,21 @@ export function useSpeechToText({ onResult, modelKey, language }: UseSpeechToTex
       .catch((cause: unknown) => {
         setError(describeCaptureFailure(cause));
       });
-  }, [fail, isSupported]);
+  }, [config.deviceId, config.maxMs, fail, isSupported]);
 
+  // The auto-stop timer is armed inside `startListening`, which must not depend
+  // on `stopListening` (it would re-create the callback on every render and
+  // restart the timer). One ref is the seam.
   const stopListening = useCallback(() => {
     setIsListening(false);
     const chunks = releaseCapture();
     if (chunks.length === 0) return;
+    send(chunks);
+  }, [releaseCapture, send]);
 
-    const samples = concatSamples(chunks);
-    if (samples.length === 0) return;
-    const pcm16 = float32ToPcm16(samples, inputRateRef.current, DICTATION_SAMPLE_RATE);
-    const audio = toBase64(new Uint8Array(pcm16.buffer, pcm16.byteOffset, pcm16.byteLength));
-
-    setIsTranscribing(true);
-    setProgressText('Transcribing…');
-
-    const socket = new WebSocket(dictationUrl());
-    socketRef.current = socket;
-
-    socket.onopen = () => {
-      socket.send(JSON.stringify({ type: 'transcribe', audio, modelKey, language }));
-    };
-
-    socket.onmessage = (event) => {
-      let frame: DictationServerFrame;
-      try {
-        frame = JSON.parse(String(event.data)) as DictationServerFrame;
-      } catch {
-        return;
-      }
-
-      if (frame.type === 'progress') {
-        setProgressText(
-          frame.decoding
-            ? 'Transcribing…'
-            : frame.percent !== null
-              ? `Downloading speech model ${frame.percent}%`
-              : 'Downloading speech model…',
-        );
-        return;
-      }
-
-      if (frame.type === 'final') {
-        setProgressText(null);
-        setIsTranscribing(false);
-        socket.close();
-        socketRef.current = null;
-        onResult(frame.text);
-        return;
-      }
-
-      if (frame.type === 'error') {
-        fail(frame.error);
-      }
-    };
-
-    socket.onerror = () => {
-      if (socketRef.current === socket) fail('Could not reach the dictation service.');
-    };
-
-    socket.onclose = () => {
-      // A close before a final/error frame means the transcription never landed.
-      if (socketRef.current === socket) fail('The dictation connection closed unexpectedly.');
-    };
-  }, [fail, language, modelKey, onResult, releaseCapture]);
+  useEffect(() => {
+    stopListeningRef.current = stopListening;
+  }, [stopListening]);
 
   useEffect(
     () => () => {

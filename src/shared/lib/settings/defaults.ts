@@ -31,6 +31,7 @@ import { DEFAULT_ICON_STYLE } from '@/shared/lib/theme/icon-style';
 import { DEFAULT_TRAY_ICON_STYLE } from '@/shared/lib/theme/tray-icon-style';
 import { EDITOR_DEFAULT_FONT_FAMILY } from '@/shared/lib/code/editor/typography';
 import { EDITOR_DEFAULT_THEME_ID } from '@/shared/lib/code/editor/themes';
+import { DEFAULT_DICTATION_CONFIG } from '@/shared/lib/dictation/settings';
 
 export const DEFAULT_SETTINGS = {
   theme: DEFAULT_THEME_ID,
@@ -70,4 +71,5 @@ export const DEFAULT_SETTINGS = {
   keybindingSend: 'Enter',
   keybindingNewLine: 'Shift + Enter',
   keybindingSteering: 'Ctrl / Cmd + Enter',
+  dictation: DEFAULT_DICTATION_CONFIG,
 } satisfies SettingsState;

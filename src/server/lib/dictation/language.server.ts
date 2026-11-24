@@ -4,20 +4,15 @@
  */
 
 /**
- * The source language the dictation route sends to omp's STT worker.
+ * omp's own `stt.language`, read from the live config.
  *
- * omp declares `stt.language` (default `"en"`) and its own dictation reads it
- * through `cfgSttLanguage`; Kabmo drives the SAME worker but previously
- * passed no language at all, so every decode auto-detected. Measured at
- * 18.11.0: the worker only applies `language` for a non-`englishOnly` model
- * (Whisper tiers, and the Parakeet/Nemotron checkpoints ignore it), so the hint
- * matters exactly for the multilingual tiers Kabmo defaults to.
+ * The dictation route sends a language the CLIENT chose; this value is only the
+ * fallback for the local engine in `auto` mode, where the alternative is
+ * "nothing", and omp's worker then pins English anyway. Reading it live means a
+ * value written with `omp config set` applies to the next utterance.
  *
- * Read from the live config rather than mirrored, so a value the user edits in
- * Settings — or writes with `omp config set` — is what the next utterance uses.
  * Cached for a minute because the alternative is a ~0.3 s `omp` spawn per
- * utterance, and the config write route drops the cache so an edit applies at
- * once.
+ * utterance; the config write route drops the cache so an edit applies at once.
  */
 
 import { getOmpConfigValue } from '@/server/lib/omp/config/config-cli';
@@ -55,14 +50,16 @@ export function onOmpConfigWritten(key: string): void {
 }
 
 /**
- * The language tag to send, or `undefined` to let the recognizer auto-detect.
+ * omp's configured language tag, or `undefined` when it has none this build can
+ * use.
  *
- * An unusable or unset value yields `undefined` rather than a guess: the worker
- * treats an absent `language` as "auto-detect", which is the honest behaviour
- * for a config Kabmo cannot read, and it is strictly better than pinning
- * every decode to English because a read failed.
+ * `undefined` is NOT "let the recognizer decide": the local worker's pipeline
+ * treats a missing language as English (measured — see
+ * `shared/lib/dictation/languages.ts`). It means "no stored intent", and the
+ * caller substitutes `en` explicitly so the behaviour is stated rather than
+ * implied.
  */
-export async function resolveDictationLanguage(): Promise<string | undefined> {
+export async function readOmpSttLanguage(): Promise<string | undefined> {
   if (isMockMode()) return undefined;
   const host = globalThis as CacheHost;
   const cached = host[cacheKey];
@@ -73,8 +70,8 @@ export async function resolveDictationLanguage(): Promise<string | undefined> {
     const raw = await getOmpConfigValue('stt.language');
     value = typeof raw === 'string' && LANGUAGE_TAG_RE.test(raw.trim()) ? raw.trim() : '';
   } catch {
-    // A failed read is not a language: fall through to auto-detect, and do not
-    // cache the miss for a full minute (the next utterance retries).
+    // A failed read is not a language, and the miss is not cached: the next
+    // utterance retries instead of pinning a full minute of guesses.
     return undefined;
   }
   host[cacheKey] = { at: Date.now(), value };

@@ -85,6 +85,8 @@ export interface ComposerRowsInput {
   voiceSupported?: boolean;
   voiceListening?: boolean;
   voiceBusy?: boolean;
+  /** Engine + language, for the mic's tooltip. */
+  voiceHint?: string;
   onVoiceToggle?: () => void;
   /** "Wait for session": the pick and the sessions it may name. */
   waiting?: {
@@ -189,6 +191,7 @@ export function composerRows({
         voiceSupported={input.voiceSupported}
         voiceListening={input.voiceListening}
         voiceBusy={input.voiceBusy}
+        voiceHint={input.voiceHint}
         onVoiceToggle={input.onVoiceToggle}
         text={input.value}
         harness={input.harness}

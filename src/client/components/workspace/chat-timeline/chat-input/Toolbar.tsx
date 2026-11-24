@@ -50,6 +50,8 @@ export interface ComposerToolbarProps {
   voiceListening?: boolean;
   /** True from release until the transcript lands; the button shows a spinner. */
   voiceBusy?: boolean;
+  /** Engine + language the next utterance will use, for the tooltip. */
+  voiceHint?: string;
   onVoiceToggle?: () => void;
   /** The draft, handed to a plugin `composerAction` at render time. */
   text?: string;
@@ -127,6 +129,7 @@ export function ComposerToolbar({
   voiceSupported,
   voiceListening,
   voiceBusy,
+  voiceHint,
   onVoiceToggle,
   text = '',
   harness,
@@ -234,7 +237,7 @@ export function ComposerToolbar({
                 ? 'Transcribing…'
                 : voiceListening
                   ? 'Stop recording'
-                  : 'Voice input (omp speech-to-text)'
+                  : `Voice input — ${voiceHint ?? 'speech-to-text'}`
             }
           >
             {voiceBusy ? (

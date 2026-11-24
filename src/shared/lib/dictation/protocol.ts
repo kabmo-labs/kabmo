@@ -4,36 +4,67 @@
  */
 
 /**
- * Dictation WebSocket frames: the contract between the composer's mic button
- * and Kabmo's dictation route.
+ * Dictation WebSocket contract: one utterance per socket, audio as ONE binary
+ * frame, engine choices in the query string, JSON frames back.
  *
- * One utterance per socket, and the audio travels in a SINGLE frame. The
- * alternative — streaming chunks while the user speaks — buys nothing here:
- * omp's STT is not incremental (its own TUI inserts text on release), so a
- * chunked transport would only add reordering and reassembly for a result the
- * final decode replaces. The socket exists for the other direction: the server
- * pushes model download progress while the decode waits on a first-run fetch.
+ * The audio used to travel as base64 inside a JSON frame. That cost a third
+ * more bytes on the wire and two conversions (base64 → bytes → Float32) for no
+ * benefit: the terminal socket already proves Elysia delivers a `Uint8Array`
+ * client frame untouched, and the metadata is fixed before the recording
+ * starts, so it belongs in the URL. The query is also where the server can
+ * refuse an unknown engine before a byte of audio is buffered.
+ *
+ * The socket exists for the other direction: the local engine pushes model
+ * download progress while a first-run decode waits on a fetch, and a hosted
+ * engine reports that it is decoding.
  */
 
+import { isDictationEngine, type DictationEngine } from '@/shared/lib/dictation/engines';
+import { isDictationLanguage, type DictationLanguage } from '@/shared/lib/dictation/languages';
 import { isRecord } from '@/shared/lib/util/guards';
 
 export const DICTATION_SAMPLE_RATE = 16000;
 export const DICTATION_BITS = 16;
 export const DICTATION_CHANNELS = 1;
-export const DICTATION_FORMAT = `audio/pcm;rate=${DICTATION_SAMPLE_RATE};bits=${DICTATION_BITS}`;
 
 /** Cap on one utterance, so a stuck client cannot post an unbounded buffer. */
 export const DICTATION_MAX_AUDIO_BYTES = 32 * 1024 * 1024;
 
-/** Client → Server: the whole utterance, PCM16LE mono @16 kHz, base64. */
-export interface DictationTranscribeFrame {
-  type: 'transcribe';
-  audio: string;
-  modelKey?: string;
-  language?: string;
+/** Client → Server: the utterance's metadata, fixed before recording starts. */
+export interface DictationRequest {
+  engine?: DictationEngine;
+  language?: DictationLanguage;
+  model?: string;
 }
 
-export type DictationClientFrame = DictationTranscribeFrame;
+/** `/api/dictation/ws?engine=…&language=…&model=…` — empty fields are omitted. */
+export function dictationSocketPath(request: DictationRequest = {}): string {
+  const query = new URLSearchParams();
+  if (request.engine) query.set('engine', request.engine);
+  if (request.language) query.set('language', request.language);
+  const model = request.model?.trim();
+  if (model) query.set('model', model);
+  const search = query.toString();
+  return `/api/dictation/ws${search ? `?${search}` : ''}`;
+}
+
+/**
+ * Read the request out of a query record.
+ *
+ * An unknown engine or language is DROPPED rather than forwarded: the server
+ * then uses the stored setting, which is a value this build understands. A
+ * value passed through would reach a recognizer as a language tag.
+ */
+export function decodeDictationQuery(query: Record<string, unknown> | undefined): DictationRequest {
+  const engine = query?.engine;
+  const language = query?.language;
+  const model = query?.model;
+  return {
+    ...(isDictationEngine(engine) ? { engine } : {}),
+    ...(isDictationLanguage(language) ? { language } : {}),
+    ...(typeof model === 'string' && model.trim() ? { model: model.trim().slice(0, 120) } : {}),
+  };
+}
 
 /** Server → Client: the socket is open and ready for an utterance. */
 export interface DictationReadyFrame {
@@ -68,7 +99,7 @@ export type DictationServerFrame =
   | DictationFinalFrame
   | DictationErrorFrame;
 
-export function encodeDictationFrame(frame: DictationClientFrame | DictationServerFrame): string {
+export function encodeDictationFrame(frame: DictationServerFrame): string {
   return JSON.stringify(frame);
 }
 
@@ -81,17 +112,13 @@ function tryParse(text: string): unknown {
 }
 
 /**
- * Decode an inbound frame from whatever the socket delivered.
+ * Decode an inbound server frame.
  *
- * Elysia hands the `message` callback an ALREADY-PARSED object when no `body`
- * schema is declared — verified: `typeof raw` is `object` and `String(raw)` is
- * `[object Object]`. Routing that through `new TextDecoder().decode(raw)`
- * yields an empty string, so a `JSON.parse` of it throws and the frame is
- * silently dropped: the client sees `ready` and then nothing, with no error on
- * either side. The terminal protocol's decoder takes the same three shapes for
- * the same reason.
+ * A frame this build does not recognise is null rather than a guess: the client
+ * has four states to draw, and an unknown one must not be rendered as an empty
+ * transcript.
  */
-export function decodeDictationClientFrame(raw: unknown): DictationClientFrame | null {
+export function decodeDictationServerFrame(raw: unknown): DictationServerFrame | null {
   const value =
     typeof raw === 'string'
       ? tryParse(raw)
@@ -99,12 +126,25 @@ export function decodeDictationClientFrame(raw: unknown): DictationClientFrame |
         ? tryParse(new TextDecoder().decode(raw))
         : raw;
   if (!isRecord(value)) return null;
-  if (value.type !== 'transcribe') return null;
-  if (typeof value.audio !== 'string') return null;
-  return {
-    type: 'transcribe',
-    audio: value.audio,
-    ...(typeof value.modelKey === 'string' ? { modelKey: value.modelKey } : {}),
-    ...(typeof value.language === 'string' ? { language: value.language } : {}),
-  };
+
+  if (value.type === 'ready') return { type: 'ready' };
+
+  if (value.type === 'progress') {
+    return {
+      type: 'progress',
+      percent: typeof value.percent === 'number' ? value.percent : null,
+      ...(typeof value.file === 'string' ? { file: value.file } : {}),
+      decoding: value.decoding === true,
+    };
+  }
+
+  if (value.type === 'final' && typeof value.text === 'string') {
+    return { type: 'final', text: value.text };
+  }
+
+  if (value.type === 'error' && typeof value.error === 'string') {
+    return { type: 'error', error: value.error, retryable: value.retryable === true };
+  }
+
+  return null;
 }

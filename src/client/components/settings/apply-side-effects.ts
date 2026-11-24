@@ -42,6 +42,7 @@ import { applyBorderStyle } from '@/client/hooks/ui/border-style';
 import { applyIconStyle } from '@/client/hooks/ui/icon-style';
 import { EDITOR_FONT_CHANGED_EVENT } from '@/client/hooks/editor/font';
 import { EDITOR_THEME_CHANGED_EVENT } from '@/client/hooks/editor/theme';
+import { applyDictationConfig } from '@/client/hooks/chat/composer/dictation-settings';
 
 /**
  * Apply `next` on top of `previous`.
@@ -145,5 +146,12 @@ export function applySettingsSideEffects(previous: SettingsState, next: Settings
 
   if (next.iconStyle !== previous.iconStyle) {
     applyIconStyle(next.iconStyle);
+  }
+
+  // The composer reads the dictation preference through a live hook, and it is a
+  // separate subtree from this modal — so the engine/language the mic will use
+  // is announced rather than left to the next mount.
+  if (next.dictation !== previous.dictation) {
+    applyDictationConfig(next.dictation);
   }
 }

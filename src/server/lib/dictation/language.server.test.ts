@@ -4,18 +4,17 @@
  */
 
 /**
- * The dictation language resolver.
+ * omp's own `stt.language` reader.
  *
- * Pinned because the alternative is silent: the route used to pass no language
- * at all, so every decode auto-detected while omp's OWN dictation reads
- * `stt.language` (default `"en"`) — the setting that decides whether a
- * non-English utterance transcribes correctly was unreachable from either
- * surface. Three behaviours matter and none is obvious:
+ * Pinned because the alternative is silent: the local Whisper pipeline treats a
+ * MISSING language as English (measured — `languages.ts` carries the
+ * transcripts), so "no value" and "English" are the same decode. Three
+ * behaviours matter and none is obvious:
  *
  *  - the value comes from the live config, so a user's edit is what the next
  *    utterance uses (asserted through a stub `omp`, not a mirrored constant);
- *  - a value omp cannot use yields `undefined` (auto-detect), NOT a guess — a
- *    read that fails must not pin every utterance to English;
+ *  - a value this build cannot use yields `undefined`, NOT a guess — the caller
+ *    turns that into an explicit fallback, so the behaviour is stated once;
  *  - a write to the key drops the cache, so an edit applies at once instead of
  *    up to a minute later.
  */
@@ -30,7 +29,7 @@ import { invalidateOmpCliCache } from '@/server/lib/omp/core/cli';
 import {
   invalidateDictationLanguage,
   onOmpConfigWritten,
-  resolveDictationLanguage,
+  readOmpSttLanguage,
 } from '@/server/lib/dictation/language.server';
 
 /**
@@ -98,42 +97,42 @@ afterEach(() => {
   invalidateDictationLanguage();
 });
 
-describe('resolveDictationLanguage', () => {
-  test('mock mode reports no language, so the recognizer auto-detects', async () => {
+describe('readOmpSttLanguage', () => {
+  test('mock mode reports no stored language', async () => {
     Bun.env.MOCK = 'true';
-    expect(await resolveDictationLanguage()).toBeUndefined();
+    expect(await readOmpSttLanguage()).toBeUndefined();
   });
 
   test('reads the configured tag from omp config', async () => {
     setStubLanguage('id');
-    expect(await resolveDictationLanguage()).toBe('id');
+    expect(await readOmpSttLanguage()).toBe('id');
   });
 
   test('the value is cached until a write to stt.language drops it', async () => {
     setStubLanguage('id');
-    expect(await resolveDictationLanguage()).toBe('id');
+    expect(await readOmpSttLanguage()).toBe('id');
     // The config changed underneath; the cached value still answers...
     setStubLanguage('ja');
-    expect(await resolveDictationLanguage()).toBe('id');
+    expect(await readOmpSttLanguage()).toBe('id');
     // ...until the write seam fires, which is what makes an edit apply at once.
     onOmpConfigWritten('stt.language');
-    expect(await resolveDictationLanguage()).toBe('ja');
+    expect(await readOmpSttLanguage()).toBe('ja');
   });
 
   test('a write to an unrelated key leaves the cached language alone', async () => {
     setStubLanguage('id');
-    expect(await resolveDictationLanguage()).toBe('id');
+    expect(await readOmpSttLanguage()).toBe('id');
     setStubLanguage('ja');
     onOmpConfigWritten('theme.dark');
     // The stale entry SURVIVES an unrelated write — the seam is keyed, not a
     // blanket flush, so a settings edit elsewhere does not re-spawn `omp`.
-    expect(await resolveDictationLanguage()).toBe('id');
+    expect(await readOmpSttLanguage()).toBe('id');
   });
 
-  test('an unusable value auto-detects instead of guessing', async () => {
-    // A failed read must not pin every utterance to English, and must not be
-    // cached as a miss for a full minute.
+  test('an unusable value is reported as absent, not forwarded', async () => {
+    // The caller substitutes an explicit `en`; forwarding a junk tag would be
+    // a language the recognizer cannot resolve.
     setStubLanguage('not a language tag!');
-    expect(await resolveDictationLanguage()).toBeUndefined();
+    expect(await readOmpSttLanguage()).toBeUndefined();
   });
 });

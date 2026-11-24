@@ -226,7 +226,8 @@ export function ChatInput({
     voiceListening,
     voiceBusy,
     voiceStatus,
-    handleVoiceToggle,
+    voiceToggle,
+    voiceHint,
     displayedVoiceError,
   } = useVoiceInput((transcript) => {
     // Append rather than replace: a dictation into a composer that already
@@ -337,7 +338,8 @@ export function ChatInput({
         voiceSupported,
         voiceListening,
         voiceBusy,
-        onVoiceToggle: handleVoiceToggle,
+        voiceHint,
+        onVoiceToggle: voiceToggle,
         ...(waiting ? { waiting } : {}),
       })}
     />

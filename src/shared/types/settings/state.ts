@@ -10,12 +10,16 @@ import type { IconStyle } from '@/shared/lib/theme/icon-style';
 import type { TrayIconStyle } from '@/shared/lib/theme/tray-icon-style';
 import type { SettingsSection } from '@/shared/lib/settings/sections';
 import type { GitIdentity } from '@/shared/lib/git/identity';
+import type { DictationConfig } from '@/shared/lib/dictation/settings';
 
 /** Wire protocol for the live agent event stream (chat timeline). */
 export type SettingsCategoryId =
   // KABMO
   | 'appearance'
   | 'chats'
+  /** Composer dictation: engine, language, key and capture limits. A KABMO
+   *  page because it decides where the microphone audio goes. */
+  | 'dictation'
   | 'keyboard'
   | 'notifications'
   | 'usage'
@@ -290,4 +294,16 @@ export interface SettingsState {
   keybindingSend: 'Enter' | 'Shift + Enter' | 'Ctrl / Cmd + Enter';
   keybindingNewLine: 'Enter' | 'Shift + Enter' | 'Ctrl / Cmd + Enter';
   keybindingSteering: 'Enter' | 'Shift + Enter' | 'Ctrl / Cmd + Enter';
+  /**
+   * Composer dictation: which engine transcribes the mic, in which language,
+   * with which model, and the capture limits. One object because every field is
+   * read together by the same hook, and the normaliser in
+   * `shared/lib/dictation/settings.ts` is the only place that decides what an
+   * absent or hostile value means.
+   *
+   * The API key is NOT here: this object ships to the browser in the bootstrap,
+   * so a credential would be readable by any script on the origin. It lives in
+   * `~/.kabmo/dictation.json` (0600) behind its own route.
+   */
+  dictation: DictationConfig;
 }

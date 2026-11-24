@@ -106,6 +106,17 @@ export function getAuthPath(): string {
   return path.join(getDataDir(), 'auth.json');
 }
 
+/**
+ * `<data>/dictation.json` — the external transcription engine's API key.
+ *
+ * A file rather than an `app_settings` row because that table is injected into
+ * the page as `__OMP_BOOTSTRAP__.appSettings`, where any script on the origin
+ * could read it. Written 0600.
+ */
+export function getDictationSecretPath(): string {
+  return path.join(getDataDir(), 'dictation.json');
+}
+
 /** `<data>/run/<port>.lock` — held only while a port handover is in progress. */
 export function getLockPath(port: number | string): string {
   return path.join(getRunDir(), `${port}.lock`);
