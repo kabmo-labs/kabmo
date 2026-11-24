@@ -35,7 +35,14 @@ import { probeGitUpdate } from '@/server/lib/panels/git-update.server';
 import { updateAllPanelPlugins, updatePanelPlugin } from '@/server/lib/panels/update.server';
 import { forceSyncBundledPlugin } from '@/server/lib/panels/sync.server';
 import { writeGitStatus } from '@/server/lib/panels/git-status.server';
-import { forgetCatalogEntry } from '@/server/lib/panels/catalog.server';
+import { forgetCatalogEntry, pruneCatalogRegistry, registerCatalogRegistry } from '@/server/lib/panels/catalog.server';
+import { findRegistryOffer } from '@/server/lib/panels/registries.server';
+import {
+  pruneRegistryCache,
+  refreshPluginRegistries,
+  refreshPluginRegistry,
+} from '@/server/lib/panels/registry-refresh.server';
+import { normalisePluginSpec } from '@/shared/lib/panels/plugin-repo';
 import { setPluginAutoUpdate, setPluginEnabled } from '@/server/lib/panels/state.server';
 import { syncPluginServer } from '@/server/lib/plugins/server-half.server';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
@@ -55,9 +62,30 @@ export async function action({ request }: ActionFunctionArgs) {
   if (type === 'install') {
     const url = typeof body.url === 'string' ? body.url.trim() : '';
     const pluginId = typeof body.pluginId === 'string' ? body.pluginId.trim() : '';
-    if (!url && !pluginId) return json({ error: 'A git URL or a bundled plugin id is required.' }, { status: 400 });
+    const spec = typeof body.spec === 'string' ? body.spec.trim() : '';
+    if (!url && !pluginId && !spec) {
+      return json({ error: 'A git URL, a plugin name, or a bundled plugin id is required.' }, { status: 400 });
+    }
 
-    const result = url ? await installPanelPluginFromGit(url) : await installPanelPluginFromBundled(pluginId);
+    // Three spellings, one target: a URL (or `owner/repo`, GitHub's shorthand),
+    // a plugin NAME a registered repository offers, or a bundled plugin id. The
+    // name form is what makes the prefix rule usable — the repository carries
+    // `kabmo-plugins-`, the plugin the user installs does not.
+    let target = url;
+    if (!target && spec) {
+      target = normalisePluginSpec(spec) ?? (await findRegistryOffer(spec))?.url ?? '';
+      if (!target) {
+        return json(
+          {
+            error: `No plugin named "${spec}" is offered by a registered repository. Use a git URL, or register its repository first.`,
+            ...(await discoverPanelPlugins()),
+          },
+          { status: 400 },
+        );
+      }
+    }
+
+    const result = target ? await installPanelPluginFromGit(target) : await installPanelPluginFromBundled(pluginId);
     // A partial success (installed on disk, catalog entry failed) still answers
     // 200 with the whole payload — the plugin IS there, and the payload's own
     // errors list carries what went wrong with the catalog.
@@ -66,6 +94,57 @@ export async function action({ request }: ActionFunctionArgs) {
     // user opens next is the one that was just installed.
     if (result.pluginId) await syncPluginServer(result.pluginId, true);
     return json({ ok: true, pluginId: result.pluginId, ...(await discoverPanelPlugins()) });
+  }
+
+  if (type === 'register_registry') {
+    const raw = typeof body.repo === 'string' ? body.repo.trim() : '';
+    if (!raw) return json({ error: 'A GitHub repository is required.' }, { status: 400 });
+    const spec = normalisePluginSpec(raw);
+    if (!spec) {
+      return json(
+        { error: `"${raw}" is not a GitHub repository. Use owner/repo or its URL.`, ...(await discoverPanelPlugins()) },
+        { status: 400 },
+      );
+    }
+    const registered = await registerCatalogRegistry(spec, typeof body.name === 'string' ? body.name : undefined);
+    if (!registered.ok) {
+      return json({ error: registered.error, ...(await discoverPanelPlugins()) }, { status: 400 });
+    }
+    // Registration is a file write; the READ is a network round trip. A failed
+    // read keeps the registration and reports the reason on its row, so the
+    // answer is a 200 with a warning rather than a refusal of a write that
+    // succeeded.
+    const refreshed = await refreshPluginRegistry(registered.repo);
+    invalidatePanelScan();
+    emitRealtimeSignal('panels-changed');
+    const payload = await discoverPanelPlugins();
+    if (!refreshed.ok) return json({ ok: true, error: refreshed.error, ...payload });
+    return json({ ok: true, ...payload });
+  }
+
+  if (type === 'remove_registry') {
+    const repo = typeof body.repo === 'string' ? body.repo.trim() : '';
+    if (!repo) return json({ error: 'A repository is required.' }, { status: 400 });
+    const removed = await pruneCatalogRegistry(repo);
+    if (!removed.ok) return json({ error: removed.error, ...(await discoverPanelPlugins()) }, { status: 400 });
+    // The cached offers belong to the registration; keeping them would leave the
+    // plugin installable by name after the source was removed.
+    await pruneRegistryCache(repo);
+    invalidatePanelScan();
+    emitRealtimeSignal('panels-changed');
+    return json({ ok: true, ...(await discoverPanelPlugins()) });
+  }
+
+  if (type === 'refresh_registry') {
+    const repo = typeof body.repo === 'string' && body.repo.trim() ? body.repo.trim() : undefined;
+    const refreshed = await refreshPluginRegistries(repo);
+    invalidatePanelScan();
+    emitRealtimeSignal('panels-changed');
+    const payload = await discoverPanelPlugins();
+    // A partial failure is still a pass: the repositories that answered are
+    // cached, and the ones that did not are named.
+    if (!refreshed.ok) return json({ ok: true, error: refreshed.errors.join(' · '), ...payload });
+    return json({ ok: true, ...payload });
   }
 
   if (type === 'remove') {

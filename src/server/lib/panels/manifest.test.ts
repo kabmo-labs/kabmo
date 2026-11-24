@@ -17,7 +17,7 @@
  */
 
 import { test, expect, describe } from 'bun:test';
-import { toManifest, toMarketplaceCatalog, toSettingsSchema } from '@/server/lib/panels/manifest';
+import { toManifest, toSettingsSchema } from '@/server/lib/panels/manifest';
 
 const ROOT = '/market/plugins/demo';
 
@@ -205,81 +205,6 @@ describe('the manifest colour', () => {
       }
       expect(result, color).toMatchObject({ error: expect.stringContaining('is not a #RRGGBB hex') });
     }
-  });
-});
-
-describe('toMarketplaceCatalog', () => {
-
-  test('accepts a catalog with no plugins array as empty', () => {
-    expect(toMarketplaceCatalog({ name: 'Acme' }, ROOT)).toMatchObject({ name: 'Acme', plugins: [] });
-  });
-
-  test('accepts an empty object', () => {
-    expect(toMarketplaceCatalog({}, ROOT)).toMatchObject({ plugins: [] });
-  });
-
-  test('keeps a valid entry with its metadata', () => {
-    const result = toMarketplaceCatalog(
-      { plugins: [{ name: 'demo', source: 'plugins/demo', description: 'd', category: 'tools' }] },
-      ROOT,
-    );
-    expect(result).toMatchObject({ plugins: [{ name: 'demo', source: 'plugins/demo', category: 'tools' }] });
-  });
-
-  test('refuses an entry with no source', () => {
-    expect(toMarketplaceCatalog({ plugins: [{ name: 'demo' }] }, ROOT)).toMatchObject({
-      error: expect.stringContaining('has no source'),
-    });
-  });
-
-  test('refuses a source escaping the marketplace root', () => {
-    expect(toMarketplaceCatalog({ plugins: [{ name: 'evil', source: '../../etc' }] }, ROOT)).toMatchObject({
-      error: expect.stringContaining('escapes the marketplace directory'),
-    });
-  });
-
-  test('accepts a REMOTE git source and marks it, without an escape check', () => {
-    // There is no root to escape: the entry is an offer, and the installer
-    // clones the URL. Reading it as a relative path is the failure this pins.
-    const result = toMarketplaceCatalog(
-      {
-        plugins: [
-          { name: 'acme', source: 'https://github.com/acme/panels.git', version: '1.4.0' },
-          { name: 'gitlab', source: 'git@gitlab.example:team/panels.git' },
-          { name: 'local', source: 'plugins/local' },
-        ],
-      },
-      ROOT,
-    );
-    expect(result).toMatchObject({
-      plugins: [
-        { name: 'acme', source: 'https://github.com/acme/panels.git', remote: true, version: '1.4.0' },
-        { name: 'gitlab', remote: true },
-        { name: 'local', source: 'plugins/local' },
-      ],
-    });
-    // A directory source carries no marker at all — absence is "a directory".
-    if ('error' in result) throw new Error(result.error);
-    expect(result.plugins?.[2]?.remote).toBeUndefined();
-  });
-
-  test('carries an entry author and homepage through', () => {
-    expect(
-      toMarketplaceCatalog(
-        { plugins: [{ name: 'demo', source: 'plugins/demo', author: { name: 'Acme' }, homepage: 'https://acme.example' }] },
-        ROOT,
-      ),
-    ).toMatchObject({ plugins: [{ author: { name: 'Acme' }, homepage: 'https://acme.example' }] });
-  });
-
-  test('refuses a non-array plugins field', () => {
-    expect(toMarketplaceCatalog({ plugins: 'x' }, ROOT)).toMatchObject({
-      error: expect.stringContaining('must be an array'),
-    });
-  });
-
-  test('refuses a non-object body', () => {
-    expect(toMarketplaceCatalog(null, ROOT)).toMatchObject({ error: expect.stringContaining('not an object') });
   });
 });
 

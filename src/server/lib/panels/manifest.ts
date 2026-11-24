@@ -20,8 +20,6 @@
  */
 
 import type {
-  PanelMarketplaceManifest,
-  PanelMarketplacePluginEntry,
   PanelPluginAuthor,
   PanelPluginManifest,
   PanelSlotName,
@@ -30,7 +28,6 @@ import { PANEL_SLOT_NAMES } from '@/shared/types';
 import type { PluginSettingDefinition } from '@kabmo-labs/kabmo-sdk';
 import { isRecord } from '@/shared/lib/util/guards';
 import { isValidRange } from '@/shared/lib/updates/semver';
-import { isRemoteGitUrl } from '@/shared/lib/git/url';
 import { resolveInsideRoot } from '@/shared/lib/panels/resolve-asset';
 
 /** An id segment: what a plugin id may look like. */
@@ -39,7 +36,8 @@ const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 
 const ID_RE = /^[a-z0-9][a-z0-9._-]{0,63}$/i;
 
-function trimmed(value: unknown): string | undefined {
+/** A trimmed non-empty string, or undefined. Shared with the catalog parser. */
+export function trimmed(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() ? value.trim() : undefined;
 }
 
@@ -183,7 +181,7 @@ function toCapabilities(raw: unknown): { value?: string[] } | { error: string } 
  * refused: an author is a credit, not a requirement, and refusing a plugin for
  * a malformed credit would hide a working plugin over a cosmetic field.
  */
-function toAuthor(raw: unknown): PanelPluginAuthor | undefined {
+export function toAuthor(raw: unknown): PanelPluginAuthor | undefined {
   const name = typeof raw === 'string' ? trimmed(raw) : isRecord(raw) ? trimmed(raw.name) : undefined;
   if (!name) return undefined;
   const record = isRecord(raw) ? raw : {};
@@ -275,59 +273,4 @@ function toSettings(raw: unknown): { value?: Record<string, PluginSettingDefinit
     };
   }
   return Object.keys(value).length > 0 ? { value } : {};
-}
-
-/**
- * Parse a marketplace catalog.
- *
- * A catalog is optional metadata: its job is descriptions and grouping for
- * plugins that are found on disk anyway, so a catalog that is absent or has no
- * `plugins` array is a valid, empty catalog rather than an error. What is NOT
- * optional is a catalog entry's `source` — it is the key that binds an entry to
- * a directory, and an entry whose source escapes the marketplace root would let
- * the catalog point at anything.
- *
- * A `source` may be a REMOTE git URL instead of a path. That entry is an OFFER
- * with no directory behind it: nothing is scanned for it and nothing is built
- * until the user installs it, at which point the installer clones it exactly as
- * it clones a URL typed into the form. The escape check does not apply — there
- * is no root to escape — so the two shapes are separated before it runs, which
- * is what stops a `git@host:repo` string from being read as a relative path.
- */
-export function toMarketplaceCatalog(raw: unknown, root: string): PanelMarketplaceManifest | { error: string } {
-  if (!isRecord(raw)) return { error: 'marketplace.json is not an object' };
-  const entries: PanelMarketplacePluginEntry[] = [];
-  const rawPlugins = raw.plugins;
-  if (rawPlugins !== undefined) {
-    if (!Array.isArray(rawPlugins)) return { error: 'marketplace.json "plugins" must be an array' };
-    for (const item of rawPlugins) {
-      if (!isRecord(item)) return { error: 'a marketplace plugin entry is not an object' };
-      const name = trimmed(item.name);
-      const source = trimmed(item.source);
-      if (!name) return { error: 'a marketplace plugin entry has no name' };
-      if (!source) return { error: `marketplace plugin "${name}" has no source` };
-      const remote = isRemoteGitUrl(source);
-      if (!remote && !resolveInsideRoot(root, source)) {
-        return { error: `marketplace plugin "${name}" source "${source}" escapes the marketplace directory` };
-      }
-      const author = toAuthor(item.author);
-      entries.push({
-        name,
-        source,
-        description: trimmed(item.description),
-        version: trimmed(item.version),
-        category: trimmed(item.category),
-        ...(author ? { author } : {}),
-        ...(trimmed(item.homepage) ? { homepage: trimmed(item.homepage) } : {}),
-        ...(remote ? { remote: true } : {}),
-      });
-    }
-  }
-  const owner = isRecord(raw.owner) ? { name: trimmed(raw.owner.name) } : undefined;
-  return {
-    name: trimmed(raw.name),
-    description: trimmed(raw.description),
-    ...(owner ? { owner } : {}),
-    plugins: entries,
-  };
 }

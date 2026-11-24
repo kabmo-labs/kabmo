@@ -168,7 +168,7 @@ describe('discoverPanelPlugins', () => {
     // it as installable and must NOT report it as "listed but not found".
     writeCatalog({
       plugins: [
-        { name: 'acme-panels', source: 'https://github.com/acme/panels.git', description: 'Acme panels' },
+        { name: 'acme-panels', source: 'https://github.com/acme/kabmo-plugins-panels.git', description: 'Acme panels' },
       ],
     });
     invalidatePanelScan();
@@ -177,7 +177,7 @@ describe('discoverPanelPlugins', () => {
     const offer = catalog.find((entry) => entry.pluginId === 'acme-panels');
     expect(offer).toMatchObject({
       origin: 'git',
-      url: 'https://github.com/acme/panels.git',
+      url: 'https://github.com/acme/kabmo-plugins-panels.git',
       description: 'Acme panels',
       installed: false,
     });

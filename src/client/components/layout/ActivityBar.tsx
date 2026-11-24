@@ -39,7 +39,8 @@ import {
   type ResolvedPanel,
 } from '@/client/components/workspace/plugin-panel/catalog';
 import { PanelButton } from '@/client/components/layout/PanelButton';
-import { usePanelPluginActions, usePanelRegistry } from '@/client/hooks/workspace/panel-registry';
+import { usePanelRegistry } from '@/client/hooks/workspace/panel-registry';
+import { usePanelPluginActions } from '@/client/hooks/workspace/panel-actions';
 import { usePanelOrder } from '@/client/hooks/workspace/panel-order';
 import { usePanelReorder } from '@/client/hooks/workspace/panel-reorder';
 import { useLeftDock } from '@/client/hooks/workspace/left-dock';

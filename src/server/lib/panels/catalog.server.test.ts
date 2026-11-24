@@ -28,7 +28,13 @@ import fs from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { appendCatalogEntry, forgetCatalogEntry, pruneCatalogEntry } from '@/server/lib/panels/catalog.server';
+import {
+  appendCatalogEntry,
+  forgetCatalogEntry,
+  pruneCatalogEntry,
+  pruneCatalogRegistry,
+  registerCatalogRegistry,
+} from '@/server/lib/panels/catalog.server';
 import { getMarketplaceCatalogPath, getMarketplacePluginsDir, invalidatePanelScan } from '@/server/lib/panels/registry.server';
 
 let root = '';
@@ -39,11 +45,17 @@ function writeCatalog(catalog: unknown): void {
 }
 
 /** The catalog as the file holds it, so an assertion reads what was WRITTEN. */
-function readCatalog(): { name?: string; description?: string; plugins?: Array<{ name: string; source: string }> } {
+function readCatalog(): {
+  name?: string;
+  description?: string;
+  plugins?: Array<{ name: string; source: string }>;
+  registries?: Array<{ repo: string; name?: string }>;
+} {
   return JSON.parse(fs.readFileSync(getMarketplaceCatalogPath(), 'utf8')) as {
     name?: string;
     description?: string;
     plugins?: Array<{ name: string; source: string }>;
+    registries?: Array<{ repo: string; name?: string }>;
   };
 }
 
@@ -145,5 +157,62 @@ describe('forgetCatalogEntry', () => {
   test('refuses an empty source', async () => {
     writeCatalog({ plugins: [{ name: 'demo', source: 'plugins/demo' }] });
     expect((await forgetCatalogEntry('   ')).ok).toBe(false);
+  });
+});
+
+describe('registerCatalogRegistry', () => {
+  test('writes the registration, preserving the catalog it already had', async () => {
+    writeCatalog({ name: 'Kabmo', plugins: [{ name: 'old', source: 'plugins/old' }] });
+
+    const result = await registerCatalogRegistry('https://github.com/acme/kabmo-plugins-kanban');
+    expect(result).toMatchObject({ ok: true, repo: 'acme/kabmo-plugins-kanban' });
+
+    const catalog = readCatalog();
+    expect(catalog.name).toBe('Kabmo');
+    // The registration is a POINTER: the plugin's own entry is written when it
+    // is installed, so registering must not invent one.
+    expect(catalog.plugins?.map((entry) => entry.source)).toEqual(['plugins/old']);
+    expect(catalog.registries).toEqual([{ repo: 'acme/kabmo-plugins-kanban' }]);
+  });
+
+  test('is idempotent by repository, whatever the spelling', async () => {
+    writeCatalog({});
+    await registerCatalogRegistry('https://github.com/acme/kabmo-plugins-kanban');
+    await registerCatalogRegistry('git@github.com:acme/kabmo-plugins-kanban.git');
+    expect(readCatalog().registries).toHaveLength(1);
+  });
+
+  test('refuses a repository that does not follow the naming rule', async () => {
+    writeCatalog({});
+    const result = await registerCatalogRegistry('https://github.com/acme/kanban');
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected a refusal');
+    expect(result.error).toContain('kabmo-plugins-');
+    expect(readCatalog().registries).toBeUndefined();
+  });
+
+  test('refuses a non-GitHub source', async () => {
+    writeCatalog({});
+    expect((await registerCatalogRegistry('https://gitlab.com/acme/kabmo-plugins-kanban')).ok).toBe(false);
+  });
+});
+
+describe('pruneCatalogRegistry', () => {
+  test('drops the registration and keeps every other entry', async () => {
+    writeCatalog({
+      plugins: [{ name: 'keep-me', source: 'plugins/keep-me' }],
+      registries: [{ repo: 'acme/kabmo-plugins-a' }, { repo: 'acme/kabmo-plugins-b' }],
+    });
+
+    expect((await pruneCatalogRegistry('https://github.com/acme/kabmo-plugins-a.git')).ok).toBe(true);
+    const catalog = readCatalog();
+    expect(catalog.registries).toEqual([{ repo: 'acme/kabmo-plugins-b' }]);
+    expect(catalog.plugins?.map((entry) => entry.source)).toEqual(['plugins/keep-me']);
+  });
+
+  test('a repository that is not registered is a success', async () => {
+    writeCatalog({ registries: [{ repo: 'acme/kabmo-plugins-a' }] });
+    expect((await pruneCatalogRegistry('acme/kabmo-plugins-nope')).ok).toBe(true);
+    expect(readCatalog().registries).toHaveLength(1);
   });
 });

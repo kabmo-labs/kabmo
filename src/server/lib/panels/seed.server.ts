@@ -40,9 +40,12 @@ export interface SeedResult {
 /** The minimal catalog an empty working marketplace starts with. */
 const EMPTY_CATALOG = {
   name: 'Kabmo',
-  description: 'Panels you installed from the bundled marketplace or a git URL.',
+  description: 'Panels you installed from the bundled marketplace, a git URL, or a registered repository.',
   owner: { name: 'Kabmo' },
   plugins: [],
+  // Present from the first boot so the file shows the shape a registration
+  // writes; the pane adds to this array rather than inventing the key.
+  registries: [],
 };
 
 /**

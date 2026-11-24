@@ -20,7 +20,8 @@
 
 import { useCallback } from 'preact/hooks';
 import { useAllPanelItems } from '@/client/hooks/workspace/panel-menu-items';
-import { usePanelPluginActions, usePanelRegistry } from '@/client/hooks/workspace/panel-registry';
+import { usePanelRegistry } from '@/client/hooks/workspace/panel-registry';
+import { usePanelPluginActions } from '@/client/hooks/workspace/panel-actions';
 import { useVisibilityMenuTrigger } from '@/client/hooks/ui/visibility-menu-trigger';
 import type { PanelCatalogSide } from '@/client/components/workspace/plugin-panel/catalog';
 import type { MenuAnchor, VisibilityItem } from '@/client/components/layout/VisibilityMenu';

@@ -80,7 +80,7 @@ describe('assembleCatalog', () => {
   test('lists a store offer and a remote offer side by side', async () => {
     writeStorePlugin('session-info', { id: 'session-info', name: 'Session Info', version: '0.1.0' });
     const workingCatalog = writeCatalog(join(root, 'marketplace.json'), {
-      plugins: [{ name: 'acme-panels', source: 'https://github.com/acme/panels.git', version: '1.4.0' }],
+      plugins: [{ name: 'acme-panels', source: 'https://github.com/acme/kabmo-plugins-panels.git', version: '1.4.0' }],
     });
 
     const catalog = await assembleCatalog({
@@ -100,7 +100,7 @@ describe('assembleCatalog', () => {
     // both rows would install the same id — two cards for one plugin.
     writeStorePlugin('demo', { id: 'demo', name: 'Demo', version: '1.0.0' });
     const workingCatalog = writeCatalog(join(root, 'marketplace.json'), {
-      plugins: [{ name: 'demo', source: 'https://github.com/acme/demo.git' }],
+      plugins: [{ name: 'demo', source: 'https://github.com/acme/kabmo-plugins-demo.git' }],
     });
 
     const catalog = await assembleCatalog({
@@ -118,7 +118,7 @@ describe('assembleCatalog', () => {
     // dropping it would make "an offer you already installed" and "no offer at
     // all" indistinguishable.
     const workingCatalog = writeCatalog(join(root, 'marketplace.json'), {
-      plugins: [{ name: 'demo', source: 'https://github.com/acme/demo.git' }],
+      plugins: [{ name: 'demo', source: 'https://github.com/acme/kabmo-plugins-demo.git' }],
     });
 
     const catalog = await assembleCatalog({
@@ -164,7 +164,7 @@ describe('applySources', () => {
     // The store offers this id, but the directory on disk is the user's own
     // repository — attributing it to the store would overwrite it on the next
     // boot, because the sync selects on this same flag.
-    const plugins = [status({ pluginId: 'demo', gitOrigin: 'https://github.com/acme/demo.git' })];
+    const plugins = [status({ pluginId: 'demo', gitOrigin: 'https://github.com/acme/kabmo-plugins-demo.git' })];
     const catalog = [
       { pluginId: 'demo', name: 'Demo', version: '9.9.9', origin: 'bundled' as const, installed: true },
     ];
@@ -175,7 +175,7 @@ describe('applySources', () => {
   });
 
   test('a git clone takes the version the freshness probe read', async () => {
-    const plugins = [status({ pluginId: 'demo', gitOrigin: 'https://github.com/acme/demo.git' })];
+    const plugins = [status({ pluginId: 'demo', gitOrigin: 'https://github.com/acme/kabmo-plugins-demo.git' })];
     applySources(plugins, [], {
       demo: { current: 'aaa', latest: 'bbb', updateAvailable: true, checkedAt: 1, latestVersion: '2.0.0' },
     });

@@ -57,6 +57,7 @@ const PANELS: PanelRegistryPayload = {
   gitStatus: {},
   autoUpdate: false,
   syncBlocked: {},
+  registries: [],
 };
 
 function telemetry(): SessionContextTelemetry {

@@ -236,3 +236,113 @@ describe('the install route', () => {
     expect((await discoverPanelPlugins()).syncBlocked).toEqual({});
   });
 });
+
+describe('the registry verbs', () => {
+  const realFetch = globalThis.fetch;
+
+  /** Every raw catalog path answers 404, so the repository offers itself. */
+  function stubNoCatalog(): void {
+    globalThis.fetch = (async () => new Response('not found', { status: 404 })) as unknown as typeof fetch;
+  }
+
+  test('register_registry writes the registration and lists the repository', async () => {
+    stubNoCatalog();
+    try {
+      const response = await post(installAction, { type: 'register_registry', repo: 'acme/kabmo-plugins-kanban' });
+      expect(response.status).toBe(200);
+      const body = (await response.json()) as {
+        ok: boolean;
+        registries: Array<{ repo: string; name: string; pluginCount: number; error?: string }>;
+        catalog: Array<{ pluginId: string; url?: string; origin: string; installed: boolean }>;
+      };
+      expect(body.ok).toBe(true);
+      expect(body.registries).toMatchObject([
+        { repo: 'acme/kabmo-plugins-kanban', name: 'kanban', pluginCount: 1 },
+      ]);
+      // The offer the pane shows, installable by URL — and the plugin name has
+      // no prefix, which is the whole point of the rule.
+      expect(body.catalog).toMatchObject([
+        { pluginId: 'kanban', url: 'https://github.com/acme/kabmo-plugins-kanban', origin: 'git', installed: false },
+      ]);
+
+      const catalog = JSON.parse(fs.readFileSync(join(dirs.root, 'marketplace.json'), 'utf8')) as {
+        registries: Array<{ repo: string }>;
+      };
+      expect(catalog.registries).toEqual([{ repo: 'acme/kabmo-plugins-kanban' }]);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  });
+
+  test('register_registry refuses a repository that breaks the naming rule', async () => {
+    const response = await post(installAction, { type: 'register_registry', repo: 'acme/kanban' });
+    expect(response.status).toBe(400);
+    expect(((await response.json()) as { error: string }).error).toContain('kabmo-plugins-');
+  });
+
+  test('register_registry keeps the registration when the read fails, and says why', async () => {
+    globalThis.fetch = (async () => {
+      throw new Error('connect ETIMEDOUT');
+    }) as unknown as typeof fetch;
+    try {
+      const response = await post(installAction, { type: 'register_registry', repo: 'acme/kabmo-plugins-kanban' });
+      // A 200: the WRITE succeeded. The failed READ travels as a warning, because
+      // refusing here would lose a registration the user asked for.
+      expect(response.status).toBe(200);
+      const body = (await response.json()) as {
+        ok: boolean;
+        error?: string;
+        registries: Array<{ repo: string; pluginCount: number; error?: string }>;
+      };
+      expect(body.ok).toBe(true);
+      expect(body.error).toContain('ETIMEDOUT');
+      expect(body.registries).toMatchObject([{ repo: 'acme/kabmo-plugins-kanban', pluginCount: 0 }]);
+      expect(body.registries[0]?.error).toContain('ETIMEDOUT');
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  });
+
+  test('remove_registry drops the registration and its cached offers', async () => {
+    stubNoCatalog();
+    try {
+      await post(installAction, { type: 'register_registry', repo: 'acme/kabmo-plugins-kanban' });
+      expect((await discoverPanelPlugins()).catalog).toHaveLength(1);
+
+      const response = await post(installAction, { type: 'remove_registry', repo: 'acme/kabmo-plugins-kanban' });
+      expect(response.status).toBe(200);
+      const body = (await response.json()) as { ok: boolean; registries: unknown[]; catalog: unknown[] };
+      expect(body.ok).toBe(true);
+      expect(body.registries).toEqual([]);
+      expect(body.catalog).toEqual([]);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  });
+
+  test('refresh_registry re-reads one repository and answers the payload', async () => {
+    stubNoCatalog();
+    try {
+      await post(installAction, { type: 'register_registry', repo: 'acme/kabmo-plugins-kanban' });
+      const response = await post(installAction, { type: 'refresh_registry', repo: 'acme/kabmo-plugins-kanban' });
+      expect(response.status).toBe(200);
+      const body = (await response.json()) as { ok: boolean; registries: Array<{ fetchedAt?: string }> };
+      expect(body.ok).toBe(true);
+      expect(body.registries[0]?.fetchedAt).toBeTruthy();
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  });
+
+  test('installing an unknown plugin NAME refuses by naming the remedy', async () => {
+    const response = await post(installAction, { type: 'install', spec: 'kanban' });
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as { error: string };
+    expect(body.error).toContain('No plugin named "kanban"');
+    expect(body.error).toContain('register its repository');
+  });
+
+  test('an install with no spec, url or plugin id is refused', async () => {
+    expect((await post(installAction, { type: 'install' })).status).toBe(400);
+  });
+});

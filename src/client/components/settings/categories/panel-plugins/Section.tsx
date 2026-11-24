@@ -3,11 +3,12 @@ import type { PanelPluginError } from '@/shared/types';
 import { countPluginUpdates } from '@/shared/lib/panels/update';
 import {
   refreshPanelRegistry,
-  usePanelPluginActions,
   usePanelRegistry,
   usePanelSlots,
 } from '@/client/hooks/workspace/panel-registry';
+import { usePanelPluginActions } from '@/client/hooks/workspace/panel-actions';
 import { InstallForm } from '@/client/components/settings/categories/panel-plugins/InstallForm';
+import { PluginRegistries } from '@/client/components/settings/categories/panel-plugins/Registries';
 import { AvailableList } from '@/client/components/settings/categories/panel-plugins/AvailableList';
 import { InstalledList } from '@/client/components/settings/categories/panel-plugins/InstalledList';
 import { BuiltinList } from '@/client/components/settings/categories/panel-plugins/BuiltinList';
@@ -84,7 +85,7 @@ function RejectionRow({
  * on.
  */
 export function PanelPluginsSection() {
-  const { panels, errors, plugins, catalog, disabledPanels, gitStatus, autoUpdate, syncBlocked, ready } =
+  const { panels, errors, plugins, catalog, disabledPanels, gitStatus, autoUpdate, syncBlocked, registries, ready } =
     usePanelRegistry();
   const { slots, failures } = usePanelSlots();
   const actions = usePanelPluginActions();
@@ -106,10 +107,10 @@ export function PanelPluginsSection() {
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-3">
         <p className="text-xs text-ink/60 max-w-xl">
-          Panels bundled with Kabmo, plus the ones you install from a git URL — typed here or listed in
-          {' '}<span className="font-mono text-ink/70">marketplace.json</span>. A plugin is local code Kabmo loads
-          into this page and renders in its own tree, so it looks and behaves like the rest of the app — treat it
-          the way you would a VS Code extension.
+          Panels bundled with Kabmo, plus the ones you install from a git URL — typed here, listed in
+          {' '}<span className="font-mono text-ink/70">marketplace.json</span>, or published by a GitHub repository you
+          register below. A plugin is local code Kabmo loads into this page and renders in its own tree, so it looks and
+          behaves like the rest of the app — treat it the way you would a VS Code extension.
         </p>
       </div>
 
@@ -138,6 +139,14 @@ export function PanelPluginsSection() {
         busy={actions.busy === 'install'}
         onInstall={actions.install}
         onClearError={actions.clearError}
+      />
+
+      <PluginRegistries
+        registries={registries}
+        busy={actions.busy}
+        onRegister={actions.registerRegistry}
+        onRemove={actions.removeRegistry}
+        onRefresh={actions.refreshRegistry}
       />
 
       {!ready ? <p className="text-xs text-ink/50">Reading…</p> : null}

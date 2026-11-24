@@ -29,6 +29,7 @@ import type {
   PanelGitStatus,
   PanelPluginStatus,
 } from '@/shared/types';
+import { pluginRepoKey } from '@/shared/lib/panels/plugin-repo';
 import { readBundledCatalog } from '@/server/lib/panels/bundled-catalog.server';
 import { readRemoteOffers } from '@/server/lib/panels/catalog-offers.server';
 
@@ -40,16 +41,33 @@ export async function assembleCatalog(options: {
   bundledRoot: string;
   /** Every plugin id already on disk, in any scope. */
   installed: ReadonlySet<string>;
+  /**
+   * Offers from registered GitHub repositories, already read from their cache.
+   *
+   * Passed in rather than read here because reading them needs the registry
+   * module, which imports this one's caller — and because the cache read is a
+   * different question (what did a repository publish last time it answered)
+   * from what a catalog file holds.
+   */
+  registryOffers?: readonly PanelCatalogEntry[];
 }): Promise<PanelCatalogEntry[]> {
   const catalog = await readBundledCatalog(options.bundledRoot, options.installed);
   const remoteOffers = [
     ...(await readRemoteOffers(options.workingCatalogPath, options.installed)),
     ...(await readRemoteOffers(join(options.bundledRoot, 'marketplace.json'), options.installed)),
   ];
+  // A store offer wins over a remote one for the same id: its directory is on
+  // disk, so it can draw an icon and a README.
   const held = new Set(catalog.map((entry) => entry.pluginId));
-  for (const offer of remoteOffers) {
-    if (held.has(offer.pluginId)) continue;
+  // The same URL offered twice is one plugin however it is named — a repository
+  // registered in `registries` AND listed by hand must not produce two cards.
+  // The sets hold what has ALREADY been added, so the first spelling wins.
+  const heldUrls = new Set<string>();
+  for (const offer of [...remoteOffers, ...(options.registryOffers ?? [])]) {
+    const key = offer.url ? pluginRepoKey(offer.url) : '';
+    if (held.has(offer.pluginId) || (key && heldUrls.has(key))) continue;
     held.add(offer.pluginId);
+    if (key) heldUrls.add(key);
     catalog.push(offer);
   }
   return catalog;

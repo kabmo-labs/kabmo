@@ -272,6 +272,38 @@ export interface PanelRegistryPayload {
    * with nothing on screen to say why.
    */
   syncBlocked: Record<string, PanelSyncBlocked>;
+  /**
+   * GitHub repositories the marketplace registers as plugin sources.
+   *
+   * Both the registration and the last cached read travel here, because they are
+   * different facts and either can be the interesting one: `repo` is what the
+   * user added, while `pluginCount`/`fetchedAt`/`error` describe the refresh. A
+   * failed refresh keeps the registration with its reason rather than making the
+   * repository vanish from the pane.
+   */
+  registries: PanelPluginSource[];
+}
+
+/**
+ * One registered GitHub repository, as the pane renders it.
+ *
+ * `pluginCount` is what the repository's last successful read offered, so a
+ * registration whose fetch has never succeeded shows zero plugins and an
+ * `error`, never a silent empty row.
+ */
+export interface PanelPluginSource {
+  /** `owner/repo` on GitHub. */
+  repo: string;
+  url: string;
+  name: string;
+  description?: string;
+  /** ISO time of the last successful refresh. */
+  fetchedAt?: string;
+  /** Why the last refresh failed. The registration is kept. */
+  error?: string;
+  /** Entries of the repository's catalog that could not be offered, and why. */
+  warning?: string;
+  pluginCount: number;
 }
 
 /** A bundled plugin whose sync a local edit refused. */

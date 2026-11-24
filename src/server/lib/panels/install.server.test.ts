@@ -153,6 +153,21 @@ describe('installPanelPluginFromGit', () => {
     expect(result.error).toContain('https');
   });
 
+  test('refuses an unprefixed GitHub repository before cloning, naming the rule', async () => {
+    // The prefix belongs to the repository; the plugin keeps its own name. This
+    // is checked before `git clone` so a rule violation costs no network.
+    const result = await installPanelPluginFromGit('https://github.com/acme/kanban-panel');
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain('kabmo-plugins-<plugin>');
+  });
+
+  test('does not restrict a non-GitHub source', async () => {
+    // A local path is a development source, not a published plugin: the rule
+    // applies to GitHub only, so this reaches the clone and fails there.
+    const result = await installPanelPluginFromGit(join(work, 'does-not-exist'));
+    expect(result.error ?? '').not.toContain('kabmo-plugins-');
+  });
+
   test.skipIf(!hasGit)('installs a plugin, registering it in the catalog', async () => {
     const repo = makePluginRepo(VALID);
     const result = await installPanelPluginFromGit(repo);

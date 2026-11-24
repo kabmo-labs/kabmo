@@ -66,6 +66,7 @@ function payload(enabled: boolean): PanelRegistryPayload {
     gitStatus: {},
     autoUpdate: false,
     syncBlocked: {},
+    registries: [],
   };
 }
 

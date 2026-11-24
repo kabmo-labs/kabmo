@@ -27,6 +27,7 @@ import { join } from 'path';
 import { pathExists } from '@/server/lib/omp/core/paths';
 import { gitRun, firstLine } from '@/server/lib/wiki/git';
 import { isGitUrl, repoSlug } from '@/shared/lib/git/url';
+import { pluginRepoNameError } from '@/shared/lib/panels/plugin-repo';
 import { toManifest } from '@/server/lib/panels/manifest';
 import { buildPanelPlugin } from '@/server/lib/panels/build.server';
 import { appendCatalogEntry, pruneCatalogEntry } from '@/server/lib/panels/catalog.server';
@@ -139,6 +140,12 @@ export async function installPanelPluginFromGit(url: string): Promise<InstallRes
   if (!isGitUrl(url)) {
     return { ok: false, error: 'Expected an https, ssh or git@ URL.' };
   }
+  // The ecosystem rule, enforced at the one place every clone passes through: an
+  // external GitHub plugin repository is named `kabmo-plugins-<plugin>`, which is
+  // what makes the catalog discoverable by name. The PLUGIN keeps its own name —
+  // the manifest id is never required to carry the prefix.
+  const repoNameError = pluginRepoNameError(url);
+  if (repoNameError) return { ok: false, error: repoNameError };
 
   const marketplaceDir = getMarketplaceDir();
   // The temp directory is a SIBLING of `plugins/`, not inside it: the scan

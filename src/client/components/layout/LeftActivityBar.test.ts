@@ -70,6 +70,7 @@ beforeAll(async () => {
     gitStatus: {},
     autoUpdate: false,
     syncBlocked: {},
+    registries: [],
   });
   server = await startRealtimeTestServer(new Map<string, TopicResolver>([[TOPIC_PANELS, registry]]));
   const target = globalThis as unknown as Record<string, unknown>;

@@ -21,6 +21,13 @@
  */
 
 import { isRecord } from '@/shared/lib/util/guards';
+import {
+  KABMO_PLUGIN_REPO_PREFIX,
+  parseGithubPluginRepo,
+  pluginNameFromRepo,
+  pluginRepoNameError,
+  samePluginRepo,
+} from '@/shared/lib/panels/plugin-repo';
 import { resolveInsideRoot } from '@/shared/lib/panels/resolve-asset';
 import { pathExists } from '@/server/lib/omp/core/paths';
 import {
@@ -139,4 +146,77 @@ export async function forgetCatalogEntry(source: string): Promise<{ ok: boolean;
   const result = await pruneCatalogEntry(source);
   invalidatePanelScan();
   return result;
+}
+
+/**
+ * Register a GitHub plugin repository in `marketplace.json`.
+ *
+ * One write: the `registries` array. It is the durable registration — the pane's
+ * list, and what a later boot re-reads — while what the repository OFFERS lives
+ * in the refresh cache (`registries.server.ts`). Keeping the two apart is what
+ * lets a registration survive GitHub being unreachable: the row stays, with the
+ * reason, instead of pretending the repository published nothing.
+ *
+ * Idempotent by repository, so clicking Add again after a failure does not
+ * accumulate rows.
+ */
+export async function registerCatalogRegistry(
+  url: string,
+  displayName?: string,
+): Promise<{ ok: true; repo: string } | { ok: false; error: string }> {
+  const repo = parseGithubPluginRepo(url);
+  if (!repo) return { ok: false, error: `"${url}" is not a GitHub repository.` };
+  const nameError = pluginRepoNameError(url);
+  if (nameError) return { ok: false, error: nameError };
+  if (!pluginNameFromRepo(url)) {
+    return { ok: false, error: `"${url}" does not name a plugin after the "${KABMO_PLUGIN_REPO_PREFIX}" prefix.` };
+  }
+
+  const canonical = `${repo.owner}/${repo.repo}`;
+  const body = await readCatalogBody();
+  const registries: unknown[] = Array.isArray(body.registries) ? body.registries : [];
+  const alreadyRegistered = registries.some(
+    (item) => isRecord(item) && typeof item.repo === 'string' && samePluginRepo(item.repo, url),
+  );
+  if (!alreadyRegistered) {
+    registries.push({ repo: canonical, ...(displayName?.trim() ? { name: displayName.trim() } : {}) });
+  }
+
+  const written = await writeCatalogBody({ ...body, registries });
+  if (!written.ok) return { ok: false, error: written.error ?? 'marketplace.json could not be written.' };
+  invalidatePanelScan();
+  return { ok: true, repo: canonical };
+}
+
+/**
+ * Drop a registration. The refresh cache is pruned by the caller after this
+ * succeeds, so the offers disappear in the same answer.
+ *
+ * A repository that is not registered is a success: the caller asked for the
+ * file to stop naming it, and it does.
+ */
+export async function pruneCatalogRegistry(repo: string): Promise<{ ok: boolean; error?: string }> {
+  if (!repo.trim()) return { ok: false, error: 'A repository is required.' };
+  const catalogPath = getMarketplaceCatalogPath();
+  if (!(await pathExists(catalogPath))) return { ok: true };
+
+  let body: Record<string, unknown>;
+  try {
+    const parsed: unknown = await Bun.file(catalogPath).json();
+    if (!isRecord(parsed)) return { ok: true };
+    body = parsed;
+  } catch {
+    return { ok: false, error: 'marketplace.json is not valid JSON; its entry was left in place.' };
+  }
+
+  const registries: unknown[] = Array.isArray(body.registries) ? body.registries : [];
+  const kept = registries.filter(
+    (item) => !(isRecord(item) && typeof item.repo === 'string' && samePluginRepo(item.repo, repo)),
+  );
+  if (kept.length === registries.length) return { ok: true };
+
+  const written = await writeCatalogBody({ ...body, registries: kept });
+  if (!written.ok) return { ok: false, error: written.error };
+  invalidatePanelScan();
+  return { ok: true };
 }

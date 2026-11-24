@@ -27,7 +27,7 @@
 import { dirname } from 'path';
 import type { PanelCatalogEntry } from '@/shared/types';
 import { readJsonBody } from '@/server/lib/panels/files.server';
-import { toMarketplaceCatalog } from '@/server/lib/panels/manifest';
+import { toMarketplaceCatalog } from '@/server/lib/panels/marketplace-catalog.server';
 
 /**
  * Every remote offer in one catalog file.

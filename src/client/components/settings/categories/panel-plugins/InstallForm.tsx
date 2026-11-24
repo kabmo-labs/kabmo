@@ -8,13 +8,15 @@ interface InstallFormProps {
 }
 
 /**
- * Install a panel plugin from a git URL.
+ * Install a panel plugin from a git URL, GitHub's `owner/repo` shorthand, or the
+ * name of a plugin a registered repository offers.
  *
- * The URL is the whole install grammar — there is no package name, no registry
- * and no version to pick, because a plugin is a repository whose root holds a
- * `kabmo.json` (or a `package.json` with a `kabmo` key). The field therefore
- * validates the URL SHAPE before sending it, so an obvious mistake is answered
- * instantly instead of after a clone timeout.
+ * The URL form is the whole install grammar for an unregistered plugin — there
+ * is no package name, no registry and no version to pick, because a plugin is a
+ * repository whose root holds a `kabmo.json` (or a `package.json` with a `kabmo`
+ * key). An external GitHub repository must be named `kabmo-plugins-<plugin>`;
+ * the PLUGIN keeps its own name, which is why a bare plugin name is installable
+ * once its repository is registered.
  *
  * Only its OWN validation is rendered here. A server error belongs to whichever
  * action produced it — install, update, or the auto-update switch — so the pane
@@ -29,12 +31,13 @@ export function InstallForm({ busy, onInstall, onClearError }: InstallFormProps)
     event.preventDefault();
     const value = url.trim();
     if (!value) return;
-    // Mirrors the server's own guard: a remote URL, the scp form, or a local
-    // path. Kept in step by hand because the client cannot import server code —
-    // the server validates again regardless, so a drift here costs a round trip,
-    // never a bad install.
-    if (!/^(https?:\/\/\S+|ssh:\/\/\S+|git@[^:/\s]+:\S+|file:\/\/\S+)$/i.test(value) && !/^[/~]\S*$/.test(value)) {
-      setLocalError('Expected an https, ssh, git@ or local path.');
+    // Mirrors the server's guard by REJECTING only what can never work: a value
+    // with whitespace is neither a URL, a `owner/repo` pair nor a plugin name.
+    // Everything else is sent — a bare name is resolved against the registered
+    // repositories server-side, and refusing it here would refuse a name the
+    // pane is showing.
+    if (/\s/.test(value)) {
+      setLocalError('Expected a git URL, owner/repo, or a plugin name.');
       return;
     }
     setLocalError(null);
@@ -49,12 +52,15 @@ export function InstallForm({ busy, onInstall, onClearError }: InstallFormProps)
     <form onSubmit={submit} className="border border-ink/15 rounded p-3 space-y-2">
       <div className="flex items-center gap-2">
         <Download size={14} className="text-ink/50 flex-shrink-0" />
-        <span className="text-xs font-semibold text-ink">Install from a git URL</span>
+        <span className="text-xs font-semibold text-ink">Install a plugin</span>
       </div>
       <p className="text-[11px] text-ink/50">
-        A Bun package whose <span className="font-mono">package.json</span> carries a{' '}
-        <span className="font-mono">kabmo</span> key, or a plain directory with a{' '}
-        <span className="font-mono">kabmo.json</span>. It is cloned, built, and registered automatically.
+        A git URL or <span className="font-mono">owner/repo</span> of a repository whose{' '}
+        <span className="font-mono">package.json</span> carries a <span className="font-mono">kabmo</span> key
+        (or a plain directory with a <span className="font-mono">kabmo.json</span>), or the name of a plugin a
+        repository above offers. GitHub repositories must start with{' '}
+        <span className="font-mono">kabmo-plugins-</span>; the plugin's own name does not. It is cloned, built,
+        and registered automatically.
       </p>
       <div className="flex items-center gap-2">
         <input
@@ -64,7 +70,7 @@ export function InstallForm({ busy, onInstall, onClearError }: InstallFormProps)
             setUrl(e.currentTarget.value);
             setLocalError(null);
           }}
-          placeholder="https://github.com/you/my-panel.git"
+          placeholder="owner/kabmo-plugins-my-panel, kanban, or https://…"
           disabled={busy}
           className="flex-1 bg-paper border border-ink/15 rounded px-2.5 py-1.5 text-xs font-mono text-ink placeholder-ink/35 focus:outline-none focus:border-ink/40 disabled:opacity-50"
         />

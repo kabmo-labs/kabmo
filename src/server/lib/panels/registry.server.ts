@@ -35,11 +35,13 @@ import { readDisabledPlugins, readPluginAutoUpdate } from '@/server/lib/panels/s
 import { readAllGitStatuses } from '@/server/lib/panels/git-status.server';
 import { readBlockedSyncs } from '@/server/lib/panels/baseline.server';
 import { readJsonBody, subdirectories } from '@/server/lib/panels/files.server';
-import { toMarketplaceCatalog } from '@/server/lib/panels/manifest';
+import { toMarketplaceCatalog } from '@/server/lib/panels/marketplace-catalog.server';
+import { pluginRepoKey } from '@/shared/lib/panels/plugin-repo';
 import { basenameOf } from '@/server/lib/panels/assets.server';
 import { runningVersions } from '@/server/lib/panels/compat.server';
 import { scanInstalledPlugins } from '@/server/lib/panels/scan.server';
 import { applySources, assembleCatalog } from '@/server/lib/panels/offers.server';
+import { readRegistryOffers, readRegistrySources } from '@/server/lib/panels/registries.server';
 
 /** The marketplace root: `<data>/marketplace`, overridable for tests. */
 export function getMarketplaceDir(): string {
@@ -117,6 +119,7 @@ async function runPanelScan(): Promise<PanelScan> {
     gitStatus: {},
     autoUpdate: false,
     syncBlocked: {},
+    registries: [],
     dirs: {},
     pluginDirs: {},
   };
@@ -184,10 +187,25 @@ async function runPanelScan(): Promise<PanelScan> {
   // copies it onto the row.
   scan.gitStatus = readAllGitStatuses();
   const installed = new Set(scanned.pluginStatus.map((plugin) => plugin.pluginId));
+  // A registered repository's offer is matched against the CLONES too, not only
+  // against ids: a plugin's manifest id may differ from the name its repository
+  // name suggests, and an offer that ignored that would reappear after install.
+  const installedRepos = new Set(
+    scanned.pluginStatus
+      .map((plugin) => plugin.gitOrigin)
+      .filter((origin): origin is string => Boolean(origin))
+      .map((origin) => pluginRepoKey(origin)),
+  );
+  const [registryOffers, registries] = await Promise.all([
+    readRegistryOffers(installed, installedRepos),
+    readRegistrySources(),
+  ]);
+  scan.registries = registries;
   scan.catalog = await assembleCatalog({
     workingCatalogPath: getMarketplaceCatalogPath(),
     bundledRoot: getBundledMarketplaceDir(),
     installed,
+    registryOffers,
   });
   applySources(scan.plugins, scan.catalog, scan.gitStatus);
 

@@ -179,5 +179,28 @@ export interface PanelMarketplaceManifest {
   description?: string;
   owner?: { name?: string };
   plugins?: PanelMarketplacePluginEntry[];
+  /** GitHub repositories this catalog registers as further plugin sources. */
+  registries?: PanelMarketplaceRegistryEntry[];
+}
+
+/**
+ * A GitHub repository a `marketplace.json` registers as a plugin source.
+ *
+ * This is what lets a user publish a plugin in their own repository and have it
+ * appear in the pane's Available list without vendoring it into this
+ * marketplace: the entry names the repository, the server reads the repository's
+ * own catalog when it can, and every plugin it offers becomes installable.
+ *
+ * The repository must follow the ecosystem naming rule
+ * (`kabmo-plugins-<plugin>`, `src/shared/lib/panels/plugin-repo.ts`). The PLUGIN
+ * name it publishes is free-form — the prefix belongs to the repository, never
+ * to the plugin.
+ */
+export interface PanelMarketplaceRegistryEntry {
+  /** `owner/repo` on GitHub. */
+  repo: string;
+  /** Display name; the repository name without the prefix when absent. */
+  name?: string;
+  description?: string;
 }
 
