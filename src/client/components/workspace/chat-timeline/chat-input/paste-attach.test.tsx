@@ -100,9 +100,12 @@ async function mount(): Promise<HTMLElement> {
 
 const draftOf = (host: HTMLElement) => host.querySelector('[data-testid="composer-input"]') as HTMLTextAreaElement;
 
-async function paste(host: HTMLElement, files: File[]) {
+/** Pastes at `caret` (a collapsed caret) or over `selection`, default the end. */
+async function paste(host: HTMLElement, files: File[], caret?: number | { start: number; end: number }) {
   const field = draftOf(host);
-  field.setSelectionRange(field.value.length, field.value.length);
+  const start = typeof caret === 'number' ? caret : caret?.start ?? field.value.length;
+  const end = typeof caret === 'number' ? caret : caret?.end ?? start;
+  field.setSelectionRange(start, end);
   const event = new Event('paste', { bubbles: true, cancelable: true });
   Object.defineProperty(event, 'clipboardData', { value: { files } });
   await act(async () => { field.dispatchEvent(event); });
@@ -123,6 +126,26 @@ describe('pasting a file into the composer', () => {
     expect(draftOf(host).value).toBe('review notes.md');
     const chip = host.querySelector('.composer-attach-row') as HTMLElement;
     expect(chip.textContent).toContain('notes.md');
+  });
+
+  test('inserts at the CARET, not at the end of the draft', async () => {
+    const host = await mount();
+    await type(host, 'review  please');
+    // The caret sits between the two spaces, where the user aimed it.
+    await paste(host, [new File(['# notes'], 'notes.md', { type: 'text/markdown' })], 7);
+
+    expect(draftOf(host).value).toBe('review notes.md please');
+  });
+
+  test('replaces the selection the paste was aimed at, and leaves the caret after the name', async () => {
+    const host = await mount();
+    await type(host, 'look at THIS please');
+    await paste(host, [new File(['PNG'], 'shot.png', { type: 'image/png' })], { start: 8, end: 12 });
+
+    const field = draftOf(host);
+    expect(field.value).toBe('look at shot.png please');
+    // Right after the inserted name: "look at " (8) + "shot.png" (8).
+    expect([field.selectionStart, field.selectionEnd]).toEqual([16, 16]);
   });
 
   test('an image is attached and named in the draft too', async () => {
