@@ -96,10 +96,15 @@ export function normalizeInitializeResult(raw: Record<string, unknown>): AcpInit
       : {}),
     agentCapabilities: {
       loadSession: false,
+      // Only a PRESENT v2 field is a verdict. Writing `false` for an absent
+      // one would make "the agent never mentioned embedded context" look like
+      // an explicit refusal, and the prompt builder downgrades on a refusal.
       promptCapabilities: {
         image: advertised(prompt?.image),
         audio: advertised(prompt?.audio),
-        embeddedContext: advertised(prompt?.embeddedContext),
+        ...(prompt && 'embeddedContext' in prompt
+          ? { embeddedContext: advertised(prompt.embeddedContext) }
+          : {}),
       },
       mcpCapabilities: { http: advertised(mcp?.http), sse: false },
       sessionCapabilities,

@@ -21,6 +21,8 @@ import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 import { allowOption, autoApproval, type PermissionOption } from '@/server/lib/harness/acp/permissions';
 import { permissionGrantKey } from '@/server/lib/harness/acp/grants';
 import { noteAwaitingInput } from '@/server/lib/notifications/feed.server';
+import { isRecord } from '@/shared/lib/util/guards';
+import type { AcpSubagents } from '@/server/lib/harness/acp/subagents';
 
 /**
  * The option id to select when the tier (or a standing grant) already allows
@@ -87,6 +89,8 @@ export interface PermissionRequestHost {
   readonly sessionId: string;
   accessMode: ApprovalMode;
   readonly permissions: PendingPermissions;
+  /** The announced children, so a child's request says whose it is. */
+  readonly subagents?: AcpSubagents;
   emit(event: AgentEvent): void;
 }
 
@@ -108,10 +112,27 @@ export function answerPermissionRequest(
   if (optionId) {
     return Promise.resolve({ answered: true, result: { outcome: { outcome: 'selected', optionId } } });
   }
-  const dialog = host.permissions.add(id, String(params.sessionId ?? host.sessionId), params);
+  // The ADDRESSED session, not this one by default: a child's permission
+  // arrives with the child's id, and recording the parent's id there put the
+  // grant on the wrong session. An empty id is kept empty (the queue still
+  // parks the dialog — the JSON-RPC id is what the answer names) instead of
+  // being papered over with a session that was never asked.
+  const requested = typeof params.sessionId === 'string' ? params.sessionId : '';
+  // A child's approval must NAME the child: two subagents asking for the same
+  // command would otherwise draw two identical dialogs with no way to tell
+  // which work each one unblocks.
+  const child = requested ? host.subagents?.get(requested) : undefined;
+  const toolCall = isRecord(params.toolCall) ? params.toolCall : {};
+  const title = typeof toolCall.title === 'string' && toolCall.title ? toolCall.title : 'approval';
+  const addressed = child
+    ? { ...params, toolCall: { ...toolCall, title: `${child.title ?? child.description ?? 'Subagent'} — ${title}` } }
+    : params;
+  const dialog = host.permissions.add(id, requested, addressed);
   host.emit(dialog as unknown as AgentEvent);
   // The agent is now blocked on the operator. Announced from the SERVER so the
   // banner arrives even when no page is open to see the dialog.
+  // Announced against the PARENT chat: that is the page a reader has open, and
+  // a child id is not a chat the notification feed can address.
   void noteAwaitingInput(host.sessionId);
   // Answered LATER; the transport must not send a refusal now or the agent
   // sees two answers to one request.

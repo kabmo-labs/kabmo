@@ -37,10 +37,17 @@
  * `session.compaction` IS advertised: the frame mapper turns a compaction into a
  * notice, which is the surface the timeline already has, so an agent may report
  * one instead of falling back to modelling it as conversation text.
+ *
+ * `session.plan` and `subagents` are advertised because both now have a
+ * consumer: `plan`/`plan_update` feed the Todos panel, and `subagents.ts` +
+ * `subagent-frames.ts` track and draw each child the parent announces. The
+ * subagents RFD forbids a v1 agent from sending `subagent_update` unless the
+ * client advertised it, so the handlers were unreachable before this entry.
  */
 export const KABMO_CLIENT_CAPABILITIES = {
   fs: { readTextFile: true, writeTextFile: true },
-  session: { notices: {}, compaction: {} },
+  session: { notices: {}, compaction: {}, plan: {} },
+  subagents: {},
 } as const;
 
 /** The latest protocol major this client sends; it also speaks v1. */

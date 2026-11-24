@@ -17,6 +17,7 @@ import { ACP_ERROR } from '@/server/lib/harness/acp/protocol';
 import { normalizePermissionParams } from '@/server/lib/harness/acp/v2';
 import type { AcpId, AcpProtocolVersion } from '@/server/lib/harness/acp/protocol';
 import type { PendingPermissions } from '@/server/lib/harness/acp/permissions';
+import type { AcpSubagents } from '@/server/lib/harness/acp/subagents';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
 import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 
@@ -26,6 +27,9 @@ export interface AcpClientRequestHost {
   readonly protocol: AcpProtocolVersion;
   accessMode: ApprovalMode;
   permissions: PendingPermissions;
+  /** The announced children: a child's request must name the child, and its
+   *  `fs/*` calls are confined to the child's own working directory. */
+  readonly subagents?: AcpSubagents;
   emit: (event: AgentEvent) => void;
 }
 
@@ -48,12 +52,26 @@ export function handleAcpClientRequest(
       sessionId: host.sessionId,
       accessMode: host.accessMode,
       permissions: host.permissions,
+      ...(host.subagents ? { subagents: host.subagents } : {}),
       emit: (event) => host.emit(event),
     }, id, normalized);
   }
   // The file surface the client advertised at `initialize`. Routed before the
   // refusal so an agent that took the advertisement at its word gets an answer.
-  if (isAcpFsMethod(method)) return handleAcpFsRequest(host, method, params);
+  if (isAcpFsMethod(method)) {
+    const subagents = host.subagents;
+    return handleAcpFsRequest({
+      cwd: host.cwd,
+      sessionId: host.sessionId,
+      ...(subagents
+        ? {
+            cwdFor: (sessionId: string | undefined) => (sessionId ? subagents.get(sessionId)?.cwd : undefined) ?? host.cwd,
+            owns: (sessionId: string) => sessionId === host.sessionId || subagents.has(sessionId),
+          }
+        : {}),
+      emit: (event) => host.emit(event),
+    }, method, params);
+  }
   // Cursor asks the CLIENT to run a nested task (`cursor/task`, measured on
   // cursor-agent 2026.08.11). Answering `-32601` made its adapter fall back with
   // an error in the middle of a delegation the tool card had already drawn; an

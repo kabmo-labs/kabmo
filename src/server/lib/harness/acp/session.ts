@@ -5,15 +5,12 @@
 
 /**
  * One live ACP session: the bridge between `AcpProcess` + `AcpFrameMapper` and
- * the `HarnessSession` contract every route already speaks.
+ * the `HarnessSession` contract every route speaks. It owns STATE only — the
+ * id, selectors, model, run flags and approval queue. Every RULE lives beside
+ * it, one module per concern (`session-handshake`, `session-intake`, `turn`,
+ * `session-stop`, `session-lifecycle`, `session-inbound`, `session-web-state`).
  *
- * It owns the session's state — the id, the selectors, the model, the run flags,
- * the commands and the approval queue. The RULES live beside it, one module per
- * concern: `session-handshake.ts` (setup), `session-intake.ts` (what a prompt
- * sends), `turn.ts` (the turn), `session-config.ts`, `session-permissions.ts`,
- * `session-lifecycle.ts` and `session-web-state.ts`.
- *
- * `send()` takes the SAME command vocabulary the routes already send omp, so
+ * `send()` takes the SAME command vocabulary the routes send omp, so
  * `routes/agent/command.ts` needs no second dispatch table.
  */
 
@@ -33,25 +30,26 @@ import type {
   AcpSessionModels,
 } from '@/server/lib/harness/acp/protocol';
 import { promptContent, startAcpPrompt } from '@/server/lib/harness/acp/session-intake';
-import { LOST_SESSION_NOTICE } from '@/server/lib/harness/acp/session-lost';
+import { cancelAcpTurn, dropAcpSession, endAcpSessionTurn } from '@/server/lib/harness/acp/session-stop';
 import { setAcpConfig, setAcpMode, type AcpConfigWriter } from '@/server/lib/harness/acp/session-config';
 import { acpConfigView, type AcpConfigProcess } from '@/server/lib/harness/acp/session-config-view';
 import * as verbs from '@/server/lib/harness/acp/verbs';
 import { acpPendingDialogs, answerAcpDialog } from '@/server/lib/harness/acp/session-approvals';
-import { beginAcpTurn, endAcpTurn } from '@/server/lib/harness/acp/session-turns';
+import { beginAcpTurn } from '@/server/lib/harness/acp/session-turns';
 import { capabilitiesFrom } from '@/server/lib/harness/launch';
 import { PendingPermissions } from '@/server/lib/harness/acp/permissions';
-import { cancelAllAcpPermissions } from '@/server/lib/harness/acp/session-permissions';
 import { handleAcpNotification } from '@/server/lib/harness/acp/session-notify';
 import { RawNotificationSink, type RawNotificationListener } from '@/server/lib/harness/acp/raw-listeners';
 import { AcpUsageMeter, type AcpContextUsage } from '@/server/lib/harness/acp/session-usage';
 import { handleAcpClientRequest, type AcpClientRequestAnswer } from '@/server/lib/harness/acp/session-requests';
 import { reportAcpExit, type AcpExitInfo } from '@/server/lib/harness/acp/session-exit';
-import { acpExited, destroyAcp } from '@/server/lib/harness/acp/session-lifecycle';
+import { acpExited, closeAcpSession, destroyAcp } from '@/server/lib/harness/acp/session-lifecycle';
 import { SessionListeners } from '@/server/lib/harness/acp/session-listeners';
 import type { AcpBackgroundProbe } from '@/server/lib/harness/acp/background-work';
 import { acpWebState } from '@/server/lib/harness/acp/session-web-state';
 import { acpIdleReaper } from '@/server/lib/harness/acp/session-idle';
+import { AcpSubagents, type AcpSubagentRecord } from '@/server/lib/harness/acp/subagents';
+import { AcpInbound } from '@/server/lib/harness/acp/session-inbound';
 import { DEFAULT_APPROVAL_MODE, isApprovalMode, type ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 import { dispatchCommand, type AcpCommandHost } from '@/server/lib/harness/acp/commands';
 import { markStreamStatus } from '@/shared/lib/omp/session/stream-state.server';
@@ -112,6 +110,8 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
   models: AcpSessionModels | null = null;
   /** Whether the agent advertised `promptCapabilities.image`. */
   acceptsImages = false;
+  /** Set only when the agent explicitly refused embedded context. */
+  acceptsEmbeddedContext: boolean | undefined = undefined;
   /** MCP servers every session request carries; empty when none are configured. */
   readonly mcpServers: AcpMcpServer[];
   private readonly proc: AcpProcess;
@@ -125,6 +125,19 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
    *  `session-notify.ts` can feed it before the mapper folds a frame. */
   readonly rawSink = new RawNotificationSink();
   readonly permissions = new PendingPermissions();
+  /** Child sessions this parent announced (the subagents RFD). */
+  readonly subagents = new AcpSubagents();
+  /** Admission, addressing and child cards — see `session-inbound.ts`.
+   *  Lazy: a test mounts this class on its prototype, where a field initializer
+   *  never runs, and `onNotification` must still work there. */
+  private inboundState: AcpInbound | null = null;
+  private get inbound(): AcpInbound {
+    return this.inboundState ??= new AcpInbound({
+      subagents: this.subagents,
+      emit: (event) => this.emit(event),
+      replaying: () => this.replay.isActive,
+    });
+  }
   private destroyHook: (() => void) | null = null;
   destroyed = false;
   /** True only for a restore: replay frames are accepted and collected. */
@@ -162,47 +175,48 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
   private readonly requested: AcpHandshakeSelections;
   /** `initialize` + `session/new|load|resume`, then the requested selections. */
   async start(sessionIdToLoad?: string, forkFromSessionId?: string, forkMeta?: Record<string, unknown>): Promise<{ sessionId: string }> {
-    return startAcpSession(this, this.proc, this.mapper, this.replay, this.wantsReplay, this.requested, sessionIdToLoad, forkFromSessionId, forkMeta);
+    // Frames that arrive BEFORE the setup answer is applied cannot be routed:
+    // the session id they belong to is not known yet. They are held, not
+    // dropped, and replayed in arrival order once it is.
+    return this.inbound.run(
+      () => startAcpSession(this, this.proc, this.mapper, this.replay, this.wantsReplay, this.requested, sessionIdToLoad, forkFromSessionId, forkMeta),
+      (method, params) => handleAcpNotification(this, method, params),
+    );
   }
 
   get protocol(): AcpProtocolVersion { return this.proc.protocolVersion === 2 ? 2 : 1; }
   /** The OS pid of the agent child, for the Stats panel's lease. */
   get pid(): number | undefined { return this.proc.pid; }
+  get process(): AcpProcess { return this.proc; }
   /** Set by the handshake as soon as `initialize` answers. */
   onProtocol(version: AcpProtocolVersion): void { this.turns.completion = version === 2 ? 'state' : 'response'; }
   isAlive(): boolean { return !this.destroyed && this.proc.isAlive; }
   get isStreaming(): boolean { return this.turns.isStreaming; }
   get isPromptRunning(): boolean { return this.turns.isPromptRunning; }
   isRunning(): boolean { return this.isAlive() && (this.turns.isPromptRunning || this.turns.isStreaming); }
-  isBusy(): boolean { return this.isRunning() || this.permissions.size() > 0; }
+  /** A child outlives its turn: reclaiming the parent under it kills work. */
+  isBusy(): boolean { return this.isRunning() || this.permissions.size() > 0 || this.subagents.anyRunning(); }
   onEvent(listener: (event: AgentEvent) => void): () => void { return this.events.add(listener); }
-  /** Subscribe to the raw `session/update` payloads, before the mapper folds them. */
+  /** Raw `session/update` payloads, before the mapper folds them. */
   onRawNotification(listener: RawNotificationListener): () => void { return this.rawSink.add(listener); }
   emit(event: AgentEvent): void { this.replay.push(event); this.events.emit(event); }
   /** Run the single destroy callback the registry installed. */
   runDestroyHook(): void { this.destroyHook?.(); }
 
-  /** The teardown seams `session-lifecycle.ts` drives: methods, not class
-   *  fields, because a test mounts the class on its prototype and a field
-   *  initializer never runs there. */
-  disposeProcess(): Promise<void> {
-    return this.proc.dispose();
-  }
+  /** Teardown seams: methods, not fields, because a test mounts this class on
+   *  its prototype and a field initializer never runs there. */
+  disposeProcess(): Promise<void> { return this.proc.dispose(); }
+  closeAgentSession(): Promise<void> { return closeAcpSession(this); }
+  reportExit(info: AcpExitInfo): Promise<void> { return reportAcpExit(this, info); }
 
-  reportExit(info: AcpExitInfo): Promise<void> {
-    return reportAcpExit(this, info);
-  }
-
-  /** The dispatcher's command surface — see `commands.ts` for the rules. */
-  dispatch(command: Record<string, unknown>): Promise<unknown> {
-    // A command is the clearest sign the session is still wanted.
+  /** The dispatcher's command surface — see `commands.ts`. A command is also
+   *  the clearest sign the session is still wanted. */
+  send(command: Record<string, unknown>): Promise<unknown> {
     this.idle.reset();
     return dispatchCommand(this, command);
   }
 
-  getPendingUiDialogs(): Record<string, unknown>[] {
-    return acpPendingDialogs(this.permissions);
-  }
+  getPendingUiDialogs(): Record<string, unknown>[] { return acpPendingDialogs(this.permissions); }
 
   resolvePendingUiDialog(id: string): void {
     // A dialog the client dismissed is a REFUSAL, not a no-answer.
@@ -213,22 +227,15 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
     this.destroyHook = callback;
   }
 
-  send(command: Record<string, unknown>): Promise<unknown> {
-    return this.dispatch(command);
-  }
-
   /** Dispatcher seam: one steering send. */
   steer(blocks: unknown[], queue: 'steering' | 'followUp'): Promise<unknown> {
     return this.proc.steer(this.sessionId, blocks, queue);
   }
 
   /** The blocks one prompt sends (text, images, `@path` links). */
-  blocksFor(message: string, images: unknown): Promise<unknown[]> {
-    return promptContent(this, message, images);
-  }
+  blocksFor(message: string, images: unknown): Promise<unknown[]> { return promptContent(this, message, images); }
 
-  /** Dispatcher seam: hold an input the agent has no mid-turn channel for, so
-   *  it is dispatched as the next turn instead of refused or lost. */
+  /** Hold an input the agent has no mid-turn channel for. */
   queueTurnInput(message: string, images: unknown): void {
     this.turns.queue(message, images);
   }
@@ -236,47 +243,25 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
   /** Record a mid-turn user message; the mapper drops live user frames. */
   recordUserTurn(message: string, images: unknown): void { this.emit({ type: 'user_turn', message, images }); }
 
-  /** The durable run marker the sidebar's spinner and a reattaching tab read. A
-   *  field so a unit test can stub it. */
+  /** The durable run marker a reattaching tab reads; a field so a test stubs it. */
   markStream: (status: 'stream' | 'finish' | 'abort', failure?: string | null) => void = (status, failure) => {
     if (!this.sessionId) return;
     void markStreamStatus(this.sessionId, status, status === 'stream' ? this.runModel : undefined, failure).catch(() => {});
   };
 
-  /** Turn-end bookkeeping the panels read — see `endAcpTurn`, plus the held
-   *  input that becomes the next turn. */
-  onTurnEnded(info: AcpTurnEndInfo): Promise<void> {
-    const reported = endAcpTurn(this, info);
-    // A held input is the NEXT turn: the queue lives in the turn machine, and a
-    // session that never drains it loses the message silently.
-    const next = this.turns.takeQueued();
-    if (next) {
-      try {
-        this.startTurn(next.message, next.images);
-      } catch {
-        // A turn that reopened first (a background interval) wins; the input is
-        // dropped rather than re-queued behind an indefinite run.
-      }
-    }
-    return reported;
-  }
+  /** Turn-end bookkeeping the panels read — see `session-stop.ts`. */
+  onTurnEnded(info: AcpTurnEndInfo): Promise<void> { return endAcpSessionTurn(this, info); }
 
-  /** Drop this session so the next command respawns it and resumes the agent's
-   *  own history. Called when the agent reports the session is gone. */
-  dropLostSession(): void {
-    this.emit({ type: 'notice', level: 'warning', message: LOST_SESSION_NOTICE });
-    void this.destroyAndWait();
-  }
+  /** Drop this session so the next command respawns it — see `session-stop.ts`. */
+  dropLostSession(): void { dropAcpSession(this); }
 
-  /** Dispatcher seam: stop the turn and answer every parked approval. */
+  /** Dispatcher seam: stop the turn and settle what it parked. */
   cancelTurn(): void {
-    this.background.stop();
-    this.turns.cancel();
-    cancelAllAcpPermissions(this.permissions, this.proc);
+    cancelAcpTurn(this);
   }
 
-  /** Dispatcher seam: adopt the composer's access pick. ACP answers approvals
-   *  in-process, so this needs no respawn — unlike omp's spawn-time flag. */
+  /** Adopt the composer's access pick. ACP answers approvals in-process, so no
+   *  respawn is needed — unlike omp's spawn-time flag. */
   setAccessMode(mode: ApprovalMode): void {
     this.accessMode = mode;
   }
@@ -293,11 +278,13 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
 
   /** Answer a pending approval — every exit answers the agent, or it hangs. */
   resolvePermission(dialogId: string, confirmed: boolean, optionId?: string): unknown {
-    answerAcpDialog(this.permissions, this.proc, dialogId, confirmed, optionId);
+    answerAcpDialog(this.permissions, this.proc, dialogId, confirmed, optionId, this.sessionId);
     return null;
   }
 
-  webState(): Record<string, unknown> { return acpWebState(this); }
+  webState(): Record<string, unknown> {
+    return { ...acpWebState(this), protocolVersion: this.protocol, subagents: this.subagents.list() };
+  }
 
   /** Run one turn — see `session-intake.ts` for the refusal and the ACK. */
   startTurn(message: string, images: unknown): unknown {
@@ -309,9 +296,12 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
     return beginAcpTurn(this, this.turns, message, images);
   }
 
-  /** One agent notification, routed — see `session-notify.ts`. */
+  /** One agent notification, routed — see `session-notify.ts`.
+   *
+   *  Held while the handshake is open: the address gate needs the session id,
+   *  and a setup-time frame dropped there is output the user never sees. */
   private onNotification(method: string, params: Record<string, unknown>): void {
-    handleAcpNotification(this, method, params);
+    this.inbound.admit(method, params, (nextMethod, nextParams) => handleAcpNotification(this, nextMethod, nextParams));
   }
 
   absorbUsage(update: Record<string, unknown>): void { this.usage.absorb(update); }
@@ -320,6 +310,16 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
   mapUpdate(update: Record<string, unknown>): AgentEvent[] { return this.mapper.mapUpdate(update); }
   onStateUpdate(update: Record<string, unknown>): void { this.turns.onStateUpdate(update); this.replay.markIdle(update.state); }
   respond(id: AcpId, result: unknown): void { this.proc.respond(id, result); }
+  /** Emit the card frames for one child record. */
+  subagentFrame(record: AcpSubagentRecord): void {
+    this.inbound.emitSubagent(record);
+  }
+  /** v2's explicit end-of-replay marker. */
+  onReplayComplete(): void { this.replay.markSettled(); }
+  /** Close every child card when the parent goes away. */
+  finishSubagents(): void {
+    this.inbound.closeSubagents();
+  }
   /** Agent→client requests: every branch answers or refuses. */
   private onClientRequest(id: AcpId, method: string, params: Record<string, unknown>): Promise<AcpClientRequestAnswer> {
     this.idle.reset();

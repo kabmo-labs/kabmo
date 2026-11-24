@@ -30,7 +30,7 @@
  */
 
 import { configOption, modelFromOption } from '@/server/lib/harness/acp/prompt';
-import { permissionGrantKey } from '@/server/lib/harness/acp/grants';
+import { isDurableGrantKey, permissionGrantKey } from '@/server/lib/harness/acp/grants';
 import { saveAcpGrant } from '@/server/lib/harness/acp/grants.server';
 import type { AcpConfigOption, AcpSessionModeState, AcpSessionModels } from '@/server/lib/harness/acp/protocol';
 import type { PendingPermissions } from '@/server/lib/harness/acp/permissions';
@@ -148,7 +148,7 @@ export function settlePermissionDialog(
   permissions: PendingPermissions,
   responder: AcpResponder,
   dialogId: string,
-  choice: { confirmed: boolean; optionId?: string },
+  choice: { confirmed: boolean; optionId?: string; grantSessionId?: string },
 ): string | null {
   const entry = permissions.take(dialogId);
   if (!entry) return null;
@@ -163,7 +163,12 @@ export function settlePermissionDialog(
   if (picked.kind !== 'allow_always') return null;
   const key = permissionGrantKey(entry.toolCall);
   if (!permissions.grants.add(key)) return null;
-  if (key !== null) void saveAcpGrant(entry.sessionId, key).catch(() => {});
+  // Persisted only for a key with a real identity: a title-only grant would
+  // approve unrelated calls on the next spawn. It still holds for this session.
+  const grantSession = choice.grantSessionId ?? entry.sessionId;
+  if (key !== null && grantSession && isDurableGrantKey(key)) {
+    void saveAcpGrant(grantSession, key).catch(() => {});
+  }
   return key;
 }
 

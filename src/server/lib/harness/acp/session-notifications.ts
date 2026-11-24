@@ -30,9 +30,19 @@ import type { AcpConfigOption, AcpProtocolVersion, AcpSessionModeState } from '@
 import type { HarnessId } from '@/shared/lib/harness/catalog';
 import { saveAcpPlanState } from '@/server/lib/harness/acp/acp-goal-state.server';
 import { normalizeConfigOptions, planEntries } from '@/server/lib/harness/acp/v2';
+import type { AcpSubagentRecord, AcpSubagents } from '@/server/lib/harness/acp/subagents';
 
 export interface AcpNotificationHost extends AcpConfigNotice {
+  /** The ACP session this stream belongs to; a frame naming another one is a
+   *  child's and must not fold into this transcript. */
+  readonly sessionId: string;
   readonly harness: HarnessId;
+  /** The child sessions the parent has announced. */
+  readonly subagents: AcpSubagents;
+  /** Emit the card frames one child record changed. */
+  subagentFrame(record: AcpSubagentRecord): void;
+  /** The restore's own end marker (v2 `replay_complete`). */
+  onReplayComplete(): void;
   /** The negotiated major; v2 renamed a few update payloads. */
   readonly protocol: AcpProtocolVersion;
   agentCommands: AgentCommand[];
@@ -61,6 +71,32 @@ export function handleSessionNotification(
   if (!update || typeof update !== 'object') return;
   const record = update as Record<string, unknown>;
   const kind = typeof record.sessionUpdate === 'string' ? record.sessionUpdate : '';
+  const frameSession = typeof params.sessionId === 'string' ? params.sessionId : '';
+
+  // A child announces itself ON THE PARENT'S STREAM, and its own `sessionId` is
+  // the CHILD — so this branch runs before the address gate.
+  if (kind === 'subagent_update') {
+    const announced = host.subagents.apply(record);
+    if (announced) host.subagentFrame(announced);
+    return;
+  }
+
+  // Every other update is ADDRESSED. A frame for another session is a child's
+  // (or one this client never announced): fold it into its own card, or drop
+  // it. Before this gate a multiplexing agent's child traffic merged into the
+  // parent transcript and its permissions parked under the parent's id.
+  if (frameSession && frameSession !== host.sessionId) {
+    const child = host.subagents.absorb(frameSession, record);
+    if (child) host.subagentFrame(child);
+    return;
+  }
+
+  // v2's explicit end-of-replay marker. The fixed fallback in `AcpReplay` is
+  // only for a peer that never sends one.
+  if (kind === 'replay_complete') {
+    host.onReplayComplete();
+    return;
+  }
 
   // Session METADATA arrives between turns — omp publishes its command list and
   // a usage update right after `session/new`, when no turn is open. The turn

@@ -255,6 +255,30 @@ export interface AcpSessionInfo {
   _meta?: Record<string, unknown>;
 }
 
+/**
+ * One `subagent_update` from the subagents RFD.
+ *
+ * The update is carried on the PARENT's stream and its own `sessionId` names
+ * the CHILD. Every field is a patch: omitted = unchanged, `null` = cleared,
+ * which is why the fields are optional-nullable rather than optional.
+ */
+export interface AcpSubagentUpdate {
+  sessionId: string;
+  title?: string | null;
+  description?: string | null;
+  capabilities?: { cancel?: unknown | null } | null;
+  state?: AcpSubagentState | null;
+  cwd?: string | null;
+  additionalDirectories?: string[] | null;
+}
+
+/** A subagent session's own activity state (`state_update` payload). */
+export interface AcpSubagentState {
+  state?: string;
+  stopReason?: string;
+  error?: { code?: number; message?: string } | null;
+}
+
 /** `session/request_permission` — the approval gate's wire form. */
 export interface AcpPermissionRequest {
   sessionId: string;

@@ -17,9 +17,17 @@
  * surfacing every attempt again is the safer mistake, and a refusal the operator
  * has to repeat is never a security hole.
  *
+ * A key that could only be derived from the TITLE is marked and never
+ * persisted: some adapters send one constant title for every call ("Run
+ * command"), so a saved title grant would approve unrelated invocations on the
+ * next spawn. It still works for the rest of the current session.
+ *
  * The set is per SESSION and hydrated from the database at spawn, so a reload or
  * a reclaimed child does not resurrect the questions.
  */
+
+/** Marks a grant whose only identity is the adapter's title. */
+const TITLE_KEY_PREFIX = 'title:';
 
 /** A grant is a key plus the option kind it was granted with. */
 export interface PermissionGrant {
@@ -45,18 +53,25 @@ export function permissionGrantKey(toolCall: Record<string, unknown> | undefined
     rawInput.target,
   ].find((value): value is string => typeof value === 'string' && value.trim().length > 0);
   const title = typeof toolCall.title === 'string' ? toolCall.title.trim() : '';
-  const identity = subject ?? title;
-  if (!identity) return null;
-  return `${kind}\u0000${identity}`;
+  if (subject) return `${kind}\u0000${subject}`;
+  if (!title) return null;
+  return `${TITLE_KEY_PREFIX}${kind}\u0000${title}`;
+}
+
+/** Whether a grant may outlive the session. A title-only identity may not. */
+export function isDurableGrantKey(key: string): boolean {
+  return !key.startsWith(TITLE_KEY_PREFIX);
 }
 
 /** The grants one session has earned, in memory. */
 export class PermissionGrants {
   readonly #keys = new Set<string>();
 
-  /** Adopt the rows read from the database at spawn. */
+  /** Adopt the rows read from the database at spawn. A title-only row cannot
+   *  come from this build, and one written by an older build is skipped: it is
+   *  exactly the over-broad grant `isDurableGrantKey` exists to stop. */
   hydrate(keys: readonly string[]): void {
-    for (const key of keys) this.#keys.add(key);
+    for (const key of keys) if (isDurableGrantKey(key)) this.#keys.add(key);
   }
 
   has(key: string | null): boolean {

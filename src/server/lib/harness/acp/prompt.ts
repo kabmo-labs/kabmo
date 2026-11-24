@@ -109,8 +109,21 @@ export function modelsAsSelector(models: AcpSessionModels | undefined): AcpConfi
   } satisfies AcpConfigOption;
 }
 
-/** A prompt in ACP content-block form. */
-export function promptBlocks(message: string, images: unknown, files: readonly PromptFileLink[] = []): unknown[] {
+/**
+ * A prompt in ACP content-block form.
+ *
+ * `embeddedContext: false` is the agent SAYING it will not take resource
+ * blocks, so the file links are folded into the text instead of being sent as
+ * blocks it must refuse. An absent capability is not a refusal — the baseline
+ * behavior (send the links) is kept, because the client serves the `fs/*`
+ * surface those links resolve through.
+ */
+export function promptBlocks(
+  message: string,
+  images: unknown,
+  files: readonly PromptFileLink[] = [],
+  options: { embeddedContext?: boolean } = {},
+): unknown[] {
   const blocks: unknown[] = [];
   if (Array.isArray(images)) {
     for (const image of images) {
@@ -119,6 +132,11 @@ export function promptBlocks(message: string, images: unknown, files: readonly P
       const mimeType = 'mimeType' in image && typeof image.mimeType === 'string' ? image.mimeType : 'image/png';
       blocks.push({ type: 'image', data: image.data, mimeType });
     }
+  }
+  if (options.embeddedContext === false && files.length > 0) {
+    const mentions = files.map((file) => `@${file.name}`).join(' ');
+    blocks.push({ type: 'text', text: `${mentions}\n\n${message}` });
+    return blocks;
   }
   // The file links precede the text: an agent that reads them does so while it
   // reads the prompt, and the text is the last block (a trailing link is what

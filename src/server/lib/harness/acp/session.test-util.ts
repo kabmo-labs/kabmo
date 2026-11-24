@@ -26,6 +26,7 @@ import { AcpTurns } from '@/server/lib/harness/acp/turn';
 import { SessionListeners } from '@/server/lib/harness/acp/session-listeners';
 import { RawNotificationSink } from '@/server/lib/harness/acp/raw-listeners';
 import { PendingPermissions } from '@/server/lib/harness/acp/permissions';
+import { AcpSubagents } from '@/server/lib/harness/acp/subagents';
 import { acpConfigView } from '@/server/lib/harness/acp/session-config-view';
 import { stampMessageModel } from '@/server/lib/harness/acp/session-config';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
@@ -172,6 +173,7 @@ export function mountSession(options: { busyWaitMs?: number } = {}): MountedSess
     turns,
     mapper,
     permissions: new PendingPermissions(),
+    subagents: new AcpSubagents(),
     // The config view is a constructor field; a prototype mount has none, and
     // `set_model` writes through it.
     config: acpConfigView(
@@ -227,11 +229,13 @@ export function mountSession(options: { busyWaitMs?: number } = {}): MountedSess
   };
 }
 
-/** Push one `session/update` at the session, as the process would. */
-export function notify(session: AcpSession, update: Record<string, unknown>): void {
+/** Push one `session/update` at the session, as the process would. `sessionId`
+ *  is the ADDRESS the frame carried; omitting it models an adapter that does not
+ *  tag its frames. */
+export function notify(session: AcpSession, update: Record<string, unknown>, sessionId?: string): void {
   (session as unknown as { onNotification: (method: string, params: unknown) => void }).onNotification.call(
     session,
     'session/update',
-    { update },
+    sessionId ? { sessionId, update } : { update },
   );
 }

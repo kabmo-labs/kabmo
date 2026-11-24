@@ -45,7 +45,10 @@ describe('normalizeInitializeResult', () => {
     expect(init.agentInfo).toEqual({ name: 'agent', title: 'Agent', version: '2.0.0' });
     expect(init.agentCapabilities).toMatchObject({
       loadSession: false,
-      promptCapabilities: { image: true, audio: false, embeddedContext: false },
+      // `embeddedContext` is present only when the agent said something about
+      // it: an absent v2 field is not a refusal, and the prompt builder
+      // downgrades `resource_link` blocks only on an explicit `false`.
+      promptCapabilities: { image: true, audio: false },
       mcpCapabilities: { http: true, sse: false },
       sessionCapabilities: {
         list: {},
@@ -57,6 +60,23 @@ describe('normalizeInitializeResult', () => {
     });
     expect(init.authMethods).toEqual([{ id: 'login', type: 'agent', name: 'Login' }]);
     expect(init._meta).toMatchObject({ steering: { supported: true } });
+  });
+
+  test('a v2 prompt capability is a support marker, and absence is unknown', () => {
+    const supported = normalizeInitializeResult({
+      protocolVersion: 2,
+      info: { name: 'x', version: '1' },
+      capabilities: { session: { prompt: { embeddedContext: {} } } },
+    });
+    expect(supported.agentCapabilities?.promptCapabilities?.embeddedContext).toBe(true);
+    const silent = normalizeInitializeResult({
+      protocolVersion: 2,
+      info: { name: 'x', version: '1' },
+      capabilities: { session: { prompt: {} } },
+    });
+    // Not `false`: v2 has no way to say "refused", and reading absence as a
+    // refusal would strip `resource_link` blocks from agents that accept them.
+    expect(silent.agentCapabilities?.promptCapabilities?.embeddedContext).toBeUndefined();
   });
 
   test('an agent without capabilities.session claims no session methods', () => {

@@ -32,6 +32,13 @@ import { ACP_ERROR } from '@/server/lib/harness/acp/protocol';
 export interface AcpFsHost {
   readonly cwd: string;
   readonly sessionId: string;
+  /** The working directory of an ADDRESSED session: a subagent announced its
+   *  own `cwd`, and confining its reads to the parent's tree would refuse paths
+   *  it legitimately owns. Absent means every session shares `cwd`. */
+  cwdFor?(sessionId: string | undefined): string;
+  /** Whether this client serves the addressed session: itself, or a child it
+   *  announced. Absent means only `sessionId` itself. */
+  owns?(sessionId: string): boolean;
   /** Publish the write so the timeline's change journal records it. A write the
    *  AGENT performed through this client runs no tool of its own: without this
    *  frame its file change never reached the journal or the diff panel. */
@@ -53,10 +60,14 @@ export async function handleAcpFsRequest(
   params: Record<string, unknown>,
 ): Promise<AcpFsAnswer> {
   const requestedSession = params.sessionId;
-  // One process serves one session on this transport, so any other id names
-  // something this client cannot address. Silently serving it would let a
-  // second session reach a workspace it was never given.
-  if (typeof requestedSession === 'string' && requestedSession !== host.sessionId) {
+  // A session this client does not serve names something it was never given:
+  // a second chat on the same process, or a child nobody announced. Serving it
+  // would let that session reach a workspace it does not own.
+  if (
+    typeof requestedSession === 'string'
+    && requestedSession !== host.sessionId
+    && !host.owns?.(requestedSession)
+  ) {
     return refuse(ACP_ERROR.invalidParams, `Unknown session: ${requestedSession}`);
   }
   const target = params.path;
@@ -66,7 +77,8 @@ export async function handleAcpFsRequest(
   if (!path.isAbsolute(target)) {
     return refuse(ACP_ERROR.invalidParams, `Path must be absolute: ${target}`);
   }
-  if (!(await pathHolds(host.cwd, target))) {
+  const root = host.cwdFor?.(typeof requestedSession === 'string' ? requestedSession : undefined) ?? host.cwd;
+  if (!(await pathHolds(root, target))) {
     return refuse(ACP_ERROR.invalidParams, `Path is outside this session's workspace: ${target}`);
   }
 

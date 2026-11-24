@@ -36,6 +36,9 @@ export interface AgentStdioHandlers {
   onStderr?: (line: string) => void;
   /** The child is gone. Fires once, after `exited`. */
   onExit: (info: { code: number | null; stderrTail: string }) => void;
+  /** The pipe closed. A transport whose stdout ended can answer nothing more,
+   *  even while the process is still alive. */
+  onStdoutClosed?: () => void;
 }
 
 export class AgentStdio {
@@ -69,7 +72,11 @@ export class AgentStdio {
       );
     }
 
-    void readLines(this.child.stdout, (line) => handlers.onLine(line));
+    void readLines(this.child.stdout, (line) => handlers.onLine(line)).then(() => {
+      // EOF without an exit: a child that closed stdout answers nothing more,
+      // and every pending call would otherwise wait out its own timeout.
+      handlers.onStdoutClosed?.();
+    });
     void readLines(this.child.stderr, (line) => {
       this.#tail = `${this.#tail}${line}\n`.slice(-STDERR_TAIL_LIMIT);
       handlers.onStderr?.(line);

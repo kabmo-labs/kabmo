@@ -40,7 +40,13 @@ describe('initializeAcpAgent', () => {
       protocolVersion: 2,
       capabilities: {},
       info: { name: 'kabmo', version: '0.1' },
-      clientCapabilities: { fs: { readTextFile: true, writeTextFile: true } },
+      clientCapabilities: {
+        fs: { readTextFile: true, writeTextFile: true },
+        // Advertised because both have a consumer now: `plan` feeds the Todos
+        // panel, `subagents` is what lets a v1 agent announce a child at all.
+        session: { notices: {}, compaction: {}, plan: {} },
+        subagents: {},
+      },
     });
     expect(result.protocolVersion).toBe(2);
     expect(result.agentCapabilities?.promptCapabilities?.image).toBe(true);
@@ -66,5 +72,30 @@ describe('initializeAcpAgent', () => {
       throw new Error('ACP agent exited');
     }))).rejects.toThrow('ACP agent exited');
     expect(calls).toBe(1);
+  });
+
+  test('does not retry a refusal that is not about the version', async () => {
+    // Re-sending `initialize` to an agent that refused for its own reason hid
+    // the real error behind a second attempt, and reported the pair as a
+    // version problem it was not.
+    let calls = 0;
+    await expect(initializeAcpAgent(invokeAnswering(async () => {
+      calls += 1;
+      throw new AcpRequestError('Invalid params: unknown field "capabilities"', -32602);
+    }))).rejects.toThrow('Invalid params');
+    expect(calls).toBe(1);
+  });
+
+  test('retries when the refusal lists only v1 as supported', async () => {
+    const versions: unknown[] = [];
+    const result = await initializeAcpAgent(invokeAnswering(async (params) => {
+      versions.push(params.protocolVersion);
+      if (params.protocolVersion === 2) {
+        throw new AcpRequestError('Protocol version not supported', -32602, { requested: 2, supported: [1] });
+      }
+      return { protocolVersion: 1 };
+    }));
+    expect(versions).toEqual([2, 1]);
+    expect(result.protocolVersion).toBe(1);
   });
 });

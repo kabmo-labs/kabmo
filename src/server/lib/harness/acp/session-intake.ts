@@ -21,6 +21,8 @@ export interface AcpPromptHost {
   readonly cwd: string;
   readonly harness: string;
   readonly acceptsImages: boolean;
+  /** `promptCapabilities.embeddedContext`; false is an explicit refusal. */
+  readonly acceptsEmbeddedContext?: boolean;
   promptCount: number;
   background: { stop(): void };
   usage: { beginTurn(): void };
@@ -34,8 +36,13 @@ export interface AcpPromptHost {
 }
 
 /** The blocks one prompt sends, so a steer carries the same file links. */
-export function promptContent(host: { cwd: string }, message: string, images: unknown): Promise<unknown[]> {
-  return promptFileLinks(host.cwd, message).then((files) => promptBlocks(message, images, files));
+export function promptContent(
+  host: { cwd: string; acceptsEmbeddedContext?: boolean },
+  message: string,
+  images: unknown,
+): Promise<unknown[]> {
+  return promptFileLinks(host.cwd, message).then((files) =>
+    promptBlocks(message, images, files, { embeddedContext: host.acceptsEmbeddedContext }));
 }
 
 /** Run one turn. Refuses images the agent never advertised. */

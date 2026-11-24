@@ -104,6 +104,9 @@ export interface AcpHandshakeTarget {
   setMode?(modeId: string): Promise<unknown>;
   /** Whether prompts may carry image blocks; the agent advertised `image`. */
   acceptsImages?: boolean;
+  /** `promptCapabilities.embeddedContext`; only an explicit `false` refuses
+   *  `resource_link` blocks. */
+  acceptsEmbeddedContext?: boolean;
   /** Initial slash commands from a v2 setup response. */
   agentCommands?: AcpAgentCommand[];
   /** MCP servers every session request carries; empty when none are configured. */
@@ -292,6 +295,9 @@ async function finishHandshake(
   target.models = session.models ?? null;
   target.modes = session.modes ?? null;
   target.acceptsImages = init.agentCapabilities?.promptCapabilities?.image === true;
+  // Explicit only: an agent that never mentions the field keeps the links.
+  target.acceptsEmbeddedContext =
+    init.agentCapabilities?.promptCapabilities?.embeddedContext === false ? false : undefined;
   if (session.availableCommands) target.agentCommands = session.availableCommands;
   target.runModel = modelFromOption(configOption(target.configOptions, 'model'), target.harness);
   target.capabilities = capabilitiesFrom(init, target.configOptions, { usage: false, plan: false }, target.modes);

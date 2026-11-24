@@ -17,6 +17,7 @@
  */
 
 import type { AcpId, AcpResponse } from '@/server/lib/harness/acp/protocol';
+import { ACP_ERROR } from '@/server/lib/harness/acp/protocol';
 
 /** What the table does when a request's own deadline expires. A timeout is the
  *  client's verdict, not the agent's: without telling it, the agent keeps
@@ -120,5 +121,24 @@ export class PendingCalls {
       clearTimeout(entry.timer);
       entry.reject(error);
     }
+  }
+
+  /**
+   * Withdraw this session's control calls, returning their ids so the transport
+   * can tell the agent (`$/cancel_request`). `session/prompt` is deliberately
+   * excluded: cancelling a turn is `session/cancel`'s job, and settling the
+   * prompt belongs to the turn machine's grace window.
+   */
+  cancelRequestsOf(sessionId: string, exclude: readonly string[] = ['session/prompt']): AcpId[] {
+    const ids: AcpId[] = [];
+    for (const [id, entry] of this.map) {
+      if (exclude.includes(entry.method)) continue;
+      if (String(entry.params.sessionId ?? '') !== sessionId) continue;
+      this.map.delete(id);
+      clearTimeout(entry.timer);
+      entry.reject(new AcpRequestError('Request cancelled', ACP_ERROR.cancelled));
+      ids.push(id);
+    }
+    return ids;
   }
 }

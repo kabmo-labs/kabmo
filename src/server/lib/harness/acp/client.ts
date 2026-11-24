@@ -20,15 +20,15 @@
  *    `_auth/status_update` ~3.4 s after `initialize` with nobody asking. Unknown
  *    notifications are forwarded, never treated as errors.
  *  - **agent→client requests.** `fs/read_text_file`, `terminal/*`, and
- *    `session/request_permission` are calls the AGENT makes on the CLIENT. An
- *    unanswered one hangs the turn, so every request is either answered or
- *    explicitly refused — never dropped.
+ *    `session/request_permission` are calls the AGENT makes on the CLIENT; the
+ *    answering rule lives in `client-requests.ts`.
  */
 
 import { PendingCalls } from '@/server/lib/harness/acp/calls';
 import { AgentStdio } from '@/server/lib/harness/acp/stdio';
 import * as verbs from '@/server/lib/harness/acp/verbs';
 import { initializeAcpAgent } from '@/server/lib/harness/acp/client-initialize';
+import { answerAgentRequest } from '@/server/lib/harness/acp/client-requests';
 import { ACP_ERROR } from '@/server/lib/harness/acp/protocol';
 import type {
   AcpId,
@@ -109,7 +109,21 @@ export class AcpProcess {
       {
         onLine: (line) => this.handleLine(line),
         onStderr: (line) => this.sinks.onStderr?.(line),
+        onStdoutClosed: () => {
+          // The transport is one-way now: answering is impossible, so every
+          // parked call is refused instead of waiting out its budget, and the
+          // child is reported as gone even while its PID is still alive —
+          // otherwise `isAlive` would keep a chat that can never answer.
+          if (this.exited) return;
+          this.exited = true;
+          this.rejectAll(new Error('ACP agent closed its output stream'));
+          this.sinks.onExit?.({ code: null, signal: null, stderrTail: this.stdio.stderrTail });
+          void this.stdio.dispose(1_000);
+        },
         onExit: ({ code, stderrTail }) => {
+          // EOF can report the exit first; the real `exited` callback must not
+          // report the same death twice.
+          if (this.exited) return;
           this.exited = true;
           // The agent's own last words, when it left any: `exited (code 0)` is
           // what a shadowed/deprecated binary prints while it explains itself on
@@ -123,21 +137,13 @@ export class AcpProcess {
     );
   }
 
-  get isAlive(): boolean {
-    return !this.exited;
-  }
+  get isAlive(): boolean { return !this.exited; }
+  get pid(): number | undefined { return this.stdio.pid; }
 
-  get pid(): number | undefined {
-    return this.stdio.pid;
-  }
-
-  /**
-   * `initialize`; the client advertises exactly what it can serve.
-   *
-   * Idempotent: a prewarmed process has already answered, and the session that
-   * adopts it must not pay a second round trip (or, worse, send a second
-   * `initialize` the agent may refuse).
-   */
+  /** `initialize`; the client advertises exactly what it can serve.
+   *  Idempotent: a prewarmed process has already answered, and the session that
+   *  adopts it must not pay a second round trip (or send a second `initialize`
+   *  the agent may refuse). */
   initialize(capabilities?: Record<string, unknown>, timeoutMs = 60_000): Promise<AcpInitializeResult> {
     this.init ??= initializeAcpAgent(this.call, capabilities, timeoutMs).then((result) => {
       this.protocolVersion = result.protocolVersion === 2 ? 2 : 1;
@@ -206,6 +212,14 @@ export class AcpProcess {
    *  rule, and why omp forces it, live in `PendingCalls.abandonPrompt`. */
   abandonPrompt(sessionId: string): void {
     this.pending.abandonPrompt(sessionId);
+  }
+
+  /** Withdraw this session's open control calls and tell the agent. Prompts are
+   *  left to `session/cancel` + the turn machine's grace window. */
+  cancelControlRequests(sessionId: string): void {
+    for (const id of this.pending.cancelRequestsOf(sessionId)) {
+      this.notify('$/cancel_request', { requestId: id });
+    }
   }
 
   setConfigOption(sessionId: string, configId: string, value: string | boolean, timeoutMs?: number) {
@@ -325,24 +339,7 @@ export class AcpProcess {
   }
 
   /** Answer (or refuse) a call the AGENT made on this client. */
-  private async handleAgentRequest(id: AcpId, method: string, params: unknown): Promise<void> {
-    const bag = (params ?? {}) as Record<string, unknown>;
-    try {
-      const handled = await this.sinks.onClientRequest?.(id, method, bag);
-      if (handled?.answered) {
-        this.respond(id, handled.result);
-        return;
-      }
-      // A deferred call is answered LATER through `respond(id, …)` — the
-      // approval dialog works this way, and sending a refusal here would answer
-      // the same request twice.
-      if (handled && 'deferred' in handled) return;
-      // A refusal is REQUIRED: an unanswered agent→client call parks the turn.
-      // The code travels with it so the agent can fall back accordingly.
-      this.respondError(id, handled?.message ?? `Kabmo does not implement ${method}`, handled?.code);
-    } catch (error) {
-      this.respondError(id, error instanceof Error ? error.message : String(error));
-    }
+  private handleAgentRequest(id: AcpId, method: string, params: unknown): Promise<void> {
+    return answerAgentRequest(this, this.sinks.onClientRequest, id, method, params);
   }
-
 }
