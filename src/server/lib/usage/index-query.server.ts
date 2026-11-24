@@ -30,6 +30,7 @@ import type {
   UsageTotals,
 } from '@/shared/types';
 import { providerDisplayName } from '@/shared/lib/models/provider/label';
+import { harnessDescriptor } from '@/shared/lib/harness/catalog';
 
 /** Columns every rollup aggregation sums, under the names SQL returns. */
 const SUM_COLUMNS = `
@@ -71,6 +72,10 @@ interface ProjectGroupRow extends SumRow {
   project: string;
 }
 
+interface HarnessGroupRow extends SumRow {
+  harness: string;
+}
+
 function counters(row: SumRow): Counters {
   return {
     cost: row.cost ?? 0,
@@ -96,6 +101,30 @@ function windowClause(window: { from: string; to: string } | null): { sql: strin
 }
 
 /**
+ * The window plus the harness filter.
+ *
+ * `all` is the only value that means "no predicate": a harness id is not
+ * optional data, and treating a missing one as all would silently widen a
+ * figure the user asked to narrow.
+ */
+function filterClause(
+  window: { from: string; to: string } | null,
+  harness: string,
+): { sql: string; params: string[] } {
+  const conditions: string[] = [];
+  const params: string[] = [];
+  if (window) {
+    conditions.push("(day = '' OR day BETWEEN ? AND ?)");
+    params.push(window.from, window.to);
+  }
+  if (harness && harness !== 'all') {
+    conditions.push('harness = ?');
+    params.push(harness);
+  }
+  return { sql: conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '', params };
+}
+
+/**
  * Build the payload for a period.
  *
  * `wait` is for the first request of a process (nothing on screen yet); every
@@ -105,6 +134,7 @@ export async function buildTokenUsagePayload(options: {
   range?: TimeRangeType;
   customFrom?: string | null;
   customTo?: string | null;
+  harness?: string | null;
   wait?: boolean;
   force?: boolean;
   now?: number;
@@ -112,12 +142,14 @@ export async function buildTokenUsagePayload(options: {
   const now = options.now ?? Date.now();
   const range = options.range ?? '30d';
   const window = dayWindow(range, now, { from: options.customFrom, to: options.customTo });
+  const harness = options.harness?.trim() || 'all';
 
   const index = await ensureUsageIndex({ wait: options.wait, force: options.force });
   const db = await getDb();
-  const where = windowClause(window);
+  const period = windowClause(window);
+  const where = filterClause(window, harness);
 
-  const [totalsRow, modelRows, dayRows, projectRows, activeDayRows] = await Promise.all([
+  const [totalsRow, modelRows, dayRows, projectRows, activeDayRows, harnessRows, allHarnesses] = await Promise.all([
     db.get<SumRow & { activeDays: number }>(
       `SELECT ${SUM_COLUMNS}, COUNT(DISTINCT NULLIF(day, '')) AS activeDays FROM usage_rollup ${where.sql}`,
       where.params,
@@ -138,6 +170,11 @@ export async function buildTokenUsagePayload(options: {
       `SELECT DISTINCT day FROM usage_rollup ${where.sql ? `${where.sql} AND` : 'WHERE'} day <> ''`,
       where.params,
     ),
+    db.all<HarnessGroupRow>(
+      `SELECT harness, ${SUM_COLUMNS} FROM usage_rollup ${period.sql} GROUP BY harness ORDER BY cost DESC`,
+      period.params,
+    ),
+    db.all<{ harness: string }>('SELECT DISTINCT harness FROM usage_rollup ORDER BY harness'),
   ]);
 
   const totals: UsageTotals = {
@@ -150,12 +187,37 @@ export async function buildTokenUsagePayload(options: {
     index,
     timeRanges: timeRangeOptions(now),
     range,
+    harness,
+    harnesses: groupHarnesses(harnessRows, allHarnesses),
     periodLabel: window ? dayRangeLabel(window.from, window.to, now) : 'All time',
     totals,
     providers: groupProviders(modelRows),
     days: groupDays(dayRows),
     projects: groupProjects(projectRows),
   };
+}
+
+/**
+ * The filter options: every harness the index knows, with the selected period's
+ * counters.
+ *
+ * A harness with no usage in this period is kept with zeros — the option the
+ * user is looking at must not vanish while it is selected — and the all-time
+ * id list is what supplies it.
+ */
+function groupHarnesses(rows: HarnessGroupRow[], known: readonly { harness: string }[]): TokenUsagePayload['harnesses'] {
+  const byId = new Map(rows.map((row) => [row.harness, row]));
+  const ids = [...new Set([...known.map((row) => row.harness), ...byId.keys()])];
+  return ids
+    .map((id) => {
+      const row = byId.get(id);
+      return {
+        id,
+        name: harnessDescriptor(id)?.label ?? id,
+        ...counters(row ?? emptySum()),
+      };
+    })
+    .sort((a, b) => b.cost - a.cost || a.id.localeCompare(b.id));
 }
 
 function emptySum(): SumRow {

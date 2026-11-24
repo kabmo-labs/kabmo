@@ -23,13 +23,16 @@
 
 import { canonicalProviderSlug } from '@/shared/lib/models/provider/label';
 import { dayKeyOfTimestamp } from '@/shared/lib/usage/range';
+import type { HarnessId } from '@/shared/lib/harness/catalog';
 import type { OmpMessageEntry, OmpUsage } from '@/shared/types/omp/session';
 
-/** One rollup contribution: a file's share of one (day, provider, model). */
+/** One rollup contribution: a file's share of one (day, harness, provider, model). */
 export interface UsageRollupRow {
   day: string;
+  harness: HarnessId;
   provider: string;
   model: string;
+  project: string;
   records: number;
   unpriced: number;
   input: number;
@@ -48,6 +51,7 @@ export interface UsageRollupRow {
 /** A parsed usage entry, before the file's project name is attached. */
 export interface ParsedUsageEntry {
   day: string;
+  harness: HarnessId;
   provider: string;
   model: string;
   usage: OmpUsage;
@@ -68,7 +72,7 @@ export function couldCarryUsage(raw: string): boolean {
 }
 
 /** Parse one line; `null` for a non-usage line, a torn write, or a non-message. */
-export function parseUsageLine(raw: string): ParsedUsageEntry | null {
+export function parseUsageLine(raw: string, harness: HarnessId = 'omp-rpc'): ParsedUsageEntry | null {
   if (!couldCarryUsage(raw)) return null;
   const line = raw.trim();
   if (!line) return null;
@@ -83,6 +87,7 @@ export function parseUsageLine(raw: string): ParsedUsageEntry | null {
   if (entry.type !== 'message' || !usage) return null;
   return {
     day: dayKeyOfTimestamp(entry.timestamp),
+    harness,
     provider: canonicalProviderSlug(entry.message?.provider || 'unknown') || 'unknown',
     model: entry.message?.model || 'unknown',
     usage,
@@ -96,13 +101,15 @@ export function foldUsage(
   entry: ParsedUsageEntry,
 ): void {
   const usage = entry.usage;
-  const key = [entry.day, entry.provider, entry.model, project].join('\u0000');
+  const key = [entry.day, entry.harness, entry.provider, entry.model, project].join('\u0000');
   let row = rows.get(key);
   if (!row) {
     row = {
       day: entry.day,
+      harness: entry.harness,
       provider: entry.provider,
       model: entry.model,
+      project,
       records: 0,
       unpriced: 0,
       input: 0,
@@ -155,11 +162,12 @@ export function foldUsageText(
   project: string,
   text: string,
   completeOnly = false,
+  harness: HarnessId = 'omp-rpc',
 ): void {
   const lines = text.split('\n');
   if (completeOnly) lines.pop();
   for (const raw of lines) {
-    const entry = parseUsageLine(raw);
+    const entry = parseUsageLine(raw, harness);
     if (entry) foldUsage(rows, project, entry);
   }
 }

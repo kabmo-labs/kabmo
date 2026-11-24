@@ -35,13 +35,22 @@ const RANGES: readonly TimeRangeType[] = ['today', '7d', '30d', '90d', 'all', 'c
 /** Never cached: the index can change under a client that is polling. */
 const HEADERS = { 'cache-control': 'no-store' };
 
-function readQuery(url: URL): { range: TimeRangeType; customFrom: string | null; customTo: string | null } {
+function readQuery(url: URL): {
+  range: TimeRangeType;
+  customFrom: string | null;
+  customTo: string | null;
+  harness: string;
+} {
   const requested = url.searchParams.get('range') ?? url.searchParams.get('timeRange') ?? '30d';
   const range = (RANGES as readonly string[]).includes(requested) ? (requested as TimeRangeType) : '30d';
   return {
     range,
     customFrom: url.searchParams.get('customFrom'),
     customTo: url.searchParams.get('customTo'),
+    // A harness id is not validated here: the catalog gains ids at runtime
+    // (custom harnesses), and an unknown one answers zero rows rather than a
+    // 400 that hides the real state.
+    harness: url.searchParams.get('harness')?.trim() || 'all',
   };
 }
 
@@ -50,7 +59,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   const url = new URL(request.url);
   const query = readQuery(url);
 
-  if (isMockMode()) return json(mockTokenUsagePayload(query.range), { headers: HEADERS });
+  if (isMockMode()) return json(mockTokenUsagePayload(query.range, Date.now(), query.harness), { headers: HEADERS });
 
   try {
     const payload = await buildTokenUsagePayload(query);
@@ -75,7 +84,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
   if (request.method !== 'POST') return methodNotAllowed({ request, params });
   const url = new URL(request.url);
   const query = readQuery(url);
-  if (isMockMode()) return json(mockTokenUsagePayload(query.range), { headers: HEADERS });
+  if (isMockMode()) return json(mockTokenUsagePayload(query.range, Date.now(), query.harness), { headers: HEADERS });
   try {
     return json(await buildTokenUsagePayload({ ...query, wait: true, force: true }), { headers: HEADERS });
   } catch (error) {

@@ -117,6 +117,20 @@ export interface UsageProjectRow extends UsageCounters {
   project: string;
 }
 
+/**
+ * One harness that recorded usage, for the panel's filter.
+ *
+ * Only harnesses the index could READ appear here: an agent that keeps no local
+ * usage record contributes nothing, and offering it would be a filter that can
+ * only ever empty the panel.
+ */
+export interface UsageHarnessRow extends UsageCounters {
+  /** Harness id (`omp-rpc`, `claude`, `opencode`, ...). */
+  id: string;
+  /** Catalog label, or the id for a harness this build does not know. */
+  name: string;
+}
+
 /** How far the on-disk index has got, shown in the panel's footer. */
 export interface UsageIndexState {
   /** `building` while a scan is in flight; the panel polls and keeps the data. */
@@ -139,6 +153,13 @@ export interface TokenUsagePayload {
   index: UsageIndexState;
   timeRanges: TimeRangeOption[];
   range: TimeRangeType;
+  /** `all`, or the harness id every figure below is filtered to. */
+  harness: string;
+  /**
+   * Harnesses with usage in the period, IGNORING the selected filter — the
+   * options must not disappear while one of them is selected.
+   */
+  harnesses: UsageHarnessRow[];
   /** Human period label, e.g. `Oct 5 – Nov 3, 2026`. */
   periodLabel: string;
   totals: UsageTotals;

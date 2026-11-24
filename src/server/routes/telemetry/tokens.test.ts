@@ -120,6 +120,26 @@ describe('GET /api/telemetry/tokens', () => {
     expect(payload.totals.records).toBe(2);
   });
 
+  test('names the harness that recorded the usage and filters to it', async () => {
+    const all = await read(await call(loader, new Request('http://kabmo.test/api/telemetry/tokens?range=30d')));
+    expect(all.harness).toBe('all');
+    expect(all.harnesses.map((row) => row.id)).toEqual(['omp-rpc']);
+    expect(all.harnesses[0].records).toBe(2);
+
+    const filtered = await read(
+      await call(loader, new Request('http://kabmo.test/api/telemetry/tokens?range=30d&harness=omp-rpc')),
+    );
+    expect(filtered.harness).toBe('omp-rpc');
+    expect(filtered.totals.records).toBe(2);
+
+    // An id with no rows answers an empty period, and the real option stays.
+    const unknown = await read(
+      await call(loader, new Request('http://kabmo.test/api/telemetry/tokens?range=30d&harness=claude')),
+    );
+    expect(unknown.totals.records).toBe(0);
+    expect(unknown.harnesses.map((row) => row.id)).toEqual(['omp-rpc']);
+  });
+
   test('a non-GET request is refused rather than answered', async () => {
     const response = await call(loader, new Request('http://kabmo.test/api/telemetry/tokens', { method: 'POST' }));
     expect(response.status).toBe(405);

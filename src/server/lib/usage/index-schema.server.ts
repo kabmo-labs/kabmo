@@ -30,12 +30,13 @@
 import type { DbClient } from '@/server/lib/db/client';
 
 /** Bumped when a rollup row's meaning changes; the index is dropped and rebuilt. */
-export const USAGE_INDEX_VERSION = 1;
+export const USAGE_INDEX_VERSION = 2;
 
 const USAGE_INDEX_SCHEMA_SQL = `
   CREATE TABLE IF NOT EXISTS usage_rollup (
     session_file TEXT NOT NULL,
     day TEXT NOT NULL,
+    harness TEXT NOT NULL,
     provider TEXT NOT NULL,
     model TEXT NOT NULL,
     project TEXT NOT NULL,
@@ -52,12 +53,15 @@ const USAGE_INDEX_SCHEMA_SQL = `
     cost_output REAL NOT NULL,
     cost_cache_read REAL NOT NULL,
     cost_cache_write REAL NOT NULL,
-    PRIMARY KEY (session_file, day, provider, model, project)
+    PRIMARY KEY (session_file, day, harness, provider, model, project)
   );
   CREATE INDEX IF NOT EXISTS idx_usage_rollup_day ON usage_rollup (day);
+  CREATE INDEX IF NOT EXISTS idx_usage_rollup_harness ON usage_rollup (harness);
 
   CREATE TABLE IF NOT EXISTS usage_index_file (
     session_file TEXT PRIMARY KEY,
+    source TEXT NOT NULL,
+    harness TEXT NOT NULL,
     offset INTEGER NOT NULL,
     size INTEGER NOT NULL,
     mtime_ms REAL NOT NULL,
@@ -72,11 +76,23 @@ const USAGE_INDEX_SCHEMA_SQL = `
 
 /** Idempotent: the usage index's tables, created on every database open. */
 export async function ensureUsageIndexSchema(db: DbClient): Promise<void> {
+  let version: string | null = null;
+  try {
+    const row = await db.get<{ value: string }>('SELECT value FROM usage_index_meta WHERE key = ?', ['version']);
+    version = row?.value ?? null;
+  } catch {
+    // First run: the meta table does not exist yet.
+  }
+  if (version !== String(USAGE_INDEX_VERSION)) {
+    // A different row meaning cannot be reinterpreted — and `CREATE TABLE IF
+    // NOT EXISTS` would leave the OLD columns in place, so a version bump must
+    // drop the tables, not just their rows. `indexed_at`/`scan_ms` go too, or
+    // the next request would report an empty index as fresh and skip a scan.
+    await db.exec('DROP TABLE IF EXISTS usage_rollup; DROP TABLE IF EXISTS usage_index_file;');
+  }
   await db.exec(USAGE_INDEX_SCHEMA_SQL);
-  const row = await db.get<{ value: string }>('SELECT value FROM usage_index_meta WHERE key = ?', ['version']);
-  if (row?.value === String(USAGE_INDEX_VERSION)) return;
-  // A different row meaning cannot be reinterpreted: drop the derived data and
-  // let the next scan rebuild it. Never a silent misread.
-  await db.exec('DELETE FROM usage_rollup; DELETE FROM usage_index_file;');
-  await db.run('INSERT OR REPLACE INTO usage_index_meta (key, value) VALUES (?, ?)', ['version', String(USAGE_INDEX_VERSION)]);
+  if (version !== String(USAGE_INDEX_VERSION)) {
+    await db.exec("DELETE FROM usage_index_meta WHERE key <> 'version'");
+    await db.run('INSERT OR REPLACE INTO usage_index_meta (key, value) VALUES (?, ?)', ['version', String(USAGE_INDEX_VERSION)]);
+  }
 }

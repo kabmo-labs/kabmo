@@ -8,6 +8,7 @@ import type {
   UsageTotals,
 } from '@/shared/types';
 import { TokenUsageControls } from '@/client/components/settings/categories/token-usage-settings/Controls';
+import { TokenUsageHarnessFilter } from '@/client/components/settings/categories/token-usage-settings/HarnessFilter';
 import { TokenUsageMetricsGrid } from '@/client/components/settings/categories/token-usage-settings/MetricsGrid';
 import { UsageChart } from '@/client/components/settings/categories/token-usage-settings/Chart';
 import { TokenUsageBreakdown } from '@/client/components/settings/categories/token-usage-settings/Breakdown';
@@ -46,18 +47,28 @@ const PERIOD_NAME: Record<TimeRangeType, string> = {
  * total. The only thing derived from the period is how the chart and the time
  * tab bucket it (`granularityFor`): a day or a month draws days, a quarter
  * draws weeks, all time draws months.
+ *
+ * The HARNESS chips are a filter, not a period: a concrete harness id narrows
+ * every figure server-side while the chips keep the period's counts for each
+ * harness. Only harnesses that recorded usage locally are offered.
  */
 export function TokenUsageSettings({ settings: _settings, onUpdate: _onUpdate }: TokenUsageSettingsProps) {
   const [range, setRange] = useState<TimeRangeType>('30d');
   const [tab, setTab] = useState<BreakdownTab>('model');
   const [metric, setMetric] = useState<ChartMetric>('cost');
+  // 'all' is the unfiltered view; a concrete id filters every figure server-side.
+  const [harness, setHarness] = useState('all');
   const [today] = useState(() => localDayKey(Date.now()));
   const [customFrom, setCustomFrom] = useState(() => localDayKey(Date.now() - 29 * 24 * 60 * 60 * 1000));
   const [customTo, setCustomTo] = useState(today);
   // Providers hidden from the chart, by slug.
   const [hiddenProviders, setHiddenProviders] = useState<Set<string>>(new Set());
 
-  const { payload, error, loading, refreshing, reload } = useTokenUsage(range, { from: customFrom, to: customTo });
+  const { payload, error, loading, refreshing, reload } = useTokenUsage(
+    range,
+    { from: customFrom, to: customTo },
+    harness,
+  );
 
   const providers = payload?.providers ?? [];
   const totals: UsageTotals = payload?.totals ?? ZERO_TOTALS;
@@ -157,6 +168,12 @@ export function TokenUsageSettings({ settings: _settings, onUpdate: _onUpdate }:
         </div>
       )}
 
+      <TokenUsageHarnessFilter
+        harnesses={payload.harnesses}
+        selected={harness}
+        onSelect={setHarness}
+      />
+
       <TokenUsageMetricsGrid totals={totals} periodName={PERIOD_NAME[range]} />
 
       <div className="rounded-lg border border-ink/15 bg-paper p-3.5 shadow-xs">
@@ -218,8 +235,14 @@ export function TokenUsageSettings({ settings: _settings, onUpdate: _onUpdate }:
         <summary className="cursor-pointer select-none font-semibold text-ink/60">How these numbers are produced</summary>
         <ul className="mt-2 space-y-1 leading-relaxed">
           <li>
-            Cost and tokens are omp's own per-message records, attributed to the provider and model that served the
-            turn. A turn without a reported rate is counted as unpriced, never as free.
+            Cost and tokens are the records each harness keeps locally — omp's per-message JSONL, Claude's
+            transcripts, Codex rollouts, OpenCode/zcode databases, dsh sessions and Qwen's token log — attributed to
+            the provider and model that served the turn. A turn without a reported rate is counted as unpriced,
+            never as free.
+          </li>
+          <li>
+            The harness filter lists only harnesses that recorded usage on this machine. An agent that keeps no local
+            usage record contributes nothing, and the panel does not estimate it.
           </li>
           <li>
             Cache hit rate is cache reads over all observed input. “Paid for cache reads” is what those reads cost, not

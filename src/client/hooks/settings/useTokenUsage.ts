@@ -36,7 +36,11 @@ export interface TokenUsageState {
   reload: (force?: boolean) => void;
 }
 
-export function useTokenUsage(range: TimeRangeType, custom: { from: string; to: string }): TokenUsageState {
+export function useTokenUsage(
+  range: TimeRangeType,
+  custom: { from: string; to: string },
+  harness = 'all',
+): TokenUsageState {
   const [payload, setPayload] = useState<TokenUsagePayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -60,9 +64,10 @@ export function useTokenUsage(range: TimeRangeType, custom: { from: string; to: 
         params.set('customFrom', custom.from);
         params.set('customTo', custom.to);
       }
+      if (harness !== 'all') params.set('harness', harness);
       return `/api/telemetry/tokens?${params.toString()}${forceRef.current ? '&refresh=1' : ''}`;
     },
-    [range, custom.from, custom.to],
+    [range, custom.from, custom.to, harness],
   );
 
   const load = useCallback(

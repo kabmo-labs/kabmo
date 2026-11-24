@@ -23,6 +23,7 @@ import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { TokenUsageControls } from '@/client/components/settings/categories/token-usage-settings/Controls';
 import { TokenUsageBreakdown } from '@/client/components/settings/categories/token-usage-settings/Breakdown';
+import { TokenUsageHarnessFilter } from '@/client/components/settings/categories/token-usage-settings/HarnessFilter';
 import { dayRows, providerModelRows } from '@/shared/lib/usage/breakdown';
 import { timeRangeOptions } from '@/shared/lib/usage/range';
 import type { UsageProviderRow, UsageTotals } from '@/shared/types';
@@ -235,5 +236,41 @@ describe('TokenUsageBreakdown', () => {
     const text = container.textContent ?? '';
     expect(text).toContain('Kenari Jatis');
     expect(text.match(/deepseek-v4-1-flash/g)).toHaveLength(1);
+  });
+});
+
+
+describe('TokenUsageHarnessFilter', () => {
+  const row = (id: string, name: string, cost: number, records: number) => ({
+    id, name, cost, records,
+    tokens: 0, input: 0, output: 0, cacheRead: 0, cacheWrite: 0, reasoning: 0,
+    cacheReadCost: 0, unpriced: 0,
+  });
+
+  const filter = (selected: string): string[] => {
+    const picked: string[] = [];
+    render(
+      h(TokenUsageHarnessFilter, {
+        harnesses: [row('omp-rpc', 'omp', 4, 10), row('claude', 'claude', 1, 2), row('codex', 'codex', 0, 0)],
+        selected,
+        onSelect: (id: string) => picked.push(id),
+      }),
+      container,
+    );
+    return picked;
+  };
+
+  test('renders All plus every harness, including one with no turns this period', () => {
+    filter('all');
+    const labels = [...container.querySelectorAll('button')].map((button) => button.textContent?.replace(/\s+/g, ' ').trim());
+    expect(labels).toEqual(['All 12', 'omp 10', 'claude 2', 'codex 0']);
+  });
+
+  test('reports the clicked harness and marks the active one', () => {
+    const picked = filter('claude');
+    const buttons = [...container.querySelectorAll('button')];
+    expect(buttons.find((button) => button.textContent?.startsWith('claude'))?.getAttribute('aria-pressed')).toBe('true');
+    act(() => buttons.find((button) => button.textContent?.startsWith('codex'))?.click());
+    expect(picked).toEqual(['codex']);
   });
 });

@@ -141,6 +141,7 @@ describe('foldUsage', () => {
   const rows = new Map<string, UsageRollupRow>();
   const entry = (provider: string, model: string, cost: number, totalTokens = 10): ParsedUsageEntry => ({
     day: '2026-10-05',
+    harness: 'omp-rpc',
     provider,
     model,
     usage: { input: 4, output: 2, cacheRead: 4, cacheWrite: 0, totalTokens, cost: { total: cost } },

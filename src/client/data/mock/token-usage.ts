@@ -20,6 +20,7 @@ import type {
   TimeRangeType,
   TokenUsagePayload,
   UsageDayRow,
+  UsageHarnessRow,
   UsageProviderRow,
   UsageProjectRow,
 } from '@/shared/types';
@@ -37,6 +38,13 @@ function counters(cost: number, tokens: number, records: number) {
     records, unpriced: 0,
   };
 }
+
+/** Which harness serves each demo provider. */
+const HARNESS_OF: Record<string, string> = {
+  'kenari-jatis': 'omp-rpc',
+  kenari: 'omp-rpc',
+  deepseek: 'claude',
+};
 
 const PROVIDER_BASE: Array<{ id: string; name: string; models: Array<[string, number, number, number]> }> = [
   {
@@ -64,8 +72,8 @@ const PROVIDER_BASE: Array<{ id: string; name: string; models: Array<[string, nu
 ];
 
 /** The provider → model tree for one period, scaled from the base numbers. */
-function providersFor(scale: number): UsageProviderRow[] {
-  return PROVIDER_BASE.map((provider) => {
+function providersFor(scale: number, harness = 'all'): UsageProviderRow[] {
+  return PROVIDER_BASE.filter((provider) => harness === 'all' || HARNESS_OF[provider.id] === harness).map((provider) => {
     const models = provider.models.map(([model, cost, tokens, records]) => ({
       model,
       ...counters(cost * scale, Math.round(tokens * scale), Math.round(records * scale)),
@@ -91,7 +99,7 @@ function providersFor(scale: number): UsageProviderRow[] {
 }
 
 /** Days covered by a range, newest last, with a plausible weekend shape. */
-function daysFor(range: TimeRangeType, now: number): UsageDayRow[] {
+function daysFor(range: TimeRangeType, now: number, harness = 'all'): UsageDayRow[] {
   const window = dayWindow(range, now);
   const dayCount = window
     ? Math.max(1, Math.round((Date.parse(`${window.to}T00:00:00`) - Date.parse(`${window.from}T00:00:00`)) / DAY_MS) + 1)
@@ -104,14 +112,17 @@ function daysFor(range: TimeRangeType, now: number): UsageDayRow[] {
     const weekday = new Date(at).getDay();
     const weekend = weekday === 0 || weekday === 6;
     const weight = weekend ? 0.35 : 1;
-    const providers: Record<string, { cost: number; tokens: number }> = {
+    const all: Record<string, { cost: number; tokens: number }> = {
       'kenari-jatis': { cost: 1.24 * weight, tokens: Math.round(6_900_000 * weight) },
       kenari: { cost: 0.24 * weight, tokens: Math.round(6_600_000 * weight) },
       deepseek: { cost: 0.08 * weight, tokens: Math.round(2_200_000 * weight) },
     };
+    const providers = Object.fromEntries(
+      Object.entries(all).filter(([id]) => harness === 'all' || HARNESS_OF[id] === harness),
+    );
     const cost = Object.values(providers).reduce((sum, split) => sum + split.cost, 0);
     const tokens = Object.values(providers).reduce((sum, split) => sum + split.tokens, 0);
-    days.push({ day: dayKey, providers, ...counters(cost, tokens, Math.round(weight * 78)) });
+    days.push({ day: dayKey, providers, ...counters(cost, tokens, Math.round(weight * 78 * (Object.keys(providers).length / 3))) });
   }
   return days;
 }
@@ -130,13 +141,43 @@ function projectsFor(scale: number): UsageProjectRow[] {
   }));
 }
 
-/** Demo payload for the requested range. */
-export function mockTokenUsagePayload(range: TimeRangeType, now: number = Date.now()): TokenUsagePayload {
+/** The harness options, built from the UNFILTERED demo tree. */
+function harnessesFor(scale: number): UsageHarnessRow[] {
+  const rows = new Map<string, UsageHarnessRow>();
+  for (const provider of providersFor(scale)) {
+    const id = HARNESS_OF[provider.id] ?? 'omp-rpc';
+    const row = rows.get(id) ?? {
+      id,
+      name: id === 'omp-rpc' ? 'omp' : id,
+      cost: 0, tokens: 0, input: 0, output: 0, cacheRead: 0, cacheWrite: 0,
+      reasoning: 0, cacheReadCost: 0, records: 0, unpriced: 0,
+    };
+    row.cost += provider.cost;
+    row.tokens += provider.tokens;
+    row.input += provider.input;
+    row.output += provider.output;
+    row.cacheRead += provider.cacheRead;
+    row.cacheWrite += provider.cacheWrite;
+    row.reasoning += provider.reasoning;
+    row.cacheReadCost += provider.cacheReadCost;
+    row.records += provider.records;
+    row.unpriced += provider.unpriced;
+    rows.set(id, row);
+  }
+  return [...rows.values()].sort((a, b) => b.cost - a.cost);
+}
+
+/** Demo payload for the requested range and harness. */
+export function mockTokenUsagePayload(range: TimeRangeType, now: number = Date.now(), harness = 'all'): TokenUsagePayload {
   const window = dayWindow(range, now);
   const scale = range === 'today' ? 0.04 : range === '7d' ? 0.24 : range === '90d' ? 2.6 : range === 'all' ? 3.4 : 1;
-  const providers = providersFor(scale);
-  const days = daysFor(range, now);
-  const projects = projectsFor(scale);
+  const allHarnesses = harnessesFor(scale);
+  const providers = providersFor(scale, harness);
+  const days = daysFor(range, now, harness);
+  const selectedShare = allHarnesses.length > 0
+    ? (allHarnesses.find((row) => row.id === harness)?.cost ?? 1) / allHarnesses.reduce((sum, row) => sum + row.cost, 0)
+    : 1;
+  const projects = projectsFor(scale * (harness === 'all' ? 1 : Math.max(0, selectedShare)));
 
   const totals = providers.reduce(
     (acc, provider) => {
@@ -170,6 +211,8 @@ export function mockTokenUsagePayload(range: TimeRangeType, now: number = Date.n
     },
     timeRanges: timeRangeOptions(now),
     range,
+    harness,
+    harnesses: allHarnesses,
     periodLabel: window ? dayRangeLabel(window.from, window.to, now) : 'All time',
     totals,
     providers,

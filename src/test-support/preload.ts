@@ -41,7 +41,16 @@ const dir = mkdtempSync(join(tmpdir(), 'kabmo-test-fallback-db-'));
 // asked for that file, and no suite should silently redirect it.
 Bun.env.DB_PATH ??= join(dir, 'db.sqlite');
 
+// The Token Usage index reads every ACP harness store under the home directory.
+// A suite that only redirects omp's sessions root would otherwise fold the
+// developer's real Claude/Codex/OpenCode history into its assertions. The hook
+// is a ROOT, not a set of store paths, so a suite can still override one store
+// with its own variable (`CLAUDE_CONFIG_DIR`, `CODEX_HOME`, ...).
+const usageRoot = mkdtempSync(join(tmpdir(), 'kabmo-test-usage-stores-'));
+Bun.env.KABMO_USAGE_ACP_ROOT = usageRoot;
+
 afterAll(async () => {
   await closeDb();
   removeDir(dir);
+  removeDir(usageRoot);
 });
