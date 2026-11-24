@@ -109,4 +109,36 @@ describe('SpeechSettings', () => {
     });
     expect(host.textContent).toContain('This omp build has no say command.');
   });
+
+  test('a hosted engine offers Indonesian and writes it to the tts object', () => {
+    stubServer();
+    let patch: Updater | undefined;
+    const host = mount((updater) => { patch = updater; }, { engine: 'openai' });
+
+    const label = [...host.querySelectorAll('label')].find((element) =>
+      element.textContent?.includes('Language'),
+    );
+    const select = label?.querySelector('select') as HTMLSelectElement | null;
+    expect(select).not.toBeNull();
+    expect([...select!.options].map((option) => option.value)).toContain('id');
+
+    act(() => {
+      select!.value = 'id';
+      select!.dispatchEvent(new window.Event('change', { bubbles: true }));
+    });
+    expect(patch).toEqual({
+      tts: { ...DEFAULT_SETTINGS.tts, engine: 'openai', language: 'id' },
+    });
+  });
+
+  test('an engine with no Indonesian voice says which engines do', () => {
+    stubServer();
+    const omp = mount(() => {}, { engine: 'omp' });
+    expect(omp.textContent).toContain('local voices are English');
+    render(null, omp);
+    omp.remove();
+
+    const deepgram = mount(() => {}, { engine: 'deepgram' });
+    expect(deepgram.textContent).toContain('no Indonesian voice');
+  });
 });

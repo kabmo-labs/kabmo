@@ -136,22 +136,41 @@ export function SpeechVoiceSection({ config, onPatch }: SpeechVoiceSectionProps)
           </span>
         </label>
 
-        {spec.supportsLanguage && (
+        {spec.language !== 'none' && (
           <label className="space-y-1">
             <span className="block text-[11px] font-medium text-ink/70">Language</span>
             <select
-              value={config.language || 'auto'}
+              value={config.language || (spec.language === 'required' ? 'auto' : '')}
               onChange={(event) => onPatch({ language: event.currentTarget.value === 'auto' ? '' : event.currentTarget.value })}
               className={INPUT_CLASS}
             >
-              {TTS_LANGUAGES.map((language) => (
-                <option key={language.id} value={language.id}>{language.label}</option>
-              ))}
+              {spec.language !== 'required' && <option value="">Auto / detect</option>}
+              {TTS_LANGUAGES
+                .filter((language) => spec.language === 'required' || language.id !== 'auto')
+                .map((language) => (
+                  <option key={language.id} value={language.id}>{language.label}</option>
+                ))}
             </select>
-            <span className="block text-[10px] text-ink/50">This provider requires a language.</span>
+            <span className="block text-[10px] text-ink/50">
+              {spec.language === 'required'
+                ? 'This provider requires a language.'
+                : spec.language === 'parameter'
+                  ? (config.model || spec.defaultModel) === 'eleven_multilingual_v2'
+                    ? 'Multilingual v2 detects the language from the text; the newer models receive this as language_code.'
+                    : 'Sent as the provider language. “Auto” lets the model detect it.'
+                  : 'Only gpt-4o-mini-tts follows this instruction; tts-1 and compatible servers may ignore it.'}
+            </span>
           </label>
         )}
       </div>
+
+      {spec.language === 'none' && (
+        <p className="rounded-lg border border-ink/10 bg-ink/[0.03] px-3 py-2 text-[11px] leading-relaxed text-ink/70">
+          {spec.id === 'omp'
+            ? 'omp’s local voices are English. For Indonesian, pick ElevenLabs, xAI, or an OpenAI-compatible server with an Indonesian voice.'
+            : 'Deepgram Aura has no Indonesian voice. Pick another engine for Indonesian.'}
+        </p>
+      )}
     </section>
   );
 }

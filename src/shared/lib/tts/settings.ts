@@ -103,6 +103,6 @@ export function resolveTtsRequest(config: TtsConfig): {
     voice: resolveTtsVoice(config.engine, config.voice),
     speed: clampTtsSpeed(config.engine, config.speed),
     baseUrl: spec.editableBaseUrl ? resolveTtsBaseUrl(config.engine, config.baseUrl) : spec.baseUrl,
-    language: config.language.trim() || (spec.supportsLanguage ? 'auto' : ''),
+    language: config.language.trim() || (spec.language === 'required' ? 'auto' : ''),
   };
 }

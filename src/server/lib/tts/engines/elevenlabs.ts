@@ -29,6 +29,12 @@ export function elevenLabsBody(input: TtsSynthInput): Record<string, unknown> {
   return {
     text: input.text,
     model_id: input.model,
+    // `eleven_multilingual_v2` documents no `language_code` (it detects the
+    // language from the text); v3/v4 and Flash accept one and use it to enforce
+    // pronunciation, which is what makes Indonesian reliable.
+    ...(input.language && input.language !== 'auto' && input.model !== 'eleven_multilingual_v2'
+      ? { language_code: input.language }
+      : {}),
     ...(input.speed !== 1 ? { voice_settings: { speed: input.speed } } : {}),
   };
 }

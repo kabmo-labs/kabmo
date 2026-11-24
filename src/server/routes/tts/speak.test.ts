@@ -96,6 +96,27 @@ describe('POST /api/tts/speak', () => {
     });
   });
 
+  test('a keyless local OpenAI-compatible server works without a key', async () => {
+    stubFetch(() => new Response(new Uint8Array([4]), {
+      headers: { 'content-type': 'audio/mpeg' },
+    }));
+
+    const response = await run({
+      text: 'Halo, ini suara Indonesia.',
+      config: {
+        engine: 'openai',
+        model: 'tts-1',
+        voice: 'id-ID-GadisNeural',
+        speed: 1,
+        baseUrl: 'http://127.0.0.1:5050/v1',
+      },
+    });
+
+    expect(response.status).toBe(200);
+    const headers = new Headers(calls[0].init?.headers);
+    expect(headers.has('authorization')).toBe(false);
+  });
+
   test('refuses an input past the engine budget before calling the provider', async () => {
     await writeTtsApiKey('openai', 'sk-test');
     stubFetch(() => new Response('never', { status: 500 }));

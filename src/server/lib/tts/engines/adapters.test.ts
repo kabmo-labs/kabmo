@@ -50,11 +50,22 @@ describe('request builders', () => {
     expect(openAiSpeechBody({ ...INPUT, speed: 1.2 })).toMatchObject({ speed: 1.2 });
   });
 
+  test('OpenAI carries the language as an instruction only where the model documents it', () => {
+    expect(openAiSpeechBody({ ...INPUT, model: 'gpt-4o-mini-tts', language: 'id' }))
+      .toMatchObject({ instructions: 'Speak in Indonesian.' });
+    expect(openAiSpeechBody({ ...INPUT, model: 'tts-1', language: 'id' })).not.toHaveProperty('instructions');
+    expect(openAiSpeechBody({ ...INPUT, model: 'gpt-4o-mini-tts', language: '' })).not.toHaveProperty('instructions');
+  });
+
   test('ElevenLabs puts the voice in the path and pins the format', () => {
     expect(elevenLabsUrl('https://api.elevenlabs.io/', 'voice id')).toBe(
       'https://api.elevenlabs.io/v1/text-to-speech/voice%20id?output_format=mp3_44100_128',
     );
     expect(elevenLabsBody(INPUT)).toEqual({ text: 'Hello world.', model_id: 'model' });
+    expect(elevenLabsBody({ ...INPUT, model: 'eleven_flash_v2_5', language: 'id' }))
+      .toMatchObject({ language_code: 'id' });
+    expect(elevenLabsBody({ ...INPUT, model: 'eleven_multilingual_v2', language: 'id' }))
+      .not.toHaveProperty('language_code');
   });
 
   test('Deepgram pins encoding and container, which its defaults get wrong together', () => {

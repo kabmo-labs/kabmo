@@ -37,6 +37,8 @@ export interface TtsEngineSpec {
   where: string;
   /** True when the engine cannot work without an API key. */
   needsKey: boolean;
+  /** True when an empty key is accepted — a local OpenAI-compatible server. */
+  keyOptional: boolean;
   /** True when the endpoint is a base URL the user can point elsewhere. */
   editableBaseUrl: boolean;
   /** Endpoint used when the setting is empty; '' when the URL is fixed. */
@@ -56,8 +58,15 @@ export interface TtsEngineSpec {
    */
   maxChars: number;
   speed: { min: number; max: number };
-  /** True when the engine reads a language tag (xAI requires one). */
-  supportsLanguage: boolean;
+  /**
+   * How the engine takes a language:
+   * - `required`: the API rejects a request without one (xAI).
+   * - `parameter`: sent as the provider's own language field when set.
+   * - `instructions`: folded into the model's steering prompt (OpenAI's
+   *   `gpt-4o-mini-tts`); engines without prompt steering ignore it.
+   * - `none`: the engine has no language control (omp's local voices, Aura).
+   */
+  language: 'required' | 'parameter' | 'instructions' | 'none';
   /** Where the provider documents the API, shown under the fields. */
   docs: string;
 }
@@ -116,6 +125,7 @@ export const TTS_ENGINES: readonly TtsEngineSpec[] = [
     label: 'This machine (omp)',
     where: 'Text never leaves this machine. omp downloads its voice on first use.',
     needsKey: false,
+    keyOptional: false,
     editableBaseUrl: false,
     baseUrl: '',
     defaultModel: '',
@@ -125,7 +135,7 @@ export const TTS_ENGINES: readonly TtsEngineSpec[] = [
     voiceEditable: false,
     maxChars: 4000,
     speed: { min: 0.8, max: 1.3 },
-    supportsLanguage: false,
+    language: 'none',
     docs: 'https://github.com/kabmo-labs/kabmo/wiki/Chat-Stream-and-Tools',
   },
   {
@@ -133,6 +143,7 @@ export const TTS_ENGINES: readonly TtsEngineSpec[] = [
     label: 'OpenAI-compatible API',
     where: 'Text is uploaded to the endpoint below.',
     needsKey: true,
+    keyOptional: true,
     editableBaseUrl: true,
     baseUrl: 'https://api.openai.com/v1',
     defaultModel: 'gpt-4o-mini-tts',
@@ -149,7 +160,7 @@ export const TTS_ENGINES: readonly TtsEngineSpec[] = [
     voiceEditable: true,
     maxChars: 4096,
     speed: { min: 0.25, max: 4 },
-    supportsLanguage: false,
+    language: 'instructions',
     docs: 'https://platform.openai.com/docs/guides/text-to-speech',
   },
   {
@@ -157,6 +168,7 @@ export const TTS_ENGINES: readonly TtsEngineSpec[] = [
     label: 'ElevenLabs',
     where: 'Text is uploaded to api.elevenlabs.io.',
     needsKey: true,
+    keyOptional: false,
     editableBaseUrl: false,
     baseUrl: 'https://api.elevenlabs.io',
     defaultModel: 'eleven_multilingual_v2',
@@ -171,7 +183,7 @@ export const TTS_ENGINES: readonly TtsEngineSpec[] = [
     voiceEditable: true,
     maxChars: 5000,
     speed: { min: 0.7, max: 1.2 },
-    supportsLanguage: false,
+    language: 'parameter',
     docs: 'https://elevenlabs.io/docs/api-reference/text-to-speech/convert',
   },
   {
@@ -179,6 +191,7 @@ export const TTS_ENGINES: readonly TtsEngineSpec[] = [
     label: 'Deepgram Aura',
     where: 'Text is uploaded to api.deepgram.com.',
     needsKey: true,
+    keyOptional: false,
     editableBaseUrl: false,
     baseUrl: 'https://api.deepgram.com',
     defaultModel: 'aura-2-thalia-en',
@@ -188,7 +201,7 @@ export const TTS_ENGINES: readonly TtsEngineSpec[] = [
     voiceEditable: false,
     maxChars: 2000,
     speed: { min: 0.5, max: 2 },
-    supportsLanguage: false,
+    language: 'none',
     docs: 'https://developers.deepgram.com/reference/text-to-speech/speak-request',
   },
   {
@@ -196,6 +209,7 @@ export const TTS_ENGINES: readonly TtsEngineSpec[] = [
     label: 'xAI Grok Voice',
     where: 'Text is uploaded to api.x.ai.',
     needsKey: true,
+    keyOptional: false,
     editableBaseUrl: false,
     baseUrl: 'https://api.x.ai',
     defaultModel: 'grok-tts',
@@ -205,7 +219,7 @@ export const TTS_ENGINES: readonly TtsEngineSpec[] = [
     voiceEditable: true,
     maxChars: 60_000,
     speed: { min: 0.7, max: 1.5 },
-    supportsLanguage: true,
+    language: 'required',
     docs: 'https://docs.x.ai/docs/guides/voice',
   },
 ];

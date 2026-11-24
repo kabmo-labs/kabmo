@@ -43,6 +43,17 @@ describe('TTS_ENGINES', () => {
     }
   });
 
+  test('only the engines that document language support expose it', () => {
+    expect(TTS_ENGINES.filter((engine) => engine.language !== 'none').map((engine) => engine.id))
+      .toEqual(['openai', 'elevenlabs', 'xai']);
+    expect(ttsEngine('xai').language).toBe('required');
+    expect(ttsEngine('omp').language).toBe('none');
+  });
+
+  test('only the OpenAI-compatible engine accepts a keyless endpoint', () => {
+    expect(TTS_ENGINES.filter((engine) => engine.keyOptional).map((engine) => engine.id)).toEqual(['openai']);
+  });
+
   test('presets name a model and a voice the engine understands', () => {
     for (const preset of TTS_PRESETS) {
       expect(preset.baseUrl).toMatch(/^https?:\/\//);

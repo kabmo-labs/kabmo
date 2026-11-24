@@ -69,7 +69,9 @@ export function SpeechEndpointSection({
         <h4 className="text-sm font-semibold text-ink">Endpoint and key</h4>
         <p className="mt-0.5 text-[11px] text-ink/60">
           {spec.needsKey
-            ? 'The key is stored outside the settings table, in a file only this server reads.'
+            ? spec.keyOptional
+              ? 'Optional for a local server; required for OpenAI itself. Stored outside the settings table.'
+              : 'The key is stored outside the settings table, in a file only this server reads.'
             : 'No key is needed.'}
         </p>
       </div>
@@ -112,7 +114,11 @@ export function SpeechEndpointSection({
           <div className="flex items-center justify-between gap-2">
             <span className="inline-flex items-center gap-1.5 text-[11px] text-ink/70">
               <KeyRound size={12} className="text-ink/50" />
-              {hasKey ? 'A key is stored for this engine.' : 'No key stored for this engine.'}
+              {hasKey
+                ? 'A key is stored for this engine.'
+                : spec.keyOptional
+                  ? 'No key stored — fine for a local server.'
+                  : 'No key stored for this engine.'}
             </span>
             {hasKey && (
               <button
