@@ -114,3 +114,13 @@ describe('bash panel — the directory the command ran in', () => {
     expect(el.textContent ?? '').toContain('/tmp/hoisted');
   });
 });
+
+describe('bash panel — exit status from an ACP agent', () => {
+  test('draws the exit code the adapter reports as metadata.exit', async () => {
+    // The ACP mapper turns opencode's `metadata.exit` into `details.exitCode`;
+    // before that fold the card showed no status at all, so a failed command
+    // read exactly like a clean one.
+    const el = await mount({ exitCode: 1, truncated: false });
+    expect(el.textContent ?? '').toContain('exit 1');
+  });
+});

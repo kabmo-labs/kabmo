@@ -54,6 +54,7 @@ export class AcpFrameMapper {
   private replayUser: { id: string; text: string; timestamp: number } | null = null;
   private readonly tools = new AcpToolCalls({
     pushBlock: (block) => this.rows.push(block),
+    updateBlock: (block) => this.rows.updateToolBlock(block.id, block),
     snapshot: () => this.rows.snapshot(),
     // Content is already on screen; the card belongs to the NEXT row, or the
     // timeline would draw it above text that was written before it.

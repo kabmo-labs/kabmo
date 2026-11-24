@@ -32,19 +32,14 @@ import {
   toolTypeFor,
 } from '@/server/lib/harness/acp/mapper';
 import { delegationLabel, resolveToolIdentity } from '@/server/lib/harness/acp/tool-identity';
+import {
+  blockOf,
+  KIND_TOOL_NAME,
+  terminalMeta,
+  toolArgs,
+  type ToolCallBlock,
+} from '@/server/lib/harness/acp/tool-shape';
 import type { AcpToolKind, AcpToolStatus } from '@/server/lib/harness/acp/protocol';
-
-/** The message block a tool card renders from. */
-export interface ToolCallBlock {
-  type: 'toolCall';
-  id: string;
-  name: string;
-  arguments?: Record<string, unknown>;
-  toolKind?: AcpToolKind;
-  toolType?: string;
-  /** The adapter's own kind, when it is not one of the spec's ten. */
-  rawKind?: string;
-}
 
 interface OpenTool {
   id: string;
@@ -52,6 +47,16 @@ interface OpenTool {
   kind?: AcpToolKind;
   title?: string;
   status: AcpToolStatus;
+  /** The accumulated `rawInput`; a later patch may replace it wholesale. */
+  args?: Record<string, unknown>;
+  /** The renderer key computed on the opening frame. */
+  toolType?: string;
+  /** The adapter's own kind, when it is not one of the spec's ten. */
+  rawKind?: string;
+  /** Output an adapter reported through `_meta.terminal_output` (pi-acp). */
+  metaOutput?: string;
+  /** Exit status an adapter reported through `_meta.terminal_exit`. */
+  metaExit?: number;
   rawOutput?: unknown;
   /** `tool_call(Update).content` — where some agents put the diff/output. */
   content?: unknown;
@@ -61,6 +66,9 @@ interface OpenTool {
 
 export interface ToolCallHost {
   pushBlock(block: ToolCallBlock): void;
+  /** Replace an already-drawn card (a patch that filled in its arguments).
+   *  True when the OPEN row holds it, so the caller can emit a refresh. */
+  updateBlock(block: ToolCallBlock): boolean;
   snapshot(): Record<string, unknown>;
   /** Frames that close the row the host already painted, before this card is
    *  added to a new one. A card written after prose belongs to the next row:
@@ -95,15 +103,27 @@ export class AcpToolCalls {
     // file read).
     const identity = resolveToolIdentity(update);
     const rawInput = update.rawInput;
-    const args = rawInput && typeof rawInput === 'object' && !Array.isArray(rawInput)
-      ? Object.fromEntries(Object.entries(rawInput))
-      : undefined;
+    let args = toolArgs(rawInput);
     const title = typeof update.title === 'string' ? update.title : undefined;
-    const name = identity.name ?? title ?? 'tool';
+    const kind = identity.kind;
+    // pi-acp sends NO arguments for a shell call: its `tool_call.title` IS the
+    // command, and its result arrives through the terminal `_meta`. Without
+    // this the Bash card had no command line at all. Only a shell call with no
+    // command of its own takes the title, so an adapter that sends both keeps
+    // the argument it sent.
+    if (kind === 'execute' && title && typeof args?.command !== 'string' && typeof args?.cmd !== 'string') {
+      args = { ...(args ?? {}), command: title };
+    }
+    // An adapter that sends NO tool name (codex-acp's file change is `title:
+    // "Editing files"` and nothing else) leaves the card with no identity, so
+    // the renderer falls back to a generic body. The kind IS the identity
+    // there, and naming the call by it is what puts the Edit/Bash/Read panel on
+    // the card. A name the adapter DID send is never overridden — the aliases
+    // cover those vocabularies, and a plugin may own an unknown name.
+    const name = identity.name ?? (kind ? KIND_TOOL_NAME[kind] : undefined) ?? title ?? 'tool';
     // A delegation IS a subagent: it gets the `task` panel, not the read/edit
     // one, and its label is the child's task so the card says what it is doing.
     const delegation = delegationLabel(name, args, title);
-    const kind = identity.kind;
     const status = typeof update.status === 'string' ? (update.status as AcpToolStatus) : 'pending';
     // A specific kind is authoritative. `other`/absent is only an explicit type
     // when the name is one the renderers know; otherwise the shared parser's
@@ -118,15 +138,14 @@ export class AcpToolCalls {
     // close would carry the card into the text row and the timeline would draw
     // it above prose the agent sent before it.
     const frames: AgentEvent[] = this.host.beginToolBlock();
-    this.host.pushBlock({
-      type: 'toolCall',
+    this.host.pushBlock(blockOf({
       id: toolCallId,
       name,
-      ...(args ? { arguments: args } : {}),
-      ...(kind ? { toolKind: kind } : {}),
-      ...(identity.rawKind ? { rawKind: identity.rawKind } : {}),
-      ...(toolType ? { toolType } : {}),
-    });
+      kind,
+      args,
+      toolType,
+      rawKind: identity.rawKind,
+    }));
 
     frames.push(
       {
@@ -146,20 +165,30 @@ export class AcpToolCalls {
       },
     );
 
+    const meta = terminalMeta(update._meta);
+    // The call is registered even when this frame already closes it: an
+    // adapter may send the result in a SECOND update (`pi-acp` opens a shell
+    // call as completed and reports the output in the next frame), and an
+    // unregistered id made that update create a duplicate card named after the
+    // missing title instead of completing the one on screen.
+    this.calls.set(toolCallId, {
+      id: toolCallId,
+      name,
+      kind,
+      title,
+      status,
+      args,
+      ...(toolType ? { toolType } : {}),
+      ...(identity.rawKind ? { rawKind: identity.rawKind } : {}),
+      ...(meta.output ? { metaOutput: meta.output } : {}),
+      ...(meta.exitCode !== undefined ? { metaExit: meta.exitCode } : {}),
+      rawOutput: update.rawOutput,
+      content: update.content,
+      locations: update.locations,
+      startedAt: Date.now(),
+    });
     if (isFinal(status)) {
-      frames.push(endFrame(update, toolCallId, name, status));
-    } else {
-      this.calls.set(toolCallId, {
-        id: toolCallId,
-        name,
-        kind,
-        title,
-        status,
-        rawOutput: update.rawOutput,
-        content: update.content,
-        locations: update.locations,
-        startedAt: Date.now(),
-      });
+      frames.push(endFrame(update, toolCallId, name, status, meta));
     }
     return frames;
   }
@@ -171,20 +200,49 @@ export class AcpToolCalls {
     const existing = this.calls.get(toolCallId);
     if (!existing) return this.open(update);
 
+    // ACP's patch rule applies to `rawInput` too, and opencode RELIES on it:
+    // `session.tool.input.started` opens the call with `{}` and the real
+    // arguments arrive on the next `tool_call_update`. Ignoring the bag left
+    // the Bash card without its command and the Read card without its path.
+    // The row is refreshed so the card on screen gets them before the result.
+    const frames: AgentEvent[] = [];
+    if (update.rawInput !== undefined) {
+      existing.args = toolArgs(update.rawInput);
+      if (this.host.updateBlock(blockOf(existing))) {
+        frames.push({
+          type: 'message_update',
+          message: this.host.snapshot(),
+          assistantMessageEvent: { type: 'toolcall_start' },
+        });
+      }
+    }
+
     if (update.rawOutput !== undefined) existing.rawOutput = update.rawOutput;
     if (update.content !== undefined) existing.content = update.content;
     if (update.locations !== undefined) existing.locations = update.locations;
     if (typeof update.title === 'string') existing.title = update.title;
+    const meta = terminalMeta(update._meta);
+    // A terminal channel reports output in DELTAS; pi reports its whole result
+    // in one frame. Appending is right for the former and a no-op duplicate for
+    // the latter (it sends `terminal_output` once).
+    if (meta.output) existing.metaOutput = `${existing.metaOutput ?? ''}${meta.output}`;
+    if (meta.exitCode !== undefined) existing.metaExit = meta.exitCode;
     const status = typeof update.status === 'string' ? (update.status as AcpToolStatus) : existing.status;
     existing.status = status;
 
     const result = existing.rawOutput ?? (existing.content === undefined ? undefined : { content: existing.content });
-    const output = acpToolOutput(existing.rawOutput) || acpContentText(existing.content);
-    const details = acpToolDetails(existing.rawOutput) ?? acpContentDetails(existing.content);
+    const output = acpToolOutput(existing.rawOutput)
+      || acpContentText(existing.content)
+      || existing.metaOutput
+      || '';
+    const baseDetails = acpToolDetails(existing.rawOutput) ?? acpContentDetails(existing.content);
+    const details = baseDetails || existing.metaExit !== undefined
+      ? { ...baseDetails, ...(existing.metaExit !== undefined ? { exitCode: existing.metaExit } : {}) }
+      : undefined;
 
     if (isFinal(status)) {
       this.calls.delete(toolCallId);
-      return [{
+      return [...frames, {
         type: 'tool_execution_end',
         toolCallId,
         toolName: existing.name,
@@ -196,7 +254,7 @@ export class AcpToolCalls {
       }];
     }
 
-    return [{
+    return [...frames, {
       type: 'tool_execution_update',
       toolCallId,
       toolName: existing.name,
@@ -230,14 +288,18 @@ function endFrame(
   toolCallId: string,
   name: string,
   status: AcpToolStatus,
+  meta: { output?: string; exitCode?: number } = {},
 ): AgentEvent {
+  const baseDetails = acpToolDetails(update.rawOutput) ?? acpContentDetails(update.content);
   return {
     type: 'tool_execution_end',
     toolCallId,
     toolName: name,
     result: update.rawOutput ?? (update.content === undefined ? undefined : { content: update.content }),
     isError: status !== 'completed',
-    details: acpToolDetails(update.rawOutput) ?? acpContentDetails(update.content),
-    output: acpToolOutput(update.rawOutput) || acpContentText(update.content),
+    details: baseDetails || meta.exitCode !== undefined
+      ? { ...baseDetails, ...(meta.exitCode !== undefined ? { exitCode: meta.exitCode } : {}) }
+      : undefined,
+    output: acpToolOutput(update.rawOutput) || acpContentText(update.content) || meta.output || '',
   };
 }

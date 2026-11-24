@@ -23,6 +23,7 @@
  * to `read`, which is how a delegation drew a file-read panel.
  */
 
+import { canonicalAgentToolName } from '@/shared/lib/chat/tool/tool-aliases';
 import type { AcpToolKind } from '@/server/lib/harness/acp/protocol';
 
 const KNOWN_KINDS: Readonly<Record<AcpToolKind, true>> = {
@@ -81,9 +82,14 @@ export function resolveToolIdentity(update: Record<string, unknown>): AcpToolIde
   const name = typeof update.name === 'string' && update.name
     ? update.name
     : meta.name ?? wrapped;
+  // An adapter names its tools in its own vocabulary (`shell`, `todowrite`,
+  // `webfetch`). Every panel lookup reads the NAME first, so the canonical key
+  // is what makes the card a bash/todo/web_search card instead of a generic
+  // body — see `AGENT_TOOL_ALIASES` for the measured names.
+  const canonical = canonicalAgentToolName(name);
   const declared = typeof update.kind === 'string' ? update.kind : meta.rawKind;
   return {
-    ...(name ? { name } : {}),
+    ...(canonical ? { name: canonical } : {}),
     ...normalizeKind(declared),
   };
 }
@@ -94,6 +100,12 @@ const DELEGATION_NAMES: Readonly<Record<string, true>> = {
   invoke_subagent: true,
   spawn_agent: true,
   delegate: true,
+  // The canonical key after `AGENT_TOOL_ALIASES` (opencode's `subagent`) and
+  // omp's own delegation tool. Without it a child agent fell through to the
+  // generic body and the card could not say what the child was asked to do.
+  task: true,
+  subagent: true,
+  agent: true,
 };
 
 /**

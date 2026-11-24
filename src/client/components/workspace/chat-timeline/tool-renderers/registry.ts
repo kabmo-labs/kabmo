@@ -22,6 +22,7 @@
 import type { ToolCallData } from '@/shared/types/chat';
 import { procPathOf } from '@/shared/lib/omp/session/proc';
 import { soleToolCommand } from '@/shared/lib/chat/tool/tool-commands';
+import { canonicalAgentToolName } from '@/shared/lib/chat/tool/tool-aliases';
 
 /** Legacy Kabmo/MOCK alias → canonical omp tool name. */
 export const TOOL_ALIASES: Record<string, string> = {
@@ -131,7 +132,7 @@ export function xdDevice(tool: ToolCallData): string | undefined {
  * The FULL path is returned, not the device: `help://eval/browser` is the
  * browser topic of the `eval` tool, and `xdDevice` would report only `eval`. */
 export function xdDocPath(tool: ToolCallData): string | undefined {
-  const raw = (tool.name || tool.type || '').toLowerCase();
+  const raw = canonicalAgentToolName(tool.name || tool.type || '').toLowerCase();
   if ((TOOL_ALIASES[raw] ?? raw) !== 'read') return undefined;
   const input = inputRecord(tool);
   const path = typeof input?.path === 'string' ? input.path : tool.target ?? '';
@@ -152,6 +153,13 @@ export function isXdDocRead(tool: ToolCallData): boolean {
  * omp virtual-device call through its device (so `write xd://lsp` is an LSP
  * panel), an MCP call through its `mcp__` name, and only then does the tool's
  * own name decide.
+ *
+ * The lookup is by NAME only, deliberately: the transport's kind is a broader
+ * fact (see `toolPanelKind`'s callers), and a plugin renderer is consulted for
+ * exactly the tools whose name the host does not know. Deriving a panel from
+ * the kind here would make a plugin unable to claim its own agent tool. An
+ * adapter that sends NO tool name has its name derived from the kind at
+ * ingress instead (`AcpToolCalls.open`), which is where that fact lives.
  */
 export function toolPanelKind(tool: ToolCallData): ToolPanelKind | null {
   if (procPathOf(tool)) return 'proc';
@@ -177,7 +185,7 @@ export function toolPanelKind(tool: ToolCallData): ToolPanelKind | null {
     if (byDevice) return byDevice;
   }
 
-  const raw = (tool.name || tool.type || '').toLowerCase();
+  const raw = canonicalAgentToolName(tool.name || tool.type || '').toLowerCase();
   if (raw.startsWith('mcp__')) return 'mcp';
   return PANEL_KINDS[TOOL_ALIASES[raw] ?? raw] ?? null;
 }

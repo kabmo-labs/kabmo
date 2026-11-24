@@ -43,6 +43,11 @@ describe('describeToolActivity', () => {
     expect(describeToolActivity({ name: 'BASH', args: { command: 'pwd' } })).toBe('Running pwd');
   });
 
+  test('normalizes the name an ACP agent reports', () => {
+    expect(describeToolActivity({ name: 'shell', args: { command: 'ls -la' } })).toBe('Running ls -la');
+    expect(describeToolActivity({ name: 'todowrite', args: { todos: [] } })).toBe('Updating plan');
+  });
+
   test('an unknown tool still reads as running something', () => {
     expect(describeToolActivity({ name: 'frobnicate' })).toBe('Running frobnicate');
     expect(describeToolActivity({})).toBe('Working');

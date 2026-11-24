@@ -42,6 +42,7 @@ import { Mcp } from '@/client/components/workspace/chat-timeline/tool-renderers/
 import { Wait } from '@/client/components/workspace/chat-timeline/tool-renderers/panels/Wait';
 import { hashlineTargetPath } from '@/shared/lib/omp/session/hashline-patch';
 import { procPathOf } from '@/shared/lib/omp/session/proc';
+import { canonicalAgentToolName } from '@/shared/lib/chat/tool/tool-aliases';
 import { getToolInputPath } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/tool-input';
 import { effectiveToolName, isXdDocRead, toolPanelKind, type ToolPanelKind } from '@/client/components/workspace/chat-timeline/tool-renderers/registry';
 
@@ -85,16 +86,9 @@ export function resolveTargetFile(tool: ToolCallData): string | undefined {
   if (tool.target) return tool.target;
   if (tool.diff?.file) return tool.diff.file;
   if (tool.input && typeof tool.input === 'object') {
-    const obj = tool.input as Record<string, unknown>;
-    if (typeof obj.path === 'string') return obj.path;
-    if (typeof obj.TargetFile === 'string') return obj.TargetFile;
-    if (typeof obj.targetFile === 'string') return obj.targetFile;
-    if (typeof obj.FilePath === 'string') return obj.FilePath;
-    if (typeof obj.filePath === 'string') return obj.filePath;
-    if (typeof obj.AbsolutePath === 'string') return obj.AbsolutePath;
-    if (typeof obj.absolutePath === 'string') return obj.absolutePath;
-    if (typeof obj.file === 'string') return obj.file;
-    const patchPath = hashlineTargetPath(obj);
+    const fromInput = getToolInputPath(tool.input);
+    if (fromInput) return fromInput;
+    const patchPath = hashlineTargetPath(tool.input as Record<string, unknown>);
     if (patchPath) return patchPath;
   }
   if (typeof tool.details?.path === 'string') return tool.details.path;
@@ -142,7 +136,7 @@ export function resolveToolKey(tool: ToolCallData): string {
     if (device) return device;
   }
 
-  const rawName = (tool.name || '').toLowerCase();
+  const rawName = canonicalAgentToolName(tool.name || '').toLowerCase();
   if (rawName && rawName !== 'tool' && rawName !== 'custom') return rawName;
 
   const titlePrefix = (tool.title || '').toLowerCase().split(/[\s—\-:]+/)[0]?.trim();

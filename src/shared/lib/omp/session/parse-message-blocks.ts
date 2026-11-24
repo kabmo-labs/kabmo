@@ -18,6 +18,7 @@
 
 import type { ToolCallData, ToolType } from '@/shared/types/chat';
 import { hashlineTargetPath } from '@/shared/lib/omp/session/hashline-patch';
+import { toolInputPath } from '@/shared/lib/chat/tool/tool-input-path';
 import { extractToolImages, type ToolImageRef } from '@/shared/lib/omp/session/tool-images';
 import { isRecord } from '@/shared/lib/util/guards';
 
@@ -92,7 +93,6 @@ function stringArg(rawInput: Record<string, unknown> | undefined, keys: string[]
 }
 
 const COMMAND_KEYS = ['command', 'cmd', 'CommandLine', 'commandLine'];
-const TARGET_KEYS = ['path', 'TargetFile', 'targetFile', 'FilePath', 'filePath', 'AbsolutePath', 'file'];
 
 /** Parse omp message content (string or block array) into the canonical
  *  parsed-message shape shared by the live and reload render paths. */
@@ -147,7 +147,7 @@ export function parseMessageBlocks(content: unknown): ParsedMessageBlocks {
       // An omp `edit` carries its target inside the patch header (`input:
       // "[PATH#TAG]\nCUT …"`) — no `path` key — so the card would otherwise
       // render without a file name until the result's `details.path` arrives.
-      const target = stringArg(args, TARGET_KEYS) || (args ? hashlineTargetPath(args) : undefined);
+      const target = toolInputPath(args) || (args ? hashlineTargetPath(args) : undefined);
       const intent = typeof args?.i === 'string' ? args.i : undefined;
       const detail = command || target;
       result.toolCalls.push({

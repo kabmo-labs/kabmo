@@ -32,7 +32,12 @@ export function acpDelegationRow(
   if (!input) return null;
   const description = typeof input.description === 'string' ? input.description.trim() : '';
   const prompt = typeof input.prompt === 'string' ? input.prompt.trim() : '';
-  const subagent = typeof input.subagent_type === 'string' ? input.subagent_type.trim() : '';
+  const subagent =
+    typeof input.subagent_type === 'string' && input.subagent_type.trim()
+      ? input.subagent_type.trim()
+      : typeof input.agent === 'string' && input.agent.trim()
+        ? input.agent.trim()
+        : '';
   const wrapped = input._toolName === 'task';
   const task = description || prompt;
   if (!task && !wrapped && !subagent) return null;

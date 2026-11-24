@@ -33,6 +33,8 @@
  */
 
 import type { ToolType } from '@/shared/types';
+import { isRecord } from '@/shared/lib/util/guards';
+import { toolInputPath } from '@/shared/lib/chat/tool/tool-input-path';
 import type { AcpToolKind } from '@/server/lib/harness/acp/protocol';
 
 /** ACP kind -> the omp-shaped `ToolType` the renderers key on. */
@@ -43,7 +45,9 @@ const TOOL_TYPE_BY_KIND: Record<AcpToolKind, ToolType> = {
   move: 'edit',
   search: 'grep',
   execute: 'bash',
-  think: 'read',
+  // `think` is a Kabmo panel of its own (`Think`); mapping it to `read` drew a
+  // file reader over an agent's reasoning scratchpad.
+  think: 'think',
   fetch: 'web_search',
   switch_mode: 'todo',
   other: 'read',
@@ -120,26 +124,80 @@ export function acpContentText(content: unknown): string {
   return entryText(content);
 }
 
+/** Join a command's two streams the way a terminal would show them. */
+function joinStreams(stdout: unknown, stderr: unknown): string | undefined {
+  const out = typeof stdout === 'string' ? stdout : '';
+  const err = typeof stderr === 'string' ? stderr : '';
+  if (!out && !err) return undefined;
+  if (!out || !err) return out || err;
+  return out.endsWith('\n') ? `${out}${err}` : `${out}\n${err}`;
+}
+
 /** The output of a tool call, from either the ACP envelope or omp's own. */
 export function acpToolOutput(rawOutput: unknown): string {
   if (rawOutput === undefined || rawOutput === null) return '';
   if (typeof rawOutput === 'string') return rawOutput;
-  if (typeof rawOutput !== 'object') return JSON.stringify(rawOutput);
+  if (!isRecord(rawOutput)) return JSON.stringify(rawOutput);
   if ('content' in rawOutput) {
     const fromContent = acpContentText(rawOutput.content);
     if (fromContent) return fromContent;
   }
-  if ('output' in rawOutput && typeof rawOutput.output === 'string') return rawOutput.output;
-  if ('text' in rawOutput && typeof rawOutput.text === 'string') return rawOutput.text;
+  if (typeof rawOutput.output === 'string' && rawOutput.output) return rawOutput.output;
+  if (typeof rawOutput.text === 'string' && rawOutput.text) return rawOutput.text;
+  // ACP leaves the result's shape to the adapter. opencode 2.x puts the text
+  // under `metadata.output`; the generic command result uses `stdout`/`stderr`
+  // (a shape bb normalizes on its side too). Reading only `content`/`output`
+  // left those calls with a blank body.
+  const metadata = isRecord(rawOutput.metadata) ? rawOutput.metadata : undefined;
+  if (metadata && typeof metadata.output === 'string' && metadata.output) return metadata.output;
+  const streams = joinStreams(rawOutput.stdout, rawOutput.stderr);
+  if (streams) return streams;
+  if (typeof rawOutput.output_for_prompt === 'string') return rawOutput.output_for_prompt;
   return '';
+}
+
+/** Command facts from one bag: exit status, truncation, timeout, signal. */
+function commandDetails(source: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  const exit = source.exitCode ?? source.exit_code ?? source.exit;
+  if (typeof exit === 'number' && Number.isFinite(exit)) out.exitCode = exit;
+  if (typeof source.truncated === 'boolean') out.truncated = source.truncated;
+  if (source.timedOut === true || source.timed_out === true || source.timeout === true) out.timedOut = true;
+  if (typeof source.signal === 'string' && source.signal) out.signal = source.signal;
+  return out;
+}
+
+/** The unified diff opencode reports as `metadata.files[]` (edit/write/patch). */
+function fileDiffDetails(metadata: Record<string, unknown>): Record<string, unknown> | undefined {
+  if (!Array.isArray(metadata.files)) return undefined;
+  const patches: string[] = [];
+  let path: string | undefined;
+  for (const entry of metadata.files) {
+    if (!isRecord(entry) || typeof entry.patch !== 'string' || !entry.patch) continue;
+    if (!path && typeof entry.file === 'string' && entry.file) path = entry.file;
+    patches.push(entry.patch);
+  }
+  return patches.length > 0
+    ? { diff: patches.join('\n'), ...(path ? { path } : {}) }
+    : undefined;
 }
 
 /** `details` for the renderers that read it (diff, line counts, paths). */
 export function acpToolDetails(rawOutput: unknown): Record<string, unknown> | undefined {
-  if (!rawOutput || typeof rawOutput !== 'object' || !('details' in rawOutput)) return undefined;
-  const details = rawOutput.details;
-  if (!details || typeof details !== 'object') return undefined;
-  return Object.fromEntries(Object.entries(details));
+  if (!isRecord(rawOutput)) return undefined;
+  const base = isRecord(rawOutput.details)
+    ? Object.fromEntries(Object.entries(rawOutput.details))
+    : undefined;
+  const metadata = isRecord(rawOutput.metadata) ? rawOutput.metadata : undefined;
+  // The agent's own `details` (omp) wins over anything inferred from the
+  // command shapes; the vendor `metadata` fills what that bag does not carry.
+  const merged: Record<string, unknown> = {
+    ...commandDetails(rawOutput),
+    ...(metadata ? commandDetails(metadata) : {}),
+    ...(metadata ? fileDiffDetails(metadata) ?? {} : {}),
+    ...base,
+  };
+  return Object.keys(merged).length > 0 ? merged : undefined;
 }
 
 /** A minimal unified diff, for ACP's `{type:"diff", oldText, newText}` block. */
@@ -205,9 +263,11 @@ export function acpToolTarget(locations: unknown, rawInput: unknown): string | u
       }
     }
   }
+  const fromInput = toolInputPath(rawInput);
+  if (fromInput) return fromInput;
   if (rawInput && typeof rawInput === 'object') {
     const bag: Record<string, unknown> = Object.fromEntries(Object.entries(rawInput));
-    for (const key of ['path', 'file', 'target', 'filePath', 'command']) {
+    for (const key of ['target', 'command']) {
       const value = bag[key];
       if (typeof value === 'string' && value) return value;
     }

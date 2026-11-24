@@ -62,6 +62,44 @@ describe('toolPanelKind — canonical omp tools', () => {
   }
 });
 
+describe('toolPanelKind — ACP agent vocabulary', () => {
+  test('folds the names opencode reports onto their panels', () => {
+    expect(toolPanelKind(tool({ type: 'bash', name: 'shell' }))).toBe('bash');
+    expect(toolPanelKind(tool({ type: 'todo', name: 'todowrite' }))).toBe('todo');
+    expect(toolPanelKind(tool({ type: 'web_search', name: 'webfetch' }))).toBe('web_search');
+    expect(toolPanelKind(tool({ type: 'web_search', name: 'websearch' }))).toBe('web_search');
+    expect(toolPanelKind(tool({ type: 'read', name: 'subagent' }))).toBe('task');
+    expect(toolPanelKind(tool({ type: 'edit', name: 'patch' }))).toBe('edit');
+    expect(toolPanelKind(tool({ type: 'edit', name: 'apply_patch' }))).toBe('edit');
+  });
+
+  test('folds the names claude-code-acp and codex-acp report', () => {
+    expect(toolPanelKind(tool({ type: 'bash', name: 'PowerShell' }))).toBe('bash');
+    expect(toolPanelKind(tool({ type: 'bash', name: 'exec_command' }))).toBe('bash');
+    expect(toolPanelKind(tool({ type: 'bash', name: 'run_shell_command' }))).toBe('bash');
+    expect(toolPanelKind(tool({ type: 'todo', name: 'update_plan' }))).toBe('todo');
+    expect(toolPanelKind(tool({ type: 'task', name: 'Agent' }))).toBe('task');
+    expect(toolPanelKind(tool({ type: 'read', name: 'view_image' }))).toBe('read');
+  });
+
+  test('folds the gemini-family file tool names', () => {
+    expect(toolPanelKind(tool({ type: 'write', name: 'write_file' }))).toBe('write');
+    expect(toolPanelKind(tool({ type: 'edit', name: 'replace' }))).toBe('edit');
+    expect(toolPanelKind(tool({ type: 'read', name: 'list_directory' }))).toBe('read');
+    expect(toolPanelKind(tool({ type: 'read', name: 'read_many_files' }))).toBe('read');
+    expect(toolPanelKind(tool({ type: 'grep', name: 'search_file_content' }))).toBe('grep');
+    expect(toolPanelKind(tool({ type: 'web_search', name: 'web_fetch' }))).toBe('web_search');
+  });
+
+  test('an unknown name with no known kind keeps the generic body', () => {
+    // The panel lookup is by NAME: a plugin renderer claims exactly the tools
+    // whose name the host does not know, so a kind-derived panel here would
+    // make a plugin unable to own its own agent tool.
+    expect(toolPanelKind(tool({ type: 'custom', name: 'VendorWidget' }))).toBeNull();
+    expect(toolPanelKind(tool({ type: 'bash', name: 'VendorWidget' }))).toBeNull();
+  });
+});
+
 describe('toolPanelKind — legacy aliases', () => {
   test('folds the MOCK file aliases onto their omp tool', () => {
     expect(toolPanelKind(tool({ type: 'read_file' }))).toBe('read');

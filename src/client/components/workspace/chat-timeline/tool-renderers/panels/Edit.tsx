@@ -14,6 +14,7 @@ import { useDeferredHighlight, useDeferredHighlightLines } from '@/client/hooks/
 import { MAX_OUTPUT_LINES, truncateTailLines } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/truncate';
 import { outputMarkdown, readToolOutput } from '@/shared/lib/chat/tool-output';
 import { hashlinePatchFromArgs } from '@/shared/lib/omp/session/hashline-patch';
+import { getToolInputPath } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/tool-input';
 import { formatBytes } from '@/shared/lib/format/number';
 
 /** Rows of a written file the preview draws before it reports a truncation. */
@@ -82,13 +83,7 @@ export function Edit({ tool }: { tool: ToolCallData }) {
   const targetPath =
     tool.target ||
     hashline?.sections[0].path ||
-    (inputObj?.path as string) ||
-    (inputObj?.TargetFile as string) ||
-    (inputObj?.targetFile as string) ||
-    (inputObj?.FilePath as string) ||
-    (inputObj?.filePath as string) ||
-    (inputObj?.AbsolutePath as string) ||
-    (inputObj?.absolutePath as string) ||
+    getToolInputPath(input) ||
     (typeof tool.details?.path === 'string' ? tool.details.path : undefined) ||
     (typeof input === 'string' && (input.includes('/') || input.includes('.')) ? input : undefined) ||
     '';

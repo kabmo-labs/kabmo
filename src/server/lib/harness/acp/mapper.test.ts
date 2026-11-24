@@ -11,7 +11,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { acpContentText, acpToolOutput, acpToolTarget } from '@/server/lib/harness/acp/mapper';
+import { acpContentText, acpToolDetails, acpToolOutput, acpToolTarget } from '@/server/lib/harness/acp/mapper';
 
 describe('acp mapper helpers', () => {
   test('both measured content shapes yield text', () => {
@@ -30,6 +30,45 @@ describe('acp mapper helpers', () => {
     expect(acpToolOutput({ content: [{ type: 'text', text: 'x' }] })).toBe('x');
     expect(acpToolOutput({ output: 'y' })).toBe('y');
     expect(acpToolOutput(null)).toBe('');
+  });
+
+  test('opencode puts the text under metadata.output', () => {
+    expect(acpToolOutput({ metadata: { output: 'from metadata' } })).toBe('from metadata');
+  });
+
+  test('a generic command result joins stdout and stderr', () => {
+    expect(acpToolOutput({ exitCode: 0, stdout: 'out\n', stderr: 'err' })).toBe('out\nerr');
+    expect(acpToolOutput({ stderr: 'only err' })).toBe('only err');
+    expect(acpToolOutput({ output_for_prompt: 'prompt text' })).toBe('prompt text');
+  });
+
+  test('opencode command metadata becomes the details the Bash panel reads', () => {
+    expect(acpToolDetails({ metadata: { exit: 1, truncated: true, status: 'completed' } }))
+      .toEqual({ exitCode: 1, truncated: true });
+    expect(acpToolDetails({ metadata: { exit: 0, timeout: true, signal: 'SIGTERM' } }))
+      .toEqual({ exitCode: 0, timedOut: true, signal: 'SIGTERM' });
+  });
+
+  test('a generic command result carries its exit status', () => {
+    expect(acpToolDetails({ exit_code: 2, timed_out: true })).toEqual({ exitCode: 2, timedOut: true });
+  });
+
+  test('opencode file metadata becomes the diff the Edit panel reads', () => {
+    const details = acpToolDetails({
+      metadata: { files: [{ file: 'src/a.ts', patch: '--- a/src/a.ts\n+++ b/src/a.ts\n-a\n+b' }] },
+    });
+    expect(details?.path).toBe('src/a.ts');
+    expect(details?.diff).toContain('-a');
+    expect(details?.diff).toContain('+b');
+  });
+
+  test('an explicit details bag wins over the inferred command shape', () => {
+    expect(acpToolDetails({ details: { exitCode: 0 }, exit: 1 })).toEqual({ exitCode: 0 });
+  });
+
+  test('a bag with nothing recognizable yields no details', () => {
+    expect(acpToolDetails({ metadata: { status: 'completed' } })).toBeUndefined();
+    expect(acpToolDetails(undefined)).toBeUndefined();
   });
 
   test('target prefers locations, then the input bag', () => {

@@ -74,6 +74,14 @@ describe('acpDelegationRow', () => {
     expect(acpDelegationRow({ prompt: 'trace it' }, undefined)).toEqual({ name: 'trace it', task: 'trace it' });
   });
 
+  test('opencode names the child agent in `agent`', () => {
+    expect(acpDelegationRow({ description: 'audit auth', prompt: 'check it', agent: 'explore' }, undefined)).toEqual({
+      name: 'audit auth',
+      agent: 'explore',
+      task: 'audit auth',
+    });
+  });
+
   test('cursor’s wrapped task falls back to the intent for its label', () => {
     expect(acpDelegationRow({ _toolName: 'task' }, 'Task: Subagent task')).toEqual({ name: 'Task: Subagent task' });
   });

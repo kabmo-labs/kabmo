@@ -24,6 +24,7 @@ import { isRecord } from '@/shared/lib/util/guards';
 import { isSoleInvocation } from '@/shared/lib/chat/tool/tool-commands';
 import { parseProcUrl, procRequestOp } from '@/shared/lib/omp/session/proc';
 import { DEVICE_VERBS, PHASE_VERBS, TOOL_ALIASES, TOOL_VERBS, asString, pick, subjectFor, truncate } from '@/shared/lib/chat/timeline/tool-phrases';
+import { canonicalAgentToolName } from '@/shared/lib/chat/tool/tool-aliases';
 
 export interface ToolActivity {
   /** Canonical omp tool name; legacy Kabmo aliases are normalized. */
@@ -94,7 +95,8 @@ function deviceArgs(args: Record<string, unknown>): Record<string, unknown> {
 /** Phrase for the tool call the agent is executing right now. */
 export function describeToolActivity(tool: ToolActivity): string {
   const rawName = asString(tool.name) ?? '';
-  const name = TOOL_ALIASES[rawName.toLowerCase()] ?? rawName.toLowerCase();
+  const canonical = canonicalAgentToolName(rawName).toLowerCase();
+  const name = TOOL_ALIASES[canonical] ?? canonical;
   const args = argsOf(tool);
   // The model's own one-liner (omp's `i` field, or the intent it resolved for
   // the execution event) is a better subject than anything derived here.

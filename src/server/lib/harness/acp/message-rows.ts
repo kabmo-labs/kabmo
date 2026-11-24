@@ -28,7 +28,7 @@
  */
 
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
-import type { ToolCallBlock } from '@/server/lib/harness/acp/tool-calls';
+import type { ToolCallBlock } from '@/server/lib/harness/acp/tool-shape';
 
 /** One block of the accumulated assistant message, in `parseMessageBlocks` shape. */
 export type MessageBlock =
@@ -94,6 +94,33 @@ export class AcpMessageRows {
 
   push(block: MessageBlock): void {
     this.blocks.push(block);
+  }
+
+  /**
+   * Replace the card with this id by a patched copy of itself.
+   *
+   * ACP's `tool_call_update` is a PATCH and the fields it fills in late include
+   * `rawInput` — opencode sends `tool_call` with an EMPTY input and the real
+   * arguments one update later, so a card that only kept what the opening
+   * frame carried had no command and no path to show. Both the open row and
+   * the copies already closed into the turn are patched, so a reader of the
+   * whole turn sees the same facts as the row.
+   *
+   * Returns true when the OPEN row held the card, i.e. when a `message_update`
+   * will actually reach the client. A card already in a closed row is only
+   * corrected for the turn-level readers.
+   */
+  updateToolBlock(id: string, next: ToolCallBlock): boolean {
+    let open = false;
+    this.blocks = this.blocks.map((block) => {
+      if (block.type !== 'toolCall' || block.id !== id) return block;
+      open = true;
+      return next;
+    });
+    this.turnBlocks = this.turnBlocks.map((block) =>
+      block.type === 'toolCall' && block.id === id ? next : block,
+    );
+    return open;
   }
 
   /** Append one delta to the open row, merging runs of the same kind. */

@@ -171,6 +171,33 @@ function mergePhaseGroups(rawGroups: TodoPhase[]): TodoPhase[] {
   return result;
 }
 
+/**
+ * A status from an agent's own list entry. opencode's vocabulary is
+ * `pending | in_progress | completed | cancelled`; `cancelled` is Kabmo's
+ * `abandoned` (a task dropped, not one still waiting). An unknown value is
+ * pending rather than invented as finished.
+ */
+function todoStatusOf(raw: unknown): TodoStatus {
+  if (typeof raw !== 'string') return 'pending';
+  switch (raw.toLowerCase()) {
+    case 'completed':
+    case 'done':
+      return 'completed';
+    case 'in_progress':
+    case 'in progress':
+      return 'in_progress';
+    case 'cancelled':
+    case 'canceled':
+    case 'abandoned':
+    case 'dropped':
+      return 'abandoned';
+    case 'blocked':
+      return 'blocked';
+    default:
+      return 'pending';
+  }
+}
+
 export function parseTodoData(tool: ToolCallData): TodoDataSummary {
   const input = tool.input;
   const inputObj = typeof input === 'object' && input !== null ? (input as Record<string, any>) : undefined;
@@ -243,6 +270,35 @@ export function parseTodoData(tool: ToolCallData): TodoDataSummary {
       const tasks: TodoItem[] = (p.items || []).map((it: string) => ({ content: it, status: 'pending' as const }));
       rawGroups.push({ name: phaseName, tasks });
     }
+  }
+
+  // An ACP agent sends its plan as a FLAT list with no phases and no checklist
+  // text: opencode's `todowrite` takes `todos: [{content, status}]` and answers
+  // with a one-line summary ("Todos updated: 1/2 completed, 1 pending"). Read as
+  // text that summary drew no rows at all, so the card showed a sentence where
+  // the agent's plan belonged.
+  if (rawGroups.length === 0 && Array.isArray(inputObj?.todos)) {
+    const tasks: TodoItem[] = [];
+    for (const entry of inputObj.todos) {
+      if (!entry || typeof entry !== 'object') continue;
+      const content = typeof entry.content === 'string' ? entry.content.trim() : '';
+      if (!content) continue;
+      tasks.push({ content, status: todoStatusOf(entry.status) });
+    }
+    if (tasks.length > 0) rawGroups.push({ name: 'Tasks', tasks });
+  }
+
+  // codex-acp's `update_plan` names the same list `plan`, with `step` instead
+  // of `content`.
+  if (rawGroups.length === 0 && Array.isArray(inputObj?.plan)) {
+    const tasks: TodoItem[] = [];
+    for (const entry of inputObj.plan) {
+      if (!entry || typeof entry !== 'object') continue;
+      const content = typeof entry.step === 'string' ? entry.step.trim() : '';
+      if (!content) continue;
+      tasks.push({ content, status: todoStatusOf(entry.status) });
+    }
+    if (tasks.length > 0) rawGroups.push({ name: 'Tasks', tasks });
   }
 
   // Merge & deduplicate all phase groups

@@ -163,3 +163,57 @@ describe('parseTodoData — omp status vocabulary', () => {
     expect(parsed.groups[0].tasks[0].notes).toBeUndefined();
   });
 });
+
+describe('parseTodoData — an ACP agent’s flat list', () => {
+  test('reads opencode todowrite’s input.todos instead of its summary sentence', () => {
+    // Measured opencode 2.2.5: the tool is named `todowrite`, its arguments are
+    // `{todos: [{content,status}]}`, and the result text is one summary line.
+    // Parsed as text, that line produced no rows at all.
+    const parsed = parseTodoData(
+      todoTool({
+        name: 'todo',
+        input: {
+          todos: [
+            { content: 'read the auth module', status: 'completed' },
+            { content: 'trace the login flow', status: 'in_progress' },
+            { content: 'write the regression test', status: 'pending' },
+            { content: 'drop the old probe', status: 'cancelled' },
+          ],
+        },
+        output: 'Todos updated: 1/4 completed, 1 in progress, 1 pending, 1 cancelled',
+        status: 'success',
+      }),
+    );
+
+    expect(parsed.groups[0].tasks.map((task) => [task.content, task.status])).toEqual([
+      ['read the auth module', 'completed'],
+      ['trace the login flow', 'in_progress'],
+      ['write the regression test', 'pending'],
+      ['drop the old probe', 'abandoned'],
+    ]);
+    expect(parsed.progress).toMatchObject({ total: 4, completed: 1, closed: 2, inProgress: 1 });
+  });
+
+  test('reads codex update_plan’s input.plan with step as the label', () => {
+    const parsed = parseTodoData(
+      todoTool({
+        name: 'todo',
+        input: {
+          plan: [
+            { step: 'Locate the auth guard', status: 'completed' },
+            { step: 'Patch the guard', status: 'in_progress' },
+            { step: 'Run the suite', status: 'pending' },
+          ],
+        },
+        output: 'Plan updated',
+        status: 'success',
+      }),
+    );
+
+    expect(parsed.groups[0].tasks.map((task) => [task.content, task.status])).toEqual([
+      ['Locate the auth guard', 'completed'],
+      ['Patch the guard', 'in_progress'],
+      ['Run the suite', 'pending'],
+    ]);
+  });
+});
