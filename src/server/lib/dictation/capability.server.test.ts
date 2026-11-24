@@ -93,8 +93,10 @@ describe('localDictationCapability', () => {
 
     expect(capability.available).toBe(false);
     expect(capability.reason).toContain('Settings → Dictation');
-    // The refusal is the probe's, not a bare process-exit string.
-    expect(capability.reason).toContain('unavailable on this omp version');
+    // The refusal is the probe's, not a bare process-exit string: a worker that
+    // never answered is the version-mismatch shape, and the reader is told so.
+    expect(capability.reason).toContain('exited before answering');
+    expect(capability.reason).not.toContain('STT worker exited.');
   });
 
   test('the answer is cached, and `force` re-probes', async () => {

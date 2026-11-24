@@ -36,12 +36,10 @@
  * `aud.subarray is not a function`.
  */
 
-import type { Subprocess } from 'bun';
 import { resolveOmpBin } from '@/server/lib/omp/core/cli';
 import { DEFAULT_STT_MODEL, isSttModelKey, type SttProgressEvent } from '@/shared/lib/dictation/models';
-import { SpeechFrameDecoder, encodeSpeechFrame, type SpeechFrame } from '@/server/lib/dictation/speech-frames';
-
-type WorkerChild = Subprocess<'pipe', 'pipe', 'pipe'>;
+import { startSttWorkerProcess, type SttWorkerProcess } from '@/server/lib/dictation/worker-process';
+import type { SpeechFrame } from '@/server/lib/dictation/speech-frames';
 
 interface Pending {
   resolve: (text: string) => void;
@@ -56,72 +54,58 @@ const START_TIMEOUT_MS = 10_000;
 /** What the user sees when no transport answered. */
 const NO_ANSWER = 'The local speech-to-text worker did not answer.';
 
+/**
+ * What the user sees when the worker died BEFORE answering a ping.
+ *
+ * This is the stale-server case, and it is not hypothetical: a server built
+ * before the framed transport existed spawns the 19.x worker with 18.x Bun IPC
+ * and `stdin: "ignore"`, and the worker SIGKILLs itself in ~35 ms (measured on
+ * omp 19.1.1). A bare `STT worker exited.` describes a crash; this describes
+ * the mismatch, which is the thing the reader can act on.
+ */
+const WORKER_NEVER_ANSWERED =
+  'The speech-to-text worker exited before answering — usually a Kabmo/omp version mismatch. Update Kabmo on the machine running the server.';
+
 class OmpSttWorker {
-  private child: WorkerChild | null = null;
-  private decoder = new SpeechFrameDecoder();
+  private worker: SttWorkerProcess | null = null;
   private readonly pending = new Map<string, Pending>();
   private nextId = 1;
   private idleTimer: ReturnType<typeof setTimeout> | undefined;
   private ready: Promise<void> | null = null;
+  /** True once the CURRENT worker answered a ping — the transport works. */
+  private answered = false;
 
   /** Spawn (or reuse) the worker and resolve once it answers a ping. */
-  private async ensureWorker(): Promise<WorkerChild> {
-    if (this.child) return this.child;
+  private async ensureWorker(): Promise<SttWorkerProcess> {
+    if (this.worker) return this.worker;
     if (this.ready) {
       await this.ready;
-      if (this.child) return this.child;
+      if (this.worker) return this.worker;
     }
 
     const bin = resolveOmpBin();
     if (!bin) throw new Error('omp binary not found — install omp to use speech-to-text.');
 
-    const child = Bun.spawn({
-      cmd: [bin, '__omp_worker_stt'],
-      stdin: 'pipe',
-      stdout: 'pipe',
-      stderr: 'pipe',
-      env: process.env,
-      onExit: () => this.handleExit(),
-    }) as unknown as WorkerChild;
+    // The handlers are bound to THIS process: a worker killed a moment ago
+    // reports its exit after the replacement has spawned, and an unbound
+    // handler would tear the replacement down.
+    const worker = startSttWorkerProcess(bin, {
+      onFrame: (frame) => this.handleFrame(frame),
+      onExit: (reason, error) => this.handleExit(worker, reason, error),
+    });
 
-    this.child = child;
-    this.decoder = new SpeechFrameDecoder();
-    void this.pump(child);
-    this.ready = this.ping(child).catch((error) => {
+    this.worker = worker;
+    this.answered = false;
+    this.ready = this.ping(worker).catch((error) => {
       this.teardown();
       throw error;
     });
 
     await this.ready;
-    return child;
+    return worker;
   }
 
-  /** Read frames until the pipe closes or a frame is malformed. */
-  private async pump(child: WorkerChild): Promise<void> {
-    const reader = child.stdout.getReader();
-    try {
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) return;
-        for (const frame of this.decoder.push(value)) this.handleFrame(frame);
-      }
-    } catch (error) {
-      this.fail(error instanceof Error ? error : new Error(String(error)));
-    }
-  }
-
-  private send(child: WorkerChild, frame: Record<string, unknown>): void {
-    try {
-      child.stdin.write(encodeSpeechFrame(frame));
-      // Buffered writes stay ordered; the flush is what puts the frame on the
-      // wire before a decode that can take a second.
-      void child.stdin.flush();
-    } catch {
-      // Closed pipe: the exit handler is what reports it.
-    }
-  }
-
-  private ping(child: WorkerChild): Promise<void> {
+  private ping(child: SttWorkerProcess): Promise<void> {
     const id = this.newId();
     return new Promise<void>((resolve, reject) => {
       const timer = setTimeout(() => {
@@ -138,7 +122,7 @@ class OmpSttWorker {
           reject(error);
         },
       });
-      this.send(child, { type: 'ping', id });
+      child.send({ type: 'ping', id });
     });
   }
 
@@ -151,6 +135,7 @@ class OmpSttWorker {
     const entry = frame.id ? this.pending.get(frame.id) : undefined;
 
     if (frame.type === 'pong') {
+      this.answered = true;
       entry?.resolve('');
       return;
     }
@@ -176,39 +161,50 @@ class OmpSttWorker {
     }
   }
 
-  private handleExit(): void {
+  /**
+   * A worker reported its exit. Ignored when it is not the CURRENT one: a
+   * process killed a moment ago exits while its replacement is already serving,
+   * and that exit must not tear the replacement down. (Measured: without this
+   * guard a recycled worker failed the next utterance every time.)
+   */
+  private handleExit(worker: SttWorkerProcess, reason: 'exit' | 'broken', error?: Error): void {
+    if (this.worker !== worker) return;
+    if (reason === 'broken') {
+      this.release(error ?? new Error('The speech-to-text worker stream broke.'));
+      return;
+    }
+    if (!this.answered && this.pending.size > 0) {
+      // The one case where the log has more than the sentence: a worker that
+      // died before answering usually printed why.
+      const tail = worker.stderrTail().trim();
+      if (tail) console.error(`[dictation] the stt worker died before answering:\n${tail}`);
+    }
     this.teardown();
   }
 
-  /** A broken stream: report its reason, then release the process. */
-  private fail(error: Error): void {
-    const child = this.child;
-    this.child = null;
+  /** Report `error` to everything waiting, then release the process. */
+  private release(error: Error): void {
+    const worker = this.worker;
+    this.worker = null;
     this.ready = null;
+    this.answered = false;
     this.clearIdle();
     for (const entry of this.pending.values()) entry.reject(error);
     this.pending.clear();
-    try {
-      child?.kill();
-    } catch {
-      // already gone
-    }
+    worker?.kill();
   }
 
+  /**
+   * Release the process and reject whatever was waiting on it.
+   *
+   * The message is decided by whether the current child ever answered: a
+   * worker that never answered is the stale-transport case, and saying "exited"
+   * to a reader whose server just cannot speak to their omp version names the
+   * symptom instead of the cause.
+   */
   private teardown(): void {
-    const child = this.child;
-    this.child = null;
-    this.ready = null;
-    this.clearIdle();
-    for (const entry of this.pending.values()) {
-      entry.reject(new Error('STT worker exited.'));
-    }
-    this.pending.clear();
-    try {
-      child?.kill();
-    } catch {
-      // already gone
-    }
+    const answered = this.answered;
+    this.release(new Error(answered ? 'STT worker exited.' : WORKER_NEVER_ANSWERED));
   }
 
   private clearIdle(): void {
@@ -234,7 +230,7 @@ class OmpSttWorker {
     samples: Float32Array,
     options: { modelKey?: string; language?: string; onProgress?: (event: SttProgressEvent) => void },
   ): Promise<string> {
-    const child = await this.ensureWorker();
+    const worker = await this.ensureWorker();
     const id = this.newId();
     const modelKey = isSttModelKey(options.modelKey) ? options.modelKey : DEFAULT_STT_MODEL;
 
@@ -242,7 +238,7 @@ class OmpSttWorker {
 
     return new Promise<string>((resolve, reject) => {
       this.pending.set(id, { resolve, reject, onProgress: options.onProgress });
-      this.send(child, {
+      worker.send({
         type: 'transcribe',
         id,
         modelKey,
@@ -254,7 +250,7 @@ class OmpSttWorker {
 
   /** Whether a worker is currently alive (a ping answered, not yet idle-killed). */
   get alive(): boolean {
-    return this.child !== null;
+    return this.worker !== null;
   }
 
   /**

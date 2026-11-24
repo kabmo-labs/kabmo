@@ -46,7 +46,11 @@ export async function localDictationCapability(force = false): Promise<LocalDict
     ? { available: true }
     : {
         available: false,
-        reason: probe.error ? `${LOCAL_DICTATION_UNAVAILABLE} (${probe.error})` : LOCAL_DICTATION_UNAVAILABLE,
+        // The probe's sentence names the cause (a worker that never answered is
+        // usually a Kabmo/omp version mismatch); the hint names the way out.
+        reason: probe.error
+          ? `${probe.error} Or pick an external engine in Settings → Dictation.`
+          : LOCAL_DICTATION_UNAVAILABLE,
       };
   host[cacheKey] = { at: Date.now(), value };
   return value;

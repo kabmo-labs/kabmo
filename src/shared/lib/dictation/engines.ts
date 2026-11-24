@@ -54,9 +54,17 @@ export interface DictationEngineSpec {
   docs: string;
 }
 
-/** The message every surface shows when omp's worker cannot start. */
+/**
+ * The message every surface shows when omp's worker cannot start.
+ *
+ * It names no cause on purpose: measured on 2026-11-24, the worker exited at
+ * startup because the SERVER was older than the omp build (the pre-framing
+ * transport kills a 19.x worker in ~35 ms), not because omp's version was
+ * broken — and the old wording ("unavailable on this omp version") sent readers
+ * to the wrong end of the problem. The probe's own sentence carries the cause.
+ */
 export const LOCAL_DICTATION_UNAVAILABLE =
-  'Local speech-to-text is unavailable on this omp version — its worker exits at startup. Pick an external engine in Settings → Dictation.';
+  'Local speech-to-text is unavailable. Pick an external engine in Settings → Dictation.';
 
 const LOCAL_MODELS: readonly DictationModelOption[] = STT_MODELS.map((model) => ({
   id: model.key,
