@@ -33,6 +33,7 @@ import { useEffect, useLayoutEffect } from 'preact/hooks';
 
 import { hydrateMathBlocks } from '@/shared/lib/markdown/katex';
 import { hydrateMermaidBlocks } from '@/shared/lib/markdown/mermaid';
+import { LOCAL_IMAGE_ATTR, sessionImageUrl } from '@/shared/lib/chat/timeline/local-image';
 
 const useIsomorphicLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
 
@@ -122,4 +123,34 @@ export function useMermaidHydration({
       themeObserver.disconnect();
     };
   }, [container, html, active, diagramBlock, onDiagramBlock]);
+}
+
+/**
+ * Point every marked local image at the session's image route.
+ *
+ * `markLocalImageSources` moved the path off `src` before sanitization, so the
+ * browser has not requested `/Users/…` (or been refused a `file:///…`); this is
+ * the one place that turns the reference back into a URL. It re-runs on every
+ * render because the timeline replaces the container's HTML on a streaming
+ * frame, and it is idempotent — the attribute is read from the markup, not
+ * remembered.
+ */
+export function useLocalImageSources(
+  container: RefObject<HTMLElement>,
+  html: string,
+  sessionId: string | undefined,
+): void {
+  useIsomorphicLayoutEffect(() => {
+    if (!sessionId || typeof window === 'undefined') return;
+    const element = container.current;
+    if (!element) return;
+    for (const image of element.querySelectorAll<HTMLImageElement>(`img[${LOCAL_IMAGE_ATTR}]`)) {
+      const reference = image.getAttribute(LOCAL_IMAGE_ATTR);
+      if (!reference) continue;
+      const src = sessionImageUrl(sessionId, reference);
+      if (image.getAttribute('src') !== src) image.setAttribute('src', src);
+      image.setAttribute('loading', 'lazy');
+      image.setAttribute('decoding', 'async');
+    }
+  }, [container, html, sessionId]);
 }

@@ -27,17 +27,15 @@
 
 import type { TargetedMouseEvent } from 'preact';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { renderMarkdown, renderMappedMarkdown } from '@/shared/lib/markdown/marked';
 import type { BlockVerdict, MdBlock } from '@/shared/lib/markdown/blocks/types';
-import { rewriteDocumentReferences, type DocumentScope } from '@/shared/lib/markdown/document-urls';
-import { rewriteWikiReferences, type WikiRenderScope } from '@/shared/lib/wiki/document-urls';
-import { expandGollumLinks } from '@/shared/lib/wiki/pages';
-import { MATH_PENDING_CLASS, preloadKatex } from '@/shared/lib/markdown/katex';
-import { sanitizeHtml } from '@/shared/lib/markdown/sanitize';
+import type { DocumentScope } from '@/shared/lib/markdown/document-urls';
+import type { WikiRenderScope } from '@/shared/lib/wiki/document-urls';
 import { refreshMermaidFromClick } from '@/shared/lib/markdown/mermaid';
+import { MATH_PENDING_CLASS } from '@/shared/lib/markdown/katex';
 import { DIRECTIVE_BLOCK_CLASS } from '@/shared/lib/markdown/directives';
 import { hydrateDirectiveBlocks, unmountDirectiveBlocks } from '@/client/lib/plugins/directives';
-import { useMathHydration, useMermaidHydration } from '@/client/hooks/ui/markdown-hydration';
+import { useLocalImageSources, useMathHydration, useMermaidHydration } from '@/client/hooks/ui/markdown-hydration';
+import { useRenderedMarkdown } from '@/client/hooks/ui/markdown-render';
 import { useDirectiveContext, useDirectiveRenderer } from '@/client/hooks/workspace/directives';
 import { copyFromButton } from '@/client/hooks/ui/clipboard';
 import { openFileInEditor } from '@/client/hooks/ui/open-file';
@@ -81,6 +79,13 @@ interface MarkdownRendererProps {
   review?: MarkdownReviewBridge;
   /** The blocks the render produced, for a caller that stores judgements. */
   onBlocks?: (blocks: MdBlock[]) => void;
+  /**
+   * The chat session this content belongs to. When present, a local image
+   * reference (`/Users/…/shot.png`, `file:///…`, `docs/shot.png`) is served by
+   * that session's image route instead of being requested from the app origin.
+   * Document and wiki previews pass a scope instead and are not affected.
+   */
+  sessionId?: string;
 }
 
 /** What the renderer needs of the review surface — nothing about storage. */
@@ -103,6 +108,7 @@ export function MarkdownRenderer({
   onWikiNavigate,
   review,
   onBlocks,
+  sessionId,
 }: MarkdownRendererProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   /** Block the open viewer was read from, so a theme re-render can refresh it. */
@@ -131,27 +137,21 @@ export function MarkdownRenderer({
    */
   const reviewActive = review?.active === true;
 
-  const rendered = useMemo(() => {
-    if (!content) return { html: '', blocks: [] as MdBlock[] };
-    // Gollum's `[[Page]]` is invisible to a markdown parser, so it is expanded
-    // before parsing rather than patched afterwards.
-    const source = wikiPath ? expandGollumLinks(content) : content;
-    const allowHtml = isDocument || isWiki;
-    const mapped = reviewActive ? renderMappedMarkdown(source, { allowHtml }) : null;
-    const markdown = mapped ? mapped.html : renderMarkdown(source, { allowHtml });
-    const scoped = wikiPath && wikiEntries
-      ? rewriteWikiReferences(markdown, { path: wikiPath, entries: wikiEntries, root: wikiRoot, repo: wikiRepo })
-      : isDocument && scopePath
-        ? rewriteDocumentReferences(markdown, { path: scopePath, root: scopeRoot, repo: scopeRepo })
-        : markdown;
-    // If the message contains math, start fetching KaTeX during parse rather
-    // than waiting for the post-mount hydration effect — the request overlaps
-    // sanitization and the rest of the render instead of following it.
-    if (scoped.includes(MATH_PENDING_CLASS)) preloadKatex();
-    return { html: sanitizeHtml(scoped), blocks: mapped?.blocks ?? [] };
-    // Primitives, never the `wikiScope` object: the panel memoizes it, but a
-    // call site that builds one inline must not re-parse the page per render.
-  }, [content, syntaxReady, isDocument, scopePath, scopeRoot, scopeRepo, isWiki, wikiPath, wikiEntries, wikiRoot, wikiRepo, reviewActive]);
+  const rendered = useRenderedMarkdown({
+    content,
+    syntaxReady,
+    isDocument,
+    scopePath,
+    scopeRoot,
+    scopeRepo,
+    isWiki,
+    wikiPath,
+    wikiEntries,
+    wikiRoot,
+    wikiRepo,
+    reviewActive,
+    sessionId,
+  });
 
   const { html, blocks } = rendered;
 
@@ -214,6 +214,7 @@ export function MarkdownRenderer({
   // KaTeX is ~522 kB of JS fetched only when a message contains math; the
   // placeholders emitted by `marked.ts` are swapped for real markup by the hook.
   useMathHydration(containerRef, html, hasMath);
+  useLocalImageSources(containerRef, html, sessionId);
 
   // Diagrams bake the palette into their SVG, so a theme write re-renders them —
   // through the block the open viewer was read from, which the hook hands back

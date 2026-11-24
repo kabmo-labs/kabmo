@@ -37,6 +37,9 @@ interface ChatMessageItemProps {
   /** The agent behind this chat; a harness that cannot fork at a user row
    *  draws no Fork button here. */
   harness?: string;
+  /** The chat session, so a locally referenced image resolves through its own
+   *  image route (see `MarkdownRenderer.sessionId`). */
+  sessionId?: string;
 
   /** Extra classes on the root wrapper (e.g. spacing between messages). */
   className?: string;
@@ -63,6 +66,7 @@ export const ChatMessageItem = memo(function ChatMessageItem({
   onNewChat,
   onFork,
   harness,
+  sessionId,
   className = '',
   isPrevAssistant = false,
   userActions = true,
@@ -179,7 +183,7 @@ export const ChatMessageItem = memo(function ChatMessageItem({
         {/* Main AI Response Content (Rich Markdown with code blocks, tables, lists) rendered before tool calls */}
         {hasRenderableContent && (
           <div className={`text-[13px] text-ink leading-relaxed font-sans bg-transparent px-3 py-1 select-text ${textInset}`}>
-            <MarkdownRenderer content={assistantContent} />
+            <MarkdownRenderer content={assistantContent} sessionId={sessionId} />
           </div>
         )}
 

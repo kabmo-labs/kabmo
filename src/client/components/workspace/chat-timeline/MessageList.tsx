@@ -184,6 +184,7 @@ export const MessageList = memo(function MessageList({
                   onNewChat={onNewChat}
                   onFork={onFork}
                   {...(harness ? { harness } : {})}
+                  sessionId={sessionId}
                   isPrevAssistant={isPrevAssistant}
                   userActions={userActions}
                   isMobile={isMobile}
