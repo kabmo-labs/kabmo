@@ -24,6 +24,7 @@ import {
   readSessionChangeIndex as readOmpIndex,
   readSessionChangeList as readOmpList,
 } from '@/server/lib/omp/session/changes';
+import type { OmpPatch } from '@/server/lib/omp/session/changes-patch';
 import { findSessionFileById } from '@/server/lib/omp/session/locator';
 import { siblingDirForSession } from '@/server/lib/omp/subagent/history/paths';
 import type { SessionChangeRecord } from '@/shared/types/session-changes';
@@ -108,6 +109,14 @@ export interface MergedRecord {
   displayPath: string;
   before: string | null | undefined;
   after: string | null | undefined;
+  /** Why a side is `undefined`; absent means the store's blob cap. */
+  unavailableReason?: 'too-large' | 'snapshot-race';
+  /** omp 19's hunks; absent on a Kabmo record and on an 18.x key record. */
+  patch?: OmpPatch;
+  /** The file existed before this write, from the patch's own metadata. */
+  existedBefore?: boolean;
+  /** The file exists after it, from the patch's own metadata. */
+  existsAfter?: boolean;
   store: 'kabmo' | 'omp';
 }
 
@@ -157,6 +166,7 @@ export async function readMergedRecords(sessionId: string, list: boolean): Promi
       displayPath: record.displayPath,
       before: record.before,
       after: record.after,
+      ...(record.unavailableReason ? { unavailableReason: record.unavailableReason } : {}),
       store: 'kabmo',
     });
   }
@@ -176,6 +186,8 @@ export function toSessionChangeRecord(record: MergedRecord): SessionChangeRecord
     displayPath: record.displayPath,
     before: record.before,
     after: record.after,
+    ...(record.existedBefore === undefined ? {} : { existedBefore: record.existedBefore }),
+    ...(record.existsAfter === undefined ? {} : { existsAfter: record.existsAfter }),
   };
 }
 
@@ -187,6 +199,15 @@ export async function pathExists(absolute: string): Promise<boolean> {
     return true;
   } catch (error) {
     return (error as NodeJS.ErrnoException).code !== 'ENOENT';
+  }
+}
+
+/** True when the path is a directory now; a missing path is not one. */
+export async function pathIsDirectory(absolute: string): Promise<boolean> {
+  try {
+    return (await stat(absolute)).isDirectory();
+  } catch {
+    return false;
   }
 }
 

@@ -15,7 +15,9 @@
 
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import type { FileDiffState } from '@/client/hooks/workspace/diff-file';
+import { journalUnavailableMessage } from '@/shared/lib/fs/journal-unavailable';
 import type { JournalDiffRef } from '@/shared/types/fs';
+import type { SessionChangeUnavailableReason } from '@/shared/types/session-changes';
 
 interface JournalDiffResponse {
   success?: boolean;
@@ -24,6 +26,8 @@ interface JournalDiffResponse {
   diff?: string;
   status?: 'added' | 'modified' | 'deleted';
   unavailable?: boolean;
+  unavailableReason?: SessionChangeUnavailableReason;
+  unavailableLimitBytes?: number;
   error?: string;
 }
 
@@ -64,7 +68,10 @@ export function useJournalDiff(ref: JournalDiffRef | undefined): FileDiffState {
         setRawDiff(data.diff ?? '');
         setCurrentStatus(statusLetter(data.status));
         if (data.unavailable) {
-          setErrorMessage('The journal did not store this file’s content (over 8 MB), so the two sides are unknown.');
+          setErrorMessage(journalUnavailableMessage({
+            reason: data.unavailableReason,
+            limitBytes: data.unavailableLimitBytes,
+          }));
         }
       } else {
         setErrorMessage(data?.error || `Failed to load the journal diff (HTTP ${res.status})`);

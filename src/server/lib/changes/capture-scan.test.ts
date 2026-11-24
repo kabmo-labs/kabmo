@@ -129,7 +129,7 @@ describe('directory scan race', () => {
       readHead: async () => null,
       statFile: async (absolute) =>
         files.has(absolute)
-          ? { mtimeMs: Date.now() + 1000, size: files.get(absolute)?.length ?? 0, birthtimeMs: Date.now() + 1000 }
+          ? { mtimeMs: Date.now() + 1000, size: files.get(absolute)?.length ?? 0, birthtimeMs: Date.now() + 1000, isDirectory: false }
           : null,
     });
     capture.onFrame({

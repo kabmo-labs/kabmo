@@ -57,7 +57,7 @@ export interface CaptureDeps {
   cwd: string;
   home: string;
   readFile?: (absolute: string) => Promise<string | null>;
-  statFile?: (absolute: string) => Promise<{ mtimeMs: number; size: number; birthtimeMs: number } | null>;
+  statFile?: (absolute: string) => Promise<{ mtimeMs: number; size: number; birthtimeMs: number; isDirectory: boolean } | null>;
   /** The git snapshot seam; tests inject a fake, production uses `scan.server`. */
   takeScan?: (cwd: string) => Promise<GitScan | null>;
   readHead?: (root: string, absolute: string) => Promise<string | null>;

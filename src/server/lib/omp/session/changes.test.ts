@@ -18,7 +18,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import * as fsp from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { readSessionChangeDiff, readSessionChangeIndex, readSessionChangeList, readSessionChangeStats } from '@/server/lib/omp/session/changes';
+import { readSessionChangeIndex, readSessionChangeList } from '@/server/lib/omp/session/changes';
 import { clearSessionFileCaches } from '@/server/lib/omp/session/files';
 
 const SESSION_ID = '01a0cc50-fd62-7417-899c-e24ff8c8608c';
@@ -93,47 +93,49 @@ describe('readSessionChangeIndex', () => {
   });
 });
 
-describe('readSessionChangeDiff', () => {
-  test('returns the net change of a run: first before to last after', async () => {
-    const before = await blob('b1', 'line one\nline two\n');
-    const middle = await blob('b2', 'line one\nline TWO\n');
-    const after = await blob('b3', 'line one\nline TWO\nline three\n');
-    const file = `${CWD}/src/net.ts`;
-    await append({ type: 'change', at: 2000, agent: 'Main', tool: 'edit', path: file, before, after: middle });
-    await append({ type: 'change', at: 2001, agent: 'Main', tool: 'edit', path: file, before: middle, after });
+describe('patch records (omp 19)', () => {
+  test('a created file states its sides without a blob key', async () => {
+    const text = 'one\ntwo\n';
+    const file = `${CWD}/src/patch-create.ts`;
+    await append({
+      type: 'change', at: 7000, agent: 'Main', tool: 'bash', path: file,
+      base: null, edit: [[0, 0, ['one', 'two', '']]], sum: Bun.hash(text).toString(36),
+    });
 
-    const diff = await readSessionChangeDiff(SESSION_ID, file, 2000, 2001);
-    expect(diff?.status).toBe('modified');
-    expect(diff?.oldContent).toBe('line one\nline two\n');
-    expect(diff?.newContent).toBe('line one\nline TWO\nline three\n');
-    expect(diff?.diff).toContain('+line three');
-    expect(diff?.unavailable).toBe(false);
+    const [record] = (await readSessionChangeIndex(SESSION_ID)).filter((entry) => entry.path === file);
+    expect(record?.before).toBeNull();
+    expect(record?.existedBefore).toBe(false);
+    expect(record?.existsAfter).toBe(true);
+    expect(record?.patch?.base).toBeNull();
   });
 
-  test('a created file is added, a deleted file is deleted', async () => {
-    const created = await blob('c1', 'new\n');
-    const addedPath = `${CWD}/src/added.ts`;
-    await append({ type: 'change', at: 3000, agent: 'Main', tool: 'write', path: addedPath, before: null, after: created });
-    const added = await readSessionChangeDiff(SESSION_ID, addedPath, 3000, 3000);
-    expect(added?.status).toBe('added');
-    expect(added?.oldContent).toBe('');
+  test('a chained write inherits existence, and a delete states its own', async () => {
+    const file = `${CWD}/src/patch-chain.ts`;
+    const recordsFor = [
+      { at: 7100, base: null, edit: [[0, 0, ['one', 'two', '']]], sum: Bun.hash('one\ntwo\n').toString(36) },
+      { at: 7101, edit: [[1, 1, ['TWO']]], sum: Bun.hash('one\nTWO\n').toString(36) },
+      { at: 7102, edit: [[0, 2, []]], sum: '-' },
+    ];
+    for (const record of recordsFor) {
+      await append({ type: 'change', agent: 'Main', tool: 'bash', path: file, ...record });
+    }
 
-    const deletedPath = `${CWD}/src/deleted.ts`;
-    await append({ type: 'change', at: 3001, agent: 'Main', tool: 'write', path: deletedPath, before: created, after: null });
-    const deleted = await readSessionChangeDiff(SESSION_ID, deletedPath, 3001, 3001);
-    expect(deleted?.status).toBe('deleted');
-    expect(deleted?.newContent).toBe('');
+    const records = (await readSessionChangeIndex(SESSION_ID)).filter((entry) => entry.path === file);
+    expect(records.map((record) => [record.existedBefore, record.existsAfter])).toEqual([
+      [false, true],
+      [true, true],
+      [true, false],
+    ]);
   });
 
-  test('a blob that was not stored reports unavailable instead of an empty diff', async () => {
-    const file = `${CWD}/src/huge.ts`;
-    await append({ type: 'change', at: 4000, agent: 'Main', tool: 'write', path: file, before: undefined, after: undefined });
-    const diff = await readSessionChangeDiff(SESSION_ID, file, 4000, 4000);
-    expect(diff?.unavailable).toBe(true);
-  });
+  test('a record omp could not store has no patch and keeps the before unknown', async () => {
+    const file = `${CWD}/src/patch-unstored.ts`;
+    await append({ type: 'change', at: 7200, agent: 'Main', tool: 'bash', path: file });
 
-  test('a path with no record in the range answers null', async () => {
-    expect(await readSessionChangeDiff(SESSION_ID, `${CWD}/src/net.ts`, 9000, 9001)).toBeNull();
+    const [record] = (await readSessionChangeIndex(SESSION_ID)).filter((entry) => entry.path === file);
+    expect(record?.patch).toBeUndefined();
+    expect(record?.before).toBeUndefined();
+    expect(record?.existedBefore).toBeUndefined();
   });
 });
 
@@ -168,34 +170,26 @@ describe('readSessionChangeList', () => {
   });
 });
 
-describe('readSessionChangeStats', () => {
-  test('counts the net change of the run, not each write', async () => {
-    const before = await blob('s1', 'alpha\nbeta\n');
-    const middle = await blob('s2', 'alpha\nBETA\n');
-    const after = await blob('s3', 'alpha\nBETA\ngamma\n');
-    const file = `${CWD}/src/stats.ts`;
-    await append({ type: 'change', at: 5000, agent: 'Main', tool: 'edit', path: file, before, after: middle });
-    await append({ type: 'change', at: 5001, agent: 'Main', tool: 'edit', path: file, before: middle, after });
-
-    expect(await readSessionChangeStats(SESSION_ID, 5000, 5001)).toEqual({
-      [file]: { added: 2, removed: 1 },
+describe('readSessionChangeList with patch records', () => {
+  test('drops a created-then-deleted patch path, from the patch metadata', async () => {
+    const file = `${CWD}/src/patch-gone.ts`;
+    await append({
+      type: 'change', at: 8000, agent: 'Main', tool: 'bash', path: file,
+      base: null, edit: [[0, 0, ['gone', '']]], sum: Bun.hash('gone\n').toString(36),
     });
+    await append({ type: 'change', at: 8001, agent: 'Main', tool: 'bash', path: file, edit: [[0, 1, []]], sum: '-' });
+
+    expect((await readSessionChangeList(SESSION_ID)).some((record) => record.path === file)).toBe(false);
   });
 
-  test('a created file counts its lines as additions', async () => {
-    const created = await blob('s4', 'one\ntwo\n');
-    const file = `${CWD}/src/created-stats.ts`;
-    await append({ type: 'change', at: 5100, agent: 'Main', tool: 'write', path: file, before: null, after: created });
-
-    expect(await readSessionChangeStats(SESSION_ID, 5100, 5100)).toEqual({
-      [file]: { added: 2, removed: 0 },
+  test('keeps a patch record whose file still exists', async () => {
+    const file = path.join(agentDir, 'patch-here.ts');
+    await fsp.writeFile(file, 'here\n');
+    await append({
+      type: 'change', at: 8002, agent: 'Main', tool: 'bash', path: file,
+      base: null, edit: [[0, 0, ['here', '']]], sum: Bun.hash('here\n').toString(36),
     });
-  });
 
-  test('a path whose blob was not stored is absent, not zero', async () => {
-    const file = `${CWD}/src/unstored.ts`;
-    await append({ type: 'change', at: 5200, agent: 'Main', tool: 'write', path: file, before: undefined, after: undefined });
-
-    expect(await readSessionChangeStats(SESSION_ID, 5200, 5200)).toEqual({});
+    expect((await readSessionChangeList(SESSION_ID)).some((record) => record.path === file)).toBe(true);
   });
 });

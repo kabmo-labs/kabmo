@@ -77,7 +77,7 @@ describe('snapshot races', () => {
     const capture = makeCapture('cap-bash-race', files, {
       statFile: async (absolute) =>
         files.has(absolute)
-          ? { mtimeMs: Date.now() + 1000, size: files.get(absolute)?.length ?? 0, birthtimeMs: Date.now() + 1000 }
+          ? { mtimeMs: Date.now() + 1000, size: files.get(absolute)?.length ?? 0, birthtimeMs: Date.now() + 1000, isDirectory: false }
           : null,
     });
     capture.onFrame({
@@ -102,6 +102,38 @@ describe('snapshot races', () => {
     expect(change.before).toBeNull();
     expect(typeof change.after).toBe('string');
     expect(lines.some((line) => line.type === 'note')).toBe(false);
+  });
+
+  test('a bash target that is a directory is not journaled as a file', async () => {
+    const bin = path.join(REPO, 'bin');
+    const capture = makeCapture('cap-dir-target', new Map(), {
+      readFile: async () => null,
+      statFile: async (absolute) =>
+        absolute === bin
+          ? { mtimeMs: Date.now() + 1000, size: 96, birthtimeMs: 0, isDirectory: true }
+          : null,
+    });
+    capture.onFrame({
+      type: 'tool_execution_start',
+      toolCallId: 'c1',
+      toolName: 'bash',
+      args: { command: 'cp target/app.jar bin/' },
+    });
+    await capture.flush();
+    capture.onFrame({
+      type: 'tool_execution_end',
+      toolCallId: 'c1',
+      toolName: 'bash',
+      result: {
+        details: {
+          trace: { status: 0, units: [{ nodes: [{ k: 'simple', argv: ['cp', 'target/app.jar', 'bin/'], st: 0 }] }] },
+        },
+      },
+    });
+    await capture.flush();
+
+    const changes = (await records('cap-dir-target')).filter((line) => line.type === 'change');
+    expect(changes).toEqual([]);
   });
 });
 

@@ -82,6 +82,32 @@ appends three record types:
 (`wmt` in the binary) — no arguments, no result, no `toolCallId`. `commit` carries a sha and the
 paths it touched.
 
+### 3.0 omp 19 changed the `change` record's shape
+
+Measured on 19.1.1 (`~/.bun/bin/omp`, 2026-11-24): the writer now stores **hunks**, not blob keys.
+
+```json
+{"type":"change","at":1795486360827,"agent":"Main","tool":"bash",
+ "path":"/abs/.history/202611/2026-11-24.md","base":null,
+ "edit":[[0,0,["","## 09:12 — [@coder] …",""]]],"sum":"2doxei8gdz1ob"}
+```
+
+- `base` — the before text as a blob key; `null` when the file did not exist. **Omitted** when the
+  writer's own cache still held the previous text of that path (a 32 MB LRU), so a record's before
+  can depend on its predecessor.
+- `gap` — the step from that cached text to this record's real before.
+- `edit` — the step from before to after, one `[start, deleteCount, lines]` hunk each.
+- `sum` — `Bun.hash(after)` in base36, `-` for a deletion. A hunk list over 4 KB is itself a blob.
+
+A record with none of the four fields is one omp could not store (over 8 MB, or NUL bytes).
+Consequence for Kabmo: the 18.x reader (`changes.ts`) read `before`/`after` and saw `undefined`
+on both sides — measured on the real 19.1.1 session `01a20b52-70e1-7538-a6f5-900f7c738aa2`, whose
+one patch record wrote a 527-byte Markdown file, the chat listed it as **modified** and the diff tab
+answered "did not store this file's content (over 8 MB)". The rebuild now lives in
+`changes-patch.ts`, follows omp's own `snapshots()` including its checksum gate, and the per-run
+list's `A`/`M`/`D` comes from the patch metadata (`base: null` / `sum: '-'`) without reading
+content. The same session now reads `added`, with both sides rebuilt and `+10 −0`.
+
 ### 3.1 The gaps that matter
 
 1. **`bash` mutations are invisible.** `rm`, `mv`, `sed -i`, `>`, `tee`, `git restore`, `git clean`
@@ -93,8 +119,10 @@ paths it touched.
    (`changed-files.ts:33`), which is why a run that starts mid-session needs the
    `firstStartMs` fallback (`src/shared/lib/chat/duration.ts:92-107`).
 3. **No rename.** A `move` is two records with no link; the list shows a delete and an add.
-4. **8 MB cap, silently.** A large file's two sides are `undefined`; the diff tab says "over 8 MB"
-   (`journal-diff.ts`), which is honest but is a hard ceiling on what the journal can answer.
+4. **8 MB cap, silently.** omp leaves a large file's two sides `undefined`. Kabmo's own journal
+   raises the cap to 32 MB, and the diff tab prints the store's real limit — and names a snapshot
+   race instead of blaming size (`journal-diff.ts`, `reader.server.ts`). Beyond the cap the pair
+   stays unknown, which is a hard ceiling on what the journal can answer.
 5. **No exit status, no command.** A `bash` call's `call` record has a label, not the command, and
    no exit code.
 6. **Subagent attribution is a string.** `agent`/`parent` are registry ids; there is no

@@ -9,10 +9,11 @@
  *
  * omp writes the journal beside the session file — `<sessionFile minus
  * .jsonl>/changes.jsonl`, with content-addressed gzip blobs under `blobs/` —
- * from 18.20.1 on. Each `change` record is one edit-tool write: the absolute
- * path, the agent, the tool, and the content before and after as blob keys
- * (`null` = the file did not exist / was deleted, `undefined` = not stored
- * because it exceeded 8 MB).
+ * from 18.20.1 on. A `change` record names the absolute path, the agent and the
+ * tool, and then the write itself in one of two shapes: 18.x stored the before
+ * and after as blob keys (`null` = the file did not exist / was deleted,
+ * `undefined` = not stored because it exceeded 8 MB), and 19.x stores hunks
+ * (`{base, gap, edit, sum}`) that `changes-patch.ts` rebuilds.
  *
  * Two reads sit on top:
  *
@@ -20,11 +21,9 @@
  *     the chat's per-run file list. No blob content, so it stays small.
  *   - {@link readSessionChangeList} — that index minus creations whose file is
  *     gone (a `bash rm` is never journaled). The route serves this one.
- *   - {@link readSessionChangeDiff} — the net change of one path inside one
- *     run window: the first record's `before` and the last record's `after`.
- *   - {@link readSessionChangeStats} — that same net change as `+`/`−` line
- *     counts for every path in one window, which the run's file summary shows
- *     without opening a diff.
+ *
+ * The diff and the `+`/`−` counts are not read here: the routes own the merged
+ * reader, which resolves a patch record's two sides.
  *
  * The journal is append-only and can grow to megabytes, so the parse is cached
  * by size+mtime (the same rule `plans.ts` follows). A session with no journal
@@ -37,16 +36,13 @@ import path from 'node:path';
 import { readRawHeaderLine } from '@/server/lib/omp/session/files';
 import { findSessionFileById } from '@/server/lib/omp/session/locator';
 import { siblingDirForSession } from '@/server/lib/omp/subagent/history/paths';
-import { unifiedDiff } from '@/shared/lib/fs/unified-diff';
-import { patchSides } from '@/shared/lib/fs/patch-sides';
-import type {
-  SessionChangeCounts,
-  SessionChangeDiff,
-  SessionChangeRecord,
-} from '@/shared/types/session-changes';
+import { patchExistence, type OmpPatch } from '@/server/lib/omp/session/changes-patch';
+import type { SessionChangeRecord } from '@/shared/types/session-changes';
 
 const JOURNAL_FILE = 'changes.jsonl';
-const BLOB_DIR = 'blobs';
+
+/** omp's own blob cap: a bigger file's record carries `undefined` for the side. */
+export const OMP_MAX_BLOB_BYTES = 8 * 1024 * 1024;
 
 /** One raw `change` line, before the display path is resolved. */
 interface RawChangeRecord {
@@ -55,8 +51,20 @@ interface RawChangeRecord {
   parent?: string;
   tool: string;
   path: string;
-  before: string | null | undefined;
-  after: string | null | undefined;
+  /** The 18.x shape: a blob key, `null` absent, `undefined` not stored. */
+  before?: string | null;
+  after?: string | null;
+  /** The 19.x shape: hunks instead of keys. See `changes-patch.ts`. */
+  patch?: OmpPatch;
+  /** From the patch's metadata: the file existed before this write. */
+  existedBefore?: boolean;
+  /** From the patch's metadata: the file exists after it. */
+  existsAfter?: boolean;
+}
+
+/** The index record: the public shape plus the patch the merged reader needs. */
+export interface OmpChangeIndexRecord extends SessionChangeRecord {
+  patch?: OmpPatch;
 }
 
 interface JournalCacheEntry {
@@ -96,6 +104,36 @@ function displayPathFor(absolute: string, cwd: string | null): string {
   return relative.replaceAll('\\', '/');
 }
 
+/** omp 19's patch payload, or `undefined` for a legacy key record and for a
+ *  record omp could not store at all (no `base`, `gap`, `edit` or `sum`). */
+function parsePatch(record: Record<string, unknown>): OmpPatch | undefined {
+  const hasBase = record.base === null || typeof record.base === 'string';
+  const hasGap = record.gap !== undefined;
+  const hasEdit = record.edit !== undefined;
+  const hasSum = typeof record.sum === 'string';
+  if (!hasBase && !hasGap && !hasEdit && !hasSum) return undefined;
+  return {
+    ...(hasBase ? { base: record.base as string | null } : {}),
+    ...(hasGap ? { gap: record.gap } : {}),
+    ...(hasEdit ? { edit: record.edit } : {}),
+    ...(hasSum ? { sum: record.sum as string } : {}),
+  };
+}
+
+/** The created/deleted flags chain per path, so they are attached after the parse. */
+function attachExistence(records: RawChangeRecord[]): void {
+  const byPath = new Map<string, RawChangeRecord[]>();
+  for (const record of records) {
+    const list = byPath.get(record.path);
+    if (list) list.push(record);
+    else byPath.set(record.path, [record]);
+  }
+  for (const list of byPath.values()) {
+    const flags = patchExistence(list.map((record) => record.patch));
+    list.forEach((record, index) => Object.assign(record, flags[index]));
+  }
+}
+
 /** Parse the journal's `change` lines; a torn final line is skipped, not fatal. */
 function parseJournal(text: string): RawChangeRecord[] {
   const records: RawChangeRecord[] = [];
@@ -106,6 +144,7 @@ function parseJournal(text: string): RawChangeRecord[] {
       if (record?.type !== 'change') continue;
       if (typeof record.at !== 'number' || typeof record.path !== 'string') continue;
       if (typeof record.agent !== 'string' || typeof record.tool !== 'string') continue;
+      const patch = parsePatch(record);
       records.push({
         at: record.at,
         agent: record.agent,
@@ -114,11 +153,13 @@ function parseJournal(text: string): RawChangeRecord[] {
         path: record.path,
         before: record.before as string | null | undefined,
         after: record.after as string | null | undefined,
+        ...(patch ? { patch } : {}),
       });
     } catch {
       // A torn final line from a crash mid-append; earlier records stay valid.
     }
   }
+  attachExistence(records);
   return records;
 }
 
@@ -151,20 +192,15 @@ async function readJournal(sessionId: string): Promise<JournalCacheEntry | null>
   return entry;
 }
 
-/** Blob content for a key; `null` = absent file, `undefined` = not stored/missing. */
-async function resolveBlob(dir: string, key: string | null | undefined): Promise<string | null | undefined> {
-  if (key === null) return null;
-  if (key === undefined) return undefined;
-  try {
-    const bytes = await Bun.file(path.join(dir, BLOB_DIR, key)).bytes();
-    return new TextDecoder().decode(Bun.gunzipSync(bytes));
-  } catch {
-    return undefined;
-  }
-}
-
-/** Every change record of one session, oldest first, with display paths. */
-export async function readSessionChangeIndex(sessionId: string): Promise<SessionChangeRecord[]> {
+/**
+ * Every change record of one session, oldest first, with display paths.
+ *
+ * `before` is the 18.x blob key where the record has one, and the patch's
+ * `base` otherwise — so a reader that only needs "did it exist" keeps working
+ * across both journal formats. `patch` is carried for the merged reader, which
+ * rebuilds the content itself.
+ */
+export async function readSessionChangeIndex(sessionId: string): Promise<OmpChangeIndexRecord[]> {
   const journal = await readJournal(sessionId);
   if (!journal) return [];
   return journal.records.map((record) => ({
@@ -174,8 +210,11 @@ export async function readSessionChangeIndex(sessionId: string): Promise<Session
     tool: record.tool,
     path: record.path,
     displayPath: displayPathFor(record.path, journal.cwd),
-    before: record.before,
+    before: record.before !== undefined ? record.before : record.patch?.base,
     after: record.after,
+    ...(record.existedBefore === undefined ? {} : { existedBefore: record.existedBefore }),
+    ...(record.existsAfter === undefined ? {} : { existsAfter: record.existsAfter }),
+    ...(record.patch ? { patch: record.patch } : {}),
   }));
 }
 
@@ -202,112 +241,25 @@ async function pathExists(absolute: string): Promise<boolean> {
  * now is that case, and its net change is zero.
  *
  * A MODIFIED path is kept even when absent: the run did change it, and the
- * journal diff still holds both sides.
+ * merged reader still holds its two sides.
  */
-export async function readSessionChangeList(sessionId: string): Promise<SessionChangeRecord[]> {
+export async function readSessionChangeList(sessionId: string): Promise<OmpChangeIndexRecord[]> {
   const records = await readSessionChangeIndex(sessionId);
   if (records.length === 0) return records;
 
-  const firstByPath = new Map<string, SessionChangeRecord>();
+  const firstByPath = new Map<string, OmpChangeIndexRecord>();
   for (const record of records) {
     if (!firstByPath.has(record.path)) firstByPath.set(record.path, record);
   }
   const gone = new Set<string>();
   await Promise.all(
     [...firstByPath].map(async ([absolutePath, first]) => {
-      if (first.before !== null) return;
+      // A patch record states existence itself (`base: null`); a key record
+      // says "absent" with a null key and leaves it at that.
+      if (first.existedBefore !== undefined ? first.existedBefore : first.before !== null) return;
       if (!(await pathExists(absolutePath))) gone.add(absolutePath);
     }),
   );
   return gone.size === 0 ? records : records.filter((record) => !gone.has(record.path));
 }
 
-/**
- * The net change of `absolutePath` inside `[from, to]`: the first record's
- * `before` and the last record's `after`. `null` when the path has no record in
- * the range.
- */
-export async function readSessionChangeDiff(
-  sessionId: string,
-  absolutePath: string,
-  from: number,
-  to: number,
-): Promise<SessionChangeDiff | null> {
-  const journal = await readJournal(sessionId);
-  if (!journal) return null;
-  const inRange = journal.records
-    .filter((record) => record.path === absolutePath && record.at >= from && record.at <= to)
-    .sort((a, b) => a.at - b.at);
-  if (inRange.length === 0) return null;
-
-  const first = inRange[0];
-  const last = inRange[inRange.length - 1];
-  const displayPath = displayPathFor(absolutePath, journal.cwd);
-  const status = first.before === null ? 'added' : last.after === null ? 'deleted' : 'modified';
-  const [before, after] = await Promise.all([
-    resolveBlob(journal.dir, first.before),
-    resolveBlob(journal.dir, last.after),
-  ]);
-  if (before === undefined || after === undefined) {
-    return {
-      path: absolutePath,
-      displayPath,
-      status,
-      oldContent: '',
-      newContent: '',
-      diff: '',
-      unavailable: true,
-    };
-  }
-  const oldContent = before ?? '';
-  const newContent = after ?? '';
-  return {
-    path: absolutePath,
-    displayPath,
-    status,
-    oldContent,
-    newContent,
-    diff: unifiedDiff(displayPath, oldContent, newContent),
-    unavailable: false,
-  };
-}
-
-/**
- * Net `+`/`−` line counts for every path changed inside `[from, to]`.
- *
- * The net rule is {@link readSessionChangeDiff}'s — first record's `before` to
- * last record's `after` — so the summary's numbers describe the diff the file
- * opens, not the churn of each intermediate write. A path whose blob was not
- * stored is absent rather than counted as zero: a count would be a guess.
- */
-export async function readSessionChangeStats(
-  sessionId: string,
-  from: number,
-  to: number,
-): Promise<Record<string, SessionChangeCounts>> {
-  const journal = await readJournal(sessionId);
-  if (!journal) return {};
-
-  const spans = new Map<string, { first: RawChangeRecord; last: RawChangeRecord }>();
-  for (const record of journal.records) {
-    if (record.at < from || record.at > to) continue;
-    const span = spans.get(record.path);
-    if (span) span.last = record;
-    else spans.set(record.path, { first: record, last: record });
-  }
-
-  const stats: Record<string, SessionChangeCounts> = {};
-  await Promise.all(
-    [...spans].map(async ([absolutePath, { first, last }]) => {
-      const [before, after] = await Promise.all([
-        resolveBlob(journal.dir, first.before),
-        resolveBlob(journal.dir, last.after),
-      ]);
-      if (before === undefined || after === undefined) return;
-      const sides = patchSides(unifiedDiff(absolutePath, before ?? '', after ?? ''));
-      if (sides.additions === 0 && sides.deletions === 0) return;
-      stats[absolutePath] = { added: sides.additions, removed: sides.deletions };
-    }),
-  );
-  return stats;
-}

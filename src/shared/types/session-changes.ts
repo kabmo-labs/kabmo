@@ -35,6 +35,13 @@ export interface SessionChangeRecord {
   before: string | null | undefined;
   /** Blob key of the content after the write; `null` when the write deleted the file. */
   after: string | null | undefined;
+  /**
+   * Whether the file existed before this write, when the journal stores hunks
+   * (`base: null` / `sum: '-'`) instead of blob keys. Absent when unknown.
+   */
+  existedBefore?: boolean;
+  /** Whether it existed after the write; absent when the journal has no answer. */
+  existsAfter?: boolean;
 }
 
 /** One file a run changed, as the collapsed summary lists it. */
@@ -54,6 +61,9 @@ export interface SessionChangeCounts {
   removed: number;
 }
 
+/** Why a journal side cannot be read. */
+export type SessionChangeUnavailableReason = 'too-large' | 'snapshot-race' | 'unreadable';
+
 /** The two sides of one file's net change in a run, plus a unified patch. */
 export interface SessionChangeDiff {
   path: string;
@@ -63,6 +73,10 @@ export interface SessionChangeDiff {
   newContent: string;
   /** Unified diff of the two sides; empty when they are equal. */
   diff: string;
-  /** A blob was not stored (over 8 MB) or is missing, so the sides are unknown. */
+  /** A side was not stored, or its stored copy is gone, so the pair is unknown. */
   unavailable: boolean;
+  /** Why a side is unknown; absent when `unavailable` is false. */
+  unavailableReason?: SessionChangeUnavailableReason;
+  /** The store's content cap that dropped the side; only for `too-large`. */
+  unavailableLimitBytes?: number;
 }

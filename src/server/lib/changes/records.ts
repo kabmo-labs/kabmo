@@ -78,6 +78,8 @@ export interface JournalChangeRecord {
   source: 'tool' | 'trace' | 'scan' | 'omp-import';
   command?: string;
   exit?: number;
+  /** Why a side is `undefined`; absent when the reason is the blob cap. */
+  unavailableReason?: 'too-large' | 'snapshot-race';
 }
 
 export interface JournalCommitRecord {

@@ -35,7 +35,7 @@ export interface BashCaptureHost {
   cwd: string;
   home: string;
   readFile(absolute: string): Promise<string | null | undefined>;
-  statFile(absolute: string): Promise<{ mtimeMs: number; size: number; birthtimeMs: number } | null>;
+  statFile(absolute: string): Promise<{ mtimeMs: number; size: number; birthtimeMs: number; isDirectory: boolean } | null>;
   takeScan(cwd: string): Promise<GitScan | null>;
   readHead(root: string, absolute: string): Promise<string | null>;
   writeChange(
@@ -82,7 +82,7 @@ export async function captureBashChanges(
       const after = await host.readFile(mutation.path);
       if (before === after) {
         const info = await host.statFile(mutation.path);
-        if (info && info.mtimeMs >= pending.startedAt) {
+        if (info && !info.isDirectory && info.mtimeMs >= pending.startedAt) {
           const created = info.birthtimeMs >= pending.startedAt;
           await host.writeChange(pending, mutation.from, created ? null : undefined, null, 'trace', { command: pending.command, exit, ...(created ? {} : { unavailableReason: 'snapshot-race' }) });
           await host.writeChange(pending, mutation.path, null, after, 'trace', { command: pending.command, exit, from: mutation.from });
@@ -102,7 +102,10 @@ export async function captureBashChanges(
       // file. The mtime proves the command touched it; the birth time says
       // whether it created the file (A) or rewrote an existing one (M).
       const info = await host.statFile(mutation.path);
-      if (info && info.mtimeMs >= pending.startedAt) {
+      // A `cp x bin/` target is a directory, not a file. Its content is
+      // unreadable on both sides, and the mtime says "touched" — journaling it
+      // would list a bogus delete of `bin` with an unknown before.
+      if (info && !info.isDirectory && info.mtimeMs >= pending.startedAt) {
         const created = info.birthtimeMs >= pending.startedAt;
         await host.writeChange(
           pending,

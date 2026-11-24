@@ -135,12 +135,14 @@ function filesForRecords(records: SessionChangeRecord[]): ChangedFile[] {
 
   const files: ChangedFile[] = [];
   for (const [path, { first, last }] of byPath) {
+    const beforeAbsent = first.before === null || first.existedBefore === false;
+    const afterAbsent = last.after === null || last.existsAfter === false;
     // Created and deleted in the same run: no net change.
-    if (first.before === null && last.after === null) continue;
+    if (beforeAbsent && afterAbsent) continue;
     // Written back to the same content: no net change. Only a real blob key
     // can prove that; `undefined` means "not stored", not "unchanged".
     if (typeof first.before === 'string' && first.before === last.after) continue;
-    const status = first.before === null ? 'added' : last.after === null ? 'deleted' : 'modified';
+    const status = beforeAbsent ? 'added' : afterAbsent ? 'deleted' : 'modified';
     files.push({ path, displayPath: last.displayPath, status, agent: last.agent });
   }
   files.sort((a, b) => a.displayPath.localeCompare(b.displayPath));

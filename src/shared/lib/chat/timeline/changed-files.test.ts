@@ -116,6 +116,19 @@ describe('bucketChangesByRun', () => {
     expect(buckets.get(1)?.map((file) => file.status)).toEqual(['deleted', 'added']);
   });
 
+  test('a patch record states its status without a key, and create-then-delete nets out', () => {
+    const buckets = bucketChangesByRun(messages, footers, [
+      record({ at: 1200, path: '/repo/added.ts', displayPath: 'added.ts', before: null, after: undefined, existedBefore: false, existsAfter: true }),
+      record({ at: 1300, path: '/repo/gone.ts', displayPath: 'gone.ts', before: 'k1', after: undefined, existedBefore: true, existsAfter: false }),
+      record({ at: 1400, path: '/repo/temp.ts', displayPath: 'temp.ts', before: null, after: undefined, existedBefore: false, existsAfter: true }),
+      record({ at: 1500, path: '/repo/temp.ts', displayPath: 'temp.ts', before: undefined, after: undefined, existedBefore: true, existsAfter: false }),
+    ]);
+    expect(buckets.get(1)?.map((file) => [file.displayPath, file.status])).toEqual([
+      ['added.ts', 'added'],
+      ['gone.ts', 'deleted'],
+    ]);
+  });
+
   test('a subagent write keeps its agent id', () => {
     const buckets = bucketChangesByRun(messages, footers, [
       record({ at: 1200, agent: 'AuthLoader' }),

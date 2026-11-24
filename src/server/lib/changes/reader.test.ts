@@ -27,6 +27,9 @@ import {
 import { clearSessionFileCaches } from '@/server/lib/omp/session/files';
 
 const SESSION = 'sess-read';
+/** A session whose only journal is omp 19's, so the merge has no Kabmo half. */
+const PATCH_SESSION = 'sess-patch-omp';
+let patchPath = '';
 let dataDir = '';
 let agentDir = '';
 let originalData: string | undefined;
@@ -74,6 +77,25 @@ beforeAll(async () => {
     displayPath: 'gone.ts', before: 'x', after: null, source: 'trace',
   });
   await gone.flush();
+
+  // omp 19's journal: hunks, no blob keys. The file exists on disk, as it does
+  // in a real session, so the list's "creation whose file is gone" rule keeps it.
+  const patchCwd = path.join(agentDir, 'patch-project');
+  await fsp.mkdir(patchCwd, { recursive: true });
+  patchPath = path.join(patchCwd, 'history.md');
+  const patchText = '## 09:12\n\n- **Outcome**: success\n';
+  await fsp.writeFile(patchPath, patchText);
+  const cwdDir = path.join(agentDir, 'sessions', '-patch-project');
+  await fsp.mkdir(cwdDir, { recursive: true });
+  const sessionFile = path.join(cwdDir, `2026-01-01T00-00-00-000Z_${PATCH_SESSION}.jsonl`);
+  await fsp.writeFile(sessionFile, `${JSON.stringify({ type: 'session', id: PATCH_SESSION, cwd: patchCwd })}\n`);
+  const ompDir = sessionFile.slice(0, -'.jsonl'.length);
+  await fsp.mkdir(path.join(ompDir, 'blobs'), { recursive: true });
+  await fsp.writeFile(path.join(ompDir, 'changes.jsonl'), `${JSON.stringify({
+    type: 'change', at: 10, agent: 'Main', tool: 'bash', path: patchPath,
+    base: null, edit: [[0, 0, patchText.split('\n')]], sum: Bun.hash(patchText).toString(36),
+  })}\n`);
+  clearSessionFileCaches();
 });
 
 afterAll(async () => {
@@ -130,6 +152,19 @@ describe('readSessionChangeList', () => {
     expect(records.length).toBe(3);
     expect(records.some((record) => record.path === '/repo/b.ts')).toBe(true);
   });
+
+  test('drops a path that is a directory, recorded before the writer skipped them', async () => {
+    const bin = path.join(dataDir, 'bin');
+    await fsp.mkdir(bin, { recursive: true });
+    const journal = new ChangeJournal('sess-dir', dataDir);
+    await journal.recordChange({
+      at: 10, agent: 'Main', tool: 'bash', op: 'delete', path: bin,
+      displayPath: 'bin', before: undefined, after: null, source: 'trace', unavailableReason: 'snapshot-race',
+    });
+    await journal.flush();
+    expect(await readSessionChangeList('sess-dir')).toEqual([]);
+    expect((await readSessionChangeIndex('sess-dir')).length).toBe(1);
+  });
 });
 
 describe('readSessionChangeDiff', () => {
@@ -151,6 +186,70 @@ describe('readSessionChangeDiff', () => {
 
   test('a path outside the window has no diff', async () => {
     expect(await readSessionChangeDiff(SESSION, '/repo/a.ts', 500, 1000)).toBeNull();
+  });
+});
+
+describe('unavailable sides', () => {
+  test('a snapshot race names itself and carries no cap', async () => {
+    const journal = new ChangeJournal('sess-race', '/repo');
+    await journal.recordChange({
+      at: 10, agent: 'Main', tool: 'write', op: 'update', path: '/repo/race.ts',
+      displayPath: 'race.ts', before: undefined, after: 'new', source: 'tool', unavailableReason: 'snapshot-race',
+    });
+    await journal.flush();
+    const diff = await readSessionChangeDiff('sess-race', '/repo/race.ts', 0, 100);
+    expect(diff?.unavailable).toBe(true);
+    expect(diff?.unavailableReason).toBe('snapshot-race');
+    expect(diff?.unavailableLimitBytes).toBeUndefined();
+  });
+
+  test('a side over the cap reports the Kabmo limit', async () => {
+    const journal = new ChangeJournal('sess-large', '/repo');
+    await journal.recordChange({
+      at: 10, agent: 'Main', tool: 'edit', op: 'update', path: '/repo/large.ts',
+      displayPath: 'large.ts', before: undefined, after: 'new', source: 'tool',
+    });
+    await journal.flush();
+    const diff = await readSessionChangeDiff('sess-large', '/repo/large.ts', 0, 100);
+    expect(diff?.unavailableReason).toBe('too-large');
+    expect(diff?.unavailableLimitBytes).toBe(32 * 1024 * 1024);
+  });
+
+  test('a stored key whose blob is gone is missing, not over-cap', async () => {
+    const file = journalPath('sess-missing');
+    await fsp.mkdir(path.dirname(file), { recursive: true });
+    const line = {
+      v: 1, type: 'change', at: 10, agent: 'Main', tool: 'edit', op: 'update',
+      path: '/repo/gone.ts', displayPath: 'gone.ts', before: '1-nope', after: '1-nope2', source: 'tool',
+    };
+    await fsp.writeFile(file, `${JSON.stringify(line)}\n`);
+    const diff = await readSessionChangeDiff('sess-missing', '/repo/gone.ts', 0, 100);
+    expect(diff?.unavailableReason).toBe('unreadable');
+    expect(diff?.unavailableLimitBytes).toBeUndefined();
+  });
+});
+
+describe('omp 19 patch journal', () => {
+  test('the diff rebuilds both sides from the hunks', async () => {
+    const diff = await readSessionChangeDiff(PATCH_SESSION, patchPath, 0, 100);
+    expect(diff?.status).toBe('added');
+    expect(diff?.oldContent).toBe('');
+    expect(diff?.newContent).toBe('## 09:12\n\n- **Outcome**: success\n');
+    expect(diff?.unavailable).toBe(false);
+    expect(diff?.diff).toContain('+## 09:12');
+  });
+
+  test('the stats count the rebuilt pair instead of dropping the path', async () => {
+    const stats = await readSessionChangeStats(PATCH_SESSION, 0, 100);
+    expect(stats[patchPath]?.removed).toBe(0);
+    expect(stats[patchPath]?.added).toBeGreaterThan(0);
+  });
+
+  test('the list keeps the record and states its existence', async () => {
+    const records = await readSessionChangeList(PATCH_SESSION);
+    expect(records.map((record) => [record.path, record.existedBefore, record.existsAfter])).toEqual([
+      [patchPath, false, true],
+    ]);
   });
 });
 

@@ -30,8 +30,12 @@
 
 import { unifiedDiff } from '@/shared/lib/fs/unified-diff';
 import { patchSides } from '@/shared/lib/fs/patch-sides';
+import { MAX_BLOB_BYTES } from '@/server/lib/changes/blobs.server';
+import { OMP_MAX_BLOB_BYTES } from '@/server/lib/omp/session/changes';
+import { readPatchSides } from '@/server/lib/omp/session/changes-patch';
 import {
   pathExists,
+  pathIsDirectory,
   readJournalRecords,
   readMergedRecords,
   resolveMergedBlob,
@@ -111,11 +115,82 @@ export async function readSessionChangeList(sessionId: string): Promise<SessionC
   }
   const netZero = new Set<string>();
   for (const [absolute, { first, last }] of spans) {
-    if (first.before === null && last.after === null) netZero.add(absolute);
+    const beforeAbsent = first.before === null || first.existedBefore === false;
+    const afterAbsent = last.after === null || last.existsAfter === false;
+    if (beforeAbsent && afterAbsent) netZero.add(absolute);
   }
+  // A directory recorded before the writer learned to skip them (`cp x bin/`)
+  // is not a file change. The signature is a delete with no before content, so
+  // only those rare paths are statted and an ordinary list stays stat-free.
+  const directories = new Set<string>();
+  await Promise.all(
+    [...spans]
+      .filter(([, { first, last }]) => first.before === undefined && last.after === null)
+      .map(async ([absolute]) => {
+        if (await pathIsDirectory(absolute)) directories.add(absolute);
+      }),
+  );
   return records
-    .filter((record) => !gone.has(record.path) && !netZero.has(record.path))
+    .filter((record) => !gone.has(record.path) && !netZero.has(record.path) && !directories.has(record.path))
     .map(toSessionChangeRecord);
+}
+
+/**
+ * Why one side is unknown: a key that was never stored (the record's own reason,
+ * or the store's cap), versus a side the store holds but cannot produce — a
+ * blob that is gone, or hunks that do not rebuild. The facts are different, and
+ * the diff tab must not blame the size cap for either.
+ */
+function unavailableSide(
+  record: MergedRecord,
+  key: string | null | undefined,
+): Pick<SessionChangeDiff, 'unavailableReason' | 'unavailableLimitBytes'> {
+  if (record.patch) return { unavailableReason: 'unreadable' };
+  if (key !== undefined) return { unavailableReason: 'unreadable' };
+  if (record.unavailableReason) return { unavailableReason: record.unavailableReason };
+  return {
+    unavailableReason: 'too-large',
+    unavailableLimitBytes: record.store === 'kabmo' ? MAX_BLOB_BYTES : OMP_MAX_BLOB_BYTES,
+  };
+}
+
+/**
+ * The net status of one path. A patch record states existence without content
+ * (`base: null` / `sum: '-'`), so its own metadata answers before any key does.
+ */
+function netStatus(first: MergedRecord, last: MergedRecord): SessionChangeDiff['status'] {
+  const existedBefore = first.existedBefore ?? (first.before === null ? false : undefined);
+  const existsAfter = last.existsAfter ?? (last.after === null ? false : undefined);
+  if (existedBefore === false) return 'added';
+  if (existsAfter === false) return 'deleted';
+  return 'modified';
+}
+
+/**
+ * The two sides of one path's net change inside a run.
+ *
+ * `history` is the path's whole record list in order, because a patch record's
+ * `before` may depend on its predecessor; `first`/`last` are the records that
+ * own the two sides inside the window.
+ */
+async function netSides(
+  sessionId: string,
+  history: readonly MergedRecord[],
+  first: MergedRecord,
+  last: MergedRecord,
+): Promise<{ before: string | null | undefined; after: string | null | undefined }> {
+  const patched = [first, last].some((record) => record.patch && record.store === 'omp');
+  const rebuilt = patched
+    ? await readPatchSides(sessionId, history.map((record) => record.patch))
+    : [];
+  const side = (owner: MergedRecord, which: 'before' | 'after'): Promise<string | null | undefined> => {
+    if (owner.patch && owner.store === 'omp') {
+      return Promise.resolve(rebuilt[history.indexOf(owner)]?.[which]);
+    }
+    return resolveMergedBlob(sessionId, owner.store, owner[which]);
+  };
+  const [before, after] = await Promise.all([side(first, 'before'), side(last, 'after')]);
+  return { before, after };
 }
 
 /** The net change of `absolutePath` inside `[from, to]`. */
@@ -126,19 +201,18 @@ export async function readSessionChangeDiff(
   to: number,
 ): Promise<SessionChangeDiff | null> {
   const records = await readMergedRecords(sessionId, false);
-  const inRange = records
-    .filter((record) => record.path === absolutePath && record.at >= from && record.at <= to)
-    .sort((a, b) => a.at - b.at);
+  const history = records.filter((record) => record.path === absolutePath);
+  const inRange = history.filter((record) => record.at >= from && record.at <= to);
   if (inRange.length === 0) return null;
 
   const first = inRange[0];
   const last = inRange[inRange.length - 1];
-  const status = first.before === null ? 'added' : last.after === null ? 'deleted' : 'modified';
-  const [before, after] = await Promise.all([
-    resolveMergedBlob(sessionId, first.store, first.before),
-    resolveMergedBlob(sessionId, last.store, last.after),
-  ]);
+  const status = netStatus(first, last);
+  const { before, after } = await netSides(sessionId, history, first, last);
   if (before === undefined || after === undefined) {
+    const unknown = before === undefined
+      ? unavailableSide(first, first.before)
+      : unavailableSide(last, last.after);
     return {
       path: absolutePath,
       displayPath: last.displayPath,
@@ -147,6 +221,7 @@ export async function readSessionChangeDiff(
       newContent: '',
       diff: '',
       unavailable: true,
+      ...unknown,
     };
   }
   const oldContent = before ?? '';
@@ -169,6 +244,12 @@ export async function readSessionChangeStats(
   to: number,
 ): Promise<Record<string, SessionChangeCounts>> {
   const records = await readMergedRecords(sessionId, false);
+  const history = new Map<string, MergedRecord[]>();
+  for (const record of records) {
+    const list = history.get(record.path);
+    if (list) list.push(record);
+    else history.set(record.path, [record]);
+  }
   const spans = new Map<string, { first: MergedRecord; last: MergedRecord }>();
   for (const record of records) {
     if (record.at < from || record.at > to) continue;
@@ -180,10 +261,7 @@ export async function readSessionChangeStats(
   const stats: Record<string, SessionChangeCounts> = {};
   await Promise.all(
     [...spans].map(async ([absolutePath, { first, last }]) => {
-      const [before, after] = await Promise.all([
-        resolveMergedBlob(sessionId, first.store, first.before),
-        resolveMergedBlob(sessionId, last.store, last.after),
-      ]);
+      const { before, after } = await netSides(sessionId, history.get(absolutePath) ?? [first], first, last);
       if (before === undefined || after === undefined) return;
       const sides = patchSides(unifiedDiff(absolutePath, before ?? '', after ?? ''));
       if (sides.additions === 0 && sides.deletions === 0) return;

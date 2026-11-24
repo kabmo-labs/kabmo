@@ -57,7 +57,7 @@ export class ChangeCapture {
   readonly #pending = new Map<string, PendingCall>();
   readonly #tasks = new Set<Promise<void>>();
   readonly #readFile: (absolute: string) => Promise<string | null>;
-  readonly #statFile: (absolute: string) => Promise<{ mtimeMs: number; size: number; birthtimeMs: number } | null>;
+  readonly #statFile: (absolute: string) => Promise<{ mtimeMs: number; size: number; birthtimeMs: number; isDirectory: boolean } | null>;
   readonly #takeScan: (cwd: string) => Promise<GitScan | null>;
   readonly #readHead: (root: string, absolute: string) => Promise<string | null>;
   /** The open run; kept after a terminal end so a late subagent keeps its id. */
