@@ -52,6 +52,8 @@ export interface AcpTurnSeams {
   resetMapper: () => void;
   /** Flush the message the turn left open. */
   closeMessage: () => AgentEvent[];
+  /** The turn's blocks as ONE message, after `closeMessage` (rows are split). */
+  turnMessage: () => Record<string, unknown> | null;
   /** Tool calls the turn abandoned, by id. */
   openCalls: () => string[];
   /**
@@ -310,7 +312,8 @@ export class AcpTurns {
     this.#silence.stop();
     const flushed = this.seams.closeMessage();
     for (const event of flushed) this.seams.emit(event);
-    const closed = flushed.find((event) => event.type === 'message_end')?.message;
+    // The whole turn: rows are split, and the probe reads its tool calls.
+    const closed = this.seams.turnMessage() ?? flushed.find((event) => event.type === 'message_end')?.message;
     const abandoned = this.seams.openCalls();
     for (const toolCallId of abandoned) {
       this.seams.emit({ type: 'tool_execution_end', toolCallId, isError: true, result: { output: 'Cancelled' } });

@@ -101,6 +101,7 @@ export function acpTurns(host: AcpWiringHost): AcpTurns {
     abandonPrompt: () => host.proc.abandonPrompt(host.sessionId),
     resetMapper: () => host.mapper.reset(),
     closeMessage: () => host.mapper.closeMessage().map((event) => stampMessageModel(event, host.runModel)),
+    turnMessage: () => host.mapper.turnMessage(),
     openCalls: () => host.mapper.openCalls(),
     // Armed from the turn's END, exactly as the omp wrapper arms it from its own
     // terminal settle: without this a queued follow-up never left the table.

@@ -142,6 +142,7 @@ export function mountSession(options: { busyWaitMs?: number } = {}): MountedSess
     abandonPrompt: () => proc.abandonPrompt(),
     resetMapper: () => mapper.reset(),
     closeMessage: () => mapper.closeMessage().map((event) => stampMessageModel(event, session.runModel)),
+    turnMessage: () => mapper.turnMessage(),
     openCalls: () => mapper.openCalls(),
     onTurnEnd: (info) => {
       (session as unknown as { onTurnEnded: (info: { stopReason?: string; closedMessage: boolean }) => void })

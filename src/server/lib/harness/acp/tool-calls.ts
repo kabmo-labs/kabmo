@@ -62,6 +62,10 @@ interface OpenTool {
 export interface ToolCallHost {
   pushBlock(block: ToolCallBlock): void;
   snapshot(): Record<string, unknown>;
+  /** Frames that close the row the host already painted, before this card is
+   *  added to a new one. A card written after prose belongs to the next row:
+   *  the timeline draws a row's text above its cards. */
+  beginToolBlock(): AgentEvent[];
 }
 
 export class AcpToolCalls {
@@ -110,6 +114,10 @@ export class AcpToolCalls {
         ? toolTypeFor(kind, name)
         : isKnownToolName(name) ? toolTypeFor(kind, name) : undefined;
 
+    // Close the prose row FIRST: once this block is in the accumulator, the
+    // close would carry the card into the text row and the timeline would draw
+    // it above prose the agent sent before it.
+    const frames: AgentEvent[] = this.host.beginToolBlock();
     this.host.pushBlock({
       type: 'toolCall',
       id: toolCallId,
@@ -120,7 +128,7 @@ export class AcpToolCalls {
       ...(toolType ? { toolType } : {}),
     });
 
-    const frames: AgentEvent[] = [
+    frames.push(
       {
         type: 'message_update',
         message: this.host.snapshot(),
@@ -136,7 +144,7 @@ export class AcpToolCalls {
         ...(delegation ?? title ? { intent: delegation ?? title } : {}),
         ...(acpToolTarget(update.locations, rawInput) ? { target: acpToolTarget(update.locations, rawInput) } : {}),
       },
-    ];
+    );
 
     if (isFinal(status)) {
       frames.push(endFrame(update, toolCallId, name, status));

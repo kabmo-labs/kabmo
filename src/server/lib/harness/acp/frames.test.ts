@@ -12,7 +12,9 @@
  *    only `status` must not blank the card it completes;
  *  - `messageId` is the ONLY message delimiter (ACP has no `message_end`), so a
  *    changed id must close the previous row instead of appending into it; an
- *    ABSENT id (antigravity 1.5.3) must still yield one stable row per turn;
+ *    ABSENT id (antigravity 1.5.3) must still yield one stable row per run of
+ *    content — and a NEW row where a card and prose meet, because the timeline
+ *    draws a row's text above its cards;
  *  - `kind` must reach `ToolCallData.type`, because omp's `ToolType` is what the
  *    renderers switch on;
  *  - `usage_update` exists on some agents only, so its absence must emit
@@ -68,20 +70,6 @@ describe('acp frame mapper — assistant text', () => {
     // completed answer beside the streamed one.
     const ended = mapper.closeMessage();
     expect(messageIdOf(ended[0])).toBe(firstId);
-  });
-
-  test('a tool call before the first chunk keeps that identity too', () => {
-    const mapper = new AcpFrameMapper();
-    const opened = mapper.mapUpdate({
-      sessionUpdate: 'tool_call',
-      toolCallId: 't1',
-      title: 'Read',
-      status: 'in_progress',
-    });
-    const chunk = mapper.mapUpdate(anonymousChunk('done'));
-    const openedId = messageIdOf(opened[0]);
-    expect(typeof openedId).toBe('string');
-    expect(messageIdOf(chunk[0])).toBe(openedId);
   });
 
   test('a new turn gets a fresh identity when the agent sends no id', () => {

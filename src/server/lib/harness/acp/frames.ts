@@ -20,7 +20,7 @@
  *    chunks sharing an id (measured 6 chunks for a five-word answer, 168 for a
  *    long one); a changed id closes the row and opens the next. An agent that
  *    sends no id at all (measured on antigravity 1.5.3) gets one synthesized
- *    identity per turn, so its chunks still update ONE row.
+ *    identity per row, so its chunks still update ONE row.
  *  - **`tool_call_update` is a PATCH.** A `status:completed` update carries no
  *    `content`, so the card's body lives in the accumulated block; replacing it
  *    blanks the card at the exact moment it finishes.
@@ -28,29 +28,23 @@
  *    `ToolType`, so `toolTypeFor` names the translation and the name is kept
  *    alongside it.
  *
+ * The blocks themselves — and where a row ENDS — live in `message-rows.ts`:
+ * a row never holds prose written after one of its cards, because the timeline
+ * draws a row's text above its cards.
+ *
  * No I/O: the driver feeds it, the tests feed it, and the same instance serves a
  * live stream and a replay.
  */
 
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
 import { acpContentText } from '@/server/lib/harness/acp/mapper';
+import { AcpMessageRows } from '@/server/lib/harness/acp/message-rows';
 import { planEntries } from '@/server/lib/harness/acp/v2';
-import { AcpToolCalls, type ToolCallBlock } from '@/server/lib/harness/acp/tool-calls';
-
-/** One block of the accumulated assistant message, in `parseMessageBlocks` shape. */
-type MessageBlock =
-  | { type: 'text'; text: string }
-  | { type: 'thinking'; thinking: string }
-  | ToolCallBlock;
+import { AcpToolCalls } from '@/server/lib/harness/acp/tool-calls';
 
 /** Per-session accumulator; one instance per live ACP session. */
 export class AcpFrameMapper {
-  private blocks: MessageBlock[] = [];
-  private messageId: string | null = null;
-  /** When the turn was dispatched, the base for its duration. */
-  private turnStartedAt: number | null = null;
-  /** When the open message's first frame arrived, its timeline stamp. */
-  private openedAt: number | null = null;
+  private readonly rows = new AcpMessageRows();
   /** True only while a restore is replaying retained history. User turns then
    *  become rows: live `user_message` frames are receipts for a bubble the
    *  composer already drew, but a replay is the first time the client sees
@@ -59,8 +53,11 @@ export class AcpFrameMapper {
   /** The user turn currently being replayed, if any. */
   private replayUser: { id: string; text: string; timestamp: number } | null = null;
   private readonly tools = new AcpToolCalls({
-    pushBlock: (block) => this.blocks.push(block),
-    snapshot: () => this.snapshot(),
+    pushBlock: (block) => this.rows.push(block),
+    snapshot: () => this.rows.snapshot(),
+    // Content is already on screen; the card belongs to the NEXT row, or the
+    // timeline would draw it above text that was written before it.
+    beginToolBlock: () => (this.rows.endsWithContent() ? this.rows.close() : []),
   });
 
   /** Enter or leave replay mode. Leaving drops the half-accumulated user turn so
@@ -72,10 +69,7 @@ export class AcpFrameMapper {
 
   /** Forget per-turn state (an aborted run, a fresh load) and start its clock. */
   reset(startedAt: number = Date.now()): void {
-    this.blocks = [];
-    this.messageId = null;
-    this.openedAt = null;
-    this.turnStartedAt = startedAt;
+    this.rows.reset(startedAt);
     this.tools.reset();
   }
 
@@ -164,39 +158,16 @@ export class AcpFrameMapper {
 
   /** Close the open assistant row (turn end, abort, disconnect). */
   closeMessage(): AgentEvent[] {
-    if (!this.messageId && this.blocks.length === 0) return [];
-    const completedAt = Date.now();
-    const message = this.snapshot();
-    const startedAt = this.turnStartedAt ?? this.openedAt;
-    if (startedAt !== null) {
-      message.completedAt = completedAt;
-      message.duration = Math.max(0, completedAt - startedAt);
-    }
-    this.blocks = [];
-    this.messageId = null;
-    this.openedAt = null;
-    return [{ type: 'message_end', message }];
+    return this.rows.close();
   }
 
   /**
-   * The accumulated message in omp's wire shape.
-   *
-   * `messageId` is OPTIONAL in ACP v1, and an agent that omits it (measured on
-   * antigravity 1.5.3: every chunk carried only `sessionUpdate` + `content`)
-   * still needs one identity for the whole turn. Without it, `toChatMessage`
-   * minted `msg-<Date.now()>-ai` per frame, so every chunk after the first
-   * APPENDED a new row instead of updating the streaming one — the turn showed
-   * as duplicate bubbles and the final answer again at `message_end`.
+   * The turn's blocks as ONE message, for the readers that ask about the whole
+   * answer rather than about a row: the background probe's baseline and known
+   * tool ids, the goal driver, and the silent-turn verdict.
    */
-  private snapshot(): Record<string, unknown> {
-    const id = this.messageId ??= `acp-${crypto.randomUUID()}`;
-    const timestamp = this.openedAt ??= Date.now();
-    return {
-      role: 'assistant',
-      id,
-      timestamp,
-      content: this.blocks.map((block) => ({ ...block })),
-    };
+  turnMessage(): Record<string, unknown> | null {
+    return this.rows.turnMessage();
   }
 
   /** Turn a replayed user turn into a row.
@@ -231,19 +202,19 @@ export class AcpFrameMapper {
     if (!text) return [];
     const frames: AgentEvent[] = [];
     const messageId = typeof update.messageId === 'string' ? update.messageId : null;
-    if (messageId && this.messageId && messageId !== this.messageId) frames.push(...this.closeMessage());
-    if (messageId) this.messageId = messageId;
+    const openId = this.rows.acpMessageId;
+    if (messageId && openId && messageId !== openId) frames.push(...this.rows.close());
+    if (messageId) this.rows.setAcpMessageId(messageId);
+    // Content written AFTER a card is its own row: the timeline draws a row's
+    // text/thinking above its cards, so keeping both in one row moved the card
+    // above content the agent wrote first. `close()` keeps the ACP id, so the
+    // rest of this message continues the new row.
+    if (this.rows.endsWithTool()) frames.push(...this.rows.close());
 
-    const last = this.blocks[this.blocks.length - 1];
-    if (kind === 'text') {
-      if (last?.type === 'text') last.text += text;
-      else this.blocks.push({ type: 'text', text });
-    } else if (last?.type === 'thinking') last.thinking += text;
-    else this.blocks.push({ type: 'thinking', thinking: text });
-
+    this.rows.appendContent(kind, text);
     frames.push({
       type: 'message_update',
-      message: this.snapshot(),
+      message: this.rows.snapshot(),
       // The fold reads this only to name the activity phrase; the message above
       // is what actually renders. `text_delta`/`thinking_delta` keep the
       // existing "Writing…"/"Thinking…" wording.
@@ -265,17 +236,21 @@ export class AcpFrameMapper {
     const messageId = typeof update.messageId === 'string' ? update.messageId : '';
     if (!messageId || !('content' in update)) return [];
     const frames: AgentEvent[] = [];
-    if (this.messageId && this.messageId !== messageId) frames.push(...this.closeMessage());
-    this.messageId = messageId;
+    const openId = this.rows.acpMessageId;
+    if (openId && openId !== messageId) frames.push(...this.rows.close());
+    this.rows.setAcpMessageId(messageId);
     const raw = update.content;
-    const text = raw === null || (Array.isArray(raw) && raw.length === 0) ? '' : acpContentText(raw);
-    this.blocks = this.blocks.filter((block) => block.type !== kind);
-    if (text) {
-      this.blocks.push(kind === 'text' ? { type: 'text', text } : { type: 'thinking', thinking: text });
-    }
+    const full = raw === null || (Array.isArray(raw) && raw.length === 0) ? '' : acpContentText(raw);
+    // A split moves earlier content into closed rows, but a v2 upsert keeps
+    // sending the message's whole content — draw only what is not drawn yet.
+    const text = this.rows.contentDelta(kind, full);
+    // Same boundary as `appendChunk`: a v2 message that already painted a card
+    // and now carries content must not fold that content under the card.
+    if (text && this.rows.endsWithTool()) frames.push(...this.rows.close());
+    this.rows.replaceContent(kind, text);
     frames.push({
       type: 'message_update',
-      message: this.snapshot(),
+      message: this.rows.snapshot(),
       assistantMessageEvent: {
         type: kind === 'text' ? 'text_delta' : 'thinking_delta',
         delta: text,

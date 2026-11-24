@@ -21,6 +21,7 @@ function harness(
     abandonPrompt: () => {},
     resetMapper: () => {},
     closeMessage: () => [],
+    turnMessage: () => null,
     openCalls: () => [],
     onTurnEnd: (info) => resolveEnd(info),
     ...overrides,

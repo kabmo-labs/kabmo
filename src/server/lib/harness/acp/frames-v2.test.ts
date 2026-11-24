@@ -75,6 +75,27 @@ describe('acp v2 updates', () => {
     expect(cancelled[0]).toMatchObject({ type: 'tool_execution_end', isError: true });
   });
 
+  test('a whole message after a card draws only the text not drawn yet', () => {
+    // v2 upserts send the message's WHOLE content; a split moved the earlier
+    // text into a closed row, so the rest must not be repeated.
+    const mapper = new AcpFrameMapper();
+    mapper.mapUpdate({ sessionUpdate: 'agent_message', messageId: 'm1', content: [{ type: 'text', text: 'one' }] });
+    mapper.mapUpdate({
+      sessionUpdate: 'tool_call',
+      toolCallId: 't1',
+      name: 'bash',
+      status: 'in_progress',
+      messageId: 'm1',
+    });
+    const frames = mapper.mapUpdate({
+      sessionUpdate: 'agent_message',
+      messageId: 'm1',
+      content: [{ type: 'text', text: 'onetwo' }],
+    });
+    expect(frames.map((frame) => frame.type)).toEqual(['message_end', 'message_update']);
+    expect(frames[1]).toMatchObject({ message: { content: [{ type: 'text', text: 'two' }] } });
+  });
+
   test('plan_update feeds the entries the Todos panel reads', () => {
     const frames = new AcpFrameMapper().mapUpdate({
       sessionUpdate: 'plan_update',
