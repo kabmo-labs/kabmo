@@ -39,6 +39,13 @@ export interface Attachment {
    *  retry can re-send them without the original `File`. */
   content?: string;
   /**
+   * The file's OWN name, kept when the composer renames `name` from the
+   * filename text in the draft. Classification reads this: a pasted `notes.md`
+   * whose name the user edits to `catatan` must still be inlined as text at
+   * send time, and only the extension this name carries can say so.
+   */
+  sourceName?: string;
+  /**
    * Set when `content` came from sniffing the file's bytes rather than from its
    * name or MIME. A promised-file drag from another app has neither, so without
    * this marker the send path would classify it as binary and drop it again.
@@ -162,7 +169,7 @@ export interface ChatMessageData {
   date?: string;
   timestamp?: string;
   content: string;
-  attachments?: { id?: string; name: string; preview?: string; type?: string; size?: number }[];
+  attachments?: { id?: string; name: string; sourceName?: string; preview?: string; type?: string; size?: number }[];
   thinking?: ThinkingData | string;
   /** Short human intent for tool calls (omp arguments.i) shown before the tools. */
   intent?: string;

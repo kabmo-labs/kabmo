@@ -29,6 +29,8 @@
 
 export interface StoredAttachment {
   name?: string;
+  /** The file's own name, when the draft renamed `name` (see `Attachment`). */
+  sourceName?: string;
   preview?: string;
   type?: string;
   size?: number;

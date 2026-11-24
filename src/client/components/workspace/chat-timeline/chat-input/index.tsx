@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import type { ClipboardEvent, SetStateAction } from 'preact/compat';
+import type { SetStateAction } from 'preact/compat';
 import type { Attachment } from '@/shared/types';
 import { useModelSelection } from '@/client/hooks/chat/composer/model-selection';
 import { useHarnesses } from '@/client/hooks/models/use-harnesses';
@@ -7,7 +7,7 @@ import { harnessModels } from '@/shared/lib/harness/models';
 import { NO_PENDING_PICK } from '@/client/hooks/chat/timeline/deferred-model';
 import { CHAT_COMPOSER_MAX_LINES, useAutoGrow } from '@/client/hooks/chat/composer/auto-grow';
 import { useVoiceInput } from '@/client/hooks/chat/composer/voice-input';
-import { primeFileReads } from '@/client/hooks/chat/composer/file-reads';
+import { usePastedAttachments } from '@/client/hooks/chat/composer/paste-attachments';
 import { useComposerPipeline } from '@/client/hooks/chat/composer/pipeline';
 import { usePublishComposerState } from '@/client/hooks/chat/composer/publish-state';
 import { DropOverlay } from '@/client/components/workspace/chat-timeline/chat-input/DropOverlay';
@@ -109,18 +109,6 @@ export function ChatInput({
     else setInternalAttachments(updater);
   };
 
-  const handlePaste = (e: ClipboardEvent<HTMLTextAreaElement>) => {
-    const clipboard = e.clipboardData;
-    if (!clipboard) return;
-    if (clipboard.files.length > 0) {
-      e.preventDefault();
-      const files = Array.from(clipboard.files);
-      // Same rule as a drop: the clipboard's file permission is released when
-      // this handler returns, so the reads are started here, in its tick.
-      acceptFiles(files, false, [], primeFileReads(files));
-    }
-  };
-
   // A DISPATCHED send returns the composer to its docked size, on BOTH layouts.
   // Hooked into the pipeline rather than the click handler so every way in —
   // the Send button, Enter, Cmd+Enter steering, a queued follow-up — collapses
@@ -143,15 +131,6 @@ export function ChatInput({
     rootPath,
     onSend,
     onSent: collapseOnSend,
-  });
-
-  // Publishes this composer's state to the plugin kit, and gives the kit a way
-  // to write into it (through `onChange`, never the DOM).
-  const { onTextareaReady } = usePublishComposerState({
-    value,
-    onChange,
-    isSubmitting: isGenerating,
-    sessionId: sessionId ?? null,
   });
 
   const shellMobile = variant === 'mobile';
@@ -222,6 +201,23 @@ export function ChatInput({
     return () => document.removeEventListener('keydown', onKey);
   }, [expanded]);
 
+  // A pasted FILE is attached AND its filename written into the draft; the
+  // chip's name then follows that text, so it owns `onChange` — every keystroke
+  // may move, rename or delete a filename.
+  const { onChange: handleDraftChange, onPaste: handlePaste, onRemoveAttachment } = usePastedAttachments({
+    value, onChange, attachments, setAttachments, acceptFiles, removeAttachment, textareaRef: growRef,
+  });
+
+  // Publishes this composer's state to the plugin kit, and gives the kit a way
+  // to write into it. It goes through the same `onChange` the textarea uses, so
+  // a plugin insert moves the filenames already in the draft like typing does.
+  const { onTextareaReady } = usePublishComposerState({
+    value,
+    onChange: handleDraftChange,
+    isSubmitting: isGenerating,
+    sessionId: sessionId ?? null,
+  });
+
   // Browser dictation, delegated to omp's own local STT worker. The hook owns
   // capture + the socket; this component owns where the text lands and the
   // status line while a first-run model download is still going.
@@ -236,7 +232,7 @@ export function ChatInput({
     // Append rather than replace: a dictation into a composer that already
     // holds a draft must not discard what the user typed.
     const existing = value.trim();
-    onChange(existing ? `${existing} ${transcript}` : transcript);
+    handleDraftChange(existing ? `${existing} ${transcript}` : transcript);
   });
 
   return (
@@ -293,7 +289,7 @@ export function ChatInput({
         attachments,
         sessionId: sessionId ?? null,
         onFilesSelected: (files) => acceptFiles(files),
-        onRemoveAttachment: removeAttachment,
+        onRemoveAttachment,
         modes,
         onOpenGoal: () => setGoalModalOpen(true),
         expanded,
@@ -303,7 +299,7 @@ export function ChatInput({
         notice,
         dismissNotice,
         value,
-        onChange,
+        onChange: handleDraftChange,
         submit,
         sendDisabled: disabled || (!value.trim() && attachments.length === 0),
         disabled,

@@ -51,6 +51,9 @@ export function buildOptimisticRows(args: {
       content: text,
       attachments: attachments.map((a) => ({
         name: attachmentName(a),
+        // A pasted filename the user edited in the draft is the display name;
+        // the file's own name is what classification reads on retry.
+        ...(a.sourceName ? { sourceName: a.sourceName } : {}),
         // The blob URL only lives as long as this page, so the data URL wins
         // where it exists — a persisted turn re-renders its images from it.
         preview: a.dataBase64 ? `data:${attachmentType(a)};base64,${a.dataBase64}` : a.preview,

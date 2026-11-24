@@ -68,8 +68,20 @@ export interface ComposerPipeline {
   isDragging: boolean;
   /** Drag handlers for the composer card. */
   dropProps: FileDropProps;
-  /** Attach a batch (picker, paste, or a drop the caller already parsed). */
-  acceptFiles: (files: File[], incomplete?: boolean, references?: string[], primed?: PrimedReads) => void;
+  /**
+   * Attach a batch (picker, paste, or a drop the caller already parsed).
+   *
+   * `onAttached` fires SYNCHRONOUSLY with the entries that survived the
+   * budget, before their bytes are read — the paste path needs both the ids
+   * and the current tick to write each filename into the draft.
+   */
+  acceptFiles: (
+    files: File[],
+    incomplete?: boolean,
+    references?: string[],
+    primed?: PrimedReads,
+    onAttached?: (created: Attachment[]) => void,
+  ) => void;
   /** Remove one attachment. */
   removeAttachment: (id: string) => void;
   /** Send the composer's contents. */
@@ -125,9 +137,10 @@ export function useComposerPipeline({
     incomplete = false,
     references: string[] = [],
     primed?: PrimedReads,
+    onAttached?: (created: Attachment[]) => void,
   ) => {
     void (async () => {
-      const { added, skipped, unreadable } = await addFiles(files, primed);
+      const { added, skipped, unreadable } = await addFiles(files, primed, onAttached);
       if (skipped.length > 0) {
         setNotice(describeAttachmentBudget(skipped));
       } else if (incomplete) {

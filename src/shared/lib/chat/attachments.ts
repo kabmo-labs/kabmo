@@ -53,6 +53,19 @@ export function attachmentName(att: Pick<Attachment, 'name' | 'file'>): string {
   return att.name ?? att.file?.name ?? 'attachment';
 }
 
+/**
+ * The file's OWN name — what classification reads, never the display name.
+ *
+ * The composer writes the pasted filename into the draft and lets the chip
+ * follow that text, so `name` becomes whatever the user typed. The extension
+ * that classified the file lives here instead; reading `name` would let a
+ * rename from `notes.md` to `catatan` turn an inlined text file into a binary
+ * the prompt silently drops.
+ */
+export function attachmentSourceName(att: Pick<Attachment, 'sourceName' | 'name' | 'file'>): string {
+  return att.sourceName ?? att.name ?? att.file?.name ?? '';
+}
+
 /** Attachment MIME type, live file first, persisted type second. */
 export function attachmentType(att: Pick<Attachment, 'type' | 'file'>): string {
   return att.type ?? att.file?.type ?? '';
@@ -64,12 +77,12 @@ export function attachmentSize(att: Pick<Attachment, 'size' | 'file'>): number {
 }
 
 /** Whether this attachment's contents can be inlined into the prompt. */
-export function isTextAttachment(att: Pick<Attachment, 'name' | 'type' | 'file'>): boolean {
+export function isTextAttachment(att: Pick<Attachment, 'sourceName' | 'name' | 'type' | 'file'>): boolean {
   const type = attachmentType(att);
   if (isTextMimeType(type)) return true;
   // An image is never inlined, whatever its extension claims.
   if (type.startsWith('image/')) return false;
-  return TEXT_FILE_EXTENSIONS[getFileExtension(attachmentName(att))] === true;
+  return TEXT_FILE_EXTENSIONS[getFileExtension(attachmentSourceName(att))] === true;
 }
 
 /** Whether this attachment is an image the model can receive. */
@@ -133,7 +146,7 @@ export function attachmentHasPayload(att: Attachment): boolean {
  * instead of casting the list at each call site.
  */
 export function toAttachmentList(
-  attachments: { id?: string; name: string; preview?: string; type?: string; size?: number; content?: string }[] | undefined,
+  attachments: { id?: string; name: string; sourceName?: string; preview?: string; type?: string; size?: number; content?: string }[] | undefined,
 ): Attachment[] {
   if (!Array.isArray(attachments)) return [];
   return attachments.map((att, index) => ({
@@ -240,6 +253,7 @@ export async function prepareQueuedAttachments(attachments: Attachment[]): Promi
   return attachments.map((att) => ({
     id: att.id,
     name: attachmentName(att),
+    ...(att.sourceName ? { sourceName: att.sourceName } : {}),
     type: attachmentType(att),
     size: attachmentSize(att),
     // The blob URL dies with the page; the data URL survives in the row.

@@ -57,7 +57,18 @@ export interface ComposerAttachments {
    * begun while the drop's permission was live, so a batch that arrives without
    * one is the batch that fails. See `file-reads.ts`.
    */
-  addFiles: (files: File[], primed?: PrimedReads) => Promise<AddFilesOutcome>;
+  addFiles: (
+    files: File[],
+    primed?: PrimedReads,
+    /**
+     * Called with the entries the moment they exist — before their bytes are
+     * read. The paste path has to write each filename into the draft in the
+     * SAME tick as the paste, and it must know which files survived the
+     * budget: a filename written for a refused file would mention an
+     * attachment the composer never created.
+     */
+    onAttached?: (created: Attachment[]) => void,
+  ) => Promise<AddFilesOutcome>;
   removeAttachment: (id: string) => void;
   /**
    * Wait for every in-flight read, then return the attachments AS THEY STAND
@@ -99,7 +110,11 @@ export function useComposerAttachments({
     setAttachments(next);
   }, [setAttachments]);
 
-  const addFiles = useCallback(async (files: File[], primed?: PrimedReads): Promise<AddFilesOutcome> => {
+  const addFiles = useCallback(async (
+    files: File[],
+    primed?: PrimedReads,
+    onAttached?: (created: Attachment[]) => void,
+  ): Promise<AddFilesOutcome> => {
     const { accepted, skipped } = applyTextAttachmentBudget(files, attachments);
     if (accepted.length === 0) return { added: 0, skipped, unreadable: [] };
 
@@ -115,6 +130,7 @@ export function useComposerAttachments({
       preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : '',
     }));
     setBoth([...attachmentsRef.current, ...newAttachments]);
+    onAttached?.(newAttachments);
 
     const { promise: batch, resolve } = Promise.withResolvers<void>();
     pendingReadsRef.current.add(batch);
