@@ -12,48 +12,67 @@
  */
 
 import { describe, expect, test } from 'bun:test';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import {
   resolveSessionImagePath,
   sessionArtifactRoots,
   sessionImageMime,
 } from '@/server/routes/sessions/local-image';
 
-const CWD = '/work/project';
-const BRAIN = '/home/me/.gemini/antigravity-cli/brain/session-1';
+/**
+ * The two roots are built by the platform, not written as POSIX literals.
+ *
+ * `/work/project` is a rooted path on every platform — on Windows it resolves
+ * against the current DRIVE — so a literal expectation pinned the separator and
+ * failed the whole file on the Windows leg while the rule under test
+ * (containment) held. Every expectation below is therefore the same value the
+ * route is asked about, spelled by `path` itself.
+ */
+const CWD = path.resolve('/work/project');
+const BRAIN = path.resolve('/home/me/.gemini/antigravity-cli/brain/session-1');
 
 describe('resolveSessionImagePath', () => {
   test('an absolute path inside the cwd resolves', () => {
-    expect(resolveSessionImagePath('/work/project/shots/a.png', CWD, [])).toBe('/work/project/shots/a.png');
+    const shot = path.join(CWD, 'shots', 'a.png');
+    expect(resolveSessionImagePath(shot, CWD, [])).toBe(shot);
   });
 
   test('a relative path resolves against the cwd', () => {
-    expect(resolveSessionImagePath('shots/a.png', CWD, [])).toBe('/work/project/shots/a.png');
+    expect(resolveSessionImagePath('shots/a.png', CWD, [])).toBe(path.join(CWD, 'shots', 'a.png'));
   });
 
   test('file:// references are accepted as paths', () => {
-    expect(resolveSessionImagePath('file:///work/project/a.png', CWD, [])).toBe('/work/project/a.png');
+    const shot = path.join(CWD, 'a.png');
+    expect(resolveSessionImagePath(pathToFileURL(shot).href, CWD, [])).toBe(shot);
   });
 
   test('a path outside every root is refused', () => {
-    expect(resolveSessionImagePath('/work/other/a.png', CWD, [])).toBeNull();
+    expect(resolveSessionImagePath(path.join(path.resolve('/work/other'), 'a.png'), CWD, [])).toBeNull();
     expect(resolveSessionImagePath('../../etc/a.png', CWD, [])).toBeNull();
   });
 
   test("the harness's own artifact directory for this session is allowed", () => {
-    expect(resolveSessionImagePath(`${BRAIN}/shot.jpg`, CWD, [BRAIN])).toBe(`${BRAIN}/shot.jpg`);
-    expect(resolveSessionImagePath(`${BRAIN}/../other/shot.jpg`, CWD, [BRAIN])).toBeNull();
+    const shot = path.join(BRAIN, 'shot.jpg');
+    expect(resolveSessionImagePath(shot, CWD, [BRAIN])).toBe(shot);
+    expect(resolveSessionImagePath(path.join(BRAIN, '..', 'other', 'shot.jpg'), CWD, [BRAIN])).toBeNull();
   });
 
   test('no cwd and no artifact root answers nothing', () => {
-    expect(resolveSessionImagePath('/work/project/a.png', null, [])).toBeNull();
+    expect(resolveSessionImagePath(path.join(CWD, 'a.png'), null, [])).toBeNull();
   });
 });
 
 describe('sessionArtifactRoots', () => {
   test('antigravity names the brain directory of THIS session', () => {
     const roots = sessionArtifactRoots('antigravity', 'session-1');
-    expect(roots.some((root) => root.endsWith('/brain/session-1'))).toBe(true);
-    expect(roots.every((root) => root.endsWith('/brain/session-1'))).toBe(true);
+    expect(roots.length).toBeGreaterThan(0);
+    // Every root, not just one: a root for a DIFFERENT session is the bug this
+    // pins, and `some` alone would pass while the other one leaked.
+    for (const root of roots) {
+      expect(path.basename(root)).toBe('session-1');
+      expect(path.basename(path.dirname(root))).toBe('brain');
+    }
   });
 
   test('another harness has no artifact root of its own', () => {
