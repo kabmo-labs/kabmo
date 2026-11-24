@@ -27,7 +27,7 @@
  */
 
 import path from 'node:path';
-import { homedir } from 'node:os';
+import { antigravityHome } from '@/server/lib/antigravity/home.server';
 import { json, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { isWithinRoot, resolveScopeForAbsolutePath } from '@/server/lib/fs/root';
 import { loadHarnessSession } from '@/server/lib/harness/session-store.server';
@@ -53,7 +53,7 @@ const RASTER_MIME: Record<string, true> = {
 /** The harness artifact directories a session's own images may live in. */
 export function sessionArtifactRoots(harness: string | null, agentSessionId: string): string[] {
   if (harness !== 'antigravity' || !agentSessionId) return [];
-  const home = Bun.env.ANTIGRAVITY_HOME?.trim() || path.join(homedir(), '.gemini');
+  const home = antigravityHome();
   return [
     path.join(home, 'antigravity-cli', 'brain', agentSessionId),
     path.join(home, 'antigravity', 'brain', agentSessionId),

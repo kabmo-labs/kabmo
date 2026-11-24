@@ -88,6 +88,16 @@ describe('groupProviderLimits', () => {
     expect(groups[0]?.limits).toHaveLength(1);
   });
 
+  test("the CLI's own slug gets the same family sections as omp's", () => {
+    // Kabmo reads Antigravity's quota locally under `antigravity-cli` when omp
+    // has no provider row; the sections must not depend on which slug it is.
+    const groups = groupProviderLimits('antigravity-cli', [
+      limit('antigravity-cli:google:default:weekly'),
+      limit('antigravity-cli:anthropic:default:5h'),
+    ]);
+    expect(groups.map((group) => group.title)).toEqual(['Google', 'Claude & GPT (shared)']);
+  });
+
   test('no limits means no groups, so the caller draws its empty state', () => {
     expect(groupProviderLimits('anthropic', [])).toEqual([]);
   });

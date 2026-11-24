@@ -29,6 +29,7 @@ import { Database } from 'bun:sqlite';
 import fs from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { antigravityHome } from '@/server/lib/antigravity/home.server';
 import { codexHome, findCodexRollout } from '@/server/lib/harness/codex/transcript.server';
 import { isSinglePathSegment } from '@/server/lib/fs/path-segment';
 
@@ -231,7 +232,7 @@ async function zcodeTranscripts(ids: readonly string[]): Promise<Set<string> | n
  * no `steps` row is a session that was opened and never used.
  */
 async function antigravityTranscripts(ids: readonly string[]): Promise<Set<string> | null> {
-  const home = Bun.env.ANTIGRAVITY_HOME?.trim() || join(homedir(), '.gemini');
+  const home = antigravityHome();
   const roots = [
     join(home, 'antigravity-cli', 'conversations'),
     join(home, 'antigravity', 'conversations'),

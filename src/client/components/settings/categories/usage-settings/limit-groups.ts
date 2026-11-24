@@ -25,6 +25,7 @@
  */
 
 import type { UsageLimitWindow } from '@/shared/types';
+import { isAntigravityProviderSlug } from '@/shared/lib/models/provider/identity';
 
 export interface LimitGroup {
   /** Stable key inside one provider's section: `windows`, `balance`, `google`, … */
@@ -113,6 +114,8 @@ export function groupProviderLimits(providerId: string, limits: UsageLimitWindow
   if (limits.length === 0) return [];
   const slug = providerId.trim().toLowerCase();
   if (slug === 'anthropic') return groupClaude(limits);
-  if (slug === 'google-antigravity') return groupAntigravity(limits);
+  // omp names the provider `google-antigravity`, the Antigravity CLI installs
+  // as `antigravity-cli`; both emit one row per model family and window.
+  if (isAntigravityProviderSlug(slug)) return groupAntigravity(limits);
   return [{ id: 'all', title: QUOTA_TITLE, limits: [...limits] }];
 }
