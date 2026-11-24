@@ -25,7 +25,8 @@ import {
   dictationEngine,
   resolveDictationModel,
 } from '@/shared/lib/dictation/engines';
-import { normalizeBaseUrl, type DictationConfig } from '@/shared/lib/dictation/settings';
+import { type DictationConfig } from '@/shared/lib/dictation/settings';
+import { normalizeBaseUrl } from '@/shared/lib/net/base-url';
 
 const INPUT_CLASS =
   'w-full rounded-md border border-ink/20 bg-paper px-2 py-1.5 font-mono text-[11px] text-ink outline-none transition-colors placeholder:text-ink/30 focus:border-ink/50';

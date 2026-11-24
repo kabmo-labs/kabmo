@@ -29,6 +29,7 @@ import {
   type DictationLanguage,
 } from '@/shared/lib/dictation/languages';
 import { DICTATION_MAX_MS, DICTATION_MIN_MS } from '@/shared/lib/dictation/gate';
+import { normalizeBaseUrl } from '@/shared/lib/net/base-url';
 
 export interface DictationConfig {
   engine: DictationEngine;
@@ -89,27 +90,6 @@ export function normalizeDictationConfig(raw: unknown): DictationConfig {
     minMs: clamp(value.minMs, DEFAULT_DICTATION_CONFIG.minMs, 100, 5000),
     maxMs: clamp(value.maxMs, DEFAULT_DICTATION_CONFIG.maxMs, 1000, 300_000),
   };
-}
-
-/**
- * A usable base URL, or null.
- *
- * The server fetches this URL, so only `http:`/`https:` — and no embedded
- * credentials, which would be silently forwarded. The trailing slash is
- * removed so `{base}/audio/transcriptions` cannot become `//audio/…`.
- */
-export function normalizeBaseUrl(value: string): string | null {
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-  let parsed: URL;
-  try {
-    parsed = new URL(trimmed);
-  } catch {
-    return null;
-  }
-  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
-  if (parsed.username || parsed.password) return null;
-  return trimmed.replace(/\/+$/, '');
 }
 
 /** The base URL an engine actually uses: the setting, else the spec's default. */

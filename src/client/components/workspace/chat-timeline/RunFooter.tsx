@@ -105,6 +105,7 @@ export function RunFooter({
         usage={msg.usage}
         content={answerText ?? messageAnswerText(msg)}
         msgId={retryTargetId || msg.id}
+        speechKey={msg.id}
         onRetry={onRetry}
         onNewChat={onNewChat}
         forkTargetId={msg.id}

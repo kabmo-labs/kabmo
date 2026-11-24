@@ -19,7 +19,7 @@ import type { SettingsCategoryId, SettingsState } from '@/shared/types';
 import { harnessIdFromCategory } from '@/shared/lib/harness/menu';
 import { AppearanceSettings } from '@/client/components/settings/categories/AppearanceSettings';
 import { ChatSettings } from '@/client/components/settings/categories/ChatSettings';
-import { DictationSettings } from '@/client/components/settings/categories/DictationSettings';
+import { VoiceSettings } from '@/client/components/settings/categories/VoiceSettings';
 import { KeyboardSettings } from '@/client/components/settings/categories/KeyboardSettings';
 import { ProjectSettings } from '@/client/components/settings/categories/ProjectSettings';
 import { GitSettings } from '@/client/components/settings/categories/GitSettings';
@@ -66,8 +66,8 @@ export function CategoryContent({
       return <AppearanceSettings settings={settings} onUpdate={onUpdate} />;
     case 'chats':
       return <ChatSettings settings={settings} onUpdate={onUpdate} />;
-    case 'dictation':
-      return <DictationSettings settings={settings} onUpdate={onUpdate} />;
+    case 'voice':
+      return <VoiceSettings settings={settings} onUpdate={onUpdate} />;
     case 'keyboard':
       return <KeyboardSettings settings={settings} onUpdate={onUpdate} />;
     case 'projects':

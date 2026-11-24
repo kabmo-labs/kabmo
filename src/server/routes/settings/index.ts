@@ -4,6 +4,7 @@ import * as settingsAgents from '@/server/routes/settings/agents';
 import * as settingsBehavior from '@/server/routes/settings/behavior';
 import * as settingsCommands from '@/server/routes/settings/commands';
 import * as settingsDictation from '@/server/routes/settings/dictation';
+import * as settingsSpeech from '@/server/routes/settings/speech';
 import * as settingsGitIdentity from '@/server/routes/settings/git-identity';
 import * as settingsMcp from '@/server/routes/settings/mcp';
 import * as settingsModelOverride from '@/server/routes/settings/model-override';
@@ -28,6 +29,7 @@ export const settingsBindings: HandlerBinding[] = [
   ...bindingsFor(settingsBehavior, '/api/settings/behavior'),
   ...bindingsFor(settingsCommands, '/api/settings/commands'),
   ...bindingsFor(settingsDictation, '/api/settings/dictation'),
+  ...bindingsFor(settingsSpeech, '/api/settings/speech'),
   ...bindingsFor(settingsGitIdentity, '/api/settings/git-identity'),
   ...bindingsFor(settingsMcp, '/api/settings/mcp'),
   ...bindingsFor(settingsModelOverride, '/api/settings/model-override'),

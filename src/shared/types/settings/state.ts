@@ -11,15 +11,17 @@ import type { TrayIconStyle } from '@/shared/lib/theme/tray-icon-style';
 import type { SettingsSection } from '@/shared/lib/settings/sections';
 import type { GitIdentity } from '@/shared/lib/git/identity';
 import type { DictationConfig } from '@/shared/lib/dictation/settings';
+import type { TtsConfig } from '@/shared/lib/tts/settings';
 
 /** Wire protocol for the live agent event stream (chat timeline). */
 export type SettingsCategoryId =
   // KABMO
   | 'appearance'
   | 'chats'
-  /** Composer dictation: engine, language, key and capture limits. A KABMO
-   *  page because it decides where the microphone audio goes. */
-  | 'dictation'
+  /** Voice: the composer mic (STT) and spoken answers (TTS). One category
+   *  because both decide where AUDIO goes, and a reader looking for one
+   *  expects the other beside it. */
+  | 'voice'
   | 'keyboard'
   | 'notifications'
   | 'usage'
@@ -306,4 +308,11 @@ export interface SettingsState {
    * `~/.kabmo/dictation.json` (0600) behind its own route.
    */
   dictation: DictationConfig;
+  /**
+   * Spoken answers: which engine reads the assistant's final text, in which
+   * voice, and whether a settled run is read automatically. The API keys are
+   * NOT here for the same reason dictation's key is not: the blob ships to the
+   * browser. They live in `~/.kabmo/tts.json` (0600) behind their own route.
+   */
+  tts: TtsConfig;
 }

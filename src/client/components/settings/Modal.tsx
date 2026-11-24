@@ -211,7 +211,7 @@ export function SettingsModal({
               padding: the master/detail shell draws the list edge-to-edge, so a
               padding here would inset only the detail pane. */}
           <div
-            className={`flex-1 scrollbar-overlay-container w-full ${['appearance', 'projects', 'providers', 'agents', 'behavior', 'commands', 'mcp', 'plugins', 'skills', 'skills-catalog', 'usage', 'panel-plugins', 'chats'].includes(activeCategory) ? 'p-0 flex flex-col' : 'p-6 md:p-8 flex flex-col'}`}
+            className={`flex-1 scrollbar-overlay-container w-full ${['appearance', 'voice', 'projects', 'providers', 'agents', 'behavior', 'commands', 'mcp', 'plugins', 'skills', 'skills-catalog', 'usage', 'panel-plugins', 'chats'].includes(activeCategory) ? 'p-0 flex flex-col' : 'p-6 md:p-8 flex flex-col'}`}
             style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
           >
             <div className="w-full h-full flex-1 flex flex-col">

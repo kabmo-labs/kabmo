@@ -30,6 +30,7 @@ import { usePendingWarmup } from '@/client/hooks/chat/timeline/pending-warmup';
 import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
 import { useComposerWait } from '@/client/hooks/chat/waiting/composer-wait';
 import { useSessionHarness } from '@/client/hooks/chat/timeline/session-harness';
+import { TtsProvider } from '@/client/hooks/tts/provider';
 
 interface ChatTimelineProps {
   className?: string;
@@ -238,7 +239,8 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
                   isMobile={isMobile}
                 />
               ) : (
-                <TimelineBody
+                <TtsProvider messages={localMessages} isGenerating={timelineRunning} sessionId={sessionId}>
+                  <TimelineBody
                   isMobile={isMobile}
                   userTurns={userTurns}
                   jumpingTurn={jumpingTurn}
@@ -266,6 +268,7 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
                   jumpToBottom={jumpToBottom}
                   rowWindow={rowWindow} sessionId={sessionId}
                 />
+                </TtsProvider>
               )}
             </div>
 

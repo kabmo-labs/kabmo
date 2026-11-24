@@ -18,6 +18,7 @@ import { telemetryBindings } from '@/server/routes/telemetry';
 import { terminalBindings } from '@/server/routes/terminal';
 import { terminalWsRoutes } from '@/server/routes/terminal/ws';
 import { dictationWsRoutes } from '@/server/routes/dictation/ws';
+import { ttsBindings } from '@/server/routes/tts';
 import { browserBindings } from '@/server/routes/browser';
 import { modelsBindings } from '@/server/routes/models';
 import { ompBindings } from '@/server/routes/omp';
@@ -46,6 +47,7 @@ const allBindings: HandlerBinding[] = [
   ...scheduleBindings,
   ...waitingBindings,
   ...settingsBindings,
+  ...ttsBindings,
   ...fsBindings,
   ...foldersBindings,
   ...worktreesBindings,

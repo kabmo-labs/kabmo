@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'preact/hooks';
 import type { ReactNode } from 'preact/compat';
-import { Brain, Clock3, Coins, GitFork, Hourglass, MessageSquarePlus, MoreHorizontal, RotateCcw, X } from 'lucide-preact';
+import { Brain, GitFork, Hourglass, MessageSquarePlus, MoreHorizontal, RotateCcw } from 'lucide-preact';
 import { CopyButton } from '@/client/components/common/CopyButton';
+import { SpeechButton } from '@/client/components/workspace/chat-timeline/SpeechButton';
+import { AiMessageFooterSheet } from '@/client/components/workspace/chat-timeline/AiMessageFooterSheet';
 import { RunMark } from '@/client/components/workspace/chat-timeline/RunMark';
 import { PluginMessageActions } from '@/client/components/workspace/chat-timeline/PluginMessageActions';
 import { formatDuration } from '@/shared/lib/chat/duration';
@@ -32,6 +34,12 @@ interface AiMessageFooterProps {
   harness?: string;
   content: string;
   msgId: string;
+  /**
+   * The run's stable id for playback. Separate from `msgId`, which Retry
+   * resolves to the opening USER row: the speaker button must follow the answer,
+   * not the prompt that opened it.
+   */
+  speechKey?: string;
   onRetry?: (msgId: string) => void;
   onNewChat?: (content: string) => void;
   /**
@@ -61,6 +69,7 @@ export function AiMessageFooter({
   usage,
   content,
   msgId,
+  speechKey,
   thinkingLevel,
   harness,
   onRetry,
@@ -74,6 +83,7 @@ export function AiMessageFooter({
   // A harness that cannot fork at an assistant row draws no Fork action: the
   // button would only ever answer "whole chat", which is the dropdown's job.
   const canFork = Boolean(onFork && forkTargetId) && canForkAt(harness, 'assistant');
+  const spokenKey = speechKey ?? msgId;
 
   const handleRetry = () => {
     setIsMenuOpen(false);
@@ -159,105 +169,38 @@ export function AiMessageFooter({
               </span>
             )}
           </div>
-          <button
-            type="button"
-            aria-label="More actions"
-            aria-haspopup="dialog"
-            aria-expanded={isMenuOpen}
-            title="More actions"
-            onClick={() => setIsMenuOpen(true)}
-            className={`ml-auto shrink-0 rounded-md p-2 transition-colors cursor-pointer ${isMenuOpen ? 'text-ink bg-ink/10' : 'text-ink/50 hover:bg-ink/5 hover:text-ink'}`}
-          >
-            <MoreHorizontal size={16} />
-          </button>
+          <div className="ml-auto flex shrink-0 items-center gap-1">
+            <SpeechButton text={content} speechKey={spokenKey} variant="mobile" />
+            <button
+              type="button"
+              aria-label="More actions"
+              aria-haspopup="dialog"
+              aria-expanded={isMenuOpen}
+              title="More actions"
+              onClick={() => setIsMenuOpen(true)}
+              className={`shrink-0 rounded-md p-2 transition-colors cursor-pointer ${isMenuOpen ? 'text-ink bg-ink/10' : 'text-ink/50 hover:bg-ink/5 hover:text-ink'}`}
+            >
+              <MoreHorizontal size={16} />
+            </button>
+          </div>
         </div>
 
         {isMenuOpen && (
-          <div
-            className="fixed inset-0 z-[70] flex items-end modal-scrim backdrop-blur-[1px] animate-in fade-in duration-150"
-            role="presentation"
-            onClick={() => setIsMenuOpen(false)}
-          >
-            <div
-              className="glass-overlay w-full max-h-[80vh] overflow-y-auto rounded-t-2xl border border-ink/15 bg-paper pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] shadow-2xl animate-in slide-in-from-bottom-4 duration-200"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby={`message-actions-${msgId}`}
-              onClick={(event) => event.stopPropagation()}
-            >
-              <div className="flex items-center justify-between border-b border-ink/10 px-5 py-4">
-                <h2 id={`message-actions-${msgId}`} className="text-base font-semibold text-ink">More actions</h2>
-                <button
-                  type="button"
-                  aria-label="Close more actions"
-                  title="Close"
-                  onClick={() => setIsMenuOpen(false)}
-                  className="rounded-lg p-2 text-ink/50 transition-colors hover:bg-ink/5 hover:text-ink cursor-pointer"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-
-              {(dateStr || formattedDuration || tokensLabel) && (
-                <div className="flex flex-nowrap items-center gap-3 overflow-hidden whitespace-nowrap border-b border-ink/10 px-5 py-3 text-[11px] text-ink/70">
-                  {dateStr && (
-                    <span className="inline-flex min-w-0 items-center gap-1.5">
-                      <Clock3 size={13} className="shrink-0 text-ink/50" />
-                      <span className="truncate">{dateStr}</span>
-                    </span>
-                  )}
-                  {formattedDuration && (
-                    <span className="inline-flex shrink-0 items-center gap-1.5" title="Response time">
-                      <Hourglass size={13} className="shrink-0 text-ink/50" />
-                      <span>{formattedDuration}</span>
-                    </span>
-                  )}
-                  {tokensLabel && (
-                    <span className="inline-flex shrink-0 items-center gap-1.5" title={costLabel ? `${tokensLabel} (${costLabel})` : tokensLabel}>
-                      <Coins size={13} className="shrink-0 text-ink/50" />
-                      <span>{tokensLabel}</span>
-                    </span>
-                  )}
-                </div>
-              )}
-
-              <div className="p-2">
-                <CopyButton
-                  text={content}
-                  className="flex min-h-12 w-full items-center gap-3 rounded-lg px-3 text-left text-sm text-ink transition-colors hover:bg-ink/5 cursor-pointer"
-                  iconSize={20}
-                  iconClassName="shrink-0 text-ink/55"
-                  copiedIconClassName="shrink-0 text-success"
-                  label="Copy answer"
-                  wrapLabel
-                  ariaLabel="Copy answer"
-                  emptyTitle="Nothing to copy — this run produced no text"
-                  onClick={() => setIsMenuOpen(false)}
-                />
-                {showActions && (
-                  <>
-                    <button type="button" aria-label="Retry response" onClick={handleRetry} className="flex min-h-12 w-full items-center gap-3 rounded-lg px-3 text-left text-sm text-ink transition-colors hover:bg-ink/5 cursor-pointer">
-                      <RotateCcw size={20} className="shrink-0 text-ink/55" />
-                      <span>Retry response</span>
-                    </button>
-                    {canFork && (
-                      <button type="button" aria-label="Fork session from this answer" onClick={handleFork} className="flex min-h-12 w-full items-center gap-3 rounded-lg px-3 text-left text-sm text-ink transition-colors hover:bg-ink/5 cursor-pointer">
-                        <GitFork size={20} className="shrink-0 text-ink/55" />
-                        <span>Fork from this answer</span>
-                      </button>
-                    )}
-                    <button type="button" aria-label="Start new chat from this answer" onClick={handleNewChat} className="flex min-h-12 w-full items-center gap-3 rounded-lg px-3 text-left text-sm text-ink transition-colors hover:bg-ink/5 cursor-pointer">
-                      <MessageSquarePlus size={20} className="shrink-0 text-ink/55" />
-                      <span>Start new chat from this answer</span>
-                    </button>
-                  </>
-                )}
-                {/* Plugin contributions sit after the built-ins, in store order;
-                    an empty slot adds no row to this sheet. */}
-                <PluginMessageActions messageId={msgId} role="ai" text={content} />
-              </div>
-            </div>
-          </div>
+          <AiMessageFooterSheet
+            msgId={msgId}
+            content={content}
+            speechKey={spokenKey}
+            showActions={showActions}
+            canFork={canFork}
+            {...(dateStr ? { dateStr } : {})}
+            {...(formattedDuration ? { formattedDuration } : {})}
+            tokensLabel={tokensLabel}
+            costLabel={costLabel}
+            onRetry={handleRetry}
+            onFork={handleFork}
+            onNewChat={handleNewChat}
+            onClose={() => setIsMenuOpen(false)}
+          />
         )}
       </>
     );
@@ -292,6 +235,7 @@ export function AiMessageFooter({
           ariaLabel="Copy response"
           emptyTitle="Nothing to copy — this run produced no text"
         />
+        <SpeechButton text={content} speechKey={spokenKey} variant="desktop" />
         {showActions && canFork && (
           <button type="button" className="flex items-center hover:text-ink transition-colors p-1 rounded hover:bg-ink/5 cursor-pointer" title="Fork from here" aria-label="Fork session from this answer" onClick={handleFork}>
             <GitFork size={12} />

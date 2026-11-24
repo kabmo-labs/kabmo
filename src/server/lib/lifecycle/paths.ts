@@ -117,6 +117,17 @@ export function getDictationSecretPath(): string {
   return path.join(getDataDir(), 'dictation.json');
 }
 
+/**
+ * `<data>/tts.json` — the speech engines' API keys, one per hosted engine.
+ *
+ * Same rule as `dictation.json`: the settings blob ships to the browser, so a
+ * credential cannot live there. A map rather than one key because a user may
+ * keep keys for several engines and switch between them. Written 0600.
+ */
+export function getTtsSecretPath(): string {
+  return path.join(getDataDir(), 'tts.json');
+}
+
 /** `<data>/run/<port>.lock` — held only while a port handover is in progress. */
 export function getLockPath(port: number | string): string {
   return path.join(getRunDir(), `${port}.lock`);
