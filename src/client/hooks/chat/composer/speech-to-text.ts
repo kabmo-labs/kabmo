@@ -17,18 +17,16 @@
  * answer here and both otherwise produce text nobody said: a recording shorter
  * than `minMs`, and one whose level never rises above the silence floor (a
  * ~100 ms tap is the classic input for a Whisper "Thank you." hallucination).
- *
- * Capture uses `AudioContext` + `ScriptProcessorNode`. The node is deprecated in
- * favour of `AudioWorklet`, but it is the only capture path shipped by every
- * target browser (Safari included) without serving a separate worklet module;
- * `MediaRecorder` is not an option because it emits Opus/WebM, which not every
- * engine accepts.
+ * A third refusal names a dead capture — every sample exactly zero — because
+ * that is a microphone that never delivered, not a user who spoke softly; the
+ * device side of it, including the macOS constraints that keep the capture
+ * alive, is `capture.ts`.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
+import { openCapture, type DictationCapture } from '@/client/hooks/chat/composer/capture';
 import { concatSamples, float32ToPcm16 } from '@/shared/lib/dictation/audio';
-import { describeCaptureFailure } from '@/shared/lib/dictation/capture-failure';
-import { isSilent, utteranceMs } from '@/shared/lib/dictation/gate';
+import { DICTATION_NO_AUDIO, isDeadCapture, isSilent, utteranceMs } from '@/shared/lib/dictation/gate';
 import {
   DICTATION_SAMPLE_RATE,
   decodeDictationServerFrame,
@@ -58,6 +56,9 @@ export interface UseSpeechToTextReturn {
   error: string | null;
 }
 
+/** A pending timer; the handle differs between the DOM and Bun typings. */
+type CaptureTimer = ReturnType<typeof setTimeout>;
+
 /** The socket path for this config: engine, language and model, no audio. */
 export function dictationRequestFor(config: DictationConfig): DictationRequest {
   return {
@@ -78,14 +79,9 @@ export function useSpeechToText({ onResult, config }: UseSpeechToTextOptions): U
   const [progressText, setProgressText] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const streamRef = useRef<MediaStream | null>(null);
-  const contextRef = useRef<AudioContext | null>(null);
-  const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
-  const processorRef = useRef<ScriptProcessorNode | null>(null);
-  const chunksRef = useRef<Float32Array[]>([]);
-  const inputRateRef = useRef(DICTATION_SAMPLE_RATE);
+  const captureRef = useRef<DictationCapture | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
-  const autoStopRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const autoStopRef = useRef<CaptureTimer | undefined>(undefined);
   /** Set by `stopListening` below; the auto-stop timer needs a stable seam. */
   const stopListeningRef = useRef<(() => void) | null>(null);
 
@@ -96,17 +92,9 @@ export function useSpeechToText({ onResult, config }: UseSpeechToTextOptions): U
   const releaseCapture = useCallback((): Float32Array[] => {
     clearTimeout(autoStopRef.current);
     autoStopRef.current = undefined;
-    processorRef.current?.disconnect();
-    processorRef.current = null;
-    sourceRef.current?.disconnect();
-    sourceRef.current = null;
-    void contextRef.current?.close().catch(() => {});
-    contextRef.current = null;
-    for (const track of streamRef.current?.getTracks() ?? []) track.stop();
-    streamRef.current = null;
-    const chunks = chunksRef.current;
-    chunksRef.current = [];
-    return chunks;
+    const capture = captureRef.current;
+    captureRef.current = null;
+    return capture?.release() ?? [];
   }, []);
 
   const fail = useCallback(
@@ -123,13 +111,19 @@ export function useSpeechToText({ onResult, config }: UseSpeechToTextOptions): U
   );
 
   const send = useCallback(
-    (chunks: Float32Array[]) => {
+    (chunks: Float32Array[], inputRate: number) => {
       const samples = concatSamples(chunks);
-      const pcm16 = float32ToPcm16(samples, inputRateRef.current, DICTATION_SAMPLE_RATE);
+      const pcm16 = float32ToPcm16(samples, inputRate, DICTATION_SAMPLE_RATE);
       const bytes = new Uint8Array(pcm16.buffer, pcm16.byteOffset, pcm16.byteLength);
 
       if (utteranceMs(bytes.byteLength) < config.minMs) {
         fail(`That was too short to transcribe (under ${config.minMs} ms).`);
+        return;
+      }
+      // Before the silence floor: bit-exact zeros are a capture that delivered
+      // nothing (a track WebKit ended, a muted device), not a quiet speaker.
+      if (isDeadCapture(bytes)) {
+        fail(DICTATION_NO_AUDIO);
         return;
       }
       if (isSilent(bytes)) {
@@ -195,53 +189,20 @@ export function useSpeechToText({ onResult, config }: UseSpeechToTextOptions): U
     if (!isSupported) return;
     setError(null);
     setProgressText(null);
-    chunksRef.current = [];
 
-    const deviceId = config.deviceId.trim();
-    navigator.mediaDevices
-      .getUserMedia({
-        audio: {
-          ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
-          // Speech capture: the three processors are what makes a laptop mic
-          // usable in a room, and every target browser supports them.
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
-      })
-      .then((stream) => {
-        streamRef.current = stream;
-        try {
-          const context = new AudioContext({ sampleRate: DICTATION_SAMPLE_RATE });
-          contextRef.current = context;
-          inputRateRef.current = context.sampleRate;
+    void openCapture(config.deviceId, fail, { onDead: () => fail(DICTATION_NO_AUDIO) }).then(
+      (capture) => {
+        if (!capture) return;
+        captureRef.current = capture;
+        setIsListening(true);
 
-          const source = context.createMediaStreamSource(stream);
-          sourceRef.current = source;
-          const processor = context.createScriptProcessor(4096, 1, 1);
-          processorRef.current = processor;
-          processor.onaudioprocess = (event) => {
-            chunksRef.current.push(new Float32Array(event.inputBuffer.getChannelData(0)));
-          };
-          source.connect(processor);
-          processor.connect(context.destination);
-          setIsListening(true);
-
-          // A recording nobody stops would grow until the browser kills it.
-          autoStopRef.current = setTimeout(() => {
-            autoStopRef.current = undefined;
-            stopListeningRef.current?.();
-          }, config.maxMs);
-        } catch {
-          // The microphone IS open at this point, so the failure is the audio
-          // graph, not the permission — and the stream has to be released or
-          // the OS keeps showing the microphone in use.
-          fail('Could not start audio capture.');
-        }
-      })
-      .catch((cause: unknown) => {
-        setError(describeCaptureFailure(cause));
-      });
+        // A recording nobody stops would grow until the browser kills it.
+        autoStopRef.current = setTimeout(() => {
+          autoStopRef.current = undefined;
+          stopListeningRef.current?.();
+        }, config.maxMs);
+      },
+    );
   }, [config.deviceId, config.maxMs, fail, isSupported]);
 
   // The auto-stop timer is armed inside `startListening`, which must not depend
@@ -249,10 +210,23 @@ export function useSpeechToText({ onResult, config }: UseSpeechToTextOptions): U
   // restart the timer). One ref is the seam.
   const stopListening = useCallback(() => {
     setIsListening(false);
-    const chunks = releaseCapture();
-    if (chunks.length === 0) return;
-    send(chunks);
-  }, [releaseCapture, send]);
+    const capture = captureRef.current;
+    captureRef.current = null;
+    clearTimeout(autoStopRef.current);
+    autoStopRef.current = undefined;
+    if (!capture) return;
+    const inputRate = capture.inputRate();
+    const chunks = capture.release();
+    // No callback ran at all, so the recording ended inside the first 85 ms
+    // buffer — necessarily under `minMs`. A dead capture is NOT this case: it
+    // still runs callbacks (measured 11 in 1.2 s) and is refused by the gate in
+    // `send`, so this cannot mask it.
+    if (chunks.length === 0) {
+      fail(`That was too short to transcribe (under ${config.minMs} ms).`);
+      return;
+    }
+    send(chunks, inputRate);
+  }, [config.minMs, fail, send]);
 
   useEffect(() => {
     stopListeningRef.current = stopListening;

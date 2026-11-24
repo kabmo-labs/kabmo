@@ -27,7 +27,7 @@ import { localDictationCapability } from '@/server/lib/dictation/capability.serv
 import { readOmpSttLanguage } from '@/server/lib/dictation/language.server';
 import { transcribeWithEngine } from '@/server/lib/dictation/engines';
 import { DictationEngineError } from '@/server/lib/dictation/engines/adapter';
-import { isSilent, utteranceMs } from '@/shared/lib/dictation/gate';
+import { DICTATION_NO_AUDIO, isDeadCapture, isSilent, utteranceMs } from '@/shared/lib/dictation/gate';
 import { summarizeProgress, type SttProgressSummary } from '@/shared/lib/dictation/models';
 import {
   DICTATION_MAX_AUDIO_BYTES,
@@ -110,6 +110,13 @@ export const dictationWsRoutes = new Elysia({ prefix: '/api/dictation' }).ws('/w
         error: `That was too short to transcribe (under ${config.minMs} ms).`,
         retryable: true,
       });
+      return;
+    }
+    // Bit-exact zeros are a capture that delivered nothing, which is a different
+    // answer from "the room was quiet" — and the one that a WebKit capture unit
+    // that failed to start actually produces.
+    if (isDeadCapture(raw)) {
+      send({ type: 'error', error: DICTATION_NO_AUDIO, retryable: true });
       return;
     }
     if (isSilent(raw)) {

@@ -583,11 +583,16 @@ pins it.
   process. `kabmo-desktop-window-tests` therefore drives the shipped
   `ShellWindow` with a synthetic press and asserts the origin changes; the
   physical drag was checked by hand.
-- **The microphone path is wired, not recorded.** `ShellUIDelegate` grants the
-  capture request, the bundle carries `NSMicrophoneUsageDescription`, and the
-  window suite asserts the shipped delegate answers WebKit's selector — but no
-  case records audio: that needs a TCC grant and a user gesture the suite cannot
-  produce. The first real dictation on a Mac is the proof.
+- **The microphone path is wired AND measured, and the page must not ask for echo cancellation.** `ShellUIDelegate` grants the capture request and the bundle carries `NSMicrophoneUsageDescription`, but with both in place capture still failed on this machine: the composer reported "No speech was detected in that recording." Measured with a throwaway WKWebView probe on the same Mac (macOS 27 / arm64, default input `JeteMic M1` = CoreAudio 53), running the composer's own graph — `MediaStreamAudioSourceNode` → `ScriptProcessorNode` → gain 0 → destination — for 1.2 s per case:
+
+  | `echoCancellation` | context rate | callbacks | samples | RMS | peak | track |
+  |---|---|---|---|---|---|---|
+  | `true` | 48 kHz | 11 | 45 056 | **0** | **0** | **ended** |
+  | `false` | 48 kHz | 14 | 57 344 | 0.0060 | 0.027 | live |
+  | `false` | 16 kHz | 4 | 16 384 | 0.0060 | 0.024 | live |
+  | `true` | 16 kHz | 4 | 16 384 | **0** | **0** | **ended** |
+
+  A true value makes WebKit build a VoiceProcessingIO unit and bind the input to it; here that bind fails (`CoreAudioCaptureUnit::setupAudioUnit … unable to set capture unit capture device ID 53, error -10851`, -10851 = `kAudioUnitErr_InvalidPropertyValue`) and `BaseAudioCaptureUnit::captureFailed` ends the track, so the page sees a dead stream of zeros. TCC was granted at the same timestamp (`authValue=2, authReason=5`), which is why nothing about the symptom pointed at permissions. The page now asks for `echoCancellation: false` (`src/shared/lib/dictation/constraints.ts`), and a bit-exact-zero buffer is refused as "The microphone sent no audio" instead of being blamed on the speaker. `MediaCaptureWindowTests` still pins the delegate selector; a case cannot record audio, so this table is the record.
 - **The tray is the server's, not the shell's.** `kabmo serve --tray` still works
   and raises its own icon, but the shell deliberately does not pass `--tray` —
   one app, one icon.

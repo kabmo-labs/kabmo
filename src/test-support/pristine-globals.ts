@@ -42,6 +42,11 @@ export const DOM_TEST_GLOBALS = [
   // while every other component rendered. Listed here they are installed from
   // the window under test and put back with the rest.
   'requestAnimationFrame', 'cancelAnimationFrame',
+  // `location` is read as a BARE global by code that builds an origin-relative
+  // URL — dictation's socket (`dictationUrl`) is the one that failed here with
+  // `ReferenceError: location is not defined` under `bun test`, because the
+  // runner defines no `location` and a mounted hook therefore had no origin.
+  'location',
   // The three DOM data classes, because a suite that swaps `window` usually needs them and
   // a LOCAL save-and-restore loop is how they leaked: `editor/save-as.test.ts` installed
   // happy-dom's `File`/`Blob` and never put them back, so a later file's `carriesBytes` read

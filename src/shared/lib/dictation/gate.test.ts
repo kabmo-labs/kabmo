@@ -17,6 +17,7 @@ import { describe, expect, test } from 'bun:test';
 import {
   DICTATION_MIN_MS,
   DICTATION_SILENCE_FLOOR,
+  isDeadCapture,
   isSilent,
   utteranceMs,
 } from '@/shared/lib/dictation/gate';
@@ -48,6 +49,39 @@ describe('utteranceMs', () => {
 
   test('an odd byte length still measures the whole samples', () => {
     expect(utteranceMs(32_001)).toBe(1000);
+  });
+});
+
+describe('isDeadCapture', () => {
+  test('an all-zero buffer is a dead capture', () => {
+    expect(isDeadCapture(new Uint8Array(6400))).toBe(true);
+  });
+
+  test('an empty buffer is a dead capture', () => {
+    expect(isDeadCapture(new Uint8Array(0))).toBe(true);
+  });
+
+  test('room noise is NOT dead — a live microphone always carries dither', () => {
+    // The measured silent-room floor (RMS ~0.0009). A capture that works is
+    // quiet, never bit-exact zero, which is why this stays distinct from
+    // `isSilent`.
+    expect(isDeadCapture(tone(0.0009))).toBe(false);
+  });
+
+  test('speech is not a dead capture', () => {
+    expect(isDeadCapture(tone(0.2))).toBe(false);
+  });
+
+  test('one non-zero sample is enough to clear it', () => {
+    const bytes = new Uint8Array(6400);
+    new DataView(bytes.buffer).setInt16(3200, 1, true);
+    expect(isDeadCapture(bytes)).toBe(false);
+  });
+
+  test('an unaligned view is read, not assumed aligned', () => {
+    const bytes = new Uint8Array(6401);
+    new DataView(bytes.buffer).setInt16(3201, 900, true);
+    expect(isDeadCapture(bytes.subarray(1))).toBe(false);
   });
 });
 
