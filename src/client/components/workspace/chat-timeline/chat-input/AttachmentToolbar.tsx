@@ -34,6 +34,12 @@ interface AttachmentToolbarProps {
   compact?: boolean;
   onExpandComposer?: () => void;
   /**
+   * The composer is narrower than its label width (`useComposerNarrow`), so the
+   * chips mounted here — Plan/Goal and the wait pick — keep their glyphs only.
+   * Same flag that moved those toggles into this row.
+   */
+  iconOnly?: boolean;
+  /**
    * "Wait for session" for the NEXT prompt, at the row's trailing edge just
    * before the stretch control — the same control the draft row shows on a chat
    * that has not started. Hidden while there is nothing to wait for and no pick
@@ -47,7 +53,7 @@ interface AttachmentToolbarProps {
   };
 }
 
-export function AttachmentToolbar({ attachments, onFilesSelected, onRemove, modes, onOpenGoal, expanded, onToggleExpand, compact = false, onExpandComposer, waiting }: AttachmentToolbarProps) {
+export function AttachmentToolbar({ attachments, onFilesSelected, onRemove, modes, onOpenGoal, expanded, onToggleExpand, compact = false, onExpandComposer, iconOnly = false, waiting }: AttachmentToolbarProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const showWaiting = Boolean(waiting && (waiting.value || waiting.candidates.length > 0));
   // The mode toggles take the row's trailing edge when they are here; otherwise
@@ -147,6 +153,7 @@ export function AttachmentToolbar({ attachments, onFilesSelected, onRemove, mode
               goalAvailable={modes.goalAvailable}
               mode={modes.sessionMode ?? null}
               onSelectMode={modes.onSelectSessionMode}
+              iconOnly={iconOnly}
             />
           </div>
         )}
@@ -162,7 +169,7 @@ export function AttachmentToolbar({ attachments, onFilesSelected, onRemove, mode
               candidates={waiting.candidates}
               value={waiting.value}
               onChange={waiting.onChange}
-              compactLabel
+              iconOnly={iconOnly}
             />
           </div>
         )}

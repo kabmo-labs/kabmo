@@ -11,13 +11,21 @@
  * it (a bare `<svg onClick>` is unreachable by keyboard and unreadable to a
  * screen reader — the rule the editor and diff toolbars already follow).
  *
- * ## Why the strip is a container query
+ * ## Why the strip drops its labels on a measured width
  *
  * The composer sits in a chat panel that can be 320px wide on a 1440px screen,
  * so viewport breakpoints are the wrong axis: `sm:` would keep every label on
- * and overflow the panel. Each button therefore hides its LABEL below
- * `@[420px]` and keeps the icon, which is what the diff toolbar learned when a
- * 361px action strip overflowed a 296px box with no scrollbar to say so.
+ * and overflow the panel. Each button therefore drops its LABEL and keeps the
+ * icon when the card is narrower than `COMPOSER_NARROW_MAX_WIDTH_PX`
+ * (`useComposerNarrow`), which is what the diff toolbar learned when a 361px
+ * action strip overflowed a 296px box with no scrollbar to say so.
+ *
+ * The verdict is a PROP, not a container query, because the same measurement
+ * decides WHICH ROW hosts these two buttons: below the threshold the composer
+ * renders them in the attachment row (a wrapping row) instead of the toolbar,
+ * and CSS cannot move a control between rows. One flag, one threshold — a
+ * `@[420px]` copy beside it is how the labels came on at a width where the row
+ * had no room for them.
  *
  * ## Why Goal opens a modal
  *
@@ -55,6 +63,8 @@ export interface ModeTogglesProps {
    *  dropdown replaces the Plan button, so plan is still reachable. */
   mode?: SessionModeState | null;
   onSelectMode?: (value: string) => void;
+  /** Too narrow for labels: glyph-only buttons (see `useComposerNarrow`). */
+  iconOnly?: boolean;
 }
 
 /** omp's own footer shows goal token usage beside the mode indicator; that
@@ -81,6 +91,7 @@ export function ModeToggles({
   goalAvailable,
   mode,
   onSelectMode,
+  iconOnly = false,
 }: ModeTogglesProps) {
   // More than one mode: the dropdown can express every value, including plan,
   // so the single-purpose Plan button would be a second control for one item.
@@ -88,7 +99,7 @@ export function ModeToggles({
   return (
     <div className="flex items-center gap-0.5">
       {hasModeMenu && mode && onSelectMode && (
-        <SessionModeDropdown mode={mode} pending={pending} onSelect={onSelectMode} />
+        <SessionModeDropdown mode={mode} pending={pending} onSelect={onSelectMode} iconOnly={iconOnly} />
       )}
       {!hasModeMenu && planAvailable && (
         <button
@@ -102,7 +113,7 @@ export function ModeToggles({
           } ${pending ? 'opacity-60' : ''}`}
         >
           <ClipboardList size={12} className={plan ? '' : 'text-ink/60'} />
-          <span className="hidden @[420px]:inline">Plan</span>
+          {!iconOnly && <span className="whitespace-nowrap">Plan</span>}
         </button>
       )}
 
@@ -121,7 +132,7 @@ export function ModeToggles({
         } ${pending ? 'opacity-60' : ''}`}
       >
         <Target size={12} className={goal ? '' : 'text-ink/60'} />
-        <span className="hidden @[420px]:inline">Goal</span>
+        {!iconOnly && <span className="whitespace-nowrap">Goal</span>}
       </button>
       )}
     </div>

@@ -14,9 +14,16 @@ export interface AccessDropdownProps {
    * instead of gating the tools itself — so the copy follows the harness.
    */
   harness?: string;
+  /**
+   * The composer is too narrow for labels (see `useComposerNarrow`), so the
+   * chip keeps its lock glyph and drops its words. A flag rather than a
+   * container query: the same verdict decides which ROW hosts Plan/Goal, and a
+   * second mechanism for one fact is how the chip and its neighbour disagreed.
+   */
+  iconOnly?: boolean;
 }
 
-export function AccessDropdown({ value, onSelect, harness }: AccessDropdownProps) {
+export function AccessDropdown({ value, onSelect, harness, iconOnly = false }: AccessDropdownProps) {
   const [showAccess, setShowAccess] = useState(false);
   const accessRef = useRef<HTMLDivElement>(null);
   useOnClickOutside(accessRef, () => setShowAccess(false));
@@ -36,13 +43,11 @@ export function AccessDropdown({ value, onSelect, harness }: AccessDropdownProps
         className="tap-chip flex items-center space-x-1 hover:bg-ink/5 px-2 py-1 rounded transition-colors text-xs text-muted"
       >
         <LockKeyhole size={12} className="text-ink/60" />
-        {/* A CONTAINER query, not `lg:`: the composer lives in a chat column
-            that can be 320px on a 1440px window (measured: 400px chat beside
-            the editor and the right panel), and `lg:` read the WINDOW, so the
-            label stayed on and wrapped the chip to two lines inside a 366px
-            card. `Toolbar`'s row is the `@container`; `ModeToggles` states the
-            same 420px. */}
-        <span className="hidden @[420px]:inline whitespace-nowrap">{copy.labels[value]}</span>
+        {/* The label is dropped whole below the composer's label width — never
+            clipped to a letter and never allowed to wrap: `whitespace-nowrap`
+            is what kept `Always ask` off two lines, and the flag is what keeps
+            the row from being squeezed into overlap. */}
+        {!iconOnly && <span className="whitespace-nowrap">{copy.labels[value]}</span>}
       </button>
       {showAccess && (
         <div className={`glass-popover absolute bottom-full left-0 mb-1 ${copy.note ? 'w-56' : 'w-40'} bg-paper border border-ink/20 rounded-md shadow-lg z-50 py-1 text-xs`}>

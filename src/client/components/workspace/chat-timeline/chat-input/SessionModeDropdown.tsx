@@ -26,9 +26,11 @@ export interface SessionModeDropdownProps {
   /** A mode command is in flight; the chip reads as pending, not dead. */
   pending: boolean;
   onSelect: (value: string) => void;
+  /** Too narrow for labels: the layers glyph alone (see `useComposerNarrow`). */
+  iconOnly?: boolean;
 }
 
-export function SessionModeDropdown({ mode, pending, onSelect }: SessionModeDropdownProps) {
+export function SessionModeDropdown({ mode, pending, onSelect, iconOnly = false }: SessionModeDropdownProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useOnClickOutside(ref, () => setOpen(false));
@@ -53,7 +55,7 @@ export function SessionModeDropdown({ mode, pending, onSelect }: SessionModeDrop
         className="tap-chip flex items-center space-x-1 hover:bg-ink/5 px-2 py-1 rounded transition-colors text-xs text-muted disabled:opacity-60 disabled:cursor-wait"
       >
         <Layers size={12} className="text-ink/60" />
-        <span className="hidden @[420px]:inline max-w-[9rem] truncate">{label}</span>
+        {!iconOnly && <span className="max-w-[9rem] truncate">{label}</span>}
       </button>
       {open && (
         <div

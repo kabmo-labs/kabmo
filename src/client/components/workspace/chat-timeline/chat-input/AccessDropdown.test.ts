@@ -33,11 +33,19 @@ afterEach(() => {
 
 afterAll(() => restoreDomGlobals());
 
-async function open(harness?: string): Promise<HTMLElement> {
+async function open(harness?: string, iconOnly?: boolean): Promise<HTMLElement> {
   container = document.createElement('div');
   document.body.appendChild(container);
   await act(async () => {
-    render(h(AccessDropdown, { value: 'always-ask', onSelect: () => {}, ...(harness ? { harness } : {}) }), container!);
+    render(
+      h(AccessDropdown, {
+        value: 'always-ask',
+        onSelect: () => {},
+        ...(harness ? { harness } : {}),
+        ...(iconOnly ? { iconOnly } : {}),
+      }),
+      container!,
+    );
   });
   const trigger = container.querySelector('button') as HTMLButtonElement;
   await act(async () => { trigger.click(); });
@@ -46,22 +54,30 @@ async function open(harness?: string): Promise<HTMLElement> {
 
 describe('AccessDropdown label', () => {
   /**
-   * The chip's label is hidden by the COMPOSER's width, not the window's.
+   * The chip's label follows the COMPOSER's measured width, never the window's.
    *
    * `hidden lg:inline` read the viewport, so a 1440px window kept the label on
    * inside a 366px card (the chat column beside the editor and the right panel)
    * and wrapped the chip to two lines — measured, `Always ask` at h=40 against
-   * the row's 24px controls. `Toolbar`'s row is the `@container`, so the class
-   * has to be a container query.
+   * the row's 24px controls. The `@[420px]` container query that replaced it
+   * turned the label on at a width where the row still had no room, so the flag
+   * comes from `useComposerNarrow` — the same verdict that decides whether
+   * Plan/Goal render in this row at all.
    */
-  test('the label folds on the COMPOSER width, never a viewport breakpoint', async () => {
+  test('drops its words when the composer is too narrow for labels', async () => {
+    const el = await open('omp-rpc', true);
+    // The OPEN list still names every tier; only the trigger drops its label.
+    const trigger = el.querySelector('button') as HTMLButtonElement;
+    expect(trigger.textContent).not.toContain('Always ask');
+    expect(trigger.querySelector('span')).toBeNull();
+  });
+
+  test('keeps a single line of words while there is room', async () => {
     const el = await open('omp-rpc');
     const label = [...el.querySelectorAll('span')].find((span) => span.textContent === 'Always ask');
     expect(label).toBeDefined();
-    const classes = label?.className ?? '';
-    expect(classes).toContain('hidden');
-    expect(classes).toContain('@[420px]:inline');
-    expect(classes).not.toMatch(/(^|\s)(sm|md|lg|xl):/);
+    expect(label?.className).toContain('whitespace-nowrap');
+    expect(label?.className).not.toMatch(/(^|\s)(sm|md|lg|xl):/);
   });
 });
 

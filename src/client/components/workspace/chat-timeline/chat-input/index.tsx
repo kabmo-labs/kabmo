@@ -19,6 +19,7 @@ import { readKabmoSetting } from '@/shared/lib/settings/client';
 import { useKeyboardInset } from '@/client/hooks/ui/keyboard-inset';
 import { composerExpansion } from '@/client/components/workspace/chat-timeline/chat-input/expansion';
 import { useComposerCompact } from '@/client/hooks/chat/composer/compact';
+import { useComposerNarrow } from '@/client/hooks/chat/composer/narrow';
 import { useComposerStyle } from '@/client/hooks/chat/composer/style';
 import { composerStyleLayout } from '@/shared/lib/chat/composer/style';
 import type { ChatInputProps } from '@/client/components/workspace/chat-timeline/chat-input/props';
@@ -153,7 +154,13 @@ export function ChatInput({
     sessionId: sessionId ?? null,
   });
 
-  const isMobile = variant === 'mobile';
+  const shellMobile = variant === 'mobile';
+  // The CARD's width decides the toolbar arrangement: a desktop column dragged
+  // down to a third of the window has no room for chip labels (measured at a
+  // 521px card: `kenari` painted over the thinking chip), so below
+  // `COMPOSER_NARROW_MAX_WIDTH_PX` the composer takes the phone's arrangement.
+  const narrow = useComposerNarrow(cardRef);
+  const isMobile = shellMobile || narrow;
 
   // The soft keyboard's overlap with the viewport. Measured ONLY while
   // stretched: that is the one state where the card is bottom-anchored to the
@@ -163,7 +170,10 @@ export function ChatInput({
   const keyboardInset = useKeyboardInset(cardRef, expandable && expanded);
   const { compact, reopen, onCardPointerDown } = useComposerCompact({
     cardRef,
-    isMobile,
+    // The COMPACT state (the textarea removed to give a phone's transcript its
+    // height back) belongs to the shell, not to the width: a narrow desktop
+    // panel still docks beside a transcript it never covers.
+    isMobile: shellMobile,
     shrinkWhileReading,
     composerFocused,
     setComposerFocused,

@@ -41,8 +41,8 @@ export interface WaitingDependencyPickerProps {
   candidates: WaitingCandidate[];
   value: WaitingCandidate | null;
   onChange: (candidate: WaitingCandidate | null) => void;
-  /** Toolbar mount: the label collapses on a narrow composer. */
-  compactLabel?: boolean;
+  /** Too narrow for labels: the hourglass alone (see `useComposerNarrow`). */
+  iconOnly?: boolean;
 }
 
 /**
@@ -88,7 +88,7 @@ export function WaitingDependencyPicker({
   candidates,
   value,
   onChange,
-  compactLabel = false,
+  iconOnly = false,
 }: WaitingDependencyPickerProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -136,9 +136,11 @@ export function WaitingDependencyPicker({
         }`}
       >
         <Hourglass size={13} className={`flex-shrink-0 ${value ? 'text-ink/80' : 'text-ink/50 group-hover:text-ink/80'}`} />
-        <span className={`max-w-[200px] truncate tracking-tight ${compactLabel ? 'hidden @[520px]:inline' : ''}`}>
-          {value ? `Wait for ${value.title}` : 'Wait for session'}
-        </span>
+        {!iconOnly && (
+          <span className="max-w-[200px] truncate tracking-tight">
+            {value ? `Wait for ${value.title}` : 'Wait for session'}
+          </span>
+        )}
         <ChevronDown
           size={13}
           className={`flex-shrink-0 text-ink/40 transition-transform duration-150 ${open ? 'rotate-180 text-ink/70' : ''}`}

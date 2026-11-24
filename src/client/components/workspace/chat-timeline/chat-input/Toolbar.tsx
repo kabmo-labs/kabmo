@@ -91,10 +91,14 @@ const ACTION_BASE =
  * Bottom config row of the composer: model + thinking + access + plan/goal
  * selectors on the left, Stop/Send on the right.
  *
- * The row is a CONTAINER (`@container`), not a viewport breakpoint: it lives in
- * a chat panel that can be 320px wide on a 1440px screen, so `sm:` would keep
- * every label on and overflow the panel. Each control hides its label below
- * `@[420px]` and keeps its icon.
+ * `isMobile` here is the CARD's verdict, not the shell's: `ChatInput` reports
+ * the phone arrangement for a desktop column narrower than
+ * `COMPOSER_NARROW_MAX_WIDTH_PX` too (`useComposerNarrow`), which is why this
+ * row states the phone's geometry and icon-only chips when the panel is
+ * squeezed. The labels used to hang off a `@[420px]` container query, so they
+ * came on at a width where the row had no room for them — measured at a 521px
+ * card: the model chip squeezed to 41px and painted `kenari` over the thinking
+ * chip beside it.
  *
  * Stop never displaces Send on mobile: a touch keyboard has no Enter-to-send
  * (see ComposerTextarea `variant`), so hiding Send mid-run would leave no way to
@@ -147,7 +151,7 @@ export function ComposerToolbar({
       // footer read as a second, heavier bar under the draft. A 32px target
       // still clears the 28px minimum for a touch control while bringing the
       // row to 44px — the same height as the compact textarea above it.
-      className="composer-toolbar-row @container flex items-center justify-between rounded-b-[inherit] px-3 py-1.5"
+      className="composer-toolbar-row flex items-center justify-between rounded-b-[inherit] px-3 py-1.5"
     >
       <div className={`flex items-center min-w-0 ${isMobile ? 'space-x-1' : 'space-x-2'}`}>
         {showModel && (
@@ -170,19 +174,20 @@ export function ComposerToolbar({
             thinkingLevels={thinkingLevels}
             currentThinking={currentThinking}
             onSelect={onSelectThinking}
+            iconOnly={isMobile}
           />
         )}
 
         {(showModel || showThinking) && showAccess && <div className="w-[1px] h-3 bg-ink/10" />}
 
         {showAccess && onSelectAccess && (
-          <AccessDropdown value={accessMode} onSelect={onSelectAccess} harness={harness} />
+          <AccessDropdown value={accessMode} onSelect={onSelectAccess} harness={harness} iconOnly={isMobile} />
         )}
 
-        {/* On a phone the mode toggles live in the row above (the attachment
-            row), because this one is a single line already filled by the
-            model/thinking/access cluster plus voice+send: a third group here
-            pushed voice under the model label. On desktop there is room. */}
+        {/* On a narrow composer the mode toggles live in the row above (the
+            attachment row), because this one is a single line already filled by
+            the model/thinking/access cluster plus voice+send: a third group here
+            pushed voice under the model label. On a wide desktop there is room. */}
         {!isMobile && showAccess && modes && onOpenGoal && (
           <>
             <div className="w-[1px] h-3 bg-ink/10" />

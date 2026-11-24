@@ -120,6 +120,9 @@ export function composerRows({
         onToggleExpand={input.onToggleExpand}
         compact={input.compact}
         onExpandComposer={input.onExpandComposer}
+        // One verdict for the whole card: the same flag that put the mode
+        // toggles in this row also strips their labels.
+        iconOnly={input.isMobile}
         {...(input.waiting ? { waiting: input.waiting } : {})}
       />
     ),
