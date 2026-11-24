@@ -81,7 +81,10 @@ async function openPanelPlugins(page: import('@playwright/test').Page): Promise<
 
 /** Install one plugin through the pane's own form. */
 async function installFromUrl(page: import('@playwright/test').Page, url: string): Promise<void> {
-  const field = page.getByPlaceholder('https://github.com/you/my-panel.git');
+  // By the field's ACCESSIBLE name, not its placeholder: the copy names three
+  // accepted spellings and is rewritten with them, and a selector that only
+  // survives as long as the hint text does is not a selector for behaviour.
+  const field = page.getByRole('textbox', { name: 'Repository or plugin name' });
   await field.fill(url);
   const installed = page.waitForResponse(
     (response) => response.request().method() === 'POST' && new URL(response.url()).pathname === '/api/panels/install',

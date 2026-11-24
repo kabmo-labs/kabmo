@@ -70,7 +70,8 @@ export function InstallForm({ busy, onInstall, onClearError }: InstallFormProps)
             setUrl(e.currentTarget.value);
             setLocalError(null);
           }}
-          placeholder="owner/kabmo-plugins-my-panel, kanban, or https://…"
+          placeholder="owner/kabmo-plugins-my-panel, kanban, or https://..."
+          aria-label="Repository or plugin name"
           disabled={busy}
           className="flex-1 bg-paper border border-ink/15 rounded px-2.5 py-1.5 text-xs font-mono text-ink placeholder-ink/35 focus:outline-none focus:border-ink/40 disabled:opacity-50"
         />
