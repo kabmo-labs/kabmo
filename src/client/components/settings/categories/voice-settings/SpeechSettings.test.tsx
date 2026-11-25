@@ -229,7 +229,7 @@ describe('SpeechSettings', () => {
     expect(host.textContent).toContain('The ONNX speech runtime could not load.');
   });
 
-  test('an engine with no Indonesian voice says which engines do', () => {
+  test('an engine with no Indonesian voice names one that has, and Deepgram points at Flux', () => {
     stubServer();
     const omp = mount(() => {}, { engine: 'omp' });
     expect(omp.textContent).toContain('local voices are English');
@@ -237,6 +237,6 @@ describe('SpeechSettings', () => {
     omp.remove();
 
     const deepgram = mount(() => {}, { engine: 'deepgram' });
-    expect(deepgram.textContent).toContain('no Indonesian voice');
+    expect(deepgram.textContent).toContain('flux-…-id');
   });
 });

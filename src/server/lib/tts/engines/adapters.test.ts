@@ -69,14 +69,23 @@ describe('request builders', () => {
       .not.toHaveProperty('language_code');
   });
 
-  test('Deepgram pins encoding and container, which its defaults get wrong together', () => {
-    const url = new URL(deepgramUrl('https://api.deepgram.com', 'aura-2-thalia-en', 1));
-    expect(url.pathname).toBe('/v1/speak');
-    expect(url.searchParams.get('model')).toBe('aura-2-thalia-en');
-    expect(url.searchParams.get('encoding')).toBe('mp3');
-    expect(url.searchParams.get('container')).toBe('none');
-    expect(url.searchParams.has('speed')).toBe(false);
-    expect(new URL(deepgramUrl('https://api.deepgram.com', 'm', 1.2)).searchParams.get('speed')).toBe('1.2');
+  test('Deepgram routes Aura to /v1 and Flux to /v2, and names no container', () => {
+    const aura = new URL(deepgramUrl('https://api.deepgram.com', 'aura-2-thalia-en', 1));
+    expect(aura.pathname).toBe('/v1/speak');
+    expect(aura.searchParams.get('model')).toBe('aura-2-thalia-en');
+    expect(aura.searchParams.get('encoding')).toBe('mp3');
+    expect(aura.searchParams.has('container')).toBe(false);
+    expect(aura.searchParams.has('speed')).toBe(false);
+    // Aura takes any decimal inside its range.
+    expect(new URL(deepgramUrl('https://api.deepgram.com', 'aura-2-thalia-en', 1.33)).searchParams.get('speed'))
+      .toBe('1.33');
+
+    const flux = new URL(deepgramUrl('https://api.deepgram.com/', 'flux-dewi-id', 1.33));
+    expect(flux.pathname).toBe('/v2/speak');
+    expect(flux.searchParams.get('encoding')).toBe('mp3');
+    expect(flux.searchParams.has('container')).toBe(false);
+    // Flux refuses a speed that is not a 0.05 step.
+    expect(flux.searchParams.get('speed')).toBe('1.35');
   });
 
   test('xAI always carries a language, defaulting to auto', () => {

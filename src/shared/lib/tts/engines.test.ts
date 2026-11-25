@@ -53,6 +53,21 @@ describe('TTS_ENGINES', () => {
     expect(ttsEngine('omp').language).toBe('none');
   });
 
+  test('Deepgram offers Flux voices whose id carries the language', () => {
+    const ids = ttsEngine('deepgram').models.map((model) => model.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids).toContain('flux-dewi-id');
+    for (const id of ids.filter((entry) => entry.startsWith('flux-'))) {
+      expect(id).toMatch(/^flux-[a-z]+-[a-z]{2}$/);
+    }
+  });
+
+  test('Deepgram speed is the range both endpoints accept', () => {
+    // Measured: Aura refuses 0.5 and 1.55; Flux refuses the same edges.
+    expect(clampTtsSpeed('deepgram', 2)).toBe(1.5);
+    expect(clampTtsSpeed('deepgram', 0.1)).toBe(0.7);
+  });
+
   test('the ONNX engine is a machine-local engine with a real speed range', () => {
     expect(ttsEngine('local').where).toContain('never leaves this machine');
     expect(ttsEngine('local').needsKey).toBe(false);

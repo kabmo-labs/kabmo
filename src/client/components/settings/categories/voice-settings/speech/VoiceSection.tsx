@@ -62,17 +62,7 @@ export function SpeechVoiceSection({ config, localModels, onPatch }: SpeechVoice
           <span className="block text-[11px] font-medium text-ink/70">
             {modelIsVoice ? 'Voice model' : 'Model'}
           </span>
-          {modelIsVoice ? (
-            <select
-              value={config.model || spec.defaultModel}
-              onChange={(event) => onPatch({ model: event.currentTarget.value })}
-              className={INPUT_CLASS}
-            >
-              {spec.models.map((model) => (
-                <option key={model.id} value={model.id}>{model.label}</option>
-              ))}
-            </select>
-          ) : local ? (
+          {local ? (
             <select
               value={config.model || localModel?.id || ''}
               onChange={(event) => {
@@ -105,7 +95,9 @@ export function SpeechVoiceSection({ config, localModels, onPatch }: SpeechVoice
             </>
           )}
           {modelIsVoice && (
-            <span className="block text-[10px] text-ink/50">Deepgram's model id is its voice.</span>
+            <span className="block text-[10px] text-ink/50">
+              Deepgram's model id is its voice; its last segment is the language.
+            </span>
           )}
           {local && (
             <span className="block text-[10px] text-ink/50">
@@ -235,7 +227,7 @@ export function SpeechVoiceSection({ config, localModels, onPatch }: SpeechVoice
         <p className="rounded-lg border border-ink/10 bg-ink/[0.03] px-3 py-2 text-[11px] leading-relaxed text-ink/70">
           {spec.id === 'omp'
             ? 'omp’s local voices are English. For Indonesian, pick ElevenLabs, Gemini, xAI, or an OpenAI-compatible server with an Indonesian voice.'
-            : 'Deepgram Aura has no Indonesian voice. Pick another engine for Indonesian.'}
+            : 'The voice’s id carries the language: pick a flux-…-id voice (Dewi, Fajar, Fitri, Rizky, Teguh) for Indonesian — Flux speaks 41 languages, Aura seven. Early-access languages have no text normalization, so write numbers and dates out in words.'}
         </p>
       )}
     </section>

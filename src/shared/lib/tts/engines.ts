@@ -73,7 +73,8 @@ export interface TtsEngineSpec {
    * - `instructions`: folded into the model's steering prompt (OpenAI's
    *   `gpt-4o-mini-tts`); engines without prompt steering ignore it.
    * - `auto`: no parameter; the model detects the answer's language (Gemini).
-   * - `none`: the engine has no language control (omp's local voices, Aura).
+   * - `none`: the engine has no language control (omp's local voices, and
+   *   Deepgram, whose model id carries the language).
    */
   language: 'required' | 'parameter' | 'instructions' | 'auto' | 'none';
   /** Where the provider documents the API, shown under the fields. */
@@ -169,8 +170,8 @@ export const TTS_ENGINES: readonly TtsEngineSpec[] = [
   },
   {
     id: 'deepgram',
-    label: 'Deepgram Aura',
-    where: 'Text is uploaded to api.deepgram.com.',
+    label: 'Deepgram',
+    where: 'Text is uploaded to api.deepgram.com. Aura and Flux voices are both offered.',
     needsKey: true,
     keyOptional: false,
     editableBaseUrl: false,
@@ -181,9 +182,13 @@ export const TTS_ENGINES: readonly TtsEngineSpec[] = [
     voices: [],
     voiceEditable: false,
     maxChars: 2000,
-    speed: { min: 0.5, max: 2 },
+    // The intersection of the two generations, measured: Aura refuses 0.5 and
+    // 1.55, Flux refuses 0.5 below and 1.55 above, and only Flux demands 0.05
+    // steps. The client must not offer a value either endpoint answers 400 to.
+    speed: { min: 0.7, max: 1.5 },
+    // The model id's language segment selects the language; there is no field.
     language: 'none',
-    docs: 'https://developers.deepgram.com/reference/text-to-speech/speak-request',
+    docs: 'https://developers.deepgram.com/docs/tts-models-languages-overview',
   },
   {
     id: 'xai',
