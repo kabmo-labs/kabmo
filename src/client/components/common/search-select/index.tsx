@@ -4,7 +4,7 @@
  */
 
 /**
- * A select whose list can be SEARCHED.
+ * A select whose list can be SEARCHED — the ONE picker in this app.
  *
  * A native `<select>` is the right control for five options and the wrong one for
  * two hundred: an agent that publishes 221 models (`omp (ACP)`, measured) turns
@@ -12,36 +12,40 @@
  * shape on macOS, Windows and a phone. This keeps the select ROLE and keyboard
  * contract, and adds a filter row.
  *
- * Three rules, each from a measured failure elsewhere in this app:
+ * The look is the workspace dropdown's (`target-picker/WorkspacePicker`), because
+ * that is the control users already read as "pick one of these": a heading, a
+ * search row, grouped rows with a mark, a check on the current value, and a
+ * fixed action under the list. Every other picker used to be its own variant of
+ * that shape; they now come through here.
+ *
+ * Rules, each from a measured failure elsewhere in this app:
  *
  *  - **The panel is portalled** (`AnchoredMenu`). A dropdown inside a `z-index`ed
  *    ancestor cannot paint over its siblings — the settings card sits in a
  *    scroller, which clips it — so placement is computed from the viewport.
  *  - **The trigger repeats the chosen label**, not the raw value: a model is
- *    stored as `provider/model` and read as "Claude Sonnet 5".
+ *    stored as `provider/model` and read as "the model 5".
  *  - **The current value is always offered**, even when the list no longer
  *    contains it (`(not listed)`): a stale default must be visible and
  *    removable, never silently replaced by the first option.
+ *  - **The empty value is a choice only when the caller says so** (`allowEmpty`).
+ *    A timezone always has a value; an agent default may not.
  *
  * `role="combobox"` on the trigger with `aria-controls` to the listbox, so a
  * screen reader hears one control rather than a button and an unrelated list.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { Check, ChevronDown, Search } from 'lucide-preact';
+import type { ComponentChildren } from 'preact';
+import { ChevronDown } from 'lucide-preact';
 import { AnchoredMenu } from '@/client/components/common/anchored-menu';
-import { anchorRectOf, type AnchorRect } from '@/shared/lib/ui/menu-anchor';
+import { PickerSearch } from '@/client/components/common/picker-search';
+import { OptionList, type OptionGroup } from '@/client/components/common/search-select/OptionList';
+import type { SearchSelectOption } from '@/client/components/common/search-select/option';
+import { anchorRectOf, type AnchorRect, type MenuAlign } from '@/shared/lib/ui/menu-anchor';
 import { matchesPickerQuery } from '@/shared/lib/ui/picker-filter';
 
-/** One option: the value stored, and what a reader sees. */
-export interface SearchSelectOption {
-  value: string;
-  label: string;
-  /** Shown under the label in the list, not on the trigger. */
-  hint?: string;
-  /** Rows under one heading stay in the order they were given. */
-  group?: string;
-}
+export type { SearchSelectOption };
 
 interface SearchSelectProps {
   value: string;
@@ -56,10 +60,51 @@ interface SearchSelectProps {
   className?: string;
   /** Show a search row at all. A short list reads fine without one. */
   searchable?: boolean;
+  /** Whether the empty value is a real choice (drawn as the first row). */
+  allowEmpty?: boolean;
+  /** A mark per row, repeated on the trigger for the chosen row. */
+  icon?: (option: SearchSelectOption) => ComponentChildren;
+  /** The mark the trigger draws while nothing is chosen. */
+  emptyIcon?: ComponentChildren;
+  /** Uppercase line at the top of the panel, naming the question. */
+  heading?: string;
+  /** Fixed actions under the list (a create row). */
+  footer?: ComponentChildren;
+  /** The list holds no options at all. */
+  emptyText?: string;
+  searchPlaceholder?: string;
+  /**
+   * `field` is a bordered form control; `chip` is the inline control the
+   * composer and the sidebar draw. Same panel either way.
+   */
+  variant?: 'field' | 'chip';
+  /** Panel width; the caller knows the column it opens into. */
+  panelClassName?: string;
+  align?: MenuAlign;
+  /**
+   * Words on the trigger when they are not the chosen option's label — a value
+   * the caller resolves itself (a project path read as a project name).
+   */
+  triggerLabel?: string;
+  /**
+   * The trigger is its mark alone (a 22px sidebar slot). The accessible name
+   * still carries the label, so the glyph is never the only answer.
+   */
+  iconOnly?: boolean;
+  /**
+   * Replaces the variant's trigger chrome entirely, for a control that already
+   * has its own field style (the settings band's project picker). `className`
+   * still appends.
+   */
+  triggerClassName?: string;
 }
 
-const TRIGGER_CLASS =
+const TRIGGER_FIELD =
   'flex w-full min-w-0 items-center justify-between gap-2 rounded-md border border-ink/20 bg-paper px-2 py-1.5 text-left font-mono text-[11px] text-ink transition-colors hover:border-ink/40 focus:border-ink/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50';
+const TRIGGER_CHIP =
+  'tap-chip group flex max-w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-xs font-medium transition-all focus-visible:bg-ink/5 disabled:cursor-not-allowed disabled:opacity-50';
+const TRIGGER_ICON =
+  'tap-chip flex shrink-0 items-center justify-center rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50';
 
 export function SearchSelect({
   value,
@@ -70,17 +115,31 @@ export function SearchSelect({
   disabled,
   className,
   searchable = true,
+  allowEmpty = true,
+  icon,
+  emptyIcon,
+  heading,
+  footer,
+  emptyText = 'No options available',
+  searchPlaceholder = 'Search…',
+  variant = 'field',
+  panelClassName,
+  align = 'start',
+  triggerLabel,
+  iconOnly = false,
+  triggerClassName,
 }: SearchSelectProps) {
   const [anchor, setAnchor] = useState<AnchorRect | null>(null);
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const listboxId = useRef(`search-select-${Math.random().toString(36).slice(2, 9)}`).current;
 
   const selected = options.find((option) => option.value === value);
   const open = anchor !== null;
+  const label = triggerLabel ?? selected?.label ?? (value ? `${value} (not listed)` : placeholder);
 
   const filtered = useMemo(() => {
     const needle = query.trim();
@@ -90,7 +149,7 @@ export function SearchSelect({
 
   /** Rows grouped by `group`, in the order the groups first appear. */
   const groups = useMemo(() => {
-    const out: Array<{ name: string; rows: SearchSelectOption[] }> = [];
+    const out: OptionGroup[] = [];
     for (const option of filtered) {
       const name = option.group ?? '';
       const existing = out.find((group) => group.name === name);
@@ -127,20 +186,35 @@ export function SearchSelect({
 
   useEffect(() => {
     if (!open) return;
-    optionRefs.current[activeIndex]?.scrollIntoView({ block: 'nearest' });
-  }, [open, activeIndex]);
+    optionRefs.current[activeIndex + (allowEmpty ? 1 : 0)]?.scrollIntoView({ block: 'nearest' });
+  }, [open, activeIndex, allowEmpty]);
 
+  // A searchable panel focuses its field; a short list without one focuses the
+  // panel itself, so the arrow keys still reach the row handler.
   useEffect(() => {
-    if (open) inputRef.current?.focus();
-  }, [open]);
+    if (!open || searchable) return;
+    panelRef.current?.focus();
+  }, [open, searchable]);
+
+  /** Walk the filtered rows, stepping over options the caller disabled. */
+  const move = (delta: number) => {
+    setActiveIndex((index) => {
+      for (let next = index + delta; next >= 0 && next < filtered.length; next += delta) {
+        if (!filtered[next]?.disabled) return next;
+      }
+      // No enabled row in that direction: the highlight stays put, so Enter
+      // cannot commit a row the list is refusing.
+      return index;
+    });
+  };
 
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.key === 'ArrowDown') {
       event.preventDefault();
-      setActiveIndex((index) => Math.max(0, Math.min(filtered.length - 1, index + 1)));
+      move(1);
     } else if (event.key === 'ArrowUp') {
       event.preventDefault();
-      setActiveIndex((index) => Math.max(0, index - 1));
+      move(-1);
     } else if (event.key === 'Home') {
       event.preventDefault();
       setActiveIndex(0);
@@ -150,9 +224,11 @@ export function SearchSelect({
     } else if (event.key === 'Enter') {
       event.preventDefault();
       const option = filtered[activeIndex];
-      if (option) commit(option.value);
+      if (option && !option.disabled) commit(option.value);
     }
   };
+
+  const isChip = variant === 'chip';
 
   return (
     <>
@@ -160,12 +236,12 @@ export function SearchSelect({
         ref={triggerRef}
         type="button"
         role="combobox"
-        aria-label={ariaLabel}
+        aria-label={isChip ? `${ariaLabel}: ${label}` : ariaLabel}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={open ? listboxId : undefined}
         disabled={disabled}
-        title={selected?.label ?? placeholder}
+        title={label}
         onClick={() => (open ? close() : openMenu())}
         onKeyDown={(event) => {
           if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
@@ -173,126 +249,73 @@ export function SearchSelect({
             openMenu();
           }
         }}
-        className={`${TRIGGER_CLASS} ${className ?? ''}`}
+        className={`${
+          triggerClassName
+          ?? `${isChip ? (iconOnly ? TRIGGER_ICON : TRIGGER_CHIP) : TRIGGER_FIELD} ${
+            isChip && selected ? 'bg-ink/10 text-ink' : isChip ? 'text-muted hover:bg-ink/5 hover:text-ink' : ''
+          }`
+        } ${className ?? ''}`}
       >
-        <span className={`truncate ${selected ? '' : 'text-ink/40'}`}>
-          {selected?.label ?? (value ? `${value} (not listed)` : placeholder)}
-        </span>
-        <ChevronDown
-          size={12}
-          className={`flex-shrink-0 text-ink/40 transition-transform ${open ? 'rotate-180' : ''}`}
-        />
+        {iconOnly ? (
+          selected ? icon?.(selected) : emptyIcon
+        ) : (
+          <>
+            <span className="flex min-w-0 items-center gap-1.5">
+              {icon && (selected ? icon(selected) : emptyIcon)}
+              <span className={`truncate tracking-tight ${!isChip && !selected && !value ? 'text-ink/40' : ''}`}>
+                {label}
+              </span>
+            </span>
+            <ChevronDown
+              size={isChip ? 13 : 12}
+              className={`flex-shrink-0 text-ink/40 transition-transform ${open ? 'rotate-180 text-ink/70' : ''}`}
+            />
+          </>
+        )}
       </button>
 
       <AnchoredMenu
         anchor={anchor}
-        align="start"
-        className="w-72 max-w-[calc(100vw-2rem)] rounded-md border border-ink/15 bg-paper py-1 text-xs shadow-lg"
+        align={align}
+        className={`${panelClassName ?? 'w-72 max-w-[calc(100vw-2rem)]'} rounded-md border border-ink/15 bg-paper py-1 text-xs shadow-lg`}
         {...{ 'aria-label': ariaLabel }}
         onClose={() => close(true)}
       >
-        {/* The keyboard handler lives on the panel: the search input is inside it,
-            and a listbox that only answers keys when its own rows have focus is
-            unusable with a filter row above them. */}
-        <div onKeyDown={onKeyDown}>
-          {searchable && (
-            <div className="flex items-center gap-1.5 border-b border-ink/10 px-2 py-1.5">
-              <Search size={11} className="flex-shrink-0 text-ink/40" />
-              <input
-                ref={inputRef}
-                type="text"
-                value={query}
-                aria-label={`Search ${ariaLabel}`}
-                placeholder="Search…"
-                onInput={(event) => setQuery(event.currentTarget.value)}
-                className="w-full min-w-0 bg-transparent text-xs text-ink outline-none placeholder:text-ink/35"
-              />
+        {/* The keyboard handler lives on the panel: the search input is inside
+            it, and a listbox that only answers keys when its own rows have focus
+            is unusable with a filter row above them. */}
+        <div ref={panelRef} tabIndex={searchable ? undefined : -1} onKeyDown={onKeyDown} className="outline-none">
+          {heading && (
+            <div className="border-b border-ink/5 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-ink/40">
+              {heading}
             </div>
           )}
-          <div id={listboxId} role="listbox" aria-label={ariaLabel} className="max-h-56 overflow-y-auto py-1">
-            {/* An empty value is a real choice ("the agent decides"), so it is a
-                row like any other — and it stays first, where a native select
-                would put it. */}
-            <button
-              type="button"
-              role="option"
-              aria-selected={value === ''}
-              ref={(node) => {
-                optionRefs.current[0] = node;
-              }}
-              onClick={() => commit('')}
-              onMouseEnter={() => setActiveIndex(0)}
-              className={`flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left ${
-                value === '' ? 'text-ink' : 'text-ink/60'
-              } hover:bg-ink/5`}
-            >
-              <span className="truncate italic">{placeholder}</span>
-              {value === '' && <Check size={11} className="flex-shrink-0" />}
-            </button>
-            {/* A stored default the agent no longer publishes: offered so the
-                reader can see it and clear it, marked so it is not mistaken for
-                a live option. */}
-            {value !== '' && !selected && (
-              <button
-                type="button"
-                role="option"
-                aria-selected
-                onClick={() => commit(value)}
-                // Deliberately NOT in the arrow-key order: it is not a member of
-                // `filtered`, so giving it a slot in `optionRefs` would make two
-                // rows share one index and scroll the wrong one into view.
-                className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-ink"
-              >
-                <span className="truncate">{value} (not listed)</span>
-                <Check size={11} className="flex-shrink-0" />
-              </button>
-            )}
-
-            {filtered.length === 0 ? (
-              <div className="px-3 py-2 italic text-ink/40">No match for “{query.trim()}”</div>
-            ) : (
-              groups.map((group) => (
-                <div key={group.name || '__flat'}>
-                  {group.name && (
-                    <div className="px-3 pb-0.5 pt-2 text-[9px] font-semibold uppercase tracking-wider text-ink/35">
-                      {group.name}
-                    </div>
-                  )}
-                  {group.rows.map((option) => {
-                    // Index in the FLAT list is what the arrow keys walk, so the
-                    // ref is taken from there and not from the group's own row.
-                    const flatIndex = filtered.indexOf(option);
-                    const isSelected = option.value === value;
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        role="option"
-                        aria-selected={isSelected}
-                        ref={(node) => {
-                          optionRefs.current[flatIndex + 1] = node;
-                        }}
-                        onClick={() => commit(option.value)}
-                        onMouseEnter={() => setActiveIndex(flatIndex)}
-                        title={option.hint ?? option.value}
-                        className={`flex w-full items-start justify-between gap-2 px-3 py-1.5 text-left transition-colors ${
-                          flatIndex === activeIndex ? 'bg-ink/5' : ''
-                        } ${isSelected ? 'font-medium text-ink' : 'text-ink/75'}`}
-                      >
-                        <span className="min-w-0">
-                          <span className="block truncate">{option.label}</span>
-                          {option.hint && (
-                            <span className="block truncate font-mono text-[10px] text-ink/40">{option.hint}</span>
-                          )}
-                        </span>
-                        {isSelected && <Check size={11} className="mt-0.5 flex-shrink-0" />}
-                      </button>
-                    );
-                  })}
-                </div>
-              ))
-            )}
-          </div>
+          {searchable ? (
+            <PickerSearch
+              value={query}
+              onChange={setQuery}
+              ariaLabel={`Search ${ariaLabel}`}
+              placeholder={searchPlaceholder}
+            />
+          ) : null}
+          <OptionList
+            listboxId={listboxId}
+            ariaLabel={ariaLabel}
+            value={value}
+            placeholder={placeholder}
+            allowEmpty={allowEmpty}
+            hasSelected={Boolean(selected)}
+            filtered={filtered}
+            groups={groups}
+            query={query}
+            emptyText={emptyText}
+            activeIndex={activeIndex}
+            optionRefs={optionRefs}
+            icon={icon}
+            onCommit={commit}
+            onHover={setActiveIndex}
+          />
+          {footer ? <div className="border-t border-ink/5 pt-1">{footer}</div> : null}
         </div>
       </AnchoredMenu>
     </>

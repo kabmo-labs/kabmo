@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'preact/hooks';
 import { AlertCircle, Download, Plus, Search, Trash2, X } from 'lucide-preact';
+import { SearchSelect } from '@/client/components/common/search-select';
 import { PluginPaneHeader } from '@/client/components/settings/categories/plugin-settings/PaneHeader';
 import { RefreshButton } from '@/client/components/common/header-button';
 import type { PluginCatalogItem, PluginItem, PluginMarketplaceItem } from '@/shared/types';
@@ -204,16 +205,17 @@ export function PluginMarketplacePane({
               </span>
             </h3>
             <div className="flex items-center gap-2">
-              <select
+              <SearchSelect
+                ariaLabel="Marketplace"
                 value={marketplaceFilter}
-                onChange={(event) => setMarketplaceFilter(event.currentTarget.value)}
-                className="px-2 py-1 rounded-lg border border-ink/15 bg-paper text-[11px] text-ink cursor-pointer focus:outline-none focus:border-ink/40"
-              >
-                <option value="">All marketplaces</option>
-                {marketplaces.map((marketplace) => (
-                  <option key={marketplace.name} value={marketplace.name}>{marketplace.name}</option>
-                ))}
-              </select>
+                onChange={setMarketplaceFilter}
+                placeholder="All marketplaces"
+                triggerClassName="px-2 py-1 rounded-lg border border-ink/15 bg-paper text-[11px] text-ink cursor-pointer focus:outline-none focus:border-ink/40"
+                options={marketplaces.map((marketplace) => ({
+                  value: marketplace.name,
+                  label: marketplace.name,
+                }))}
+              />
               <div className="relative flex items-center">
                 <Search size={12} className="absolute left-2 text-ink/40 pointer-events-none" />
                 <input

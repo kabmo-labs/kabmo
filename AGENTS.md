@@ -98,6 +98,15 @@ Plus, before declaring anything done:
   highlighting is the explicit exception (Shiki's dual `--shiki-light`/`--shiki-dark` pair).
 - **Both layouts are one product.** A control, dialog or piece of copy added to the desktop belongs
   to the phone too, unless the platform genuinely cannot do it — and then the shell says so in words.
+- **Every picker is `common/search-select`.** A native `<select>` and a hand-rolled listbox are both
+  defects: the catalog that motivated this rule is omp's 221 models, which the OS popup shows as one
+  unsearchable scroll box, and the last native one replaced was a 445-row timezone list. The panel is
+  always the portalled `AnchoredMenu` (an `absolute` list inside a scroller or a `sticky` header is
+  clipped or paints under its sibling). Use `allowEmpty={false}` when the field must always hold a
+  value, `searchable={false}` only for a fixed list of about ten rows or fewer, `variant="chip"` for an
+  inline control, and `triggerClassName` when the control already owns its chrome. A picker with
+  per-row actions is a menu, not a select: it keeps its rows and takes the `PickerSearch` row.
+  Contract: [Codebase rules §13](https://github.com/kabmo-labs/kabmo/wiki/Codebase-Rules#13-one-select-searchselect).
 
 ## 6. Data, state and persistence
 

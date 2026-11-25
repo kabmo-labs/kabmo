@@ -1,4 +1,5 @@
 import { Compass, CornerDownLeft, Keyboard, WrapText } from 'lucide-preact';
+import { SearchSelect } from '@/client/components/common/search-select';
 import type { SettingsState } from '@/shared/types';
 
 export type KeybindingOption = 'Enter' | 'Shift + Enter' | 'Ctrl / Cmd + Enter';
@@ -87,17 +88,16 @@ export function ComposerKeysSection({ settings, onUpdate }: ComposerKeysSectionP
             </div>
 
             <div className="flex items-center gap-2 self-end sm:self-center">
-              <select
+              <SearchSelect
+                ariaLabel={`${row.label} keybinding`}
                 value={row.value}
-                onChange={(e) => handleKeybindingChange(row.id, e.currentTarget.value as KeybindingOption)}
-                className="bg-paper border border-ink/20 rounded-md px-2.5 py-1.5 outline-none focus:border-ink text-[11px] font-medium text-ink cursor-pointer hover:border-ink/40 transition-colors"
-              >
-                {options.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-              </select>
+                onChange={(next) => handleKeybindingChange(row.id, next as KeybindingOption)}
+                placeholder={row.value}
+                searchable={false}
+                allowEmpty={false}
+                triggerClassName="bg-paper border border-ink/20 rounded-md px-2.5 py-1.5 outline-none focus:border-ink text-[11px] font-medium text-ink cursor-pointer hover:border-ink/40 transition-colors"
+                options={options.map((opt) => ({ value: opt, label: opt }))}
+              />
             </div>
           </div>
         ))}

@@ -15,6 +15,7 @@
 
 import type { ComponentChildren } from 'preact';
 import { CHECKBOX_CLASS } from '@/client/components/common/checkbox/style';
+import { SearchSelect } from '@/client/components/common/search-select';
 import type { McpAuthConfig, McpOAuthConfig, McpServerItem } from '@/shared/types';
 
 const INPUT_CLASS =
@@ -68,18 +69,19 @@ export function McpAdvancedSection({ server, onChange }: McpAdvancedSectionProps
           </Field>
 
           <Field label="Request id format">
-            <select
+            <SearchSelect
+              ariaLabel="Request id format"
               value={server.requestIdFormat ?? ''}
-              onChange={(e) => {
-                const raw = e.currentTarget.value;
+              onChange={(raw) => {
                 onChange({ requestIdFormat: raw === 'string' || raw === 'number' ? raw : undefined });
               }}
-              className={`${INPUT_CLASS} cursor-pointer`}
-            >
-              <option value="">Default (number)</option>
-              <option value="number">number</option>
-              <option value="string">string</option>
-            </select>
+              placeholder="Default (number)"
+              searchable={false}
+              options={[
+                { value: 'number', label: 'number' },
+                { value: 'string', label: 'string' },
+              ]}
+            />
           </Field>
 
           {server.transport === 'stdio' && (
@@ -107,22 +109,23 @@ export function McpAdvancedSection({ server, onChange }: McpAdvancedSectionProps
 
         <div className="border-t border-ink/10 pt-3 space-y-3">
           <Field label="Auth strategy">
-            <select
+            <SearchSelect
+              ariaLabel="Credential type"
               value={auth?.type ?? ''}
-              onChange={(e) => {
-                const raw = e.currentTarget.value;
+              onChange={(raw) => {
                 if (raw !== 'oauth' && raw !== 'apikey') {
                   onChange({ auth: undefined });
                   return;
                 }
                 setAuth({ type: raw });
               }}
-              className={`${INPUT_CLASS} cursor-pointer`}
-            >
-              <option value="">None</option>
-              <option value="oauth">OAuth</option>
-              <option value="apikey">API key</option>
-            </select>
+              placeholder="None"
+              searchable={false}
+              options={[
+                { value: 'oauth', label: 'OAuth' },
+                { value: 'apikey', label: 'API key' },
+              ]}
+            />
           </Field>
 
           {auth && (

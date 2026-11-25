@@ -1,5 +1,8 @@
+import { useEffect, useMemo, useState } from 'preact/hooks';
 import type { RefObject } from 'preact/compat';
 import { Check, ChevronDown, CloudDownload, FolderTree, GitBranch, GitMerge, History, List, MoreHorizontal, Plus, RefreshCw, Settings2 } from 'lucide-preact';
+import { PickerSearch } from '@/client/components/common/picker-search';
+import { matchesPickerQuery } from '@/shared/lib/ui/picker-filter';
 
 interface GitBranchToolbarProps {
   branchRef: RefObject<HTMLDivElement>;
@@ -57,6 +60,24 @@ export function GitBranchToolbar({
   onFetch,
   detached = false,
 }: GitBranchToolbarProps) {
+  const [query, setQuery] = useState('');
+
+  // The picker is the parent's; clearing the filter when it closes means the
+  // next open starts from the whole list rather than the last search.
+  useEffect(() => {
+    if (!showBranchMenu) setQuery('');
+  }, [showBranchMenu]);
+
+  const picker = query.trim();
+  const visibleLocal = useMemo(
+    () => branches.filter((name) => matchesPickerQuery(name, picker)),
+    [branches, picker],
+  );
+  const visibleRemote = useMemo(
+    () => remoteBranches.filter((name) => matchesPickerQuery(name, picker)),
+    [remoteBranches, picker],
+  );
+
   return (
     <div className="p-3 border-b border-ink/10 bg-canvas/50 flex items-center justify-between">
       <div className="relative" ref={branchRef}>
@@ -71,12 +92,13 @@ export function GitBranchToolbar({
         </button>
         
         {showBranchMenu && (
-          <div className="glass-popover absolute top-full left-0 mt-1 w-56 bg-paper border border-ink/20 rounded-md shadow-lg z-50 flex flex-col overflow-hidden text-xs">
+          <div className="glass-popover absolute top-full left-0 mt-1 w-64 bg-paper border border-ink/20 rounded-md shadow-lg z-50 flex flex-col overflow-hidden text-xs">
+            <PickerSearch value={query} onChange={setQuery} ariaLabel="Search branches" placeholder="Search branches…" />
             <div className="max-h-48 scrollbar-overlay-container py-1">
-              {branches.length > 0 && (
+              {visibleLocal.length > 0 && (
                 <>
                   <div className="px-3 py-1 text-[10px] uppercase tracking-wider text-ink/40 font-semibold">Local</div>
-                  {branches.map(b => (
+                  {visibleLocal.map(b => (
                     <div key={b} className="flex items-center group/branch">
                       <button 
                         onClick={() => { 
@@ -106,10 +128,10 @@ export function GitBranchToolbar({
                   ))}
                 </>
               )}
-              {remoteBranches.length > 0 && (
+              {visibleRemote.length > 0 && (
                 <>
                   <div className="px-3 py-1 text-[10px] uppercase tracking-wider text-ink/40 font-semibold">Remote</div>
-                  {remoteBranches.map(b => (
+                  {visibleRemote.map(b => (
                     <div key={b} className="flex items-center group/branch">
                       <button 
                         onClick={() => { 
@@ -137,6 +159,9 @@ export function GitBranchToolbar({
                     </div>
                   ))}
                 </>
+              )}
+              {visibleLocal.length === 0 && visibleRemote.length === 0 && (
+                <div className="px-3 py-2 text-ink/40 italic">No match for “{picker}”</div>
               )}
               <div className="w-full h-px bg-ink/10 my-1" />
               <button 

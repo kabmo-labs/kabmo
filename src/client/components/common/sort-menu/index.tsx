@@ -30,6 +30,8 @@ export function SortMenu({ variant, sortOption, onSortChange }: SortMenuProps) {
           <button
             key={opt}
             type="button"
+            role="menuitemradio"
+            aria-checked={sortOption === opt}
             onClick={() => onSortChange(opt)}
             className={`w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between transition-colors ${
               sortOption === opt
@@ -49,14 +51,17 @@ export function SortMenu({ variant, sortOption, onSortChange }: SortMenuProps) {
     <>
       <div className="px-3 py-1 text-[10px] uppercase font-bold text-ink/40 tracking-wider">Sort Workspaces</div>
       {SORT_OPTIONS.map(opt => (
-        <div
+        <button
           key={opt}
-          className={`px-3 py-1.5 text-xs cursor-pointer flex items-center justify-between ${sortOption === opt ? 'bg-ink/5 text-ink font-medium' : 'text-ink/70 hover:bg-ink/5 hover:text-ink'}`}
+          type="button"
+          role="menuitemradio"
+          aria-checked={sortOption === opt}
+          className={`w-full px-3 py-1.5 text-xs flex items-center justify-between transition-colors cursor-pointer ${sortOption === opt ? 'bg-ink/10 text-ink font-medium' : 'text-ink/70 hover:bg-ink/5 hover:text-ink'}`}
           onClick={() => onSortChange(opt)}
         >
           <span>{SORT_LABELS[opt]}</span>
-          {sortOption === opt && <div className="w-1.5 h-1.5 rounded-full bg-ink"></div>}
-        </div>
+          {sortOption === opt && <Check size={12} className="text-ink shrink-0" />}
+        </button>
       ))}
     </>
   );

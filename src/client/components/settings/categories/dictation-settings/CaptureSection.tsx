@@ -20,6 +20,7 @@
 
 import { useState } from 'preact/hooks';
 import { ListMusic, Mic } from 'lucide-preact';
+import { SearchSelect } from '@/client/components/common/search-select';
 import { DICTATION_MAX_MS, DICTATION_MIN_MS } from '@/shared/lib/dictation/gate';
 import type { DictationConfig } from '@/shared/lib/dictation/settings';
 
@@ -88,25 +89,19 @@ export function CaptureSection({ config, onPatch }: CaptureSectionProps) {
               {devices === null ? 'Find microphones' : 'Refresh list'}
             </button>
           </div>
-          <select
+          {/* A stored id that this browser no longer lists (a headset that is
+              unplugged) stays visible as `(not listed)`, so the control cannot
+              silently read "System default" while the hook keeps asking for the
+              old one. */}
+          <SearchSelect
+            ariaLabel="Input device"
             value={config.deviceId}
-            aria-label="Input device"
-            onChange={(event) => onPatch({ deviceId: event.currentTarget.value })}
-            className={INPUT_CLASS}
-          >
-            <option value="">System default</option>
-            {(devices ?? []).map((device) => (
-              <option key={device.id} value={device.id}>
-                {device.label}
-              </option>
-            ))}
-            {/* A stored id that this browser no longer lists (a headset that is
-                unplugged) must stay visible, or the select silently shows
-                "System default" while the hook keeps asking for the old one. */}
-            {config.deviceId && !(devices ?? []).some((device) => device.id === config.deviceId) && (
-              <option value={config.deviceId}>Saved device (not connected)</option>
-            )}
-          </select>
+            onChange={(next) => onPatch({ deviceId: next })}
+            placeholder="System default"
+            searchable={(devices ?? []).length > 10}
+            triggerClassName={INPUT_CLASS}
+            options={(devices ?? []).map((device) => ({ value: device.id, label: device.label }))}
+          />
           {devices !== null && devices.length === 0 && (
             <span className="text-[11px] text-ink/50">
               No input devices are listed — the browser hides them until microphone permission has

@@ -7,6 +7,7 @@ import { ConnectionTest } from '@/client/components/settings/categories/mcp-sett
 import { McpKeyValueSection } from '@/client/components/settings/categories/mcp-settings/KeyValueSection';
 import { McpTransportSection } from '@/client/components/settings/categories/mcp-settings/TransportSection';
 import { McpAdvancedSection } from '@/client/components/settings/categories/mcp-settings/AdvancedSection';
+import { SearchSelect } from '@/client/components/common/search-select';
 import { useWriteFeedback } from '@/client/hooks/settings/write-feedback';
 
 function parseCommandArgs(text: string): string[] {
@@ -137,14 +138,18 @@ export const McpDetailPane: FunctionComponent<McpDetailPaneProps> = ({
             <label className="block text-xs font-semibold text-ink/80 mb-1.5">
               Scope
             </label>
-            <select
+            <SearchSelect
+              ariaLabel="Scope"
               value={formData.scope}
-              onChange={(e) => setFormData({ ...formData, scope: e.currentTarget.value as McpScope })}
-              className="w-full text-xs py-2 px-3 rounded-lg border border-ink/20 hover:border-ink/40 bg-paper focus:outline-none focus:border-ink cursor-pointer text-ink transition-colors"
-            >
-              <option value="every-project">Available in every project</option>
-              <option value="this-project">This project only</option>
-            </select>
+              onChange={(next) => setFormData({ ...formData, scope: next as McpScope })}
+              placeholder="Available in every project"
+              searchable={false}
+              allowEmpty={false}
+              options={[
+                { value: 'every-project', label: 'Available in every project' },
+                { value: 'this-project', label: 'This project only' },
+              ]}
+            />
           </div>
         </div>
 

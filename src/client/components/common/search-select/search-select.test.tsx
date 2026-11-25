@@ -171,8 +171,8 @@ describe('the list', () => {
     await type('gpt');
     // Filtered to one model; ArrowDown then Enter must not reach a row that the
     // filter removed.
-    await key('ArrowDown');
-    await key('Enter');
+    await key('ArrowDown', document.activeElement ?? document.body);
+    await key('Enter', document.activeElement ?? document.body);
     expect(changes).toEqual(['command-code/gpt-5.6-sol']);
   });
 
@@ -213,5 +213,64 @@ describe('the list', () => {
       await Promise.resolve();
     });
     expect(document.querySelector('[role="listbox"]')).toBeNull();
+  });
+});
+
+describe('the workspace contract', () => {
+  test('a heading, a footer and a per-row mark are drawn inside the panel', async () => {
+    mount({
+      heading: 'Target Workspace',
+      footer: h('button', { type: 'button' }, 'Add new workspace'),
+      icon: (option: SearchSelectOption) => h('span', { 'data-mark': option.value }),
+      panelClassName: 'w-64',
+    });
+    await open();
+    expect(document.body.textContent).toContain('Target Workspace');
+    expect(document.body.textContent).toContain('Add new workspace');
+    expect(document.querySelectorAll('[data-mark]')).toHaveLength(OPTIONS.length);
+  });
+
+  test('allowEmpty=false drops the empty row, so a list that always has a value cannot be cleared', async () => {
+    mount({ allowEmpty: false, value: 'opencode/deepseek-v4-flash' });
+    await open();
+    expect(visibleOptions()).toHaveLength(OPTIONS.length);
+    expect(document.body.textContent).not.toContain('Agent default');
+  });
+
+  test('a chip trigger names itself with its label and marks the chosen row', () => {
+    mount({ variant: 'chip', value: 'opencode/deepseek-v4-flash', icon: () => h('i', { 'data-mark': 'x' }) });
+    expect(trigger().getAttribute('aria-label')).toBe('Default model: DeepSeek V4 Flash');
+    expect(trigger().querySelector('[data-mark]')).not.toBeNull();
+  });
+
+  test('a short list without a search field still answers the arrow keys', async () => {
+    const changes = mount({ searchable: false, allowEmpty: false });
+    await open();
+    expect(document.querySelector('input[aria-label^="Search"]')).toBeNull();
+    await key('ArrowDown', document.activeElement ?? document.body);
+    await key('Enter', document.activeElement ?? document.body);
+    expect(changes).toEqual(['command-code/gpt-5.6-sol']);
+  });
+
+  test('a disabled option is offered but neither clicked nor entered', async () => {
+    const changes = mount({
+      allowEmpty: false,
+      options: [
+        { value: 'zip', label: 'zip' },
+        { value: 'rar', label: 'rar', disabled: true },
+      ],
+    });
+    await open();
+    const rar = visibleOptions().find((node) => node.textContent?.includes('rar'))!;
+    expect(rar.disabled).toBe(true);
+    await act(async () => {
+      click(rar);
+      await Promise.resolve();
+    });
+    await key('ArrowDown');
+    await key('ArrowDown');
+    await key('Enter');
+    // ArrowDown stops on the last enabled row, never the disabled one.
+    expect(changes).toEqual(['zip']);
   });
 });

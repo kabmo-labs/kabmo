@@ -10,6 +10,7 @@ import {
   PROVIDER_AUTH_MODES,
   PROVIDER_DISCOVERY_TYPES,
 } from '@/shared/lib/models/provider/dialect';
+import { SearchSelect } from '@/client/components/common/search-select';
 
 interface DialectFieldsProps {
   api: OmpProviderApi;
@@ -61,27 +62,37 @@ export function DialectFields({
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-semibold text-ink mb-1">Wire API</label>
-          <select
+          <SearchSelect
+            ariaLabel="Wire API"
             value={api}
-            onChange={(e) => onApiChange(e.currentTarget.value as OmpProviderApi)}
-            className={fieldClass}
-          >
-            {PROVIDER_APIS.map((value) => (
-              <option key={value} value={value}>{value}</option>
-            ))}
-          </select>
+            onChange={(next) => onApiChange(next as OmpProviderApi)}
+            placeholder="Wire API"
+            searchable={false}
+            allowEmpty={false}
+            triggerClassName={fieldClass}
+            options={PROVIDER_APIS.map((value) => ({
+              value,
+              label: value,
+              hint: PROVIDER_API_LABELS[value],
+            }))}
+          />
         </div>
         <div>
           <label className="block text-xs font-semibold text-ink mb-1">Auth</label>
-          <select
+          <SearchSelect
+            ariaLabel="Auth mode"
             value={auth}
-            onChange={(e) => onAuthChange(e.currentTarget.value as ProviderAuthMode)}
-            className={fieldClass}
-          >
-            {PROVIDER_AUTH_MODES.map((mode) => (
-              <option key={mode.value} value={mode.value}>{mode.label}</option>
-            ))}
-          </select>
+            onChange={(next) => onAuthChange(next as ProviderAuthMode)}
+            placeholder="Auth"
+            searchable={false}
+            allowEmpty={false}
+            triggerClassName={fieldClass}
+            options={PROVIDER_AUTH_MODES.map((mode) => ({
+              value: mode.value,
+              label: mode.label,
+              hint: mode.hint,
+            }))}
+          />
         </div>
       </div>
       <p className="text-[10px] text-ink/40 leading-relaxed -mt-1">
@@ -117,15 +128,20 @@ export function DialectFields({
       {source === 'discovery' && (
         <div>
           <label className="block text-xs font-semibold text-ink mb-1">Discovery protocol</label>
-          <select
+          <SearchSelect
+            ariaLabel="Model discovery"
             value={discovery}
-            onChange={(e) => onDiscoveryChange(e.currentTarget.value as ProviderDiscoveryType)}
-            className={fieldClass}
-          >
-            {PROVIDER_DISCOVERY_TYPES.map((type) => (
-              <option key={type.value} value={type.value}>{type.label}</option>
-            ))}
-          </select>
+            onChange={(next) => onDiscoveryChange(next as ProviderDiscoveryType)}
+            placeholder="Model discovery"
+            searchable={false}
+            allowEmpty={false}
+            triggerClassName={fieldClass}
+            options={PROVIDER_DISCOVERY_TYPES.map((type) => ({
+              value: type.value,
+              label: type.label,
+              hint: type.hint,
+            }))}
+          />
           <p className="text-[10px] text-ink/40 mt-1">
             {PROVIDER_DISCOVERY_TYPES.find((type) => type.value === discovery)?.hint}
           </p>

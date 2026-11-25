@@ -18,6 +18,7 @@ import { localLanguageOptions, localVoiceOptions } from '@/shared/lib/tts/local-
 import type { TtsConfig } from '@/shared/lib/tts/settings';
 import type { LocalModelInfo } from '@/client/hooks/settings/local-tts-models';
 import { INPUT_CLASS } from '@/client/components/settings/categories/voice-settings/speech/styles';
+import { SearchSelect } from '@/client/components/common/search-select';
 
 export interface SpeechVoiceSectionProps {
   config: TtsConfig;
@@ -63,22 +64,21 @@ export function SpeechVoiceSection({ config, localModels, onPatch }: SpeechVoice
             {modelIsVoice ? 'Voice model' : 'Model'}
           </span>
           {local ? (
-            <select
+            <SearchSelect
+              ariaLabel={modelIsVoice ? 'Voice model' : 'Model'}
               value={config.model || localModel?.id || ''}
-              onChange={(event) => {
-                const next = event.currentTarget.value;
+              onChange={(next) => {
                 // A voice id is an index into ONE model's speaker table; carrying
                 // "7" to a model with three voices would refuse or read the wrong
                 // person, so the voice resets with the model.
                 onPatch({ model: next, voice: '' });
               }}
-              className={INPUT_CLASS}
-            >
-              {localModels.length === 0 && <option value="">No model installed</option>}
-              {localModels.map((entry) => (
-                <option key={entry.id} value={entry.id}>{entry.label}</option>
-              ))}
-            </select>
+              placeholder="No model installed"
+              emptyText="No model installed"
+              disabled={localModels.length === 0}
+              triggerClassName={INPUT_CLASS}
+              options={localModels.map((entry) => ({ value: entry.id, label: entry.label }))}
+            />
           ) : (
             <>
               <input
@@ -112,28 +112,26 @@ export function SpeechVoiceSection({ config, localModels, onPatch }: SpeechVoice
           <label className="space-y-1">
             <span className="block text-[11px] font-medium text-ink/70">Voice</span>
             {config.engine === 'omp' ? (
-              <select
+              <SearchSelect
+                ariaLabel="Voice"
                 value={config.voice}
-                onChange={(event) => onPatch({ voice: event.currentTarget.value })}
-                className={INPUT_CLASS}
-              >
-                <option value="">
-                  omp default ({typeof LOCAL_VOICES?.default === 'string' ? localVoiceLabel(LOCAL_VOICES.default) : 'harper'})
-                </option>
-                {LOCAL_VOICE_VALUES.map((value) => (
-                  <option key={value} value={value}>{localVoiceLabel(value)}</option>
-                ))}
-              </select>
+                onChange={(next) => onPatch({ voice: next })}
+                placeholder={`omp default (${typeof LOCAL_VOICES?.default === 'string' ? localVoiceLabel(LOCAL_VOICES.default) : 'harper'})`}
+                searchable={LOCAL_VOICE_VALUES.length > 10}
+                triggerClassName={INPUT_CLASS}
+                options={LOCAL_VOICE_VALUES.map((value) => ({ value, label: localVoiceLabel(value) }))}
+              />
             ) : local ? (
-              <select
+              <SearchSelect
+                ariaLabel="Voice"
                 value={config.voice || '0'}
-                onChange={(event) => onPatch({ voice: event.currentTarget.value === '0' ? '' : event.currentTarget.value })}
-                className={INPUT_CLASS}
-              >
-                {localVoiceOptions(localModel).map((voice) => (
-                  <option key={voice.id} value={voice.id}>{voice.label}</option>
-                ))}
-              </select>
+                onChange={(next) => onPatch({ voice: next === '0' ? '' : next })}
+                placeholder="Default voice"
+                searchable={false}
+                allowEmpty={false}
+                triggerClassName={INPUT_CLASS}
+                options={localVoiceOptions(localModel).map((voice) => ({ value: voice.id, label: voice.label }))}
+              />
             ) : (
               <>
                 <input
@@ -180,19 +178,16 @@ export function SpeechVoiceSection({ config, localModels, onPatch }: SpeechVoice
         {takesLanguageTag && (
           <label className="space-y-1">
             <span className="block text-[11px] font-medium text-ink/70">Language</span>
-            <select
+            <SearchSelect
+              ariaLabel="Language"
               value={config.language || (spec.language === 'required' ? 'auto' : '')}
-              onChange={(event) => onPatch({ language: event.currentTarget.value === 'auto' ? '' : event.currentTarget.value })}
-              className={INPUT_CLASS}
-            >
-              {!local && spec.language !== 'required' && <option value="">Auto / detect</option>}
-              {local && (
-                <option value="">Model default ({localModel?.defaultLanguage ?? 'en'})</option>
-              )}
-              {languageOptions.map((language) => (
-                <option key={language.id} value={language.id}>{language.label}</option>
-              ))}
-            </select>
+              onChange={(next) => onPatch({ language: next === 'auto' ? '' : next })}
+              placeholder={local ? `Model default (${localModel?.defaultLanguage ?? 'en'})` : 'Auto / detect'}
+              searchable={languageOptions.length > 10}
+              allowEmpty={spec.language !== 'required'}
+              triggerClassName={INPUT_CLASS}
+              options={languageOptions.map((language) => ({ value: language.id, label: language.label }))}
+            />
             <span className="block text-[10px] text-ink/50">
               {spec.language === 'required'
                 ? 'This provider requires a language.'

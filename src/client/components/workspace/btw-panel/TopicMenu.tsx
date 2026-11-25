@@ -5,8 +5,10 @@
  * state lives in `BtwHeader`.
  */
 
-import { useEffect, useRef } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { Trash2 } from 'lucide-preact';
+import { PickerSearch } from '@/client/components/common/picker-search';
+import { matchesPickerQuery } from '@/shared/lib/ui/picker-filter';
 import type { BtwTopic, BtwTurnStatus } from '@/shared/types/btw';
 
 export interface BtwTopicMenuProps {
@@ -31,6 +33,14 @@ const STATUS_LABEL: Record<BtwTurnStatus, string> = {
 /** `<turn count> · <status of the newest turn>` — the one-line topic summary. */
 export function BtwTopicMenu({ topics, activeTopicId, onSelectTopic, onDeleteTopic, onCloseMenu }: BtwTopicMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
+  const [query, setQuery] = useState('');
+
+  // A side-question history is unbounded; the list is searched, and the row
+  // that owns the menu keeps every topic when the field is empty.
+  const visible = useMemo(
+    () => topics.filter((topic) => matchesPickerQuery(topic.title || topic.id, query)),
+    [topics, query],
+  );
 
   // Outside dismissal. Pointerdown (not click) so the menu is gone before the
   // underlying target reacts; the header toggle is exempt — it owns its own
@@ -61,11 +71,19 @@ export function BtwTopicMenu({ topics, activeTopicId, onSelectTopic, onDeleteTop
       aria-label="Side question history"
       className="glass-popover absolute left-0 top-full mt-1 z-50 bg-paper border border-ink/15 rounded-lg shadow-xl min-w-[280px] max-h-72 overflow-y-auto scrollbar-overlay-container p-1"
     >
+      <div className="sticky top-0 z-10 -mx-1 -mt-1 bg-paper">
+        <PickerSearch value={query} onChange={setQuery} ariaLabel="Search side questions" placeholder="Search side questions…" />
+      </div>
+
       {topics.length === 0 && (
         <div className="px-2.5 py-2 text-[12px] text-ink/50">No side questions yet.</div>
       )}
 
-      {topics.map((topic) => {
+      {topics.length > 0 && visible.length === 0 && (
+        <div className="px-2.5 py-2 text-[12px] italic text-ink/40">No match for “{query.trim()}”</div>
+      )}
+
+      {visible.map((topic) => {
         const count = topic.turns.length;
         const newest = topic.turns[count - 1];
 

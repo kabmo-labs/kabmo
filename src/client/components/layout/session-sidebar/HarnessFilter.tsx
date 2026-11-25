@@ -35,9 +35,11 @@
  * rows.
  */
 
-import { useState } from 'preact/hooks';
+import { useMemo, useState } from 'preact/hooks';
 import { Bot, Check, ChevronDown } from 'lucide-preact';
 import { AnchoredMenu } from '@/client/components/common/anchored-menu';
+import { PickerSearch } from '@/client/components/common/picker-search';
+import { matchesPickerQuery } from '@/shared/lib/ui/picker-filter';
 import { HarnessGlyph, HARNESS_GLYPH_SIZE } from '@/client/components/common/harness-glyph';
 import { harnessBadgeLabel } from '@/shared/lib/harness/catalog';
 import { anchorRectOf, type AnchorRect } from '@/shared/lib/ui/menu-anchor';
@@ -70,6 +72,8 @@ export function HarnessFilter({
   touch = false,
 }: HarnessFilterProps) {
   const [anchor, setAnchor] = useState<AnchorRect | null>(null);
+  const [query, setQuery] = useState('');
+
   // The active harness may have lost its last row since the click. It keeps a
   // row so the filter that emptied the list is visible and clearable.
   const shown = value && !options.some((option) => option.harness === value)
@@ -77,8 +81,20 @@ export function HarnessFilter({
     : options;
   if (shown.length < 2 && !value) return null;
 
-  const active = value ? shown.find((option) => option.harness === value) : undefined;
+  const active = value && shown.find((option) => option.harness === value);
   const label = active ? active.label : 'All harnesses';
+
+  // The catalog alone is seventeen harnesses before a user adds one, so the
+  // list is searched like every other catalog rather than scrolled.
+  const visible = useMemo(
+    () => shown.filter((option) => matchesPickerQuery(`${option.label} ${option.harness}`, query)),
+    [shown, query],
+  );
+
+  const close = () => {
+    setAnchor(null);
+    setQuery('');
+  };
 
   const trigger = form === 'icon' ? (
     <button
@@ -137,20 +153,21 @@ export function HarnessFilter({
         align="start"
         ariaLabel="Filter by harness"
         className="w-56 bg-paper border border-ink/15 rounded-lg shadow-xl py-1 text-xs"
-        onClose={() => setAnchor(null)}
+        onClose={close}
       >
+        <PickerSearch value={query} onChange={setQuery} ariaLabel="Search harnesses" placeholder="Search harnesses…" />
         <button
           type="button"
           onClick={() => {
             onChange(null);
-            setAnchor(null);
+            close();
           }}
           className={`${ROW_BASE} ${!value ? ROW_ON : ROW_OFF}`}
         >
           <span className="flex-1 truncate">All harnesses</span>
           {!value ? <Check size={12} /> : null}
         </button>
-        {shown.map((option) => {
+        {visible.map((option) => {
           const on = option.harness === value;
           return (
             <button
@@ -158,7 +175,7 @@ export function HarnessFilter({
               type="button"
               onClick={() => {
                 onChange(option.harness);
-                setAnchor(null);
+                close();
               }}
               className={`${ROW_BASE} ${on ? ROW_ON : ROW_OFF}`}
             >
@@ -169,6 +186,9 @@ export function HarnessFilter({
             </button>
           );
         })}
+        {visible.length === 0 ? (
+          <div className="px-3 py-2 italic text-ink/40">No match for “{query.trim()}”</div>
+        ) : null}
       </AnchoredMenu>
     </>
   );

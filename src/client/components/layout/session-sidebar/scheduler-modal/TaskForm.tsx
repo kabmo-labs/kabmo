@@ -20,6 +20,7 @@ import { validateSchedule } from '@/shared/lib/schedule/parse';
 import type { ScheduleKind, ScheduledTaskModel } from '@/shared/types/schedule';
 import type { ScheduleDraft } from '@/client/hooks/workspace/scheduled-tasks';
 import type { ScheduleFolderOption } from '@/client/components/layout/session-sidebar/scheduler-modal/folders';
+import { SearchSelect } from '@/client/components/common/search-select';
 import { ModelFields } from '@/client/components/layout/session-sidebar/scheduler-modal/ModelFields';
 
 interface TaskFormProps {
@@ -173,15 +174,18 @@ export function TaskForm({
       <div className="flex items-end gap-2">
         <div className="w-28 flex-shrink-0">
           <label className="block font-semibold mb-1 text-ink">Schedule</label>
-          <select
+          <SearchSelect
+            ariaLabel="Schedule"
             value={kind}
-            onChange={(e) => setKind(e.currentTarget.value as ScheduleKind)}
-            className="w-full bg-paper border border-ink/20 rounded px-2 py-1.5 outline-none focus:border-ink/50 text-xs"
-          >
-            {(Object.keys(KIND_LABELS) as ScheduleKind[]).map((value) => (
-              <option key={value} value={value}>{KIND_LABELS[value]}</option>
-            ))}
-          </select>
+            onChange={(next) => setKind(next as ScheduleKind)}
+            placeholder="Once"
+            searchable={false}
+            allowEmpty={false}
+            options={(Object.keys(KIND_LABELS) as ScheduleKind[]).map((value) => ({
+              value,
+              label: KIND_LABELS[value],
+            }))}
+          />
         </div>
         <div className="flex-1">
           <label className="block font-semibold mb-1 text-ink">When</label>
@@ -207,28 +211,30 @@ export function TaskForm({
       <div className="grid grid-cols-2 gap-2">
         <div>
           <label className="block font-semibold mb-1 text-ink">Timezone</label>
-          <select
+          <SearchSelect
+            ariaLabel="Timezone"
             value={timezone}
-            onChange={(e) => setTimezone(e.currentTarget.value)}
-            className="w-full bg-paper border border-ink/20 rounded px-2 py-1.5 outline-none focus:border-ink/50 text-xs"
-          >
-            {timeZoneOptions(timezone).map((zone) => (
-              <option key={zone} value={zone}>{zone}</option>
-            ))}
-          </select>
+            onChange={setTimezone}
+            placeholder="UTC"
+            allowEmpty={false}
+            options={timeZoneOptions(timezone).map((zone) => ({
+              value: zone,
+              label: zone,
+            }))}
+          />
         </div>
         <div>
           <label className="block font-semibold mb-1 text-ink">Run in</label>
-          <select
+          <SearchSelect
+            ariaLabel="Run in"
             value={folderId === null ? '' : String(folderId)}
-            onChange={(e) => setFolderId(e.currentTarget.value ? Number(e.currentTarget.value) : null)}
-            className="w-full bg-paper border border-ink/20 rounded px-2 py-1.5 outline-none focus:border-ink/50 text-xs"
-          >
-            <option value="">Server default directory</option>
-            {folders.map((folder) => (
-              <option key={folder.id} value={folder.id}>{folder.name}</option>
-            ))}
-          </select>
+            onChange={(next) => setFolderId(next === '' ? null : Number(next))}
+            placeholder="Server default directory"
+            options={folders.map((folder) => ({
+              value: String(folder.id),
+              label: folder.name,
+            }))}
+          />
         </div>
       </div>
 

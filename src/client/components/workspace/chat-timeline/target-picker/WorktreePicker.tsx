@@ -26,6 +26,8 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { AlertTriangle, Check, ChevronDown, GitBranch } from 'lucide-preact';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
+import { PickerSearch } from '@/client/components/common/picker-search';
+import { matchesPickerQuery } from '@/shared/lib/ui/picker-filter';
 import { createWorktree, useWorktrees } from '@/client/hooks/workspace/worktree/index';
 import { NewWorktreeModal } from '@/client/components/workspace/worktree-modal/index';
 import type { SpawnTarget } from '@/client/hooks/chat/timeline/spawn-target';
@@ -70,6 +72,7 @@ export function worktreeLabel(worktrees: WorktreeInfo[], target: SpawnTarget | n
 
 export function WorktreePicker({ folders, selectedFolderId, target, setTarget, onReport }: WorktreePickerProps) {
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
   const [creating, setCreating] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -92,6 +95,7 @@ export function WorktreePicker({ folders, selectedFolderId, target, setTarget, o
   // dialog is in the list the user is looking at.
   useEffect(() => {
     if (open) void refresh();
+    else setQuery('');
   }, [open, refresh]);
 
   // A pick is cleared by the WORKSPACE picker's own choice, never by an effect
@@ -100,6 +104,15 @@ export function WorktreePicker({ folders, selectedFolderId, target, setTarget, o
   // and a mismatch check in that window wiped the very pick it was protecting.
 
   const list = useMemo(() => worktrees.filter((worktree) => !worktree.isPrimary), [worktrees]);
+  // A repository accumulates worktrees; the panel is filtered rather than
+  // scrolled, and closing it clears the filter for the next open.
+  const visible = useMemo(
+    () => list.filter((worktree) => matchesPickerQuery(
+      `${worktree.branch || 'detached'} ${worktree.path}`,
+      query,
+    )),
+    [list, query],
+  );
   const picked = selectedWorktree(worktrees, target);
   const primary = worktrees.find((worktree) => worktree.isPrimary) ?? null;
   const dirty = (picked ?? primary)?.dirty ?? 0;
@@ -175,6 +188,7 @@ export function WorktreePicker({ folders, selectedFolderId, target, setTarget, o
           role="menu"
           className="glass-popover absolute bottom-full left-0 mb-1.5 w-72 bg-paper border border-ink/10 rounded-lg shadow-lg z-50 flex flex-col overflow-hidden text-xs py-1"
         >
+          <PickerSearch value={query} onChange={setQuery} ariaLabel="Search worktrees" placeholder="Search worktrees…" />
           <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-ink/40 font-semibold border-b border-ink/5">
             Project root
           </div>
@@ -232,8 +246,10 @@ export function WorktreePicker({ folders, selectedFolderId, target, setTarget, o
               <div className="px-3 py-2 text-ink/40 italic">
                 {error ? 'Worktrees could not be read' : 'No worktrees yet'}
               </div>
+            ) : visible.length === 0 ? (
+              <div className="px-3 py-2 text-ink/40 italic">No match for “{query.trim()}”</div>
             ) : (
-              list.map((worktree) => {
+              visible.map((worktree) => {
                 const active = target?.worktreePath === worktree.path;
                 return (
                   <button

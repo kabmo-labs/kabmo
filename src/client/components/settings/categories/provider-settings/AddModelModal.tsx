@@ -10,6 +10,7 @@ import {
   type ProviderModelKind,
   type ProviderThinkingEffort,
 } from '@/shared/lib/models/provider/dialect';
+import { SearchSelect } from '@/client/components/common/search-select';
 import { Modal } from '@/client/components/common/Modal';
 import { EffortLadder } from '@/client/components/settings/categories/provider-settings/EffortLadder';
 import { PriceFields } from '@/client/components/settings/categories/provider-settings/PriceFields';
@@ -243,15 +244,16 @@ export function AddModelModal({
           oddly there. */}
       <div>
         <label className="block text-xs font-semibold text-ink mb-1">Kind</label>
-        <select
+        <SearchSelect
+          ariaLabel="Model kind"
           value={kind}
-          onChange={(e) => setKind(e.currentTarget.value as ProviderModelKind)}
-          className="w-full text-xs py-2 px-3 rounded-lg border border-ink/20 hover:border-ink/40 bg-paper focus:outline-none focus:border-ink text-ink transition-colors cursor-pointer"
-        >
-          {MODEL_KINDS.map((value) => (
-            <option key={value} value={value}>{MODEL_KIND_LABELS[value]}</option>
-          ))}
-        </select>
+          onChange={(next) => setKind(next as ProviderModelKind)}
+          placeholder="Chat"
+          searchable={false}
+          allowEmpty={false}
+          triggerClassName="w-full text-xs py-2 px-3 rounded-lg border border-ink/20 hover:border-ink/40 bg-paper focus:outline-none focus:border-ink text-ink transition-colors cursor-pointer"
+          options={MODEL_KINDS.map((value) => ({ value, label: MODEL_KIND_LABELS[value] }))}
+        />
         <p className="text-[10px] text-ink/40 mt-1">
           Chat is omp’s default. A non-chat kind keeps this model out of the chat picker.
         </p>

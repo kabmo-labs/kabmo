@@ -17,6 +17,7 @@
  * pick, an ACP agent to its own configured default.
  */
 
+import { SearchSelect } from '@/client/components/common/search-select';
 import { useHarnesses } from '@/client/hooks/models/use-harnesses';
 import { useModelsCatalog } from '@/client/hooks/models/use-models-catalog';
 import {
@@ -121,73 +122,68 @@ export function ModelFields({ harness, model, onHarnessChange, onModelChange }: 
       <div className="grid grid-cols-2 gap-2">
         <div>
           <label className="block font-semibold mb-1 text-ink">Harness</label>
-          <select
+          <SearchSelect
+            ariaLabel="Harness"
             value={harness}
-            onChange={(e) => onHarnessChange(e.currentTarget.value)}
-            className="w-full bg-paper border border-ink/20 rounded px-2 py-1.5 outline-none focus:border-ink/50 text-xs"
-          >
-            {!harnessOptions.some((entry) => entry.id === harness) && (
-              <option value={harness}>{harness}</option>
-            )}
-            {harnessOptions.map((entry) => (
-              <option key={entry.id} value={entry.id}>{entry.label}</option>
-            ))}
-          </select>
+            onChange={onHarnessChange}
+            placeholder="Select a harness"
+            heading="Harness"
+            allowEmpty={false}
+            options={harnessOptions.map((entry) => ({
+              value: entry.id,
+              label: entry.label,
+            }))}
+          />
         </div>
         <div>
           <label className="block font-semibold mb-1 text-ink">Model</label>
-          <select
+          <SearchSelect
+            ariaLabel="Model"
             value={model ? `${model.provider}/${model.modelId}` : ''}
-            onChange={(e) => pickModel(e.currentTarget.value)}
-            className="w-full bg-paper border border-ink/20 rounded px-2 py-1.5 outline-none focus:border-ink/50 text-xs"
-          >
-            <option value="">
-              {harness === 'omp-rpc' ? 'Default (composer selection)' : 'Harness default'}
-            </option>
-            {model && !options.some((option) => option.provider === model.provider && option.id === model.modelId) && (
-              <option value={`${model.provider}/${model.modelId}`}>
-                {model.provider}/{model.modelId}
-              </option>
-            )}
-            {options.map((option) => (
-              <option key={modelKey(option)} value={modelKey(option)}>
-                {option.name} · {option.provider}
-              </option>
-            ))}
-          </select>
+            onChange={pickModel}
+            placeholder={harness === 'omp-rpc' ? 'Default (composer selection)' : 'Harness default'}
+            heading="Model"
+            options={options.map((option) => ({
+              value: modelKey(option),
+              label: option.name,
+              hint: option.provider,
+            }))}
+          />
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-2">
         <div>
           <label className="block font-semibold mb-1 text-ink">Thinking</label>
-          <select
+          <SearchSelect
+            ariaLabel="Thinking"
             value={model?.thinkingLevel ?? 'auto'}
             disabled={!model || thinkingLevels.length === 0}
-            onChange={(e) => pickThinking(e.currentTarget.value)}
-            className="w-full bg-paper border border-ink/20 rounded px-2 py-1.5 outline-none focus:border-ink/50 text-xs disabled:opacity-40"
-          >
-            <option value="auto">Auto</option>
-            {model && model.thinkingLevel !== 'auto' && !thinkingLevels.includes(model.thinkingLevel) && (
-              <option value={model.thinkingLevel}>{model.thinkingLevel}</option>
-            )}
-            {thinkingLevels.map((level) => (
-              <option key={level} value={level}>{level}</option>
-            ))}
-          </select>
+            onChange={pickThinking}
+            placeholder="Auto"
+            searchable={false}
+            allowEmpty={false}
+            options={[
+              { value: 'auto', label: 'Auto' },
+              ...thinkingLevels.map((level) => ({ value: level, label: level })),
+            ]}
+          />
         </div>
         <div>
           <label className="block font-semibold mb-1 text-ink">Access</label>
-          <select
+          <SearchSelect
+            ariaLabel="Access"
             value={model?.accessMode ?? 'always-ask'}
             disabled={!model}
-            onChange={(e) => pickAccess(e.currentTarget.value as ApprovalMode)}
-            className="w-full bg-paper border border-ink/20 rounded px-2 py-1.5 outline-none focus:border-ink/50 text-xs disabled:opacity-40"
-          >
-            {APPROVAL_MODES.map((mode) => (
-              <option key={mode} value={mode}>{ACCESS_LABELS[mode]}</option>
-            ))}
-          </select>
+            onChange={(next) => pickAccess(next as ApprovalMode)}
+            placeholder="Select access"
+            searchable={false}
+            allowEmpty={false}
+            options={APPROVAL_MODES.map((mode) => ({
+              value: mode,
+              label: ACCESS_LABELS[mode],
+            }))}
+          />
         </div>
       </div>
 

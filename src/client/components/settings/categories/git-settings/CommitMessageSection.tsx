@@ -22,6 +22,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { Ban, Bot, Check, Cpu, RotateCcw, Save, Sparkles } from 'lucide-preact';
 import type { SettingsState } from '@/shared/types';
+import { SearchSelect } from '@/client/components/common/search-select';
 import { useHarnesses } from '@/client/hooks/models/use-harnesses';
 import {
   COMMIT_PROMPT_PLACEHOLDERS,
@@ -189,16 +190,14 @@ export function CommitMessageSection({ settings, onUpdate }: CommitMessageSectio
           {mode === 'harness' && (
             <div>
               <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-ink/45">Harness</label>
-              <select
+              <SearchSelect
+                ariaLabel="Commit message harness"
                 value={harness}
-                onChange={(e) => onUpdate({ commitMessageHarness: e.currentTarget.value })}
-                className="w-full bg-paper border border-ink/20 rounded-md px-2.5 py-1.5 outline-none focus:border-ink text-[11px] font-medium text-ink cursor-pointer hover:border-ink/40 transition-colors"
-              >
-                <option value="">Select a harness…</option>
-                {acpHarnesses.map((entry) => (
-                  <option key={entry.id} value={entry.id}>{entry.label}</option>
-                ))}
-              </select>
+                onChange={(next) => onUpdate({ commitMessageHarness: next })}
+                placeholder="Select a harness…"
+                triggerClassName="w-full bg-paper border border-ink/20 rounded-md px-2.5 py-1.5 outline-none focus:border-ink text-[11px] font-medium text-ink cursor-pointer hover:border-ink/40 transition-colors"
+                options={acpHarnesses.map((entry) => ({ value: entry.id, label: entry.label }))}
+              />
               {acpHarnesses.length === 0 && (
                 <p className="mt-1 text-[10px] text-ink/50">
                   No ACP harness is enabled. Add one in Settings → Harnesses.

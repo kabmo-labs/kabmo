@@ -17,7 +17,7 @@
  */
 
 import { useRef, useState } from 'preact/hooks';
-import { Check, Layers } from 'lucide-preact';
+import { Check, ChevronDown, Layers } from 'lucide-preact';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 import type { SessionModeState } from '@/shared/lib/harness/session-modes';
 
@@ -52,10 +52,11 @@ export function SessionModeDropdown({ mode, pending, onSelect, iconOnly = false 
         aria-expanded={open}
         aria-label={`Session mode: ${label}`}
         title={`Session mode: ${label}`}
-        className="tap-chip flex items-center space-x-1 hover:bg-ink/5 px-2 py-1 rounded transition-colors text-xs text-muted disabled:opacity-60 disabled:cursor-wait"
+        className="tap-chip flex items-center space-x-1 rounded-md px-1.5 py-1 text-xs font-medium text-muted transition-colors hover:bg-ink/5 hover:text-ink disabled:cursor-wait disabled:opacity-60"
       >
         <Layers size={12} className="text-ink/60" />
         {!iconOnly && <span className="max-w-[9rem] truncate">{label}</span>}
+        <ChevronDown size={11} className={`flex-shrink-0 text-ink/40 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
         <div
@@ -63,7 +64,7 @@ export function SessionModeDropdown({ mode, pending, onSelect, iconOnly = false 
           aria-label="Session mode"
           className="glass-popover absolute bottom-full left-0 mb-1 w-44 bg-paper border border-ink/20 rounded-md shadow-lg z-50 py-1 text-xs"
         >
-          <div className="px-3 py-1 text-[10px] uppercase tracking-wider text-ink/40 font-semibold mb-1">
+          <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-ink/40 font-semibold border-b border-ink/5 mb-1">
             Session Mode
           </div>
           {mode.values.map((choice) => (
@@ -76,7 +77,9 @@ export function SessionModeDropdown({ mode, pending, onSelect, iconOnly = false 
                 setOpen(false);
                 onSelect(choice.value);
               }}
-              className="w-full text-left px-3 py-1.5 hover:bg-ink/5 flex items-center justify-between gap-2 transition-colors"
+              className={`w-full text-left px-3 py-1.5 flex items-center justify-between gap-2 transition-colors hover:bg-ink/5 ${
+                choice.value === mode.currentValue ? 'bg-ink/10 font-medium text-ink' : 'text-ink/75'
+              }`}
             >
               <span className="truncate">{choice.name}</span>
               {choice.value === mode.currentValue && <Check size={12} className="text-ink shrink-0" />}

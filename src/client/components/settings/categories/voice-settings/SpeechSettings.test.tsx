@@ -126,7 +126,7 @@ describe('SpeechSettings', () => {
     expect(host.textContent).toContain('This omp build has no say command.');
   });
 
-  test('a hosted engine offers Indonesian and writes it to the tts object', () => {
+  test('a hosted engine offers Indonesian and writes it to the tts object', async () => {
     stubServer();
     let patch: Updater | undefined;
     const host = mount((updater) => { patch = updater; }, { engine: 'openai' });
@@ -134,14 +134,16 @@ describe('SpeechSettings', () => {
     const label = [...host.querySelectorAll('label')].find((element) =>
       element.textContent?.includes('Language'),
     );
-    const select = label?.querySelector('select') as HTMLSelectElement | null;
-    expect(select).not.toBeNull();
-    expect([...select!.options].map((option) => option.value)).toContain('id');
+    const trigger = label?.querySelector('button[role="combobox"]') as HTMLButtonElement | null;
+    expect(trigger).not.toBeNull();
+    expect(trigger!.getAttribute('aria-label')).toBe('Language');
 
-    act(() => {
-      select!.value = 'id';
-      select!.dispatchEvent(new window.Event('change', { bubbles: true }));
-    });
+    await act(async () => { trigger!.click(); });
+    const options = [...document.querySelectorAll('[role="option"]')] as HTMLButtonElement[];
+    expect(options.map((option) => option.textContent)).toContain('Indonesian');
+
+    const indonesian = options.find((option) => option.textContent === 'Indonesian')!;
+    await act(async () => { indonesian.click(); });
     expect(patch).toEqual({
       tts: { ...DEFAULT_SETTINGS.tts, engine: 'openai', language: 'id' },
     });
@@ -168,16 +170,26 @@ describe('SpeechSettings', () => {
     expect(host.textContent).toContain('speaks Indonesian');
 
     // The language picker is the MODEL's list: English and Indonesian, no auto.
-    const language = [...host.querySelectorAll('label')].find((element) =>
+    const languageTrigger = [...host.querySelectorAll('label')].find((element) =>
       element.textContent?.includes('Language'),
-    )?.querySelector('select') as HTMLSelectElement | null;
-    expect([...language!.options].map((option) => option.value)).toEqual(['', 'en', 'id']);
+    )?.querySelector('button[role="combobox"]') as HTMLButtonElement | null;
+    await act(async () => { languageTrigger!.click(); });
+    const languageOptions = [...document.querySelectorAll('[role="option"]')];
+    expect(languageOptions.map((option) => option.textContent)).toEqual([
+      'Model default (en)',
+      'English',
+      'Indonesian',
+    ]);
+    // Close it before the next trigger opens its own panel.
+    await act(async () => { languageTrigger!.click(); });
 
     // And the voice picker uses the model's named voices, not free text.
-    const voice = [...host.querySelectorAll('label')].find((element) =>
+    const voiceTrigger = [...host.querySelectorAll('label')].find((element) =>
       element.textContent?.includes('Voice') && !element.textContent?.includes('Voice and rate'),
-    )?.querySelector('select') as HTMLSelectElement | null;
-    expect([...voice!.options].map((option) => option.textContent)).toEqual(['Female 1', 'Male 1']);
+    )?.querySelector('button[role="combobox"]') as HTMLButtonElement | null;
+    await act(async () => { voiceTrigger!.click(); });
+    const voiceOptions = [...document.querySelectorAll('[role="option"]')];
+    expect(voiceOptions.map((option) => option.textContent)).toEqual(['Female 1', 'Male 1']);
   });
 
   test('a model that declares no languages says the code passes through', async () => {

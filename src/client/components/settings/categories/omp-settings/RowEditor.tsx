@@ -27,6 +27,7 @@ import { Check, Eye, EyeOff, X } from 'lucide-preact';
 import type { SchemaEntry } from '@/shared/lib/omp/config/schema-types';
 import { parseDraft, valueToText } from '@/shared/lib/omp/config/row-value';
 import { OrderedChips } from '@/client/components/settings/categories/omp-settings/OrderedChips';
+import { SearchSelect } from '@/client/components/common/search-select';
 
 interface RowEditorProps {
   entryKey: string;
@@ -156,32 +157,32 @@ export function RowEditor({
     const current = value === undefined || value === null ? '' : String(value);
     return (
       <div className="flex shrink-0 items-center gap-2">
-        <select
-          aria-label={entry.ui.label}
+        <SearchSelect
+          ariaLabel={entry.ui.label}
           value={current}
-          onChange={(event) => {
-            const selected = event.currentTarget.value;
-            if (selected === current) return;
+          onChange={(next) => {
+            if (next === current) return;
             if (entry.type === 'number') {
-              const parsed = Number(selected);
+              const parsed = Number(next);
               if (!Number.isFinite(parsed)) return;
               void commit(parsed);
             } else {
-              void commit(selected);
+              void commit(next);
             }
           }}
           disabled={saving}
-          className={`max-w-56 rounded-md border border-ink/15 bg-paper px-2 py-1 text-ink cursor-pointer disabled:cursor-progress ${
+          placeholder="select…"
+          searchable={choices.length > 10}
+          allowEmpty={false}
+          triggerClassName={`max-w-56 rounded-md border border-ink/15 bg-paper px-2 py-1 text-ink cursor-pointer disabled:cursor-progress ${
             saving ? 'opacity-50' : ''
           }`}
-        >
-          {current === '' && <option value="" disabled>select…</option>}
-          {choices.map((choice) => (
-            <option key={choice.value} value={choice.value}>
-              {choice.label || choice.value}
-            </option>
-          ))}
-        </select>
+          options={choices.map((choice) => ({
+            value: choice.value,
+            label: choice.label || choice.value,
+            ...(choice.description ? { hint: choice.description } : {}),
+          }))}
+        />
       </div>
     );
   }

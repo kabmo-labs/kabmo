@@ -4,6 +4,7 @@ import { AlertCircle, Check, Copy, Info, Loader2, Save, Trash2 } from 'lucide-pr
 import type { AgentItem, WriteOutcome } from '@/shared/types';
 import { agentFileNameError } from '@/shared/lib/omp/config/agent-file';
 import { useWriteFeedback } from '@/client/hooks/settings/write-feedback';
+import { SearchSelect } from '@/client/components/common/search-select';
 import { AgentModelPicker } from '@/client/components/settings/categories/agent-settings/ModelPicker';
 import { AGENT_THINKING_DEFAULT, AGENT_THINKING_LEVELS } from '@/client/components/settings/categories/agent-settings/levels';
 
@@ -171,18 +172,19 @@ export const AgentDetailPane: FunctionComponent<AgentDetailPaneProps> = ({
                 <Info className="h-3.5 w-3.5 text-ink/40" />
               </span>
             </div>
-            <select
-              aria-label="Thinking level"
+            <SearchSelect
+              ariaLabel="Thinking level"
               value={formData.thinkingLevel ?? AGENT_THINKING_DEFAULT}
-              onChange={(e) => setFormData({ ...formData, thinkingLevel: e.currentTarget.value || undefined })}
+              onChange={(next) => setFormData({ ...formData, thinkingLevel: next || undefined })}
               disabled={readOnly || feedback.saving}
-              className="w-full cursor-pointer rounded-lg border border-ink/20 bg-paper py-2 pl-2 pr-3 font-mono text-xs text-ink transition-colors hover:border-ink/40 focus:border-ink focus:outline-none disabled:opacity-60"
-            >
-              <option value={AGENT_THINKING_DEFAULT}>inherit (session level)</option>
-              {AGENT_THINKING_LEVELS.map((level) => (
-                <option key={level} value={level}>{level}</option>
-              ))}
-            </select>
+              placeholder="inherit (session level)"
+              searchable={false}
+              allowEmpty={false}
+              options={[
+                { value: AGENT_THINKING_DEFAULT, label: 'inherit (session level)' },
+                ...AGENT_THINKING_LEVELS.map((level) => ({ value: level, label: level })),
+              ]}
+            />
           </div>
 
           <div>

@@ -3,6 +3,7 @@ import type { FormEvent } from 'preact/compat';
 import { AlertCircle, Globe, Info, Key, Save } from 'lucide-preact';
 import type { ProviderItem } from '@/shared/types';
 import { ProviderIconPlate } from '@/client/components/common/provider-icon/Plate';
+import { SearchSelect } from '@/client/components/common/search-select';
 import { Modal } from '@/client/components/common/Modal';
 import {
   EntryAdvanced,
@@ -229,28 +230,32 @@ export function ProviderEntryModal({ isOpen, provider, onClose, onSaved }: Provi
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-semibold text-ink mb-1">Wire API</label>
-          <select
+          <SearchSelect
+            ariaLabel="Wire API"
             value={api}
-            onChange={(e) => setApi(e.currentTarget.value as OmpProviderApi)}
-            className={fieldClass}
-          >
-            <option value="">Inherit omp's setting</option>
-            {PROVIDER_APIS.map((value) => (
-              <option key={value} value={value}>{value}</option>
-            ))}
-          </select>
+            onChange={(next) => setApi(next as OmpProviderApi)}
+            placeholder="Inherit omp's setting"
+            searchable={false}
+            triggerClassName={fieldClass}
+            options={PROVIDER_APIS.map((value) => ({ value, label: value }))}
+          />
         </div>
         <div>
           <label className="block text-xs font-semibold text-ink mb-1">Auth</label>
-          <select
+          <SearchSelect
+            ariaLabel="Auth mode"
             value={auth}
-            onChange={(e) => setAuth(e.currentTarget.value as ProviderAuthMode)}
-            className={fieldClass}
-          >
-            {PROVIDER_AUTH_MODES.map((mode) => (
-              <option key={mode.value} value={mode.value}>{mode.label}</option>
-            ))}
-          </select>
+            onChange={(next) => setAuth(next as ProviderAuthMode)}
+            placeholder="Auth"
+            searchable={false}
+            allowEmpty={false}
+            triggerClassName={fieldClass}
+            options={PROVIDER_AUTH_MODES.map((mode) => ({
+              value: mode.value,
+              label: mode.label,
+              hint: mode.hint,
+            }))}
+          />
         </div>
       </div>
       {api && (

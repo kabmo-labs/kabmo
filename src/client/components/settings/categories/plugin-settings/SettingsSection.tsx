@@ -1,6 +1,7 @@
 import { CHECKBOX_CLASS } from '@/client/components/common/checkbox/style';
 import { useEffect, useState } from 'preact/hooks';
 import { Check, ChevronDown, ChevronRight, KeyRound } from 'lucide-preact';
+import { SearchSelect } from '@/client/components/common/search-select';
 import type { PluginItem, PluginSettingSpec } from '@/shared/types';
 
 interface PluginSettingsSectionProps {
@@ -182,17 +183,17 @@ function SettingInput({
 
   if (spec.type === 'enum' && spec.values?.length) {
     return (
-      <select
+      <SearchSelect
+        ariaLabel={spec.key}
         value={value}
         disabled={disabled}
-        onChange={(event) => onChange(event.currentTarget.value)}
-        className={`${className} cursor-pointer`}
-      >
-        {!spec.values.includes(value) && <option value={value}>{value || '(unset)'}</option>}
-        {spec.values.map((option) => (
-          <option key={option} value={option}>{option}</option>
-        ))}
-      </select>
+        onChange={onChange}
+        placeholder="(unset)"
+        searchable={spec.values.length > 10}
+        allowEmpty={false}
+        triggerClassName={`${className} cursor-pointer`}
+        options={spec.values.map((option) => ({ value: option, label: option }))}
+      />
     );
   }
 

@@ -136,6 +136,8 @@ export function BrowserViewportSelector({
             <button
               key={opt.id}
               type="button"
+              role="menuitemradio"
+              aria-checked={isSelected}
               onClick={() => {
                 onChangeViewport(opt.id);
                 setAnchor(null);
@@ -164,6 +166,8 @@ export function BrowserViewportSelector({
             <button
               key={opt.id}
               type="button"
+              role="menuitemradio"
+              aria-checked={isSelected}
               onClick={() => {
                 onChangeViewport(opt.id);
                 setAnchor(null);

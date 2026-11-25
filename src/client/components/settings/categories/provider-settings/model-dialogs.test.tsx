@@ -111,7 +111,7 @@ describe('ModelCapabilitiesModal', () => {
 });
 
 describe('AddModelModal', () => {
-  test('offers the kind picker, so a non-chat model is not registered as chat', () => {
+  test('offers the kind picker, so a non-chat model is not registered as chat', async () => {
     act(() => {
       render(
         h(AddModelModal, {
@@ -125,11 +125,18 @@ describe('AddModelModal', () => {
       );
     });
 
-    const select = [...container.querySelectorAll('select')].find((node) => (
-      [...node.options].some((option) => option.value === 'embedding')
-    ));
-    expect(select).toBeDefined();
-    expect(select?.value).toBe('chat');
-    expect([...(select?.options ?? [])].map((option) => option.value)).toContain('rerank');
+    // The kind is a searchable select now: the trigger names the current value
+    // and the rows are portalled, so the list is read from `document.body`.
+    const trigger = container.querySelector('button[role="combobox"][aria-label="Model kind"]') as HTMLButtonElement | null;
+    expect(trigger).not.toBeNull();
+    expect(trigger!.textContent).toContain('Chat');
+
+    await act(async () => {
+      trigger!.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+      await Promise.resolve();
+    });
+    const kinds = [...document.querySelectorAll('[role="option"]')].map((option) => option.textContent);
+    expect(kinds).toContain('Embedding');
+    expect(kinds).toContain('Rerank');
   });
 });

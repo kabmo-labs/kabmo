@@ -1,3 +1,4 @@
+import { SearchSelect } from '@/client/components/common/search-select';
 import { CHECKBOX_CLASS } from '@/client/components/common/checkbox/style';
 import { Plus, X } from 'lucide-preact';
 import { PROVIDER_DISCOVERY_TYPES } from '@/shared/lib/models/provider/dialect';
@@ -58,16 +59,19 @@ export function EntryAdvanced({
         <label className="block text-xs font-semibold text-ink mb-1">
           Discovery <span className="font-normal text-ink/40">(optional)</span>
         </label>
-        <select
+        <SearchSelect
+          ariaLabel="Model discovery"
           value={discovery.type}
-          onChange={(e) => patch({ type: e.currentTarget.value as ProviderDiscoveryType | '' })}
-          className={fieldClass}
-        >
-          <option value="">Use the registered model list</option>
-          {PROVIDER_DISCOVERY_TYPES.map((type) => (
-            <option key={type.value} value={type.value}>{type.label}</option>
-          ))}
-        </select>
+          onChange={(next) => patch({ type: next as ProviderDiscoveryType | '' })}
+          placeholder="Use the registered model list"
+          searchable={false}
+          triggerClassName={fieldClass}
+          options={PROVIDER_DISCOVERY_TYPES.map((type) => ({
+            value: type.value,
+            label: type.label,
+            hint: type.hint,
+          }))}
+        />
         <p className="text-[10px] text-ink/40 mt-1 leading-relaxed">
           {discovery.type
             ? PROVIDER_DISCOVERY_TYPES.find((type) => type.value === discovery.type)?.hint

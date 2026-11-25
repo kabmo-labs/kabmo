@@ -2,6 +2,7 @@ import { useEffect, useState } from 'preact/hooks';
 import type { FormEvent, FunctionComponent } from 'preact/compat';
 import { AlertCircle, Check, Copy, Eye, EyeOff, Loader2, Save, Trash2 } from 'lucide-preact';
 import type { CommandItem, CommandScope, WriteOutcome } from '@/shared/types';
+import { SearchSelect } from '@/client/components/common/search-select';
 import { useWriteFeedback } from '@/client/hooks/settings/write-feedback';
 
 interface CommandDetailPaneProps {
@@ -142,18 +143,19 @@ export const CommandDetailPane: FunctionComponent<CommandDetailPaneProps> = ({
             <label className="block text-xs font-semibold text-ink/80 mb-1.5">
               Scope
             </label>
-            <select
+            <SearchSelect
+              ariaLabel="Scope"
               value={formData.scope}
-              onChange={(e) =>
-                setFormData({ ...formData, scope: e.currentTarget.value as CommandScope })
-              }
+              onChange={(next) => setFormData({ ...formData, scope: next as CommandScope })}
               disabled={readOnlyNow || projectScopeDisabled}
-              title={projectScopeDisabled ? 'Select a workspace folder to write a project command' : undefined}
-              className="w-full text-xs py-2 px-3 rounded-lg border border-ink/20 hover:border-ink/40 bg-paper focus:outline-none focus:border-ink disabled:opacity-60 text-ink transition-colors cursor-pointer"
-            >
-              <option value="user">user</option>
-              {!projectScopeDisabled && <option value="project">project</option>}
-            </select>
+              placeholder="user"
+              searchable={false}
+              allowEmpty={false}
+              options={[
+                { value: 'user', label: 'user' },
+                ...(projectScopeDisabled ? [] : [{ value: 'project', label: 'project' }]),
+              ]}
+            />
           </div>
         </div>
 

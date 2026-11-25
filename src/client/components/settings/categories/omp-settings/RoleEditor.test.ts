@@ -259,23 +259,21 @@ describe('presets', () => {
 
   test('the picker names the preset the live map equals, and reads in use', async () => {
     const active = await mount({ ...PRESETS[0].roles });
-    const picker = active.querySelector('select[aria-label="Model role preset"]') as HTMLSelectElement;
-    expect(picker.value).toBe('p-cheap');
+    // The preset picker's listbox is portalled; only its trigger is local.
+    expect(active.querySelector('button[aria-label="Model role preset"]')?.textContent).toContain('cheap');
     expect(active.textContent).toContain('in use');
   });
 
   test('a map no preset matches leaves the picker on Custom', async () => {
     const el = await mount({ default: 'kenari/deepseek-v4-flash' });
-    const picker = el.querySelector('select[aria-label="Model role preset"]') as HTMLSelectElement;
-    expect(picker.value).toBe('');
+    expect(el.querySelector('button[aria-label="Model role preset"]')?.textContent).toContain('Custom');
     expect(el.textContent).not.toContain('in use');
   });
 
   test('a hand edit keeps the selection and reads modified, so Update stays reachable', async () => {
     const el = await mount({ ...PRESETS[0].roles });
     await pickRole(el, 'default', 'GLM-5');
-    const picker = el.querySelector('select[aria-label="Model role preset"]') as HTMLSelectElement;
-    expect(picker.value).toBe('p-cheap');
+    expect(el.querySelector('button[aria-label="Model role preset"]')?.textContent).toContain('cheap');
     expect(el.textContent).toContain('modified');
     expect(el.textContent).not.toContain('in use');
     const update = [...el.querySelectorAll('button')].find((button) => button.textContent?.includes('Update'))!;
@@ -298,10 +296,16 @@ describe('presets', () => {
   test('choosing a preset applies its whole role map', async () => {
     const writes: Array<Record<string, string>> = [];
     const el = await mount({}, { onSaveRoles: async (roles) => { writes.push(roles); return true; } });
-    const picker = el.querySelector('select[aria-label="Model role preset"]') as HTMLSelectElement;
     await act(async () => {
-      picker.value = 'p-think';
-      picker.dispatchEvent(new window.Event('change'));
+      el.querySelector('button[aria-label="Model role preset"]')!
+        .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+      await Promise.resolve();
+    });
+    const row = openRows().find((node) => node.textContent?.includes('think'));
+    if (!row) throw new Error('no preset row for p-think');
+    await act(async () => {
+      row.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+      await Promise.resolve();
     });
     expect(writes).toEqual([PRESETS[1].roles]);
   });
@@ -337,7 +341,6 @@ describe('presets', () => {
     const confirm = [...el.querySelectorAll('button')].find((button) => button.textContent?.trim() === 'Delete')!;
     await act(async () => { confirm.click(); });
     expect(deleted).toEqual(['p-cheap']);
-    const picker = el.querySelector('select[aria-label="Model role preset"]') as HTMLSelectElement;
-    expect(picker.value).toBe('');
+    expect(el.querySelector('button[aria-label="Model role preset"]')?.textContent).toContain('Custom');
   });
 });

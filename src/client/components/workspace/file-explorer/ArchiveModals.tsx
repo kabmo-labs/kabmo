@@ -14,6 +14,7 @@
  * user sees the machine's limit instead of a failure after submitting.
  */
 
+import { SearchSelect } from '@/client/components/common/search-select';
 import { createPortal } from 'preact/compat';
 import type { FormEvent } from 'preact/compat';
 import { archiveKindLabel, archiveKindOf, type ArchiveFormat } from '@/shared/lib/fs/archive';
@@ -117,22 +118,21 @@ export function CompressDialog({
         onSubmit();
       }}
     >
-      <label className="block text-[10px] uppercase tracking-wide text-ink/40 mb-1" htmlFor="archive-format">
-        Format
-      </label>
-      <select
-        id="archive-format"
+      <label className="block text-[10px] uppercase tracking-wide text-ink/40 mb-1">Format</label>
+      <SearchSelect
+        ariaLabel="Format"
         value={format}
-        onChange={(event) => onFormatChange(event.currentTarget.value as ArchiveFormat)}
-        className="w-full bg-paper border border-ink/20 rounded px-2 py-1.5 text-xs font-mono focus:outline-none focus:border-ink mb-3"
-      >
-        {formats.map((option) => (
-          <option key={option.id} value={option.id} disabled={!option.available}>
-            {option.label}
-            {option.available ? '' : ` — ${option.tool} not installed`}
-          </option>
-        ))}
-      </select>
+        onChange={(next) => onFormatChange(next as ArchiveFormat)}
+        placeholder="Format"
+        searchable={false}
+        allowEmpty={false}
+        className="mb-3 text-xs"
+        options={formats.map((option) => ({
+          value: option.id,
+          label: option.available ? option.label : `${option.label} — ${option.tool} not installed`,
+          disabled: !option.available,
+        }))}
+      />
 
       <label className="block text-[10px] uppercase tracking-wide text-ink/40 mb-1" htmlFor="archive-name">
         Archive name

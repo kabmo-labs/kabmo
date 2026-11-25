@@ -31,6 +31,7 @@
 
 import { useState } from 'preact/hooks';
 import { Check, Plus, Save, Trash2 } from 'lucide-preact';
+import { SearchSelect } from '@/client/components/common/search-select';
 import type { ModelRolePreset } from '@/shared/types/model-roles';
 
 interface PresetBarProps {
@@ -80,21 +81,20 @@ export function PresetBar({
     <div className="rounded-lg border border-ink/10 bg-ink/[0.02] px-3 py-2 mb-3">
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-[10px] font-semibold uppercase tracking-wide text-ink/50">Preset</span>
-        <select
-          aria-label="Model role preset"
+        <SearchSelect
+          ariaLabel="Model role preset"
           value={selectedPreset?.id ?? ''}
           disabled={busy || presets.length === 0}
-          onChange={(event) => {
-            const chosen = presets.find((preset) => preset.id === event.currentTarget.value);
+          onChange={(next) => {
+            const chosen = presets.find((preset) => preset.id === next);
             if (chosen) onApply(chosen);
           }}
-          className="bg-paper border border-ink/15 rounded-md px-2 py-1 text-ink text-[11px] cursor-pointer disabled:opacity-50 min-w-[10rem]"
-        >
-          <option value="">{presets.length === 0 ? 'No presets yet' : 'Custom'}</option>
-          {presets.map((preset) => (
-            <option key={preset.id} value={preset.id}>{preset.name}</option>
-          ))}
-        </select>
+          placeholder={presets.length === 0 ? 'No presets yet' : 'Custom'}
+          emptyText="No presets yet"
+          heading="Model role preset"
+          triggerClassName="bg-paper border border-ink/15 rounded-md px-2 py-1 text-ink text-[11px] cursor-pointer disabled:opacity-50 min-w-[10rem]"
+          options={presets.map((preset) => ({ value: preset.id, label: preset.name }))}
+        />
 
         {selectedPreset && (
           <span
