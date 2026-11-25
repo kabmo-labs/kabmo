@@ -18,7 +18,7 @@ import { ensureScheduleSchema } from '@/server/lib/schedule/schema.server';
 import { ensureWaitingSchema } from '@/server/lib/waiting/schema.server';
 import { ensurePluginSchema } from '@/server/lib/plugins/schema.server';
 import { ensureModelRolePresetSchema } from '@/server/lib/model-roles/schema.server';
-import { ensureProviderIconSchema } from '@/server/lib/models/provider-icon-store.server';
+import { ensureProviderIconSchema, repairProviderIconSvgs } from '@/server/lib/models/provider-icon-store.server';
 import { ensureUsageIndexSchema } from '@/server/lib/usage/index-schema.server';
 import { ensureWorktreeSchema } from '@/server/lib/db/worktree-registry.server';
 import { ensureReviewSchema } from '@/server/lib/review/schema.server';
@@ -145,6 +145,10 @@ export async function initSchema(db: DbClient): Promise<void> {
   // Named model-role presets (the role editor's preset picker).
   await ensureModelRolePresetSchema(db);
   await ensureProviderIconSchema(db);
+  // Legacy rows may hold an SVG a browser rejects (`--` in a comment); repair
+  // them before any surface reads the icon URL, and version the new bytes so an
+  // immutable cached copy cannot keep painting nothing.
+  await repairProviderIconSvgs(db);
   // Token-usage index: the rollup the telemetry panel reads instead of
   // re-scanning every transcript on each request.
   await ensureUsageIndexSchema(db);

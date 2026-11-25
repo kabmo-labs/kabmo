@@ -19,6 +19,7 @@ import {
   ensureProviderIconSchema,
   readProviderIcon,
   readProviderIconStamps,
+  repairProviderIconSvgs,
   writeProviderIcon,
 } from '@/server/lib/models/provider-icon-store.server';
 
@@ -103,5 +104,59 @@ describe('provider_icons', () => {
 
   test('an unknown provider has no row', async () => {
     expect(await readProviderIcon(await getDb(), 'nope')).toBeNull();
+  });
+
+  /**
+   * tokenharbor.ai's icon.svg says `--background` inside an XML comment: valid
+   * to a lenient reader, rejected by Chromium as an image. The old fetch stored
+   * those bytes as `ok`, so the row reported an icon that painted nothing.
+   */
+  test('a stored SVG a browser rejects is repaired, with a new version', async () => {
+    const db = await getDb();
+    const broken = '<?xml version="1.0"?><!-- matches --background --><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"></svg>';
+    await writeProviderIcon(db, {
+      slug: 'token-harbour',
+      status: 'ok',
+      mime: 'image/svg+xml',
+      bytes: new TextEncoder().encode(broken),
+      source: 'https://tokenharbor.ai/icon.svg',
+      fetchedAt: 1_700_000_000_000,
+    });
+
+    expect(await repairProviderIconSvgs(db)).toBe(1);
+
+    const stored = await readProviderIcon(db, 'token-harbour');
+    const text = new TextDecoder().decode(stored?.bytes);
+    expect(text).not.toContain('<!--');
+    expect(() => Bun.XML.parse(text)).not.toThrow();
+    // The icon URL is versioned by `fetchedAt`; keeping the old stamp would
+    // leave the browser's immutable copy of the undecodable bytes in place.
+    expect(stored?.fetchedAt).toBeGreaterThan(1_700_000_000_000);
+    expect(stored?.source).toBe('https://tokenharbor.ai/icon.svg');
+  });
+
+  test('an SVG that cannot be repaired is dropped so the next pass refetches', async () => {
+    const db = await getDb();
+    await writeProviderIcon(db, {
+      slug: 'broken-gateway',
+      status: 'ok',
+      mime: 'image/svg+xml',
+      bytes: new TextEncoder().encode('<svg><g></svg>'),
+      fetchedAt: 1,
+    });
+
+    expect(await repairProviderIconSvgs(db)).toBe(1);
+    expect(await readProviderIcon(db, 'broken-gateway')).toBeNull();
+  });
+
+  test('a decodable SVG is left byte-for-byte alone', async () => {
+    const db = await getDb();
+    const bytes = new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"></svg>');
+    await writeProviderIcon(db, {
+      slug: 'kenari', status: 'ok', mime: 'image/svg+xml', bytes, fetchedAt: 42,
+    });
+
+    expect(await repairProviderIconSvgs(db)).toBe(0);
+    expect((await readProviderIcon(db, 'kenari'))?.fetchedAt).toBe(42);
   });
 });

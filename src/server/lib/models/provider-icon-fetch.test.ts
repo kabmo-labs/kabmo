@@ -22,10 +22,16 @@ const realFetch = Bun.fetch;
 const requested: string[] = [];
 
 /**
- * Answer per origin: `{ html }` for a page that declares `icon`, `{ icon }` for
- * a picture at that URL, `{ missing: true }` for a host with nothing on it.
+ * Answer per origin: `{ html }` for a page that declares its icons, `{ icon }`
+ * for a PNG at that URL, `{ icons }` for an arbitrary body per path.
  */
-function stubHosts(hosts: Record<string, { html?: string; icon?: string }>): void {
+function stubHosts(
+  hosts: Record<string, {
+    html?: string;
+    icon?: string;
+    icons?: Record<string, { body: string | Uint8Array; mime: string }>;
+  }>,
+): void {
   globalThis.fetch = (async (input: RequestInfo | URL) => {
     const url = String(input instanceof Request ? input.url : input);
     requested.push(url);
@@ -35,6 +41,10 @@ function stubHosts(hosts: Record<string, { html?: string; icon?: string }>): voi
     // The page read is `fetch(origin)` — no trailing slash on the request URL.
     if (url.replace(/\/$/, '') === origin && host.html) {
       return new Response(host.html, { headers: { 'content-type': 'text/html' } });
+    }
+    const declared = host.icons?.[url.slice(origin.length)];
+    if (declared) {
+      return new Response(declared.body, { headers: { 'content-type': declared.mime } });
     }
     if (host.icon && url === `${origin}${host.icon}`) {
       return new Response(PNG, { headers: { 'content-type': 'image/png' } });
@@ -87,5 +97,49 @@ describe('fetchProviderIcon — endpoint host, then base domain', () => {
 
     expect(await fetchProviderIcon('https://demo.vercel.app/v1')).toBeNull();
     expect(requested.every((url) => url.startsWith('https://demo.vercel.app'))).toBe(true);
+  });
+});
+
+describe('fetchProviderIcon — an SVG must be decodable', () => {
+  /**
+   * The measured case: tokenharbor.ai's icon.svg is well-formed apart from a
+   * comment that says `--background`, and Chromium answers the `<img>` with
+   * `EncodingError` — initials were drawn although the store said `ok`.
+   */
+  test('an SVG comment containing -- is stripped, so the image paints', async () => {
+    const svg = '<?xml version="1.0"?><!-- matches --background --><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"></svg>';
+    stubHosts({
+      'https://tokenharbor.test': {
+        html: '<link rel="icon" href="/icon.svg" sizes="any">',
+        icons: { '/icon.svg': { body: svg, mime: 'image/svg+xml' } },
+      },
+    });
+
+    const icon = await fetchProviderIcon('https://tokenharbor.test/v1');
+    const text = new TextDecoder().decode(icon?.bytes);
+
+    expect(icon?.mime).toBe('image/svg+xml');
+    expect(text).not.toContain('<!--');
+    expect(() => Bun.XML.parse(text)).not.toThrow();
+    expect(text).toContain('<svg');
+  });
+
+  test('an SVG that cannot be repaired falls through to the next declared icon', async () => {
+    stubHosts({
+      'https://gateway.test': {
+        html: '<link rel="icon" href="/broken.svg" sizes="any"><link rel="icon" href="/good.png" sizes="192x192">',
+        icons: {
+          '/broken.svg': { body: '<svg><g></svg>', mime: 'image/svg+xml' },
+          '/good.png': { body: PNG, mime: 'image/png' },
+        },
+      },
+    });
+
+    const icon = await fetchProviderIcon('https://gateway.test/v1');
+
+    expect(icon?.source).toBe('https://gateway.test/good.png');
+    expect(icon?.mime).toBe('image/png');
+    expect(requested).toContain('https://gateway.test/broken.svg');
+    expect(requested).toContain('https://gateway.test/good.png');
   });
 });

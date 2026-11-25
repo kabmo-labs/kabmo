@@ -25,6 +25,7 @@
 
 import { getImageMimeFromBytes, looksLikeSvg } from '@/shared/lib/fs/file-kind';
 import { pickIconHrefs, providerIconOrigins } from '@/server/lib/models/provider-icon-parse';
+import { drawableSvg } from '@/server/lib/models/provider-icon-svg';
 
 /** Per-request ceiling. A favicon slower than this is not worth the wait. */
 const FETCH_TIMEOUT_MS = 4_000;
@@ -80,7 +81,14 @@ export async function fetchIconAt(url: string): Promise<ProviderIconBytes | null
   const declared = (response.headers.get('content-type') ?? '').toLowerCase();
   // Cheap rejection first: an HTML answer is a page, not a picture.
   if (declared.includes('text/html')) return null;
-  if (looksLikeSvg(bytes)) return { bytes, mime: 'image/svg+xml', source: url };
+  if (looksLikeSvg(bytes)) {
+    // An SVG that a browser cannot decode is not an icon: Chromium rejects an
+    // invalid comment (`--` inside `<!-- -->`) with `EncodingError`. Returning
+    // null here lets the caller try the site's next declared icon instead of
+    // storing a 200 that paints nothing.
+    const svg = drawableSvg(bytes);
+    return svg ? { bytes: svg, mime: 'image/svg+xml', source: url } : null;
+  }
   const sniffed = getImageMimeFromBytes(bytes);
   if (sniffed) return { bytes, mime: sniffed, source: url };
   // A declared image type with no magic match (a format the table does not
