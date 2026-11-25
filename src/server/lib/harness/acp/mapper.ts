@@ -13,11 +13,11 @@
  *
  * Four rules, each pinned by a measurement against a real agent:
  *
- *  1. **`kind` becomes `ToolCallData.type`**, `name` stays `name`. Kabmo's
- *     `resolveToolKey` reads `tool.name` first, then the title, then
- *     `tool.type`; a card renders from `kind` only if the mapper puts it in
- *     `type`. ACP's ten kinds do not all exist in `ToolType`, so the table below
- *     names the translation rather than casting.
+ *  1. **The block carries `kind` and `name`; the SERVER resolves the panel.**
+ *     There is no `ToolType` translation here any more: the shared resolver
+ *     (`shared/lib/chat/tool/render-key.ts`) reads the name, then the kind, and
+ *     annotates the block with one `render` family. Doing it in the adapter was
+ *     the third of three disagreeing classifications.
  *  2. **`tool_call_update` is a PATCH.** A `status:completed` update carries no
  *     `content`, so replacing the card blanks it at the exact moment it
  *     finishes. The mapper merges into the accumulated call.
@@ -32,44 +32,8 @@
  *     "not reported" instead of showing a fabricated number.
  */
 
-import type { ToolType } from '@/shared/types';
 import { isRecord } from '@/shared/lib/util/guards';
 import { toolInputPath } from '@/shared/lib/chat/tool/tool-input-path';
-import type { AcpToolKind } from '@/server/lib/harness/acp/protocol';
-
-/** ACP kind -> the omp-shaped `ToolType` the renderers key on. */
-const TOOL_TYPE_BY_KIND: Record<AcpToolKind, ToolType> = {
-  read: 'read',
-  edit: 'edit',
-  delete: 'edit',
-  move: 'edit',
-  search: 'grep',
-  execute: 'bash',
-  // `think` is a Kabmo panel of its own (`Think`); mapping it to `read` drew a
-  // file reader over an agent's reasoning scratchpad.
-  think: 'think',
-  fetch: 'web_search',
-  switch_mode: 'todo',
-  other: 'read',
-};
-
-const KNOWN_TOOL_NAMES: readonly ToolType[] = ['read', 'edit', 'write', 'bash', 'grep', 'web_search', 'todo'];
-
-/** Whether a name is one of the renderer keys, so an explicit `kind:"other"`
- *  can defer to the shared name inference instead of forcing a panel. */
-export function isKnownToolName(name: string | undefined): boolean {
-  return Boolean(name) && KNOWN_TOOL_NAMES.includes((name ?? '').toLowerCase() as ToolType);
-}
-
-/** The `type` a card should carry, with `name` able to override a generic kind.
- *  `other` is the case that matters: an agent that sends `kind:"other"` plus a
- *  real `name` (`edit`) still gets the right renderer. */
-export function toolTypeFor(kind: AcpToolKind | undefined, name: string | undefined): ToolType {
-  const mapped = TOOL_TYPE_BY_KIND[kind ?? 'other'] ?? 'read';
-  if (kind !== undefined && kind !== 'other') return mapped;
-  const lowered = (name ?? '').toLowerCase() as ToolType;
-  return KNOWN_TOOL_NAMES.includes(lowered) ? lowered : mapped;
-}
 
 /**
  * The text of one ACP content entry, narrowed field by field.

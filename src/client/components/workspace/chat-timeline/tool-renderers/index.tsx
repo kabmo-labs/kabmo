@@ -4,13 +4,12 @@
  */
 
 /**
- * The panel registry: a component per `ToolPanelKind`, and the two helpers the
- * card needs from it.
+ * The panel registry: a component per `ToolPanelKind`.
  *
- * `toolPanelKind` decides the key (pure, in `registry.ts`); this file is the
- * map from that key to the component. Keeping them apart is what lets the
- * classification be unit-tested without mounting a single panel — the old
- * `hasToolDetailsPanel` answered the same question by rendering and discarding.
+ * `toolPanelKind` reads the SERVER's `render` field (pure, in `registry.ts`);
+ * this file is only the map from that key to the component. A row the server
+ * could not classify resolves to no key, and `ToolBody` draws its JSON
+ * fallback instead of a guessed panel.
  */
 
 import type { ReactNode } from 'preact/compat';
@@ -41,10 +40,10 @@ import { Edit } from '@/client/components/workspace/chat-timeline/tool-renderers
 import { Mcp } from '@/client/components/workspace/chat-timeline/tool-renderers/panels/Mcp';
 import { Wait } from '@/client/components/workspace/chat-timeline/tool-renderers/panels/Wait';
 import { hashlineTargetPath } from '@/shared/lib/omp/session/hashline-patch';
-import { procPathOf } from '@/shared/lib/omp/session/proc';
-import { canonicalAgentToolName } from '@/shared/lib/chat/tool/tool-aliases';
 import { getToolInputPath } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/tool-input';
-import { effectiveToolName, isXdDocRead, toolPanelKind, type ToolPanelKind } from '@/client/components/workspace/chat-timeline/tool-renderers/registry';
+import { toolPanelKind, type ToolPanelKind } from '@/client/components/workspace/chat-timeline/tool-renderers/registry';
+
+export { resolveToolKey } from '@/client/components/workspace/chat-timeline/tool-renderers/registry';
 
 /** One panel component per kind. A kind with no entry falls back to generic
  *  Input/Output rendering; the record is total so a missing one is a type error. */
@@ -102,57 +101,6 @@ export function resolveTargetFile(tool: ToolCallData): string | undefined {
 }
 
 /**
- * The canonical key for a tool call — omp's own name with Kabmo's legacy
- * aliases folded. Used for icon selection and the header's title fallback.
- */
-export function resolveToolKey(tool: ToolCallData): string {
-  // A `proc://` call is `read`/`write` transport, so the URL is the only thing
-  // that names what it did — the tool key drives the glyph and the header.
-  if (procPathOf(tool)) return 'proc';
-  // `read xd://<device>` is the device's docs: the key is `read`, so the glyph
-  // and the header describe a read rather than the device it documents.
-  if (isXdDocRead(tool)) return 'read';
-  // A sole tool command (`resolve "…"`, `lsp --help`) is that tool's call, not
-  // a shell run: the glyph and title must name what it did.
-  const commanded = effectiveToolName(tool);
-  if (commanded && commanded !== tool.name) return commanded.toLowerCase();
-
-  const details = tool.details as Record<string, unknown> | undefined;
-  const xdev = details?.xdev;
-  if (xdev && typeof xdev === 'object') {
-    const name = (xdev as Record<string, unknown>).tool;
-    if (typeof name === 'string' && name) return name.toLowerCase();
-  }
-
-  const rawTarget = (tool.target || '').toLowerCase();
-  const inputPath = getToolInputPath(tool.input)?.toLowerCase() ?? '';
-  const xdTarget = rawTarget.startsWith('xd://')
-    ? rawTarget.slice(5)
-    : inputPath.startsWith('xd://')
-      ? inputPath.slice(5)
-      : '';
-  if (xdTarget) {
-    const device = xdTarget.split(/[/?#]/)[0].trim();
-    if (device) return device;
-  }
-
-  const rawName = canonicalAgentToolName(tool.name || '').toLowerCase();
-  if (rawName && rawName !== 'tool' && rawName !== 'custom') return rawName;
-
-  const titlePrefix = (tool.title || '').toLowerCase().split(/[\s—\-:]+/)[0]?.trim();
-  if (titlePrefix && TOOL_KEY_TITLES[titlePrefix]) return titlePrefix;
-
-  return (tool.type || '').toLowerCase();
-}
-
-/** Title prefixes that name a tool when no `name` was sent (MOCK path). */
-const TOOL_KEY_TITLES: Record<string, true> = {
-  grep: true, glob: true, read: true, write: true, edit: true, bash: true,
-  terminal: true, run_command: true, todo: true, eval: true, hub: true,
-  proc: true, lsp: true, github: true, task: true, resolve: true, reject: true,
-};
-
-/**
  * Panel khusus per tool family — dirender di dalam body setiap render style.
  * Classification is pure (`toolPanelKind`); this only maps the key to a
  * component, so asking "does this tool have a panel?" no longer builds one.
@@ -163,8 +111,3 @@ export function ToolDetailsPanel({ tool }: { tool: ToolCallData }): ReactNode {
   return PANELS[kind]({ tool });
 }
 
-/** True kalau tool punya panel khusus yang sudah merender input/output sendiri —
- *  ToolBody tidak boleh render Input/Output generik lagi (anti dobel). */
-export function hasToolDetailsPanel(tool: ToolCallData): boolean {
-  return toolPanelKind(tool) !== null;
-}

@@ -63,6 +63,8 @@ export interface ToolView {
   isReminder: boolean;
   /** Panels that are never collapsible (`ask`, `goal`, `yield`). */
   alwaysExpanded: boolean;
+  /** The producer sent no renderer family: the body is the JSON fallback. */
+  unnormalized: boolean;
 }
 
 /** Panels whose whole point is a decision the reader is in the middle of. */
@@ -70,10 +72,14 @@ const ALWAYS_EXPANDED_KEYS: Record<string, true> = { yield: true, goal: true, as
 
 export function useToolView(tool: ToolCallData): ToolView {
   const toolKey = resolveToolKey(tool);
-  // A pure classification, not a probe render: the old `hasToolDetailsPanel`
-  // built the panel's VNode and threw it away, once per card per streaming
-  // frame. `toolPanelKind` is a lookup, so this is free.
+  // A pure read of the SERVER's classification, not a probe render: the old
+  // `hasToolDetailsPanel` built the panel's VNode and threw it away, once per
+  // card per streaming frame.
   const hasPanel = useMemo(() => toolPanelKind(tool) !== null, [tool]);
+  // A call the producer could not classify shows its raw JSON. That is the
+  // honest fallback: guessing a panel from the name is what made one logical
+  // shell call render differently per harness.
+  const unnormalized = tool.render?.normalized !== true;
   // A plugin renderer is consulted only for a tool the host has NO panel for,
   // so a plugin can ship its own agent tool without shadowing `bash` or `read`.
   const pluginRenderer = usePluginTimelineRenderer(toolKey);
@@ -92,7 +98,7 @@ export function useToolView(tool: ToolCallData): ToolView {
   // on a panel alone, so a custom or plugin tool opened nothing at all.
   const hasGenericBody =
     !hasPanel && pluginPanel === null && Boolean(commandOrInput || diffText || outputText);
-  const hasBody = hasPanel || pluginPanel !== null || hasGenericBody;
+  const hasBody = hasPanel || pluginPanel !== null || hasGenericBody || unnormalized;
 
   const inputJson = useMemo(
     () => (hasGenericBody && commandOrInput ? tryParseJson(commandOrInput) : null),
@@ -137,6 +143,7 @@ export function useToolView(tool: ToolCallData): ToolView {
     commandOrInput,
     inputJson,
     isReminder,
+    unnormalized,
     alwaysExpanded: hasPanel && Boolean(ALWAYS_EXPANDED_KEYS[toolKey]),
   };
 }

@@ -25,6 +25,9 @@
 import { sessionTopic } from '@/shared/lib/realtime/protocol';
 import { getRealtimeHub } from '@/server/lib/realtime/hub.server';
 import { peerRealtimeSocketUrl } from '@/server/lib/omp/rpc/peer-proxy.server';
+import { normalizeAgentEvent } from '@/server/lib/chat/normalize-tools.server';
+import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
+import { isRecord } from '@/shared/lib/util/guards';
 
 /** One frame off the owner's socket, narrowed to the fields a relay reads. */
 interface RelayedFrame {
@@ -69,7 +72,12 @@ export function attachPeerSession(sessionId: string, origin: string): () => void
     // The owner's snapshot IS this topic's baseline: the local resolver cannot
     // produce one, because the child is not here.
     if (frame.t === 'snapshot') hub.publishSnapshot(topic, frame.payload);
-    else if (frame.t === 'delta') hub.publish(topic, frame.payload);
+    // A relayed frame is normalized here too: the owning instance may run an
+    // older build whose frames carry no `render`, and a client must never have
+    // to fall back to guessing a panel per harness.
+    else if (frame.t === 'delta' && isRecord(frame.payload)) {
+      hub.publish(topic, normalizeAgentEvent(frame.payload as AgentEvent));
+    }
   };
   upstream.onerror = () => {};
   upstream.onclose = () => {};

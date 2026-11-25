@@ -28,8 +28,6 @@ import {
   acpToolDetails,
   acpToolOutput,
   acpToolTarget,
-  isKnownToolName,
-  toolTypeFor,
 } from '@/server/lib/harness/acp/mapper';
 import { delegationLabel, resolveToolIdentity } from '@/server/lib/harness/acp/tool-identity';
 import {
@@ -49,8 +47,6 @@ interface OpenTool {
   status: AcpToolStatus;
   /** The accumulated `rawInput`; a later patch may replace it wholesale. */
   args?: Record<string, unknown>;
-  /** The renderer key computed on the opening frame. */
-  toolType?: string;
   /** The adapter's own kind, when it is not one of the spec's ten. */
   rawKind?: string;
   /** Output an adapter reported through `_meta.terminal_output` (pi-acp). */
@@ -125,25 +121,20 @@ export class AcpToolCalls {
     // one, and its label is the child's task so the card says what it is doing.
     const delegation = delegationLabel(name, args, title);
     const status = typeof update.status === 'string' ? (update.status as AcpToolStatus) : 'pending';
-    // A specific kind is authoritative. `other`/absent is only an explicit type
-    // when the name is one the renderers know; otherwise the shared parser's
-    // own inference from the name is better informed than a forced `read`.
-    const toolType = delegation
-      ? 'task'
-      : kind !== undefined && kind !== 'other'
-        ? toolTypeFor(kind, name)
-        : isKnownToolName(name) ? toolTypeFor(kind, name) : undefined;
-
     // Close the prose row FIRST: once this block is in the accumulator, the
     // close would carry the card into the text row and the timeline would draw
     // it above prose the agent sent before it.
     const frames: AgentEvent[] = this.host.beginToolBlock();
+    // The block carries only the FACTS an adapter reported (name, kind,
+    // rawKind, args). The renderer family is resolved once on the server from
+    // these, so a delegation is named by its canonical name (`task`) rather
+    // than by a translation this file invents.
     this.host.pushBlock(blockOf({
       id: toolCallId,
       name,
+      title,
       kind,
       args,
-      toolType,
       rawKind: identity.rawKind,
     }));
 
@@ -157,7 +148,6 @@ export class AcpToolCalls {
         type: 'tool_execution_start',
         toolCallId,
         toolName: name,
-        ...(toolType ? { toolType } : {}),
         ...(args ? { args } : {}),
         // The child's task for a delegation; the adapter's title otherwise.
         ...(delegation ?? title ? { intent: delegation ?? title } : {}),
@@ -178,7 +168,6 @@ export class AcpToolCalls {
       title,
       status,
       args,
-      ...(toolType ? { toolType } : {}),
       ...(identity.rawKind ? { rawKind: identity.rawKind } : {}),
       ...(meta.output ? { metaOutput: meta.output } : {}),
       ...(meta.exitCode !== undefined ? { metaExit: meta.exitCode } : {}),

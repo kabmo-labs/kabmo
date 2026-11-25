@@ -17,8 +17,10 @@
  */
 
 import type { ToolCallData, ToolType } from '@/shared/types/chat';
+import type { ToolRender } from '@/shared/types/tool-render';
 import { hashlineTargetPath } from '@/shared/lib/omp/session/hashline-patch';
 import { toolInputPath } from '@/shared/lib/chat/tool/tool-input-path';
+import { isToolRenderKey } from '@/shared/lib/chat/tool/render-key';
 import { extractToolImages, type ToolImageRef } from '@/shared/lib/omp/session/tool-images';
 import { isRecord } from '@/shared/lib/util/guards';
 
@@ -41,6 +43,10 @@ export interface ParsedToolCall {
   /** The transport's own renderer key, when it knows one (ACP `kind`). The
    *  shared inference below is a fallback for providers that only send a name. */
   toolType?: ToolType;
+  /** The SERVER-normalized renderer family, carried from the wire block. Its
+   *  absence means the producer could not classify the call, and the card
+   *  shows the raw JSON body instead of guessing a panel. */
+  render?: ToolRender;
   intent?: string;
   target?: string;
   command?: string;
@@ -117,6 +123,7 @@ export function parseMessageBlocks(content: unknown): ParsedMessageBlocks {
       arguments?: unknown;
       input?: unknown;
       toolType?: unknown;
+      render?: unknown;
     };
     if (block.type === 'thinking') {
       const body = typeof block.thinking === 'string'
@@ -155,6 +162,9 @@ export function parseMessageBlocks(content: unknown): ParsedMessageBlocks {
         name,
         title: detail ? `${name} — ${detail}` : name,
         ...(typeof block.toolType === 'string' ? { toolType: block.toolType as ToolType } : {}),
+        ...(isToolRenderKey(isRecord(block.render) ? block.render.key : undefined)
+          ? { render: block.render as ToolRender }
+          : {}),
         intent,
         target: target || undefined,
         command: command || undefined,
@@ -199,9 +209,13 @@ export function toToolCallData(
       : options.streaming ? 'running' : 'success';
   return {
     id: parsed.id,
+    // `type` is the transport's own word; the PANEL comes from `render`. The
+    // two answer different questions (`glob` is a variant of the grep family),
+    // so neither is derived from the other.
     type: parsed.toolType ?? inferToolType(parsed.name),
     name: parsed.name,
     title: parsed.title,
+    ...(parsed.render ? { render: parsed.render } : {}),
     intent: parsed.intent,
     target: parsed.target,
     command: parsed.command,

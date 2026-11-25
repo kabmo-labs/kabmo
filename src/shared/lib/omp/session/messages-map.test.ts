@@ -87,8 +87,9 @@ describe('parseAssistantContent', () => {
     expect(parsed.thinking).toBe('hmm');
     expect(parsed.intent).toBe('Read it');
     expect(parsed.textParts).toEqual(['answer']);
+    // `type` stays the transport's own word; `render` is the panel family.
     expect(parsed.toolCalls).toEqual([
-      { id: 'c1', type: 'read_file', name: 'read', title: 'read — /f', intent: 'Read it', target: '/f', input: { path: '/f' }, output: 'OUT', status: 'success' },
+      { id: 'c1', type: 'read_file', name: 'read', title: 'read — /f', intent: 'Read it', target: '/f', input: { path: '/f' }, output: 'OUT', status: 'success', render: { key: 'read', normalized: true } },
     ]);
   });
 

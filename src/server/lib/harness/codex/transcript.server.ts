@@ -24,7 +24,8 @@
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { loadHarnessConfig } from '@/server/lib/harness/config.server';
-import type { ChatMessageData, ToolCallData, ToolType } from '@/shared/types/chat';
+import type { ChatMessageData, ToolCallData } from '@/shared/types/chat';
+import { normalizeToolCall } from '@/shared/lib/chat/tool/normalize';
 
 /** The Codex data root, from the harness config's `CODEX_HOME` or `~/.codex`. */
 export async function codexHome(): Promise<string> {
@@ -73,17 +74,6 @@ function isScaffolding(text: string): boolean {
     || trimmed.startsWith('<user_instructions>')
     || trimmed.startsWith('<turn_aborted>')
     || trimmed.startsWith('<permissions instructions>');
-}
-
-/** The closest Kabmo tool type for a Codex tool name. */
-function toolTypeFor(name: string): ToolType {
-  const lower = name.toLowerCase();
-  if (/shell|exec|command|terminal/.test(lower)) return 'bash';
-  if (/patch|edit|write/.test(lower)) return 'edit';
-  if (/read|view|open/.test(lower)) return 'read';
-  if (/grep|search/.test(lower)) return 'grep';
-  if (/web|fetch|browse/.test(lower)) return 'web_search';
-  return 'custom';
 }
 
 /** A plain string for a `function_call_output`-style payload. */
@@ -172,16 +162,19 @@ export function codexMessagesFromRollout(body: string): ChatMessageData[] {
         ? payload.call_id
         : `codex-call-${calls.size + 1}`;
       const command = commandOf(payload);
-      const call: ToolCallData = {
+      // `type`/`render` come from the ONE server resolver: a Codex name is an
+      // agent vocabulary, not a Kabmo panel, and a second regex table here is
+      // how the same call classified two ways.
+      const call: ToolCallData = normalizeToolCall({
         id: callId,
-        type: toolTypeFor(name),
+        type: name,
         title: name,
         name,
         ...(command ? { command } : {}),
         ...(typeof payload.arguments === 'string' ? { input: payload.arguments } : {}),
         status: 'aborted',
         ...(timestamp ? { startedAt: Date.parse(timestamp) || undefined } : {}),
-      };
+      });
       calls.set(callId, call);
       if (!currentAssistant) {
         currentAssistant = {

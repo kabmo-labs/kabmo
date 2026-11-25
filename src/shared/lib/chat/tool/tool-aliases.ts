@@ -15,9 +15,10 @@
  * opencode 2.2.5: `shell`, `todowrite`, `webfetch`, `websearch`, `subagent`,
  * `patch`.
  *
- * This is the SINGLE table for that vocabulary; the ACP adapter applies it on
- * ingress and the client renderers apply it to frames recorded before this
- * table existed, so a stored transcript and a live stream classify the same.
+ * This is the SINGLE table for that vocabulary. It is applied by the SERVER's
+ * one resolver (`shared/lib/chat/tool/render-key.ts`) at ingress and on every
+ * stored transcript read, so a live row and a replayed row classify the same
+ * and no client derives a panel from a name.
  *
  * It deliberately does NOT restate Kabmo's own legacy aliases (`read_file`,
  * `terminal`, …): those live with the panels/phrases that own them.

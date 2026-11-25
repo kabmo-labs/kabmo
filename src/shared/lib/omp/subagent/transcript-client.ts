@@ -12,6 +12,7 @@
 
 import type { ChatMessageData, SubagentMessagesPage } from '@/shared/types';
 import { toChatMessage } from '@/shared/lib/omp/session/mapper';
+import { normalizeMessageTools } from '@/shared/lib/chat/tool/normalize';
 import { extractText } from '@/shared/lib/omp/session/parse-message-blocks';
 import { normalizeThinkingLevel } from '@/shared/lib/models/thinking-levels';
 import { isRecord } from '@/shared/lib/util/guards';
@@ -93,7 +94,10 @@ export function convertMessages(raw: unknown[], streaming: boolean): ChatMessage
     if (currentLevel !== undefined && converted.role !== 'user') {
       converted.thinkingLevel = currentLevel;
     }
-    out.push(converted);
+    // A child transcript is read straight off the wire or the disk, never
+    // through the session topic's ingress, so its tool rows get the same
+    // classification here — one rule, one resolver.
+    out.push(normalizeMessageTools(converted));
   }
   return out;
 }

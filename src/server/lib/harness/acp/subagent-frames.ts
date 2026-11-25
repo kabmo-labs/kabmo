@@ -54,7 +54,6 @@ function cardMessage(record: AcpSubagentRecord, completedAt?: number): Record<st
       type: 'toolCall',
       id: subagentToolCallId(record.sessionId),
       name: 'task',
-      toolType: 'task',
       arguments: {
         description: label,
         ...(record.description ? { prompt: record.description } : {}),
@@ -91,7 +90,6 @@ export function subagentFrames(record: AcpSubagentRecord, previous: SubagentCard
       type: 'tool_execution_start',
       toolCallId,
       toolName: 'task',
-      toolType: 'task',
       intent: label,
       args,
     });

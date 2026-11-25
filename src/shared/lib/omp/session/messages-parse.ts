@@ -14,6 +14,7 @@
 import type { ToolCallData } from '@/shared/types/chat';
 import type { OmpMessageEntry } from '@/shared/types/omp/session';
 import { extractInlinedTextAttachments, extractText as coreExtractText, extractUserImageAttachments, parseMessageBlocks, stripInlinedTextAttachments, toToolCallData } from '@/shared/lib/omp/session/parse-message-blocks';
+import { normalizeToolCall } from '@/shared/lib/chat/tool/normalize';
 import { isRecord } from '@/shared/lib/util/guards';
 
 export { stripInlinedTextAttachments };
@@ -56,11 +57,11 @@ export interface ParsedAssistantTurn {
 export function parseAssistantContent(content: unknown): ParsedAssistantTurn {
   const parsed = parseMessageBlocks(content);
   const toolCalls = parsed.toolCalls.map((tc) =>
-    toToolCallData(tc, {
+    normalizeToolCall(toToolCallData(tc, {
       streaming: false,
       output: parsed.inlineOutputs.get(tc.id) ?? undefined,
       images: parsed.inlineImages.get(tc.id),
-    }),
+    })),
   );
   return {
     thinking: parsed.thinking,

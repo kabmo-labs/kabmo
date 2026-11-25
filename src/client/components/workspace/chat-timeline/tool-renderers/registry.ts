@@ -4,197 +4,60 @@
  */
 
 /**
- * Which specialized panel renders a tool call — as DATA, not as a chain of
- * `if`s plus a probe render.
+ * The panel a tool call renders — read from the SERVER's `render` field.
  *
- * The previous shape dispatched by walking 33 aliases and asked whether a tool
- * had a panel by CALLING the renderer and discarding its VNode
- * (`hasToolDetailsPanel` → `ToolDetailsPanel({tool}) !== null`). That probe ran
- * on every render of every card, and because the timeline re-renders a tool on
- * each streaming frame, it built the panel's tree twice per frame for a call
- * that had not finished. It also could not be tested without mounting, and
- * adding a tool meant editing two places.
+ * This file used to be the client's own classifier: a name-first lookup over a
+ * closed alias table, a separate `type` inference, and (in the ACP producer) a
+ * third answer from `kind`. The three could disagree, so one logical shell call
+ * drew a Bash card on a harness that sent `name:"Bash"` and a generic
+ * Input/Output body on a harness that sent `kind:"other"` plus a title.
  *
- * `toolPanelKind` is pure and total; the component map in `index.tsx` is keyed
- * by the same strings, so a new tool is one row here.
+ * The classification now happens once, on the server, in
+ * `shared/lib/chat/tool/render-key.ts`, and every row arrives carrying
+ * `ToolCallData.render`. Nothing here derives a panel from a name any more: a
+ * row with no `render` (or `normalized: false`) shows the JSON fallback, which
+ * is honest about what the producer could not classify.
+ *
+ * `xdDevice`/`xdDocPath` stay re-exported because the header and the device
+ * panels read the same URL grammar, and a second copy of it would drift.
  */
 
 import type { ToolCallData } from '@/shared/types/chat';
-import { procPathOf } from '@/shared/lib/omp/session/proc';
+import type { ToolRenderKey } from '@/shared/types/tool-render';
 import { soleToolCommand } from '@/shared/lib/chat/tool/tool-commands';
-import { canonicalAgentToolName } from '@/shared/lib/chat/tool/tool-aliases';
 
-/** Legacy Kabmo/MOCK alias → canonical omp tool name. */
-export const TOOL_ALIASES: Record<string, string> = {
-  read_file: 'read',
-  view_file: 'read',
-  read_file_content: 'read',
-  edit_file: 'edit',
-  create_file: 'write',
-  write_to_file: 'write',
-  replace_file_content: 'edit',
-  multi_edit_file: 'edit',
-  terminal: 'bash',
-  run_command: 'bash',
-  ast_grep: 'grep',
-  new_context: 'context_notes',
-  rewind: 'checkpoint',
-  retain: 'memory_edit',
-  recall: 'memory_edit',
-  reflect: 'memory_edit',
-  learn: 'memory_edit',
-  yield: 'goal',
-};
+export { xdDevice, xdDocPath, isXdDocRead } from '@/shared/lib/chat/tool/render-key';
 
-/** Panel key. `search_fs` is deliberately distinct from `grep`: the two render
- *  different components (a filesystem item list vs. a match list). */
-export type ToolPanelKind =
-  | 'read' | 'edit' | 'write' | 'bash' | 'eval' | 'grep' | 'search_fs'
-  | 'todo' | 'task' | 'web_search' | 'lsp' | 'ast_edit'
-  | 'resolve' | 'reject' | 'proc' | 'github' | 'checkpoint'
-  | 'security_scan' | 'debug' | 'manage_skill' | 'context_notes'
-  | 'memory_edit' | 'goal' | 'ask' | 'think' | 'mcp' | 'wait';
+/** Every family that has a panel component. `custom` is the JSON fallback. */
+export type ToolPanelKind = Exclude<ToolRenderKey, 'custom'>;
 
-/** Keys that have a panel — a lookup, not a branch. */
-const PANEL_KINDS: Record<string, ToolPanelKind> = {
-  read: 'read', edit: 'edit', write: 'write', bash: 'bash', eval: 'eval',
-  grep: 'grep', glob: 'grep', search_fs: 'search_fs',
-  todo: 'todo', task: 'task', web_search: 'web_search',
-  lsp: 'lsp', ast_edit: 'ast_edit', resolve: 'resolve', reject: 'reject',
-  // The legacy `hub` tool is omp's own predecessor to `proc://` and carries
-  // the same `details` — one panel renders both, so a replayed transcript and
-  // a live call cannot draw the process table two different ways.
-  hub: 'proc', github: 'github', checkpoint: 'checkpoint',
-  security_scan: 'security_scan', debug: 'debug', manage_skill: 'manage_skill',
-  context_notes: 'context_notes', memory_edit: 'memory_edit', goal: 'goal',
-  ask: 'ask', think: 'think',
-  // `wait` blocks on background jobs and services the agent started, and its
-  // result is the only place their status and elapsed time exist. It had no
-  // panel at all, so a call that can occupy 30 minutes rendered as a title and
-  // an empty Output block.
-  wait: 'wait',
-};
-
-/** Devices whose panel is not named after the device itself. */
-const DEVICE_KINDS: Record<string, ToolPanelKind> = {
-  ast_grep: 'grep',
-  resolve: 'resolve',
-  reject: 'reject',
-  lsp: 'lsp',
-  ast_edit: 'ast_edit',
-  debug: 'debug',
-};
-
-function inputRecord(tool: ToolCallData): Record<string, unknown> | undefined {
-  return tool.input && typeof tool.input === 'object' && tool.input !== null
-    ? (tool.input as Record<string, unknown>)
-    : undefined;
-}
-
-/**
- * The `xd://<device>` an omp virtual-device call targets, if any. A device call
- * arrives as `write xd://lsp` (or an `mcp__<tool>` name), so the device — not
- * the transport `write` — is what names the panel.
- *
- * `details.xdev.tool` carries the device in both spellings (`lsp` and
- * `xd://lsp` were both measured), so the prefix is stripped when present rather
- * than assumed absent.
- */
-export function xdDevice(tool: ToolCallData): string | undefined {
-  const details = tool.details as Record<string, unknown> | undefined;
-  const xdev = details?.xdev;
-  if (xdev && typeof xdev === 'object') {
-    const name = (xdev as Record<string, unknown>).tool;
-    if (typeof name === 'string' && name) {
-      const bare = name.startsWith('xd://') ? name.slice('xd://'.length) : name;
-      const device = bare.split(/[/?#\s]/)[0].toLowerCase();
-      if (device) return device;
-    }
-  }
-  const input = inputRecord(tool);
-  const path = typeof input?.path === 'string' ? input.path : tool.target ?? '';
-  if (!path.startsWith('xd://')) return undefined;
-  return path.slice('xd://'.length).split(/[/?#\s]/)[0].toLowerCase() || undefined;
-}
-
-/** The documentation URL a READ names, if any.
- *
- * omp 19.1.0 moved tool doc topics from `xd://<tool>/<topic>` to
- * `help://<tool>/<topic>` (and the device listing went with the devices). Both
- * spellings are read: a session recorded before the pin still carries the old
- * one, and its prose must not render as a code block.
- *
- * omp's own reader draws all of them as an ordinary read — neither scheme has a
- * read card, unlike `proc://` and `cfg://`. Dispatching by device instead sent
- * it to the device's panel: `read xd://lsp` drew the LSP diagnostics card over
- * a page of prose.
- *
- * The FULL path is returned, not the device: `help://eval/browser` is the
- * browser topic of the `eval` tool, and `xdDevice` would report only `eval`. */
-export function xdDocPath(tool: ToolCallData): string | undefined {
-  const raw = canonicalAgentToolName(tool.name || tool.type || '').toLowerCase();
-  if ((TOOL_ALIASES[raw] ?? raw) !== 'read') return undefined;
-  const input = inputRecord(tool);
-  const path = typeof input?.path === 'string' ? input.path : tool.target ?? '';
-  return path.startsWith('xd://') || path.startsWith('help://') ? path : undefined;
-}
-
-/** True for a read of a tool-documentation URL (`help://`, or `xd://` before 19.1.0). */
-export function isXdDocRead(tool: ToolCallData): boolean {
-  return xdDocPath(tool) !== undefined;
-}
-
-/**
- * The panel key for a tool call, or null when it has no specialized panel.
- *
- * Order is load-bearing: a `proc://` call names its panel through the URL — the
- * transport is `read`/`write`, and those panels would draw a process as a file
- * — then a `read xd://<device>` is the device's docs rather than a call, then an
- * omp virtual-device call through its device (so `write xd://lsp` is an LSP
- * panel), an MCP call through its `mcp__` name, and only then does the tool's
- * own name decide.
- *
- * The lookup is by NAME only, deliberately: the transport's kind is a broader
- * fact (see `toolPanelKind`'s callers), and a plugin renderer is consulted for
- * exactly the tools whose name the host does not know. Deriving a panel from
- * the kind here would make a plugin unable to claim its own agent tool. An
- * adapter that sends NO tool name has its name derived from the kind at
- * ingress instead (`AcpToolCalls.open`), which is where that fact lives.
- */
+/** The panel family for a call, or null when it has none (JSON fallback). */
 export function toolPanelKind(tool: ToolCallData): ToolPanelKind | null {
-  if (procPathOf(tool)) return 'proc';
-  if (isXdDocRead(tool)) return 'read';
-
-  // omp 19.1.0 runs rarely-used tools as bash commands: `resolve "reason"`,
-  // `lsp --help`, `ast_edit …`. When the call IS that invocation and nothing
-  // else, the wrapped tool names the panel — drawing a terminal console over a
-  // staged proposal's decision would lose the panel the decision lives on.
-  const sole = soleToolCommand(tool);
-  if (sole) {
-    // An MCP tool mounted as a command keeps its server/tool name, which is
-    // what the MCP panel draws.
-    if (sole.dispatch.tool.startsWith('mcp__')) return 'mcp';
-    const inner = DEVICE_KINDS[sole.dispatch.tool];
-    if (inner) return inner;
-  }
-
-  const device = xdDevice(tool);
-  if (device) {
-    if (device.startsWith('mcp__')) return 'mcp';
-    const byDevice = DEVICE_KINDS[device];
-    if (byDevice) return byDevice;
-  }
-
-  const raw = canonicalAgentToolName(tool.name || tool.type || '').toLowerCase();
-  if (raw.startsWith('mcp__')) return 'mcp';
-  return PANEL_KINDS[TOOL_ALIASES[raw] ?? raw] ?? null;
+  const render = tool.render;
+  if (!render || !render.normalized || render.key === 'custom') return null;
+  return render.key;
 }
 
 /**
- * The tool a call's panel should describe: the tool command it ran when that
- * command is the whole call, else its own name. Used by the header, which
- * otherwise says "Bash" over a staged proposal's approval.
+ * The canonical key for a tool call — the renderer family when the server
+ * normalized one, else the raw name it reported. Used for the icon and the
+ * header's title fallback; it is NOT a classification.
  */
+export function resolveToolKey(tool: ToolCallData): string {
+  const render = tool.render;
+  if (render?.normalized) return render.key;
+  return (tool.name || tool.type || '').toLowerCase();
+}
+
+/** The tool a call's panel should describe: the wrapped tool command it ran
+ *  when that command is the whole call, else its own name. */
 export function effectiveToolName(tool: ToolCallData): string {
-  return soleToolCommand(tool)?.dispatch.tool ?? tool.name ?? tool.type ?? '';
+  const sole = soleToolCommand(tool);
+  if (sole) return sole.dispatch.tool;
+  return tool.name || tool.type || '';
+}
+
+/** True when the card has a specialized panel (the generic body is skipped). */
+export function hasToolDetailsPanel(tool: ToolCallData): boolean {
+  return toolPanelKind(tool) !== null;
 }

@@ -28,9 +28,11 @@ export interface ToolCallBlock {
   type: 'toolCall';
   id: string;
   name: string;
+  /** The adapter's own label. It is a classification INPUT: an adapter that
+   *  sends `title:"Run Command"` and no name has no other identity. */
+  title?: string;
   arguments?: Record<string, unknown>;
   toolKind?: AcpToolKind;
-  toolType?: string;
   /** The adapter's own kind, when it is not one of the spec's ten. */
   rawKind?: string;
 }
@@ -82,18 +84,18 @@ export function terminalMeta(meta: unknown): { output?: string; exitCode?: numbe
 export function blockOf(call: {
   id: string;
   name: string;
+  title?: string;
   kind?: AcpToolKind;
   args?: Record<string, unknown>;
-  toolType?: string;
   rawKind?: string;
 }): ToolCallBlock {
   return {
     type: 'toolCall',
     id: call.id,
     name: call.name,
+    ...(call.title ? { title: call.title } : {}),
     ...(call.args ? { arguments: call.args } : {}),
     ...(call.kind ? { toolKind: call.kind } : {}),
     ...(call.rawKind ? { rawKind: call.rawKind } : {}),
-    ...(call.toolType ? { toolType: call.toolType } : {}),
   };
 }

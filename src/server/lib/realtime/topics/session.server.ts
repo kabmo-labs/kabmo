@@ -25,6 +25,7 @@
 
 import { sessionTopic } from '@/shared/lib/realtime/protocol';
 import { getRealtimeHub, type TopicDescriptor } from '@/server/lib/realtime/hub.server';
+import { normalizeAgentEvent } from '@/server/lib/chat/normalize-tools.server';
 import { buildAgentSnapshot, type AgentSnapshot } from '@/server/routes/agent/command';
 import {
   fetchPeerSessionSnapshot,
@@ -105,7 +106,10 @@ export function sessionDescriptor(sessionId: string): TopicDescriptor {
       const session = getLiveSession(sessionId);
       if (session?.isAlive()) {
         return session.onEvent((event) => {
-          getRealtimeHub().publish(sessionTopic(sessionId), event);
+          // The ONE place a live tool call gets its renderer family. Every
+          // adapter (omp RPC, ACP) emits `AgentEvent`s through this fanout, so
+          // the client receives `render` and never derives a panel itself.
+          getRealtimeHub().publish(sessionTopic(sessionId), normalizeAgentEvent(event));
         });
       }
       // Not owned HERE: the session may be running on another instance, in which

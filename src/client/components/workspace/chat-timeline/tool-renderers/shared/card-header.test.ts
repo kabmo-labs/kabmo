@@ -20,15 +20,17 @@
 import { describe, expect, test } from 'bun:test';
 import { toolCardHeader, toolCardSubtitle } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/card-header';
 import { resolveToolKey } from '@/client/components/workspace/chat-timeline/tool-renderers';
+import { normalizeToolCall } from '@/shared/lib/chat/tool/normalize';
 import type { ToolCallData } from '@/shared/types/chat';
 
 function tool(partial: Partial<ToolCallData> & Pick<ToolCallData, 'type'>): ToolCallData {
   return { id: 'c1', name: partial.type, title: partial.type, ...partial } as ToolCallData;
 }
 
-/** Header as the card computes it: key first, then the naming rules. */
+/** Header as the card computes it: the SERVER's key first (a row arrives
+ *  normalized), then the naming rules. */
 function header(partial: Partial<ToolCallData> & Pick<ToolCallData, 'type'>) {
-  const call = tool(partial);
+  const call = normalizeToolCall(tool(partial));
   return toolCardHeader(call, resolveToolKey(call));
 }
 

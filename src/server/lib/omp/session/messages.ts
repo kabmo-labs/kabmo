@@ -27,6 +27,7 @@ import { collectToolOutputs, noticeFromCustomMessage, toChatMessage, type Sequen
 import type { OmpMessageEntry } from '@/shared/lib/omp/session/messages-parse';
 import { operatorTitleFromEntry } from '@/shared/lib/omp/session/operator-title';
 import { isRecord } from '@/shared/lib/util/guards';
+import { normalizeMessageTools } from '@/shared/lib/chat/tool/normalize';
 import { readBlobRef } from '@/server/lib/omp/session/blobs.server';
 import { readJsonlTail } from '@/server/lib/omp/session/jsonl-tail';
 
@@ -153,7 +154,10 @@ export async function loadSessionMessages(
         };
       });
     }
-    state.messages.push(mapped);
+    // A stored transcript carries no `render` (the wire block that had one is
+    // gone), so the SAME server resolver runs here — after `details` and the
+    // paired output are attached, because the classification reads both.
+    state.messages.push(normalizeMessageTools(mapped));
   }
   await resolveImageBlobs(state.messages);
   return state.messages;

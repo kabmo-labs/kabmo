@@ -33,7 +33,7 @@ describe('ACP subagent card frames', () => {
     expect(frames[0]?.message).toMatchObject({
       role: 'assistant',
       id: subagentRowId('child-1'),
-      content: [{ type: 'toolCall', id: subagentToolCallId('child-1'), name: 'task', toolType: 'task' }],
+      content: [{ type: 'toolCall', id: subagentToolCallId('child-1'), name: 'task' }],
     });
     expect(frames[1]).toMatchObject({
       toolCallId: subagentToolCallId('child-1'),

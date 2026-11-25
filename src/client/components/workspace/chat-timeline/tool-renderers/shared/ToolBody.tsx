@@ -12,12 +12,17 @@
  * frame, their density and their grouping; what a call SHOWS when opened is the
  * same everywhere.
  *
- * Three shapes, in priority order:
+ * Four shapes, in priority order:
  *
  * 1. A plugin's own renderer, when the host has no panel for the tool (the
- *    slot's contract — a plugin must not shadow `bash` or `read`).
- * 2. The host's specialized panel (`ToolDetailsPanel`).
- * 3. The generic Input / Diff / Output, for a tool with no panel at all.
+ *    slot's contract — a plugin must not shadow `bash` or `read`). This comes
+ *    FIRST because a plugin exists to own the tools the host does not know.
+ * 2. The JSON fallback, when the SERVER could not classify the call
+ *    (`render.normalized === false`). Nothing is interpreted: the call is shown
+ *    as data, because guessing a panel from the name is what made one logical
+ *    shell call render differently per harness.
+ * 3. The host's specialized panel (`ToolDetailsPanel`).
+ * 4. The generic Input / Diff / Output, for a normalized tool with no panel.
  */
 
 import type { ReactNode } from 'preact/compat';
@@ -28,6 +33,7 @@ import { ToolDetailsPanel } from '@/client/components/workspace/chat-timeline/to
 import { DiffView } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/DiffView';
 import { FallbackOutput } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/FallbackOutput';
 import { JsonCodeBlock } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/JsonCodeBlock';
+import { FallbackToolJson } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/FallbackToolJson';
 import type { ToolView } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/tool-view';
 import { usePluginSlotContext } from '@/client/hooks/workspace/list-slots';
 
@@ -42,20 +48,23 @@ function SectionLabel({ children }: { children: string }) {
 export function ToolBody({ tool, view }: { tool: ToolCallData; view: ToolView }): ReactNode {
   const slotContext = usePluginSlotContext();
 
+  if (view.pluginPanel) {
+    return (
+      <PluginIdProvider pluginId={view.pluginPanel.pluginId}>
+        <view.pluginPanel.registration.component
+          {...slotContext}
+          toolName={view.toolKey}
+          args={tool.input}
+          output={view.outputText}
+        />
+      </PluginIdProvider>
+    );
+  }
+  if (view.unnormalized) return <FallbackToolJson tool={tool} />;
+
   return (
     <>
-      {view.pluginPanel ? (
-        <PluginIdProvider pluginId={view.pluginPanel.pluginId}>
-          <view.pluginPanel.registration.component
-            {...slotContext}
-            toolName={view.toolKey}
-            args={tool.input}
-            output={view.outputText}
-          />
-        </PluginIdProvider>
-      ) : (
-        <ToolDetailsPanel tool={tool} />
-      )}
+      <ToolDetailsPanel tool={tool} />
 
       {view.hasGenericBody && view.commandOrInput && (
         <div className="space-y-1.5 code-surface">

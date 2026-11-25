@@ -24,9 +24,11 @@
  *  - **`tool_call_update` is a PATCH.** A `status:completed` update carries no
  *    `content`, so the card's body lives in the accumulated block; replacing it
  *    blanks the card at the exact moment it finishes.
- *  - **`kind` is the renderer key.** ACP's ten kinds do not all exist in
- *    `ToolType`, so `toolTypeFor` names the translation and the name is kept
- *    alongside it.
+ *  - **`kind` is a FACT, not a renderer key.** The block carries the adapter's
+ *    `kind`/`name`; the SERVER resolves the panel once
+ *    (`shared/lib/chat/tool/render-key.ts`) and annotates the block with one
+ *    `render` family. Translating `kind` here made this the third of three
+ *    classifications that could disagree.
  *
  * The blocks themselves — and where a row ENDS — live in `message-rows.ts`:
  * a row never holds prose written after one of its cards, because the timeline

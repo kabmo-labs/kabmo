@@ -22,6 +22,21 @@
 import { describe, expect, test } from 'bun:test';
 import { delegationLabel, normalizeKind, resolveToolIdentity } from '@/server/lib/harness/acp/tool-identity';
 import { acpDelegationRow } from '@/client/components/workspace/chat-timeline/tool-renderers/panels/task-rows';
+import { normalizeAgentEvent } from '@/server/lib/chat/normalize-tools.server';
+import { parseMessageBlocks, toToolCallData } from '@/shared/lib/omp/session/parse-message-blocks';
+import { toolPanelKind } from '@/client/components/workspace/chat-timeline/tool-renderers/registry';
+
+/** The panel the pipeline gives a frame's first call: mapper → server
+ *  normalizer → parser → client lookup. The adapter's own fields are not a
+ *  renderer contract any more. */
+function panelOf(frames: readonly Record<string, unknown>[]): string | null {
+  const update = frames.find((frame) => frame.type === 'message_update');
+  if (!update) return null;
+  const normalized = normalizeAgentEvent(update as { type: string; [key: string]: unknown });
+  const message = normalized.message as { content?: unknown } | undefined;
+  const call = parseMessageBlocks(message?.content).toolCalls[0];
+  return call ? toolPanelKind(toToolCallData(call, { streaming: true })) : null;
+}
 
 describe('resolveToolIdentity', () => {
   test('grok names its tool in _meta and keeps the spec kind', () => {
@@ -106,11 +121,13 @@ describe('the card the frames produce', () => {
       _meta: { 'x.ai/tool': { name: 'spawn_subagent', kind: 'other' } },
     });
     const start = grok.find((event) => event.type === 'tool_execution_start');
-    expect(start).toMatchObject({ toolName: 'spawn_subagent', toolType: 'task', intent: 'audit auth' });
+    expect(start).toMatchObject({ toolName: 'spawn_subagent', intent: 'audit auth' });
     const block = grok.find((event) => event.type === 'message_update')?.message as { content: unknown[] };
     expect(block.content).toContainEqual(
-      expect.objectContaining({ type: 'toolCall', name: 'spawn_subagent', toolType: 'task' }),
+      expect.objectContaining({ type: 'toolCall', name: 'spawn_subagent' }),
     );
+    // The panel comes from the server normalizer, not from the adapter.
+    expect(panelOf(grok)).toBe('task');
 
     const cursor = mapper.mapUpdate({
       sessionUpdate: 'tool_call',
@@ -120,10 +137,8 @@ describe('the card the frames produce', () => {
       status: 'pending',
       rawInput: { _toolName: 'task' },
     });
-    expect(cursor.find((event) => event.type === 'tool_execution_start')).toMatchObject({
-      toolName: 'task',
-      toolType: 'task',
-    });
+    expect(cursor.find((event) => event.type === 'tool_execution_start')).toMatchObject({ toolName: 'task' });
+    expect(panelOf(cursor)).toBe('task');
   });
 
   test('an adapter kind outside the spec stays generic, not a file read', async () => {
@@ -138,7 +153,7 @@ describe('the card the frames produce', () => {
       kind: 'delegate',
       status: 'pending',
     });
-    const start = frames.find((event) => event.type === 'tool_execution_start');
-    expect(start?.toolType).toBeUndefined();
+    // No panel: the row renders its JSON fallback instead of a guessed card.
+    expect(panelOf(frames)).toBeNull();
   });
 });

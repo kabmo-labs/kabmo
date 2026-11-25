@@ -42,7 +42,9 @@ describe('codexMessagesFromRollout', () => {
     const call = rows[1].toolCalls?.[0];
     expect(call).toMatchObject({
       id: 'c1',
-      type: 'bash',
+      // `type` is the transport's own word; the PANEL is `render.key`.
+      type: 'shell',
+      render: { key: 'bash', normalized: true },
       command: 'ls -la',
       output: 'total 0',
       status: 'success',

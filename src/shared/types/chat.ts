@@ -1,6 +1,7 @@
 import type { ReactNode } from 'preact/compat';
 import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 import type { IrcMessageData } from '@/shared/types/omp/session';
+import type { ToolRender } from '@/shared/types/tool-render';
 
 /** One image a tool result returned (a `read` of a picture, an `eval` that
  *  painted one). Exactly one payload field is set: omp externalizes anything
@@ -113,6 +114,8 @@ export interface ToolCallData {
   type: ToolType;
   title: string;
   name?: string;
+  /** Server-normalized family; absent means "not normalized" (JSON body). */
+  render?: ToolRender;
   /** Short human intent (omp arguments.i) — ditampilkan sebelum tools. */
   intent?: string;
   target?: string;

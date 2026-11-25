@@ -23,12 +23,7 @@
 
 import { describe, expect, test } from 'bun:test';
 import { AcpFrameMapper, turnEndFrame } from '@/server/lib/harness/acp/frames';
-import {
-  acpContentText,
-  acpToolOutput,
-  acpToolTarget,
-  toolTypeFor,
-} from '@/server/lib/harness/acp/mapper';
+import { acpContentText, acpToolOutput, acpToolTarget } from '@/server/lib/harness/acp/mapper';
 
 const textChunk = (text: string, messageId = 'm1') => ({
   sessionUpdate: 'agent_message_chunk',
@@ -119,7 +114,9 @@ describe('acp frame mapper — tool calls', () => {
     expect(frames.map((frame) => frame.type)).toEqual(['message_update', 'tool_execution_start']);
     const message = frames[0].message as { content: { type: string; id: string; name: string }[] };
     expect(message.content[0]).toMatchObject({ type: 'toolCall', id: 'c1', name: 'read' });
-    expect(frames[1]).toMatchObject({ toolCallId: 'c1', toolType: 'read', target: '/tmp/hello.txt' });
+    // The block carries the FACTS; the renderer family is the server's
+    // normalizer's answer (`render-key.test.ts`), not this adapter's.
+    expect(frames[1]).toMatchObject({ toolCallId: 'c1', toolName: 'read', target: '/tmp/hello.txt' });
   });
 
   test('a completion PATCH keeps the card the opening frame drew', () => {
@@ -181,12 +178,12 @@ describe('acp frame mapper — tool calls', () => {
       'tool_execution_start',
       'tool_execution_end',
     ]);
-    expect(frames[1]).toMatchObject({ toolType: 'bash' });
+    expect(frames[1]).toMatchObject({ toolName: 'bash' });
     expect(frames[2]).toMatchObject({ isError: false, output: 'done', details: { exitCode: 0 } });
     expect(mapper.openCalls()).toEqual([]);
   });
 
-  test('the message block carries the transport type for the renderer', () => {
+  test('the message block carries the adapter kind, never a renderer key', () => {
     const mapper = new AcpFrameMapper();
     const frames = mapper.mapUpdate({
       sessionUpdate: 'tool_call',
@@ -195,8 +192,10 @@ describe('acp frame mapper — tool calls', () => {
       kind: 'execute',
       status: 'pending',
     });
-    const message = frames[0].message as { content: { toolType?: string }[] };
-    expect(message.content[0]?.toolType).toBe('bash');
+    const message = frames[0].message as { content: { toolKind?: string; toolType?: string }[] };
+    expect(message.content[0]?.toolKind).toBe('execute');
+    // A second classification here is what let one call render two ways.
+    expect(message.content[0]?.toolType).toBeUndefined();
   });
 
   test('a diff content block becomes details.diff for the Edit panel', () => {
@@ -241,15 +240,7 @@ describe('acp frame mapper — tool calls', () => {
     expect(mapper.openCalls()).toEqual([]);
   });
 
-  test('kind decides the renderer type, and a real name wins over `other`', () => {
-    expect(toolTypeFor('execute', undefined)).toBe('bash');
-    expect(toolTypeFor('search', undefined)).toBe('grep');
-    expect(toolTypeFor('delete', 'rm')).toBe('edit');
-    expect(toolTypeFor('switch_mode', undefined)).toBe('todo');
-    expect(toolTypeFor('other', 'edit')).toBe('edit');
-    expect(toolTypeFor(undefined, 'view_file')).toBe('read');
-  });
-});
+})
 
 describe('acp frame mapper — optional telemetry', () => {
   test('usage_update forwards size/used/cost', () => {

@@ -20,8 +20,25 @@
 
 import { describe, expect, test } from 'bun:test';
 import { AcpFrameMapper } from '@/server/lib/harness/acp/frames';
+import { normalizeAgentEvent } from '@/server/lib/chat/normalize-tools.server';
 import { parseMessageBlocks, toToolCallData } from '@/shared/lib/omp/session/parse-message-blocks';
 import { toolPanelKind } from '@/client/components/workspace/chat-timeline/tool-renderers/registry';
+
+/**
+ * The panel a frame's first tool call renders — through the SAME pipeline the
+ * product uses: the adapter's block, the server normalizer, the shared parser,
+ * then the client's read-only lookup. Asserting the mapper's own fields would
+ * pin an intermediate value that no renderer reads.
+ */
+function panelOf(frames: readonly Record<string, unknown>[]): string | null {
+  const messageUpdate = frames.find((frame) => frame.type === 'message_update');
+  if (!messageUpdate) return null;
+  const normalized = normalizeAgentEvent(messageUpdate as { type: string; [key: string]: unknown });
+  const message = normalized.message as { content?: unknown } | undefined;
+  const parsed = parseMessageBlocks(message?.content);
+  const call = parsed.toolCalls[0];
+  return call ? toolPanelKind(toToolCallData(call, { streaming: true })) : null;
+}
 
 /** The message blocks a frame carries, narrowed without an unchecked cast. */
 function contentOf(frame: unknown): Record<string, unknown>[] {
@@ -50,8 +67,9 @@ describe('acp frame mapper — vendor tool shapes', () => {
       locations: [{ path: '/tmp/x' }],
     });
     const block = contentOf(frames[0]);
-    expect(block[0]).toMatchObject({ name: 'bash', toolType: 'bash' });
-    expect(frames[1]).toMatchObject({ toolName: 'bash', toolType: 'bash' });
+    expect(block[0]).toMatchObject({ name: 'bash' });
+    expect(frames[1]).toMatchObject({ toolName: 'bash' });
+    expect(panelOf(frames)).toBe('bash');
 
     const end = mapper.mapUpdate({
       sessionUpdate: 'tool_call_update',
@@ -207,15 +225,25 @@ describe('acp frame mapper — vendor tool shapes', () => {
       locations: [{ path: 'src/a.ts' }],
       content: [{ type: 'diff', path: 'src/a.ts', oldText: 'a\nb', newText: 'a\nc' }],
     });
-    expect(frames.find((frame) => frame.type === 'tool_execution_start')).toMatchObject({
-      toolName: 'edit',
-      toolType: 'edit',
+    // The kind is the only identity the adapter sent, so the SERVER names the
+    // call by it and the panel opens.
+    expect(frames.find((frame) => frame.type === 'tool_execution_start')).toMatchObject({ toolName: 'edit' });
+    expect(panelOf(frames)).toBe('edit');
+  });
+
+  test('a call with only a title still reaches a panel, because the title travels', () => {
+    // An adapter that names nothing at all (codex-acp's file change is
+    // `title:"Editing files"`) used to produce a card with no identity, so the
+    // renderer fell back to a generic body.
+    const mapper = new AcpFrameMapper();
+    const frames = mapper.mapUpdate({
+      sessionUpdate: 'tool_call',
+      toolCallId: 'ti1',
+      title: 'Run Command',
+      status: 'pending',
     });
-    const call = toToolCallData(
-      parseMessageBlocks(contentOf(frames[0])).toolCalls[0],
-      { streaming: true },
-    );
-    expect(toolPanelKind(call)).toBe('edit');
+    expect(contentOf(frames[0])[0]).toMatchObject({ title: 'Run Command' });
+    expect(panelOf(frames)).toBe('bash');
   });
 
   test('kind `think` is a reasoning type, and its own name decides the panel', () => {
@@ -231,8 +259,8 @@ describe('acp frame mapper — vendor tool shapes', () => {
     });
     expect(frames.find((frame) => frame.type === 'tool_execution_start')).toMatchObject({
       toolName: 'reasoning',
-      toolType: 'think',
     });
-    expect(contentOf(frames[0])[0]).toMatchObject({ name: 'reasoning', toolType: 'think' });
+    expect(contentOf(frames[0])[0]).toMatchObject({ name: 'reasoning', toolKind: 'think' });
+    expect(panelOf(frames)).toBe('think');
   });
 });

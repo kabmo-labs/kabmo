@@ -20,6 +20,7 @@
  */
 
 import { toChatMessage } from '@/shared/lib/omp/session/messages-map';
+import { normalizeMessageTools } from '@/shared/lib/chat/tool/normalize';
 import type { OmpMessageEntry } from '@/shared/lib/omp/session/messages-parse';
 import type { ChatMessageData } from '@/shared/types/chat';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
@@ -51,7 +52,11 @@ export function chatMessageFromEvent(event: AgentEvent): ChatMessageData | null 
     ...(timestamp !== undefined ? { timestamp } : {}),
     message: record,
   } as unknown as OmpMessageEntry;
-  return toChatMessage(entry);
+  const converted = toChatMessage(entry);
+  // Replay frames never cross the realtime fanout, so the server normalizer
+  // runs here too — otherwise a restored chat would show the JSON fallback for
+  // every tool row while the same chat's live rows showed panels.
+  return converted === null ? null : normalizeMessageTools(converted);
 }
 
 export function transcriptFromReplay(events: readonly AgentEvent[]): ChatMessageData[] {

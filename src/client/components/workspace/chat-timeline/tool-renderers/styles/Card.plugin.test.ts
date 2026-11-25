@@ -27,6 +27,7 @@ import { act } from 'preact/test-utils';
 import { CardRow } from '@/client/components/workspace/chat-timeline/tool-renderers/styles/Card';
 import { registerListSlot, resetListSlots } from '@/client/lib/plugins/list-slots';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
+import { normalizeToolCall } from '@/shared/lib/chat/tool/normalize';
 import type { ToolCallData } from '@/shared/types';
 
 let container: HTMLElement;
@@ -54,7 +55,8 @@ function PluginPanel(props: { toolName: string; output?: string }) {
   return h('div', { 'data-testid': 'plugin-panel', 'data-tool': props.toolName, 'data-output': props.output ?? '' });
 }
 
-const tool = (name: string): ToolCallData => ({
+/** A row as the server delivers it: classified before the client reads it. */
+const tool = (name: string): ToolCallData => normalizeToolCall({
   id: 'call-1',
   type: 'terminal',
   title: name,

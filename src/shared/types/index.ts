@@ -3,6 +3,7 @@ export * from '@/shared/types/theme';
 export * from '@/shared/types/fs';
 export * from '@/shared/types/git';
 export * from '@/shared/types/chat';
+export * from '@/shared/types/tool-render';
 export * from '@/shared/types/schedule';
 export * from '@/shared/types/waiting';
 export * from '@/shared/types/btw';

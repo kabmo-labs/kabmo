@@ -2,14 +2,17 @@ import type { ChatMessageData } from '@/shared/types';
 import { builtInToolsPart1 } from '@/client/data/samples/sample-tools/built-in-part1';
 import { builtInToolsPart2 } from '@/client/data/samples/sample-tools/built-in-part2';
 import { otherTools } from '@/client/data/samples/sample-tools/other';
+import { normalizeToolCall } from '@/shared/lib/chat/tool/normalize';
 
 export const SAMPLE_TOOLS_SESSION_ID = '01a084a9-f134-74a6-b5b6-50b0b6816c5f';
 
-export const allSampleTools = [
-  ...builtInToolsPart1,
-  ...builtInToolsPart2,
-  ...otherTools,
-];
+/**
+ * The gallery rows carry the SAME `render` a server-produced row does. They are
+ * hand-written fixtures with no producer to normalize them, so the shared
+ * resolver runs here once at module load — one rule, not a second one.
+ */
+export const allSampleTools = [...builtInToolsPart1, ...builtInToolsPart2, ...otherTools]
+  .map(normalizeToolCall);
 
 export const sampleUserPrompt = `call tool all of this
 

@@ -22,6 +22,7 @@ import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { Proc } from '@/client/components/workspace/chat-timeline/tool-renderers/panels/Proc';
 import { toolPanelKind } from '@/client/components/workspace/chat-timeline/tool-renderers/registry';
+import { normalizeToolCall } from '@/shared/lib/chat/tool/normalize';
 import type { ToolCallData } from '@/shared/types';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'HTMLInputElement', 'Event', 'MouseEvent', 'KeyboardEvent'] as const;
@@ -73,7 +74,17 @@ const KILL: Partial<ToolCallData> & Pick<ToolCallData, 'type'> = {
 
 describe('Proc panel — a service the call named', () => {
   test('reaches the panel from the transport, not the tool name', () => {
-    expect(toolPanelKind({ id: 'c1', type: 'write', name: 'write', title: 'write', target: 'proc://kabmo-dev/kill', input: { path: 'proc://kabmo-dev/kill' } } as ToolCallData)).toBe('proc');
+    // The panel comes from the server's classification of the URL, so the test
+    // runs the same normalizer the ingress runs.
+    const call = normalizeToolCall({
+      id: 'c1',
+      type: 'write',
+      name: 'write',
+      title: 'write',
+      target: 'proc://kabmo-dev/kill',
+      input: { path: 'proc://kabmo-dev/kill' },
+    } as ToolCallData);
+    expect(toolPanelKind(call)).toBe('proc');
   });
 
   test('states the state, the exit code and the span it ran', async () => {
