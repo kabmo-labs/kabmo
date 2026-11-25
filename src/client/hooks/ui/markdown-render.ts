@@ -29,6 +29,7 @@ import { rewriteWikiReferences } from '@/shared/lib/wiki/document-urls';
 import { expandGollumLinks } from '@/shared/lib/wiki/pages';
 import { MATH_PENDING_CLASS, preloadKatex } from '@/shared/lib/markdown/katex';
 import { sanitizeHtml } from '@/shared/lib/markdown/sanitize';
+import { markInlineFilePaths } from '@/shared/lib/markdown/inline-file';
 import { localizeFileImageSources, markLocalImageSources } from '@/shared/lib/chat/timeline/local-image';
 
 export interface RenderedMarkdown {
@@ -93,8 +94,15 @@ export function useRenderedMarkdown(options: MarkdownRenderOptions): RenderedMar
     // sanitization and the rest of the render instead of following it.
     if (localized.includes(MATH_PENDING_CLASS)) preloadKatex();
     const sanitized = sanitizeHtml(localized);
+    // Agent output is the one place an inline `` `path` `` is a file the reader
+    // can open. A document preview and a wiki page resolve their OWN references
+    // through the scope above, so marking them here would be a second rule for
+    // the same job. The marker runs after sanitization: the attributes never
+    // need a DOMPurify allow-list entry (same contract as local images).
+    const agentOutput = !isDocument && !isWiki;
+    const withFiles = agentOutput ? markInlineFilePaths(sanitized) : sanitized;
     return {
-      html: chat ? markLocalImageSources(sanitized) : sanitized,
+      html: chat ? markLocalImageSources(withFiles) : withFiles,
       blocks: mapped?.blocks ?? [],
     };
     // Primitive deps: the caller may build `scope`/`wikiScope` inline, and a

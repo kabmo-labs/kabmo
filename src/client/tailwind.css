@@ -918,6 +918,22 @@
   color: var(--theme-ink);
   overflow-wrap: break-word;
 }
+/* Inline code that names a workspace file (`markInlineFilePaths`, marked with
+ * `data-file-path`). The chip is a button in every way but its tag: pointer
+ * cursor, a hover + focus ring, and a colour that only appears when the reader
+ * can act on it. The underline is on hover, not at rest, so a transcript full of
+ * paths does not read as a wall of links. */
+.prose-content code.inline-code[data-file-path] { cursor: pointer; }
+.prose-content code.inline-code[data-file-path]:hover,
+.prose-content code.inline-code[data-file-path]:focus-visible {
+  color: var(--theme-info-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.prose-content code.inline-code[data-file-path]:focus-visible {
+  outline: 2px solid var(--theme-info);
+  outline-offset: 1px;
+}
 .prose-content .code-block {
   margin: 0.5rem 0; border-radius: 0.5rem; border: 1px solid color-mix(in srgb, var(--theme-ink) 15%, transparent);
   background: var(--theme-canvas); font-family: 'Fira Code', monospace; font-size: 0.75rem;

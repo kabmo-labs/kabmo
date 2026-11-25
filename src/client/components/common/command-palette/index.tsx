@@ -48,10 +48,13 @@ export function CommandPalette() {
 
   useEffect(() => {
     if (!palette.open) return;
-    setQuery('');
+    // A caller that opened the picker on a name (a chat chip with several
+    // matches) seeds the field; every chord-opened palette has no query and
+    // starts empty.
+    setQuery(palette.query ?? '');
     setActiveIndex(0);
     inputRef.current?.focus();
-  }, [palette.open, palette.mode]);
+  }, [palette.open, palette.mode, palette.query]);
 
   useEffect(() => {
     setActiveIndex((previous) => Math.min(previous, Math.max(items.length - 1, 0)));

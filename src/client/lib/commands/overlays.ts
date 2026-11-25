@@ -23,6 +23,12 @@ export interface PaletteState {
   mode: PaletteMode;
   /** The context at the moment it opened. */
   context: CommandContext;
+  /**
+   * The query the surface opens with, when the opener names one — a chat chip
+   * that names an ambiguous file opens the picker filtered to that name.
+   * Absent for every chord-opened palette, which starts empty.
+   */
+  query?: string;
 }
 
 interface OverlayState {
@@ -48,8 +54,16 @@ function publish(): void {
   for (const listener of [...state().listeners]) listener();
 }
 
-export function openPalette(mode: PaletteMode = 'commands'): void {
-  state().palette = { open: true, mode, context: commandContext() };
+export function openPalette(
+  mode: PaletteMode = 'commands',
+  options: { query?: string } = {},
+): void {
+  state().palette = {
+    open: true,
+    mode,
+    context: commandContext(),
+    ...(options.query ? { query: options.query } : {}),
+  };
   setCommandContext('paletteOpen', true);
   publish();
 }

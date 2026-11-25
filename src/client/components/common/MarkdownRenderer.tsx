@@ -25,7 +25,7 @@
  * resolved into the wiki's own tree.
  */
 
-import type { TargetedMouseEvent } from 'preact';
+import type { TargetedKeyboardEvent, TargetedMouseEvent } from 'preact';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { BlockVerdict, MdBlock } from '@/shared/lib/markdown/blocks/types';
 import type { DocumentScope } from '@/shared/lib/markdown/document-urls';
@@ -38,7 +38,8 @@ import { useLocalImageSources, useMathHydration, useMermaidHydration } from '@/c
 import { useRenderedMarkdown } from '@/client/hooks/ui/markdown-render';
 import { useDirectiveContext, useDirectiveRenderer } from '@/client/hooks/workspace/directives';
 import { copyFromButton } from '@/client/hooks/ui/clipboard';
-import { openFileInEditor } from '@/client/hooks/ui/open-file';
+import { activateInlineFileChip } from '@/client/hooks/ui/open-inline-file';
+import { followScopedLink } from '@/client/hooks/ui/markdown-scoped-links';
 import { useSyntaxReady } from '@/client/hooks/ui/syntax-ready';
 import { DiagramViewer } from '@/client/components/common/diagram-viewer';
 import { readDiagramBlock, type DiagramSnapshot } from '@/client/components/common/diagram-viewer/read-block';
@@ -282,46 +283,41 @@ export function MarkdownRenderer({
       return;
     }
 
-    if (isWiki) {
-      // A wiki page's own links. The RAW attribute is what classifies them, not
-      // `link.href`: that property is always absolutised by the DOM, so a
-      // relative path which named no page of this wiki read as external and
-      // every such link opened a browser tab instead of doing nothing.
-      const link = (e.target as HTMLElement).closest<HTMLAnchorElement>('a[href]');
-      if (!link) return;
-      const raw = link.getAttribute('href') ?? '';
-      // An in-page anchor is the browser's own business — the heading it names
-      // carries the id the wiki's table of contents wrote. Letting the default
-      // through is the whole point; preventing it made every TOC entry inert.
-      if (raw.startsWith('#')) return;
+    // Inline code that names a file. The marker (`markInlineFilePaths`) put
+    // `data-file-path` on the span; a drag that ends on a chip is a selection
+    // being finished, not a click, and opening a tab then would destroy it.
+    const chip = (e.target as HTMLElement).closest<HTMLElement>('code[data-file-path]');
+    if (chip) {
+      if (window.getSelection()?.isCollapsed === false) return;
       e.preventDefault();
       e.stopPropagation();
-      const target = link.dataset.wikiPath;
-      if (target && onWikiNavigate) {
-        onWikiNavigate(target);
-        return;
-      }
-      if (/^https?:/i.test(raw)) window.open(raw, '_blank', 'noopener,noreferrer');
-      // A relative href that resolved to nothing in this wiki is inert.
+      activateInlineFileChip(chip);
       return;
     }
 
-    if (!isDocument) return;
-
-    // A document's own links: a relative one is rewritten to the workspace
-    // file it names, so it belongs in an editor tab rather than in a top-level
-    // navigation off the console; an external one leaves the console.
-    const link = (e.target as HTMLElement).closest<HTMLAnchorElement>('a[href]');
-    if (!link) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const filePath = link.dataset.filePath;
-    if (filePath) {
-      openFileInEditor({ path: filePath, root: scopeRoot, repo: scopeRepo });
-    } else if (/^https?:/i.test(link.href)) {
-      window.open(link.href, '_blank', 'noopener,noreferrer');
+    // The scoped surfaces: a wiki page's own links, and a document's relative
+    // references (which the render pipeline rewrote to `data-file-path`).
+    if (isWiki || isDocument) {
+      const link = (e.target as HTMLElement).closest<HTMLAnchorElement>('a[href]');
+      if (link) {
+        followScopedLink(e, link, { isWiki, isDocument, scopeRoot, scopeRepo, onWikiNavigate });
+      }
     }
   }, [isDocument, scopeRoot, scopeRepo, isWiki, onWikiNavigate]);
+
+  /**
+   * A chip is focusable (`role="button"` + `tabindex="0"`), because a
+   * click-only affordance is unreachable from the keyboard. Enter and Space are
+   * a button's two activations; Space would otherwise scroll the timeline.
+   */
+  const handleContainerKeyDown = useCallback((e: TargetedKeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const chip = (e.target as HTMLElement).closest<HTMLElement>('code[data-file-path]');
+    if (!chip) return;
+    e.preventDefault();
+    e.stopPropagation();
+    activateInlineFileChip(chip);
+  }, []);
 
   const closeDiagram = useCallback(() => {
     diagramBlockRef.current = null;
@@ -336,6 +332,7 @@ export function MarkdownRenderer({
         ref={containerRef}
         className={`prose-content text-[13px] text-ink leading-relaxed select-text ${className}`}
         onClick={handleContainerClick}
+        onKeyDown={handleContainerKeyDown}
         dangerouslySetInnerHTML={{ __html: html }}
       />
       {diagram && <DiagramViewer {...diagram} onClose={closeDiagram} />}
