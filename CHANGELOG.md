@@ -4,6 +4,22 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.51.0](https://github.com/kabmo-labs/kabmo/compare/v0.50.0...v0.51.0) — 2026-11-25
+
+### Added
+
+* **chat:** open files from inline path chips in the timeline ([af37226](https://github.com/kabmo-labs/kabmo/commit/af37226cd5dd62c64b626425a73b19b0503a011c)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **tts:** add a local ONNX speech engine with a pickable, downloadable model ([429d732](https://github.com/kabmo-labs/kabmo/commit/429d732f6fe8e6ad57df16a512f6d6b2f891502a)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **tts:** read answers paragraph by paragraph and pause mid-sentence ([d64a743](https://github.com/kabmo-labs/kabmo/commit/d64a743778c2d536b3a7aed5ddee1c57549c74b2)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **ui:** replace every native select with one searchable picker ([e31d5cb](https://github.com/kabmo-labs/kabmo/commit/e31d5cbe686344063cde19d2f3817eea61441b0e)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **editor:** keep the font subscription inert when the window is gone ([29fe6d8](https://github.com/kabmo-labs/kabmo/commit/29fe6d8be59e87cf6611f2650abcce9aa5ba0ae3)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **tools:** normalize a tool call once on the server so every harness renders the same panel ([76c8b94](https://github.com/kabmo-labs/kabmo/commit/76c8b94859e9fb9ac28343d4a14a5f04ca6d1419)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **tools:** read the tool name where each ACP adapter puts it ([e67dc45](https://github.com/kabmo-labs/kabmo/commit/e67dc454525494dc80f482a2a2e216d97aeef84c)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **tts:** repaired Deepgram speech and added its 41-language Flux voices ([7828c25](https://github.com/kabmo-labs/kabmo/commit/7828c2562a412240691350ffd7cd39ffe05b5eda)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.50.0](https://github.com/kabmo-labs/kabmo/compare/v0.49.0...v0.50.0) — 2026-11-25
 
 ### Added
