@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { speechChunks, speakableText } from '@/shared/lib/tts/speakable';
+import { speechChunks, speakableParagraphs, speakableText } from '@/shared/lib/tts/speakable';
 
 describe('speakableText', () => {
   test('drops fenced code and tables', () => {
@@ -47,7 +47,27 @@ describe('speakableText', () => {
   });
 });
 
+describe('speakableParagraphs', () => {
+  test('a blank line separates paragraphs and code blocks vanish', () => {
+    expect(speakableParagraphs('First para.\n\n```ts\nconst x = 1;\n```\n\nSecond para.')).toEqual([
+      'First para.',
+      'Second para.',
+    ]);
+  });
+});
+
 describe('speechChunks', () => {
+  test('a paragraph worth of speech ends a request', () => {
+    const first = 'The first paragraph says enough to be read on its own, and it keeps going for a little while longer so that a listener has time to settle into the answer.';
+    const second = 'The second paragraph also stands alone, with a sentence of its own that ends the thought here.';
+    const chunks = speechChunks(`${first}\n\n${second}`, 4000, 4000);
+    expect(chunks).toEqual([first, second]);
+  });
+
+  test('short paragraphs merge so a heading is not its own request', () => {
+    expect(speechChunks('## Plan\n\nDo the thing.', 4000, 4000)).toEqual(['Plan Do the thing.']);
+  });
+
   test('keeps the first request small so audio starts sooner', () => {
     const text = Array.from({ length: 20 }, (_, i) => `Sentence number ${i + 1} is here.`).join(' ');
     const chunks = speechChunks(text, 400, 120);

@@ -39,6 +39,36 @@ class FakeAudio {
   load(): void {}
 }
 
+/** An element whose playback only ends when the test says so. */
+class ManualAudio {
+  static instances: ManualAudio[] = [];
+  /** Fires for each element the player creates, so a test can await the next chunk. */
+  static created: ((audio: ManualAudio) => void) | null = null;
+  onended: (() => void) | null = null;
+  onerror: (() => void) | null = null;
+  src = '';
+  playCalls = 0;
+  pauseCalls = 0;
+  constructor() {
+    ManualAudio.instances.push(this);
+    ManualAudio.created?.(this);
+  }
+  play(): Promise<void> {
+    this.playCalls += 1;
+    return Promise.resolve();
+  }
+  pause(): void {
+    this.pauseCalls += 1;
+  }
+  removeAttribute(name: string): void {
+    if (name === 'src') this.src = '';
+  }
+  load(): void {}
+  end(): void {
+    this.onended?.();
+  }
+}
+
 function waitFor(predicate: (snapshot: TtsSnapshot) => boolean): Promise<TtsSnapshot> {
   return new Promise((resolve) => {
     const unsubscribe = ttsPlayer.subscribe(() => {
@@ -52,6 +82,8 @@ function waitFor(predicate: (snapshot: TtsSnapshot) => boolean): Promise<TtsSnap
 
 beforeEach(() => {
   requests = [];
+  ManualAudio.instances = [];
+  ManualAudio.created = null;
   ttsPlayer.stop();
   globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
     const body = JSON.parse(String(init?.body)) as { text: string; config: Record<string, unknown> };
@@ -99,5 +131,34 @@ describe('ttsPlayer', () => {
     ttsPlayer.speak(text, 'run-1', DEFAULT_TTS_CONFIG);
     await second;
     expect(requests).toHaveLength(1);
+  });
+
+  test('pause holds the read and never starts the next chunk', async () => {
+    globalThis.Audio = ManualAudio as unknown as typeof Audio;
+    const nextChunk = Promise.withResolvers<ManualAudio>();
+    ManualAudio.created = () => {
+      if (ManualAudio.instances.length === 2) nextChunk.resolve(ManualAudio.instances[1]!);
+    };
+    const text = Array.from({ length: 30 }, (_, index) => `Sentence number ${index + 1} is here.`).join(' ');
+
+    ttsPlayer.speak(text, 'run-1', { ...DEFAULT_TTS_CONFIG, engine: 'openai' });
+    await waitFor((snapshot) => snapshot.status === 'playing');
+    const first = ManualAudio.instances[0];
+    expect(first).toBeDefined();
+
+    ttsPlayer.pause();
+    expect(ttsPlayer.getSnapshot()).toEqual({ status: 'paused', activeKey: 'run-1', error: null });
+    expect(first!.pauseCalls).toBe(1);
+
+    // The chunk ends while paused: the next one must be loaded but silent.
+    first!.end();
+    const second = await nextChunk.promise;
+    expect(ttsPlayer.getSnapshot().status).toBe('paused');
+    expect(second.playCalls).toBe(0);
+
+    ttsPlayer.resume();
+    expect(ttsPlayer.getSnapshot().status).toBe('playing');
+    expect(second.playCalls).toBe(1);
+    ttsPlayer.stop();
   });
 });

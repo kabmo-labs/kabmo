@@ -58,6 +58,8 @@ function handle(overrides: Partial<TtsHandle> = {}): TtsHandle {
     activeKey: null,
     error: null,
     speak: () => {},
+    pause: () => {},
+    resume: () => {},
     stop: () => {},
     ...overrides,
   };
@@ -82,18 +84,45 @@ describe('assistant footer speech', () => {
     expect(spoken).toEqual([{ text: 'the answer', key: 'ai-7' }]);
   });
 
-  test('while active it is a stop control', () => {
+  test('while active it offers pause and stop as separate actions', () => {
+    let paused = 0;
     let stopped = 0;
     const el = withTts(
       h(RunFooter, { msg: answerRow }),
-      handle({ status: 'playing', activeKey: 'ai-7', stop: () => { stopped += 1; } }),
+      handle({
+        status: 'playing',
+        activeKey: 'ai-7',
+        pause: () => { paused += 1; },
+        stop: () => { stopped += 1; },
+      }),
     );
 
-    const button = el.querySelector('button[aria-label="Stop reading"]') as HTMLButtonElement | null;
-    expect(button).not.toBeNull();
-    expect(button!.getAttribute('aria-pressed')).toBe('true');
-    act(() => button!.click());
+    const pause = el.querySelector('button[aria-label="Pause reading"]') as HTMLButtonElement | null;
+    expect(pause).not.toBeNull();
+    expect(pause!.getAttribute('aria-pressed')).toBe('false');
+    act(() => pause!.click());
+    expect(paused).toBe(1);
+
+    const stop = el.querySelector('button[aria-label="Stop reading"]') as HTMLButtonElement | null;
+    expect(stop).not.toBeNull();
+    act(() => stop!.click());
     expect(stopped).toBe(1);
+  });
+
+  test('a paused read offers resume instead of pause', () => {
+    let resumed = 0;
+    const el = withTts(
+      h(RunFooter, { msg: answerRow }),
+      handle({ status: 'paused', activeKey: 'ai-7', resume: () => { resumed += 1; } }),
+    );
+
+    const resume = el.querySelector('button[aria-label="Resume reading"]') as HTMLButtonElement | null;
+    expect(resume).not.toBeNull();
+    expect(resume!.getAttribute('aria-pressed')).toBe('true');
+    act(() => resume!.click());
+    expect(resumed).toBe(1);
+    expect(el.querySelector('button[aria-label="Pause reading"]')).toBeNull();
+    expect(el.querySelector('button[aria-label="Stop reading"]')).not.toBeNull();
   });
 
   test('an empty answer disables the button instead of reading nothing', () => {

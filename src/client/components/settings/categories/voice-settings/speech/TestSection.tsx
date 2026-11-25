@@ -25,7 +25,8 @@ export interface SpeechTestSectionProps {
 
 export function SpeechTestSection({ config }: SpeechTestSectionProps) {
   const tts = useTtsPlayer();
-  const testing = tts.activeKey === TEST_KEY && (tts.status === 'loading' || tts.status === 'playing');
+  const testing = tts.activeKey === TEST_KEY
+    && (tts.status === 'loading' || tts.status === 'playing' || tts.status === 'paused');
 
   return (
     <section className="space-y-3">

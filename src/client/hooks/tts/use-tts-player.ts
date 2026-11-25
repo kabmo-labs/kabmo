@@ -18,6 +18,14 @@ export function stopTts(): void {
   ttsPlayer.stop();
 }
 
+export function pauseTts(): void {
+  ttsPlayer.pause();
+}
+
+export function resumeTts(): void {
+  ttsPlayer.resume();
+}
+
 /** Subscribe one component to the player's snapshot. */
 export function useTtsPlayer(): TtsHandle {
   const snapshot = useSyncExternalStore(ttsPlayer.subscribe, ttsPlayer.getSnapshot);
@@ -28,6 +36,8 @@ export function useTtsPlayer(): TtsHandle {
     activeKey: snapshot.activeKey,
     error: snapshot.error,
     speak: speakTts,
+    pause: pauseTts,
+    resume: resumeTts,
     stop: stopTts,
   }), [snapshot]);
 }

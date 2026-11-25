@@ -33,6 +33,13 @@ const PATH_RE = /(^|[\s("'`])((?:~|\.{1,2})?\/?[\w.@+-]+(?:\/[\w.@+-]+){2,}\/?)/
 const HAS_SPEAKABLE_RE = /[\p{L}\p{N}]/u;
 const SENTENCE_BOUNDARY_RE = /[.!?…]+[)\]"'»”’]*\s/g;
 const ABBREVIATION_RE = /(?:^|\s)(?:e\.g|i\.e|etc|vs|Mr|Mrs|Ms|Dr|St|No)\.$/i;
+/**
+ * A paragraph this short never ends a request on its own: headings, one-line
+ * bullets and answer fragments would otherwise spend a spawn/round-trip each.
+ * Longer paragraphs do end one, which is what makes the read follow the
+ * writer's pauses.
+ */
+const PARAGRAPH_FLOOR = 120;
 
 /** "https://github.com/foo/bar?x#y" → "github.com". */
 function speakableUrl(url: string): string {
@@ -73,14 +80,9 @@ function isSilentLine(line: string): boolean {
   return false;
 }
 
-/**
- * Strip block markup, drop tables and code, and collapse the rest into one
- * prose string. The newline becomes a space: a heading and the paragraph under
- * it are read as separate sentences by the punctuation, not by the layout.
- */
-export function speakableText(markdown: string): string {
-  const withoutFences = markdown.replace(FENCE_RE, ' ');
-  const lines = withoutFences.split('\n').flatMap((line) => {
+/** Strip block markup from one block of lines, then normalize the prose. */
+function speakableBlock(block: string): string {
+  const lines = block.split('\n').flatMap((line) => {
     if (isSilentLine(line)) return [];
     let text = line;
     text = text.replace(/^\s{0,3}#{1,6}\s+/, '');
@@ -90,6 +92,27 @@ export function speakableText(markdown: string): string {
     return text.trim() ? [text.trim()] : [];
   });
   return normalizeSpeakable(lines.join(' '));
+}
+
+/**
+ * The speakable paragraphs, in order.
+ *
+ * A blank line is the writer's own pause: a request may end there and the
+ * reader hears a paragraph break instead of one unbroken stream. Lines inside
+ * a block join with a space — a heading and the paragraph under it are separate
+ * sentences by punctuation, not by the layout.
+ */
+export function speakableParagraphs(markdown: string): string[] {
+  return markdown
+    .replace(FENCE_RE, '\n\n')
+    .split(/\n{2,}/)
+    .map(speakableBlock)
+    .filter(Boolean);
+}
+
+/** The whole answer as one prose string (the paragraphs, joined). */
+export function speakableText(markdown: string): string {
+  return speakableParagraphs(markdown).join(' ');
 }
 
 /** Sentence boundaries that exist in `text`, as end offsets. */
@@ -125,33 +148,40 @@ function splitLong(sentence: string, max: number): string[] {
   return pieces;
 }
 
+/** The sentences of one paragraph, in order. */
+function sentencesOf(paragraph: string): string[] {
+  const sentences: string[] = [];
+  let start = 0;
+  for (const end of sentenceEnds(paragraph)) {
+    const sentence = paragraph.slice(start, end).trim();
+    if (sentence) sentences.push(sentence);
+    start = end;
+  }
+  const tail = paragraph.slice(start).trim();
+  if (tail) sentences.push(tail);
+  return sentences;
+}
+
 /**
  * The request-sized pieces of an answer, in order.
  *
- * `firstMax` is smaller than `maxChars` on purpose: the first request is what
- * decides time-to-first-audio, and a 600-character first chunk spends seconds
- * synthesizing before the user hears anything. Later chunks fill the engine's
- * budget.
+ * Two constraints decide a boundary. The paragraph is the writer's own pause,
+ * so a chunk ends there once it carries a paragraph's worth of speech: the
+ * player can start reading the first paragraph while the rest is still being
+ * synthesized, and the reader hears the break. `maxChars` is the engine's hard
+ * ceiling and `firstMax` is smaller on purpose — the first request decides
+ * time-to-first-audio, so it is the first paragraph (or its first sentences),
+ * not a 600-character block that spends seconds synthesizing before a sound.
  */
 export function speechChunks(
   markdown: string,
   maxChars: number,
-  firstMax = Math.min(320, maxChars),
+  firstMax = Math.min(160, maxChars),
 ): string[] {
-  const text = speakableText(markdown);
-  if (!text) return [];
+  const paragraphs = speakableParagraphs(markdown);
+  if (paragraphs.length === 0) return [];
   const limit = Math.max(1, Math.floor(maxChars));
   const firstLimit = Math.max(1, Math.min(Math.floor(firstMax), limit));
-
-  const sentences: string[] = [];
-  let start = 0;
-  for (const end of sentenceEnds(text)) {
-    const sentence = text.slice(start, end).trim();
-    if (sentence) sentences.push(sentence);
-    start = end;
-  }
-  const tail = text.slice(start).trim();
-  if (tail) sentences.push(tail);
 
   const chunks: string[] = [];
   let current = '';
@@ -163,16 +193,19 @@ export function speechChunks(
     currentLimit = limit;
   };
 
-  for (const sentence of sentences) {
-    for (const piece of sentence.length > currentLimit ? splitLong(sentence, currentLimit) : [sentence]) {
-      const joined = current ? `${current} ${piece}` : piece;
-      if (joined.length > currentLimit) {
-        flush();
-        current = piece;
-      } else {
-        current = joined;
+  for (const paragraph of paragraphs) {
+    for (const sentence of sentencesOf(paragraph)) {
+      for (const piece of sentence.length > currentLimit ? splitLong(sentence, currentLimit) : [sentence]) {
+        const joined = current ? `${current} ${piece}` : piece;
+        if (joined.length > currentLimit) {
+          flush();
+          current = piece;
+        } else {
+          current = joined;
+        }
       }
     }
+    if (current.length >= Math.min(currentLimit, PARAGRAPH_FLOOR)) flush();
   }
   flush();
   return chunks.filter((chunk) => HAS_SPEAKABLE_RE.test(chunk));

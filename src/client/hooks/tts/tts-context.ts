@@ -20,6 +20,10 @@ export interface TtsHandle {
   activeKey: string | null;
   error: string | null;
   speak: (text: string, key: string, config?: TtsConfig) => void;
+  /** Hold the read where it is; the next chunk is not started. */
+  pause: () => void;
+  /** Continue the paused read from the sample it stopped on. */
+  resume: () => void;
   stop: () => void;
 }
 
@@ -29,6 +33,8 @@ const DISABLED: TtsHandle = {
   activeKey: null,
   error: null,
   speak: () => undefined,
+  pause: () => undefined,
+  resume: () => undefined,
   stop: () => undefined,
 };
 
