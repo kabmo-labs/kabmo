@@ -7,10 +7,12 @@
  * The `method:"form"` card, mounted.
  *
  * omp 19.1.0 sends the `ask` tool's whole HTML form as ONE frame and refuses a
- * reply that does not match the form it parsed. A unit test on the payload
- * builder cannot show that the CARD sends that payload, and the reported
- * failure mode was invisible to a type check: nothing rendered at all. So this
- * mounts `AskPanel` over a live form frame and asserts what the wire receives.
+ * reply that does not match the form it parsed; 19.2.0 stopped enforcing the
+ * field rules (`required`, `pattern`, `min`/`max`) and sends a partly answered
+ * form. A unit test on the payload builder cannot show that the CARD sends
+ * that payload, and the reported failure mode was invisible to a type check:
+ * nothing rendered at all. So this mounts `AskPanel` over a live form frame and
+ * asserts what the wire receives.
  */
 
 import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:test';
@@ -79,7 +81,7 @@ function Harness({ onSent }: { onSent: (frame: ExtensionUiDialogRequest, respons
 }
 
 describe('the whole-form dialog', () => {
-  test('draws every control at once, with one submit gated on the required field', () => {
+  test('draws every control at once and submits without a required gate', () => {
     act(() => {
       render(h(Harness, { onSent: () => {} }), container);
     });
@@ -89,11 +91,12 @@ describe('the whole-form dialog', () => {
     // A form frame is never modal material: the modal has no form body.
     expect(container.querySelector('[role="dialog"]')).toBeNull();
 
-    // The radio group is optional and the checked row seeds it; the required
-    // number field is empty, so the submit stays disabled.
-    expect(buttonStarting('Submit answers').hasAttribute('disabled')).toBe(true);
+    // The checked radio seeds the payload, so the form is submittable at once;
+    // the empty `required` number field is a hint, not a gate (omp 19.2.0 sends
+    // partially answered forms).
+    expect(buttonStarting('Submit answers').hasAttribute('disabled')).toBe(false);
     act(() => buttonStarting('No').click());
-    expect(buttonStarting('Submit answers').hasAttribute('disabled')).toBe(true);
+    expect(buttonStarting('Submit answers').hasAttribute('disabled')).toBe(false);
 
     const serving = container.querySelector('textarea') as HTMLTextAreaElement | null;
     expect(serving).not.toBeNull();

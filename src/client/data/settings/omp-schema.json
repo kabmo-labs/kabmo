@@ -1,5 +1,5 @@
 {
-  "source": "@oh-my-pi/pi-coding-agent 10 tabs / 644 settings",
+  "source": "@oh-my-pi/pi-coding-agent 10 tabs / 647 settings",
   "tabs": [
     {
       "id": "appearance",
@@ -654,7 +654,7 @@
         "tab": "appearance",
         "group": "Display",
         "label": "Codex Reset Fireworks",
-        "description": "Celebrate unscheduled Codex weekly usage resets and newly banked saved resets with a top-third fireworks overlay that remains until Esc"
+        "description": "Celebrate unscheduled Codex weekly usage resets and newly banked saved resets with a top-third fireworks overlay that remains until ⎋"
       }
     },
     "tui.titleState": {
@@ -789,7 +789,7 @@
         "tab": "appearance",
         "group": "Display",
         "label": "Mouse Click-to-Focus",
-        "description": "Capture mouse clicks in the main session so live subagent cards and HUD rows focus on click, with a hover highlight on the target, and clicks on extension-owned links reach their extension (the link-hint key picks them without the mouse). Native text selection becomes Shift+drag while on, and mouse capture stops wheel scrolling — the terminal reports wheel ticks to omp instead — so scroll with the terminal's keyboard scrollback keys, or turn this off"
+        "description": "Capture mouse clicks in the main session so live subagent cards and HUD rows focus on click, with a hover highlight on the target, and clicks on extension-owned links reach their extension (the link-hint key picks them without the mouse). Native text selection becomes ⇧+drag while on, and mouse capture stops wheel scrolling — the terminal reports wheel ticks to omp instead — so scroll with the terminal's keyboard scrollback keys, or turn this off"
       }
     },
     "tui.tight": {
@@ -799,7 +799,7 @@
         "tab": "appearance",
         "group": "Display",
         "label": "Tight Layout",
-        "description": "Remove the 1-character horizontal padding from the left and right of the terminal output"
+        "description": "Remove the standard one-cell horizontal inset from terminal output; message bubbles and tool frames keep their padding"
       }
     },
     "display.shimmer": {
@@ -1090,7 +1090,7 @@
         "tab": "interaction",
         "group": "Input",
         "label": "Vim Editing Mode",
-        "description": "Modal prompt editing. Esc leaves Insert mode; Normal mode has hjkl, 0, $, ^, w, b, e, gg, G, counts, x/D/C, dd/yy, p and u; operators take motions or text objects (diw, ca(, dap); v/V start a Visual selection that y copies and d deletes"
+        "description": "Modal prompt editing. ⎋ leaves Insert mode; Normal mode has hjkl, 0, $, ^, w, b, e, gg, G, counts, x/D/C, dd/yy, p and u; operators take motions or text objects (diw, ca(, dap); v/V start a Visual selection that y copies and d deletes"
       }
     },
     "tui.vimModeDisplay": {
@@ -1121,7 +1121,56 @@
           {
             "value": "none",
             "label": "Hidden",
-            "description": "Do not show the mode in the status line"
+            "description": "Do not show the mode; a command being typed still shows with Vim Show Command"
+          }
+        ]
+      }
+    },
+    "tui.vimShowCommand": {
+      "type": "boolean",
+      "default": true,
+      "ui": {
+        "tab": "interaction",
+        "group": "Input",
+        "label": "Vim Show Command",
+        "description": "Show the command being typed in the status line, like Vim's showcmd: 15d before its last d. Shows even when the mode indicator is hidden",
+        "condition": "vimModeEnabled"
+      }
+    },
+    "tui.vimYankToClipboard": {
+      "type": "boolean",
+      "default": false,
+      "ui": {
+        "tab": "interaction",
+        "group": "Input",
+        "label": "Vim Yanks Copy to Clipboard",
+        "description": "Every Vim yank also copies to the system clipboard, as in Vim with clipboard=unnamed. Off: only \"+y and \"*y do",
+        "condition": "vimModeEnabled"
+      }
+    },
+    "tui.vimStartMode": {
+      "type": "enum",
+      "default": "insert",
+      "values": [
+        "insert",
+        "normal"
+      ],
+      "ui": {
+        "tab": "interaction",
+        "group": "Input",
+        "label": "Vim Start Mode",
+        "description": "Mode each new prompt starts in: at startup, after each message you send, and in dialog text boxes",
+        "condition": "vimModeEnabled",
+        "options": [
+          {
+            "value": "insert",
+            "label": "Insert",
+            "description": "Type right away; Escape for Normal mode"
+          },
+          {
+            "value": "normal",
+            "label": "Normal",
+            "description": "Start on Vim commands; i, a, o and the like to type"
           }
         ]
       }
@@ -1193,7 +1242,7 @@
         "tab": "interaction",
         "group": "Input",
         "label": "Recall Cleared Drafts",
-        "description": "Keep drafts cleared with Ctrl+C in local Up/Down history until exit; disabling affects future clears"
+        "description": "Keep drafts cleared with ⌃C in local ↑/↓ history until exit; disabling affects future clears"
       }
     },
     "doubleEscapeAction": {
@@ -1208,7 +1257,7 @@
         "tab": "interaction",
         "group": "Input",
         "label": "Double-Escape Action",
-        "description": "What pressing Esc twice with an empty editor does: open the transcript rewind selector, open the session tree, or nothing"
+        "description": "What pressing ⎋ twice with an empty editor does: open the transcript rewind selector, open the session tree, or nothing"
       }
     },
     "input.bareExitOnEmptySession": {
@@ -1309,7 +1358,7 @@
         "tab": "interaction",
         "group": "Input",
         "label": "Word Autocomplete",
-        "description": "Show predicted word completions as inline hints: Tab accepts with a space, Right without",
+        "description": "Show predicted word completions as inline hints: ⇥ accepts with a space, → without",
         "options": [
           {
             "value": "off",
@@ -1346,7 +1395,7 @@
         "tab": "interaction",
         "group": "Input",
         "label": "Composer Predictions",
-        "description": "After a completed turn, ask the active model to predict your next message and show it as ghost text in the empty composer; Tab or Right inserts it without sending. Extra usage: every completed turn sends one more billed request over the whole conversation (counted in /stats)"
+        "description": "After a completed turn, ask the active model to predict your next message and show it as ghost text in the empty composer; ⇥ or → inserts it without sending. Extra usage: every completed turn sends one more billed request over the whole conversation (counted in /stats)"
       }
     },
     "composer.predictionAlternatives": {
@@ -1356,7 +1405,7 @@
         "tab": "interaction",
         "group": "Input",
         "label": "Prediction Alternatives",
-        "description": "Ask for up to four distinct predictions instead of one, most likely first. The ghost text shows the first one your draft matches; after inserting one, press Tab again to pick another. The same single request returns a few more output tokens",
+        "description": "Ask for up to four distinct predictions instead of one, most likely first. The ghost text shows the first one your draft matches; after inserting one, press ⇥ again to pick another. The same single request returns a few more output tokens",
         "condition": "composerPredictionsEnabled"
       }
     },
@@ -1388,7 +1437,7 @@
         "tab": "interaction",
         "group": "Input",
         "label": "Large Paste Menu",
-        "description": "When a paste reaches this many lines, offer a menu to wrap it in a code block, wrap it in XML tags, or save it to a file. 0 disables the menu (large pastes still collapse to a [Paste] marker).",
+        "description": "When a paste reaches this many lines, offer a menu to wrap it in a code block, wrap it in XML tags, or save it to a file. 0 disables the menu (large pastes still collapse to a chip).",
         "options": [
           {
             "value": "0",
@@ -1822,7 +1871,7 @@
         "tab": "model",
         "group": "Prewalk",
         "label": "Prewalk planning model",
-        "description": "Model or role (default '@default') that /prewalk restart returns to for planning."
+        "description": "Model or role (default '@default') to plan on: /prewalk restart returns to it, and Auto Prewalk's Escalate mode moves a front-loaded task to it before planning."
       }
     },
     "prewalk.into": {
@@ -1841,7 +1890,8 @@
       "values": [
         "off",
         "suggest",
-        "on"
+        "on",
+        "escalate"
       ],
       "ui": {
         "tab": "model",
@@ -1857,12 +1907,17 @@
           {
             "value": "suggest",
             "label": "Suggest",
-            "description": "Classify each task and report the decision without arming prewalk"
+            "description": "Classify each task and report the decision, and whether Escalate would plan on another model, without arming prewalk"
           },
           {
             "value": "on",
             "label": "On",
             "description": "For confidently front-loaded tasks, arm a handoff from the active model to the auto target; the next task starts back on the planning model"
+          },
+          {
+            "value": "escalate",
+            "label": "Escalate",
+            "description": "Like On, but plan on the Prewalk planning model (prewalk.from) first: a confidently front-loaded task moves there before setup and hands off from it; the next task starts back where this one started. When the planning model is already active, this is On, except that '@initial' then has nothing to hand back to"
           }
         ]
       }
@@ -1874,7 +1929,7 @@
         "tab": "model",
         "group": "Prewalk",
         "label": "Auto-prewalk target",
-        "description": "Model or role (default '@smol') auto-prewalk hands off to at the first edit/write."
+        "description": "Model or role (default '@smol') auto-prewalk hands off to at the first edit/write. '@initial' (Escalate only) hands back to the model and thinking level the task started on."
       }
     },
     "providers.maxInFlightRequests": {
@@ -2729,7 +2784,7 @@
         "tab": "model",
         "group": "Retry & Fallback",
         "label": "Wait For Usage Reset",
-        "description": "Usage-limit waits within retry.maxDelayMs are already allowed. Enable this to also wait past that cap when the provider reports a reset time, such as a 5-hour or weekly quota window. Waits are abortable (Esc) but also hold subagents, so leave off for unattended runs."
+        "description": "Usage-limit waits within retry.maxDelayMs are already allowed. Enable this to also wait past that cap when the provider reports a reset time, such as a 5-hour or weekly quota window. Waits are abortable (⎋) but also hold subagents, so leave off for unattended runs."
       }
     },
     "retry.modelFallback": {
@@ -7554,7 +7609,7 @@
     },
     "eval.tools.enabled": {
       "type": "boolean",
-      "default": true,
+      "default": false,
       "ui": {
         "tab": "shell",
         "group": "Eval & Runtimes",
@@ -8101,7 +8156,7 @@
     },
     "task.crossInstance": {
       "type": "boolean",
-      "default": false,
+      "default": true,
       "ui": {
         "tab": "tasks",
         "group": "Subagents",

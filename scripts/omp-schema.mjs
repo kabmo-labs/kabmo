@@ -130,11 +130,22 @@ async function findPackageDir() {
   return provisionPackage(version);
 }
 
-/** omp's tab order and labels, read from the TUI package rather than restated
- *  here — a tab added upstream must appear in the panel without an edit. */
-async function readTabs(tuiDir) {
-  const mod = await import(join(tuiDir, 'src/overlays/settings-defs.ts'));
-  return { order: mod.SETTING_TABS, meta: mod.TAB_METADATA };
+/** omp's tab order and labels, read from the installed package rather than
+ *  restated here — a tab added upstream must appear in the panel without an
+ *  edit.
+ *
+ *  19.2.0 moved both out of `pi-tui` (which no longer ships a settings
+ *  surface): the order now sits beside the setting types in
+ *  `config/settings-defs.ts`, and each tab's label in the page metadata the
+ *  rebuilt settings window reads (`ui/overlays/settings/pages.ts`). The old
+ *  `src/overlays/settings-defs.ts` import path answers ENOENT, so a bump
+ *  without this change fails the schema gate instead of generating. */
+async function readTabs(pkgDir) {
+  const [defs, pages] = await Promise.all([
+    import(join(pkgDir, 'src/config/settings-defs.ts')),
+    import(join(pkgDir, 'src/ui/overlays/settings/pages.ts')),
+  ]);
+  return { order: defs.SETTING_TABS, meta: pages.SETTINGS_PAGES };
 }
 
 /**
@@ -177,11 +188,10 @@ function toEntry(definition) {
 
 async function build() {
   const pkgDir = await findPackageDir();
-  const tuiDir = pkgDir.replace(/pi-coding-agent$/, 'pi-tui');
   await pinGenerationPlatform(pkgDir);
   const [{ orderedSettings }, { order, meta }] = await Promise.all([
     import(join(pkgDir, 'src/config/all-settings.ts')),
-    readTabs(tuiDir),
+    readTabs(pkgDir),
   ]);
 
   const settings = orderedSettings();

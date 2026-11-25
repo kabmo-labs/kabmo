@@ -2837,3 +2837,65 @@ model-facing.
 | R123 | job labels collapsed then bounded | none needed; the cap is still 120 | `formatAsyncJobLabel` call sites; label drawn verbatim |
 | R124 | `model_change` may carry `@upstream` | none needed; every forwarder passes the exact selector | `omp models --json` has 0 routed selectors; `splitUpstreamRouting` grammar read |
 | R125 | host/TUI/model-facing fixes | none needed | wire sha256, roles, tool names, slash registry, tabs and `settings-defs.ts` byte-identical |
+
+## 19.2.0 outcomes
+
+### R126 — the settings generator's tab metadata left pi-tui (code)
+
+The rebuilt terminal UI (`@oh-my-pi/pi-tui` on the host's own renderer) no
+longer ships a settings surface. `src/overlays/settings-defs.ts` — where the
+generator read `SETTING_TABS` and `TAB_METADATA` — is gone, so the import
+answers ENOENT and the schema gate fails before it can generate. The order now
+lives beside the setting types in
+`pi-coding-agent/src/config/settings-defs.ts`, and each tab's label in the page
+metadata the new settings window reads
+(`src/ui/overlays/settings/pages.ts`, `SETTINGS_PAGES`). `readTabs` imports both
+from the package dir; the generated file's `tabs` array is byte-identical
+(10 tabs, same labels and group order).
+
+### R127 — the `ask` form stopped enforcing field rules (code)
+
+`parseFormDialogResponse` (`modes/rpc/rpc-mode.ts`) dropped its `fieldError`
+pass: `required`, `pattern`, `min`/`max`, `minlength`/`maxlength`, `email` and
+`url` are no longer checked, and its comment now says so outright. The rebuilt
+TUI dialog flags a broken answer as you type and still submits, so the model can
+reply to the question instead of the user satisfying a control. Kabmo mirrored
+the OLD contract: `buildFormData` returned `{ missing }` for every empty
+`required` control and the card disabled Submit, which would park a form omp now
+accepts forever. The rule is removed end to end (`shared/lib/chat/ask-form/`),
+an unanswered control is simply absent from `{ data }`, and the structural rules
+omp still enforces remain: unknown key, disabled option, array-vs-string, and at
+least one entry (an empty object still throws). `FormDialog` keeps Submit
+disabled only for the empty-object case, and its mounted test now expects a
+partly answered form to submit.
+
+### R128 — `BashResult` names the state a command left behind (no code)
+
+Two ADDITIVE leaves: `movedCwd` (`true` when the command ended in another
+directory than it started in, so the next call starts in its own cwd) and
+`errexit` (`true` when it ended with `set -e` on, so the next call starts with
+it off). Kabmo never reads either; the result TEXT already carries
+`Reset before the next call: cwd → …, set -e off.`, which the Bash card renders
+verbatim. The wire stays at 77 commands / 308 definitions.
+
+### R129 — host-side, TUI and model-facing changes (no action)
+
+The extension/hook/custom-tool UI migration to the host pi-tui (Kabmo's only
+extension API use is `ctx.ui.notify`), `--no-tools` restricting the roster,
+eval-defined tools off by default (`eval.tools.enabled`), cross-instance agent
+messaging on by default (`task.crossInstance`), prewalk escalation
+(`prewalk.auto: escalate`, `prewalk.autoTarget: "@initial"`), OpenRouter-backed
+model discovery, the archive evaluation APIs, daemon-coordinated
+`providers.maxInFlightRequests`, config stat-polling at 500 ms, an interrupt
+that carries queued input backgrounding a running bash/eval (`detachTools`),
+rewind branching into a new session, `--continue` resuming the newest unopened
+session, the TUI Vim additions and the removed `fileToUri`/`uriToFile`/
+`EquivalentUriMap` LSP utils (nothing in Kabmo imports them) — host-side, TUI or
+model-facing.
+
+| # | Finding | Action | Verification |
+|---|---|---|---|
+| R126 | tab metadata moved out of pi-tui | `scripts/omp-schema.mjs` imports `config/settings-defs.ts` + `ui/overlays/settings/pages.ts` | generator writes 10 tabs / 486 entries; `tabs` array unchanged |
+| R127 | RPC form validation dropped all field rules | `buildFormData` no longer blocks `required`; card hint and tests updated | `ask-frames-form.test.ts` partly answered form sends; mounted `FormDialog` test submits with the required control empty |
+| R128 | `BashResult.movedCwd` / `.errexit` | none; additive, text notice already rendered | wire diff 77 commands / 308 definitions, 2 added leaves |
+| R129 | host/TUI/model-facing changes | none | roles, tool names, slash registry, tab labels identical; schema diff 644 → 647 settings / 483 → 486 entries |

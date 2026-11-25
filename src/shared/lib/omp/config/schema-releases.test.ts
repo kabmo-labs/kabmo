@@ -274,4 +274,34 @@ describe('OMP_SCHEMA release rows', () => {
     expect(OMP_SCHEMA.entries['todo.backend']?.ui.options).toBe('runtime');
     expect(OMP_SCHEMA.entries['computer.backgroundFallback']).toBeUndefined();
   });
+
+  test("19.2.0's vim rows are offered and the two moved defaults follow upstream", () => {
+    // The rebuilt terminal UI adds three Vim controls, all gated on the
+    // `vimModeEnabled` condition the panel already resolves. They are TUI-only
+    // surfaces, but the panel is the only place an omp setting is reachable, so
+    // a regenerated schema that drops them removes the row entirely.
+    const expected: Record<string, { type: SchemaEntry['type']; tab: string; group: string; default: unknown }> = {
+      'tui.vimShowCommand': { type: 'boolean', tab: 'interaction', group: 'Input', default: true },
+      'tui.vimYankToClipboard': { type: 'boolean', tab: 'interaction', group: 'Input', default: false },
+      'tui.vimStartMode': { type: 'enum', tab: 'interaction', group: 'Input', default: 'insert' },
+    };
+    for (const [key, want] of Object.entries(expected)) {
+      const entry = OMP_SCHEMA.entries[key];
+      expect({ key, entry: entry && { type: entry.type, tab: entry.ui.tab, group: entry.ui.group, default: entry.default } }).toEqual({
+        key,
+        entry: want,
+      });
+    }
+    expect(OMP_SCHEMA.entries['tui.vimStartMode']?.values).toEqual(['insert', 'normal']);
+
+    // Two defaults flipped: eval-defined tools are off unless enabled, and
+    // cross-instance agent messaging is on unless disabled. The panel shows the
+    // schema's default, so a stale row would offer the opposite of omp's.
+    expect(OMP_SCHEMA.entries['eval.tools.enabled']?.default).toBe(false);
+    expect(OMP_SCHEMA.entries['task.crossInstance']?.default).toBe(true);
+
+    // Auto-prewalk gained an escalation mode; a stale enum hides it from the
+    // panel's own dropdown.
+    expect(OMP_SCHEMA.entries['prewalk.auto']?.values).toContain('escalate');
+  });
 });

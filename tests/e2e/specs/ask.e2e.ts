@@ -133,9 +133,11 @@ test.describe('ask tool', () => {
     await expect(page.getByText('Serving')).toBeVisible();
     await expect(page.getByRole('dialog')).toHaveCount(0);
 
-    // Submit is disabled until the required field is answered.
+    // omp 19.2.0 dropped the field rules from the RPC form validator: the
+    // checked radio seeds a valid payload, so Submit is live even with the
+    // `required` number field empty, and a partly answered form is accepted.
     const submit = page.getByRole('button', { name: 'Submit answers' });
-    await expect(submit).toBeDisabled();
+    await expect(submit).toBeEnabled();
 
     await page.getByRole('button', { name: /^No\b/ }).click();
     const serving = page.getByRole('textbox', { name: 'Your answer for question 2' });

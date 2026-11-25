@@ -4,9 +4,10 @@
  */
 
 /**
- * The submitted `data` object of a `form` dialog (omp 19.1.0).
+ * The submitted `data` object of a `form` dialog (omp 19.1.0; field rules
+ * relaxed in 19.2.0).
  *
- * omp's RPC host now renders the `ask` tool's whole HTML form in ONE
+ * omp's RPC host renders the `ask` tool's whole HTML form in ONE
  * `method:"form"` frame and validates the reply against the form it parsed
  * (`parseFormDialogResponse` in `modes/rpc/rpc-mode.ts`):
  *
@@ -17,13 +18,17 @@
  *  - a checkbox group or `<select multiple>` takes an ARRAY, every other
  *    choice one string;
  *  - a text control takes a string (a number is accepted for `number`/`range`);
- *  - `required` fields must carry a value, and at least one field must carry
- *    an entry at all (an empty object throws).
+ *  - at least one field must carry an entry at all (an empty object throws).
+ *
+ * 19.2.0 stopped checking the field rules (`required`, `pattern`, `min`/`max`,
+ * `minlength`/`maxlength`, `email`, `url`): `fieldError` is gone from the RPC
+ * path, and omp's own form dialogs flag a broken answer as you type but still
+ * submit it, so the model can reply to the question instead of the user
+ * satisfying a control. Kabmo follows the same rule — `required` no longer
+ * gates Submit — and only the structural checks above remain.
  *
  * This module is that contract in one place, pure and testable: the card
- * collects picks, and this turns them into the exact object omp accepts — or
- * says which question is still unanswered, so Submit can stay disabled instead
- * of sending a frame omp refuses.
+ * collects picks, and this turns them into the exact object omp accepts.
  */
 
 import type { AskQuestion } from '@/shared/lib/chat/ask-form/types';
@@ -36,14 +41,12 @@ export interface FormPick {
   text: string;
 }
 
-/** One control's contribution, or the reason there is none yet. */
+/** One control's contribution. */
 export interface FormAnswer {
   /** The control name (`AskQuestion.id`). */
   name: string;
   /** `string` for a single choice or text field, `string[]` for a group. */
   value: string | string[];
-  /** The question that still has to be answered before this form can submit. */
-  missing?: string;
 }
 
 /** Whether a question takes an array (checkbox group or multi-select). */
@@ -94,37 +97,33 @@ export function answerForQuestion(question: AskQuestion, pick: FormPick | undefi
 /**
  * Every question's contribution, in form order.
  *
- * A question whose control is `required` and still empty carries `missing` so
- * the card can name it; an unanswered optional control is omitted from the
- * payload (omp treats an absent entry as "nothing checked").
+ * An unanswered control is omitted from the payload (omp treats an absent
+ * entry as "nothing checked"). `required` does NOT block here since omp 19.2.0:
+ * that build's RPC validator stopped checking the field rules, so a form the
+ * user leaves partly empty still submits what it holds.
  */
 export function formAnswers(questions: AskQuestion[], picks: Record<number, FormPick>): FormAnswer[] {
   return questions.map((question, index) => {
     const value = answerForQuestion(question, picks[index]);
-    const empty = value === undefined || (Array.isArray(value) && value.length === 0);
     return {
       name: question.id ?? '',
       value: value ?? (isArrayQuestion(question) ? [] : ''),
-      ...(empty && question.required === true ? { missing: question.question } : {}),
     };
   });
 }
 
-/** The `data` object to send, or the first reason the form cannot be submitted.
+/** The `data` object to send, or the reason it cannot be sent.
  *
  *  At least one entry is mandatory: omp throws on an empty object ("at least
  *  one field must carry the entry"), and a Submit that could only be refused is
- *  disabled instead. */
+ *  disabled instead. Every other field rule is omp's to flag, not ours — since
+ *  19.2.0 the RPC validator accepts a partly answered form. */
 export function buildFormData(
   questions: AskQuestion[],
   picks: Record<number, FormPick>,
 ): { data: Record<string, string | string[]> } | { missing: string } {
-  const answers = formAnswers(questions, picks);
-  const missing = answers.find((answer) => answer.missing !== undefined);
-  if (missing?.missing !== undefined) return { missing: missing.missing };
-
   const data: Record<string, string | string[]> = {};
-  for (const answer of answers) {
+  for (const answer of formAnswers(questions, picks)) {
     if (!answer.name) continue;
     const value = answer.value;
     if (typeof value === 'string' ? value.trim() === '' : value.length === 0) continue;

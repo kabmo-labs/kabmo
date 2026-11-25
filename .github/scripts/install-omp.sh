@@ -791,7 +791,58 @@ fi
 # builtin, RPC-host MCP cleanup, the restored-job and exit-diagnostics fixes,
 # and the selective-commit, Spotlight, TTSR, browser, scraper and Magic Edit
 # work — host-side, TUI or model-facing.
-OMP_VERSION="${OMP_VERSION:-19.1.1}"
+#
+# 19.2.0 (2026-11-25): the schema's `source` line moves to 647 settings and the
+# panel gains THREE rows, net +3, all under interaction / Input and all gated by
+# the `vimModeEnabled` condition `isConditionMet` already answers:
+# `tui.vimShowCommand` (boolean, default true), `tui.vimYankToClipboard`
+# (boolean, default false) and `tui.vimStartMode` (enum insert/normal, default
+# insert). Two defaults flip, and the panel shows the schema's value:
+# `eval.tools.enabled` true → false (kernel-defined tools are opt-in) and
+# `task.crossInstance` false → true (cross-instance agent messaging is on unless
+# disabled). `prewalk.auto` gains `escalate` and `prewalk.from` /
+# `prewalk.autoTarget` document it. The rest is description wording that now
+# names keys as glyphs (`Esc` → `⎋`, `Tab` → `⇥`, `Ctrl+C` → `⌃C`) plus the
+# large-paste "chip" sentence; no `ui.condition` is new. The RPC wire keeps its
+# 77 commands and 308 definitions and gains TWO ADDITIVE leaves on `BashResult`:
+# `movedCwd` (the command ended in a different directory) and `errexit`
+# (`set -e` left on), both already spoken by the result's `Reset before the next
+# call: …` notice. `MODEL_ROLES`, the 30 `BUILTIN_TOOL_NAMES` and the 89-spec
+# slash registry (including its TUI-only name set) are identical.
+#
+# The schema GENERATOR had to move with the release: pi-tui no longer ships a
+# settings surface, so its `src/overlays/settings-defs.ts` answers ENOENT. The
+# tab order now lives in `pi-coding-agent/src/config/settings-defs.ts` and each
+# label in `ui/overlays/settings/pages.ts`; `scripts/omp-schema.mjs` imports
+# both. A pin bumped without that change fails the schema gate instead of
+# generating.
+#
+# ONE upstream break reaches a Kabmo surface, adopted here: the `ask` FORM no
+# longer enforces field rules. `parseFormDialogResponse` (`modes/rpc/rpc-mode.ts`)
+# dropped its `fieldError` pass, so `required`, `pattern`, `min`/`max`,
+# `minlength`/`maxlength`, `email` and `url` are not refused — the rebuilt TUI
+# dialog flags a broken answer as you type and still sends it, so the model can
+# reply instead of the user satisfying the control. Kabmo's card disabled Submit
+# until every `required` control was filled, which would park a form omp now
+# accepts. `shared/lib/chat/ask-form/data.ts` no longer carries `missing`; an
+# unanswered control is absent from `{ data }`, and only the structural rules
+# remain (unknown key, disabled option, array-vs-string, at least one entry).
+# The mounted `FormDialog` test asserts the new gate.
+#
+# Also adopted with no code: an interrupt carrying queued input now backgrounds
+# a running bash/eval (`detachTools`) instead of killing it, and the result
+# text states what the next call starts without; Kabmo renders both as text.
+#
+# Not adopted, deliberately: the extension/hook/custom-tool UI migration to the
+# host's pi-tui (Kabmo's extension only calls `ctx.ui.notify`), the `--no-tools`
+# restriction, the rebuilt TUI's Vim mode and its three rows (panel-only),
+# OpenRouter-backed model discovery, the archive evaluation APIs, the
+# daemon-coordinated `providers.maxInFlightRequests`, config stat-polling,
+# `--continue`'s "newest unopened session" rule (Kabmo passes `--resume <file>`),
+# the rewind-to-new-session change (Kabmo forwards no `/rewind`) and the
+# `fileToUri`/`uriToFile`/`EquivalentUriMap` removal from `lsp/utils` (nothing
+# here imports it) — host-side, TUI or model-facing.
+OMP_VERSION="${OMP_VERSION:-19.2.0}"
 PACKAGE="@oh-my-pi/pi-coding-agent"
 WANTED="omp/${OMP_VERSION}"
 

@@ -15,7 +15,9 @@
  *    a panel with no form body — while the agent stayed blocked.
  * 2. The `data` payload must satisfy omp's validation (`parseFormDialogResponse`):
  *    an unknown key, a disabled option, an array where a single string is
- *    expected, or a missing required field is refused and the run parks.
+ *    expected, or an empty object is refused and the run parks. Field rules
+ *    (`required`, `pattern`, `min`/`max`) are NOT checked since 19.2.0 — a
+ *    partly answered form submits what it holds.
  */
 
 import { describe, expect, test } from 'bun:test';
@@ -132,9 +134,12 @@ describe('buildFormData', () => {
     expect('data' in built && built.data.extras).toEqual(['ice', 'sprinkles']);
   });
 
-  test('a required field left empty names the question instead of sending', () => {
+  test('a required field left empty no longer blocks the rest of the form', () => {
+    // omp 19.2.0 dropped `fieldError` from the RPC validator: its dialogs flag
+    // a broken answer and send anyway, so the model can reply to the question.
+    // The unanswered control is simply absent from `data`.
     const built = buildFormData(questions, { 0: { selected: ['Yes'], text: '' } });
-    expect(built).toEqual({ missing: questions[1].question });
+    expect(built).toEqual({ data: { flavour: 'yes' } });
   });
 
   test('nothing answered at all is refused rather than sent as {}', () => {
@@ -156,9 +161,11 @@ describe('buildFormData', () => {
     const answers = formAnswers(questions, { 1: { selected: [], text: '4' } });
     expect(answers.map((answer) => answer.name)).toEqual(['flavour', 'serving', 'extras']);
     expect(answers[1].value).toBe('4');
-    // The radio group is not `required`, so an unanswered one is simply absent
-    // from the payload rather than named as a blocker.
+    // An unanswered control — the optional radio here, and the `required`
+    // number field when nothing types into it — is simply empty, never a
+    // blocker (omp 19.2.0 checks no field rules).
     expect(answers[0]).toEqual({ name: 'flavour', value: '' });
+    expect(formAnswers(questions, {})[1]).toEqual({ name: 'serving', value: '' });
   });
 });
 

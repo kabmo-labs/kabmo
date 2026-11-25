@@ -46,9 +46,10 @@ export interface AskQuestion {
    */
   kind?: 'choice' | 'text';
   /**
-   * The control carries the `required` attribute, so omp refuses a `form`
-   * submission that leaves it empty. Only the form-frame path reads it; the
-   * per-field walk enforces the same rule with its own dialog loop.
+   * The control carries the `required` attribute. Since omp 19.2.0 a form
+   * submission that leaves it empty is still accepted (the dialog flags it and
+   * sends), so nothing gates on this; it is kept for display and for the older
+   * per-field walk, which does enforce it.
    */
   required?: boolean;
 }

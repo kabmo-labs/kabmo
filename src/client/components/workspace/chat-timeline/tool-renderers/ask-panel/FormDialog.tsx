@@ -14,8 +14,11 @@
  *
  * The payload is built by `buildFormData`, which mirrors the validation omp
  * applies to the reply (unknown keys, disabled options, array-vs-string
- * choices, required fields). Sending a guess would be refused with the field
- * named and the run parked, so Submit is disabled until the form is valid.
+ * choices). Since omp 19.2.0 the field rules (`required`, `pattern`, `min`/`max`,
+ * …) are only flagged, never refused: a partly answered form submits what it
+ * holds, so the model can reply instead of the user satisfying a control.
+ * Submit stays disabled only for the one rule omp still enforces — an empty
+ * `data` object.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
@@ -198,7 +201,7 @@ export function FormDialog({ frame, questions, recorded, submitted, onRespond, i
             <span>Answers sent — the agent is working on them.</span>
           </span>
         ) : (
-          <span className="text-[10.5px] text-ink/45">Answer every required question, then submit once.</span>
+          <span className="text-[10.5px] text-ink/45">Answer at least one question, then submit once.</span>
         )}
         <div className="ml-auto flex items-center gap-2">
           <button

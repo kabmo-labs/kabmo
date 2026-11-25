@@ -41,7 +41,8 @@ export interface DraftField {
   /** Caption in force when the field appeared, and its section's legend. */
   caption: string;
   section: string;
-  /** The control carries `required`; omp refuses a form submission that leaves it empty. */
+  /** The control carries `required`. Since omp 19.2.0 it is a hint: the form
+   *  handler flags the empty control but still submits, so it never blocks. */
   required: boolean;
 }
 

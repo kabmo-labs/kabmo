@@ -94,8 +94,9 @@ export function parseAskForm(html: string): AskQuestion[] {
       if (group) {
         group.options.push(option);
         // omp does the same (`group.field.required ||= required`): one member of
-        // the group marking it required is enough, and sending a group without
-        // its required pick is refused.
+        // the group marking it required makes the whole group required. Since
+        // 19.2.0 that only labels the group — a submission without a pick is
+        // accepted, and the model gets the rest of the form.
         group.required ||= 'required' in attrs;
         return;
       }
