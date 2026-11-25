@@ -17,6 +17,9 @@
 import {
   AcpBackgroundProbe,
   BACKGROUND_LOAD_TIMEOUT_MS,
+  backgroundPullPrompt,
+} from '@/server/lib/harness/acp/background-probe';
+import {
   deliverBackgroundNotice,
   type BackgroundNoticeHost,
 } from '@/server/lib/harness/acp/background-work';
@@ -40,6 +43,9 @@ export interface AcpWiringHost extends BackgroundNoticeHost {
   runModel: { provider: string; modelId: string } | null;
   emit(event: AgentEvent): void;
   onTurnEnded(info: AcpTurnEndInfo): void;
+  /** The session's own command surface, for the probe's continuation prompt. */
+  send(command: Record<string, unknown>): Promise<unknown>;
+  isAlive(): boolean;
 }
 
 /** The wiring a session builds for itself.
@@ -59,6 +65,8 @@ export function acpWiringFor(session: {
   assistantCount: number;
   emit(event: AgentEvent): void;
   onTurnEnded(info: AcpTurnEndInfo): Promise<void>;
+  send(command: Record<string, unknown>): Promise<unknown>;
+  isAlive(): boolean;
 }, parts: { proc: AcpProcess; mapper: AcpFrameMapper; idle: IdleReaper }): AcpWiringHost {
   return {
     cwd: session.cwd,
@@ -73,6 +81,8 @@ export function acpWiringFor(session: {
     set assistantCount(count: number) { session.assistantCount = count; },
     emit: (event) => session.emit(event),
     onTurnEnded: (info) => void session.onTurnEnded(info),
+    send: (command) => session.send(command),
+    isAlive: () => session.isAlive(),
   };
 }
 
@@ -83,6 +93,18 @@ export function acpBackgroundProbe(host: AcpWiringHost): AcpBackgroundProbe {
     load: () => host.proc.loadSession(host.sessionId, host.cwd, BACKGROUND_LOAD_TIMEOUT_MS),
     resetIdle: () => host.idle.reset(),
     emit: (text) => deliverBackgroundNotice(host, text),
+    // `session/load` no longer carries the held completion on antigravity
+    // 1.5.3, so the probe asks the agent to resume. The prompt is synthetic:
+    // it must not rename the chat, and it is ONE turn per background call.
+    pull: async () => {
+      if (!host.isAlive()) return;
+      await host.send({ type: 'prompt', message: backgroundPullPrompt(), synthetic: true, quiet: true });
+      host.emit({
+        type: 'notice',
+        level: 'info',
+        message: 'The background subagent did not report back; continuing automatically.',
+      });
+    },
   });
 }
 

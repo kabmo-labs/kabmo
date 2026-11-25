@@ -26,6 +26,8 @@ function session() {
     assistantCount: 1,
     emit: () => {},
     onTurnEnded: async () => {},
+    send: async () => ({}),
+    isAlive: () => true,
   };
 }
 

@@ -24,9 +24,12 @@
  *
  * Backs off 2s → 30s; gives up ten minutes past the last work evidence, an hour
  * after the turn regardless. Never invents a failure for an answer it missed.
+ *
+ * The PROBE and its pull live in `background-probe.ts`; this module owns what is
+ * shared with a turn's own bookkeeping — detection, the suffix rule, and the
+ * synthetic notice a session moves.
  */
 
-import { collectReplayFrame, newToolNotice, type ReplaySegment } from '@/server/lib/harness/acp/background-replay';
 import { stampMessageModel } from '@/server/lib/harness/acp/session-config';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
 import { extractTextFromContent } from '@/shared/lib/omp/session/mapper';
@@ -49,16 +52,6 @@ const BACKGROUND_TOOLS: Record<string, true> = {
 export function isBackgroundToolName(name: string | undefined): boolean {
   return typeof name === 'string' && BACKGROUND_TOOLS[name.toLowerCase()] === true;
 }
-
-export const BACKGROUND_FIRST_DELAY_MS = 2_000;
-export const BACKGROUND_MAX_DELAY_MS = 30_000;
-export const BACKGROUND_TIMEOUT_MS = 10 * 60_000;
-/** The absolute ceiling, independent of how often new work re-arms the quiet
- *  window: a probe holds the session out of the idle reclaim, so an agent
- *  reporting a tool every minute must not keep it alive forever. One hour is
- *  the precedent `turn-silence.ts` already set. */
-export const BACKGROUND_MAX_LIFETIME_MS = 60 * 60_000;
-export const BACKGROUND_LOAD_TIMEOUT_MS = 120_000;
 
 /** The tool-call ids the closed message already shows, so a replay of them is
  *  not reported as news. */
@@ -151,200 +144,4 @@ export function deliverBackgroundNotice(host: BackgroundNoticeHost, text: string
     host.emit(stampMessageModel(event, host.runModel));
   }
   emitRealtimeSignal('session-data-dirty', host.sessionId);
-}
-
-export interface AcpBackgroundProbeOptions {
-  /** Replay the session — `session/load` on the live process. */
-  load: () => Promise<unknown>;
-  /** A probe is a sign the session is still wanted. */
-  resetIdle: () => void;
-  /** The text past the answer already shown. */
-  emit: (text: string) => void;
-  timeoutMs?: number;
-  firstDelayMs?: number;
-  maxDelayMs?: number;
-  now?: () => number;
-  schedule?: (fn: () => void, ms: number) => unknown;
-  cancel?: (handle: unknown) => void;
-}
-
-export class AcpBackgroundProbe {
-  private readonly load: () => Promise<unknown>;
-  private readonly resetIdle: () => void;
-  private readonly emitNotice: (text: string) => void;
-  private readonly timeoutMs: number;
-  private readonly firstDelayMs: number;
-  private readonly maxDelayMs: number;
-  private readonly now: () => number;
-  private readonly schedule: (fn: () => void, ms: number) => unknown;
-  private readonly cancel: (handle: unknown) => void;
-
-  private baseline = '';
-  private collecting: ReplaySegment | null = null;
-  /** The notice seen in the last replay; a repeated value is COMPLETE. */
-  private pendingNotice: string | null = null;
-  private timer: unknown = null;
-  private deadline = 0;
-  /** When this probe began, for the absolute ceiling. */
-  private beganAt = 0;
-  private delay: number;
-  private stopped = true;
-  private inFlight = false;
-  /** Consecutive `session/load` failures; a lost agent is not retried forever. */
-  private failures = 0;
-  private queued: { baseline: string; known: string[] } | null = null;
-  /** Tool calls already reported for this probe, so a notice is not repeated. */
-  private reportedTools = new Set<string>();
-
-  constructor(options: AcpBackgroundProbeOptions) {
-    this.load = options.load;
-    this.resetIdle = options.resetIdle;
-    this.emitNotice = options.emit;
-    this.timeoutMs = options.timeoutMs ?? BACKGROUND_TIMEOUT_MS;
-    this.firstDelayMs = options.firstDelayMs ?? BACKGROUND_FIRST_DELAY_MS;
-    this.maxDelayMs = options.maxDelayMs ?? BACKGROUND_MAX_DELAY_MS;
-    this.now = options.now ?? Date.now;
-    this.schedule = options.schedule ?? defaultSchedule;
-    this.cancel = options.cancel ?? defaultCancel;
-    this.delay = this.firstDelayMs;
-  }
-
-  /** Watch for the delayed answer to a turn that spawned background work.
-   *
-   *  `knownTools` are the ids the CLOSED message already shows: the replay
-   *  repeats them, and reporting the turn's own `invoke_subagent` as "the
-   *  subagent continued working" is noise the operator has already seen on the
-   *  card (measured against a real agy chat). */
-  start(baseline: string, knownTools: readonly string[] = []): void {
-    this.baseline = baseline.trim();
-    this.pendingNotice = null;
-    this.reportedTools = new Set(knownTools);
-    // A previous probe's load can still be running. Queue this turn instead of
-    // interleaving two replays; the queued baseline starts when that load ends.
-    if (this.inFlight) {
-      this.queued = { baseline: this.baseline, known: [...this.reportedTools] };
-      return;
-    }
-    this.stopped = false;
-    this.beganAt = this.now();
-    this.deadline = this.now() + this.timeoutMs;
-    this.delay = this.firstDelayMs;
-    this.failures = 0;
-    this.arm();
-  }
-
-  stop(): void {
-    this.stopped = true;
-    this.queued = null;
-    this.pendingNotice = null;
-    if (this.timer !== null) {
-      this.cancel(this.timer);
-      this.timer = null;
-    }
-  }
-
-  /**
-   * Swallow one replay notification. Returns true when the notification is part
-   * of a probe and must not reach the live session: a replay repeats the whole
-   * conversation, so folding it would open rows the operator already has.
-   */
-  consume(method: string, params: Record<string, unknown>): boolean {
-    if (!this.collecting || method !== 'session/update') return false;
-    collectReplayFrame(this.collecting, params.update);
-    return true;
-  }
-
-  private arm(): void {
-    if (this.stopped) return;
-    this.timer = this.schedule(() => {
-      this.timer = null;
-      void this.probe();
-    }, this.delay);
-  }
-
-  private async probe(): Promise<void> {
-    if (this.stopped || this.inFlight) return;
-    this.inFlight = true;
-    this.collecting = { text: '', sawUser: false, tools: [] };
-    this.resetIdle();
-    let failed = false;
-    try {
-      await this.load();
-    } catch {
-      // The agent may be gone or refuse `session/load`; a probe never reports
-      // that as a turn failure. Stop rather than spinning against it.
-      failed = true;
-    } finally {
-      this.inFlight = false;
-    }
-    const segment = this.collecting;
-    this.collecting = null;
-
-    if (this.stopped) {
-      // A new prompt or a Stop already claimed the session; its own request is
-      // what flushes the agent's held update.
-    } else if (failed) {
-      // A parked permission can outlive the load's request budget. Retry a few
-      // times so approving the dialog still lets the notice through; a child
-      // that really exited is stopped by `stop()` from the session's exit hook.
-      this.failures += 1;
-      if (this.failures >= 3 || this.now() >= this.deadline) {
-        this.stopped = true;
-      } else {
-        this.delay = Math.min(this.delay * 2, this.maxDelayMs);
-        this.arm();
-      }
-    } else {
-      this.failures = 0;
-      let toolNotice: string | null = null;
-      // A replay that never reached a user chunk cannot be placed in the
-      // conversation, so it is not a notice.
-      const notice = segment?.sawUser ? backgroundNotice(this.baseline, segment.text) : null;
-      if (notice !== null) {
-        // The agent may still be writing: the first replay of a growing answer
-        // is a PREFIX. Emit only once a replay repeats the same text, which is
-        // the only completion signal ACP gives a replay.
-        const stable = notice === this.pendingNotice;
-        this.pendingNotice = notice;
-        if (stable || this.now() >= this.deadline) {
-          this.emitNotice(notice);
-          this.stopped = true;
-        } else {
-          this.delay = this.firstDelayMs;
-          this.arm();
-        }
-      } else if (segment?.sawUser && (toolNotice = newToolNotice(segment, this.reportedTools)) !== null) {
-        // No new prose, but the child RAN something: deliver that and keep
-        // watching — each new tool call is evidence the run is alive, so the
-        // ceiling is re-armed instead of expiring under it.
-        this.emitNotice(toolNotice);
-        // New work re-arms the QUIET window, never the absolute ceiling.
-        this.deadline = this.now() + this.timeoutMs;
-        this.delay = Math.min(this.delay * 2, this.maxDelayMs);
-        if (this.now() - this.beganAt >= BACKGROUND_MAX_LIFETIME_MS) this.stopped = true;
-        else this.arm();
-      } else if (this.now() >= this.deadline) {
-        this.stopped = true;
-      } else {
-        this.delay = Math.min(this.delay * 2, this.maxDelayMs);
-        this.arm();
-      }
-    }
-
-    if (this.queued !== null) {
-      const next = this.queued;
-      this.queued = null;
-      this.start(next.baseline, next.known);
-    }
-  }
-}
-
-function defaultSchedule(fn: () => void, ms: number): unknown {
-  const handle = setTimeout(fn, ms);
-  handle.unref?.();
-  return handle;
-}
-
-function defaultCancel(handle: unknown): void {
-  clearTimeout(handle as NodeJS.Timeout);
 }

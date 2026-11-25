@@ -45,8 +45,17 @@ export function promptContent(
     promptBlocks(message, images, files, { embeddedContext: host.acceptsEmbeddedContext }));
 }
 
-/** Run one turn. Refuses images the agent never advertised. */
-export function startAcpPrompt(host: AcpPromptHost, message: string, images: unknown): unknown {
+/** Run one turn. Refuses images the agent never advertised.
+ *
+ *  `quiet` is for a prompt Kabmo sends itself (the background pull): it must
+ *  open a turn and start the agent, but it is not a user turn, so it draws no
+ *  user row and is not recorded as one. */
+export function startAcpPrompt(
+  host: AcpPromptHost,
+  message: string,
+  images: unknown,
+  options: { quiet?: boolean } = {},
+): unknown {
   // ACP's prompt capabilities are a MUST: an agent that did not advertise
   // `image` has to be told, not sent blocks its dispatcher rejects.
   if (!host.acceptsImages && Array.isArray(images) && images.length > 0) {
@@ -59,7 +68,7 @@ export function startAcpPrompt(host: AcpPromptHost, message: string, images: unk
   host.usage.beginTurn();
   const ack = host.beginTurn(message, images);
   // Only a delivered turn is recorded: a refusal must not leave a user row.
-  host.emit({ type: 'user_turn', message, images });
+  if (options.quiet !== true) host.emit({ type: 'user_turn', message, images });
   return ack;
 }
 

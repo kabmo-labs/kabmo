@@ -42,7 +42,7 @@ export interface AcpCommandHost {
   /** Dispatch one turn. Returns the ACK (`{agentInvoked:true}`), never the
    *  turn: the route's answer means "accepted", and the turn's end arrives as
    *  the session's `agent_end` frame. */
-  startTurn(message: string, images: unknown): Promise<unknown> | unknown;
+  startTurn(message: string, images: unknown, options?: { quiet?: boolean }): Promise<unknown> | unknown;
   isAlive(): boolean;
   destroyAndWait(): Promise<void>;
   steer(blocks: unknown[], queue: 'steering' | 'followUp'): Promise<unknown>;
@@ -85,7 +85,7 @@ const defaultBlocks = async (message: string, images: unknown): Promise<unknown[
         // Kabmo's goal kickoff/continuation is synthetic: naming the chat after
         // that boilerplate is worse than leaving the objective's own title.
         if (command.synthetic !== true) await notePromptTitle(host.sessionId, message);
-        return host.startTurn(message, command.images);
+        return host.startTurn(message, command.images, { quiet: command.quiet === true });
       }
 
       case 'set_access_mode': {

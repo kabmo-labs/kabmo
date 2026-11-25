@@ -61,6 +61,14 @@ describe('startAcpPrompt', () => {
     expect(h.events).toEqual(['background-stop', 'usage-begin', 'turn', 'user_turn']);
   });
 
+  test('a quiet prompt opens a turn but draws no user row', () => {
+    const h = host();
+    expect(startAcpPrompt(h, 'continue', undefined, { quiet: true })).toEqual({ agentInvoked: true });
+    expect(h.turns).toBe(1);
+    expect(h.promptCount).toBe(1);
+    expect(h.events).toEqual(['background-stop', 'usage-begin', 'turn']);
+  });
+
   test('an image the agent never advertised is refused before any turn opens', () => {
     const h = host();
     expect(() => startAcpPrompt(h, 'look', [{ data: 'x', mimeType: 'image/png' }])).toThrow(

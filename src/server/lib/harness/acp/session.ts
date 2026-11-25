@@ -45,7 +45,7 @@ import { handleAcpClientRequest, type AcpClientRequestAnswer } from '@/server/li
 import { reportAcpExit, type AcpExitInfo } from '@/server/lib/harness/acp/session-exit';
 import { acpExited, closeAcpSession, destroyAcp } from '@/server/lib/harness/acp/session-lifecycle';
 import { SessionListeners } from '@/server/lib/harness/acp/session-listeners';
-import type { AcpBackgroundProbe } from '@/server/lib/harness/acp/background-work';
+import type { AcpBackgroundProbe } from '@/server/lib/harness/acp/background-probe';
 import { acpWebState } from '@/server/lib/harness/acp/session-web-state';
 import { acpIdleReaper } from '@/server/lib/harness/acp/session-idle';
 import { AcpSubagents, type AcpSubagentRecord } from '@/server/lib/harness/acp/subagents';
@@ -287,8 +287,8 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
   }
 
   /** Run one turn — see `session-intake.ts` for the refusal and the ACK. */
-  startTurn(message: string, images: unknown): unknown {
-    return startAcpPrompt(this, message, images);
+  startTurn(message: string, images: unknown, options?: { quiet?: boolean }): unknown {
+    return startAcpPrompt(this, message, images, options);
   }
 
   /** The seam `startAcpPrompt` opens a turn through. */

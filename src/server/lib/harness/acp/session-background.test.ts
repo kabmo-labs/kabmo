@@ -14,7 +14,8 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { mountSession, notify } from '@/server/lib/harness/acp/session.test-util';
-import { AcpBackgroundProbe, deliverBackgroundNotice } from '@/server/lib/harness/acp/background-work';
+import { AcpBackgroundProbe } from '@/server/lib/harness/acp/background-probe';
+import { deliverBackgroundNotice } from '@/server/lib/harness/acp/background-work';
 import { extractTextFromContent } from '@/shared/lib/omp/session/mapper';
 
 interface FakeTimer {
