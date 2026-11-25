@@ -23,6 +23,12 @@
  * the AI generates); scrolling back near the tail, or clicking the scroll-bottom
  * button, re-engages it. Programmatic jumps (`scrollTo`) never flip the mode.
  *
+ * While the reader's POINTER is on the transcript (moving, pressing, wheeling,
+ * touching) the automatic pins stand down for that window — follow resumes with
+ * the first chunk after they stop. A tail that keeps scrolling under a text
+ * selection or a hover is the bug this prevents; the activity is a window, not
+ * a latch, so a stray pointer pass cannot stop the run from following.
+ *
  * Only the READER'S OWN INPUT disengages it — a wheel, a finger, a pointer, a
  * key (see `reader-input.ts`). An upward `scrollTop` alone is not evidence: the
  * row window's anchor correction (a row above the viewport measured shorter
@@ -203,6 +209,12 @@ export function useChatTimelineScroll(options: ChatTimelineScrollOptions = {}): 
   // which starts near zero, so a zero sentinel would read as input on the first
   // moments of a page load.
   const readerInputAtRef = useRef(Number.NEGATIVE_INFINITY);
+  // True while the reader's hand is ON the transcript (pointer travel, press,
+  // wheel, touch, key). Every automatic tail pin stands down meanwhile: a tail
+  // that keeps moving under a selection or a hover is the bug. It is a window,
+  // not a latch — released after `READER_ACTIVITY_IDLE_MS`, so the next chunk
+  // catches the tail up instead of suppressing the run to its end.
+  const readerActiveRef = useRef(false);
 
   const contentRef = useCallback((node: HTMLDivElement | null) => {
     setContentNode(node);
@@ -277,6 +289,9 @@ export function useChatTimelineScroll(options: ChatTimelineScrollOptions = {}): 
     // Follow-gated: a stream chunk in read mode (user scrolled away) must not
     // yank the viewport down. jumpToBottom is the explicit bypass.
     if (!followRef.current) return;
+    // The reader is using the transcript right now. Auto-follow only runs while
+    // the pointer is idle; the chunk after `READER_ACTIVITY_IDLE_MS` catches up.
+    if (readerActiveRef.current) return;
     pinToBottom(behavior);
   }, [pinToBottom]);
 
@@ -298,6 +313,7 @@ export function useChatTimelineScroll(options: ChatTimelineScrollOptions = {}): 
     scrollNode,
     contentNode,
     followRef,
+    readerActiveRef,
     jumpActiveRef,
     skipTailPinRef,
     pinToBottom,
@@ -305,8 +321,9 @@ export function useChatTimelineScroll(options: ChatTimelineScrollOptions = {}): 
   });
 
   // What counts as the reader having taken the viewport back, for
-  // `handleScroll`'s upward-scroll test (see `reader-input.ts`).
-  useReaderInputStamp(scrollNode, readerInputAtRef);
+  // `handleScroll`'s upward-scroll test (see `reader-input.ts`), and what
+  // suspends auto-follow while their pointer is on the transcript.
+  useReaderInputStamp(scrollNode, readerInputAtRef, readerActiveRef);
 
   useEffect(() => () => {
     landingRef.current?.stop();

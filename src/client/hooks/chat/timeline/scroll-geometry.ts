@@ -49,6 +49,8 @@ export interface TimelineGeometryPinDeps {
   contentNode: HTMLDivElement | null;
   /** Pinned to the tail: growth is re-pinned, reading back is left alone. */
   followRef: RefObject<boolean>;
+  /** The reader's hand is on the transcript: automatic pins stand down. */
+  readerActiveRef: RefObject<boolean>;
   /** A jump in flight owns the position; its own watch re-aims. */
   jumpActiveRef: RefObject<boolean>;
   /**
@@ -67,6 +69,7 @@ export function useTimelineGeometryPin({
   scrollNode,
   contentNode,
   followRef,
+  readerActiveRef,
   jumpActiveRef,
   skipTailPinRef,
   pinToBottom,
@@ -89,7 +92,7 @@ export function useTimelineGeometryPin({
         syncFollowBottom();
         return;
       }
-      if (containerResized && followRef.current && !jumpActiveRef.current) {
+      if (containerResized && followRef.current && !jumpActiveRef.current && !readerActiveRef.current) {
         pinToBottom('instant');
         syncFollowBottom();
         return;
@@ -98,8 +101,10 @@ export function useTimelineGeometryPin({
       frame = requestAnimationFrame(() => {
         frame = null;
         // A jump in flight owns the position: its pin would replace a smooth
-        // landing with an instant snap on every measurement along the way.
-        if (followRef.current && !jumpActiveRef.current) pinToBottom('instant');
+        // landing with an instant snap on every measurement along the way. The
+        // reader's own activity holds it off for the same reason: growth that
+        // lands while they select text must not move the text under them.
+        if (followRef.current && !jumpActiveRef.current && !readerActiveRef.current) pinToBottom('instant');
         syncFollowBottom();
       });
     });
@@ -109,5 +114,5 @@ export function useTimelineGeometryPin({
       observer.disconnect();
       if (frame !== null) cancelAnimationFrame(frame);
     };
-  }, [contentNode, scrollNode, followRef, jumpActiveRef, skipTailPinRef, pinToBottom, syncFollowBottom]);
+  }, [contentNode, scrollNode, followRef, readerActiveRef, jumpActiveRef, skipTailPinRef, pinToBottom, syncFollowBottom]);
 }
