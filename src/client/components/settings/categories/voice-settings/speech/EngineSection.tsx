@@ -22,12 +22,23 @@ export interface SpeechEngineSectionProps {
   config: TtsConfig;
   /** null while the probe is still running. */
   local: TtsLocalCapability | null | undefined;
+  /** The ONNX addon's availability, for the card that needs it. */
+  localRuntime: { available: boolean; reason?: string } | undefined;
+  installedModels: number;
   busy: boolean;
   onSelect: (engine: TtsEngine) => void;
   onReprobe: () => void;
 }
 
-export function SpeechEngineSection({ config, local, busy, onSelect, onReprobe }: SpeechEngineSectionProps) {
+export function SpeechEngineSection({
+  config,
+  local,
+  localRuntime,
+  installedModels,
+  busy,
+  onSelect,
+  onReprobe,
+}: SpeechEngineSectionProps) {
   return (
     <section className="space-y-3">
       <div>
@@ -38,7 +49,7 @@ export function SpeechEngineSection({ config, local, busy, onSelect, onReprobe }
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {TTS_ENGINES.map((engine) => {
           const selected = config.engine === engine.id;
-          const Icon = engine.id === 'omp' ? Cpu : CloudUpload;
+          const Icon = engine.id === 'omp' || engine.id === 'local' ? Cpu : CloudUpload;
           const unavailable = engine.id === 'omp' && local !== undefined && local !== null && !local.available;
           return (
             <div
@@ -83,6 +94,25 @@ export function SpeechEngineSection({ config, local, busy, onSelect, onReprobe }
                       {local === null || local === undefined
                         ? 'Checking the local engine…'
                         : 'omp can run local speech on this machine.'}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {engine.id === 'local' && (
+                <div className="mt-2 flex items-start gap-1.5 text-[10px] leading-snug">
+                  {localRuntime && !localRuntime.available ? (
+                    <>
+                      <TriangleAlert size={12} className="mt-px flex-shrink-0 text-error" />
+                      <span className="text-error">{localRuntime.reason ?? 'The ONNX runtime is unavailable.'}</span>
+                    </>
+                  ) : (
+                    <span className="text-ink/50">
+                      {localRuntime === undefined
+                        ? 'Checking the ONNX runtime…'
+                        : installedModels === 0
+                          ? 'No model installed yet — download one below.'
+                          : `${installedModels} model${installedModels === 1 ? '' : 's'} installed on this machine.`}
                     </span>
                   )}
                 </div>

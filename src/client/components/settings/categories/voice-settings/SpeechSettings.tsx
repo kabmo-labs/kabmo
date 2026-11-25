@@ -12,10 +12,13 @@
  * applies on click, and the modal's `onUpdate` persists it.
  */
 
+import { useEffect } from 'preact/hooks';
 import type { SettingsState } from '@/shared/types';
 import { clampTtsSpeed, type TtsEngine } from '@/shared/lib/tts/engines';
 import { useSpeechServerState } from '@/client/hooks/settings/speech';
+import { useLocalTtsModels } from '@/client/hooks/settings/local-tts-models';
 import { SpeechEngineSection } from '@/client/components/settings/categories/voice-settings/speech/EngineSection';
+import { SpeechModelsSection } from '@/client/components/settings/categories/voice-settings/speech/ModelsSection';
 import { SpeechVoiceSection } from '@/client/components/settings/categories/voice-settings/speech/VoiceSection';
 import { SpeechEndpointSection } from '@/client/components/settings/categories/voice-settings/speech/EndpointSection';
 import { SpeechAutoplaySection } from '@/client/components/settings/categories/voice-settings/speech/AutoplaySection';
@@ -28,7 +31,22 @@ export interface SpeechSettingsProps {
 
 export function SpeechSettings({ settings, onUpdate }: SpeechSettingsProps) {
   const server = useSpeechServerState();
+  const models = useLocalTtsModels();
   const config = settings.tts;
+  const localModels = models.state?.models ?? [];
+
+  // A model id lives in the settings blob; the directory does not. When the
+  // model it names is gone (removed in another tab, wiped data dir), leaving the
+  // stale id would make every speaker click refuse — so the preference repairs
+  // itself to "the first installed model" as soon as the list is known.
+  const staleLocalModel = config.engine === 'local'
+    && models.state !== null
+    && localModels.length > 0
+    && config.model !== ''
+    && !localModels.some((entry) => entry.id === config.model);
+  useEffect(() => {
+    if (staleLocalModel) onUpdate({ tts: { ...config, model: '', voice: '' } });
+  }, [staleLocalModel, config, onUpdate]);
 
   const patch = (next: Partial<SettingsState['tts']>) => {
     onUpdate({ tts: { ...config, ...next } });
@@ -41,15 +59,17 @@ export function SpeechSettings({ settings, onUpdate }: SpeechSettingsProps) {
         answer's text goes — the local engine keeps it on this machine, a hosted engine uploads it.
       </p>
 
-      {server.error && (
+      {(server.error ?? models.error) && (
         <p className="rounded-lg border border-ink/10 bg-ink/[0.03] px-3 py-2 text-[11px] leading-relaxed text-ink/70">
-          {server.error}
+          {server.error ?? models.error}
         </p>
       )}
 
       <SpeechEngineSection
         config={config}
         local={server.state?.local}
+        localRuntime={models.state?.runtime}
+        installedModels={localModels.length}
         busy={server.busy}
         onSelect={(engine: TtsEngine) => patch({
           engine,
@@ -65,7 +85,11 @@ export function SpeechSettings({ settings, onUpdate }: SpeechSettingsProps) {
         onReprobe={() => void server.reprobe()}
       />
 
-      <SpeechVoiceSection config={config} onPatch={patch} />
+      {config.engine === 'local' && (
+        <SpeechModelsSection config={config} server={models} onSelect={(model) => patch({ model, voice: '' })} />
+      )}
+
+      <SpeechVoiceSection config={config} localModels={localModels} onPatch={patch} />
 
       <SpeechEndpointSection
         config={config}

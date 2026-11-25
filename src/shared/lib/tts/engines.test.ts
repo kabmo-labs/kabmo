@@ -16,10 +16,10 @@ import {
 } from '@/shared/lib/tts/engines';
 
 describe('TTS_ENGINES', () => {
-  test('omp is the shipped default and needs no key', () => {
+  test('omp is the shipped default, and both on-machine engines need no key', () => {
     expect(TTS_ENGINES[0].id).toBe('omp');
     expect(TTS_ENGINES[0].needsKey).toBe(false);
-    expect(TTS_ENGINES.filter((engine) => !engine.needsKey).map((engine) => engine.id)).toEqual(['omp']);
+    expect(TTS_ENGINES.filter((engine) => !engine.needsKey).map((engine) => engine.id)).toEqual(['omp', 'local']);
   });
 
   test('every engine has a positive input budget and an ordered speed range', () => {
@@ -45,10 +45,20 @@ describe('TTS_ENGINES', () => {
 
   test('only the engines that document language support expose it', () => {
     expect(TTS_ENGINES.filter((engine) => engine.language !== 'none').map((engine) => engine.id))
-      .toEqual(['openai', 'elevenlabs', 'xai', 'gemini']);
+      .toEqual(['local', 'openai', 'elevenlabs', 'xai', 'gemini']);
     expect(ttsEngine('xai').language).toBe('required');
     expect(ttsEngine('gemini').language).toBe('auto');
+    // The ONNX engine sends a language per request; omp has no such channel.
+    expect(ttsEngine('local').language).toBe('parameter');
     expect(ttsEngine('omp').language).toBe('none');
+  });
+
+  test('the ONNX engine is a machine-local engine with a real speed range', () => {
+    expect(ttsEngine('local').where).toContain('never leaves this machine');
+    expect(ttsEngine('local').needsKey).toBe(false);
+    expect(ttsEngine('local').editableBaseUrl).toBe(false);
+    expect(clampTtsSpeed('local', 9)).toBe(2);
+    expect(clampTtsSpeed('local', 0.1)).toBe(0.7);
   });
 
   test('only the OpenAI-compatible engine accepts a keyless endpoint', () => {

@@ -26,11 +26,27 @@ const originalFetch = globalThis.fetch;
 
 type Updater = Partial<SettingsState> | ((prev: SettingsState) => SettingsState);
 
-function stubServer(local: { available: boolean; reason?: string } = { available: true }): void {
-  globalThis.fetch = (async () => Response.json({
-    settings: { ...DEFAULT_SETTINGS.tts, hasKeys: {} },
-    local,
-  })) as unknown as typeof fetch;
+const SUPERTONIC = {
+  id: 'supertonic-3',
+  label: 'Supertonic 3',
+  arch: 'supertonic',
+  languages: ['en', 'id'],
+  defaultLanguage: 'en',
+  voices: 2,
+  voiceLabels: ['Female 1', 'Male 1'],
+  sampleRate: 44100,
+  sizeBytes: 146_000_000,
+};
+
+function stubServer(
+  local: { available: boolean; reason?: string } = { available: true },
+  models: Record<string, unknown> = { models: [], catalog: [], jobs: [], runtime: { available: true } },
+): void {
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.pathname : input.url;
+    if (url.includes('/api/tts/models')) return Response.json(models);
+    return Response.json({ settings: { ...DEFAULT_SETTINGS.tts, hasKeys: {} }, local });
+  }) as unknown as typeof fetch;
 }
 
 function mount(onUpdate: (updater: Updater) => void, overrides: Partial<SettingsState['tts']> = {}): HTMLElement {
@@ -137,6 +153,80 @@ describe('SpeechSettings', () => {
     expect(host.textContent).toContain('Google Gemini TTS');
     expect(host.textContent).toContain('Detects the answer’s language automatically');
     expect(host.textContent).not.toContain('1 is normal');
+  });
+
+  test('the ONNX engine lists the installed model, its voices and its languages', async () => {
+    stubServer({ available: true }, { models: [SUPERTONIC], catalog: [], jobs: [], runtime: { available: true } });
+    const host = mount(() => {}, { engine: 'local' });
+    await act(async () => {
+      await Bun.sleep(0);
+    });
+
+    expect(host.textContent).toContain('Local models');
+    expect(host.textContent).toContain('Supertonic 3');
+    expect(host.textContent).toContain('2 languages');
+    expect(host.textContent).toContain('speaks Indonesian');
+
+    // The language picker is the MODEL's list: English and Indonesian, no auto.
+    const language = [...host.querySelectorAll('label')].find((element) =>
+      element.textContent?.includes('Language'),
+    )?.querySelector('select') as HTMLSelectElement | null;
+    expect([...language!.options].map((option) => option.value)).toEqual(['', 'en', 'id']);
+
+    // And the voice picker uses the model's named voices, not free text.
+    const voice = [...host.querySelectorAll('label')].find((element) =>
+      element.textContent?.includes('Voice') && !element.textContent?.includes('Voice and rate'),
+    )?.querySelector('select') as HTMLSelectElement | null;
+    expect([...voice!.options].map((option) => option.textContent)).toEqual(['Female 1', 'Male 1']);
+  });
+
+  test('a model that declares no languages says the code passes through', async () => {
+    stubServer({ available: true }, {
+      models: [{ ...SUPERTONIC, id: 'pasted', label: 'Pasted bundle', languages: [] }],
+      catalog: [],
+      jobs: [],
+      runtime: { available: true },
+    });
+    const host = mount(() => {}, { engine: 'local', model: 'pasted' });
+    await act(async () => {
+      await Bun.sleep(0);
+    });
+    expect(host.textContent).toContain('declares no languages');
+  });
+
+  test('a model id that no longer exists repairs itself to the installed list', async () => {
+    stubServer({ available: true }, { models: [SUPERTONIC], catalog: [], jobs: [], runtime: { available: true } });
+    let patch: Updater | undefined;
+    mount((updater) => { patch = updater; }, { engine: 'local', model: 'removed-model', voice: '3' });
+    await act(async () => {
+      await Bun.sleep(0);
+    });
+    expect(patch).toEqual({
+      tts: { ...DEFAULT_SETTINGS.tts, engine: 'local', model: '', voice: '' },
+    });
+  });
+
+  test('an empty model setting marks the first installed model as in use', async () => {
+    stubServer({ available: true }, { models: [SUPERTONIC], catalog: [], jobs: [], runtime: { available: true } });
+    const host = mount(() => {}, { engine: 'local' });
+    await act(async () => {
+      await Bun.sleep(0);
+    });
+    expect(host.textContent).toContain('In use');
+  });
+
+  test('an unavailable ONNX runtime states the reason on the card', async () => {
+    stubServer({ available: true }, {
+      models: [],
+      catalog: [],
+      jobs: [],
+      runtime: { available: false, reason: 'The ONNX speech runtime could not load.' },
+    });
+    const host = mount(() => {}, { engine: 'local' });
+    await act(async () => {
+      await Bun.sleep(0);
+    });
+    expect(host.textContent).toContain('The ONNX speech runtime could not load.');
   });
 
   test('an engine with no Indonesian voice says which engines do', () => {

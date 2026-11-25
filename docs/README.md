@@ -41,6 +41,7 @@ is not documentation and does not move.
 | 25 | [Kanban board](milestones/M25-kanban-plugin.md) | a board that drives work: a card is a prompt + agent + stage, `Start work` spawns the chat, stage prompts become a real system prompt, and an agent moves its own cards through MCP | done |
 | 26 | [Dictation engines](milestones/M26-dictation-engines.md) | the engine seam and its settings page: explicit Indonesian/English, a 0600 key file, [OI]-compatible/Deepgram/ElevenLabs adapters, WAV, binary transport, and omp 19's local worker frame protocol | partial |
 | 27 | [Saved multi-account](milestones/M27-saved-multi-account-research.md) | Codex, Claude and Antigravity accounts as isolated CLI homes, with account-bound spawn/probe/resume and a separate Accounts section in harness settings | partial |
+| 28 | [Local TTS models](milestones/M28-local-tts-models-research.md) | the measured field plus the shipped `local` engine: Supertonic 3 in-process via `sherpa-onnx-node`, a model store with download/extract/probe, add-from-link, ten voices, 31 languages, and why Piper's Indonesian voice is not shippable | partial |
 
 ### What still owes
 
@@ -58,6 +59,7 @@ is not documentation and does not move.
 | 24 | the shared-core extraction (P0/D1) and the run-level log archive (P7) | the plugin, its 51 tests and the browser smoke shipped; the extraction and the archive did not |
 | 26 | an AudioWorklet capture path, a real-mic Indonesian accuracy run | the engine seam, settings page, adapters, gates, binary transport and omp 19's worker frame protocol shipped; whisper-base garbles Indonesian on synthetic audio (identical in-process, so the model's ceiling) |
 | 27 | a real Antigravity sign-in, shared Codex/Claude config and history, a per-chat account picker | homes, env isolation, account-bound spawn/probe/resume, the separate settings panel and the server-spawned `Sign in` panel shipped; the `agy` browser login still needs two real Google accounts, and config/history sharing was left out of v1 |
+| 28 | the listening run, the non-macOS addon check, a `bun --hot` reload with a live engine, and a Voice Builder JSON → `voice.bin` converter | the engine, model store, routes and settings page shipped and were smoke-tested end to end on `darwin-arm64`; the rest needs hardware this machine does not have, and a converter that is proven in format but not written |
 
 Declined, and recorded as such rather than left open: plugin-platform **P6** (component registry,
 declined in M04 and re-declined in M05/W6) and the editor's **format-on-save** (M14).

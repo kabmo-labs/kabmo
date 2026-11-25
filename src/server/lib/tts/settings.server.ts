@@ -26,7 +26,9 @@ import { normalizeTtsConfig, type TtsConfig } from '@/shared/lib/tts/settings';
 /** Engines whose key this install can hold. */
 export const HOSTED_TTS_ENGINES = TTS_ENGINES.filter((engine) => engine.needsKey).map((engine) => engine.id);
 
-export type HostedTtsEngine = Exclude<TtsEngine, 'omp'>;
+/** Engines that run on this machine and therefore hold no credential. */
+export type LocalTtsEngine = Extract<TtsEngine, 'omp' | 'local'>;
+export type HostedTtsEngine = Exclude<TtsEngine, LocalTtsEngine>;
 export type TtsKeyPresence = Record<string, boolean>;
 
 interface TtsSecretFile {
@@ -51,7 +53,8 @@ async function readSecretFile(): Promise<TtsSecretFile> {
     if (typeof keys !== 'object' || keys === null) return { version: 1, keys: {} };
     const clean: Partial<Record<HostedTtsEngine, string>> = {};
     for (const [engine, value] of Object.entries(keys as Record<string, unknown>)) {
-      if (isTtsEngine(engine) && engine !== 'omp' && typeof value === 'string' && value.trim()) {
+      if (isTtsEngine(engine) && engine !== 'omp' && engine !== 'local'
+        && typeof value === 'string' && value.trim()) {
         clean[engine] = value.trim();
       }
     }
@@ -63,9 +66,9 @@ async function readSecretFile(): Promise<TtsSecretFile> {
   }
 }
 
-/** One engine's key, or null. */
+/** One engine's key, or null. A local engine never has one. */
 export async function readTtsApiKey(engine: TtsEngine): Promise<string | null> {
-  if (engine === 'omp') return null;
+  if (engine === 'omp' || engine === 'local') return null;
   const file = await readSecretFile();
   return file.keys[engine] ?? null;
 }

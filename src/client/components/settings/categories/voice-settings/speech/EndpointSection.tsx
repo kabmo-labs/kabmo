@@ -56,7 +56,9 @@ export function SpeechEndpointSection({
         <div>
           <h4 className="text-sm font-semibold text-ink">Local engine</h4>
           <p className="mt-0.5 text-[11px] text-ink/60">
-            No key and no network. The first run downloads omp's voice; later runs are local.
+            {spec.id === 'local'
+              ? 'No key and no network. The model is downloaded once into Kabmo’s own directory, then every answer is synthesized in this process.'
+              : 'No key and no network. The first run downloads omp’s voice; later runs are local.'}
           </p>
         </div>
       </section>

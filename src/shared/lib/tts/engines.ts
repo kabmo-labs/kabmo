@@ -24,7 +24,7 @@ import {
   XAI_VOICES,
 } from '@/shared/lib/tts/voices';
 
-export type TtsEngine = 'omp' | 'openai' | 'elevenlabs' | 'deepgram' | 'xai' | 'gemini';
+export type TtsEngine = 'omp' | 'local' | 'openai' | 'elevenlabs' | 'deepgram' | 'xai' | 'gemini';
 
 export interface TtsModelOption {
   id: string;
@@ -97,6 +97,26 @@ export const TTS_ENGINES: readonly TtsEngineSpec[] = [
     maxChars: 4000,
     speed: { min: 0.8, max: 1.3 },
     language: 'none',
+    docs: 'https://github.com/kabmo-labs/kabmo/wiki/Chat-Stream-and-Tools',
+  },
+  {
+    id: 'local',
+    label: 'This machine (ONNX)',
+    where: 'Text never leaves this machine. Runs inside Kabmo’s own server; the model is downloaded once.',
+    needsKey: false,
+    keyOptional: false,
+    editableBaseUrl: false,
+    baseUrl: '',
+    defaultModel: '',
+    defaultVoice: '',
+    // The model list is the INSTALLED set, which only the server can read — a
+    // static list here would offer a download the user has not made.
+    models: [],
+    voices: [],
+    voiceEditable: true,
+    maxChars: 4000,
+    speed: { min: 0.7, max: 2 },
+    language: 'parameter',
     docs: 'https://github.com/kabmo-labs/kabmo/wiki/Chat-Stream-and-Tools',
   },
   {

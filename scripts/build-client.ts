@@ -83,11 +83,20 @@ try {
   //    `dist/client/index.js`, and it reads the shell the first build wrote.
   //    `*.html` stays external — the dev-only branch that imports it resolves
   //    through Bun at runtime, and production never takes it.
+  //
+  //    `sherpa-onnx-node` is external for a measured reason: it is a native
+  //    addon whose entry `require`s a platform package by a RELATIVE path
+  //    (`./node_modules/sherpa-onnx-darwin-arm64/sherpa-onnx.node`). Bundled
+  //    into `dist/client/index.js`, that path resolves against `dist/client/`
+  //    and the addon reports "Could not find sherpa-onnx-node" — measured by
+  //    starting the built server and calling `/api/tts/models`. Left external,
+  //    it is resolved from `node_modules` at run time, which is where the
+  //    dependency is installed.
   await run('server', {
     entrypoints: [join(ROOT, 'src', 'server', 'index.ts')],
     minify: true,
     splitting: false,
-    external: ['*.html'],
+    external: ['*.html', 'sherpa-onnx-node'],
     naming: {
       entry: `${PREFIX}/[name].[ext]`,
       chunk: `${PREFIX}/[name]-[hash].[ext]`,

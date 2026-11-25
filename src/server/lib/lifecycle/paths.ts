@@ -128,6 +128,18 @@ export function getTtsSecretPath(): string {
   return path.join(getDataDir(), 'tts.json');
 }
 
+/**
+ * `<data>/tts-models/<id>/` — one directory per local speech model.
+ *
+ * Next to the keys rather than inside them: a model is 100–150 MB of ONNX
+ * weights, not a credential, and a user deleting `tts.json` must not lose the
+ * download. Each directory carries its own `model.json`, so the install is
+ * self-describing and survives a lost registry.
+ */
+export function getTtsModelsDir(): string {
+  return path.join(getDataDir(), 'tts-models');
+}
+
 /** `<data>/run/<port>.lock` — held only while a port handover is in progress. */
 export function getLockPath(port: number | string): string {
   return path.join(getRunDir(), `${port}.lock`);

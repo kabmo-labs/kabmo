@@ -25,6 +25,7 @@ import { synthesizeWithDeepgram } from '@/server/lib/tts/engines/deepgram';
 import { synthesizeWithXai } from '@/server/lib/tts/engines/xai';
 import { synthesizeWithGemini } from '@/server/lib/tts/engines/gemini';
 import { synthesizeWithOmp } from '@/server/lib/tts/local.server';
+import { synthesizeLocally } from '@/server/lib/tts/engines/local';
 
 export interface SynthesizeOptions {
   engine: TtsEngine;
@@ -50,6 +51,16 @@ export async function synthesizeSpeech(options: SynthesizeOptions): Promise<TtsA
 
   if (options.engine === 'omp') {
     return synthesizeWithOmp({ text, voice: options.voice, speed: options.speed });
+  }
+
+  if (options.engine === 'local') {
+    return synthesizeLocally({
+      modelId: options.model,
+      text,
+      voice: options.voice,
+      language: options.language,
+      speed: options.speed,
+    });
   }
 
   const apiKey = (await readTtsApiKey(options.engine)) ?? undefined;
