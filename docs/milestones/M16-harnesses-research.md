@@ -194,6 +194,7 @@ is what ACP exposes versus what RPC exposes of the very same capabilities.
 | tool start/update/end | `tool_execution_start/_update/_end` | `tool_call` + `tool_call_update` | RPC's `_update` is a **full snapshot**; ACP's update is a patch |
 | tool result detail | `details` | `rawOutput.details` | both carry `resolvedPath`, line counts, `displayContent` |
 | tool file locations | in `args` | `locations[]` **top-level** | ACP is better for the diff/jump card |
+| tool NAME | `toolName` on every frame | optional `name`; adapters put it elsewhere | grok → `_meta["x.ai/tool"].name`; zcode → `_meta.claudeCode.toolName`; qwen → flat `_meta.toolName`; cursor → `rawInput._toolName`; kimi → the `<tool>:` prefix of `title` (no `name`, no `kind`); dsh → none at all (`kind:"other"`). `resolveToolIdentity` reads all six, in that order, and the title only when neither `name` nor `kind` exists |
 | usage | `usage` on messages | `usage_update {size, used, cost{amount,currency}}` | ACP pushes it as its own frame |
 | **steer mid-turn** | `steer` | **extension `_session/steering`** → `{outcome:"injected", queue:"steering"}`; `_meta.steering.queue:"followUp"` → `{queue:"followUp"}` | NOT in the ACP baseline: a plain second `prompt` **cancels** run 1 (measured twice: `stopReason:"cancelled"`) |
 | queue follow-up | `follow_up` | none | |

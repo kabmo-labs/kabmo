@@ -49,3 +49,19 @@ export function normalizeMessageTools(message: ChatMessageData): ChatMessageData
   });
   return changed ? { ...message, toolCalls } : message;
 }
+
+/**
+ * Annotate every tool call on a transcript whose rows are UNTRUSTED JSON — a
+ * `chat_sessions` column written by an older build, a replay buffer.
+ *
+ * `normalizeMessageTools` is typed for a row the app itself built. This keeps a
+ * corrupt entry (a string, a `null`) exactly as it found it, so a bad write
+ * cannot turn a chat load into a 500 while it is being repaired.
+ */
+export function normalizeTranscriptRows(rows: readonly unknown[]): unknown[] {
+  return rows.map((row) => (
+    row && typeof row === 'object' && !Array.isArray(row)
+      ? normalizeMessageTools(row as ChatMessageData)
+      : row
+  ));
+}

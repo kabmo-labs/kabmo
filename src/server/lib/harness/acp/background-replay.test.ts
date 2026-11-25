@@ -51,6 +51,42 @@ describe('replay collection', () => {
     for (let i = 0; i < 7; i += 1) s.tools.push({ id: `t${i}`, name: 'run_command', status: 'completed' });
     expect(newToolNotice(s, new Set())).toContain('… and 2 more');
   });
+
+  test('a tool named only in _meta is reported under the name the card uses', () => {
+    // zcode's replay repeats `_meta.claudeCode.toolName` and nothing at the top
+    // level; reading `record.name` alone reported the notice as the title.
+    const s = seg();
+    collectReplayFrame(s, {
+      sessionUpdate: 'tool_call',
+      toolCallId: 'z1',
+      title: 'audit auth',
+      kind: 'other',
+      _meta: { claudeCode: { toolName: 'Agent' } },
+    });
+    expect(s.tools).toEqual([{ id: 'z1', name: 'task', status: 'pending' }]);
+
+    const q = seg();
+    collectReplayFrame(q, {
+      sessionUpdate: 'tool_call',
+      toolCallId: 'q1',
+      title: 'Grep: pattern',
+      kind: 'search',
+      _meta: { toolName: 'grep_search' },
+    });
+    expect(q.tools).toEqual([{ id: 'q1', name: 'grep', status: 'pending' }]);
+  });
+
+  test('a tool named only by the title prefix is reported by its prefix', () => {
+    // kimi sends neither `name` nor `kind`: `title = "ToolName: argumen"`.
+    const s = seg();
+    collectReplayFrame(s, {
+      sessionUpdate: 'tool_call',
+      toolCallId: 'k1',
+      title: 'StrReplaceFile: src/a.ts',
+      status: 'completed',
+    });
+    expect(s.tools).toEqual([{ id: 'k1', name: 'edit', status: 'completed' }]);
+  });
 });
 
 describe('the probe against a textless replay', () => {

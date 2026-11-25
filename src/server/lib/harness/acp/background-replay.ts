@@ -21,6 +21,7 @@
  */
 
 import { acpContentText } from '@/server/lib/harness/acp/mapper';
+import { resolveToolIdentity } from '@/server/lib/harness/acp/tool-identity';
 
 /** One tool call a replay added past the baseline. */
 export interface ReplayTool {
@@ -77,9 +78,13 @@ export function collectReplayFrame(segment: ReplaySegment, update: unknown): voi
   if (kind !== 'tool_call' && kind !== 'tool_call_update') return;
   const id = typeof record.toolCallId === 'string' ? record.toolCallId : '';
   if (!id) return;
-  const name = typeof record.name === 'string' && record.name
-    ? record.name
-    : typeof record.title === 'string' && record.title ? record.title : 'tool';
+  // The SAME identity rule the card uses: a replay of zcode (`_meta.claudeCode`),
+  // qwen (`_meta.toolName`), grok (`_meta["x.ai/tool"]`) or kimi (title prefix)
+  // names its tool nowhere the top level can see, so reading `record.name`
+  // alone reported the notice as `Agent: …` or a bare `tool`.
+  const identity = resolveToolIdentity(record);
+  const name = identity.name
+    ?? (typeof record.title === 'string' && record.title ? record.title : 'tool');
   const status = typeof record.status === 'string' ? record.status : 'pending';
   const existing = segment.tools.find((tool) => tool.id === id);
   // A `tool_call_update` patches the call: keep its first name and take the

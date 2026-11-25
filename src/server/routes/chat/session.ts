@@ -20,6 +20,7 @@ import { configByCategory, selectValues } from '@/server/lib/harness/launch';
 import type { AcpConfigOption } from '@/server/lib/harness/acp/protocol';
 import { liveMetaFields, type LiveSessionMeta } from '@/server/routes/chat/live-meta';
 import { hasAssistantRow } from '@/shared/lib/chat/transcript-rows';
+import { normalizeTranscriptRows } from '@/shared/lib/chat/tool/normalize';
 
 /** Newest-message window served by default for omp JSONL sessions; the client
  *  pages further back via `?before=` when the user scrolls to the top. Large
@@ -211,9 +212,12 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
       // prompt the client wrote before its tab closed, not a transcript.
       const localHasAnswer = hasAssistantRow(parsedMessages);
       const recordedMessages = localHasAnswer ? [] : await loadAcpTranscript(sessionId);
-      const messages = localHasAnswer
+      // A row stored before the `render` contract has no family, and the parser
+      // copies it verbatim — so an older build's chat drew the JSON fallback
+      // forever. Same idempotent pass the JSONL, replay and recorder reads run.
+      const messages = normalizeTranscriptRows(localHasAnswer
         ? parsedMessages
-        : (recordedMessages.length > 0 ? recordedMessages : (codexMessages.length > 0 ? codexMessages : parsedMessages));
+        : (recordedMessages.length > 0 ? recordedMessages : (codexMessages.length > 0 ? codexMessages : parsedMessages)));
       const localTitle = hasDefaultTitle && firstUserContent ? firstUserContent.slice(0, 120) : existing.title;
       // The imported row's name is in `harness_sessions`; the empty local row
       // an earlier open created carries the UUID stamp instead, which put a
@@ -243,9 +247,11 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 
     const recordedMessages = await loadAcpTranscript(sessionId);
     const seedTitle = harnessTitle || initial.title;
-    const seededMessages = recordedMessages.length > 0
+    // Same rule as the stored branch: a recorder row or a codex rollout is read
+    // from storage, so its tool calls arrive without a family.
+    const seededMessages = normalizeTranscriptRows(recordedMessages.length > 0
       ? recordedMessages
-      : (codexMessages.length > 0 ? codexMessages : initial.messages);
+      : (codexMessages.length > 0 ? codexMessages : initial.messages));
     await db.run(
       'INSERT OR REPLACE INTO chat_sessions (session_id, title, messages, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)',
       [sessionId, seedTitle, JSON.stringify(initial.messages)]

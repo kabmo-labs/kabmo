@@ -1,4 +1,5 @@
 import type { ChatMessageData } from '@/shared/types';
+import { normalizeMessageTools } from '@/shared/lib/chat/tool/normalize';
 import { getSampleToolsSession, SAMPLE_TOOLS_SESSION_ID } from '@/client/data/samples/tools-session';
 import { getSampleDialogueSession, SAMPLE_DIALOGUE_SESSION_ID } from '@/client/data/samples/dialogue-session';
 import { getSampleDevicesSession, SAMPLE_DEVICES_SESSION_ID } from '@/client/data/samples/virtual-devices-session';
@@ -6,7 +7,23 @@ import { getSampleSubagentSession, SAMPLE_SUBAGENT_SESSION_ID } from '@/client/d
 
 export { SAMPLE_DEVICES_SESSION_ID, SAMPLE_SUBAGENT_SESSION_ID };
 
+/**
+ * The sample chats, with every tool call carrying its renderer family.
+ *
+ * A fixture is hand-written, so it has no `render`; the parser copies that
+ * absence through and the card drew the JSON fallback — measured on the mock
+ * tree: 28 of 39 sample calls had no panel while the 39 in `tools-session`
+ * (which normalizes itself) all did. The samples are also the MOCK seed the
+ * loader persists, so normalizing here fixes both the seeded row and every
+ * direct reader (`/api/chat/root`, `turns`, the session store).
+ */
 export function getSessionData(sessionId: string | null) {
+  const session = sampleSession(sessionId);
+  if (!session) return null;
+  return { ...session, messages: session.messages.map(normalizeMessageTools) };
+}
+
+function sampleSession(sessionId: string | null) {
   if (!sessionId) return null;
 
   if (sessionId === SAMPLE_SUBAGENT_SESSION_ID || sessionId === 'subagent') {

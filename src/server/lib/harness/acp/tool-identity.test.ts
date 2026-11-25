@@ -52,6 +52,52 @@ describe('resolveToolIdentity', () => {
     });
   });
 
+  test('zcode names its tool only in _meta.claudeCode.toolName', () => {
+    // The bridge reports `kind:"other"` for a subagent, so without this the
+    // card had no panel at all — measured on zcode-acp-server 0.82.3.
+    expect(
+      resolveToolIdentity({ title: 'audit auth', kind: 'other', _meta: { claudeCode: { toolName: 'Agent' } } }),
+    ).toEqual({ name: 'task', kind: 'other' });
+  });
+
+  test('qwen names its tool in a flat _meta.toolName', () => {
+    // qwen's adapter sends no top-level `name`; `_meta.toolName` is the only
+    // identity, and `kind` alone turned `grep_search` into a bare `grep`.
+    expect(
+      resolveToolIdentity({ title: 'Grep: pattern', kind: 'search', _meta: { toolName: 'grep_search' } }),
+    ).toEqual({ name: 'grep', kind: 'search' });
+  });
+
+  test('the spec field outranks every _meta spelling', () => {
+    expect(
+      resolveToolIdentity({
+        name: 'Read',
+        kind: 'read',
+        _meta: { 'x.ai/tool': { name: 'spawn_subagent' }, claudeCode: { toolName: 'Bash' }, toolName: 'shell' },
+      }),
+    ).toEqual({ name: 'Read', kind: 'read' });
+  });
+
+  test('kimi names its tool in the title prefix, with no name and no kind', () => {
+    // Measured against kimi-cli's `acp/session.py`: the start frame carries
+    // `title = "ToolName: argumen"` and nothing else.
+    expect(resolveToolIdentity({ title: 'StrReplaceFile: src/a.ts' })).toEqual({ name: 'edit' });
+    expect(resolveToolIdentity({ title: 'SetTodoList' })).toEqual({});
+  });
+
+  test('a title is not read while the adapter named or classified the call', () => {
+    // codex-acp's file change: `title:"Editing files"`, `kind:"edit"`, no name.
+    // The kind is the identity there; the title must not become one.
+    expect(resolveToolIdentity({ title: 'Editing files', kind: 'edit' })).toEqual({ kind: 'edit' });
+    expect(resolveToolIdentity({ title: 'read: src/a.ts', kind: 'read' })).toEqual({ kind: 'read' });
+  });
+
+  test('a title that merely contains a colon is not a tool name', () => {
+    expect(resolveToolIdentity({ title: 'https://example.com/a' })).toEqual({});
+    expect(resolveToolIdentity({ title: 'C:\\repo\\a.ts' })).toEqual({});
+    expect(resolveToolIdentity({ title: 'Reading configuration file' })).toEqual({});
+  });
+
   test('an adapter kind outside the spec becomes other, and is kept', () => {
     expect(normalizeKind('delegate')).toEqual({ kind: 'other', rawKind: 'delegate' });
     expect(normalizeKind('execute')).toEqual({ kind: 'execute' });
