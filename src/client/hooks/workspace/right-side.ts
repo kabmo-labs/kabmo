@@ -14,20 +14,23 @@
  *
  * Two rules the hook exists to keep in ONE place:
  *
- * - **`hidden` remembers nothing else.** The panel's own switch and the
- *   editor's own switch are still stored per session, so the side comes back
- *   the way it was left when something asks for it (a plugin opening its
- *   panel, a file being opened). The navbar's toggle is the exception and says
- *   so: it SHOWS everything, because a click that restored a half-hidden side
- *   would look like it did nothing.
+ * - **`hidden` is GLOBAL.** It lives in `app_settings`, not in the session's
+ *   blob: the toggle answers for the reader's screen, so closing the side in
+ *   one chat must keep it closed in every other one. The panel's own switch
+ *   and the editor's own switch stay per session, so the side comes back the
+ *   way it was left when something asks for it (a plugin opening its panel, a
+ *   file being opened). The navbar's toggle is the exception and says so: it
+ *   SHOWS everything, because a click that restored a half-hidden side would
+ *   look like it did nothing.
  * - **The editor's width mode is derived from the editor's own flag**, not from
  *   `hidden` — the layout passes the effective `showEditor` into
  *   `useEditorViewLayout`, so putting the side away returns the chat at the
  *   width the user chose rather than at a stale mode.
  */
 
-import { useCallback } from 'preact/hooks';
+import { useCallback, useState } from 'preact/hooks';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
+import { readRightSideHidden, saveRightSideHidden } from '@/shared/lib/workspace/right-side-hidden';
 
 export interface RightSideLayoutOptions {
   /** The editor column has something to open on to (a tab, a takeover). */
@@ -73,9 +76,13 @@ export function useRightSideLayout({
     'layout.userToggledEditor',
     userToggledEditorInitially,
   );
-  // Per session, like every other layout choice: two chats may be read
-  // differently, and a reload returns the reader to the side they left.
-  const [hidden, setHidden] = useSessionState<boolean>('layout.rightSideHidden', false);
+  // Global, unlike the two columns' switches: the side is the reader's screen,
+  // so a reload AND a session switch both return it the way it was left.
+  const [hidden, setHiddenState] = useState<boolean>(readRightSideHidden);
+  const setHidden = useCallback((next: boolean) => {
+    setHiddenState(next);
+    saveRightSideHidden(next);
+  }, []);
 
   const revealRightPanel = useCallback(() => {
     setRightPanelOpen(true);

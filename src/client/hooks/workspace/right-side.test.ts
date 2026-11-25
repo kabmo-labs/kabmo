@@ -25,6 +25,8 @@ import { act } from 'preact/test-utils';
 import { SessionStateContext } from '@/client/hooks/workspace/session-state/context';
 import { useRightSideLayout, type RightSideLayout } from '@/client/hooks/workspace/right-side';
 import { forgetSession } from '@/shared/lib/workspace/session-state/store';
+import { readKabmoSetting } from '@/shared/lib/settings/client';
+import { RIGHT_SIDE_HIDDEN_SETTING_KEY, saveRightSideHidden } from '@/shared/lib/workspace/right-side-hidden';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'Event', 'CustomEvent'] as const;
 const native: Partial<Record<(typeof DOM_GLOBALS)[number], unknown>> = {};
@@ -68,6 +70,10 @@ afterEach(() => {
   container?.remove();
   for (const id of sessions) forgetSession(id);
   sessions.length = 0;
+  // The side's flag is GLOBAL now, so a test that put it away would otherwise
+  // seed every test after it — resetting it is isolation, not the production
+  // behaviour this suite pins below.
+  saveRightSideHidden(false);
   side = null;
   options = { editorHasContent: true, editorOpensByDefault: true };
 });
@@ -105,6 +111,36 @@ describe('the right side toggle', () => {
     expect(side!.hidden).toBe(true);
     expect(side!.showEditor).toBe(false);
     expect(side!.showRightPanel).toBe(false);
+  });
+
+  test('putting the side away is global: the next session starts put away too', async () => {
+    await mount();
+    await click((current) => current.toggleRightSide());
+
+    // The reported defect: the flag lived in `session_ui_state`, so a different
+    // chat read the default and the side came back as if it had never closed.
+    expect(side!.hidden).toBe(true);
+    expect(readKabmoSetting<boolean>(RIGHT_SIDE_HIDDEN_SETTING_KEY)).toBe(true);
+
+    await act(async () => {
+      render(null, container);
+    });
+    container.remove();
+    await mount();
+    expect(side!.hidden).toBe(true);
+    expect(side!.showRightPanel).toBe(false);
+    expect(side!.showEditor).toBe(false);
+
+    // The other direction is global for the same reason: opening it once is
+    // the reader's screen from then on, whichever session is on it.
+    await click((current) => current.toggleRightSide());
+    expect(side!.hidden).toBe(false);
+    await act(async () => {
+      render(null, container);
+    });
+    container.remove();
+    await mount();
+    expect(side!.hidden).toBe(false);
   });
 
   test('the next click brings everything back, including a panel closed separately', async () => {

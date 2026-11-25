@@ -122,7 +122,7 @@ export function usePanelTabs(
   pinned: string | null,
 ): PanelTabsHandle {
   // `layout.*` like every other layout slot (`layout.openedFiles`,
-  // `layout.showRightPanel`, `layout.rightSideHidden`): the prefix is what tells
+  // `layout.showRightPanel`, `layout.showLeftPanel`): the prefix is what tells
   // a reader of the stored blob that this is per-session UI, not a setting, and
   // a key without it was the one thing this hook did differently.
   const [storedValue, setStored] = useSessionState<unknown>(`layout.${side}PanelTabs`, EMPTY);
