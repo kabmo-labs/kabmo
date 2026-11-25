@@ -29,6 +29,7 @@
 
 import { Marked, Renderer, type Tokens } from 'marked';
 import { codeSafeAutolink } from '@/shared/lib/markdown/autolink';
+import { healAsciiBoxes } from '@/shared/lib/markdown/ascii-art';
 import remend from 'remend';
 import { highlightCode } from '@/shared/lib/code/syntax-highlight';
 import { directiveBlockHtml, isDirectiveLanguage, parseDirectiveAttributes } from '@/shared/lib/markdown/directives';
@@ -70,6 +71,19 @@ interface CodeToken {
   raw?: string;
 }
 
+/**
+ * Whether a `text` fence may have its box art straightened, set for the
+ * duration of one parse.
+ *
+ * A marked renderer receives the token, not the caller's options, and the two
+ * surfaces have opposite contracts: agent output is a picture the console may
+ * make legible, while a document preview (README, wiki page) must render the
+ * bytes the author wrote. A second marked instance would duplicate the whole
+ * `marked.use` chain and drift from it, so the flag rides the same synchronous,
+ * try/finally contract as `setProseEscaped` — `marked.parse` never awaits.
+ */
+let healBoxes = false;
+
 // Wrap fenced code blocks with a floating copy button (top-right, inside the
 // block). The delegated click listener in MarkdownRenderer handles the copy
 // via the data-copy attribute — no React handler needed.
@@ -94,15 +108,19 @@ function mermaidBlockRenderer(code: string): string {
 
 function codeBlockRenderer(token: CodeToken): string {
   const info = token.lang?.trim() || 'text';
-  const code = token.text ?? '';
+  const raw = token.text ?? '';
   if (info === 'mermaid') {
-    return mermaidBlockRenderer(code);
+    return mermaidBlockRenderer(raw);
   }
   // A namespace-qualified token (`omp:chart`) is a plugin directive. The
   // ordinary code block is still produced — and stays INSIDE the placeholder —
   // so a fence no plugin claims renders exactly as it did before the slot
   // existed. `info` may carry `key=\"value\"` pairs after the token.
   const [lang = 'text'] = info.split(/\s+/, 1);
+  // Only a `text` fence may be art, and only on the agent-output contract. The
+  // healed spelling is used for the copy attribute too, so a copied block is
+  // the block the reader saw rather than a second, ragged version.
+  const code = healBoxes && lang === 'text' ? healAsciiBoxes(raw) : raw;
   const highlighted = lang === 'text' ? escapeHtml(code) : highlightCode(code, lang);
   const block = codeBlockShell(code, `<pre><code class="language-${lang}">${highlighted}</code></pre>`);
   if (!isDirectiveLanguage(lang)) return block;
@@ -209,10 +227,12 @@ export function renderMarkdown(markdown: string, options: RenderMarkdownOptions 
   // KaTeX the source the author wrote instead of `x &lt; y`. `marked.parse`
   // never awaits, so no nested render can observe this mid-parse.
   setProseEscaped(options.allowHtml !== true);
+  healBoxes = options.allowHtml !== true;
   try {
     return (marked.parse(healed) as string).trim();
   } finally {
     setProseEscaped(false);
+    healBoxes = false;
   }
 }
 
@@ -239,11 +259,13 @@ export function renderMappedMarkdown(markdown: string, options: RenderMarkdownOp
   const healed = heal(markdown, options.allowHtml === true);
   const { tokens, blocks } = mapBlocks(marked, healed);
   setProseEscaped(options.allowHtml !== true);
+  healBoxes = options.allowHtml !== true;
   try {
     const html = (marked.parser(tokens) as string).trim();
     return { html, blocks };
   } finally {
     setProseEscaped(false);
+    healBoxes = false;
   }
 }
 
