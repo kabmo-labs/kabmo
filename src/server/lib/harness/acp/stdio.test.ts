@@ -1,5 +1,15 @@
 import { afterEach, describe, expect, test } from 'bun:test';
+import { tmpdir } from 'node:os';
 import { AgentStdio } from '@/server/lib/harness/acp/stdio';
+
+// The child is this same Bun binary, not `/bin/sh`: Windows has no `/bin/sh`
+// (the suite died there with `uv_spawn '/bin/sh'` ENOENT) and the assertion is
+// about the environment a child receives, which Bun reads identically on every
+// platform. One interpreter, one program, both legs covered.
+const PRINT_ENV = [
+  'console.log(`A=${process.env.ANTHROPIC_API_KEY ?? "missing"}`)',
+  'console.log(`D=${process.env.CLAUDE_CONFIG_DIR ?? "missing"}`)',
+].join(';');
 
 const saved = Bun.env.ANTHROPIC_API_KEY;
 
@@ -13,12 +23,8 @@ function run(envDrop?: readonly string[]): Promise<string[]> {
   const { promise, resolve } = Promise.withResolvers<string[]>();
   new AgentStdio(
     {
-      command: [
-        '/bin/sh',
-        '-c',
-        'echo "A=${ANTHROPIC_API_KEY:-missing}"; echo "D=${CLAUDE_CONFIG_DIR:-missing}"',
-      ],
-      cwd: '/tmp',
+      command: [process.execPath, '-e', PRINT_ENV],
+      cwd: tmpdir(),
       env: { CLAUDE_CONFIG_DIR: '/home/account' },
       ...(envDrop ? { envDrop } : {}),
     },

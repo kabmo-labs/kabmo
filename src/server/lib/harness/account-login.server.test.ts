@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
+import { testPosix } from '@/test-support/platform';
 import { createHarnessAccount, verifyHarnessAccount } from '@/server/lib/harness/accounts.server';
 import {
   accountLoginStatus,
@@ -76,7 +77,10 @@ describe('spawned account login', () => {
     expect(extractLoginUrl(raw)).toBe('https://auth.openai.com/authorize?client_id=abc&scope=openid');
   });
 
-  test('a PTY command, its URL, a code, and the resulting auth are one job', async () => {
+  // POSIX only: each case spawns a real `/bin/sh` stub on a `Bun.Terminal`.
+  // Windows has neither — there is no `/bin/sh`, and the PTY is unimplemented —
+  // so the job reported phase `error` instead of `running` on the Windows gate.
+  testPosix('a PTY command, its URL, a code, and the resulting auth are one job', async () => {
     const state = await createHarnessAccount('codex', 'Work');
     const account = state.accounts[0]!;
     const script = join(account.homePath, 'fake-login.sh');
@@ -111,7 +115,7 @@ describe('spawned account login', () => {
     expect(accountLoginStatus(account.id)).toBeNull();
   });
 
-  test('Claude writes its config dir and the spawned job verifies the email', async () => {
+  testPosix('Claude writes its config dir and the spawned job verifies the email', async () => {
     const verified = await runFakeLogin('claude', [
       'printf "Open https://claude.ai/oauth/authorize?code=1\\n"',
       'printf "Code: "',
@@ -124,7 +128,7 @@ describe('spawned account login', () => {
     expect(row?.identity.email).toBe('claude@example.com');
   });
 
-  test('Antigravity writes its GEMINI_HOME token and verifies the Google subject', async () => {
+  testPosix('Antigravity writes its GEMINI_HOME token and verifies the Google subject', async () => {
     const token = jwt({
       iss: 'https://accounts.google.com',
       sub: 'google-1',
