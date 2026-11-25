@@ -32,7 +32,8 @@
  */
 
 import { mintAgentEnvironment } from '@/server/lib/sessions/agent-token.server';
-import { loadHarnessConfig, resolveLaunch } from '@/server/lib/harness/config.server';
+import { loadHarnessConfig } from '@/server/lib/harness/config.server';
+import { resolveAccountLaunch } from '@/server/lib/harness/accounts.server';
 import { sessionLaunchCommand } from '@/server/lib/harness/launch';
 import { AcpProcess } from '@/server/lib/harness/acp/client';
 import { IDLE_REAP_MS } from '@/server/lib/omp/rpc/constants';
@@ -75,26 +76,27 @@ export function getPrewarmedAcp(): Map<string, PrewarmedAcpEntry> {
   return globalThis.__kabmoAcpPrewarmed;
 }
 
-/** One entry per harness AND cwd: two agents in one folder are two processes. */
-export function acpPrewarmKey(harness: HarnessId, cwd: string): string {
-  return `${harness}\u0000${cwd}`;
+/** One entry per harness, cwd AND account: two logins are two processes. */
+export function acpPrewarmKey(harness: HarnessId, cwd: string, accountId = ''): string {
+  return `${harness}\u0000${cwd}\u0000${accountId}`;
 }
 
 /** The seam a test drives; the real opener spawns a process. */
 export interface AcpPrewarmDeps {
-  open: (harness: HarnessId, cwd: string) => Promise<PrewarmedAcp>;
+  open: (harness: HarnessId, cwd: string, accountId?: string) => Promise<PrewarmedAcp>;
 }
 
 /** The launch line and env a prewarm — and the spawn that adopts it — use. */
-async function openProcess(harness: HarnessId, cwd: string): Promise<PrewarmedAcp> {
+async function openProcess(harness: HarnessId, cwd: string, accountId = ''): Promise<PrewarmedAcp> {
   const configured = await loadHarnessConfig(harness);
-  const launch = resolveLaunch(harness, configured);
+  const launch = await resolveAccountLaunch(harness, configured, accountId || null);
   const { token, env } = mintAgentEnvironment();
   const merged = withGatewayCompatibility(harness, { ...(launch.env ?? {}), ...env });
   const process = new AcpProcess({
     command: sessionLaunchCommand(harness, launch.command),
     cwd,
     ...(merged ? { env: merged } : {}),
+    ...(launch.stripEnv ? { envDrop: launch.stripEnv } : {}),
     // Nobody owns this child yet. The adopting session re-binds these sinks; a
     // frame that arrives in between is an unsolicited status update, which a
     // session learns from `session/new` anyway.
@@ -138,13 +140,14 @@ async function discard(key: string): Promise<void> {
  * Drop the warm agents for `cwd` that belong to OTHER harnesses.
  *
  * One pending chat runs one agent, so the previous candidate is spent: keeping
- * it would cost a process for a choice the operator already left.
+ * it would cost a process for a choice the operator already left, including the
+ * same harness on a different saved account.
  */
-async function discardOtherPrewarms(harness: HarnessId, cwd: string): Promise<void> {
+async function discardOtherPrewarms(key: string, cwd: string): Promise<void> {
   const doomed = [...getPrewarmedAcp()]
-    .filter(([, entry]) => entry.cwd === cwd && entry.harness !== harness && !entry.claimed)
-    .map(([key]) => key);
-  await Promise.all(doomed.map((key) => discard(key)));
+    .filter(([candidate, entry]) => candidate !== key && entry.cwd === cwd && !entry.claimed)
+    .map(([candidate]) => candidate);
+  await Promise.all(doomed.map((candidate) => discard(candidate)));
 }
 
 /**
@@ -156,13 +159,14 @@ export function prewarmAcpSession(
   harness: HarnessId,
   cwd: string,
   deps: AcpPrewarmDeps = defaultDeps,
+  accountId = '',
 ): void {
   const pool = getPrewarmedAcp();
-  const key = acpPrewarmKey(harness, cwd);
+  const key = acpPrewarmKey(harness, cwd, accountId);
   if (pool.has(key)) return;
   // Fire-and-forget on purpose: the old entry's teardown must not delay this
   // agent's boot, and `discard` marks it claimed before awaiting anything.
-  void discardOtherPrewarms(harness, cwd);
+  void discardOtherPrewarms(key, cwd);
 
   const entry: PrewarmedAcpEntry = {
     harness,
@@ -171,7 +175,7 @@ export function prewarmAcpSession(
     claimed: false,
     ready: Promise.resolve(null),
   };
-  entry.ready = deps.open(harness, cwd)
+  entry.ready = deps.open(harness, cwd, accountId)
     .then(async (warm) => {
       // A child that died while warming must not be handed out.
       if (warm.process.isAlive) return warm;
@@ -205,9 +209,10 @@ export function prewarmAcpSession(
 export async function claimPrewarmedAcpSession(
   harness: HarnessId,
   cwd: string,
+  accountId = '',
 ): Promise<PrewarmedAcp | null> {
   const pool = getPrewarmedAcp();
-  const key = acpPrewarmKey(harness, cwd);
+  const key = acpPrewarmKey(harness, cwd, accountId);
   const entry = pool.get(key);
   if (!entry || entry.claimed) return null;
   entry.claimed = true;

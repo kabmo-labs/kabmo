@@ -84,7 +84,7 @@ export interface ScheduleDeps {
   /** Start an ACP session for a task whose harness is not the built-in RPC. */
   startAcpSession(request: AcpSpawnRequest): Promise<{ session: ScheduleSessionHandle; realSessionId: string }>;
   /** The agent's own session id, for resuming an ACP chat. */
-  loadHarnessSession(sessionId: string): Promise<{ harness: string; agentSessionId: string } | null>;
+  loadHarnessSession(sessionId: string): Promise<{ harness: string; agentSessionId: string; accountId?: string } | null>;
   loadPersistedAccessMode(): Promise<ApprovalMode>;
   claimDueTasks(now: number): Promise<ScheduledTask[]>;
   startScheduledRun(taskId: string, sessionId: string | null): Promise<string>;
@@ -168,12 +168,14 @@ async function openAcpTarget(
 ): Promise<{ session: ScheduleSessionHandle; sessionId: string; note: string }> {
   const cwd = await deps.resolveSpawnCwd(task.cwd);
   let resumeAgentSessionId: string | undefined;
+  let accountId: string | null = null;
   let note = 'new session';
 
   if (task.sessionId) {
     const recorded = await deps.loadHarnessSession(task.sessionId);
     if (recorded && recorded.harness === task.harness && recorded.agentSessionId) {
       resumeAgentSessionId = recorded.agentSessionId;
+      accountId = recorded.accountId || null;
       note = 'resumed session';
     } else {
       note = 'session not found; started a new one';
@@ -188,6 +190,7 @@ async function openAcpTarget(
     thinkingLevel: task.model?.thinkingLevel ?? null,
     accessMode: mode,
     ...(resumeAgentSessionId ? { resumeAgentSessionId } : {}),
+    ...(accountId ? { accountId } : {}),
   });
   return { session, sessionId: realSessionId, note };
 }

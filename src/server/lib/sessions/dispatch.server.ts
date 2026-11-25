@@ -37,6 +37,7 @@ export interface DispatchDeps {
     harness: HarnessId,
     cwd: string,
     agentSessionId: string,
+    accountId: string,
   ): Promise<QueueDeliveryHost>;
 }
 
@@ -65,6 +66,7 @@ async function startAcp(
   harness: HarnessId,
   cwd: string,
   agentSessionId: string,
+  accountId: string,
 ): Promise<QueueDeliveryHost> {
   const accessMode = await loadPersistedAccessMode();
   const { token, env } = mintAgentEnvironment();
@@ -73,6 +75,7 @@ async function startAcp(
     sessionId,
     resumeAgentSessionId: agentSessionId || sessionId,
     cwd,
+    accountId: accountId || null,
     accessMode,
     env,
   });
@@ -117,7 +120,7 @@ export async function ensureSessionLive(
     const file = await deps.findFile(sessionId);
     if (file) return await deps.startOmp(sessionId, file, ref.cwd);
     if (!ref.harness || ref.harness === 'omp-rpc') return null;
-    return await deps.startAcp(sessionId, ref.harness, ref.cwd, ref.agentSessionId);
+    return await deps.startAcp(sessionId, ref.harness, ref.cwd, ref.agentSessionId, ref.accountId);
   } catch (error) {
     console.error(
       `[sessions] could not resume ${sessionId}:`,

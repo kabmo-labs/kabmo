@@ -4,6 +4,8 @@ import { prewarmRpcSession } from '@/server/lib/omp/rpc/prewarm-pool';
 import { prewarmAcpSession } from '@/server/lib/harness/acp/prewarm.server';
 import { commandAvailable } from '@/server/lib/harness/auto-probe.server';
 import { loadHarnessConfig } from '@/server/lib/harness/config.server';
+import { selectedAccountId } from '@/server/lib/harness/accounts.server';
+import { accountAdapter } from '@/shared/lib/harness/accounts';
 import { kabmoModeEnv } from '@/server/lib/omp/extensions/locator';
 import { parseModeSelection } from '@/server/lib/omp/mode/request';
 import { isApprovalMode } from '@/shared/lib/omp/config/access-mode';
@@ -49,8 +51,11 @@ export async function action({ request }: ActionFunctionArgs) {
       const config = await loadHarnessConfig(harness);
       if (!commandAvailable(harness, config)) return json({ success: true, harness, unavailable: true });
       // The ACP picks are config writes at claim time, so the entries carry no
-      // selection to match: every warm agent for this harness+cwd can serve it.
-      prewarmAcpSession(harness, cwd);
+      // selection to match; every warm agent for this harness+cwd+account can
+      // serve it. The account is part of the key so a switch cannot adopt the
+      // previous login's process.
+      const accountId = accountAdapter(harness) ? await selectedAccountId(harness) : null;
+      prewarmAcpSession(harness, cwd, undefined, accountId ?? '');
       return json({ success: true, harness });
     }
 

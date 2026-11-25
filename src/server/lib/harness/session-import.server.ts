@@ -30,7 +30,8 @@
 import { AcpProcess } from '@/server/lib/harness/acp/client';
 import { listAllSessions } from '@/server/lib/harness/acp/verbs';
 import { withGatewayCompatibility } from '@/server/lib/harness/acp/gateway-env';
-import { loadHarnessConfig, resolveLaunch } from '@/server/lib/harness/config.server';
+import { loadHarnessConfig } from '@/server/lib/harness/config.server';
+import { resolveAccountLaunch } from '@/server/lib/harness/accounts.server';
 import { ensureCustomHarnesses } from '@/server/lib/harness/custom.server';
 import { harnessSessionKnown, importHarnessSession } from '@/server/lib/harness/session-store.server';
 import { sessionsWithoutTranscript } from '@/server/lib/harness/session-transcript.server';
@@ -44,7 +45,11 @@ import type { AcpSessionInfo } from '@/server/lib/harness/acp/protocol';
 import type { HarnessSessionImport } from '@/shared/types/harness';
 
 /** One fresh process' worth of listing, disposed whatever happens. */
-async function listOnce(command: string[], env?: Record<string, string>): Promise<AcpSessionInfo[]> {
+async function listOnce(
+  command: string[],
+  env?: Record<string, string>,
+  envDrop?: readonly string[],
+): Promise<AcpSessionInfo[]> {
   let tail = '';
   const proc = new AcpProcess({
     command,
@@ -54,6 +59,7 @@ async function listOnce(command: string[], env?: Record<string, string>): Promis
     // which names nothing a reader can act on.
     onStderr: (line) => { tail = `${tail}${line}\n`.slice(-2_000); },
     ...(env ? { env } : {}),
+    ...(envDrop ? { envDrop } : {}),
   });
   try {
     await proc.initialize(undefined, 60_000);
@@ -69,14 +75,18 @@ async function listOnce(command: string[], env?: Record<string, string>): Promis
 
 /** The agent's own session list, with the one retry the transport's shutdown
  *  race needs. A real refusal (auth, launch) is never retried. */
-async function listSessions(command: string[], env?: Record<string, string>): Promise<AcpSessionInfo[]> {
+async function listSessions(
+  command: string[],
+  env?: Record<string, string>,
+  envDrop?: readonly string[],
+): Promise<AcpSessionInfo[]> {
   try {
-    return await listOnce(command, env);
+    return await listOnce(command, env, envDrop);
   } catch (cause) {
     const message = cause instanceof Error ? cause.message : String(cause);
     if (!/exited \(code 0\)|has exited/i.test(message)) throw cause;
     await new Promise((resolve) => setTimeout(resolve, 250));
-    return await listOnce(command, env);
+    return await listOnce(command, env, envDrop);
   }
 }
 
@@ -110,11 +120,15 @@ export async function importHarnessSessions(id: HarnessId): Promise<HarnessSessi
   const configured = await loadHarnessConfig(id);
   let launch;
   try {
-    launch = resolveLaunch(id, configured);
+    launch = await resolveAccountLaunch(id, configured);
   } catch (cause) {
     throw new Error(cause instanceof Error ? cause.message : String(cause));
   }
-  const sessions = await listSessions(launch.command, withGatewayCompatibility(id, launch.env));
+  const sessions = await listSessions(
+    launch.command,
+    withGatewayCompatibility(id, launch.env),
+    launch.stripEnv,
+  );
   const roots = await workspaceRoots();
   // A session the agent created and never used has no transcript in its own
   // store. Importing it would draw a sidebar row that opens an empty chat, so

@@ -25,7 +25,9 @@ import { AcpTranscriptRecorder } from '@/server/lib/harness/acp/session-transcri
 import { AcpFrameRecorder } from '@/server/lib/harness/acp/acp-frames.server';
 import { claimPrewarmedAcpSession } from '@/server/lib/harness/acp/prewarm.server';
 import { rememberAgentToken } from '@/server/lib/sessions/agent-token.server';
-import { loadHarnessConfig, resolveLaunch } from '@/server/lib/harness/config.server';
+import { loadHarnessConfig } from '@/server/lib/harness/config.server';
+import { resolveAccountLaunch, selectedAccountId } from '@/server/lib/harness/accounts.server';
+import { accountAdapter } from '@/shared/lib/harness/accounts';
 import { sessionLaunchCommand } from '@/server/lib/harness/launch';
 import { resolveDefaultModel, modelProvider } from '@/shared/lib/harness/config';
 import { harnessProbeModels } from '@/server/lib/harness/probe-cache.server';
@@ -70,6 +72,11 @@ export interface AcpSpawnRequest {
   replay?: boolean;
   /** Extra environment for this child only (the agent token and server URL). */
   env?: Record<string, string>;
+  /**
+   * Saved account to launch. Undefined selects the harness's active account;
+   * null means the host login, which is what a pre-account chat resumes on.
+   */
+  accountId?: string | null;
   /** A prewarmed (spawned + initialized) agent to adopt instead of spawning. */
   process?: AcpProcess;
   /**
@@ -114,7 +121,7 @@ async function resolvePicks(
 
 export async function openAcpSession(
   request: AcpSpawnRequest,
-): Promise<{ session: AcpSession; realSessionId: string }> {
+): Promise<{ session: AcpSession; realSessionId: string; accountId: string | null }> {
   // The USER's launch line, merged over the build's table. A command override is
   // the only way to start an agent installed outside PATH, and an env override is
   // the only provider switch an ACP agent actually honours — Kabmo routes nothing
@@ -123,9 +130,14 @@ export async function openAcpSession(
   // synchronous: load the registry before asking it for a launch line.
   await ensureCustomHarnesses();
   const configured = await loadHarnessConfig(request.harness);
+  const accountId = accountAdapter(request.harness)
+    ? request.accountId === undefined
+      ? await selectedAccountId(request.harness)
+      : request.accountId
+    : null;
   let launch;
   try {
-    launch = resolveLaunch(request.harness, configured);
+    launch = await resolveAccountLaunch(request.harness, configured, accountId);
   } catch (cause) {
     throw new HarnessNotLaunchableError(
       request.harness,
@@ -161,6 +173,7 @@ export async function openAcpSession(
       harness: request.harness,
       command: sessionLaunchCommand(request.harness, launch.command),
       ...(Object.keys(childEnv).length > 0 ? { env: childEnv } : {}),
+      ...(launch.stripEnv ? { envDrop: launch.stripEnv } : {}),
       ...(request.process ? { process: request.process } : {}),
       model: picks.model,
       thinkingLevel: picks.thinking,
@@ -212,7 +225,7 @@ export async function openAcpSession(
       title,
     });
   }
-  return { session, realSessionId };
+  return { session, realSessionId, accountId };
 }
 
 /** The frames a restore replayed, and only from an ACP session. */
@@ -223,13 +236,20 @@ export function takeAcpReplayEvents(session: HarnessSession): AgentEvent[] {
 export async function startAcpSession(
   request: AcpSpawnRequest,
 ): Promise<{ session: HarnessSession; realSessionId: string; adopted: boolean }> {
+  const accountId = accountAdapter(request.harness)
+    ? request.accountId === undefined
+      ? await selectedAccountId(request.harness)
+      : request.accountId
+    : null;
   const claimable = request.claimPrewarmed && !request.resumeAgentSessionId && !request.forkAgentSessionId;
   // A warm agent skips the spawn AND the `initialize` handshake; `session/new`
   // and the picks still run, in the same place a cold spawn runs them, so there
   // is one definition of "the session a chat starts in".
-  const warm = claimable ? await claimPrewarmedAcpSession(request.harness, request.cwd) : null;
+  const warm = claimable
+    ? await claimPrewarmedAcpSession(request.harness, request.cwd, accountId ?? '')
+    : null;
   const { session, realSessionId } = await openAcpSession(
-    warm ? { ...request, process: warm.process } : request,
+    warm ? { ...request, accountId, process: warm.process } : { ...request, accountId },
   );
   // The transcript this session writes for itself. A restore replays the
   // agent's history and persists it itself, so it is the one session that must
@@ -273,6 +293,7 @@ export async function startAcpSession(
     harness: request.harness,
     agentSessionId: realSessionId === request.sessionId ? '' : realSessionId,
     cwd: request.cwd,
+    accountId: accountId ?? '',
   }).catch((cause: unknown) => {
     console.error(`[harness] could not record ${request.harness} for session ${realSessionId}:`, cause);
   });

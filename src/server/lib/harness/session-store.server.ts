@@ -25,6 +25,8 @@ export interface HarnessSessionRecord {
   /** The id the AGENT reported, when it differs from Kabmo's. */
   agentSessionId: string;
   cwd: string;
+  /** The saved account whose home spawned this chat; '' for the host login. */
+  accountId?: string;
   /** '' for a chat Kabmo spawned; 'imported' for one copied from the agent's
    *  own history. Optional on INPUT (a spawn writes no marker). */
   origin?: string;
@@ -36,14 +38,15 @@ export async function saveHarnessSession(record: HarnessSessionRecord): Promise<
   const now = Date.now();
   const db = await getDb();
   await db.run(
-    `INSERT INTO harness_sessions (session_id, harness, agent_session_id, cwd, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?)
+    `INSERT INTO harness_sessions (session_id, harness, agent_session_id, cwd, account_id, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(session_id) DO UPDATE SET
        harness = excluded.harness,
        agent_session_id = excluded.agent_session_id,
        cwd = excluded.cwd,
+       account_id = excluded.account_id,
        updated_at = excluded.updated_at`,
-    [record.sessionId, record.harness, record.agentSessionId, record.cwd, now, now],
+    [record.sessionId, record.harness, record.agentSessionId, record.cwd, record.accountId ?? '', now, now],
   );
 }
 
@@ -173,6 +176,8 @@ export interface HarnessSessionRow {
   cwd: string;
   /** See {@link HarnessSessionRecord.origin}. */
   origin: string;
+  /** See {@link HarnessSessionRecord.accountId}. */
+  accountId: string;
   /** What the chat is called: the agent's own title, else the first prompt.
    *  Empty when neither exists yet. */
   title: string;
@@ -201,7 +206,7 @@ export interface HarnessSessionRow {
 export async function loadAcpSessions(): Promise<HarnessSessionRow[]> {
   const db = await getDb();
   const rows = (await db.all(
-    `SELECT session_id, harness, agent_session_id, cwd, title, origin, created_at, updated_at
+    `SELECT session_id, harness, agent_session_id, cwd, account_id, title, origin, created_at, updated_at
        FROM harness_sessions
       WHERE harness <> 'omp-rpc'
       ORDER BY updated_at DESC`,
@@ -210,6 +215,7 @@ export async function loadAcpSessions(): Promise<HarnessSessionRow[]> {
     harness: string;
     agent_session_id: string;
     cwd: string;
+    account_id: string | null;
     title: string | null;
     origin: string | null;
     created_at: number;
@@ -220,6 +226,7 @@ export async function loadAcpSessions(): Promise<HarnessSessionRow[]> {
     harness: row.harness,
     agentSessionId: row.agent_session_id,
     cwd: row.cwd,
+    accountId: row.account_id ?? '',
     title: row.title ?? '',
     origin: row.origin ?? '',
     createdAt: row.created_at,
@@ -261,15 +268,23 @@ export async function loadHarnessSessionTitle(sessionId: string): Promise<string
 export async function loadHarnessSession(sessionId: string): Promise<HarnessSessionRecord | null> {
   const db = await getDb();
   const row = (await db.get(
-    'SELECT session_id, harness, agent_session_id, cwd, origin FROM harness_sessions WHERE session_id = ?',
+    'SELECT session_id, harness, agent_session_id, cwd, account_id, origin FROM harness_sessions WHERE session_id = ?',
     [sessionId],
-  )) as { session_id: string; harness: string; agent_session_id: string; cwd: string; origin: string | null } | null;
+  )) as {
+    session_id: string;
+    harness: string;
+    agent_session_id: string;
+    cwd: string;
+    account_id: string | null;
+    origin: string | null;
+  } | null;
   if (!row) return null;
   return {
     sessionId: row.session_id,
     harness: row.harness,
     agentSessionId: row.agent_session_id,
     cwd: row.cwd,
+    accountId: row.account_id ?? '',
     origin: row.origin ?? '',
   };
 }

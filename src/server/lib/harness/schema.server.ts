@@ -32,6 +32,9 @@ const HARNESS_SESSIONS_SQL = `
     -- Kabmo's own (omp generates it and both sides use it).
     agent_session_id TEXT NOT NULL DEFAULT '',
     cwd TEXT NOT NULL DEFAULT '',
+    -- The saved account whose home spawned this chat. Empty means the host
+    -- login, which is what every row written before accounts existed means.
+    account_id TEXT NOT NULL DEFAULT '',
     -- What the chat is CALLED. An ACP agent writes no session file, so omp's
     -- JSONL discovery — the thing that names every omp row — has nothing to
     -- read, and every recorded chat drew "Untitled" forever while the user's own
@@ -60,7 +63,39 @@ const HARNESS_SESSIONS_SQL = `
 const HARNESS_SESSIONS_MIGRATIONS = [
   `ALTER TABLE harness_sessions ADD COLUMN title TEXT NOT NULL DEFAULT '';`,
   `ALTER TABLE harness_sessions ADD COLUMN origin TEXT NOT NULL DEFAULT '';`,
+  `ALTER TABLE harness_sessions ADD COLUMN account_id TEXT NOT NULL DEFAULT '';`,
 ];
+
+/**
+ * Saved CLI homes for Codex, Claude and Antigravity.
+ *
+ * A row is a pointer, never a credential: the token stays in the CLI's own file
+ * under `home_path`. `identity` is the display copy read from that token, and
+ * `verified_at` says when Kabmo last confirmed it, not when it will stay valid.
+ */
+const HARNESS_ACCOUNTS_SQL = `
+  CREATE TABLE IF NOT EXISTS harness_accounts (
+    id TEXT PRIMARY KEY,
+    harness TEXT NOT NULL,
+    label TEXT NOT NULL,
+    home_path TEXT NOT NULL,
+    identity TEXT NOT NULL DEFAULT '{}',
+    auth_kind TEXT NOT NULL DEFAULT 'unknown',
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    verified_at INTEGER NOT NULL DEFAULT 0
+  );
+  CREATE INDEX IF NOT EXISTS idx_harness_accounts_harness
+    ON harness_accounts (harness);
+`;
+
+/** One active account per harness. An absent row means the host login. */
+const HARNESS_ACCOUNT_SELECTION_SQL = `
+  CREATE TABLE IF NOT EXISTS harness_account_selection (
+    harness TEXT PRIMARY KEY,
+    account_id TEXT NOT NULL
+  );
+`;
 
 /**
  * What each agent reported, persisted.
@@ -183,6 +218,8 @@ const ACP_FRAMES_SQL = `
 /** Idempotent: created on every database open, like every other feature table. */
 export async function ensureHarnessSchema(db: DbClient): Promise<void> {
   await db.exec(HARNESS_SESSIONS_SQL);
+  await db.exec(HARNESS_ACCOUNTS_SQL);
+  await db.exec(HARNESS_ACCOUNT_SELECTION_SQL);
   await db.exec(CUSTOM_HARNESSES_SQL);
   await db.exec(HARNESS_PROBES_SQL);
   await db.exec(HARNESS_GOAL_STATE_SQL);

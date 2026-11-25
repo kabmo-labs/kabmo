@@ -28,6 +28,13 @@ import {
   emit, invalidateCatalog, listeners, loadCatalog, store,
 } from '@/client/hooks/models/harness-catalog';
 import { addProvider, importProvider } from '@/client/hooks/models/provider-writes';
+import {
+  createHarnessAccount,
+  removeHarnessAccount,
+  renameHarnessAccount,
+  selectHarnessAccount,
+  verifyHarnessAccount,
+} from '@/client/hooks/models/harness-accounts';
 import { subscribeModelsUpdated } from '@/shared/lib/models/client';
 
 /**
@@ -279,6 +286,13 @@ export function useHarnesses({ enabled = true }: UseHarnessesOptions = {}): Harn
     configs: snapshot.configs,
     saveConfig: saveHarnessConfig,
     providerSupport: snapshot.providerSupport,
+    accounts: snapshot.accounts,
+    accountSelection: snapshot.accountSelection,
+    createAccount: createHarnessAccount,
+    selectAccount: selectHarnessAccount,
+    renameAccount: renameHarnessAccount,
+    removeAccount: removeHarnessAccount,
+    verifyAccount: verifyHarnessAccount,
     liveModels: snapshot.liveModels,
     importProvider: (id, sourceId, entry) => importProvider(id, sourceId, entry, announceProviderWrite),
     addProvider: (id, input) => addProvider(id, input, announceProviderWrite),

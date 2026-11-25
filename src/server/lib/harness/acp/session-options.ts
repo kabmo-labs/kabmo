@@ -21,6 +21,8 @@ export interface AcpSessionOptions {
   harness: HarnessId;
   command: string[];
   env?: Record<string, string>;
+  /** Ambient names removed before `env` is merged; see `AgentStdioOptions`. */
+  envDrop?: readonly string[];
   /**
    * A process that has already been spawned and `initialize`d — a prewarmed
    * agent. The session adopts it, so the handshake it runs costs only

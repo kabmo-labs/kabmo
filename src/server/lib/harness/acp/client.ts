@@ -57,6 +57,8 @@ export interface AcpClientOptions {
   command: string[];
   cwd: string;
   env?: Record<string, string>;
+  /** Ambient names removed before `env` is merged. */
+  envDrop?: readonly string[];
   /** Frame sink: `session/update` notifications and unknown notifications. */
   onNotification: (method: string, params: Record<string, unknown>) => void;
   /** Agent→client request hook, before the built-in refusals. */
@@ -105,6 +107,7 @@ export class AcpProcess {
         command: options.command,
         cwd: options.cwd,
         ...(options.env ? { env: options.env } : {}),
+        ...(options.envDrop ? { envDrop: options.envDrop } : {}),
       },
       {
         onLine: (line) => this.handleLine(line),

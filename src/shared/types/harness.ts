@@ -14,6 +14,7 @@
 
 import type { HarnessCapabilities } from '@/server/lib/harness/capabilities';
 import type { HarnessConfig } from '@/shared/lib/harness/config';
+import type { HarnessAccountView } from '@/shared/lib/harness/accounts';
 import type { CanonicalProtocol } from '@/shared/lib/harness/dialects';
 import type { EnvProviderContract } from '@/shared/lib/harness/provider-contracts';
 
@@ -185,6 +186,10 @@ export interface HarnessesPayload {
   configs?: Record<string, HarnessConfig>;
   /** Per-harness provider support, keyed by id. */
   providerSupport?: Record<string, HarnessProviderSupport>;
+  /** Saved CLI homes for Codex, Claude and Antigravity. */
+  accounts?: HarnessAccountView[];
+  /** harness id -> selected account id; null means the host login. */
+  accountSelection?: Record<string, string | null>;
 }
 
 /** Capabilities for a harness the client has no row for: nothing is claimed, so

@@ -28,6 +28,8 @@ export interface AgentStdioOptions {
   command: string[];
   cwd: string;
   env?: Record<string, string>;
+  /** Ambient names removed before `env` is merged. */
+  envDrop?: readonly string[];
 }
 
 export interface AgentStdioHandlers {
@@ -48,8 +50,12 @@ export class AgentStdio {
   constructor(options: AgentStdioOptions, handlers: AgentStdioHandlers) {
     const [command, ...args] = options.command;
     if (!command) throw new Error('ACP launch command is empty');
+    // Drop BEFORE merging `options.env`: an account puts its home back under the
+    // same name it removed from the host (`CODEX_HOME`, `SSH_CONNECTION`).
+    const baseEnv: Record<string, string | undefined> = { ...Bun.env };
+    for (const name of options.envDrop ?? []) delete baseEnv[name];
     const childEnv = withToolchainPath(
-      stripKabmoHostEnv({ ...Bun.env, ...options.env }, process.platform),
+      stripKabmoHostEnv({ ...baseEnv, ...options.env }, process.platform),
       process.platform,
     );
     try {

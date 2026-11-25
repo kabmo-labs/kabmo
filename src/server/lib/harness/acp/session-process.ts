@@ -38,6 +38,7 @@ export function openSessionProcess(
     command: options.command,
     cwd,
     ...(env ? { env } : {}),
+    ...(options.envDrop ? { envDrop: options.envDrop } : {}),
     ...sinks,
   });
 }

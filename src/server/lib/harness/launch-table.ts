@@ -21,8 +21,13 @@ import type { HarnessId } from '@/shared/lib/harness/catalog';
 export interface HarnessLaunch {
   id: HarnessId;
   command: string[];
-  /** Extra env the adapter needs (a wrapper path, a log dir, …). */
+  /** Extra env the adapter needs (a wrapper path, a log dir, ...). */
   env?: Record<string, string>;
+  /**
+   * Ambient variables removed before `env` is applied. Saved accounts use this
+   * so a host `ANTHROPIC_API_KEY` cannot authenticate the wrong login.
+   */
+  stripEnv?: readonly string[];
   /**
    * A binary the launch line SPAWNS but does not exec itself. The `zcode`
    * bridge starts `zcode app-server --stdio`, so `npx` being present says

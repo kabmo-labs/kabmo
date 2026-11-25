@@ -48,6 +48,7 @@ export function HarnessSettings({ only }: HarnessSettingsProps = {}) {
   const {
     harnesses, configs, providerSupport, isLoading, error, reload, probe, saveConfig, importProvider, addProvider,
     setEnabled, importSessions, setAutoImport,
+    accounts, accountSelection, createAccount, selectAccount, renameAccount, removeAccount, verifyAccount,
   } = useHarnesses();
   const [query, setQuery] = useState('');
   // Which switch, or which Check, is in flight. ONE field for both because both
@@ -186,6 +187,13 @@ export function HarnessSettings({ only }: HarnessSettingsProps = {}) {
               onAddProvider={addProvider}
               onImportSessions={importSessions}
               onSetAutoImport={setAutoImport}
+              accounts={accounts}
+              accountSelection={accountSelection}
+              onCreateAccount={createAccount}
+              onSelectAccount={selectAccount}
+              onRenameAccount={renameAccount}
+              onRemoveAccount={removeAccount}
+              onVerifyAccount={verifyAccount}
             />
           ))}
           {filtered.length === 0 && (

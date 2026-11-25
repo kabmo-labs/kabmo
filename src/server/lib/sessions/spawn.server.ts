@@ -81,6 +81,7 @@ export interface SpawnSessionDeps {
     harness: HarnessId;
     sessionId: string;
     cwd: string;
+    accountId?: string | null;
     model: SelectedModel | null;
     thinkingLevel: string | null;
     accessMode: ApprovalMode;
@@ -136,7 +137,7 @@ function harnessOf(value: string | null | undefined): HarnessId | null {
 async function resolveParent(
   parentSessionId: string,
   requestedCwd: string | null,
-): Promise<{ cwd: string; harness: HarnessId | null }> {
+): Promise<{ cwd: string; harness: HarnessId | null; accountId: string }> {
   if (!(await sessionExists(parentSessionId))) {
     throw new SessionSpawnError('parent_not_found', `Parent session ${parentSessionId} not found`);
   }
@@ -163,7 +164,7 @@ async function resolveParent(
       );
     }
   }
-  return { cwd, harness: parent.harness };
+  return { cwd, harness: parent.harness, accountId: parent.accountId };
 }
 
 /**
@@ -275,6 +276,7 @@ export async function spawnChildSession(
           harness,
           sessionId: `__new__${Bun.randomUUIDv7()}`,
           cwd,
+          accountId: parent?.accountId || null,
           model,
           thinkingLevel: input.thinkingLevel ?? null,
           accessMode,

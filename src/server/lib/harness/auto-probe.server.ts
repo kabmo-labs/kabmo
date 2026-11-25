@@ -37,8 +37,8 @@ import type { HarnessProbe } from '@/server/lib/harness/capabilities';
 import {
   launchFromConfig,
   loadHarnessConfig,
-  resolveLaunch,
 } from '@/server/lib/harness/config.server';
+import { resolveAccountLaunch } from '@/server/lib/harness/accounts.server';
 import type { HarnessConfig } from '@/shared/lib/harness/config';
 import { loadDisabledHarnesses } from '@/server/lib/harness/enabled.server';
 import { blockedProbe, probeHarness } from '@/server/lib/harness/launch';
@@ -97,7 +97,7 @@ export function commandAvailable(id: HarnessId, config?: HarnessConfig): boolean
 export async function probeWithConfig(id: HarnessId, cwd: string): Promise<HarnessProbe> {
   try {
     const configured = await loadHarnessConfig(id);
-    return await probeHarness(id, cwd, resolveLaunch(id, configured));
+    return await probeHarness(id, cwd, await resolveAccountLaunch(id, configured));
   } catch (cause) {
     return blockedProbe(id, cause instanceof Error ? cause.message : String(cause));
   }

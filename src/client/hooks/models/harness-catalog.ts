@@ -16,12 +16,15 @@
 import type {
   HarnessConfig, HarnessProviderSupport, HarnessesPayload, HarnessSummary, LiveHarnessModels,
 } from '@/shared/types/harness';
+import type { HarnessAccountView } from '@/shared/lib/harness/accounts';
 import { registerHarnessDescriptors } from '@/shared/lib/harness/catalog';
 
 export interface HarnessStore {
   harnesses: HarnessSummary[];
   configs: Record<string, HarnessConfig>;
   providerSupport: Record<string, HarnessProviderSupport>;
+  accounts: HarnessAccountView[];
+  accountSelection: Record<string, string | null>;
   liveModels: Record<string, LiveHarnessModels>;
   isLoading: boolean;
   error: string | null;
@@ -31,7 +34,8 @@ export interface HarnessStore {
 }
 
 export const store: HarnessStore = {
-  harnesses: [], configs: {}, providerSupport: {}, liveModels: {}, isLoading: true, error: null, version: 0,
+  harnesses: [], configs: {}, providerSupport: {}, accounts: [], accountSelection: {},
+  liveModels: {}, isLoading: true, error: null, version: 0,
 };
 /** Has the catalog been read at least once? A later mount must NOT re-fetch: the
  *  answer is a property of the installed agents, and `reload()` is the explicit
@@ -94,6 +98,8 @@ export async function loadCatalog(): Promise<void> {
         // empty map is the honest reading, and every card then shows "not set".
         configs: payload.configs ?? {},
         providerSupport: payload.providerSupport ?? {},
+        accounts: payload.accounts ?? [],
+        accountSelection: payload.accountSelection ?? {},
         error: null,
         isLoading: false,
       });
@@ -123,7 +129,8 @@ export function resetHarnessesStore(): void {
   inflight = null;
   loaded = false;
   Object.assign(store, {
-    harnesses: [], configs: {}, providerSupport: {}, liveModels: {}, isLoading: true, error: null, version: 0,
+    harnesses: [], configs: {}, providerSupport: {}, accounts: [], accountSelection: {},
+    liveModels: {}, isLoading: true, error: null, version: 0,
   });
   for (const listener of listeners) listener();
 }

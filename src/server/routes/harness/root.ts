@@ -29,6 +29,8 @@ import { commandAvailable, probeWithConfig } from '@/server/lib/harness/auto-pro
 import { autoImportEnabled, loadAutoImportDisabled } from '@/server/lib/harness/auto-import.server';
 import { autoImportAction, importSessionsAction } from '@/server/routes/harness/session-actions';
 import { loadHarnessConfig, probeInvalidatedBy, saveHarnessConfig } from '@/server/lib/harness/config.server';
+import { listHarnessAccounts } from '@/server/lib/harness/accounts.server';
+import { harnessAccountAction } from '@/server/routes/harness/accounts';
 import { importableProvidersFor, readRegistryProviders } from '@/server/lib/harness/provider-sources.server';
 import { addProviderAction, importProviderAction, importSourceOf, isImportBody } from '@/server/routes/harness/import-action';
 import { supportedProtocols } from '@/shared/lib/harness/dialects';
@@ -185,7 +187,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
     };
   }
 
-  return json({ harnesses: await listHarnesses(), configs, providerSupport: providerSupportByHarness });
+  const accountState = await listHarnessAccounts();
+  return json({
+    harnesses: await listHarnesses(),
+    configs,
+    providerSupport: providerSupportByHarness,
+    accounts: accountState.accounts,
+    accountSelection: accountState.selected,
+  });
 }
 
 export async function action({ request, params }: ActionFunctionArgs) {
@@ -202,6 +211,9 @@ export async function action({ request, params }: ActionFunctionArgs) {
     parsed && typeof parsed === 'object' && !Array.isArray(parsed)
       ? (parsed as Record<string, unknown>)
       : {};
+  // Saved accounts name a harness but not a probe; handle them before the probe
+  // branch, which would refuse the request as "no probe".
+  if (body.account !== undefined) return harnessAccountAction(body.account);
   // A CUSTOM HARNESS write: `{ customHarness: { id, label, command, env? } }`.
   // Handled before the probe validation because it names no probe.
   if (body.customHarness !== undefined) {

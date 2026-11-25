@@ -165,6 +165,7 @@ export async function probeHarness(
       command: launch.command,
       cwd,
       ...(env ? { env } : {}),
+      ...(launch.stripEnv ? { envDrop: launch.stripEnv } : {}),
       onStderr: (line) => {
         stderrTail = `${stderrTail}${line}\n`.slice(-2_000);
       },

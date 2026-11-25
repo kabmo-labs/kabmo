@@ -13,6 +13,8 @@
 import type {
   HarnessConfig, HarnessImportOutcome, HarnessProviderSupport, HarnessSessionImport, HarnessSummary, LiveHarnessModels,
 } from '@/shared/types/harness';
+import type { HarnessAccountView } from '@/shared/lib/harness/accounts';
+import type { AccountMutationResult } from '@/client/hooks/models/harness-accounts';
 import type { AddProviderInput } from '@/client/components/settings/categories/harness-settings/AddProviderForm';
 
 export interface HarnessesController {
@@ -23,6 +25,16 @@ export interface HarnessesController {
   saveConfig: (id: string, config: HarnessConfig) => Promise<string | null>;
   /** What each harness can do about other providers, keyed by id. */
   providerSupport: Record<string, HarnessProviderSupport>;
+  /** Saved CLI homes for Codex, Claude and Antigravity. */
+  accounts: HarnessAccountView[];
+  /** harness id -> selected account id; null means the host login. */
+  accountSelection: Record<string, string | null>;
+  /** Create an isolated home and return its id, or the server's refusal. */
+  createAccount: (harness: string, label: string) => Promise<AccountMutationResult>;
+  selectAccount: (harness: string, accountId: string | null) => Promise<AccountMutationResult>;
+  renameAccount: (accountId: string, label: string) => Promise<AccountMutationResult>;
+  removeAccount: (accountId: string) => Promise<AccountMutationResult>;
+  verifyAccount: (accountId: string) => Promise<AccountMutationResult>;
   /**
    * The model/thinking selectors a harness's LIVE chat published, keyed by id.
    *

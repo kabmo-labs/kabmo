@@ -24,6 +24,9 @@ import { harnessStatus, type HarnessState } from '@/shared/lib/harness/status';
 import { HarnessConfigForm } from '@/client/components/settings/categories/harness-settings/ConfigForm';
 import { EMPTY_HARNESS_CONFIG, type HarnessConfig } from '@/shared/lib/harness/config';
 import { HarnessProviderPanel } from '@/client/components/settings/categories/harness-settings/ProviderPanel';
+import { HarnessAccountsPanel } from '@/client/components/settings/categories/harness-settings/AccountsPanel';
+import { accountAdapter, type HarnessAccountView } from '@/shared/lib/harness/accounts';
+import type { AccountMutationResult } from '@/client/hooks/models/harness-accounts';
 import type { HarnessImportOutcome, HarnessProviderSupport, HarnessSessionImport, HarnessSummary } from '@/shared/types/harness';
 import { HarnessImportControls } from '@/client/components/settings/categories/harness-settings/HarnessImportControls';
 import type { AddProviderInput } from '@/client/components/settings/categories/harness-settings/AddProviderForm';
@@ -60,6 +63,15 @@ interface HarnessCardProps {
     id: string,
     enabled: boolean,
   ) => Promise<{ autoImport: boolean | null; result: HarnessSessionImport | null; error: string | null }>;
+  /** Saved CLI homes for this harness, when it supports them. */
+  accounts?: HarnessAccountView[];
+  /** This harness's selected account; null means the host login. */
+  accountSelection?: Record<string, string | null>;
+  onCreateAccount?: (id: string, label: string) => Promise<AccountMutationResult>;
+  onSelectAccount?: (id: string, accountId: string | null) => Promise<AccountMutationResult>;
+  onRenameAccount?: (accountId: string, label: string) => Promise<AccountMutationResult>;
+  onRemoveAccount?: (accountId: string) => Promise<AccountMutationResult>;
+  onVerifyAccount?: (accountId: string) => Promise<AccountMutationResult>;
 }
 
 /** One capability row: a label and a yes/no/never-probed answer. */
@@ -86,6 +98,8 @@ function Capability({ label, value, detail }: { label: string; value: boolean | 
 export function HarnessCard({
   summary, onProbe, install, config, onSaveConfig, providerSupport, onImportProvider, onAddProvider,
   onSetEnabled, busy = false, onImportSessions, onSetAutoImport,
+  accounts = [], accountSelection = {}, onCreateAccount, onSelectAccount, onRenameAccount,
+  onRemoveAccount, onVerifyAccount,
 }: HarnessCardProps) {
   const [probing, setProbing] = useState(false);
   const [problem, setProblem] = useState<string | null>(summary.probe?.capabilities.blocked ?? null);
@@ -199,6 +213,25 @@ export function HarnessCard({
           )}
         </div>
         {summary.note && <p className="mb-3 text-[11px] leading-relaxed text-ink/45">{summary.note}</p>}
+
+        {accountAdapter(summary.id)
+          && onCreateAccount
+          && onSelectAccount
+          && onRenameAccount
+          && onRemoveAccount
+          && onVerifyAccount && (
+          <HarnessAccountsPanel
+            harness={summary.id}
+            accounts={accounts.filter((account) => account.harness === summary.id)}
+            selectedId={accountSelection[summary.id] ?? null}
+            onCreate={(label) => onCreateAccount(summary.id, label)}
+            onSelect={(accountId) => onSelectAccount(summary.id, accountId)}
+            onRename={onRenameAccount}
+            onRemove={onRemoveAccount}
+            onVerify={onVerifyAccount}
+            onProbe={() => onProbe(summary.id)}
+          />
+        )}
 
         <div className="grid gap-x-6 sm:grid-cols-2">
           <div>

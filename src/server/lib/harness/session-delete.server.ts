@@ -34,7 +34,8 @@
 import fs from 'node:fs';
 import { AcpProcess } from '@/server/lib/harness/acp/client';
 import { withGatewayCompatibility } from '@/server/lib/harness/acp/gateway-env';
-import { loadHarnessConfig, resolveLaunch } from '@/server/lib/harness/config.server';
+import { loadHarnessConfig } from '@/server/lib/harness/config.server';
+import { resolveAccountLaunch } from '@/server/lib/harness/accounts.server';
 import { customHarness, ensureCustomHarnesses } from '@/server/lib/harness/custom.server';
 import { isSinglePathSegment } from '@/server/lib/fs/path-segment';
 import { dshStoreDirs } from '@/server/lib/harness/session-transcript.server';
@@ -81,7 +82,7 @@ async function localStoreDirs(harness: HarnessId, agentSessionId: string): Promi
 
 async function defaultLaunch(harness: HarnessId): Promise<HarnessLaunch> {
   await ensureCustomHarnesses();
-  return resolveLaunch(harness, await loadHarnessConfig(harness));
+  return resolveAccountLaunch(harness, await loadHarnessConfig(harness));
 }
 
 interface Connection {
@@ -112,6 +113,7 @@ export function createAgentSessionRemover(deps: AgentSessionRemoverDeps = {}): A
       onNotification: () => {},
       onStderr: () => {},
       ...(env ? { env } : {}),
+      ...(launch.stripEnv ? { envDrop: launch.stripEnv } : {}),
     });
     try {
       const init = await proc.initialize(undefined, 60_000);

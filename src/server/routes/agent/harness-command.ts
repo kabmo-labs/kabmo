@@ -88,6 +88,7 @@ export async function resumeRecordedHarnessSession(
     // this chat's id and throw the conversation away.
     resumeAgentSessionId: record.agentSessionId || sessionId,
     cwd: record.cwd,
+    accountId: record.accountId || null,
     accessMode,
     env,
   });
@@ -160,6 +161,7 @@ export async function restoreRecordedHarnessSession(
     sessionId,
     resumeAgentSessionId: record.agentSessionId || sessionId,
     cwd: record.cwd,
+    accountId: record.accountId || null,
     accessMode,
     env,
     replay: true,

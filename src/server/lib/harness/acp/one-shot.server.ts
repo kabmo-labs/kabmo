@@ -21,7 +21,8 @@
  */
 
 import { AcpSession } from '@/server/lib/harness/acp/session';
-import { loadHarnessConfig, resolveLaunch } from '@/server/lib/harness/config.server';
+import { loadHarnessConfig } from '@/server/lib/harness/config.server';
+import { resolveAccountLaunch } from '@/server/lib/harness/accounts.server';
 import { sessionLaunchCommand } from '@/server/lib/harness/launch';
 import { extractTextFromContent } from '@/shared/lib/omp/session/mapper';
 import type { AcpSessionOptions } from '@/server/lib/harness/acp/session-options';
@@ -58,7 +59,7 @@ export async function runAcpOneShot(
   let launch;
   try {
     const configured = await loadHarnessConfig(request.harness);
-    launch = resolveLaunch(request.harness, configured);
+    launch = await resolveAccountLaunch(request.harness, configured);
   } catch (error) {
     return {
       ok: false,
@@ -73,6 +74,7 @@ export async function runAcpOneShot(
       harness: request.harness,
       command: sessionLaunchCommand(request.harness, launch.command),
       ...(launch.env ? { env: launch.env } : {}),
+      ...(launch.stripEnv ? { envDrop: launch.stripEnv } : {}),
       model: request.model,
       // A text answer, not a task: the cheapest level the agent offers.
       thinkingLevel: 'off',

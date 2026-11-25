@@ -29,6 +29,8 @@ export interface SessionRef {
   cwd: string | null;
   /** The agent's own id, for `session/load`; empty for omp. */
   agentSessionId: string;
+  /** Saved account the chat ran on; empty for the host login. */
+  accountId: string;
   live: boolean;
 }
 
@@ -42,6 +44,7 @@ export async function resolveSessionRef(sessionId: string): Promise<SessionRef> 
       harness,
       cwd: live.cwd || null,
       agentSessionId: harness === 'omp-rpc' ? '' : live.sessionId,
+      accountId: '',
       live: true,
     };
   }
@@ -56,6 +59,7 @@ export async function resolveSessionRef(sessionId: string): Promise<SessionRef> 
     harness: recordedHarness ?? (filePath ? 'omp-rpc' : null),
     cwd: record?.cwd || headerCwd || null,
     agentSessionId: record?.agentSessionId || '',
+    accountId: record?.accountId || '',
     live: false,
   };
 }

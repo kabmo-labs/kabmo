@@ -94,6 +94,7 @@ export interface ForkSessionDeps {
     /** The fork point an agent extension reads; omitted forks the whole chat. */
     forkMeta?: Record<string, unknown>;
     cwd: string;
+    accountId?: string | null;
     accessMode: ApprovalMode;
     model: SelectedModel | null;
     thinkingLevel: string | null;
@@ -280,6 +281,7 @@ export async function forkSession(
         forkAgentSessionId: source.agentSessionId || input.sourceSessionId,
         ...(input.anchorEntryId ? { forkMeta: airForkPoint(input.anchorEntryId) } : {}),
         cwd,
+        accountId: source.accountId || null,
         accessMode,
         model,
         thinkingLevel,

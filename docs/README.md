@@ -40,6 +40,7 @@ is not documentation and does not move.
 | 24 | [GitHub Actions viewer](milestones/M24-github-actions-viewer.md) | the Actions panel plugin — list, run drill with jobs and steps, job logs, cancel/re-run, header readout — over measured payloads and a free conditional poll | partial |
 | 25 | [Kanban board](milestones/M25-kanban-plugin.md) | a board that drives work: a card is a prompt + agent + stage, `Start work` spawns the chat, stage prompts become a real system prompt, and an agent moves its own cards through MCP | done |
 | 26 | [Dictation engines](milestones/M26-dictation-engines.md) | the engine seam and its settings page: explicit Indonesian/English, a 0600 key file, [OI]-compatible/Deepgram/ElevenLabs adapters, WAV, binary transport, and omp 19's local worker frame protocol | partial |
+| 27 | [Saved multi-account](milestones/M27-saved-multi-account-research.md) | Codex, Claude and Antigravity accounts as isolated CLI homes, with account-bound spawn/probe/resume and a separate Accounts section in harness settings | partial |
 
 ### What still owes
 
@@ -56,6 +57,7 @@ is not documentation and does not move.
 | 23 | the parity test on a real session, the blob prune, `apply_patch`/MCP write adapters | the writer, reader, classifier, scan pass and run separation shipped; the remaining items are listed in §10.4 |
 | 24 | the shared-core extraction (P0/D1) and the run-level log archive (P7) | the plugin, its 51 tests and the browser smoke shipped; the extraction and the archive did not |
 | 26 | an AudioWorklet capture path, a real-mic Indonesian accuracy run | the engine seam, settings page, adapters, gates, binary transport and omp 19's worker frame protocol shipped; whisper-base garbles Indonesian on synthetic audio (identical in-process, so the model's ceiling) |
+| 27 | a real Antigravity sign-in, shared Codex/Claude config and history, a per-chat account picker | homes, env isolation, account-bound spawn/probe/resume, the separate settings panel and the server-spawned `Sign in` panel shipped; the `agy` browser login still needs two real Google accounts, and config/history sharing was left out of v1 |
 
 Declined, and recorded as such rather than left open: plugin-platform **P6** (component registry,
 declined in M04 and re-declined in M05/W6) and the editor's **format-on-save** (M14).

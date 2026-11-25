@@ -63,6 +63,17 @@ describe('harness session store', () => {
     expect(one?.cwd).toBe('/tmp/project');
   });
 
+  test('a saved account is stored with the session it spawned', async () => {
+    await saveHarnessSession({
+      sessionId: 'sess-account',
+      harness: 'codex',
+      agentSessionId: 'agent-9',
+      cwd: '/tmp/project',
+      accountId: 'account-1',
+    });
+    expect((await loadHarnessSession('sess-account'))?.accountId).toBe('account-1');
+  });
+
   test('a re-spawn UPDATES the row instead of failing on the primary key', async () => {
     await saveHarnessSession({ sessionId: 'sess-1', harness: 'claude', agentSessionId: '', cwd: '/a' });
     await saveHarnessSession({ sessionId: 'sess-1', harness: 'codex', agentSessionId: 'x', cwd: '/b' });
@@ -194,6 +205,7 @@ describe('session import rows', () => {
       harness: 'codex',
       agentSessionId: '',
       cwd: '/work/app',
+      accountId: '',
       origin: 'imported',
     });
     const rows = await loadAcpSessions();
