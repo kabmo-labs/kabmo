@@ -14,14 +14,16 @@
  *
  * Two rules the hook exists to keep in ONE place:
  *
- * - **`hidden` is GLOBAL.** It lives in `app_settings`, not in the session's
- *   blob: the toggle answers for the reader's screen, so closing the side in
- *   one chat must keep it closed in every other one. The panel's own switch
- *   and the editor's own switch stay per session, so the side comes back the
- *   way it was left when something asks for it (a plugin opening its panel, a
- *   file being opened). The navbar's toggle is the exception and says so: it
- *   SHOWS everything, because a click that restored a half-hidden side would
- *   look like it did nothing.
+ * - **`hidden` follows the user's scope setting.** `rightSideHiddenScope`
+ *   defaults to `session`, so the side comes back the way each chat was left;
+ *   `global` makes the toggle answer for the reader's screen instead, so a
+ *   close applies to every chat. BOTH slots are written on every toggle — the
+ *   scope only chooses which one is READ — so changing the setting never jumps
+ *   the side to a value from the other slot. The panel's own switch and the
+ *   editor's own switch are always per session, so asking for a column brings
+ *   the side back the way it was left. The navbar's toggle is the exception
+ *   and says so: it SHOWS everything, because a click that restored a
+ *   half-hidden side would look like it did nothing.
  * - **The editor's width mode is derived from the editor's own flag**, not from
  *   `hidden` — the layout passes the effective `showEditor` into
  *   `useEditorViewLayout`, so putting the side away returns the chat at the
@@ -30,7 +32,51 @@
 
 import { useCallback, useState } from 'preact/hooks';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
-import { readRightSideHidden, saveRightSideHidden } from '@/shared/lib/workspace/right-side-hidden';
+import { useKabmoEvent } from '@/client/hooks/ui/window-event';
+import type { SettingsState } from '@/shared/types';
+import {
+  currentRightSideHiddenScope,
+  readRightSideHidden,
+  resolveRightSideHiddenScope,
+  RIGHT_SIDE_HIDDEN_SCOPE_KEY,
+  saveRightSideHidden,
+  type RightSideHiddenScope,
+} from '@/shared/lib/workspace/right-side-hidden';
+
+/**
+ * `kabmo_settings` key holding the scope (in the `kabmo_settings` blob).
+ *
+ * `satisfies keyof SettingsState` because the key and the field name must be
+ * the same string for persistence to work at all — renaming the field without
+ * this line would leave the setting silently unsaved.
+ */
+export const RIGHT_SIDE_HIDDEN_SCOPE_SETTING_KEY = RIGHT_SIDE_HIDDEN_SCOPE_KEY satisfies keyof SettingsState;
+
+/** Window event carrying the resolved scope as `detail`. */
+export const RIGHT_SIDE_HIDDEN_SCOPE_CHANGED_EVENT = 'omp:right-side-hidden-scope-changed';
+
+/**
+ * Announce a new scope. Called by the settings modal when the value moves — the
+ * persisted copy is written by the modal's own `writeKabmoSettings`, so this
+ * only has to make the mounted layout re-read which slot to draw.
+ */
+export function applyRightSideHiddenScope(value: unknown): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(
+    new CustomEvent(RIGHT_SIDE_HIDDEN_SCOPE_CHANGED_EVENT, {
+      detail: resolveRightSideHiddenScope(value),
+    }),
+  );
+}
+
+/** The scope the side should read, kept live across settings edits. */
+function useRightSideHiddenScope(): RightSideHiddenScope {
+  const [scope, setScope] = useState<RightSideHiddenScope>(currentRightSideHiddenScope);
+  useKabmoEvent(RIGHT_SIDE_HIDDEN_SCOPE_CHANGED_EVENT, (event) => {
+    setScope(resolveRightSideHiddenScope((event as CustomEvent<unknown>).detail));
+  });
+  return scope;
+}
 
 export interface RightSideLayoutOptions {
   /** The editor column has something to open on to (a tab, a takeover). */
@@ -76,13 +122,21 @@ export function useRightSideLayout({
     'layout.userToggledEditor',
     userToggledEditorInitially,
   );
-  // Global, unlike the two columns' switches: the side is the reader's screen,
-  // so a reload AND a session switch both return it the way it was left.
-  const [hidden, setHiddenState] = useState<boolean>(readRightSideHidden);
-  const setHidden = useCallback((next: boolean) => {
-    setHiddenState(next);
-    saveRightSideHidden(next);
-  }, []);
+  // The two slots the setting can read. Both stay in step on every toggle, so
+  // the scope only decides which one is drawn — never which one has an opinion.
+  const [sessionHidden, setSessionHidden] = useSessionState<boolean>('layout.rightSideHidden', false);
+  const [globalHidden, setGlobalHidden] = useState<boolean>(readRightSideHidden);
+  const hiddenScope = useRightSideHiddenScope();
+  const hidden = hiddenScope === 'global' ? globalHidden : sessionHidden;
+
+  const setHidden = useCallback(
+    (next: boolean) => {
+      setSessionHidden(next);
+      setGlobalHidden(next);
+      saveRightSideHidden(next);
+    },
+    [setSessionHidden],
+  );
 
   const revealRightPanel = useCallback(() => {
     setRightPanelOpen(true);

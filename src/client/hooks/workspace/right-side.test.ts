@@ -23,10 +23,19 @@ import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { SessionStateContext } from '@/client/hooks/workspace/session-state/context';
-import { useRightSideLayout, type RightSideLayout } from '@/client/hooks/workspace/right-side';
+import {
+  applyRightSideHiddenScope,
+  RIGHT_SIDE_HIDDEN_SCOPE_SETTING_KEY,
+  useRightSideLayout,
+  type RightSideLayout,
+} from '@/client/hooks/workspace/right-side';
 import { forgetSession } from '@/shared/lib/workspace/session-state/store';
-import { readKabmoSetting } from '@/shared/lib/settings/client';
-import { RIGHT_SIDE_HIDDEN_SETTING_KEY, saveRightSideHidden } from '@/shared/lib/workspace/right-side-hidden';
+import { readKabmoSetting, writeKabmoSettings } from '@/shared/lib/settings/client';
+import {
+  DEFAULT_RIGHT_SIDE_HIDDEN_SCOPE,
+  RIGHT_SIDE_HIDDEN_SETTING_KEY,
+  saveRightSideHidden,
+} from '@/shared/lib/workspace/right-side-hidden';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'Event', 'CustomEvent'] as const;
 const native: Partial<Record<(typeof DOM_GLOBALS)[number], unknown>> = {};
@@ -70,10 +79,10 @@ afterEach(() => {
   container?.remove();
   for (const id of sessions) forgetSession(id);
   sessions.length = 0;
-  // The side's flag is GLOBAL now, so a test that put it away would otherwise
-  // seed every test after it — resetting it is isolation, not the production
-  // behaviour this suite pins below.
+  // Both slots outlive the session the hook read, and the scope is a stored
+  // setting: a test that moved either would otherwise seed the next one.
   saveRightSideHidden(false);
+  writeKabmoSettings({ [RIGHT_SIDE_HIDDEN_SCOPE_SETTING_KEY]: DEFAULT_RIGHT_SIDE_HIDDEN_SCOPE });
   side = null;
   options = { editorHasContent: true, editorOpensByDefault: true };
 });
@@ -88,6 +97,15 @@ async function mount(overrides: Partial<typeof options> = {}): Promise<void> {
     render(h(SessionStateContext.Provider, { value: { sessionId, ready: true }, children: h(SideProbe, {}) }), container);
   });
   await act(async () => {});
+}
+
+/** A different chat, which is a different session — not a different screen. */
+async function remount(overrides: Partial<typeof options> = {}): Promise<void> {
+  await act(async () => {
+    render(null, container);
+  });
+  container.remove();
+  await mount(overrides);
 }
 
 async function click(action: (current: RightSideLayout) => void): Promise<void> {
@@ -113,20 +131,26 @@ describe('the right side toggle', () => {
     expect(side!.showRightPanel).toBe(false);
   });
 
-  test('putting the side away is global: the next session starts put away too', async () => {
+  test('the default scope keeps the closed side inside the chat it was closed in', async () => {
+    await mount();
+    await click((current) => current.toggleRightSide());
+    expect(side!.hidden).toBe(true);
+    // The global slot is written too, so switching the setting later reads the
+    // choice the reader already made rather than a stale value.
+    expect(readKabmoSetting<boolean>(RIGHT_SIDE_HIDDEN_SETTING_KEY)).toBe(true);
+
+    await remount();
+    expect(side!.hidden).toBe(false);
+    expect(side!.showRightPanel).toBe(true);
+    expect(side!.showEditor).toBe(true);
+  });
+
+  test('the global scope applies a close to every session', async () => {
+    writeKabmoSettings({ [RIGHT_SIDE_HIDDEN_SCOPE_SETTING_KEY]: 'global' });
     await mount();
     await click((current) => current.toggleRightSide());
 
-    // The reported defect: the flag lived in `session_ui_state`, so a different
-    // chat read the default and the side came back as if it had never closed.
-    expect(side!.hidden).toBe(true);
-    expect(readKabmoSetting<boolean>(RIGHT_SIDE_HIDDEN_SETTING_KEY)).toBe(true);
-
-    await act(async () => {
-      render(null, container);
-    });
-    container.remove();
-    await mount();
+    await remount();
     expect(side!.hidden).toBe(true);
     expect(side!.showRightPanel).toBe(false);
     expect(side!.showEditor).toBe(false);
@@ -134,12 +158,26 @@ describe('the right side toggle', () => {
     // The other direction is global for the same reason: opening it once is
     // the reader's screen from then on, whichever session is on it.
     await click((current) => current.toggleRightSide());
+    await remount();
     expect(side!.hidden).toBe(false);
-    await act(async () => {
-      render(null, container);
-    });
-    container.remove();
+  });
+
+  test('switching the scope reaches a side already on screen', async () => {
     await mount();
+    await click((current) => current.toggleRightSide());
+    await remount();
+    expect(side!.hidden).toBe(false);
+
+    // The other slot held the close from the first chat, so the setting change
+    // is visible on the click rather than after a reload.
+    await act(async () => {
+      applyRightSideHiddenScope('global');
+    });
+    expect(side!.hidden).toBe(true);
+
+    await act(async () => {
+      applyRightSideHiddenScope('session');
+    });
     expect(side!.hidden).toBe(false);
   });
 

@@ -25,6 +25,7 @@ import { DEFAULT_SETTINGS } from '@/shared/lib/settings/defaults';
 import { SIDEBAR_STYLE_CHANGED_EVENT } from '@/client/hooks/workspace/sidebar-style';
 import { CHANGED_FILES_CHANGED_EVENT } from '@/client/hooks/chat/timeline/changed-files-setting';
 import { EDITOR_FONT_CHANGED_EVENT } from '@/client/hooks/editor/font';
+import { RIGHT_SIDE_HIDDEN_SCOPE_CHANGED_EVENT } from '@/client/hooks/workspace/right-side';
 import type { SettingsState } from '@/shared/types';
 
 const originalWindow = globalThis.window;
@@ -85,6 +86,21 @@ describe('applySettingsSideEffects', () => {
     applySettingsSideEffects(state(), state({ showChangedFiles: false }));
 
     expect(seen).toEqual([false]);
+  });
+
+  test('announces the right-side scope so the side switches slots on the click', () => {
+    const win = installDom();
+    const seen: unknown[] = [];
+    win.addEventListener(RIGHT_SIDE_HIDDEN_SCOPE_CHANGED_EVENT, (event) =>
+      seen.push((event as unknown as CustomEvent).detail),
+    );
+
+    applySettingsSideEffects(
+      state({ rightSideHiddenScope: 'session' }),
+      state({ rightSideHiddenScope: 'global' }),
+    );
+
+    expect(seen).toEqual(['global']);
   });
 
   test('an unrelated edit announces nothing at all', () => {

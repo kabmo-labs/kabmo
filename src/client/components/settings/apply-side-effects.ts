@@ -35,6 +35,7 @@ import { applyShowChangedFiles } from '@/client/hooks/chat/timeline/changed-file
 import { applySidebarStyle } from '@/client/hooks/workspace/sidebar-style';
 import { applyPanelNav } from '@/client/hooks/workspace/panel-nav';
 import { applyMobilePanelNav } from '@/client/hooks/workspace/mobile-panel-nav';
+import { applyRightSideHiddenScope } from '@/client/hooks/workspace/right-side';
 import { revealLeftDock } from '@/client/hooks/workspace/left-dock';
 import { applyComposerStyle } from '@/client/hooks/chat/composer/style';
 import { applySurfaceStyle } from '@/client/hooks/ui/surface-style';
@@ -121,6 +122,13 @@ export function applySettingsSideEffects(previous: SettingsState, next: Settings
   }
   if (next.mobileRightPanelNav !== previous.mobileRightPanelNav) {
     applyMobilePanelNav('right', next.mobileRightPanelNav);
+  }
+
+  // The right side is visible behind this modal, and the scope decides which
+  // stored slot it reads — so the mounted layout has to switch slots on the
+  // click rather than on the next reload.
+  if (next.rightSideHiddenScope !== previous.rightSideHiddenScope) {
+    applyRightSideHiddenScope(next.rightSideHiddenScope);
   }
 
   // The composer style reorders the card's rows. The composer is NOT visible

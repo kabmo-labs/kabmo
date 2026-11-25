@@ -3,6 +3,7 @@ import type { ChatWidthMode } from '@/shared/lib/chat/timeline/width-mode';
 import type { ToolRenderMode } from '@/shared/lib/chat/timeline/tool-render-mode';
 import type { SidebarStyle } from '@/shared/lib/workspace/sidebar-style';
 import type { MobilePanelNav, PanelNavStyle } from '@/shared/lib/workspace/panel-nav';
+import type { RightSideHiddenScope } from '@/shared/lib/workspace/right-side-hidden';
 import type { ComposerStyle } from '@/shared/lib/chat/composer/style';
 import type { SurfaceStyle } from '@/shared/lib/theme/surface-style';
 import type { BorderStyle } from '@/shared/lib/theme/border-style';
@@ -215,6 +216,17 @@ export interface SettingsState {
    * the other. Desktop-only, like its left counterpart.
    */
   rightPanelNav: PanelNavStyle;
+  /**
+   * How long the navbar's right-side toggle is remembered (`session` | `global`).
+   *
+   * `session` (the default) stores the closed side in the chat's own layout, so
+   * switching chats restores each one as it was left. `global` stores it in
+   * `app_settings` instead: closing the side once keeps it closed in every
+   * chat, because the reader's screen does not change with the conversation.
+   * Both slots are written on every toggle, so changing the scope never jumps
+   * the side to a stale value.
+   */
+  rightSideHiddenScope: RightSideHiddenScope;
   /**
    * How the PHONE's LEFT drawer navigates its views (`classic` | `tabs`).
    *

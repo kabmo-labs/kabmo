@@ -118,6 +118,7 @@ describe('AppearanceSettings master/detail', () => {
     expect(headings()).toEqual([
       'Session sidebar',
       'Panel navigation',
+      'Right side',
       'Surfaces',
       'Rules',
       'Icons',

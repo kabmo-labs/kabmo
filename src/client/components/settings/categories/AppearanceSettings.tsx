@@ -35,6 +35,7 @@ import {
 import { ThemeSection } from '@/client/components/settings/categories/appearance-settings/ThemeSection';
 import { SidebarStyleSection } from '@/client/components/settings/categories/appearance-settings/SidebarStyleSection';
 import { PanelNavSection } from '@/client/components/settings/categories/appearance-settings/PanelNavSection';
+import { RightSideSection } from '@/client/components/settings/categories/appearance-settings/RightSideSection';
 import { SurfaceStyleSection } from '@/client/components/settings/categories/appearance-settings/SurfaceStyleSection';
 import { BorderStyleSection } from '@/client/components/settings/categories/appearance-settings/BorderStyleSection';
 import { IconStyleSection } from '@/client/components/settings/categories/appearance-settings/IconStyleSection';
@@ -57,6 +58,7 @@ const SECTIONS: Record<AppearanceSectionId, (props: SectionProps) => ComponentCh
   theme: ThemeSection,
   sidebar: SidebarStyleSection,
   'panel-nav': PanelNavSection,
+  'right-side': RightSideSection,
   surface: SurfaceStyleSection,
   border: BorderStyleSection,
   icons: IconStyleSection,

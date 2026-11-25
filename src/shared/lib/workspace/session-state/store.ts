@@ -15,12 +15,14 @@
  *                             the retired per-panel `<panel>.activeRepo` keys,
  *                             which are migrated on the first open.
  * - layout.activeRightPanel   RightPanelType
- * - layout.showRightPanel     boolean — the panel's own switch. The whole
- *                             side's switch is NOT here: it is global
- *                             (`app_settings.omp_right_side_hidden`), because
- *                             closing the side is about the reader's screen
- *                             rather than the chat, and a session-scoped value
- *                             reopened it in every other session.
+ * - layout.showRightPanel     boolean — the panel's own switch.
+ * - layout.rightSideHidden    boolean — the whole right side (editor column,
+ *                             right panel and their rail) is put away. Read
+ *                             only while `rightSideHiddenScope` is `session`
+ *                             (the default); under `global` the toggle reads
+ *                             `app_settings.omp_right_side_hidden` instead.
+ *                             Both slots are written on every toggle, so the
+ *                             scope only decides which one is drawn.
  * - layout.showLeftPanel      boolean
  * - layout.userToggledEditor  boolean | null (null = follow whether a file is open)
  * - layout.panelWidths        PanelWidths (the editor's and the right panel's

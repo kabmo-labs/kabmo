@@ -30,6 +30,7 @@ export const APPEARANCE_SECTION_IDS = [
   'theme',
   'sidebar',
   'panel-nav',
+  'right-side',
   'surface',
   'border',
   'icons',
@@ -68,11 +69,11 @@ export const APPEARANCE_GROUPS: readonly AppearanceGroup[] = [
   {
     id: 'shell',
     label: 'Shell',
-    hint: 'Sidebar, panels, material, rules, icons',
+    hint: 'Sidebar, panels, right side, material, rules, icons',
     description:
-      'The shape of the console around the conversation: the session sidebar, how each desktop panel column is navigated, what the windows are made of, whether the hairlines are drawn, and how glyphs and marks are painted.',
+      'The shape of the console around the conversation: the session sidebar, how each desktop panel column is navigated, how long a closed right side is remembered, what the windows are made of, whether the hairlines are drawn, and how glyphs and marks are painted.',
     icon: PanelLeft,
-    sections: ['sidebar', 'panel-nav', 'surface', 'border', 'icons', 'tray'],
+    sections: ['sidebar', 'panel-nav', 'right-side', 'surface', 'border', 'icons', 'tray'],
   },
   {
     id: 'editor',
