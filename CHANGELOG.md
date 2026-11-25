@@ -4,6 +4,26 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.50.0](https://github.com/kabmo-labs/kabmo/compare/v0.49.0...v0.50.0) — 2026-11-25
+
+### Added
+
+* **acp:** continue a chat whose background subagent went silent ([5086e1c](https://github.com/kabmo-labs/kabmo/commit/5086e1c7f27d8cfc9c141e986f09098895966129)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** save and switch Codex, Claude and Antigravity accounts ([df262e0](https://github.com/kabmo-labs/kabmo/commit/df262e07848b5b5fcbc028b715ac6c89a7d3acbf)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **layout:** make the right-side toggle scope a setting ([36b889d](https://github.com/kabmo-labs/kabmo/commit/36b889d5e266739fd2cb186de6cdb0134e14b4af)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **markdown:** straighten ragged ASCII box frames in text code blocks ([bf1f66a](https://github.com/kabmo-labs/kabmo/commit/bf1f66a4912def514c2637ba9dee3ce7617a90ff)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **usage:** hide providers without quota by default ([5f84ac6](https://github.com/kabmo-labs/kabmo/commit/5f84ac605f16105634098cb4466a3465fecb9df7)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **usage:** read Antigravity quota from the local sign-in ([39343a1](https://github.com/kabmo-labs/kabmo/commit/39343a1dabfaa2978df61be1c4ebfaabf26e7134)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **usage:** read every harness that records token usage ([9da3e9b](https://github.com/kabmo-labs/kabmo/commit/9da3e9b72b2df0f1b5a4beec0eb0786abfc595a9)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **voice:** add Google Gemini TTS engine ([f18b747](https://github.com/kabmo-labs/kabmo/commit/f18b7476e856800c6c65f42fa28260ec535be1a7)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **chat:** pause stream auto-scroll while the reader's pointer is active ([cbc978e](https://github.com/kabmo-labs/kabmo/commit/cbc978e8e6c586cdb7d5135f1eb9fef7f491a43e)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **layout:** keep the right side closed across sessions ([b150c8b](https://github.com/kabmo-labs/kabmo/commit/b150c8b8c06426adaf3df4e764fb8bb51c121ca2)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **providers:** make fetched SVG icons decodable ([7845b3d](https://github.com/kabmo-labs/kabmo/commit/7845b3d9a61859101089e6822b7f90bb408786be)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **voice:** support Indonesian language and keyless local speech ([9019835](https://github.com/kabmo-labs/kabmo/commit/90198359e43c5d0bb715023ee65a238c47c2314e)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.49.0](https://github.com/kabmo-labs/kabmo/compare/v0.48.0...v0.49.0) — 2026-11-24
 
 ### Added
