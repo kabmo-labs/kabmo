@@ -4,6 +4,12 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.52.0](https://github.com/kabmo-labs/kabmo/compare/v0.51.0...v0.52.0) — 2026-11-25
+
+### Added
+
+* **omp:** bump the pin to 19.2.0 and relax the ask form's field rules ([f653ea4](https://github.com/kabmo-labs/kabmo/commit/f653ea40208d3ba022507be421cc114d77414629)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.51.0](https://github.com/kabmo-labs/kabmo/compare/v0.50.0...v0.51.0) — 2026-11-25
 
 ### Added
