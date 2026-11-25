@@ -166,6 +166,27 @@ describe('the editor font setting', () => {
     window.dispatchEvent(new CustomEvent(EDITOR_FONT_CHANGED_EVENT, { detail: 'Monaco' }));
     expect(stack.startsWith('"Menlo",')).toBe(true);
   });
+
+  test('a render with no window is inert, not a crash', () => {
+    primeKabmoSettings({ editorFont: 'Menlo' });
+    const win = globalThis.window;
+    // The measured failure: a suite restores the DOM globals while a mounted
+    // tree still waits for Preact's after-paint flush, so the effect body runs
+    // with `window` gone and a bare read fails the run in the NEXT file. This
+    // file's own `mountFont` cannot show it — `act` flushes the effect while
+    // the window is still installed.
+    Reflect.deleteProperty(globalThis, 'window');
+    try {
+      container = document.body.appendChild(document.createElement('div'));
+      // SYNC `act`: an async callback defers the flush into `v.then(y)` and
+      // swallows the error there, so the throw has to land inside this call.
+      act(() => { render(h(FontProbe, {}), container); });
+    } finally {
+      if (win !== undefined) Reflect.set(globalThis, 'window', win);
+    }
+    // `currentEditorFont` falls back to the shipped face with no window.
+    expect(stack).toBe(EDITOR_FONT_FAMILY);
+  });
 });
 
 // ── file-actions.ts ─────────────────────────────────────────────────────────

@@ -20,7 +20,7 @@
  * `patch-sides.test.ts` for the pair the card hands over.
  */
 
-import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
+import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
@@ -29,6 +29,8 @@ import { DiffView } from '@/client/components/workspace/chat-timeline/tool-rende
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'HTMLInputElement', 'Event', 'MouseEvent', 'KeyboardEvent'] as const;
 const nativeGlobals: Partial<Record<(typeof DOM_GLOBALS)[number], unknown>> = {};
 let container: HTMLElement;
+/** Every tree this file mounted, unmounted before the window goes away. */
+const mounted: HTMLElement[] = [];
 
 beforeAll(() => {
   const win = new Window({ url: 'http://localhost' });
@@ -37,6 +39,15 @@ beforeAll(() => {
     if (!(key in nativeGlobals)) nativeGlobals[key] = target[key];
     target[key] = (win as unknown as Record<string, unknown>)[key];
   }
+});
+
+afterEach(() => {
+  // UNMOUNT, not detach: the view subscribes (editor font, scroll restore) and
+  // Preact defers a mounted tree's after-paint effect flush by ~35 ms. A tree
+  // left mounted flushes in a LATER file, after `afterAll` restored the globals,
+  // and that is what failed the Ubuntu gate with `ReferenceError: window is not
+  // defined` reported against `truncate.test.ts` — a file that mounts nothing.
+  for (const node of mounted.splice(0)) render(null, node);
 });
 
 afterAll(() => {
@@ -60,6 +71,7 @@ const MERGE_VIEW = import('@/client/components/workspace/diff-panel/MergeDiffVie
 async function mount(text = EXCERPT) {
   container = document.createElement('div');
   document.body.appendChild(container);
+  mounted.push(container);
   await act(async () => {
     render(h(DiffView, { text, path: 'src/x.ts' }), container);
   });

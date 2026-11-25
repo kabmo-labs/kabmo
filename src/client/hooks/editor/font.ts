@@ -20,7 +20,8 @@
  * the app does not ship.
  */
 
-import { useEffect, useState } from 'preact/hooks';
+import { useState } from 'preact/hooks';
+import { useKabmoEvent } from '@/client/hooks/ui/window-event';
 import { readKabmoSetting } from '@/shared/lib/settings/client';
 import {
   EDITOR_DEFAULT_FONT_FAMILY,
@@ -40,14 +41,16 @@ export function currentEditorFont(): string {
 export function useEditorFontStack(): string {
   const [family, setFamily] = useState<string>(currentEditorFont);
 
-  useEffect(() => {
-    const onChange = (event: Event) => {
-      const detail = (event as CustomEvent<string>).detail;
-      setFamily(detail || currentEditorFont());
-    };
-    window.addEventListener(EDITOR_FONT_CHANGED_EVENT, onChange);
-    return () => window.removeEventListener(EDITOR_FONT_CHANGED_EVENT, onChange);
-  }, []);
+  // Subscribed through `useKabmoEvent`, not a bare `window`: the helpers resolve
+  // the target off `globalThis` at render, so a deferred flush that lands after
+  // the DOM globals are gone is a no-op instead of `ReferenceError: window is
+  // not defined`. Measured on the Ubuntu gate: the flush of this very effect,
+  // 35 ms after a suite restored the globals, failed the run with two
+  // unhandled errors in a file that renders nothing (`truncate.test.ts`).
+  useKabmoEvent(EDITOR_FONT_CHANGED_EVENT, (event) => {
+    const detail = (event as CustomEvent<string>).detail;
+    setFamily(detail || currentEditorFont());
+  });
 
   return editorFontStack(family);
 }
