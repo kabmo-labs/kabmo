@@ -4,6 +4,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
+import { join } from 'node:path';
 
 import { buildLocalConfig } from '@/server/lib/tts/engines/sherpa';
 
@@ -22,8 +23,8 @@ describe('buildLocalConfig', () => {
     const built = buildLocalConfig('/m', 'supertonic', SUPERTONIC_FILES);
     expect(built.missing).toEqual([]);
     const config = built.config as { model: { supertonic: Record<string, string> } };
-    expect(config.model.supertonic.durationPredictor).toBe('/m/duration_predictor.int8.onnx');
-    expect(config.model.supertonic.voiceStyle).toBe('/m/voice.bin');
+    expect(config.model.supertonic.durationPredictor).toBe(join('/m', 'duration_predictor.int8.onnx'));
+    expect(config.model.supertonic.voiceStyle).toBe(join('/m', 'voice.bin'));
   });
 
   test('a missing file is named instead of handing the addon a broken path', () => {
@@ -43,7 +44,9 @@ describe('buildLocalConfig', () => {
       'espeak-ng-data',
     ]);
     const config = built.config as { model: { kokoro: Record<string, string> } };
-    expect(config.model.kokoro.lexicon).toBe('/k/lexicon-us-en.txt,/k/lexicon-zh.txt');
+    expect(config.model.kokoro.lexicon).toBe(
+      `${join('/k', 'lexicon-us-en.txt')},${join('/k', 'lexicon-zh.txt')}`,
+    );
     // `dataDir` is ignored from sherpa-onnx 2.0, so it must not be sent at all.
     expect(config.model.kokoro).not.toHaveProperty('dataDir');
   });
