@@ -18,7 +18,8 @@
     "./subagent-presence-store": "./src/subagent-presence-store.ts",
     "./title-model-overlay.server": "./src/title-model-overlay.server.ts",
     "./title-request.server": "./src/title-request.server.ts",
-    "./transcript-copy": "./src/transcript-copy.ts"
+    "./transcript-copy": "./src/transcript-copy.ts",
+    "./goal-driver.server": "./src/goal-driver.server.ts"
   },
   "files": [
     "src"
@@ -44,10 +45,15 @@
     "@kabmo-labs/kabmo-omp-cli": "workspace:*",
     "@kabmo-labs/kabmo-omp-config-doc": "workspace:*",
     "@kabmo-labs/kabmo-omp-install": "workspace:*",
+    "@kabmo-labs/kabmo-omp-mapper": "workspace:*",
     "@kabmo-labs/kabmo-omp-mode": "workspace:*",
+    "@kabmo-labs/kabmo-omp-mode-request": "workspace:*",
     "@kabmo-labs/kabmo-omp-paths": "workspace:*",
     "@kabmo-labs/kabmo-omp-rpc-protocol": "workspace:*",
     "@kabmo-labs/kabmo-omp-session-core": "workspace:*",
+    "@kabmo-labs/kabmo-omp-session-locator": "workspace:*",
+    "@kabmo-labs/kabmo-omp-session-messages": "workspace:*",
+    "@kabmo-labs/kabmo-omp-session-runtime": "workspace:*",
     "@kabmo-labs/kabmo-omp-session-scan": "workspace:*",
     "@kabmo-labs/kabmo-realtime-signals": "workspace:*",
     "@kabmo-labs/kabmo-settings-store": "workspace:*"

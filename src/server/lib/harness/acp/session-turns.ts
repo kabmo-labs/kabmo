@@ -37,7 +37,7 @@
 import { scheduleQueueDelivery } from '@/server/lib/queue/delivery.server';
 import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 import { saveAcpUsage } from '@kabmo-labs/kabmo-acp-session-core/acp-telemetry.server';
-import { lastAssistantText } from '@/server/lib/omp/session/goal-driver.server';
+import { lastAssistantText } from '@kabmo-labs/kabmo-omp-session-runtime/goal-driver.server';
 import { noteChildOutcome } from '@/server/lib/sessions/notify.server';
 import { saveSessionAnswer } from '@/server/lib/sessions/answers.server';
 import { transcriptFailure } from '@kabmo-labs/kabmo-acp-session-core/turn-outcome.server';

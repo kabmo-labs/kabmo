@@ -1336,6 +1336,9 @@
       "@kabmo-labs/kabmo-acp-control/acp-todos.server": [
         "./packages/kabmo-acp-control/src/acp-todos.server.ts"
       ],
+      "@kabmo-labs/kabmo-omp-session-runtime/goal-driver.server": [
+        "./packages/kabmo-omp-session-runtime/src/goal-driver.server.ts"
+      ],
       "@kabmo-labs/kabmo-ui": [
         "./packages/kabmo-ui/src/index.tsx"
       ],

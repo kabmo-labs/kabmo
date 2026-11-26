@@ -44,7 +44,7 @@ import {
 import { scheduleQueueDelivery, type QueueDeliveryHost } from '@/server/lib/queue/delivery.server';
 import { requestWaitingSweep } from '@/server/lib/waiting/sweep-trigger';
 import { markStreamStatus, loadStreamStatuses } from '@kabmo-labs/kabmo-session-stream-state';
-import { driveGoalAfterTurn, lastAssistantText } from '@/server/lib/omp/session/goal-driver.server';
+import { driveGoalAfterTurn, lastAssistantText } from '@kabmo-labs/kabmo-omp-session-runtime/goal-driver.server';
 import { noteChildOutcome } from '@/server/lib/sessions/notify.server';
 import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 import { publishSidebarStructure } from '@/server/lib/realtime/topics.server';

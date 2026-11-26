@@ -15,7 +15,7 @@ import { loadPersistedModes } from '@kabmo-labs/kabmo-omp-session-runtime/modes'
 import { isModeCommandType, modeCommandPrompt, parseModeRequest, parseModeSelection } from '@kabmo-labs/kabmo-omp-mode-request';
 import { kabmoModeEnv } from '@kabmo-labs/kabmo-omp-extensions';
 import { mintAgentEnvironment, rememberAgentToken } from '@kabmo-labs/kabmo-session-relations/agent-token.server';
-import { resetGoalDriverState } from '@/server/lib/omp/session/goal-driver.server';
+import { resetGoalDriverState } from '@kabmo-labs/kabmo-omp-session-runtime/goal-driver.server';
 import { forwardToPeer, isPeerRelayed, peerOriginForSession } from '@/server/lib/omp/rpc/peer-proxy.server';
 import { applyHarnessMode, resumeRecordedHarnessSession } from '@/server/routes/agent/harness-command';
 import { restoreChatResponse } from '@/server/routes/agent/restore';

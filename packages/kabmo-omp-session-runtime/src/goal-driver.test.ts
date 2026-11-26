@@ -22,7 +22,7 @@ import {
   resetGoalDriverState,
   type GoalDriverContext,
   type GoalDriverDeps,
-} from '@/server/lib/omp/session/goal-driver.server';
+} from './goal-driver.server';
 import type { GoalAuditAnswers } from '@kabmo-labs/kabmo-omp-session-runtime/goal-auditor.server';
 import type { GoalRecord } from '@kabmo-labs/kabmo-omp-mode/types';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';

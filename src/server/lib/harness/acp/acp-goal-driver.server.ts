@@ -22,7 +22,7 @@ import {
   AUDIT_FAILURE_LIMIT,
   BLOCKED_STRIKE_LIMIT,
   lastAssistantText,
-} from '@/server/lib/omp/session/goal-driver.server';
+} from '@kabmo-labs/kabmo-omp-session-runtime/goal-driver.server';
 import { decideGoalProgress, type GoalAuditAnswers } from '@kabmo-labs/kabmo-omp-session-runtime/goal-auditor.server';
 import { readGoalSettings } from '@kabmo-labs/kabmo-omp-session-runtime/goal-settings.server';
 import { runAcpGoalAudit, type AcpGoalAuditRequest } from '@/server/lib/harness/acp/acp-audit.server';
