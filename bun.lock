@@ -81,6 +81,7 @@
         "@kabmo-labs/kabmo-omp-session-core": "workspace:*",
         "@kabmo-labs/kabmo-omp-session-messages": "workspace:*",
         "@kabmo-labs/kabmo-omp-session-parse": "workspace:*",
+        "@kabmo-labs/kabmo-omp-session-reader": "workspace:*",
         "@kabmo-labs/kabmo-omp-session-scan": "workspace:*",
         "@kabmo-labs/kabmo-omp-subagent": "workspace:*",
         "@kabmo-labs/kabmo-omp-worktree": "workspace:*",
@@ -89,6 +90,7 @@
         "@kabmo-labs/kabmo-process-kill": "workspace:*",
         "@kabmo-labs/kabmo-process-probe": "workspace:*",
         "@kabmo-labs/kabmo-provider-contracts": "workspace:*",
+        "@kabmo-labs/kabmo-refresh-cadence": "workspace:*",
         "@kabmo-labs/kabmo-rpc-lines": "workspace:*",
         "@kabmo-labs/kabmo-runtime-flags": "workspace:*",
         "@kabmo-labs/kabmo-sdk": "workspace:*",
@@ -638,6 +640,18 @@
         "@kabmo-labs/kabmo-omp-session-core": "workspace:*",
       },
     },
+    "packages/kabmo-omp-session-reader": {
+      "name": "@kabmo-labs/kabmo-omp-session-reader",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kabmo-labs/kabmo-omp-contracts": "workspace:*",
+        "@kabmo-labs/kabmo-omp-paths": "workspace:*",
+        "@kabmo-labs/kabmo-omp-registry": "workspace:*",
+        "@kabmo-labs/kabmo-omp-session-scan": "workspace:*",
+        "@kabmo-labs/kabmo-omp-worktree": "workspace:*",
+        "@kabmo-labs/kabmo-refresh-cadence": "workspace:*",
+      },
+    },
     "packages/kabmo-omp-session-scan": {
       "name": "@kabmo-labs/kabmo-omp-session-scan",
       "version": "0.0.1",
@@ -695,6 +709,10 @@
       "dependencies": {
         "@kabmo-labs/kabmo-settings-contracts": "workspace:*",
       },
+    },
+    "packages/kabmo-refresh-cadence": {
+      "name": "@kabmo-labs/kabmo-refresh-cadence",
+      "version": "0.0.1",
     },
     "packages/kabmo-rpc-lines": {
       "name": "@kabmo-labs/kabmo-rpc-lines",
@@ -943,6 +961,8 @@
 
     "@kabmo-labs/kabmo-omp-session-parse": ["@kabmo-labs/kabmo-omp-session-parse@workspace:packages/kabmo-omp-session-parse"],
 
+    "@kabmo-labs/kabmo-omp-session-reader": ["@kabmo-labs/kabmo-omp-session-reader@workspace:packages/kabmo-omp-session-reader"],
+
     "@kabmo-labs/kabmo-omp-session-scan": ["@kabmo-labs/kabmo-omp-session-scan@workspace:packages/kabmo-omp-session-scan"],
 
     "@kabmo-labs/kabmo-omp-subagent": ["@kabmo-labs/kabmo-omp-subagent@workspace:packages/kabmo-omp-subagent"],
@@ -958,6 +978,8 @@
     "@kabmo-labs/kabmo-process-probe": ["@kabmo-labs/kabmo-process-probe@workspace:packages/kabmo-process-probe"],
 
     "@kabmo-labs/kabmo-provider-contracts": ["@kabmo-labs/kabmo-provider-contracts@workspace:packages/kabmo-provider-contracts"],
+
+    "@kabmo-labs/kabmo-refresh-cadence": ["@kabmo-labs/kabmo-refresh-cadence@workspace:packages/kabmo-refresh-cadence"],
 
     "@kabmo-labs/kabmo-rpc-lines": ["@kabmo-labs/kabmo-rpc-lines@workspace:packages/kabmo-rpc-lines"],
 

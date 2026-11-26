@@ -216,6 +216,8 @@ describe('package catalog', () => {
       'kabmo-settings-store',
       'kabmo-omp-subagent',
       'kabmo-omp-rpc-util',
+      'kabmo-refresh-cadence',
+      'kabmo-omp-session-reader',
       'kabmo-guards',
       'kabmo-bytes',
       'kabmo-platform',

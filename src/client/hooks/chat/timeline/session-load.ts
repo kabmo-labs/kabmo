@@ -23,7 +23,7 @@ import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import type { ChatMessageData } from '@/shared/types';
 import type { SessionDataShape, SessionSeed } from '@/client/hooks/chat/timeline/session-shapes';
 import { publishLiveModels } from '@/client/hooks/models/use-harnesses';
-import { SESSION_META_RETRY_SCHEDULE_MS } from '@/shared/lib/workspace/refresh-cadence';
+import { SESSION_META_RETRY_SCHEDULE_MS } from '@kabmo-labs/kabmo-refresh-cadence';
 import { useSessionPagination } from '@/client/hooks/chat/timeline/session-pagination';
 import { useLostRunRecovery } from '@/client/hooks/chat/timeline/lost-run';
 import { useRestoreHistory } from '@/client/hooks/chat/timeline/restore-history';

@@ -27,7 +27,7 @@ import { getDb } from '@/server/db.server';
 import type { DbClient } from '@kabmo-labs/kabmo-db/client';
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
-import { invalidateOmpSidebarData } from '@/server/lib/omp/session/reader';
+import { invalidateOmpSidebarData } from '@kabmo-labs/kabmo-omp-session-reader';
 import { ModeMirror } from '@/server/lib/omp/rpc/mode-mirror';
 import { recordSpawnProvenance } from '@/server/lib/omp/rpc/spawn-provenance';
 import { claimHarness } from '@kabmo-labs/kabmo-harness-registry';

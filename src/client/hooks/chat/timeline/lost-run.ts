@@ -42,7 +42,7 @@
 import type { Dispatch, SetStateAction } from 'preact/compat';
 import { useCallback, useRef } from 'preact/hooks';
 
-import { SESSION_META_RETRY_SCHEDULE_MS } from '@/shared/lib/workspace/refresh-cadence';
+import { SESSION_META_RETRY_SCHEDULE_MS } from '@kabmo-labs/kabmo-refresh-cadence';
 import type { ChatMessageData } from '@/shared/types';
 import { useReconnectSettle } from '@/client/hooks/chat/omp/reconnect';
 

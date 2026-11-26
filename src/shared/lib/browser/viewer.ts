@@ -30,7 +30,7 @@ import { SCREENCAST_PARAMS } from '@/shared/lib/browser/frame-params';
 import { createFramePipeline, type FramePipeline } from '@/shared/lib/browser/frame-pipeline';
 import { readNumber, readString } from '@/shared/lib/browser/util';
 import { isRecord } from '@kabmo-labs/kabmo-guards';
-import { BROWSER_POLL_MS } from '@/shared/lib/workspace/refresh-cadence';
+import { BROWSER_POLL_MS } from '@kabmo-labs/kabmo-refresh-cadence';
 
 interface ScreencastOptions {
   /** Caller's preferred tab id; honored while it is still a live, owned page. */

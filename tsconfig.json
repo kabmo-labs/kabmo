@@ -856,6 +856,18 @@
       "@kabmo-labs/kabmo-omp-rpc-util/utility-agent-dir": [
         "./packages/kabmo-omp-rpc-util/src/utility-agent-dir.ts"
       ],
+      "@kabmo-labs/kabmo-refresh-cadence": [
+        "./packages/kabmo-refresh-cadence/src/refresh-cadence.ts"
+      ],
+      "@kabmo-labs/kabmo-refresh-cadence/refresh-cadence": [
+        "./packages/kabmo-refresh-cadence/src/refresh-cadence.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-session-reader": [
+        "./packages/kabmo-omp-session-reader/src/reader.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-session-reader/reader": [
+        "./packages/kabmo-omp-session-reader/src/reader.ts"
+      ],
       "@kabmo-labs/kabmo-ui": [
         "./packages/kabmo-ui/src/index.tsx"
       ],

@@ -31,7 +31,7 @@ import * as path from 'node:path';
 import { createDb, type DbClient } from '@kabmo-labs/kabmo-db/client';
 import { syncWorkspaceFoldersFromDiscovery } from '@/server/lib/db/workspace-sync';
 import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
-import { invalidateOmpSidebarData } from '@/server/lib/omp/session/reader';
+import { invalidateOmpSidebarData } from '@kabmo-labs/kabmo-omp-session-reader';
 
 const SCHEMA = `
   CREATE TABLE workspace_folders (

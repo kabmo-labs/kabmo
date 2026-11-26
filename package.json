@@ -146,6 +146,8 @@
     "@kabmo-labs/kabmo-omp-rpc-util": "workspace:*",
     "@kabmo-labs/kabmo-omp-session-messages": "workspace:*",
     "@kabmo-labs/kabmo-omp-session-parse": "workspace:*",
+    "@kabmo-labs/kabmo-omp-session-reader": "workspace:*",
+    "@kabmo-labs/kabmo-refresh-cadence": "workspace:*",
     "@kabmo-labs/kabmo-omp-session-scan": "workspace:*",
     "@kabmo-labs/kabmo-omp-worktree": "workspace:*",
     "@kabmo-labs/kabmo-paths": "workspace:*",

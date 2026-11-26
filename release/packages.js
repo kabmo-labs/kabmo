@@ -137,6 +137,14 @@ export const RELEASE_PACKAGES = [
     name: '@kabmo-labs/kabmo-omp-rpc-util',
   },
   {
+    dir: 'packages/kabmo-refresh-cadence',
+    name: '@kabmo-labs/kabmo-refresh-cadence',
+  },
+  {
+    dir: 'packages/kabmo-omp-session-reader',
+    name: '@kabmo-labs/kabmo-omp-session-reader',
+  },
+  {
     /** Directory under `packages/`, which is also the tag's prefix. */
     dir: 'packages/kabmo-guards',
     name: '@kabmo-labs/kabmo-guards',

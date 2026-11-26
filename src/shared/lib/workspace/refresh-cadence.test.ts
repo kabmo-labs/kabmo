@@ -22,7 +22,7 @@ import {
   SESSION_META_RETRY_SCHEDULE_MS,
   SIDEBAR_DATA_TTL_MS,
   STREAM_HEARTBEAT_MS,
-} from '@/shared/lib/workspace/refresh-cadence';
+} from '@kabmo-labs/kabmo-refresh-cadence';
 import { formatFullDate, formatRunElapsed, relativeTimeAgo } from '@/shared/lib/workspace/relative-time';
 
 describe('refresh cadences', () => {

@@ -33,7 +33,7 @@ import { openScreencast, type ScreencastHandle } from '@/shared/lib/browser/view
 import { type TargetWatcherHandle, watchOwnedTargets } from '@/shared/lib/browser/watcher';
 import type { BrowserPanelAction, BrowserViewFrame, BrowserViewState } from '@/shared/types';
 import { createSseStream } from '@/server/lib/sse';
-import { BROWSER_POLL_MS, STREAM_HEARTBEAT_MS } from '@/shared/lib/workspace/refresh-cadence';
+import { BROWSER_POLL_MS, STREAM_HEARTBEAT_MS } from '@kabmo-labs/kabmo-refresh-cadence';
 
 const BROWSER_OFFLINE: BrowserViewState = { status: 'browser-offline', tabs: [] };
 

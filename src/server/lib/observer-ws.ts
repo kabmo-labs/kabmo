@@ -26,7 +26,7 @@
  */
 
 import { createEventCoalescer, type EventCoalescer } from '@/server/lib/sse';
-import { STREAM_HEARTBEAT_MS } from '@/shared/lib/workspace/refresh-cadence';
+import { STREAM_HEARTBEAT_MS } from '@kabmo-labs/kabmo-refresh-cadence';
 
 /** Coalesce replaceable frames once this many bytes sit unsent. */
 const HIGH_WATER_BYTES = 256 * 1024;

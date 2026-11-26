@@ -28,7 +28,7 @@ import {
 } from '@/shared/lib/realtime/protocol';
 import { getRealtimeHub, registerTopics, type TopicDescriptor } from '@/server/lib/realtime/hub.server';
 import { onRealtimeSignal } from '@/server/lib/realtime/signals.server';
-import { invalidateOmpSidebarData } from '@/server/lib/omp/session/reader';
+import { invalidateOmpSidebarData } from '@kabmo-labs/kabmo-omp-session-reader';
 import { loadSidebarStructure } from '@/server/lib/omp/session/sidebar-data.server';
 import { loadSidebarStatus } from '@/server/lib/omp/session/sidebar-status.server';
 import { loadSidebarActivity } from '@/server/lib/omp/session/sidebar-activity.server';

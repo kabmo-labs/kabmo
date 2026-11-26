@@ -1,0 +1,20 @@
+{
+  "name": "@kabmo-labs/kabmo-omp-session-reader",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Read omp session headers and sidebar data.",
+  "exports": { ".": "./src/reader.ts", "./reader": "./src/reader.ts" },
+  "files": ["src"],
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/kabmo-labs/kabmo.git", "directory": "packages/kabmo-omp-session-reader" },
+  "publishConfig": { "access": "public" },
+  "engines": { "bun": ">=1.4.0" },
+  "dependencies": {
+    "@kabmo-labs/kabmo-omp-contracts": "workspace:*",
+    "@kabmo-labs/kabmo-omp-paths": "workspace:*",
+    "@kabmo-labs/kabmo-omp-registry": "workspace:*",
+    "@kabmo-labs/kabmo-omp-session-scan": "workspace:*",
+    "@kabmo-labs/kabmo-omp-worktree": "workspace:*",
+    "@kabmo-labs/kabmo-refresh-cadence": "workspace:*"
+  }
+}

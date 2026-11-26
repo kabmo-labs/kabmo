@@ -31,7 +31,7 @@ import { getDb } from '@/server/db.server';
 import { saveHarnessConfig } from '@/server/lib/harness/config.server';
 import { saveHarnessSession } from '@/server/lib/harness/session-store.server';
 import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
-import { invalidateOmpSidebarData } from '@/server/lib/omp/session/reader';
+import { invalidateOmpSidebarData } from '@kabmo-labs/kabmo-omp-session-reader';
 import { loadSidebarStructure } from '@/server/lib/omp/session/sidebar-data.server';
 import { deleteSession } from '@/server/routes/sessions/delete';
 import { EMPTY_HARNESS_CONFIG } from '@kabmo-labs/kabmo-harness-config';

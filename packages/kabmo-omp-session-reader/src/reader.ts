@@ -23,7 +23,7 @@ import { listAllSessionInfos, type OmpSessionInfo } from '@kabmo-labs/kabmo-omp-
 import { loadProjectRegistry, mergeProjects } from '@kabmo-labs/kabmo-omp-registry';
 import { resolveProjectRoot } from '@kabmo-labs/kabmo-omp-worktree';
 import { getAgentDir, getSessionsDir, pathExists } from '@kabmo-labs/kabmo-omp-paths';
-import { SIDEBAR_DATA_TTL_MS } from '@/shared/lib/workspace/refresh-cadence';
+import { SIDEBAR_DATA_TTL_MS } from '@kabmo-labs/kabmo-refresh-cadence';
 import type { OmpProject, OmpSession, OmpSidebarData } from '@kabmo-labs/kabmo-omp-contracts/session';
 
 const CONCURRENCY = 6;

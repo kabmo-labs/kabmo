@@ -1,0 +1,12 @@
+{
+  "name": "@kabmo-labs/kabmo-refresh-cadence",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Poll, heartbeat, TTL, and retry intervals shared by client and server.",
+  "exports": { ".": "./src/refresh-cadence.ts", "./refresh-cadence": "./src/refresh-cadence.ts" },
+  "files": ["src"],
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/kabmo-labs/kabmo.git", "directory": "packages/kabmo-refresh-cadence" },
+  "publishConfig": { "access": "public" },
+  "engines": { "bun": ">=1.4.0" }
+}
