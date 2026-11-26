@@ -17,7 +17,7 @@
  */
 
 import { json, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
-import { resolveRoot } from '@/server/lib/fs/root';
+import { resolveRoot } from '@kabmo-labs/kabmo-workspace-root/root';
 import { buildWikiRepoPayload } from '@/server/lib/wiki/payload.server';
 
 export async function loader({ request }: LoaderFunctionArgs) {

@@ -29,7 +29,7 @@
 import path from 'path';
 import { runGit } from '@/server/lib/fs/git-run';
 import { parsePorcelainV2 } from '@/server/lib/fs/git-porcelain-v2';
-import { isWithinRoot } from '@/server/lib/fs/root';
+import { isWithinRoot } from '@kabmo-labs/kabmo-workspace-root/root';
 import { OPERATION_PATHS } from '@/server/lib/fs/git-state';
 import { existsSync } from 'node:fs';
 import type { GitRepoDetail } from '@/shared/types';

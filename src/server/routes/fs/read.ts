@@ -13,7 +13,7 @@ import { dirname, isAbsolute, join, resolve } from 'path';
 import fs from 'fs';
 import path from 'path';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
-import { getDefaultFsRoot, resolveReferencedPath, resolveRoot, resolveWithinRoot } from '@/server/lib/fs/root';
+import { getDefaultFsRoot, resolveReferencedPath, resolveRoot, resolveWithinRoot } from '@kabmo-labs/kabmo-workspace-root/root';
 import { BINARY_SNIFF_BYTES,
 classifyEditorFile,
 unsupportedEditorMessage,

@@ -15,7 +15,7 @@
 import { json } from '@/server/lib/remix-compat';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { getDb } from '@/server/db.server';
-import { resolveRoot } from '@/server/lib/fs/root';
+import { resolveRoot } from '@kabmo-labs/kabmo-workspace-root/root';
 import { asWorktreeFailure } from '@/server/lib/fs/worktree/errors';
 import type { WorktreeFailure } from '@/shared/lib/workspace/worktree/types';
 

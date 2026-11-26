@@ -29,7 +29,7 @@ discoverNativeAgents,
 writeAgentDefinition,
 type DiscoveredAgent, } from '@kabmo-labs/kabmo-omp-config-files/agents';
 import { agentFileBaseName } from '@kabmo-labs/kabmo-omp-schema/agent-file';
-import { resolveRoot } from '@/server/lib/fs/root';
+import { resolveRoot } from '@kabmo-labs/kabmo-workspace-root/root';
 import type { AgentItem } from '@/shared/types';
 
 /** Project agents are listed but never written from here. */

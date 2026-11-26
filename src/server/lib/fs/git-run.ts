@@ -30,7 +30,7 @@
 
 import path from 'path';
 import { signalName } from '@kabmo-labs/kabmo-sdk';
-import { isWithinRoot } from '@/server/lib/fs/root';
+import { isWithinRoot } from '@kabmo-labs/kabmo-workspace-root/root';
 import { isUnmergedCode } from '@/shared/lib/fs/git-unmerged';
 import type { GitChange } from '@/shared/types';
 

@@ -910,6 +910,15 @@
       "@kabmo-labs/kabmo-harness-local-transcript/codex-transcript": [
         "./packages/kabmo-harness-local-transcript/src/codex-transcript.ts"
       ],
+      "@kabmo-labs/kabmo-workspace-root": [
+        "./packages/kabmo-workspace-root/src/root.ts"
+      ],
+      "@kabmo-labs/kabmo-workspace-root/root": [
+        "./packages/kabmo-workspace-root/src/root.ts"
+      ],
+      "@kabmo-labs/kabmo-workspace-root/external-roots": [
+        "./packages/kabmo-workspace-root/src/external-roots.ts"
+      ],
       "@kabmo-labs/kabmo-ui": [
         "./packages/kabmo-ui/src/index.tsx"
       ],

@@ -21,7 +21,7 @@
 
 import { json, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
-import { getDefaultFsRoot, resolveRoot, resolveWithinRoot } from '@/server/lib/fs/root';
+import { getDefaultFsRoot, resolveRoot, resolveWithinRoot } from '@kabmo-labs/kabmo-workspace-root/root';
 import { stableMtime } from '@/server/lib/fs/write-conflict';
 
 export async function fileExists({ request }: LoaderFunctionArgs) {

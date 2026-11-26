@@ -34,7 +34,7 @@
  */
 
 import { getAgentDir } from '@kabmo-labs/kabmo-omp-paths';
-import { resolveRoot } from '@/server/lib/fs/root';
+import { resolveRoot } from '@kabmo-labs/kabmo-workspace-root/root';
 
 export interface DiscoveryScope {
   /** Workspace root a write/delete may target, or null for the user scope. */

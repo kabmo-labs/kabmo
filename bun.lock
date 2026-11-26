@@ -101,6 +101,7 @@
         "@kabmo-labs/kabmo-settings-contracts": "workspace:*",
         "@kabmo-labs/kabmo-settings-store": "workspace:*",
         "@kabmo-labs/kabmo-ui": "workspace:*",
+        "@kabmo-labs/kabmo-workspace-root": "workspace:*",
         "@shikijs/langs": "^4.4.3",
         "@shikijs/themes": "^4.4.3",
         "@tailwindcss/postcss": "^4.1.14",
@@ -802,6 +803,16 @@
         "preact": "^10.29.8",
       },
     },
+    "packages/kabmo-workspace-root": {
+      "name": "@kabmo-labs/kabmo-workspace-root",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kabmo-labs/kabmo-db": "workspace:*",
+        "@kabmo-labs/kabmo-fs-canonical": "workspace:*",
+        "@kabmo-labs/kabmo-omp-paths": "workspace:*",
+        "@kabmo-labs/kabmo-omp-worktree": "workspace:*",
+      },
+    },
   },
   "overrides": {
     "katex": "^0.18.7",
@@ -1046,6 +1057,8 @@
     "@kabmo-labs/kabmo-settings-store": ["@kabmo-labs/kabmo-settings-store@workspace:packages/kabmo-settings-store"],
 
     "@kabmo-labs/kabmo-ui": ["@kabmo-labs/kabmo-ui@workspace:packages/kabmo-ui"],
+
+    "@kabmo-labs/kabmo-workspace-root": ["@kabmo-labs/kabmo-workspace-root@workspace:packages/kabmo-workspace-root"],
 
     "@lezer/common": ["@lezer/common@1.5.4", "", {}, "sha512-xt3Q4z64xM+xhg4M7NXqw1N//1O74bUFo5kz6fwMeC4qwxSuRdwkYSmjcqCEEKYkNw5e67f2hcNqBoNERAEU0w=="],
 

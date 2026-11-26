@@ -39,7 +39,7 @@
  * ordering rule that comes with it is stated at `attachTerminal`.
  */
 
-import { resolveRoot } from '@/server/lib/fs/root';
+import { resolveRoot } from '@kabmo-labs/kabmo-workspace-root/root';
 import { signalName } from '@kabmo-labs/kabmo-sdk';
 import { scopeToRepo } from '@/server/lib/fs/repo-scope';
 import { describeSpawnFailure } from '@/server/lib/lifecycle/fd-pressure';

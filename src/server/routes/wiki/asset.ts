@@ -20,7 +20,7 @@
  */
 
 import { json, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
-import { resolveRoot } from '@/server/lib/fs/root';
+import { resolveRoot } from '@kabmo-labs/kabmo-workspace-root/root';
 import { scopeToRepo } from '@/server/lib/fs/repo-scope';
 import { getImageMimeType } from '@kabmo-labs/kabmo-fs-media/mime';
 import { gitRun } from '@/server/lib/wiki/git';

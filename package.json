@@ -104,6 +104,7 @@
     "@kabmo-labs/kabmo-git-env": "workspace:*",
     "@kabmo-labs/kabmo-harness-accounts": "workspace:*",
     "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
+    "@kabmo-labs/kabmo-workspace-root": "workspace:*",
     "@kabmo-labs/kabmo-harness-config-store": "workspace:*",
     "@kabmo-labs/kabmo-harness-local-transcript": "workspace:*",
     "@kabmo-labs/kabmo-harness-session": "workspace:*",

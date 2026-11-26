@@ -5,7 +5,7 @@ import { getDb } from '@/server/db.server';
 import { DEFAULT_MCP_SERVERS } from '@/client/data/settings/mcp';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { mcpStore, readCustomMcpServers, writeCustomMcpServers } from '@/server/lib/mcp/store.server';
-import { resolveRoot } from '@/server/lib/fs/root';
+import { resolveRoot } from '@kabmo-labs/kabmo-workspace-root/root';
 import type { McpServerItem } from '@/shared/types';
 import { isRecord } from '@kabmo-labs/kabmo-guards';
 import { rowsToRecord, REDACTED_SENTINEL } from '@kabmo-labs/kabmo-mcp-contracts/key-value';

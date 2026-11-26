@@ -20,7 +20,7 @@
 import { json, NO_STORE_HEADERS } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowedResponse } from '@/server/lib/route-adapter';
-import { getDefaultFsRoot, resolveRoot, resolveWithinRoot } from '@/server/lib/fs/root';
+import { getDefaultFsRoot, resolveRoot, resolveWithinRoot } from '@kabmo-labs/kabmo-workspace-root/root';
 import { normalizeRelativePath } from '@/server/lib/fs/relative-path';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { deleteAnnotation, listAnnotations, saveAnnotation } from '@/server/lib/review/store.server';

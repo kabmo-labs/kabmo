@@ -3,7 +3,7 @@ import { errorResponse } from '@/server/lib/route-adapter';
 import fs from 'fs';
 import path from 'path';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
-import { getDefaultFsRoot, isWithinRoot, resolveRoot, resolveWithinRoot } from '@/server/lib/fs/root';
+import { getDefaultFsRoot, isWithinRoot, resolveRoot, resolveWithinRoot } from '@kabmo-labs/kabmo-workspace-root/root';
 import { runShell } from '@/server/lib/fs/shell';
 import { revealInFileManager } from '@/server/lib/fs/reveal';
 import { duplicateEntry, nextDuplicateName, pasteEntry, toRelPath } from '@/server/lib/fs/transfer';

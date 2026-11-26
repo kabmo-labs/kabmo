@@ -25,7 +25,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { resolveRoot } from '@/server/lib/fs/root';
+import { resolveRoot } from '@kabmo-labs/kabmo-workspace-root/root';
 import { getDb } from '@/server/db.server';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { removeDir } from '@/test-support/remove-dir';

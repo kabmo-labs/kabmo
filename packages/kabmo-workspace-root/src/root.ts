@@ -12,10 +12,10 @@
  */
 
 import path from 'path';
-import { getDb } from '@/server/db.server';
+import { getDb } from '@kabmo-labs/kabmo-db/lifecycle';
 import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
 import { canonicalPath } from '@kabmo-labs/kabmo-fs-canonical';
-import { externalRoots, isExternalRoot } from '@/server/lib/fs/external-roots';
+import { externalRoots, isExternalRoot } from './external-roots';
 import { resolveProjectRoot } from '@kabmo-labs/kabmo-omp-worktree';
 
 const APP_ROOT = process.cwd();

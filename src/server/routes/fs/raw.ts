@@ -6,7 +6,7 @@
 import { json, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { errorResponse } from '@/server/lib/route-adapter';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
-import { getDefaultFsRoot, resolveRoot, resolveWithinRoot } from '@/server/lib/fs/root';
+import { getDefaultFsRoot, resolveRoot, resolveWithinRoot } from '@kabmo-labs/kabmo-workspace-root/root';
 import { EDITOR_MAX_BYTES_BY_EXT, unsupportedEditorMessage } from '@kabmo-labs/kabmo-fs-media/file-kind';
 import { getFileExtension, getRawContentType } from '@kabmo-labs/kabmo-fs-media/mime';
 

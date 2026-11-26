@@ -19,7 +19,7 @@ import os from 'os';
 import path from 'path';
 import { action } from '@/server/routes/fs/grant';
 import { resolveFileScope } from '@/server/routes/fs/scope';
-import { clearExternalRoots, externalRoots, isExternalRoot } from '@/server/lib/fs/external-roots';
+import { clearExternalRoots, externalRoots, isExternalRoot } from '@kabmo-labs/kabmo-workspace-root/external-roots';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 
 /** A file OUTSIDE the app root and outside every workspace. */

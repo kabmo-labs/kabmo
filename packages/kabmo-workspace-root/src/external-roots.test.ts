@@ -20,7 +20,7 @@ import {
   externalRoots,
   grantExternalRoot,
   isExternalRoot,
-} from '@/server/lib/fs/external-roots';
+} from './external-roots';
 
 afterEach(() => clearExternalRoots());
 
