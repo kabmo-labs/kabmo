@@ -24,7 +24,7 @@
 
 import { describe, expect, test } from 'bun:test';
 import { HARNESS_CATALOG, HARNESS_IDS, harnessDescriptor } from './catalog';
-import { HARNESS_LAUNCH } from '@/server/lib/harness/launch-table';
+import { HARNESS_LAUNCH } from '@kabmo-labs/kabmo-harness-launch/launch-table';
 
 describe('harness catalog after the Gemini retirement', () => {
   test('gemini is not a harness this build offers', () => {

@@ -33,7 +33,7 @@ import {
 import { getRpcSession } from '@/server/lib/omp/rpc/session-registry';
 import { ensureSessionLive } from '@/server/lib/sessions/dispatch.server';
 import type { QueueDeliveryHost } from '@/server/lib/queue/delivery.server';
-import { kabmoModeEnv } from '@/server/lib/omp/extensions/locator';
+import { kabmoModeEnv } from '@kabmo-labs/kabmo-omp-extensions';
 import { hasQueuedItem } from '@/server/lib/queue/store.server';
 import { hasPendingDelivery } from '@/server/lib/queue/delivery.server';
 import { applyModelSnapshot, promptCommand } from '@/server/lib/queue/payload';

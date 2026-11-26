@@ -6,7 +6,7 @@ import type { SessionPromptArgs } from '@/server/lib/omp/rpc/constants';
 import { isApprovalMode, type ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 import { loadPersistedAccessMode } from '@/shared/lib/omp/config/access-mode.server';
 import { rpcErrorResponse } from '@/server/lib/omp/rpc/errors';
-import { kabmoModeEnv } from '@/server/lib/omp/extensions/locator';
+import { kabmoModeEnv } from '@kabmo-labs/kabmo-omp-extensions';
 import { parseModeSelection } from '@/server/lib/omp/mode/request';
 import { projectModelForCwd } from '@/server/lib/workspace/project-model.server';
 import { harnessDescriptor, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';

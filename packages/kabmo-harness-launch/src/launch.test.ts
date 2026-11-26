@@ -18,8 +18,8 @@ import { describe, expect, test } from 'bun:test';
 import fs from 'node:fs';
 import os from 'node:os';
 import { join } from 'node:path';
-import { blockedProbe, capabilitiesFrom, configByCategory, probeHarness, selectValues, sessionLaunchCommand } from '@/server/lib/harness/launch';
-import { harnessRequirementMet } from '@/server/lib/harness/launch-table';
+import { blockedProbe, capabilitiesFrom, configByCategory, probeHarness, selectValues, sessionLaunchCommand } from './launch';
+import { harnessRequirementMet } from './launch-table';
 import type { AcpInitializeResult, AcpConfigOption } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 
 const ompInit: AcpInitializeResult = {

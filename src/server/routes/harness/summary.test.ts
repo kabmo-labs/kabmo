@@ -18,7 +18,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
-import { HARNESS_LAUNCH } from '@/server/lib/harness/launch-table';
+import { HARNESS_LAUNCH } from '@kabmo-labs/kabmo-harness-launch/launch-table';
 import { listHarnesses } from '@/server/routes/harness/root';
 
 beforeEach(async () => {

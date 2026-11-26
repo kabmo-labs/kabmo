@@ -12,7 +12,7 @@
  * a number or say "not reported", and nothing in the client may invent one.
  */
 
-import type { HarnessCapabilities } from '@/server/lib/harness/capabilities';
+import type { HarnessCapabilities } from '@kabmo-labs/kabmo-harness-launch/capabilities';
 import type { HarnessConfig } from '@kabmo-labs/kabmo-harness-config';
 import type { HarnessAccountView } from '@kabmo-labs/kabmo-harness-accounts';
 import type { CanonicalProtocol } from '@kabmo-labs/kabmo-harness-provider/dialects';

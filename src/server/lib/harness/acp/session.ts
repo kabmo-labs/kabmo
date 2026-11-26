@@ -34,7 +34,7 @@ import { acpConfigView, type AcpConfigProcess } from '@/server/lib/harness/acp/s
 import * as verbs from '@kabmo-labs/kabmo-acp-protocol/verbs';
 import { acpPendingDialogs, answerAcpDialog } from '@/server/lib/harness/acp/session-approvals';
 import { beginAcpTurn } from '@/server/lib/harness/acp/session-turns';
-import { capabilitiesFrom } from '@/server/lib/harness/launch';
+import { capabilitiesFrom } from '@kabmo-labs/kabmo-harness-launch/launch';
 import { PendingPermissions } from '@kabmo-labs/kabmo-acp-client/permissions';
 import { handleAcpNotification } from '@/server/lib/harness/acp/session-notify';
 import { RawNotificationSink, type RawNotificationListener } from '@kabmo-labs/kabmo-acp-protocol/raw-listeners';
@@ -53,7 +53,7 @@ import { dispatchCommand, type AcpCommandHost } from '@/server/lib/harness/acp/c
 import { markStreamStatus } from '@/shared/lib/omp/session/stream-state.server';
 import type { AcpSessionOptions } from '@/server/lib/harness/acp/session-options';
 import type { AcpMcpServer } from '@kabmo-labs/kabmo-acp-protocol/protocol';
-import type { HarnessCapabilities } from '@/server/lib/harness/capabilities';
+import type { HarnessCapabilities } from '@kabmo-labs/kabmo-harness-launch/capabilities';
 import type { HarnessSession } from '@kabmo-labs/kabmo-harness-contract';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';

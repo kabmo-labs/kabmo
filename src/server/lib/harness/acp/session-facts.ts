@@ -21,7 +21,7 @@
  * instead of assuming a capability table.
  */
 
-import type { HarnessCapabilities } from '@/server/lib/harness/capabilities';
+import type { HarnessCapabilities } from '@kabmo-labs/kabmo-harness-launch/capabilities';
 
 /** One command an agent publishes, in Kabmo's command shape. */
 export interface AgentCommand {

@@ -1,0 +1,34 @@
+{
+  "name": "@kabmo-labs/kabmo-harness-launch",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Harness launch plans and capability probing.",
+  "exports": {
+    ".": "./src/launch.ts",
+    "./capabilities": "./src/capabilities.ts",
+    "./launch": "./src/launch.ts",
+    "./launch-table": "./src/launch-table.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-harness-launch"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  },
+  "dependencies": {
+    "@kabmo-labs/kabmo-acp-client": "workspace:*",
+    "@kabmo-labs/kabmo-acp-protocol": "workspace:*",
+    "@kabmo-labs/kabmo-fs-toolchain": "workspace:*",
+    "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
+    "@kabmo-labs/kabmo-omp-extensions": "workspace:*"
+  }
+}

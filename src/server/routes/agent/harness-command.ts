@@ -22,7 +22,7 @@ import {
 } from '@/server/lib/harness/session-store.server';
 import { transcriptFromReplay } from '@/server/lib/harness/acp/replay-transcript';
 import { getDb } from '@/server/db.server';
-import { selectValues } from '@/server/lib/harness/launch';
+import { selectValues } from '@kabmo-labs/kabmo-harness-launch/launch';
 import { harnessOfSession } from '@/server/lib/omp/rpc/session-registry';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
 import { HARNESS_IDS, harnessDescriptor } from '@kabmo-labs/kabmo-harness-catalog';

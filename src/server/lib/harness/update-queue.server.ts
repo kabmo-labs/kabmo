@@ -40,7 +40,7 @@ import { HARNESS_IDS, isBuiltinHarness, type HarnessId } from '@kabmo-labs/kabmo
 import { harnessUpdateFacts, type HarnessUpdateFacts } from '@kabmo-labs/kabmo-harness-updates';
 import { repointAdapterLaunch, type HarnessUpdateStep } from '@/shared/lib/harness/update-plan';
 import { jobMoving, jobQueued, jobRunning } from '@/shared/lib/harness/update-job';
-import type { HarnessProbe } from '@/server/lib/harness/capabilities';
+import type { HarnessProbe } from '@kabmo-labs/kabmo-harness-launch/capabilities';
 import type { HarnessUpdateJob } from '@/shared/types/harness-update';
 
 declare global {

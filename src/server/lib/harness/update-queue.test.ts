@@ -34,7 +34,7 @@ import { startHarnessUpdateJob, unfinishedUpdateJob } from '@/server/lib/harness
 import { readUpdateJob, writeUpdateJob } from '@/server/lib/harness/update-job-store';
 import { getHarnessUpdateStatusPath } from '@/server/lib/lifecycle/paths';
 import { jobQueued, jobRunning } from '@/shared/lib/harness/update-job';
-import { UNPROBED_CAPABILITIES, type HarnessProbe } from '@/server/lib/harness/capabilities';
+import { UNPROBED_CAPABILITIES, type HarnessProbe } from '@kabmo-labs/kabmo-harness-launch/capabilities';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { describePosix } from '@/test-support/platform';
 import type { HarnessUpdateStep } from '@/shared/lib/harness/update-plan';

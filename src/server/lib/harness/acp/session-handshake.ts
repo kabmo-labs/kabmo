@@ -30,7 +30,7 @@ import { toAcpV2McpServers } from '@kabmo-labs/kabmo-acp-protocol/v2';
 import type { SessionDirs } from '@kabmo-labs/kabmo-acp-protocol/verbs';
 import { authMethodsOf, describeSignIn, headlessAuthMethod, isAuthRequiredError } from '@kabmo-labs/kabmo-acp-client/auth';
 import { additionalDirectoriesFor, sessionRoots } from '@/server/lib/harness/acp/session-roots.server';
-import { capabilitiesFrom } from '@/server/lib/harness/launch';
+import { capabilitiesFrom } from '@kabmo-labs/kabmo-harness-launch/launch';
 import type { AcpAgentCommand,
 AcpConfigOption,
 AcpInitializeResult,
@@ -40,7 +40,7 @@ AcpProtocolVersion,
 AcpSessionModeState,
 AcpSessionModels,
 AcpSessionNewResult, } from '@kabmo-labs/kabmo-acp-protocol/protocol';
-import type { HarnessCapabilities } from '@/server/lib/harness/capabilities';
+import type { HarnessCapabilities } from '@kabmo-labs/kabmo-harness-launch/capabilities';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 

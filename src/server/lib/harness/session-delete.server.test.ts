@@ -28,7 +28,7 @@ import { join } from 'node:path';
 
 import { createAgentSessionRemover } from '@/server/lib/harness/session-delete.server';
 import { fakeAcpDeleteAgent } from '@/test-support/fake-acp-delete';
-import type { HarnessLaunch } from '@/server/lib/harness/launch-table';
+import type { HarnessLaunch } from '@kabmo-labs/kabmo-harness-launch/launch-table';
 import type { HarnessSessionRecord } from '@/server/lib/harness/session-store.server';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 

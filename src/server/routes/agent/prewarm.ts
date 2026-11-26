@@ -6,7 +6,7 @@ import { commandAvailable } from '@/server/lib/harness/auto-probe.server';
 import { loadHarnessConfig } from '@/server/lib/harness/config.server';
 import { selectedAccountId } from '@/server/lib/harness/accounts.server';
 import { accountAdapter } from '@kabmo-labs/kabmo-harness-accounts';
-import { kabmoModeEnv } from '@/server/lib/omp/extensions/locator';
+import { kabmoModeEnv } from '@kabmo-labs/kabmo-omp-extensions';
 import { parseModeSelection } from '@/server/lib/omp/mode/request';
 import { isApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 import { loadPersistedAccessMode } from '@/shared/lib/omp/config/access-mode.server';

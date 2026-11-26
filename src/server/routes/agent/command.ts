@@ -10,7 +10,7 @@ import { rpcErrorResponse } from '@/server/lib/omp/rpc/errors';
 import { assertBtwIdle } from '@/server/lib/btw/service.server';
 import { loadPersistedModes } from '@/server/lib/omp/session/modes';
 import { isModeCommandType, modeCommandPrompt, parseModeRequest, parseModeSelection } from '@/server/lib/omp/mode/request';
-import { kabmoModeEnv } from '@/server/lib/omp/extensions/locator';
+import { kabmoModeEnv } from '@kabmo-labs/kabmo-omp-extensions';
 import { mintAgentEnvironment, rememberAgentToken } from '@/server/lib/sessions/agent-token.server';
 import { resetGoalDriverState } from '@/server/lib/omp/session/goal-driver.server';
 import { forwardToPeer, isPeerRelayed, peerOriginForSession } from '@/server/lib/omp/rpc/peer-proxy.server';

@@ -1,0 +1,27 @@
+{
+  "name": "@kabmo-labs/kabmo-omp-extensions",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Locate and launch Kabmo's omp extensions.",
+  "exports": {
+    ".": "./src/locator.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-omp-extensions"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  },
+  "dependencies": {
+    "@kabmo-labs/kabmo-omp-mode": "workspace:*"
+  }
+}

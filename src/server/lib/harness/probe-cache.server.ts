@@ -33,7 +33,7 @@
  */
 
 import { getDb } from '@/server/db.server';
-import type { HarnessProbe } from '@/server/lib/harness/capabilities';
+import type { HarnessProbe } from '@kabmo-labs/kabmo-harness-launch/capabilities';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 
 declare global {

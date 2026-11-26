@@ -25,7 +25,7 @@ import { acpOptionValues } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import { notePromptTitle } from '@/server/lib/harness/session-title.server';
 import { isApprovalMode, type ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 import type { AcpConfigOption, AcpSessionModeState } from '@kabmo-labs/kabmo-acp-protocol/protocol';
-import type { HarnessCapabilities } from '@/server/lib/harness/capabilities';
+import type { HarnessCapabilities } from '@kabmo-labs/kabmo-harness-launch/capabilities';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 
 /** The slice of `AcpSession` this table drives. Narrow on purpose: the dispatch

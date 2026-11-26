@@ -22,7 +22,7 @@ import { getDataDir } from '@/server/lib/lifecycle/paths';
 import { forgetProbe } from '@/server/lib/harness/probe-cache.server';
 import { readAccountIdentity } from '@/server/lib/harness/account-identity.server';
 import { resolveLaunch } from '@/server/lib/harness/config.server';
-import type { HarnessLaunch } from '@/server/lib/harness/launch-table';
+import type { HarnessLaunch } from '@kabmo-labs/kabmo-harness-launch/launch-table';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import type { HarnessConfig } from '@kabmo-labs/kabmo-harness-config';
 import { accountAdapter,

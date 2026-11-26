@@ -17,7 +17,7 @@
 import { describe, expect, test } from 'bun:test';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { kabmoExtensionArgs, kabmoExtensionEntry, kabmoModeEnv } from '@/server/lib/omp/extensions/locator';
+import { kabmoExtensionArgs, kabmoExtensionEntry, kabmoModeEnv } from './locator';
 
 describe('kabmoExtensionEntry', () => {
   test('resolves to a real file in this checkout', () => {

@@ -28,7 +28,7 @@ import { rememberAgentToken } from '@/server/lib/sessions/agent-token.server';
 import { loadHarnessConfig } from '@/server/lib/harness/config.server';
 import { resolveAccountLaunch, selectedAccountId } from '@/server/lib/harness/accounts.server';
 import { accountAdapter } from '@kabmo-labs/kabmo-harness-accounts';
-import { sessionLaunchCommand } from '@/server/lib/harness/launch';
+import { sessionLaunchCommand } from '@kabmo-labs/kabmo-harness-launch/launch';
 import { resolveDefaultModel, modelProvider } from '@kabmo-labs/kabmo-harness-config';
 import { harnessProbeModels } from '@/server/lib/harness/probe-cache.server';
 import { claimHarness } from '@kabmo-labs/kabmo-harness-registry';

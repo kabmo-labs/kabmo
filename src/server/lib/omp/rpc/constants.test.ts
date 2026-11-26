@@ -49,7 +49,7 @@ import {
   toImageContents,
   validateAgentImages,
 } from '@/server/lib/omp/rpc/constants';
-import { kabmoExtensionArgs } from '@/server/lib/omp/extensions/locator';
+import { kabmoExtensionArgs } from '@kabmo-labs/kabmo-omp-extensions';
 
 const tempDirs: string[] = [];
 

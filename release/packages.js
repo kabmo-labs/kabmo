@@ -69,6 +69,14 @@ export const RELEASE_PACKAGES = [
     name: '@kabmo-labs/kabmo-acp-client',
   },
   {
+    dir: 'packages/kabmo-omp-extensions',
+    name: '@kabmo-labs/kabmo-omp-extensions',
+  },
+  {
+    dir: 'packages/kabmo-harness-launch',
+    name: '@kabmo-labs/kabmo-harness-launch',
+  },
+  {
     /** Directory under `packages/`, which is also the tag's prefix. */
     dir: 'packages/kabmo-guards',
     name: '@kabmo-labs/kabmo-guards',

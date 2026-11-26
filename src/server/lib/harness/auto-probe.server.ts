@@ -33,7 +33,7 @@
  *    and spawning a missing binary only reports that fact again.
  */
 
-import type { HarnessProbe } from '@/server/lib/harness/capabilities';
+import type { HarnessProbe } from '@kabmo-labs/kabmo-harness-launch/capabilities';
 import {
   launchFromConfig,
   loadHarnessConfig,
@@ -41,8 +41,8 @@ import {
 import { resolveAccountLaunch } from '@/server/lib/harness/accounts.server';
 import type { HarnessConfig } from '@kabmo-labs/kabmo-harness-config';
 import { loadDisabledHarnesses } from '@/server/lib/harness/enabled.server';
-import { blockedProbe, probeHarness } from '@/server/lib/harness/launch';
-import { HARNESS_LAUNCH, harnessRequirementMet, type HarnessLaunch } from '@/server/lib/harness/launch-table';
+import { blockedProbe, probeHarness } from '@kabmo-labs/kabmo-harness-launch/launch';
+import { HARNESS_LAUNCH, harnessRequirementMet, type HarnessLaunch } from '@kabmo-labs/kabmo-harness-launch/launch-table';
 import { customLaunch } from '@/server/lib/harness/custom.server';
 import { resolveOmpBin } from '@/server/lib/omp/core/cli';
 import { whichOnToolchainPath } from '@kabmo-labs/kabmo-fs-toolchain';

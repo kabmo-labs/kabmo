@@ -39,6 +39,7 @@
         "@kabmo-labs/kabmo-harness-config-fields": "workspace:*",
         "@kabmo-labs/kabmo-harness-contract": "workspace:*",
         "@kabmo-labs/kabmo-harness-enabled": "workspace:*",
+        "@kabmo-labs/kabmo-harness-launch": "workspace:*",
         "@kabmo-labs/kabmo-harness-mcp-facts": "workspace:*",
         "@kabmo-labs/kabmo-harness-provider": "workspace:*",
         "@kabmo-labs/kabmo-harness-provider-slug": "workspace:*",
@@ -51,6 +52,7 @@
         "@kabmo-labs/kabmo-omp-access-mode": "workspace:*",
         "@kabmo-labs/kabmo-omp-config-doc": "workspace:*",
         "@kabmo-labs/kabmo-omp-contracts": "workspace:*",
+        "@kabmo-labs/kabmo-omp-extensions": "workspace:*",
         "@kabmo-labs/kabmo-omp-mapper": "workspace:*",
         "@kabmo-labs/kabmo-omp-messages-map": "workspace:*",
         "@kabmo-labs/kabmo-omp-mode": "workspace:*",
@@ -271,6 +273,17 @@
         "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
       },
     },
+    "packages/kabmo-harness-launch": {
+      "name": "@kabmo-labs/kabmo-harness-launch",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kabmo-labs/kabmo-acp-client": "workspace:*",
+        "@kabmo-labs/kabmo-acp-protocol": "workspace:*",
+        "@kabmo-labs/kabmo-fs-toolchain": "workspace:*",
+        "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
+        "@kabmo-labs/kabmo-omp-extensions": "workspace:*",
+      },
+    },
     "packages/kabmo-harness-mcp-facts": {
       "name": "@kabmo-labs/kabmo-harness-mcp-facts",
       "version": "0.0.1",
@@ -343,6 +356,13 @@
     "packages/kabmo-omp-contracts": {
       "name": "@kabmo-labs/kabmo-omp-contracts",
       "version": "0.0.1",
+    },
+    "packages/kabmo-omp-extensions": {
+      "name": "@kabmo-labs/kabmo-omp-extensions",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kabmo-labs/kabmo-omp-mode": "workspace:*",
+      },
     },
     "packages/kabmo-omp-mapper": {
       "name": "@kabmo-labs/kabmo-omp-mapper",
@@ -612,6 +632,8 @@
 
     "@kabmo-labs/kabmo-harness-enabled": ["@kabmo-labs/kabmo-harness-enabled@workspace:packages/kabmo-harness-enabled"],
 
+    "@kabmo-labs/kabmo-harness-launch": ["@kabmo-labs/kabmo-harness-launch@workspace:packages/kabmo-harness-launch"],
+
     "@kabmo-labs/kabmo-harness-mcp-facts": ["@kabmo-labs/kabmo-harness-mcp-facts@workspace:packages/kabmo-harness-mcp-facts"],
 
     "@kabmo-labs/kabmo-harness-provider": ["@kabmo-labs/kabmo-harness-provider@workspace:packages/kabmo-harness-provider"],
@@ -635,6 +657,8 @@
     "@kabmo-labs/kabmo-omp-config-doc": ["@kabmo-labs/kabmo-omp-config-doc@workspace:packages/kabmo-omp-config-doc"],
 
     "@kabmo-labs/kabmo-omp-contracts": ["@kabmo-labs/kabmo-omp-contracts@workspace:packages/kabmo-omp-contracts"],
+
+    "@kabmo-labs/kabmo-omp-extensions": ["@kabmo-labs/kabmo-omp-extensions@workspace:packages/kabmo-omp-extensions"],
 
     "@kabmo-labs/kabmo-omp-mapper": ["@kabmo-labs/kabmo-omp-mapper@workspace:packages/kabmo-omp-mapper"],
 

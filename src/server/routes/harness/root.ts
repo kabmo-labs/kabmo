@@ -20,8 +20,8 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { harnessDescriptor, harnessIds, isBuiltinHarness, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import { customLaunch, ensureCustomHarnesses, removeCustomHarness, saveCustomHarness, type CustomHarnessInput } from '@/server/lib/harness/custom.server';
-import { HARNESS_LAUNCH } from '@/server/lib/harness/launch-table';
-import type { HarnessProbe } from '@/server/lib/harness/capabilities';
+import { HARNESS_LAUNCH } from '@kabmo-labs/kabmo-harness-launch/launch-table';
+import type { HarnessProbe } from '@kabmo-labs/kabmo-harness-launch/capabilities';
 import { forgetProbe, loadProbes, rememberProbe } from '@/server/lib/harness/probe-cache.server';
 import { loadDisabledHarnesses, saveHarnessEnabled } from '@/server/lib/harness/enabled.server';
 import { harnessEnabled } from '@kabmo-labs/kabmo-harness-enabled';

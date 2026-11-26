@@ -31,7 +31,7 @@ import { HARNESS_CATALOG,
 isBuiltinHarness,
 registerHarnessDescriptors,
 type HarnessDescriptor, } from '@kabmo-labs/kabmo-harness-catalog';
-import type { HarnessLaunch } from '@/server/lib/harness/launch-table';
+import type { HarnessLaunch } from '@kabmo-labs/kabmo-harness-launch/launch-table';
 
 /** One user-added harness, as stored. */
 export interface CustomHarness {

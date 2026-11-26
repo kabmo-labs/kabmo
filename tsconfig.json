@@ -256,6 +256,21 @@
       "@kabmo-labs/kabmo-harness-enabled": [
         "./packages/kabmo-harness-enabled/src/enabled.ts"
       ],
+      "@kabmo-labs/kabmo-harness-launch": [
+        "./packages/kabmo-harness-launch/src/launch.ts"
+      ],
+      "@kabmo-labs/kabmo-harness-launch/capabilities": [
+        "./packages/kabmo-harness-launch/src/capabilities.ts"
+      ],
+      "@kabmo-labs/kabmo-harness-launch/launch": [
+        "./packages/kabmo-harness-launch/src/launch.ts"
+      ],
+      "@kabmo-labs/kabmo-harness-launch/launch-table": [
+        "./packages/kabmo-harness-launch/src/launch-table.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-extensions": [
+        "./packages/kabmo-omp-extensions/src/locator.ts"
+      ],
       "@kabmo-labs/kabmo-harness-mcp-facts": [
         "./packages/kabmo-harness-mcp-facts/src/mcp-facts.ts"
       ],

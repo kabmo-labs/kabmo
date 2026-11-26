@@ -26,9 +26,9 @@ import { withGatewayCompatibility } from '@kabmo-labs/kabmo-acp-client/gateway-e
 import { newSessionAfterActivation } from '@kabmo-labs/kabmo-acp-client/activation';
 import type { AcpConfigOption, AcpInitializeResult, AcpSessionModeState } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import { acpOptionValues } from '@kabmo-labs/kabmo-acp-protocol/protocol';
-import { UNPROBED_CAPABILITIES, type HarnessCapabilities, type HarnessProbe } from '@/server/lib/harness/capabilities';
-import { HARNESS_LAUNCH, type HarnessLaunch } from '@/server/lib/harness/launch-table';
-import { kabmoExtensionArgs } from '@/server/lib/omp/extensions/locator';
+import { UNPROBED_CAPABILITIES, type HarnessCapabilities, type HarnessProbe } from './capabilities';
+import { HARNESS_LAUNCH, type HarnessLaunch } from './launch-table';
+import { kabmoExtensionArgs } from '@kabmo-labs/kabmo-omp-extensions';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 
 /**

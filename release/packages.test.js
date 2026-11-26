@@ -199,6 +199,8 @@ describe('package catalog', () => {
       'kabmo-rpc-lines',
       'kabmo-acp-stdio',
       'kabmo-acp-client',
+      'kabmo-omp-extensions',
+      'kabmo-harness-launch',
       'kabmo-guards',
       'kabmo-bytes',
       'kabmo-platform',

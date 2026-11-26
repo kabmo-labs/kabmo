@@ -20,7 +20,7 @@ import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { removeDir } from '@/test-support/remove-dir';
 import { saveHarnessSession } from '@/server/lib/harness/session-store.server';
 import { forgetProbe, rememberProbe } from '@/server/lib/harness/probe-cache.server';
-import { UNPROBED_CAPABILITIES } from '@/server/lib/harness/capabilities';
+import { UNPROBED_CAPABILITIES } from '@kabmo-labs/kabmo-harness-launch/capabilities';
 import { getSessionMcp, probeSessionMcp, setSessionMcp } from '@/server/routes/sessions/mcp';
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import type { SessionMcpPayload } from '@/shared/types';

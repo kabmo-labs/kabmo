@@ -21,7 +21,7 @@
 
 import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
-import type { HarnessProbe } from '@/server/lib/harness/capabilities';
+import type { HarnessProbe } from '@kabmo-labs/kabmo-harness-launch/capabilities';
 import {
   forgetProbe,
   freshProbe,
