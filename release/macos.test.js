@@ -67,7 +67,7 @@ function scratchRepo() {
   git(dir, 'init', '-q', '-b', 'main');
   git(dir, 'config', 'user.email', 'test@example.com');
   git(dir, 'config', 'user.name', 'Test');
-  mkdirSync(join(dir, 'packages/macos'), { recursive: true });
+  mkdirSync(join(dir, 'apps/macos'), { recursive: true });
   writeFileSync(
     join(dir, MACOS_SHELL.versionFile),
     '# a comment\nversionName=0.1.0\n',
@@ -89,7 +89,7 @@ describe('the table matches the tree', () => {
    * declare whatever the placeholder fell back to.
    */
   test('the build script fills the plist from this file', () => {
-    const script = readFileSync(join(repoRoot, 'packages/macos/scripts/build-app.sh'), 'utf8');
+    const script = readFileSync(join(repoRoot, 'apps/macos/scripts/build-app.sh'), 'utf8');
     expect(script).toContain('release/macos-version.mjs');
     expect(script).toContain('CFBundleShortVersionString');
     expect(script).toContain('CFBundleVersion');
@@ -101,7 +101,7 @@ describe('the table matches the tree', () => {
    * menu bar, the Dock and Force Quit.
    */
   test('the bundle is named Kabmo', () => {
-    const script = readFileSync(join(repoRoot, 'packages/macos/scripts/build-app.sh'), 'utf8');
+    const script = readFileSync(join(repoRoot, 'apps/macos/scripts/build-app.sh'), 'utf8');
     expect(script).toContain('<key>CFBundleName</key><string>Kabmo</string>');
     expect(script).toContain('<key>CFBundleExecutable</key><string>Kabmo</string>');
     expect(script).toContain('Kabmo.app');
@@ -191,7 +191,7 @@ describe('the table matches the tree', () => {
    * rather than a note in the file that the next rename can undo.
    */
   test('the app target has no main.swift, so @main is legal', () => {
-    const sources = join(repoRoot, 'packages/macos/Sources/kabmo-desktop');
+    const sources = join(repoRoot, 'apps/macos/Sources/kabmo-desktop');
     const names = readdirSync(sources);
     expect(names).not.toContain('main.swift');
     expect(names).toContain('App.swift');
@@ -323,9 +323,9 @@ describe('the commit range', () => {
 
   test('a commit that does not touch the file is in range, and a bump is not', () => {
     const dir = scratchRepo();
-    // The range is limited to `packages/macos`, so the commit has to touch it —
+    // The range is limited to `apps/macos`, so the commit has to touch it —
     // a README at the repository root is deliberately outside the range.
-    writeFileSync(join(dir, 'packages/macos/README.md'), 'hello\n');
+    writeFileSync(join(dir, 'apps/macos/README.md'), 'hello\n');
     git(dir, 'add', '.');
     git(dir, 'commit', '-q', '-m', 'feat: something else');
 

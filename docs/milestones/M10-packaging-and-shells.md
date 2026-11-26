@@ -127,9 +127,9 @@ The PWA stays as the zero-install path; it is not replaced by either.
 
 ## Mobile APK: what actually constrains it
 
-**Decided: Kotlin WebView shell, in `packages/android`.** The research below is
+**Decided: Kotlin WebView shell, in `apps/android`.** The research below is
 kept because it is why that shape was chosen; the shipped implementation and its
-build steps live in `packages/android/README.md`.
+build steps live in `apps/android/README.md`.
 
 The app cannot ship its own client as static files — `index.html` is a Bun HTML route and
 the shell is rendered per request (`src/server/plugins/ssr.ts`). A mobile build therefore
@@ -137,7 +137,7 @@ the shell is rendered per request (`src/server/plugins/ssr.ts`). A mobile build 
 
 | Approach | Verdict |
 |---|---|
-| **Kotlin WebView** (`packages/android`, shipped) | Chosen. ~1–2 MB, JDK + SDK only, every WebView hook explicit, native settings screen, launcher shortcut |
+| **Kotlin WebView** (`apps/android`, shipped) | Chosen. ~1–2 MB, JDK + SDK only, every WebView hook explicit, native settings screen, launcher shortcut |
 | **Tauri 2 Android** (`tauri android init` → `build --apk`) | Rejected: the Rust/IPC/capabilities surface is unused by a URL shell, and remote-URL loading on mobile only landed in July 2025 ([#13461](https://github.com/tauri-apps/tauri/issues/13461)) |
 | **Capacitor** (`server.url` + `cleartext`) | Rejected: a second native project for the same result |
 | Bare WebView wrapper | Chosen shape, but not bare: the hooks below are not optional |
@@ -263,19 +263,19 @@ installs.
 their own target and the installer around it; signing/notarization; the installer version
 derived from the same tag as the npm release.
 
-**P4 — Android APK. DONE.** Kotlin WebView shell in `packages/android`: native
+**P4 — Android APK. DONE.** Kotlin WebView shell in `apps/android`: native
 settings screen (first run and re-entry), URL normalization that refuses a base
 path, health-gated save, one entry point (**long-press the launcher icon → Server
 settings**; there is deliberately no in-app control), and every WebView hook the
 console depends on. Client side: `window.__kabmoBack()`, so the hardware back
 button closes the drawer, editor and dialog before walking history. Build steps:
-`packages/android/README.md`.
+`apps/android/README.md`.
 
 **Desktop shells are shipped as NATIVE ports rather than the Tauri/Electrobun
 wrapper this research proposed.**
 
-- `packages/macos` — macOS, Swift + AppKit + WKWebView (660 KB `.app`, ~40 MB RSS).
-- `packages/windows` — Windows, .NET 8 + WPF + WebView2, ported from the macOS
+- `apps/macos` — macOS, Swift + AppKit + WKWebView (660 KB `.app`, ~40 MB RSS).
+- `apps/windows` — Windows, .NET 8 + WPF + WebView2, ported from the macOS
   shell so the two share one bridge contract and the client cannot tell them
   apart.
 
@@ -294,11 +294,11 @@ not registry packages, and they follow one shape:
 
 | Shell | Version file | Build job | Asset |
 |---|---|---|---|
-| Android | `packages/android/version.properties` | `apk-build` | `Kabmo-<v>-android.apk` |
-| iOS | `packages/ios/version.properties` | `ipa-build` | `Kabmo-<v>-ios.ipa` |
-| Windows | `packages/windows/version.properties` | `win-build` | `Kabmo-<v>-win-<arch>-setup.exe` |
-| macOS | `packages/macos/version.properties` | `macos-build` | `Kabmo-<v>-mac-<arch>.zip` + `.dmg` |
-| Linux | `packages/linux/version.properties` | `linux-build` | `.tar.gz`, `.deb`, `.rpm`, `.AppImage` (+ `.zsync`) |
+| Android | `apps/android/version.properties` | `apk-build` | `Kabmo-<v>-android.apk` |
+| iOS | `apps/ios/version.properties` | `ipa-build` | `Kabmo-<v>-ios.ipa` |
+| Windows | `apps/windows/version.properties` | `win-build` | `Kabmo-<v>-win-<arch>-setup.exe` |
+| macOS | `apps/macos/version.properties` | `macos-build` | `Kabmo-<v>-mac-<arch>.zip` + `.dmg` |
+| Linux | `apps/linux/version.properties` | `linux-build` | `.tar.gz`, `.deb`, `.rpm`, `.AppImage` (+ `.zsync`) |
 
 **Every shell follows ONE naming scheme** — `<App>-<version>-<platform>[-<arch>].<ext>`
 — so a release page reads consistently whatever a person came for. `Kabmo` is
@@ -393,7 +393,7 @@ publishes it on `release/shell-bump`, the five builds compile that sha, and
 
 The artifact's SHAPE follows each platform's own convention, and that is not
 cosmetic: **Windows gets an installer** (`Kabmo-<v>-win-<arch>-setup.exe`, compiled
-from `packages/windows/installer/kabmo.iss`), because a ZIP leaves no
+from `apps/windows/installer/kabmo.iss`), because a ZIP leaves no
 Add/remove-programs entry, no Start-menu entry and no uninstaller — so "which
 version is this" and "how do I remove it" both have no answer. macOS gets a `.zip`
 holding the `.app`, which IS the macOS convention; Linux gets a `.tar.gz`, because

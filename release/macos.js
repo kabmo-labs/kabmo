@@ -28,9 +28,9 @@ import { commitsSince, versionWatermark as genericWatermark } from './watermark.
 /** One released-by-version artifact. */
 export const MACOS_SHELL = {
   /** Directory whose changes ask for a bump. */
-  dir: 'packages/macos',
+  dir: 'apps/macos',
   /** The file carrying the version the build reads. */
-  versionFile: 'packages/macos/version.properties',
+  versionFile: 'apps/macos/version.properties',
   /** The line inside that file, as a `git log -L` regex. */
   pattern: '/^versionName=/',
   /** The key the file declares. */
@@ -48,7 +48,7 @@ export function versionWatermark(cwd) {
 }
 
 /**
- * The commits touching `packages/macos` since its version was last written.
+ * The commits touching `apps/macos` since its version was last written.
  *
  * @param {string} cwd The repository to read.
  * @param {number} [limit] How far back to walk when there is no watermark.

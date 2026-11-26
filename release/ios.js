@@ -22,9 +22,9 @@ import { commitsSince, versionWatermark as genericWatermark } from './watermark.
 /** One released-by-version artifact. */
 export const IOS_SHELL = {
   /** Directory whose changes ask for a bump. */
-  dir: 'packages/ios',
+  dir: 'apps/ios',
   /** The file carrying the version the build reads. */
-  versionFile: 'packages/ios/version.properties',
+  versionFile: 'apps/ios/version.properties',
   /** The line inside that file, as a `git log -L` regex. */
   pattern: '/^versionName=/',
   /** The key the file declares. */
@@ -42,7 +42,7 @@ export function versionWatermark(cwd) {
 }
 
 /**
- * The commits touching `packages/ios` since its version was last written.
+ * The commits touching `apps/ios` since its version was last written.
  *
  * @param {string} cwd The repository to read.
  * @param {number} [limit] How far back to walk when there is no watermark.

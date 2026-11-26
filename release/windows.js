@@ -19,7 +19,7 @@
  * from the release page — there is no browser-installs-an-app path on desktop the
  * way there is on Android — so nothing in the console offers it, nothing parses a
  * token, and adding one would be a channel with no reader. That is the same
- * decision `packages/macos/version.properties` documents.
+ * decision `apps/macos/version.properties` documents.
  *
  * One shape for every shell (`ANDROID_SHELL`, `IOS_SHELL` and `MACOS_SHELL` are the
  * twins), because the question is identical and only the file, the line and the
@@ -31,9 +31,9 @@ import { commitsSince, versionWatermark as genericWatermark } from './watermark.
 /** One released-by-version artifact. */
 export const WINDOWS_SHELL = {
   /** Directory whose changes ask for a bump. */
-  dir: 'packages/windows',
+  dir: 'apps/windows',
   /** The file carrying the version the build reads. */
-  versionFile: 'packages/windows/version.properties',
+  versionFile: 'apps/windows/version.properties',
   /** The line inside that file, as a `git log -L` regex. */
   pattern: '/^versionName=/',
   /** The key the file declares. */
@@ -51,7 +51,7 @@ export function versionWatermark(cwd) {
 }
 
 /**
- * The commits touching `packages/windows` since its version was last written.
+ * The commits touching `apps/windows` since its version was last written.
  *
  * @param {string} cwd The repository to read.
  * @param {number} [limit] How far back to walk when there is no watermark.

@@ -13,7 +13,7 @@
  * it simply stops appearing in "Open with" for a format added later.
  *
  *   --plist    the `CFBundleDocumentTypes` array CONTENTS for the macOS bundle
- *              (injected by `packages/macos/scripts/build-app.sh`)
+ *              (injected by `apps/macos/scripts/build-app.sh`)
  *   --mime     the `MimeType=` value for the Linux `.desktop` entry
  *   --iss      the `[Registry]` block for the Windows installer
  *   --android  the `intent-filter` blocks for `AndroidManifest.xml`
@@ -45,9 +45,9 @@ import { fileURLToPath } from 'node:url';
 import { HANDLED_DOCUMENTS, documentExtensions, documentMimes } from '../release/document-types.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const ISS_PATH = path.join(REPO, 'packages/windows/installer/document-types.iss');
-const ANDROID_MANIFEST = path.join(REPO, 'packages/android/app/src/main/AndroidManifest.xml');
-const IOS_PLIST = path.join(REPO, 'packages/ios/Resources/Info.plist');
+const ISS_PATH = path.join(REPO, 'apps/windows/installer/document-types.iss');
+const ANDROID_MANIFEST = path.join(REPO, 'apps/android/app/src/main/AndroidManifest.xml');
+const IOS_PLIST = path.join(REPO, 'apps/ios/Resources/Info.plist');
 
 /** The markers a generated region sits between, in a hand-written XML file. */
 export const BEGIN_MARKER = '<!-- BEGIN GENERATED document-types: run `bun run shell:docs` -->';
@@ -246,16 +246,16 @@ export function generatedFiles() {
   const android = fs.readFileSync(ANDROID_MANIFEST, 'utf8');
   const ios = fs.readFileSync(IOS_PLIST, 'utf8');
   return [
-    { path: ISS_PATH, expected: issBlock(), label: 'packages/windows/installer/document-types.iss' },
+    { path: ISS_PATH, expected: issBlock(), label: 'apps/windows/installer/document-types.iss' },
     {
       path: ANDROID_MANIFEST,
       expected: splice(android, androidFilters(), 'AndroidManifest.xml'),
-      label: 'packages/android/app/src/main/AndroidManifest.xml',
+      label: 'apps/android/app/src/main/AndroidManifest.xml',
     },
     {
       path: IOS_PLIST,
       expected: splice(ios, iosPlistFragment(), 'Info.plist'),
-      label: 'packages/ios/Resources/Info.plist',
+      label: 'apps/ios/Resources/Info.plist',
     },
   ];
 }

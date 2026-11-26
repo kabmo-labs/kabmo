@@ -24,7 +24,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { repoRoot } from './packages.mjs';
 
-const IOS = join(repoRoot, 'packages/ios');
+const IOS = join(repoRoot, 'apps/ios');
 const PLIST = join(IOS, 'Resources/Info.plist');
 const SCRIPT = join(IOS, 'scripts/build-ipa.sh');
 const WORKFLOW = join(repoRoot, '.github/workflows/publish-ios.yml');

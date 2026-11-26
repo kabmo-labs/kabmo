@@ -642,7 +642,7 @@ describe('the gate contract', () => {
   test.skipIf(process.platform === 'win32')(
     'the installer writes an Exec line naming the binary and taking files',
     () => {
-      const scripts = join(ROOT, 'packages/linux/scripts');
+      const scripts = join(ROOT, 'apps/linux/scripts');
       const app = mkdtempSync(join(tmpdir(), 'kabmo-launcher-'));
       const prefix = mkdtempSync(join(tmpdir(), 'kabmo-prefix-'));
       try {

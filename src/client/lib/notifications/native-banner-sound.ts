@@ -7,7 +7,7 @@
  * Whether the NATIVE banner owns the chime for this event.
  *
  * Inside a Kabmo shell the OS notification plays the Kabmo sound itself
- * (`packages/notification-sound/`). The page must then NOT play its Web Audio
+ * (`assets/notification-sound/`). The page must then NOT play its Web Audio
  * cue: the two arrive for the same event within a few hundred milliseconds, and
  * hearing the same chime twice is the bug this module exists to prevent.
  *

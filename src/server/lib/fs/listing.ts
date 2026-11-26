@@ -72,7 +72,7 @@ async function folderChain(dir: string): Promise<string[]> {
  *
  * EVERY entry is listed — `node_modules`, `.git`, `dist`, `build` and dot-files
  * included. There is no name table: filtering by name cannot tell a dependency
- * tree from a folder of release artifacts (`packages/android/dist` holds the
+ * tree from a folder of release artifacts (`apps/android/dist` holds the
  * built APKs), and it hid directories the user could not reach any other way.
  * The panel's own signal for "this is untracked noise" is the `ignored` flag,
  * which dims the row via `git check-ignore` instead of deleting it — and a tree

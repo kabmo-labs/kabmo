@@ -108,7 +108,7 @@ describe('the macOS declaration', () => {
   });
 
   test('the build script injects the fragment and declares the key', () => {
-    const script = fs.readFileSync(path.join(REPO, 'packages/macos/scripts/build-app.sh'), 'utf8');
+    const script = fs.readFileSync(path.join(REPO, 'apps/macos/scripts/build-app.sh'), 'utf8');
     expect(script).toContain('<key>CFBundleDocumentTypes</key>');
     expect(script).toContain('__DOCUMENT_TYPES__');
     expect(script).toContain('shell-document-types.mjs');
@@ -119,7 +119,7 @@ describe('the macOS declaration', () => {
     // A malformed plist makes macOS refuse to LAUNCH the app, with no message
     // anywhere — so the lint runs on the machine that assembles the bundle,
     // not in a test on a Linux runner that has no `plutil`.
-    const script = fs.readFileSync(path.join(REPO, 'packages/macos/scripts/build-app.sh'), 'utf8');
+    const script = fs.readFileSync(path.join(REPO, 'apps/macos/scripts/build-app.sh'), 'utf8');
     expect(script).toContain('plutil -lint');
     // …and it must FAIL the build, not warn.
     const lint = script.slice(script.indexOf('plutil -lint'));
@@ -136,7 +136,7 @@ describe('the Linux declaration', () => {
   });
 
   test('the desktop template declares the key and takes the files', () => {
-    const template = fs.readFileSync(path.join(REPO, 'packages/linux/scripts/kabmo.desktop.in'), 'utf8');
+    const template = fs.readFileSync(path.join(REPO, 'apps/linux/scripts/kabmo.desktop.in'), 'utf8');
     expect(template).toContain('MimeType=@MIMETYPES@');
     // `%F` is what makes the entry a document handler: without it the launcher
     // starts the app and drops the file the user double-clicked.
@@ -149,7 +149,7 @@ describe('the Linux declaration', () => {
     // rejects the entry and the launcher then does NOTHING when clicked, with no
     // message anywhere. The first version of this template used `;`.
     const lines = fs
-      .readFileSync(path.join(REPO, 'packages/linux/scripts/kabmo.desktop.in'), 'utf8')
+      .readFileSync(path.join(REPO, 'apps/linux/scripts/kabmo.desktop.in'), 'utf8')
       .split('\n')
       .map((line) => line.trim())
       .filter((line) => line.length > 0 && !line.startsWith('#'));
@@ -164,10 +164,10 @@ describe('the Linux declaration', () => {
 
   test('the installer and all three packagers fill the key', () => {
     for (const script of [
-      'packages/linux/scripts/install.sh',
-      'packages/linux/scripts/package-deb.sh',
-      'packages/linux/scripts/package-rpm.sh',
-      'packages/linux/scripts/package-appimage.sh',
+      'apps/linux/scripts/install.sh',
+      'apps/linux/scripts/package-deb.sh',
+      'apps/linux/scripts/package-rpm.sh',
+      'apps/linux/scripts/package-appimage.sh',
     ]) {
       const source = fs.readFileSync(path.join(REPO, script), 'utf8');
       expect(source).toContain('@MIMETYPES@');
@@ -176,7 +176,7 @@ describe('the Linux declaration', () => {
   });
 
   test('the tarball carries the generated list', () => {
-    const build = fs.readFileSync(path.join(REPO, 'packages/linux/scripts/build-app.sh'), 'utf8');
+    const build = fs.readFileSync(path.join(REPO, 'apps/linux/scripts/build-app.sh'), 'utf8');
     expect(build).toContain('--mime');
     expect(build).toContain('mime-types.txt');
   });
@@ -207,7 +207,7 @@ describe('the Android declaration', () => {
   });
 
   test('the committed manifest region is current', () => {
-    const manifest = fs.readFileSync(path.join(REPO, 'packages/android/app/src/main/AndroidManifest.xml'), 'utf8');
+    const manifest = fs.readFileSync(path.join(REPO, 'apps/android/app/src/main/AndroidManifest.xml'), 'utf8');
     expect(regionOf(manifest)).toBe(androidFilters());
     // Inside MainActivity, which is the exported component a manager reaches.
     const activity = manifest.slice(manifest.indexOf('.MainActivity'), manifest.indexOf('</activity>'));
@@ -236,14 +236,14 @@ describe('the iOS declaration', () => {
   test('the build lints the assembled plist before it installs', () => {
     // A malformed plist makes iOS refuse to install the app with no message, and
     // the document types are the one generated region in it.
-    const script = fs.readFileSync(path.join(REPO, 'packages/ios/scripts/build-ipa.sh'), 'utf8');
+    const script = fs.readFileSync(path.join(REPO, 'apps/ios/scripts/build-ipa.sh'), 'utf8');
     expect(script).toContain('plutil -lint');
     const lint = script.slice(script.indexOf('plutil -lint'));
     expect(lint).toContain('exit 1');
   });
 
   test('the committed plist region is current, and the plist parses', () => {
-    const plist = fs.readFileSync(path.join(REPO, 'packages/ios/Resources/Info.plist'), 'utf8');
+    const plist = fs.readFileSync(path.join(REPO, 'apps/ios/Resources/Info.plist'), 'utf8');
     expect(regionOf(plist)).toBe(iosPlistFragment());
     expect(plist).toContain('<key>CFBundleDocumentTypes</key>');
     // A document opened from the Files app arrives security-scoped rather than
@@ -255,7 +255,7 @@ describe('the iOS declaration', () => {
 
 describe('the Windows declaration', () => {
   test('the committed installer fragment is current', () => {
-    const committed = fs.readFileSync(path.join(REPO, 'packages/windows/installer/document-types.iss'), 'utf8');
+    const committed = fs.readFileSync(path.join(REPO, 'apps/windows/installer/document-types.iss'), 'utf8');
     expect(committed).toBe(issBlock());
   });
 
@@ -272,7 +272,7 @@ describe('the Windows declaration', () => {
   });
 
   test('the installer includes it and asks Windows to refresh associations', () => {
-    const iss = fs.readFileSync(path.join(REPO, 'packages/windows/installer/kabmo.iss'), 'utf8');
+    const iss = fs.readFileSync(path.join(REPO, 'apps/windows/installer/kabmo.iss'), 'utf8');
     expect(iss).toContain('#include "document-types.iss"');
     // Without this Windows keeps serving the "Open with" menu it cached, and a
     // fresh install looks like it did nothing.
@@ -280,7 +280,7 @@ describe('the Windows declaration', () => {
   });
 
   test('the shell reads its command line', () => {
-    const host = fs.readFileSync(path.join(REPO, 'packages/windows/src/KabmoDesktop.App/ShellHost.cs'), 'utf8');
+    const host = fs.readFileSync(path.join(REPO, 'apps/windows/src/KabmoDesktop.App/ShellHost.cs'), 'utf8');
     expect(host).toContain('LaunchPaths.From(Environment.GetCommandLineArgs())');
     expect(host).toContain('OpenPathsScript.For');
   });
@@ -290,9 +290,9 @@ describe('every generated file', () => {
   test('the gate covers all three artifacts', () => {
     const labels = generatedFiles().map((file) => file.label);
     expect(labels).toEqual([
-      'packages/windows/installer/document-types.iss',
-      'packages/android/app/src/main/AndroidManifest.xml',
-      'packages/ios/Resources/Info.plist',
+      'apps/windows/installer/document-types.iss',
+      'apps/android/app/src/main/AndroidManifest.xml',
+      'apps/ios/Resources/Info.plist',
     ]);
   });
 

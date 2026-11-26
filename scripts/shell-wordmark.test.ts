@@ -12,8 +12,8 @@
  *    generator — a hand-typed `#0b5d3b` would survive an artwork change and paint
  *    the old brand colour forever;
  * 3. the shells' own rules suites re-derive the same numbers from the same file
- *    (`packages/ios/Tests/WordmarkTests.swift`, `packages/macos/Tests/SplashTests.swift`,
- *    `packages/windows/tests/Program.cs`, `packages/linux/rules/wordmark.rs`), so a
+ *    (`apps/ios/Tests/WordmarkTests.swift`, `apps/macos/Tests/SplashTests.swift`,
+ *    `apps/windows/tests/Program.cs`, `apps/linux/rules/wordmark.rs`), so a
  *    stale copy fails on four fronts rather than one.
  */
 import { describe, expect, test } from 'bun:test';
@@ -25,9 +25,9 @@ const ROOT = join(import.meta.dir, '..');
 const SVG = readFileSync(join(ROOT, 'public/kabmo-wordmark.svg'), 'utf8');
 
 const COPIES = [
-  'packages/macos/Sources/KabmoDesktop/Wordmark.swift',
-  'packages/windows/src/KabmoDesktop/Wordmark.cs',
-  'packages/linux/src/wordmark_data.rs',
+  'apps/macos/Sources/KabmoDesktop/Wordmark.swift',
+  'apps/windows/src/KabmoDesktop/Wordmark.cs',
+  'apps/linux/src/wordmark_data.rs',
 ];
 
 describe('scripts/shell-wordmark.mjs', () => {

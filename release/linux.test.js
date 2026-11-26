@@ -182,9 +182,9 @@ describe('the shell version is one declared fact', () => {
     const workflow = readFileSync(join(repoRoot, '.github/workflows/publish-linux.yml'), 'utf8');
     for (const script of ['package-deb.sh', 'package-rpm.sh', 'package-appimage.sh']) {
       expect(workflow, `${script} must be invoked by the build`).toContain(
-        `packages/linux/scripts/${script}`,
+        `apps/linux/scripts/${script}`,
       );
-      expect(existsSync(join(repoRoot, 'packages/linux/scripts', script)), `${script} must exist`).toBe(
+      expect(existsSync(join(repoRoot, 'apps/linux/scripts', script)), `${script} must exist`).toBe(
         true,
       );
     }
@@ -210,7 +210,7 @@ describe('the shell version is one declared fact', () => {
     //
     // Ubuntu 24.04 renamed GTK 3's runtime package to `libgtk-3-0t64` (the 64-bit
     // time_t transition), so the old `libgtk-3-0` name is exactly that trap.
-    const script = readFileSync(join(repoRoot, 'packages/linux/scripts/package-deb.sh'), 'utf8');
+    const script = readFileSync(join(repoRoot, 'apps/linux/scripts/package-deb.sh'), 'utf8');
     expect(script, 'the deb must depend on GTK 3').toContain('libgtk-3-0t64');
     expect(script, 'the deb must depend on WebKitGTK 4.1').toContain('libwebkit2gtk-4.1-0');
     // `fakeroot` + `--root-owner-group`: without either the archive records the
@@ -228,7 +228,7 @@ describe('the shell version is one declared fact', () => {
     // and they are the wrong names for the machine this package installs on. A spec
     // naming `libgtk-3-0t64` builds cleanly and then fails to resolve on every
     // Fedora box it reaches.
-    const script = readFileSync(join(repoRoot, 'packages/linux/scripts/package-rpm.sh'), 'utf8');
+    const script = readFileSync(join(repoRoot, 'apps/linux/scripts/package-rpm.sh'), 'utf8');
     expect(script, 'the rpm must require gtk3').toContain('Requires:       gtk3');
     expect(script, 'the rpm must require webkit2gtk4.1').toContain('Requires:       webkit2gtk4.1');
     expect(script, 'the rpm must not name a Debian package').not.toContain('Requires:       libgtk');
@@ -239,7 +239,7 @@ describe('the shell version is one declared fact', () => {
   });
 
   test('the AppImage is a real AppDir, and its zsync lands beside it', () => {
-    const script = readFileSync(join(repoRoot, 'packages/linux/scripts/package-appimage.sh'), 'utf8');
+    const script = readFileSync(join(repoRoot, 'apps/linux/scripts/package-appimage.sh'), 'utf8');
     // The format's contract: `AppRun`, the entry and the icon at the AppDir ROOT.
     expect(script, 'the AppDir must carry AppRun').toContain('AppRun');
     expect(script, 'the AppRun must be a symlink to the binary, not a wrapper script').toMatch(
@@ -402,7 +402,7 @@ describe('the shell version is one declared fact', () => {
       'node release/release-shells.mjs',
     );
     expect(release, 'release.yml must commit the linux bump').toContain(
-      'packages/linux/version.properties',
+      'apps/linux/version.properties',
     );
     expect(release, 'release.yml must call the linux body').toContain(
       './.github/workflows/publish-linux.yml',

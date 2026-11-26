@@ -9,12 +9,12 @@
  *
  * FIVE shells speak to this page, and they do NOT all inject the same thing:
  *
- * - `packages/macos` / `packages/windows` / `packages/linux` install
+ * - `apps/macos` / `apps/windows` / `apps/linux` install
  *   `window.__kabmoCall` themselves, at document start, together with
  *   `window.__kabmoDesktop` (their identity). Nothing in this file has to run for
  *   them: `installShellTransport` is a no-op when a call function already exists.
- * - `packages/android` exposes only `window.kabmoHost` (a `@JavascriptInterface`),
- *   and `packages/ios` only `window.webkit.messageHandlers.kabmo`. Neither can
+ * - `apps/android` exposes only `window.kabmoHost` (a `@JavascriptInterface`),
+ *   and `apps/ios` only `window.webkit.messageHandlers.kabmo`. Neither can
  *   inject script before the page, so THIS module adapts their transport into
  *   `__kabmoCall` — one shape for the whole console — from
  *   `installShellTransport()` in `main.tsx`.

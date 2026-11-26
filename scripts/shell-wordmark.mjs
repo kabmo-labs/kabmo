@@ -13,8 +13,8 @@
  * shape that drifts silently: the splash still renders, just not the mark.
  *
  * So the copies are GENERATED from the SVG, and each shell's rules suite re-derives
- * them from the SVG again (the same guard `packages/android`'s
- * `WordmarkDrawableTest` and `packages/ios`'s `WordmarkTests` apply to their own
+ * them from the SVG again (the same guard `apps/android`'s
+ * `WordmarkDrawableTest` and `apps/ios`'s `WordmarkTests` apply to their own
  * copies). Run this after editing the artwork:
  *
  *   bun run scripts/shell-wordmark.mjs           # write
@@ -146,7 +146,7 @@ import Foundation
 ///
 /// **This file is GENERATED** by \`scripts/shell-wordmark.mjs\` from the SVG, and
 /// \`SplashTests\` re-derives every number below from that file — the same guard
-/// \`packages/ios\`'s \`WordmarkTests\` applies to its own copy.
+/// \`apps/ios\`'s \`WordmarkTests\` applies to its own copy.
 ///
 /// The SVG is authored around a baseline at y = 0, so its viewBox starts ABOVE the
 /// origin (\`0 ${art.viewBox[1]} ${width} ${height}\`). A \`CGPath\` has no negative origin
@@ -388,9 +388,9 @@ pub const STROKE_COLORS: [&str; 3] = ["${art.paths[0].stroke}", "${art.paths[1].
 `;
 
 const targets = [
-  { path: join(ROOT, 'packages/macos/Sources/KabmoDesktop/Wordmark.swift'), body: swift },
-  { path: join(ROOT, 'packages/windows/src/KabmoDesktop/Wordmark.cs'), body: cs },
-  { path: join(ROOT, 'packages/linux/src/wordmark_data.rs'), body: rust },
+  { path: join(ROOT, 'apps/macos/Sources/KabmoDesktop/Wordmark.swift'), body: swift },
+  { path: join(ROOT, 'apps/windows/src/KabmoDesktop/Wordmark.cs'), body: cs },
+  { path: join(ROOT, 'apps/linux/src/wordmark_data.rs'), body: rust },
 ];
 
 const check = process.argv.includes('--check');

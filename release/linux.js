@@ -21,7 +21,7 @@
  * the release page — no browser installs a desktop app the way Chrome installs an
  * APK — so nothing in the console offers it, nothing parses a token, and adding
  * one would be a channel with no reader. That is the same decision
- * `packages/macos/version.properties` and `packages/windows/version.properties`
+ * `apps/macos/version.properties` and `apps/windows/version.properties`
  * document.
  *
  * One shape for every shell (`ANDROID_SHELL`, `IOS_SHELL`, `MACOS_SHELL` and
@@ -35,9 +35,9 @@ import { commitsSince, versionWatermark as genericWatermark } from './watermark.
 /** One released-by-version artifact. */
 export const LINUX_SHELL = {
   /** Directory whose changes ask for a bump. */
-  dir: 'packages/linux',
+  dir: 'apps/linux',
   /** The file carrying the version the build reads. */
-  versionFile: 'packages/linux/version.properties',
+  versionFile: 'apps/linux/version.properties',
   /** The line inside that file, as a `git log -L` regex. */
   pattern: '/^versionName=/',
   /** The key the file declares. */
@@ -55,7 +55,7 @@ export function versionWatermark(cwd) {
 }
 
 /**
- * The commits touching `packages/linux` since its version was last written.
+ * The commits touching `apps/linux` since its version was last written.
  *
  * @param {string} cwd The repository to read.
  * @param {number} [limit] How far back to walk when there is no watermark.

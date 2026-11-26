@@ -7,7 +7,7 @@
  * What the Files panel lists.
  *
  * The panel used to drop a hardcoded set of names (`node_modules`, `.git`,
- * `dist`, `build`) at every depth, which hid `packages/android/dist` — the
+ * `dist`, `build`) at every depth, which hid `apps/android/dist` — the
  * built APKs — from the user with no way to reach it. There is now no name
  * filter at all: every entry is listed, and the `ignored` flag (one
  * `git check-ignore` per listing) is what marks the untracked ones for dimming.
@@ -62,16 +62,16 @@ describe('listDirectoryEntries', () => {
 
   test('a nested dist is listed where it lives, not filtered by name', async () => {
     const root = makeRoot();
-    mkdirs(root, ['packages/android/dist', 'packages/core']);
+    mkdirs(root, ['apps/android/dist', 'packages/core']);
 
     const packages = await listDirectoryEntries(path.join(root, 'packages'), root);
     // `android` holds nothing but `dist`, so the two collapse into one row —
     // and the path still names the deepest directory, which is the one whose
     // contents the row expands into.
     expect(packages.map((entry) => entry.name)).toEqual(['android/dist', 'core']);
-    expect(packages[0]!.path).toBe('packages/android/dist');
+    expect(packages[0]!.path).toBe('apps/android/dist');
 
-    const dist = await listDirectoryEntries(path.join(root, 'packages/android/dist'), root);
+    const dist = await listDirectoryEntries(path.join(root, 'apps/android/dist'), root);
     expect(dist).toEqual([]);
   });
 

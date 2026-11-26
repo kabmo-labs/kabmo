@@ -70,19 +70,19 @@ hostile tunnel or a compromised CA, and it is a large change — see §7.
 
 | Shell | Behaviour on an unknown issuer | File |
 |---|---|---|
-| Android | `handler.cancel()`, then a dialog naming the reason | `packages/android/app/src/main/java/dev/kabmo/shell/KabmoWebViewClient.kt:84` |
-| iOS | `.cancelAuthenticationChallenge` | `packages/ios/Sources/kabmo-shell/ShellNavigationDelegate.swift:138` |
-| macOS | no challenge handler → WebKit default refusal, reported as `SplashFailure` | `packages/macos/Sources/KabmoDesktop/SplashState.swift:179` |
-| Windows | no `ServerCertificateErrorDetected` handler → WebView2 interstitial | `packages/windows/src/KabmoDesktop.App/ShellHost.cs:320` |
-| Linux | no `load-failed-with-tls-errors` handler → the load fails | `packages/linux/src/splash.rs:201` |
+| Android | `handler.cancel()`, then a dialog naming the reason | `apps/android/app/src/main/java/dev/kabmo/shell/KabmoWebViewClient.kt:84` |
+| iOS | `.cancelAuthenticationChallenge` | `apps/ios/Sources/kabmo-shell/ShellNavigationDelegate.swift:138` |
+| macOS | no challenge handler → WebKit default refusal, reported as `SplashFailure` | `apps/macos/Sources/KabmoDesktop/SplashState.swift:179` |
+| Windows | no `ServerCertificateErrorDetected` handler → WebView2 interstitial | `apps/windows/src/KabmoDesktop.App/ShellHost.cs:320` |
+| Linux | no `load-failed-with-tls-errors` handler → the load fails | `apps/linux/src/splash.rs:201` |
 
 So `--tls` today helps exactly one client: a desktop browser, after the operator
 clicks through a warning — the habit that makes a real MITM work. **The shells
 cannot use the one encryption mode that exists.**
 
 Additionally, cleartext is deliberately permitted app-wide on the mobile
-shells (`packages/android/app/src/main/res/xml/network_security_config.xml`,
-`packages/ios/Resources/Info.plist` `NSAllowsArbitraryLoadsInWebContent`), since
+shells (`apps/android/app/src/main/res/xml/network_security_config.xml`,
+`apps/ios/Resources/Info.plist` `NSAllowsArbitraryLoadsInWebContent`), since
 the address is typed at runtime.
 
 ### 3.3 What a LAN http origin costs, beyond confidentiality
@@ -152,7 +152,7 @@ kabmo://pair?u=https%3A%2F%2F192.168.1.20%3A3000&f=<sha256(spki) b64url>&s=<32B 
 ```
 
 - `u` — origin the shell will load (same normalisation the shells already apply:
-  `normaliseUrl` in `packages/macos/Sources/KabmoDesktop/Store.swift`, etc.).
+  `normaliseUrl` in `apps/macos/Sources/KabmoDesktop/Store.swift`, etc.).
 - `f` — **SHA-256 of the certificate's SubjectPublicKeyInfo**, the pin. Not the
   whole certificate: an SPKI pin survives a re-issue with the same key and is
   what both Android's and Apple's APIs make easy to compute.

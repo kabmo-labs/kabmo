@@ -188,5 +188,6 @@
   },
   "workspaces": [
     "packages/*"
-  ]
+  ],
+  "$comment-workspaces": "Only `packages/*` are Bun workspaces. The native shells live in `apps/` and the sound and QR inputs in `assets/`; they have no package.json, so they are never installed, published or typechecked as libraries."
 }

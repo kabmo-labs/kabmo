@@ -12,15 +12,15 @@
  * declares that differently and each declaration is a separate file:
  *
  * - **macOS** — `CFBundleDocumentTypes` in the bundle's `Info.plist`, written by
- *   `packages/macos/scripts/build-app.sh` from this table's UTIs.
+ *   `apps/macos/scripts/build-app.sh` from this table's UTIs.
  * - **Linux** — the `MimeType=` key of the `.desktop` entry, filled in by
- *   `packages/linux/scripts/install.sh` from the MIME list.
+ *   `apps/linux/scripts/install.sh` from the MIME list.
  * - **Windows** — `[Registry]` entries in the Inno Setup script, from the
- *   generated `packages/windows/installer/document-types.iss`.
+ *   generated `apps/windows/installer/document-types.iss`.
  * - **Android** — `intent-filter` blocks in `AndroidManifest.xml`, from the
- *   generated `packages/android/app/src/main/res/xml/document_types.xml`.
+ *   generated `apps/android/app/src/main/res/xml/document_types.xml`.
  * - **iOS** — `CFBundleDocumentTypes` in `Resources/Info.plist`, from the
- *   generated `packages/ios/Resources/DocumentTypes.plist`.
+ *   generated `apps/ios/Resources/DocumentTypes.plist`.
  *
  * The table exists because those files drifted the moment one of them was
  * edited alone: a format added to the editor and declared on macOS only is a

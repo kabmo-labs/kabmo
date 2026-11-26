@@ -252,7 +252,7 @@ describe('the shell version is one declared fact', () => {
       'node release/release-shells.mjs',
     );
     expect(release, 'release.yml must commit the windows bump').toContain(
-      'packages/windows/version.properties',
+      'apps/windows/version.properties',
     );
     expect(release, 'release.yml must call the windows body').toContain(
       './.github/workflows/publish-windows.yml',

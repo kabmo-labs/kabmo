@@ -108,7 +108,7 @@ describe('the shell version is one declared fact', () => {
     const workflow = readFileSync(join(repoRoot, '.github/workflows/publish-ios.yml'), 'utf8');
 
     // The file is read through `release/ios-version.mjs` (which is `readVersionName`
-    // over `packages/ios/version.properties`) rather than named here — the workflow
+    // over `apps/ios/version.properties`) rather than named here — the workflow
     // must not carry its own idea of where the number lives.
     expect(workflow).toContain('release/ios-version.mjs');
     // The name is built from the value `release/ios-version.mjs` printed, which is
@@ -312,8 +312,8 @@ describe('the commit range', () => {
     // touching only one must not bump the other — the shape a shared table would get
     // wrong.
     const dir = makeRepo();
-    mkdirSync(join(dir, 'packages/android'), { recursive: true });
-    writeFileSync(join(dir, 'packages/android/version.properties'), properties('0.5.0'));
+    mkdirSync(join(dir, 'apps/android'), { recursive: true });
+    writeFileSync(join(dir, 'apps/android/version.properties'), properties('0.5.0'));
 
     writeFileSync(join(dir, IOS_SHELL.dir, 'Shell.swift'), 'let a = 4\n');
     git(dir, 'add', '-A');

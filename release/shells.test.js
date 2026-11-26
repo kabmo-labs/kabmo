@@ -161,7 +161,7 @@ describe('the runner bumps every shell in one pass, or none of them', () => {
 
     expect(result.failed).toBe(true);
     expect(result.written).toEqual([]);
-    expect(readFileSync(join(root, 'packages/android/version.properties'), 'utf8')).toContain(
+    expect(readFileSync(join(root, 'apps/android/version.properties'), 'utf8')).toContain(
       'versionName=1.0.0',
     );
     expect(result.outcomes.find((outcome) => outcome.shell.id === 'macos')?.status).toBe('failed');
@@ -202,7 +202,7 @@ describe('the runner bumps every shell in one pass, or none of them', () => {
 
     expect(result.failed).toBe(false);
     expect(result.outcomes[0].status).toBe('no-bump');
-    expect(readFileSync(join(root, 'packages/android/version.properties'), 'utf8')).toContain(
+    expect(readFileSync(join(root, 'apps/android/version.properties'), 'utf8')).toContain(
       'versionName=1.0.0',
     );
   });
@@ -215,7 +215,7 @@ describe('the runner bumps every shell in one pass, or none of them', () => {
 
     expect(result.outcomes[0].next).toBe('1.0.1');
     expect(result.written).toEqual([]);
-    expect(readFileSync(join(root, 'packages/android/version.properties'), 'utf8')).toContain(
+    expect(readFileSync(join(root, 'apps/android/version.properties'), 'utf8')).toContain(
       'versionName=1.0.0',
     );
   });

@@ -14,7 +14,7 @@
  *   name has to carry this same number rather than the app's tag.
  *
  * Before this file existed the APK's `versionName` was the app's release tag:
- * a fix that touched only `packages/android` could not reach an installed app
+ * a fix that touched only `apps/android` could not reach an installed app
  * unless the SERVER also cut a version, and a release that did cut one produced
  * an APK whose version said nothing about whether the shell had changed.
  *
@@ -27,9 +27,9 @@ import { commitsSince, versionWatermark as genericWatermark } from './watermark.
 /** One released-by-version artifact. */
 export const ANDROID_SHELL = {
   /** Directory whose changes ask for a bump. */
-  dir: 'packages/android',
+  dir: 'apps/android',
   /** The file carrying the version the build reads. */
-  versionFile: 'packages/android/version.properties',
+  versionFile: 'apps/android/version.properties',
   /** The line inside that file, as a `git log -L` regex. */
   pattern: '/^versionName=/',
   /** The key the file declares. */
@@ -47,7 +47,7 @@ export function versionWatermark(cwd) {
 }
 
 /**
- * The commits touching `packages/android` since its version was last written.
+ * The commits touching `apps/android` since its version was last written.
  *
  * @param {string} cwd The repository to read.
  * @param {number} [limit] How far back to walk when there is no watermark.
