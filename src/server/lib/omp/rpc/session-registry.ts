@@ -322,14 +322,8 @@ export function ompSessionRegistry(): Map<string, LiveSession> {
 
 export { startNewRpcSession } from '@/server/lib/omp/rpc/session-new';
 
-/**
- * The readers other modules use instead of holding the wrapper.
- *
- * Registered here because this module owns the map, and kept next to the
- * accessors it mirrors so the two cannot disagree about what "live" means: the
- * reader walks the same map these functions do, and `getLiveRunSessionIds` below
- * stays the omp-facing answer for the heal.
- */
+/** The readers other modules use instead of holding the wrapper. Registered
+ *  here because this module owns the map, so the two cannot disagree. */
 registerLiveSessionReads(() => {
   const facts = [...getRegistry()].map(([key, session]) => ({
     sessionId: session.sessionId || key,
@@ -337,10 +331,8 @@ registerLiveSessionReads(() => {
     running: session.isAlive() && session.isRunning(),
     awaitingInput: session.isAlive() && session.getPendingUiDialogs().length > 0,
   }));
-  // A simulated stream (MOCK mode) is a run this process drives with no omp child
-  // behind it, so the map above cannot see it — and a reader that only walked the
-  // map judged its row an orphan. `getLiveRunSessionIds` had this input from the
-  // start; the port must keep it or a mock run loses its activity stamp.
+  // A simulated stream (MOCK mode) has no omp child behind it, so the map cannot
+  // see it: without this a mock run's row read as an orphan and lost its stamp.
   const seen = new Set(facts.map((entry) => entry.sessionId));
   for (const sessionId of localRuns()) {
     if (seen.has(sessionId)) continue;
@@ -349,7 +341,6 @@ registerLiveSessionReads(() => {
   return facts;
 });
 
-/** The sweep a status read asks for: every live omp wrapper reconciles its row. */
 registerLiveSessionReconcile(() => {
   for (const session of listRpcSessions()) void session.runSettle.reconcile('request');
 });
