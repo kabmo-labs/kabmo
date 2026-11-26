@@ -1,7 +1,7 @@
 import { json } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
-import { testMcpServer } from '@/server/lib/omp/config/mcp-test';
+import { testMcpServer } from '@kabmo-labs/kabmo-omp-config-mcp/mcp-test';
 import type { McpServerItem } from '@/shared/types';
 
 /**

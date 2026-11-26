@@ -3,13 +3,11 @@ import type { FormEvent } from 'preact/compat';
 import { Check, Globe, Hash, Layers, Plus, Sparkles } from 'lucide-preact';
 import type { ProviderItem } from '@/shared/types';
 import { addProviderModel, type ManualModelRequest } from '@/shared/lib/models/provider/models';
-import {
-  MODEL_KINDS,
-  MODEL_KIND_LABELS,
-  PROVIDER_THINKING_EFFORTS,
-  type ProviderModelKind,
-  type ProviderThinkingEffort,
-} from '@/shared/lib/models/provider/dialect';
+import { MODEL_KINDS,
+MODEL_KIND_LABELS,
+PROVIDER_THINKING_EFFORTS,
+type ProviderModelKind,
+type ProviderThinkingEffort, } from '@kabmo-labs/kabmo-provider-contracts/dialect';
 import { SearchSelect } from '@/client/components/common/search-select';
 import { Modal } from '@/client/components/common/Modal';
 import { EffortLadder } from '@/client/components/settings/categories/provider-settings/EffortLadder';

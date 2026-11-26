@@ -24,7 +24,7 @@
  * the one case where a user wants to bring their own key.
  */
 
-import type { PresetProviderOption, ProviderItem } from '@/shared/types/settings/provider';
+import type { PresetProviderOption, ProviderItem } from '@kabmo-labs/kabmo-settings-contracts/provider';
 
 /**
  * True when the provider already owns this slug in a config file — connected,

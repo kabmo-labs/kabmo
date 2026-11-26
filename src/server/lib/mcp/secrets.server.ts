@@ -19,7 +19,7 @@
  * that cannot be minted is not a header.
  */
 
-import type { McpServer } from '@/server/lib/omp/config/mcp-shared';
+import type { McpServer } from '@kabmo-labs/kabmo-omp-config-mcp/mcp-shared';
 import type { McpServerDefinition } from '@/server/lib/mcp/registry.server';
 
 const COMMAND_TIMEOUT_MS = 10_000;

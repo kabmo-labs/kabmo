@@ -15,7 +15,7 @@
 import { getDb } from '@/server/db.server';
 import { PROVIDERS_SETTINGS_KEY } from '@/server/lib/models/provider-registry.server';
 import { readSettingsJson } from '@/server/lib/db/settings-store';
-import { readDisabledProviders } from '@/server/lib/omp/config/disabled-providers';
+import { readDisabledProviders } from '@kabmo-labs/kabmo-omp-config-providers/disabled-providers';
 import { runUtilityCommand, type OmpModel } from '@/server/lib/omp/rpc/utility';
 import { readProviderIconUrls } from '@/server/lib/models/provider-icon.server';
 import { invalidateModelsCaches } from '@/shared/lib/models/server-cache';

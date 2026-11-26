@@ -1,15 +1,13 @@
 import { useEffect, useState } from 'preact/hooks';
 import { Check, DownloadCloud, Globe, Key, Layers } from 'lucide-preact';
 import type { ProviderItem } from '@/shared/types';
-import type {
-  OmpProviderApi,
-  PresetProviderOption,
-  ProviderAuthMode,
-  ProviderDiscoveryType,
-  ProviderModelSource,
-} from '@/shared/types/settings/provider';
+import type { OmpProviderApi,
+PresetProviderOption,
+ProviderAuthMode,
+ProviderDiscoveryType,
+ProviderModelSource, } from '@kabmo-labs/kabmo-settings-contracts/provider';
 import { fetchProviderModelsRemote } from '@/shared/lib/models/provider/models';
-import { inferProviderApi } from '@/shared/lib/models/provider/dialect';
+import { inferProviderApi } from '@kabmo-labs/kabmo-provider-contracts/dialect';
 import { Modal } from '@/client/components/common/Modal';
 import { DialectFields } from '@/client/components/settings/categories/provider-settings/DialectFields';
 import { PresetPicker } from '@/client/components/settings/categories/provider-settings/PresetPicker';

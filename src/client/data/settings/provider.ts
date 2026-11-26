@@ -1,4 +1,4 @@
-import type { PresetProviderOption, ProviderItem } from '@/shared/types/settings/provider';
+import type { PresetProviderOption, ProviderItem } from '@kabmo-labs/kabmo-settings-contracts/provider';
 
 export const DEFAULT_PROVIDERS_LIST: ProviderItem[] = [
   {

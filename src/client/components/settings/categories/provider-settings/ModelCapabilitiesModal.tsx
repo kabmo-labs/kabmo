@@ -1,7 +1,7 @@
 import { Check, Cpu, Eye, Minus, SlidersHorizontal, Terminal } from 'lucide-preact';
 import type { ProviderModel } from '@/shared/types';
 import { Modal } from '@/client/components/common/Modal';
-import { MODEL_KIND_LABELS, modelKindOf } from '@/shared/lib/models/provider/dialect';
+import { MODEL_KIND_LABELS, modelKindOf } from '@kabmo-labs/kabmo-provider-contracts/dialect';
 
 interface ModelCapabilitiesModalProps {
   isOpen: boolean;

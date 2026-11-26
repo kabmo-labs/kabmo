@@ -22,7 +22,7 @@
 import { readOmpModelsJson, type OmpModelsRow } from '@kabmo-labs/kabmo-omp-install/models-json';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { formatContextWindow } from '@/shared/lib/code/format';
-import { modelKindOf } from '@/shared/lib/models/provider/dialect';
+import { modelKindOf } from '@kabmo-labs/kabmo-provider-contracts/dialect';
 import { isRecord } from '@kabmo-labs/kabmo-guards';
 
 const CATALOG_TTL_MS = 60_000;

@@ -20,11 +20,9 @@
  * `hasVision: false` / `hasTools: true` whatever omp actually knew.
  */
 
-import {
-  isOmpProviderApi,
-  isProviderAuthMode,
-  isProviderDiscoveryType,
-} from '@/shared/lib/models/provider/dialect';
+import { isOmpProviderApi,
+isProviderAuthMode,
+isProviderDiscoveryType, } from '@kabmo-labs/kabmo-provider-contracts/dialect';
 import { removeLegacyKenariModels } from '@/shared/lib/models/provider/cleanup';
 import { formatContextWindow } from '@/shared/lib/code/format';
 import type { NativeProviderInfo, NativeModelInfo } from '@kabmo-labs/kabmo-omp-models-config/models-config';

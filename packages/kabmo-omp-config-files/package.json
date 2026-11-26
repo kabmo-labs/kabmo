@@ -1,0 +1,31 @@
+{
+  "name": "@kabmo-labs/kabmo-omp-config-files",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "omp agents, commands, skills, and config CLI.",
+  "exports": {
+    ".": "./src/skills.ts",
+    "./agents": "./src/agents.ts",
+    "./commands": "./src/commands.ts",
+    "./config-cli": "./src/config-cli.ts",
+    "./discovery-roots": "./src/discovery-roots.ts",
+    "./instructions": "./src/instructions.ts",
+    "./skills": "./src/skills.ts",
+    "./skills-catalog": "./src/skills-catalog.ts"
+  },
+  "files": ["src"],
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/kabmo-labs/kabmo.git", "directory": "packages/kabmo-omp-config-files" },
+  "publishConfig": { "access": "public" },
+  "engines": { "bun": ">=1.4.0" },
+  "dependencies": {
+    "@kabmo-labs/kabmo-fs-child-env": "workspace:*",
+    "@kabmo-labs/kabmo-fs-config": "workspace:*",
+    "@kabmo-labs/kabmo-guards": "workspace:*",
+    "@kabmo-labs/kabmo-omp-cli": "workspace:*",
+    "@kabmo-labs/kabmo-omp-config-doc": "workspace:*",
+    "@kabmo-labs/kabmo-omp-paths": "workspace:*",
+    "@kabmo-labs/kabmo-runtime-flags": "workspace:*",
+    "@kabmo-labs/kabmo-settings-contracts": "workspace:*"
+  }
+}

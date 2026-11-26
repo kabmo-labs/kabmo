@@ -1,15 +1,11 @@
-import type {
-  OmpProviderApi,
-  ProviderAuthMode,
-  ProviderDiscoveryType,
-  ProviderModelSource,
-} from '@/shared/types/settings/provider';
-import {
-  PROVIDER_APIS,
-  PROVIDER_API_LABELS,
-  PROVIDER_AUTH_MODES,
-  PROVIDER_DISCOVERY_TYPES,
-} from '@/shared/lib/models/provider/dialect';
+import type { OmpProviderApi,
+ProviderAuthMode,
+ProviderDiscoveryType,
+ProviderModelSource, } from '@kabmo-labs/kabmo-settings-contracts/provider';
+import { PROVIDER_APIS,
+PROVIDER_API_LABELS,
+PROVIDER_AUTH_MODES,
+PROVIDER_DISCOVERY_TYPES, } from '@kabmo-labs/kabmo-provider-contracts/dialect';
 import { SearchSelect } from '@/client/components/common/search-select';
 
 interface DialectFieldsProps {

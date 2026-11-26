@@ -19,8 +19,8 @@
  * minute so reopening the popover does not spawn it again.
  */
 
-import { nativeToServerItem } from '@/server/lib/omp/config/mcp';
-import { testMcpServer } from '@/server/lib/omp/config/mcp-test';
+import { nativeToServerItem } from '@kabmo-labs/kabmo-omp-config-mcp/mcp';
+import { testMcpServer } from '@kabmo-labs/kabmo-omp-config-mcp/mcp-test';
 import { resolveMcpConfig } from '@/server/lib/mcp/secrets.server';
 import type { McpServerEntry } from '@/server/lib/mcp/registry.server';
 import type { McpProbeResult } from '@/shared/types';

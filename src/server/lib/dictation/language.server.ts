@@ -15,7 +15,7 @@
  * utterance; the config write route drops the cache so an edit applies at once.
  */
 
-import { getOmpConfigValue } from '@/server/lib/omp/config/config-cli';
+import { getOmpConfigValue } from '@kabmo-labs/kabmo-omp-config-files/config-cli';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 
 const CACHE_TTL_MS = 60_000;

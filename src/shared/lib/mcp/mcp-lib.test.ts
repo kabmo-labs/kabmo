@@ -16,7 +16,7 @@
 import { describe, expect, test } from 'bun:test';
 import { parseMcpImport } from '@/shared/lib/mcp/import';
 import { normalizeMcpItem } from '@/shared/lib/mcp/item';
-import { recordToRows, rowsToRecord } from '@/shared/lib/mcp/key-value';
+import { recordToRows, rowsToRecord } from '@kabmo-labs/kabmo-mcp-contracts/key-value';
 
 describe('parseMcpImport', () => {
   test('every server in an mcpServers block is imported', () => {

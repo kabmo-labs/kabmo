@@ -32,6 +32,12 @@ beforeEach(async () => {
   await ensureSessionRelationsSchema(await getDb());
   root = mkdtempSync(join(tmpdir(), 'kabmo-spawn-'));
   const db = await getDb();
+  // Opening the isolated database seeds `workspace_folders` from omp discovery
+  // when the table is empty, and that seed takes id 1. The row this suite needs
+  // is its own, so the table is cleared first rather than assuming the seed
+  // found nothing — which depends on the ambient `PI_CODING_AGENT_DIR` and made
+  // this suite pass alone and fail in a full run.
+  await db.run('DELETE FROM workspace_folders');
   await db.run(
     'INSERT INTO workspace_folders (id, name, project_path) VALUES (?, ?, ?)',
     [1, 'one', root],

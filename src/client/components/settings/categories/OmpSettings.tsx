@@ -25,7 +25,7 @@
 import { useCallback, useEffect, useState } from 'preact/hooks';
 import { AlertCircle, Check, X } from 'lucide-preact';
 import type { SettingsState } from '@/shared/types';
-import type { ConfigEntry } from '@/server/lib/omp/config/config-cli';
+import type { ConfigEntry } from '@kabmo-labs/kabmo-omp-config-files/config-cli';
 import { OMP_SCHEMA } from '@/shared/lib/omp/config/schema';
 import { ConfigTabs } from '@/client/components/settings/categories/omp-settings/ConfigTabs';
 import { EngineHeader } from '@/client/components/settings/categories/omp-settings/EngineHeader';

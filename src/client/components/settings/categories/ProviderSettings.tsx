@@ -11,7 +11,7 @@ import { ModelCapabilitiesModal } from '@/client/components/settings/categories/
 import { AddModelModal } from '@/client/components/settings/categories/provider-settings/AddModelModal';
 import { DeleteProviderModal } from '@/client/components/settings/categories/provider-settings/DeleteProviderModal';
 import { LogoutProviderModal } from '@/client/components/settings/categories/provider-settings/LogoutProviderModal';
-import { providerEmptyReason, providerFetchBlockReason } from '@/shared/lib/models/provider/dialect';
+import { providerEmptyReason, providerFetchBlockReason } from '@kabmo-labs/kabmo-provider-contracts/dialect';
 import { useSettingsMasterDetail } from '@/client/hooks/settings/master-detail';
 import { SettingsMasterDetail } from '@/client/components/settings/master-detail';
 

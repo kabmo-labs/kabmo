@@ -1,5 +1,5 @@
 import { Check } from 'lucide-preact';
-import { PROVIDER_THINKING_EFFORTS, type ProviderThinkingEffort } from '@/shared/lib/models/provider/dialect';
+import { PROVIDER_THINKING_EFFORTS, type ProviderThinkingEffort } from '@kabmo-labs/kabmo-provider-contracts/dialect';
 
 interface EffortLadderProps {
   /** Selected levels, in any order; the component renders them in omp's order. */

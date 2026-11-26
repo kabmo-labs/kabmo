@@ -1,0 +1,13 @@
+{
+  "name": "@kabmo-labs/kabmo-provider-contracts",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Provider dialect and key-masking rules.",
+  "exports": { ".": "./src/dialect.ts", "./dialect": "./src/dialect.ts" },
+  "files": ["src"],
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/kabmo-labs/kabmo.git", "directory": "packages/kabmo-provider-contracts" },
+  "publishConfig": { "access": "public" },
+  "engines": { "bun": ">=1.4.0" },
+  "dependencies": { "@kabmo-labs/kabmo-settings-contracts": "workspace:*" }
+}

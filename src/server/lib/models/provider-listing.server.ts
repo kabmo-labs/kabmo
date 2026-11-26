@@ -19,7 +19,7 @@
 
 import { extractModels } from '@/shared/lib/models/remote-list';
 import { findCatalogModel, loadModelsDevCatalog } from '@/shared/lib/models/catalog';
-import type { OmpProviderApi } from '@/shared/types/settings/provider';
+import type { OmpProviderApi } from '@kabmo-labs/kabmo-settings-contracts/provider';
 import type { ProviderModel } from '@/shared/types';
 
 const FETCH_TIMEOUT_MS = 15_000;

@@ -19,21 +19,19 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import {
-  PROVIDER_APIS,
-  PROVIDER_API_LABELS,
-  PROVIDER_AUTH_MODES,
-  PROVIDER_DISCOVERY_TYPES,
-  PROVIDER_THINKING_EFFORTS,
-  inferProviderApi,
-  isMaskedApiKey,
-  isOmpProviderApi,
-  isProviderAuthMode,
-  isProviderDiscoveryType,
-  isProviderThinkingEffort,
-  providerEmptyReason,
-  providerFetchBlockReason,
-} from '@/shared/lib/models/provider/dialect';
+import { PROVIDER_APIS,
+PROVIDER_API_LABELS,
+PROVIDER_AUTH_MODES,
+PROVIDER_DISCOVERY_TYPES,
+PROVIDER_THINKING_EFFORTS,
+inferProviderApi,
+isMaskedApiKey,
+isOmpProviderApi,
+isProviderAuthMode,
+isProviderDiscoveryType,
+isProviderThinkingEffort,
+providerEmptyReason,
+providerFetchBlockReason, } from '@kabmo-labs/kabmo-provider-contracts/dialect';
 
 describe('dialect vocabulary', () => {
   test('PROVIDER_APIS is exactly omp’s ApiSchema order', () => {

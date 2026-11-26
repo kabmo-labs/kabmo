@@ -24,18 +24,16 @@
  */
 
 import { getDb } from '@/server/db.server';
-import {
-  isProjectMcpConfigEnabled,
-  isServerEnabled,
-  readProjectMcpConfig,
-  readUserMcpConfig,
-} from '@/server/lib/omp/config/mcp';
-import type { McpServer } from '@/server/lib/omp/config/mcp-shared';
+import { isProjectMcpConfigEnabled,
+isServerEnabled,
+readProjectMcpConfig,
+readUserMcpConfig, } from '@kabmo-labs/kabmo-omp-config-mcp/mcp';
+import type { McpServer } from '@kabmo-labs/kabmo-omp-config-mcp/mcp-shared';
 import { readCustomMcpServers } from '@/server/lib/mcp/store.server';
 import { pluginMcpServers, type RegisteredPluginMcpServer } from '@/server/lib/plugins/mcp.server';
 import type { SessionMcpOverrides } from '@/server/lib/mcp/session-state.server';
 import type { McpServerItem, McpTransport } from '@/shared/types';
-import { rowsToRecord } from '@/shared/lib/mcp/key-value';
+import { rowsToRecord } from '@kabmo-labs/kabmo-mcp-contracts/key-value';
 import type { AcpMcpServer } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 
 /** One server, in the transport-neutral shape both deliveries read. */

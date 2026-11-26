@@ -622,6 +622,129 @@
       "@kabmo-labs/kabmo-sdk/testing/app": [
         "./packages/kabmo-sdk/src/testing/app.tsx"
       ],
+      "@kabmo-labs/kabmo-settings-contracts": [
+        "./packages/kabmo-settings-contracts/src/provider.ts"
+      ],
+      "@kabmo-labs/kabmo-settings-contracts/agent": [
+        "./packages/kabmo-settings-contracts/src/agent.ts"
+      ],
+      "@kabmo-labs/kabmo-settings-contracts/command": [
+        "./packages/kabmo-settings-contracts/src/command.ts"
+      ],
+      "@kabmo-labs/kabmo-settings-contracts/mcp": [
+        "./packages/kabmo-settings-contracts/src/mcp.ts"
+      ],
+      "@kabmo-labs/kabmo-settings-contracts/plugin": [
+        "./packages/kabmo-settings-contracts/src/plugin.ts"
+      ],
+      "@kabmo-labs/kabmo-settings-contracts/project": [
+        "./packages/kabmo-settings-contracts/src/project.ts"
+      ],
+      "@kabmo-labs/kabmo-settings-contracts/provider": [
+        "./packages/kabmo-settings-contracts/src/provider.ts"
+      ],
+      "@kabmo-labs/kabmo-settings-contracts/skill": [
+        "./packages/kabmo-settings-contracts/src/skill.ts"
+      ],
+      "@kabmo-labs/kabmo-settings-contracts/usage": [
+        "./packages/kabmo-settings-contracts/src/usage.ts"
+      ],
+      "@kabmo-labs/kabmo-settings-contracts/write": [
+        "./packages/kabmo-settings-contracts/src/write.ts"
+      ],
+      "@kabmo-labs/kabmo-provider-contracts": [
+        "./packages/kabmo-provider-contracts/src/dialect.ts"
+      ],
+      "@kabmo-labs/kabmo-provider-contracts/dialect": [
+        "./packages/kabmo-provider-contracts/src/dialect.ts"
+      ],
+      "@kabmo-labs/kabmo-mcp-contracts": [
+        "./packages/kabmo-mcp-contracts/src/key-value.ts"
+      ],
+      "@kabmo-labs/kabmo-mcp-contracts/key-value": [
+        "./packages/kabmo-mcp-contracts/src/key-value.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-config-mcp": [
+        "./packages/kabmo-omp-config-mcp/src/mcp.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-config-mcp/extensions": [
+        "./packages/kabmo-omp-config-mcp/src/extensions.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-config-mcp/mcp": [
+        "./packages/kabmo-omp-config-mcp/src/mcp.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-config-mcp/mcp-shared": [
+        "./packages/kabmo-omp-config-mcp/src/mcp-shared.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-config-mcp/mcp-test": [
+        "./packages/kabmo-omp-config-mcp/src/mcp-test.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-config-mcp/mcp-test-protocol": [
+        "./packages/kabmo-omp-config-mcp/src/mcp-test-protocol.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-config-mcp/mcp-test-remote": [
+        "./packages/kabmo-omp-config-mcp/src/mcp-test-remote.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-config-mcp/mcp-write": [
+        "./packages/kabmo-omp-config-mcp/src/mcp-write.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-config-mcp/plugin-actions": [
+        "./packages/kabmo-omp-config-mcp/src/plugin-actions.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-config-mcp/plugin-cli": [
+        "./packages/kabmo-omp-config-mcp/src/plugin-cli.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-config-mcp/plugin-registry": [
+        "./packages/kabmo-omp-config-mcp/src/plugin-registry.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-config-mcp/plugins": [
+        "./packages/kabmo-omp-config-mcp/src/plugins.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-config-providers": [
+        "./packages/kabmo-omp-config-providers/src/providers.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-config-providers/behavior": [
+        "./packages/kabmo-omp-config-providers/src/behavior.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-config-providers/disabled-providers": [
+        "./packages/kabmo-omp-config-providers/src/disabled-providers.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-config-providers/model-overrides": [
+        "./packages/kabmo-omp-config-providers/src/model-overrides.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-config-providers/provider-entry": [
+        "./packages/kabmo-omp-config-providers/src/provider-entry.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-config-providers/provider-seeds": [
+        "./packages/kabmo-omp-config-providers/src/provider-seeds.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-config-providers/providers": [
+        "./packages/kabmo-omp-config-providers/src/providers.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-config-files": [
+        "./packages/kabmo-omp-config-files/src/skills.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-config-files/agents": [
+        "./packages/kabmo-omp-config-files/src/agents.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-config-files/commands": [
+        "./packages/kabmo-omp-config-files/src/commands.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-config-files/config-cli": [
+        "./packages/kabmo-omp-config-files/src/config-cli.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-config-files/discovery-roots": [
+        "./packages/kabmo-omp-config-files/src/discovery-roots.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-config-files/instructions": [
+        "./packages/kabmo-omp-config-files/src/instructions.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-config-files/skills": [
+        "./packages/kabmo-omp-config-files/src/skills.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-config-files/skills-catalog": [
+        "./packages/kabmo-omp-config-files/src/skills-catalog.ts"
+      ],
       "@kabmo-labs/kabmo-ui": [
         "./packages/kabmo-ui/src/index.tsx"
       ],

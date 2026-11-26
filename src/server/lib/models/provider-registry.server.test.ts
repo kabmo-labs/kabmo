@@ -21,7 +21,7 @@ import { describe, expect, test } from 'bun:test';
 
 import { deduplicateProviderItems } from '@/server/lib/models/provider-registry.server';
 import { nativeProviderItem, type CredentialContext } from '@/server/lib/models/provider-items.server';
-import type { ProviderItem } from '@/shared/types/settings/provider';
+import type { ProviderItem } from '@kabmo-labs/kabmo-settings-contracts/provider';
 
 /** No stored credentials: every provider's origin resolves from models.yml alone. */
 const credentials: CredentialContext = {

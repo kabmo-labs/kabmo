@@ -18,7 +18,7 @@
  * the same words, and two copies is how one of them drifts.
  */
 
-import type { ProviderCredentialOrigin } from '@/shared/types/settings/provider';
+import type { ProviderCredentialOrigin } from '@kabmo-labs/kabmo-settings-contracts/provider';
 
 /** The label a provider row prints. */
 export function credentialOriginLabel(origin: ProviderCredentialOrigin | undefined): string {

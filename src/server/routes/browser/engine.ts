@@ -22,7 +22,7 @@ import { json } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed, parseJsonBody } from '@/server/lib/route-adapter';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
-import { setOmpConfigValue } from '@/server/lib/omp/config/config-cli';
+import { setOmpConfigValue } from '@kabmo-labs/kabmo-omp-config-files/config-cli';
 import { readBrowserEngineState } from '@/server/lib/browser/engine';
 
 export async function loader() {

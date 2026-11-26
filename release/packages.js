@@ -109,6 +109,18 @@ export const RELEASE_PACKAGES = [
     name: '@kabmo-labs/kabmo-omp-install',
   },
   {
+    dir: 'packages/kabmo-settings-contracts',
+    name: '@kabmo-labs/kabmo-settings-contracts',
+  },
+  {
+    dir: 'packages/kabmo-provider-contracts',
+    name: '@kabmo-labs/kabmo-provider-contracts',
+  },
+  {
+    dir: 'packages/kabmo-mcp-contracts',
+    name: '@kabmo-labs/kabmo-mcp-contracts',
+  },
+  {
     /** Directory under `packages/`, which is also the tag's prefix. */
     dir: 'packages/kabmo-guards',
     name: '@kabmo-labs/kabmo-guards',
@@ -208,6 +220,18 @@ export const RELEASE_PACKAGES = [
   {
     dir: 'packages/kabmo-omp-access-mode',
     name: '@kabmo-labs/kabmo-omp-access-mode',
+  },
+  {
+    dir: 'packages/kabmo-omp-config-files',
+    name: '@kabmo-labs/kabmo-omp-config-files',
+  },
+  {
+    dir: 'packages/kabmo-omp-config-providers',
+    name: '@kabmo-labs/kabmo-omp-config-providers',
+  },
+  {
+    dir: 'packages/kabmo-omp-config-mcp',
+    name: '@kabmo-labs/kabmo-omp-config-mcp',
   },
   {
     dir: 'packages/kabmo-omp-config-doc',

@@ -6,8 +6,8 @@ import { DEFAULT_PROVIDERS_LIST, PRESET_NEW_PROVIDERS } from '@/client/data/sett
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import type { ProviderItem } from '@/shared/types';
 import { createSettingsListStore } from '@/server/lib/db/settings-store';
-import { disableNativeProvider, enableNativeProvider } from '@/server/lib/omp/config/disabled-providers';
-import { removeOmpProvider } from '@/server/lib/omp/config/providers';
+import { disableNativeProvider, enableNativeProvider } from '@kabmo-labs/kabmo-omp-config-providers/disabled-providers';
+import { removeOmpProvider } from '@kabmo-labs/kabmo-omp-config-providers/providers';
 import { PROVIDERS_SETTINGS_KEY as SETTINGS_KEY, deduplicateProviderItems, mergeProviders } from '@/server/lib/models/provider-registry.server';
 import { invalidateModelsCaches } from '@/shared/lib/models/server-cache';
 import { refreshModelRegistryAfterWrite } from '@/server/lib/models/registry-refresh.server';

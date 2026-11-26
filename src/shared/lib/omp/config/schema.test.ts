@@ -21,7 +21,7 @@ isApprovalMode,
 normalizeApprovalMode, } from '@kabmo-labs/kabmo-omp-access-mode';
 import { SCHEMA_EXTRAS } from '@kabmo-labs/kabmo-omp-schema/schema-extras';
 import { ALL_SCHEMA_ENTRIES, OMP_SCHEMA, configValue, entriesForTab, isConditionMet, matchesSearch } from '@/shared/lib/omp/config/schema';
-import type { ConfigEntry } from '@/server/lib/omp/config/config-cli';
+import type { ConfigEntry } from '@kabmo-labs/kabmo-omp-config-files/config-cli';
 
 /** Build a config snapshot from `{ key: value }` pairs. */
 function snapshot(values: Record<string, unknown>): Record<string, ConfigEntry> {

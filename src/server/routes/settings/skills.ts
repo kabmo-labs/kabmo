@@ -6,19 +6,15 @@ import { DEFAULT_CATALOG_SKILLS, DEFAULT_CATALOG_SOURCES, DEFAULT_SKILLS } from 
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import type { SkillItem } from '@/shared/types';
 import { readCatalogSources } from '@/server/lib/omp/config/skill-sources';
-import {
-  deleteSkillDir,
-  discoverSkills,
-  readSkillFile,
-  setSkillModelInvocation,
-  writeSkillFile,
-  type DiscoveredSkill,
-} from '@/server/lib/omp/config/skills';
-import {
-  installCatalogSkill,
-  toCatalogSkills,
-  uninstallCatalogSkill,
-} from '@/server/lib/omp/config/skills-catalog';
+import { deleteSkillDir,
+discoverSkills,
+readSkillFile,
+setSkillModelInvocation,
+writeSkillFile,
+type DiscoveredSkill, } from '@kabmo-labs/kabmo-omp-config-files/skills';
+import { installCatalogSkill,
+toCatalogSkills,
+uninstallCatalogSkill, } from '@kabmo-labs/kabmo-omp-config-files/skills-catalog';
 import { runCatalogAction } from '@/server/routes/settings/skills-catalog-actions';
 import { resolveDiscoveryScope, type DiscoveryScope } from '@/server/lib/omp/config/scope';
 import { reloadLiveSessions } from '@/server/lib/omp/session/reload.server';

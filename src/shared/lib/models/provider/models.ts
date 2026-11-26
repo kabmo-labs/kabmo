@@ -7,12 +7,10 @@
  */
 
 import type { ProviderModel } from '@/shared/types';
-import type {
-  OmpProviderApi,
-  ProviderAuthMode,
-  ProviderDiscoveryType,
-} from '@/shared/types/settings/provider';
-import type { ProviderThinkingEffort } from '@/shared/lib/models/provider/dialect';
+import type { OmpProviderApi,
+ProviderAuthMode,
+ProviderDiscoveryType, } from '@kabmo-labs/kabmo-settings-contracts/provider';
+import type { ProviderThinkingEffort } from '@kabmo-labs/kabmo-provider-contracts/dialect';
 import { notifyModelsUpdated } from '@/shared/lib/models/client';
 
 export interface ProviderModelsFetchResult {

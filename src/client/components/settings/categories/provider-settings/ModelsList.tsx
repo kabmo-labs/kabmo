@@ -14,7 +14,7 @@ import {
 import type { ProviderModel } from '@/shared/types';
 import { formatContextWindow } from '@/shared/lib/code/format';
 import { formatPrice } from '@kabmo-labs/kabmo-format/number';
-import { MODEL_KIND_LABELS, modelKindOf, type ProviderModelKind } from '@/shared/lib/models/provider/dialect';
+import { MODEL_KIND_LABELS, modelKindOf, type ProviderModelKind } from '@kabmo-labs/kabmo-provider-contracts/dialect';
 
 interface ProviderModelsListProps {
   models: ProviderModel[];

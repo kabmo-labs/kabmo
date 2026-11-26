@@ -17,7 +17,7 @@
  * supposed to be able to sign it in.
  */
 
-import { readDisabledProviders } from '@/server/lib/omp/config/disabled-providers';
+import { readDisabledProviders } from '@kabmo-labs/kabmo-omp-config-providers/disabled-providers';
 import { getModelsConfigPath, readNativeProviders } from '@kabmo-labs/kabmo-omp-models-config/models-config';
 import { runUtilityCommand, type OmpLoginProvider, type OmpModel } from '@/server/lib/omp/rpc/utility';
 import {

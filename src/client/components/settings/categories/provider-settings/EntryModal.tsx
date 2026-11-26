@@ -10,12 +10,10 @@ import {
   type DiscoveryDraft,
 } from '@/client/components/settings/categories/provider-settings/EntryAdvanced';
 import { saveProviderEntry, type ProviderEntryPatch } from '@/shared/lib/models/provider/connection';
-import {
-  PROVIDER_APIS,
-  PROVIDER_API_LABELS,
-  PROVIDER_AUTH_MODES,
-} from '@/shared/lib/models/provider/dialect';
-import type { OmpProviderApi, ProviderAuthMode } from '@/shared/types/settings/provider';
+import { PROVIDER_APIS,
+PROVIDER_API_LABELS,
+PROVIDER_AUTH_MODES, } from '@kabmo-labs/kabmo-provider-contracts/dialect';
+import type { OmpProviderApi, ProviderAuthMode } from '@kabmo-labs/kabmo-settings-contracts/provider';
 
 interface ProviderEntryModalProps {
   isOpen: boolean;

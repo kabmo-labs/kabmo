@@ -38,7 +38,7 @@ import { dirname, join, relative, resolve, sep } from 'path';
 import { gitRun, firstLine } from '@/server/lib/wiki/git';
 import { parseFrontmatter } from '@kabmo-labs/kabmo-omp-config-doc/yaml';
 import { repoSlug } from '@/shared/lib/git/url';
-import type { GitSkillEntry } from '@/shared/types';
+import type { GitSkillEntry } from '@kabmo-labs/kabmo-settings-contracts/skill';
 
 export const CLONE_TIMEOUT_MS = 120_000;
 export const MAX_SKILL_ENTRIES = 60;

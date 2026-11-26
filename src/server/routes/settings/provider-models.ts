@@ -1,7 +1,7 @@
 import { json } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
-import { upsertOmpProviderModels } from '@/server/lib/omp/config/providers';
+import { upsertOmpProviderModels } from '@kabmo-labs/kabmo-omp-config-providers/providers';
 import { readOmpProviderApiKey } from '@/server/lib/omp/core/auth-credentials';
 import { refreshModelRegistryAfterWrite } from '@/server/lib/models/registry-refresh.server';
 import {
@@ -9,12 +9,10 @@ import {
   fetchRemoteModels,
   toOmpSeed,
 } from '@/server/lib/models/provider-listing.server';
-import {
-  inferProviderApi,
-  isOmpProviderApi,
-  isProviderAuthMode,
-  isProviderDiscoveryType,
-} from '@/shared/lib/models/provider/dialect';
+import { inferProviderApi,
+isOmpProviderApi,
+isProviderAuthMode,
+isProviderDiscoveryType, } from '@kabmo-labs/kabmo-provider-contracts/dialect';
 import type { ProviderModel } from '@/shared/types';
 
 /**

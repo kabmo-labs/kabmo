@@ -19,7 +19,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
-import type { ConfigEntry } from '@/server/lib/omp/config/config-cli';
+import type { ConfigEntry } from '@kabmo-labs/kabmo-omp-config-files/config-cli';
 
 export interface OmpConfigWrites {
   entries: Record<string, ConfigEntry>;

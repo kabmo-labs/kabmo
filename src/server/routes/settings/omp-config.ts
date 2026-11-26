@@ -2,7 +2,7 @@ import { json } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
-import { getOmpConfigValue, listOmpConfig, resetOmpConfigKey, setOmpConfigValue } from '@/server/lib/omp/config/config-cli';
+import { getOmpConfigValue, listOmpConfig, resetOmpConfigKey, setOmpConfigValue } from '@kabmo-labs/kabmo-omp-config-files/config-cli';
 import { onOmpConfigWritten } from '@/server/lib/dictation/language.server';
 
 export async function loader({ request }: LoaderFunctionArgs) {

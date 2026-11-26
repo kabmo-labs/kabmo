@@ -9,12 +9,10 @@ import { isRecord } from '@kabmo-labs/kabmo-guards';
 import { createSettingsListStore } from '@/server/lib/db/settings-store';
 import { runUtilityCommand } from '@/server/lib/omp/rpc/utility';
 import { resolveDiscoveryScope, type DiscoveryScope } from '@/server/lib/omp/config/scope';
-import {
-  deleteCommandFile,
-  locateCommandFile,
-  readCommandFile,
-  writeCommandFile,
-} from '@/server/lib/omp/config/commands';
+import { deleteCommandFile,
+locateCommandFile,
+readCommandFile,
+writeCommandFile, } from '@kabmo-labs/kabmo-omp-config-files/commands';
 import { reloadLiveSessions } from '@/server/lib/omp/session/reload.server';
 import { getLiveSession, harnessOfSession } from '@/server/lib/omp/rpc/session-registry';
 

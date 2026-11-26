@@ -7,21 +7,19 @@ import type { PluginCatalogItem, PluginItem, PluginMarketplaceItem, PluginScope 
 import { DEFAULT_PLUGIN_CATALOG, DEFAULT_PLUGIN_MARKETPLACES, DEFAULT_PLUGINS } from '@/client/data/settings/plugin';
 import { resolveDiscoveryScope } from '@/server/lib/omp/config/scope';
 import { reloadLiveSessions } from '@/server/lib/omp/session/reload.server';
-import { listPlugins, readMarketplaceCatalog, readMarketplaces } from '@/server/lib/omp/config/plugins';
-import {
-  addMarketplace,
-  deletePluginSetting,
-  installPlugin,
-  removeMarketplace,
-  runPluginDoctor,
-  setPluginEnabled,
-  setPluginFeatures,
-  setPluginSetting,
-  uninstallPlugin,
-  updateMarketplaces,
-  upgradePlugins,
-} from '@/server/lib/omp/config/plugin-actions';
-import { pluginCliError, type PluginCommandResult } from '@/server/lib/omp/config/plugin-cli';
+import { listPlugins, readMarketplaceCatalog, readMarketplaces } from '@kabmo-labs/kabmo-omp-config-mcp/plugins';
+import { addMarketplace,
+deletePluginSetting,
+installPlugin,
+removeMarketplace,
+runPluginDoctor,
+setPluginEnabled,
+setPluginFeatures,
+setPluginSetting,
+uninstallPlugin,
+updateMarketplaces,
+upgradePlugins, } from '@kabmo-labs/kabmo-omp-config-mcp/plugin-actions';
+import { pluginCliError, type PluginCommandResult } from '@kabmo-labs/kabmo-omp-config-mcp/plugin-cli';
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);

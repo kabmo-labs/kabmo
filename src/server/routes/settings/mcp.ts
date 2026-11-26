@@ -8,21 +8,17 @@ import { mcpStore, readCustomMcpServers, writeCustomMcpServers } from '@/server/
 import { resolveRoot } from '@/server/lib/fs/root';
 import type { McpServerItem } from '@/shared/types';
 import { isRecord } from '@kabmo-labs/kabmo-guards';
-import { rowsToRecord, REDACTED_SENTINEL } from '@/shared/lib/mcp/key-value';
-import {
-  isProjectMcpConfigEnabled,
-  isServerEnabled,
-  nativeToServerItem,
-  readProjectMcpConfig,
-  readUserMcpConfig,
-  redactServerItem,
-} from '@/server/lib/omp/config/mcp';
-import {
-  deleteProjectMcpServer,
-  deleteUserMcpServer,
-  writeProjectMcpServer,
-  writeUserMcpServer,
-} from '@/server/lib/omp/config/mcp-write';
+import { rowsToRecord, REDACTED_SENTINEL } from '@kabmo-labs/kabmo-mcp-contracts/key-value';
+import { isProjectMcpConfigEnabled,
+isServerEnabled,
+nativeToServerItem,
+readProjectMcpConfig,
+readUserMcpConfig,
+redactServerItem, } from '@kabmo-labs/kabmo-omp-config-mcp/mcp';
+import { deleteProjectMcpServer,
+deleteUserMcpServer,
+writeProjectMcpServer,
+writeUserMcpServer, } from '@kabmo-labs/kabmo-omp-config-mcp/mcp-write';
 
 const NATIVE_USER_PREFIX = 'omp-user-';
 const NATIVE_PROJECT_PREFIX = 'omp-project-';

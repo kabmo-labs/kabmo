@@ -44,8 +44,8 @@ import {
   enableNativeProvider,
   readDisabledProviderEntries,
   readDisabledProviders,
-} from '@/server/lib/omp/config/disabled-providers';
-import { writeModelOverride } from '@/server/lib/omp/config/model-overrides';
+} from '@kabmo-labs/kabmo-omp-config-providers/disabled-providers';
+import { writeModelOverride } from '@kabmo-labs/kabmo-omp-config-providers/model-overrides';
 import { SCHEMA_EXTRAS } from '@kabmo-labs/kabmo-omp-schema/schema-extras';
 import { OMP_SCHEMA } from '@/shared/lib/omp/config/schema';
 

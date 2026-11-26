@@ -24,12 +24,10 @@ import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { DEFAULT_AGENTS_LIST } from '@/client/data/agent-data';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { join } from 'path';
-import {
-  deleteAgentDefinition,
-  discoverNativeAgents,
-  writeAgentDefinition,
-  type DiscoveredAgent,
-} from '@/server/lib/omp/config/agents';
+import { deleteAgentDefinition,
+discoverNativeAgents,
+writeAgentDefinition,
+type DiscoveredAgent, } from '@kabmo-labs/kabmo-omp-config-files/agents';
 import { agentFileBaseName } from '@kabmo-labs/kabmo-omp-schema/agent-file';
 import { resolveRoot } from '@/server/lib/fs/root';
 import type { AgentItem } from '@/shared/types';
