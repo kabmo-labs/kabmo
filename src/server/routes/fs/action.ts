@@ -1,4 +1,4 @@
-import { json, type ActionFunctionArgs } from '@/server/lib/remix-compat';
+import { json, type ActionFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { errorResponse } from '@/server/lib/route-adapter';
 import fs from 'fs';
 import path from 'path';

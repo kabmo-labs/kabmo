@@ -1,4 +1,4 @@
-import { json, type ActionFunctionArgs } from '@/server/lib/remix-compat';
+import { json, type ActionFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { scheduleSelfRestart, withRestartPlan } from '@/server/lib/lifecycle/restart';
 import { createSseStream } from '@/server/lib/sse';

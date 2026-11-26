@@ -24,7 +24,7 @@ KABMO_MODE_ERROR_MARKER,
 type GoalContinuation,
 type GoalContinuationStop,
 type GoalRecord, } from '@kabmo-labs/kabmo-omp-mode/types';
-import type { ModeRequest } from '@/server/lib/omp/mode/request';
+import type { ModeRequest } from '@kabmo-labs/kabmo-omp-mode-request';
 import {
   DEFAULT_GOAL_MAX_TURNS,
   loadAcpGoalState,

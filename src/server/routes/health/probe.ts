@@ -1,4 +1,4 @@
-import { json, NO_STORE_HEADERS } from '@/server/lib/remix-compat';
+import { json, NO_STORE_HEADERS } from '@kabmo-labs/kabmo-http';
 import pkg from '@/../package.json';
 import { isAuthEnabled } from '@/server/lib/auth/guard';
 import { cachedOpenFileDescriptors } from '@kabmo-labs/kabmo-process-probe/fd-pressure';

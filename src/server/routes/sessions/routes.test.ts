@@ -25,7 +25,7 @@ import os from 'os';
 import path from 'path';
 import { getDb } from '@/server/db.server';
 import type { DbClient } from '@kabmo-labs/kabmo-db/client';
-import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import type { ActionFunctionArgs, LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { invalidateOmpSidebarData } from '@kabmo-labs/kabmo-omp-session-reader';
 import { ModeMirror } from '@kabmo-labs/kabmo-omp-rpc-events/mode-mirror';

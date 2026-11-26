@@ -29,8 +29,8 @@
  * cached for a minute.
  */
 
-import { json } from '@/server/lib/remix-compat';
-import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import { json } from '@kabmo-labs/kabmo-http';
+import type { ActionFunctionArgs, LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { methodNotAllowedResponse } from '@/server/lib/route-adapter';
 import { resolveSessionRef } from '@/server/lib/sessions/resolve.server';
 import { asOmpSession, getLiveSession, harnessOfSession } from '@/server/lib/omp/rpc/session-registry';

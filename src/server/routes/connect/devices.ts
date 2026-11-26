@@ -15,7 +15,7 @@
  * measure either.
  */
 
-import { json, NO_STORE_HEADERS, type ActionFunctionArgs } from '@/server/lib/remix-compat';
+import { json, NO_STORE_HEADERS, type ActionFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { listPairedDevices, revokeDevice, touchDevice } from '@/server/lib/connect/devices.server';
 import { bearerToken } from '@/server/lib/sessions/agent-token.server';
 import { verifyDeviceToken } from '@/server/lib/connect/devices.server';

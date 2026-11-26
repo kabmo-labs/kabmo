@@ -35,8 +35,8 @@
  * so a reloaded page cannot start a competing install.
  */
 
-import { json, NO_STORE_HEADERS } from '@/server/lib/remix-compat';
-import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
+import { json, NO_STORE_HEADERS } from '@kabmo-labs/kabmo-http';
+import type { ActionFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { harnessDescriptor, isBuiltinHarness, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import { harnessUpdateFacts, latestSourceFor } from '@kabmo-labs/kabmo-harness-updates';

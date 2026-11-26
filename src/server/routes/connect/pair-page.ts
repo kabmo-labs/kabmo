@@ -22,7 +22,7 @@
  * a code that is already burning its two minutes.
  */
 
-import { NO_STORE_HEADERS } from '@/server/lib/remix-compat';
+import { NO_STORE_HEADERS } from '@kabmo-labs/kabmo-http';
 
 const PAGE = `<!doctype html>
 <html lang="en">

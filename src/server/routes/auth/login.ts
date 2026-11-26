@@ -16,8 +16,8 @@
  * and the client has `/api/auth/state` for that question anyway.
  */
 
-import { json, NO_STORE_HEADERS } from '@/server/lib/remix-compat';
-import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
+import { json, NO_STORE_HEADERS } from '@kabmo-labs/kabmo-http';
+import type { ActionFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { methodNotAllowed, parseJsonBody } from '@/server/lib/route-adapter';
 import { loadAuthConfig } from '@/server/lib/auth/guard';
 import { verifyPassword } from '@/server/lib/auth/config';

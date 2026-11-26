@@ -22,8 +22,8 @@
  * still archives the rest, and the caller is told which ids survived and why.
  */
 
-import { json } from '@/server/lib/remix-compat';
-import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
+import { json } from '@kabmo-labs/kabmo-http';
+import type { ActionFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { methodNotAllowed, parseJsonBody } from '@/server/lib/route-adapter';
 import { getDb } from '@/server/db.server';
 import { isSinglePathSegment } from '@kabmo-labs/kabmo-paths/path-segment';

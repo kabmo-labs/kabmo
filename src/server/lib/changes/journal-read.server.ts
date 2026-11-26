@@ -25,8 +25,8 @@ import {
   readSessionChangeList as readOmpList,
 } from '@/server/lib/omp/session/changes';
 import type { OmpPatch } from '@/server/lib/omp/session/changes-patch';
-import { findSessionFileById } from '@/server/lib/omp/session/locator';
-import { siblingDirForSession } from '@/server/lib/omp/subagent/history/paths';
+import { findSessionFileById } from '@kabmo-labs/kabmo-omp-session-locator';
+import { siblingDirForSession } from '@kabmo-labs/kabmo-omp-subagent/history-paths';
 import type { SessionChangeRecord } from '@/shared/types/session-changes';
 
 interface CacheEntry {

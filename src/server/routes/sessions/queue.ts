@@ -11,8 +11,8 @@
  * one session's queue into another).
  */
 
-import { json } from '@/server/lib/remix-compat';
-import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import { json } from '@kabmo-labs/kabmo-http';
+import type { ActionFunctionArgs, LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { requireParam } from '@/server/lib/route-adapter';
 import {
   appendQueueItem,

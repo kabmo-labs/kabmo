@@ -26,7 +26,7 @@
  */
 
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
-import { findSessionFileById } from '@/server/lib/omp/session/locator';
+import { findSessionFileById } from '@kabmo-labs/kabmo-omp-session-locator';
 import { readJsonlTail } from '@kabmo-labs/kabmo-omp-session-messages/jsonl-tail';
 import { parseJsonlLenient } from '@kabmo-labs/kabmo-omp-session-core/jsonl';
 import { deriveTurnError } from '@kabmo-labs/kabmo-omp-session-parse/turn-error';

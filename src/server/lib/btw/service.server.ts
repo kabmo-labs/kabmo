@@ -22,7 +22,7 @@
  */
 
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
-import { findSessionFileById } from '@/server/lib/omp/session/locator';
+import { findSessionFileById } from '@kabmo-labs/kabmo-omp-session-locator';
 import { readRawHeaderLine } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { loadSessionModel, loadSessionThinkingSelector } from '@kabmo-labs/kabmo-omp-session-messages/messages';
 import { getRpcSession } from '@/server/lib/omp/rpc/session-registry';

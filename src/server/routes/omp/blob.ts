@@ -20,7 +20,7 @@
  * must not be interpreted as such.
  */
 
-import { json, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import { json, type LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { errorResponse } from '@/server/lib/route-adapter';
 import { readBlobImage } from '@kabmo-labs/kabmo-omp-session-messages/blobs.server';
 import { bodyBytes } from '@kabmo-labs/kabmo-bytes';

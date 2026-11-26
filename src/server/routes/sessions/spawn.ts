@@ -15,8 +15,8 @@
  * `spawn.server.ts`, because the agent CLI calls the same service.
  */
 
-import { json } from '@/server/lib/remix-compat';
-import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
+import { json } from '@kabmo-labs/kabmo-http';
+import type { ActionFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { methodNotAllowed, parseJsonBody } from '@/server/lib/route-adapter';
 import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 import { readImages, readModel, readString } from '@/server/routes/sessions/body-readers';

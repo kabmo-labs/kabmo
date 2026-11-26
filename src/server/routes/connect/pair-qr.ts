@@ -20,7 +20,7 @@
  * not readable without the session that minted it.
  */
 
-import type { LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import type { LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { pairingQr } from '@/server/lib/connect/pairing.server';
 
 export async function loader({ request }: LoaderFunctionArgs) {

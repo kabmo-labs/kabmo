@@ -25,7 +25,7 @@ import fs from 'fs';
 import { dirname, join } from 'path';
 import { tmpdir } from 'node:os';
 
-import { findSessionFileById, resolveSessionFileOr404, resolveSessionPathOr404, sessionNotFoundResponse } from '@/server/lib/omp/session/locator';
+import { findSessionFileById, resolveSessionFileOr404, resolveSessionPathOr404, sessionNotFoundResponse } from '@kabmo-labs/kabmo-omp-session-locator';
 import { scanSessionInfo } from '@kabmo-labs/kabmo-omp-session-scan/scan';
 import { sessionHasSubagents } from '@/server/lib/omp/session/subagent-presence';
 import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';

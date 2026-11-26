@@ -15,7 +15,7 @@
  * not enabled for this tailnet" is actionable; `{ ok: false }` is not.
  */
 
-import { json, NO_STORE_HEADERS, type ActionFunctionArgs } from '@/server/lib/remix-compat';
+import { json, NO_STORE_HEADERS, type ActionFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { connectStatus, currentPort } from '@/server/lib/connect/status.server';
 import { findTailscale, startServe, stopServe } from '@/server/lib/connect/tailscale.server';
 import {

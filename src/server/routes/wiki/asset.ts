@@ -19,7 +19,7 @@
  * endpoint sends.
  */
 
-import { json, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import { json, type LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { resolveRoot } from '@kabmo-labs/kabmo-workspace-root/root';
 import { scopeToRepo } from '@/server/lib/fs/repo-scope';
 import { getImageMimeType } from '@kabmo-labs/kabmo-fs-media/mime';

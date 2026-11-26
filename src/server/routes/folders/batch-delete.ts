@@ -17,8 +17,8 @@
  * confirmation dialog should report one summary instead of N answers.
  */
 
-import { json } from '@/server/lib/remix-compat';
-import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
+import { json } from '@kabmo-labs/kabmo-http';
+import type { ActionFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { methodNotAllowed, parseJsonBody } from '@/server/lib/route-adapter';
 import { getDb } from '@/server/db.server';
 import { deleteWorkspaceFolder } from '@/shared/lib/workspace/project-settings';

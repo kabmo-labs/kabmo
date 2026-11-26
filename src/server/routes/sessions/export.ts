@@ -15,8 +15,8 @@
  * attachment overlay, the same mock/imported branches.
  */
 
-import type { LoaderFunctionArgs } from '@/server/lib/remix-compat';
-import { json } from '@/server/lib/remix-compat';
+import type { LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
+import { json } from '@kabmo-labs/kabmo-http';
 import { loader as chatLoader } from '@/server/routes/chat/session';
 import { sessionMarkdownFileName, sessionToMarkdown } from '@/shared/lib/chat/export-markdown';
 import type { ChatMessageData } from '@/shared/types';

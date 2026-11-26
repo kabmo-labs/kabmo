@@ -1,4 +1,4 @@
-import { json } from '@/server/lib/remix-compat';
+import { json } from '@kabmo-labs/kabmo-http';
 
 /**
  * Chrome DevTools / browser debuggers probe this well-known endpoint to detect

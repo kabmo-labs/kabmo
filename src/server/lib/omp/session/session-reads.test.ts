@@ -26,7 +26,7 @@ import { join } from 'path';
 
 import { readSessionTodos } from '@/server/lib/omp/session/todos';
 import { computeRawMessagesPage } from '@/server/lib/omp/session/telemetry-raw';
-import { loadSessionEntries, scanSessionEntries } from '@/server/lib/omp/session/telemetry/scan';
+import { loadSessionEntries, scanSessionEntries } from '@kabmo-labs/kabmo-omp-session-telemetry/scan';
 
 const originalAgentDir = Bun.env.PI_CODING_AGENT_DIR;
 const originalXdg = Bun.env.XDG_DATA_HOME;

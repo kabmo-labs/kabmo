@@ -1,4 +1,4 @@
-import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { maybeCompress } from '@/server/plugins/compress';
 
 /**

@@ -19,12 +19,12 @@
  * because the value arrives from the client.
  */
 
-import { json } from '@/server/lib/remix-compat';
-import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
+import { json } from '@kabmo-labs/kabmo-http';
+import type { ActionFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { requireParam } from '@/server/lib/route-adapter';
 import { getRpcSession } from '@/server/lib/omp/rpc/session-registry';
 import { rpcErrorResponse } from '@/server/lib/omp/rpc/errors';
-import { SUBAGENT_ID_MAX_LENGTH, SUBAGENT_ID_RE } from '@/server/lib/omp/subagent/history/paths';
+import { SUBAGENT_ID_MAX_LENGTH, SUBAGENT_ID_RE } from '@kabmo-labs/kabmo-omp-subagent/history-paths';
 
 /** `POST /api/sessions/:sessionId/subagents/:subagentId/cancel`. */
 export async function cancelSubagent({ request, params }: ActionFunctionArgs) {

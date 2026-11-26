@@ -19,12 +19,12 @@
  * rail carries is the same coordinate space the loader uses.
  */
 
-import { json } from '@/server/lib/remix-compat';
-import type { LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import { json } from '@kabmo-labs/kabmo-http';
+import type { LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { getDb } from '@/server/db.server';
 import { getSessionData } from '@/client/data/mock/chat';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
-import { findSessionFileById } from '@/server/lib/omp/session/locator';
+import { findSessionFileById } from '@kabmo-labs/kabmo-omp-session-locator';
 import { loadSessionMessages } from '@kabmo-labs/kabmo-omp-session-messages/messages';
 import { mergeOmpAttachments } from '@kabmo-labs/kabmo-omp-session-runtime/merge-stored';
 import { TURN_PREVIEW_CHARS } from '@/shared/lib/chat/timeline/turns';

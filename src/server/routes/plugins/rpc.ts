@@ -20,7 +20,7 @@
  * caller chose.
  */
 
-import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { callRpcMethod, hasRpcMethods } from '@/server/lib/plugins/rpc.server';
 import { isValidPluginId } from '@/shared/lib/plugins/protocol';

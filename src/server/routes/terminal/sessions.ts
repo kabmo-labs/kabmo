@@ -13,7 +13,7 @@
  * leaving it to the idle reaper.
  */
 
-import { json, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import { json, type LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { listTerminals } from '@/server/lib/terminal/liveness.server';
 
 export async function loader({ request }: LoaderFunctionArgs) {

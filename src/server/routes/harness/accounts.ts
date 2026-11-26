@@ -11,7 +11,7 @@
  * `probe` fail before it reached the handler.
  */
 
-import { json } from '@/server/lib/remix-compat';
+import { json } from '@kabmo-labs/kabmo-http';
 import {
   createHarnessAccount,
   removeHarnessAccount,

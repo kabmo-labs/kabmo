@@ -14,7 +14,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:tes
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
+import type { ActionFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { invalidateOmpSidebarData } from '@kabmo-labs/kabmo-omp-session-reader';
 import { removeDir } from '@/test-support/remove-dir';

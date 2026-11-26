@@ -1099,6 +1099,33 @@
       "@kabmo-labs/kabmo-omp-rpc-commands/tui-only": [
         "./packages/kabmo-omp-rpc-commands/src/tui-only.ts"
       ],
+      "@kabmo-labs/kabmo-http": [
+        "./packages/kabmo-http/src/response.ts"
+      ],
+      "@kabmo-labs/kabmo-http/response": [
+        "./packages/kabmo-http/src/response.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-session-locator": [
+        "./packages/kabmo-omp-session-locator/src/locator.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-session-locator/locator": [
+        "./packages/kabmo-omp-session-locator/src/locator.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-mode-request": [
+        "./packages/kabmo-omp-mode-request/src/request.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-mode-request/request": [
+        "./packages/kabmo-omp-mode-request/src/request.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-subagent/history-paths": [
+        "./packages/kabmo-omp-subagent/src/history-paths.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-session-telemetry": [
+        "./packages/kabmo-omp-session-telemetry/src/scan.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-session-telemetry/scan": [
+        "./packages/kabmo-omp-session-telemetry/src/scan.ts"
+      ],
       "@kabmo-labs/kabmo-ui": [
         "./packages/kabmo-ui/src/index.tsx"
       ],

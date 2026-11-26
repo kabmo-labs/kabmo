@@ -17,8 +17,8 @@
  * trigger either with a `no-cors` POST.
  */
 
-import { json } from '@/server/lib/remix-compat';
-import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import { json } from '@kabmo-labs/kabmo-http';
+import type { ActionFunctionArgs, LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { isSameOriginRequest } from '@/server/lib/http/same-origin';
 import { LOCAL_TTS_CATALOG } from '@/shared/lib/tts/local-models';

@@ -14,7 +14,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import * as fsp from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import type { LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import type { LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { getSessionChangeDiff, getSessionChanges } from '@/server/routes/sessions/changes';
 

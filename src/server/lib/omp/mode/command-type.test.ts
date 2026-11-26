@@ -19,7 +19,7 @@ import {
   MODE_COMMAND_TYPE,
   isModeCommandType,
   modeCommandPrompt,
-} from '@/server/lib/omp/mode/request';
+} from '@kabmo-labs/kabmo-omp-mode-request';
 
 describe('mode command type', () => {
   test('the current spelling is what this build sends', () => {

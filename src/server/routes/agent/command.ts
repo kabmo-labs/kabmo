@@ -1,6 +1,6 @@
-import { json } from '@/server/lib/remix-compat';
-import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
-import { resolveSessionPathOr404 } from '@/server/lib/omp/session/locator';
+import { json } from '@kabmo-labs/kabmo-http';
+import type { ActionFunctionArgs, LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
+import { resolveSessionPathOr404 } from '@kabmo-labs/kabmo-omp-session-locator';
 import { WebRpcError } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 import type { AgentSessionWrapper } from '@/server/lib/omp/rpc/manager';
 import { startRpcSession } from '@/server/lib/omp/rpc/session-registry';
@@ -12,7 +12,7 @@ import { CONVERSATION_MOVING_COMMANDS, LIVE_RUN_COMMANDS, OBSERVER_ONLY_COMMANDS
 import { rpcErrorResponse } from '@/server/lib/omp/rpc/errors';
 import { assertBtwIdle } from '@/server/lib/btw/service.server';
 import { loadPersistedModes } from '@kabmo-labs/kabmo-omp-session-runtime/modes';
-import { isModeCommandType, modeCommandPrompt, parseModeRequest, parseModeSelection } from '@/server/lib/omp/mode/request';
+import { isModeCommandType, modeCommandPrompt, parseModeRequest, parseModeSelection } from '@kabmo-labs/kabmo-omp-mode-request';
 import { kabmoModeEnv } from '@kabmo-labs/kabmo-omp-extensions';
 import { mintAgentEnvironment, rememberAgentToken } from '@/server/lib/sessions/agent-token.server';
 import { resetGoalDriverState } from '@/server/lib/omp/session/goal-driver.server';

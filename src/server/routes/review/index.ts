@@ -17,8 +17,8 @@
  * workspace topics already use for the same pair.
  */
 
-import { json, NO_STORE_HEADERS } from '@/server/lib/remix-compat';
-import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import { json, NO_STORE_HEADERS } from '@kabmo-labs/kabmo-http';
+import type { ActionFunctionArgs, LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { methodNotAllowedResponse } from '@/server/lib/route-adapter';
 import { getDefaultFsRoot, resolveRoot, resolveWithinRoot } from '@kabmo-labs/kabmo-workspace-root/root';
 import { normalizeRelativePath } from '@/server/lib/fs/relative-path';

@@ -31,7 +31,7 @@ import {
   readPluginSettings,
   writePluginSettings,
 } from '@/server/lib/plugins/settings.server';
-import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { methodNotAllowedResponse, parseJsonBody, requireParam } from '@/server/lib/route-adapter';
 import { PLUGIN_SECRET_MASK } from '@/shared/lib/plugins/settings';
 import { isRecord } from '@kabmo-labs/kabmo-guards';

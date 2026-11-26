@@ -16,7 +16,7 @@
  * the realtime `wiki:` topic answer from one implementation.
  */
 
-import { json, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import { json, type LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { resolveRoot } from '@kabmo-labs/kabmo-workspace-root/root';
 import { buildWikiRepoPayload } from '@/server/lib/wiki/payload.server';
 

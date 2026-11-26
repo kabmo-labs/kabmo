@@ -1,5 +1,5 @@
-import { json } from '@/server/lib/remix-compat';
-import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import { json } from '@kabmo-labs/kabmo-http';
+import type { ActionFunctionArgs, LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { getDb } from '@/server/db.server';
 import { INITIAL_MODELS_CATALOG } from '@/client/data/models/catalog';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';

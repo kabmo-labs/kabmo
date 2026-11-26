@@ -11,8 +11,8 @@
  * notification that never comes. The info panel draws it from `forks`.
  */
 
-import { json } from '@/server/lib/remix-compat';
-import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import { json } from '@kabmo-labs/kabmo-http';
+import type { ActionFunctionArgs, LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { methodNotAllowed, parseJsonBody } from '@/server/lib/route-adapter';
 import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 import { SessionRelationError } from '@/server/lib/sessions/relation-types';

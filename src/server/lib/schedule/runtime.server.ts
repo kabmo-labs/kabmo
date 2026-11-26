@@ -27,7 +27,7 @@
 
 import { startNewRpcSession, startRpcSession } from '@/server/lib/omp/rpc/session-registry';
 import { resolveSpawnCwd } from '@/server/lib/omp/rpc/spawn-args';
-import { resolveSessionPathOr404 } from '@/server/lib/omp/session/locator';
+import { resolveSessionPathOr404 } from '@kabmo-labs/kabmo-omp-session-locator';
 import { startAcpSession, type AcpSpawnRequest } from '@/server/lib/harness/spawn.server';
 import { loadHarnessSession } from '@kabmo-labs/kabmo-harness-session/session-store.server';
 import { loadPersistedAccessMode } from '@/shared/lib/omp/config/access-mode.server';

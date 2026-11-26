@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-import { json, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import { json, type LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { listDirectoryEntries } from '@/server/lib/fs/listing';
 import { errorResponse } from '@/server/lib/route-adapter';
 import { stableMtime } from '@/server/lib/fs/write-conflict';

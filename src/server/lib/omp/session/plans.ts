@@ -31,7 +31,7 @@
 
 import { readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
-import { findSessionFileById } from '@/server/lib/omp/session/locator';
+import { findSessionFileById } from '@kabmo-labs/kabmo-omp-session-locator';
 import { parseJsonlLenient } from '@kabmo-labs/kabmo-omp-session-core/jsonl';
 import type { SessionPlanState, SessionPlanFile } from '@/shared/types/plan';
 

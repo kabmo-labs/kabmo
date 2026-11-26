@@ -18,7 +18,7 @@
  * different one must refuse the token it was just handed.
  */
 
-import { json, NO_STORE_HEADERS, type ActionFunctionArgs } from '@/server/lib/remix-compat';
+import { json, NO_STORE_HEADERS, type ActionFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { connectIdentity } from '@/server/lib/connect/identity.server';
 import { connectStatus } from '@/server/lib/connect/status.server';
 import { createPairing, attachPairingQr, consumePairing } from '@/server/lib/connect/pairing.server';

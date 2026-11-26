@@ -63,6 +63,7 @@
         "@kabmo-labs/kabmo-harness-transcript": "workspace:*",
         "@kabmo-labs/kabmo-harness-update-job": "workspace:*",
         "@kabmo-labs/kabmo-harness-updates": "workspace:*",
+        "@kabmo-labs/kabmo-http": "workspace:*",
         "@kabmo-labs/kabmo-idle-reaper": "workspace:*",
         "@kabmo-labs/kabmo-mcp-contracts": "workspace:*",
         "@kabmo-labs/kabmo-model-contracts": "workspace:*",
@@ -78,6 +79,7 @@
         "@kabmo-labs/kabmo-omp-mapper": "workspace:*",
         "@kabmo-labs/kabmo-omp-messages-map": "workspace:*",
         "@kabmo-labs/kabmo-omp-mode": "workspace:*",
+        "@kabmo-labs/kabmo-omp-mode-request": "workspace:*",
         "@kabmo-labs/kabmo-omp-models-config": "workspace:*",
         "@kabmo-labs/kabmo-omp-operator-title": "workspace:*",
         "@kabmo-labs/kabmo-omp-paths": "workspace:*",
@@ -90,11 +92,13 @@
         "@kabmo-labs/kabmo-omp-rpc-util": "workspace:*",
         "@kabmo-labs/kabmo-omp-schema": "workspace:*",
         "@kabmo-labs/kabmo-omp-session-core": "workspace:*",
+        "@kabmo-labs/kabmo-omp-session-locator": "workspace:*",
         "@kabmo-labs/kabmo-omp-session-messages": "workspace:*",
         "@kabmo-labs/kabmo-omp-session-parse": "workspace:*",
         "@kabmo-labs/kabmo-omp-session-reader": "workspace:*",
         "@kabmo-labs/kabmo-omp-session-runtime": "workspace:*",
         "@kabmo-labs/kabmo-omp-session-scan": "workspace:*",
+        "@kabmo-labs/kabmo-omp-session-telemetry": "workspace:*",
         "@kabmo-labs/kabmo-omp-subagent": "workspace:*",
         "@kabmo-labs/kabmo-omp-worktree": "workspace:*",
         "@kabmo-labs/kabmo-paths": "workspace:*",
@@ -541,6 +545,10 @@
         "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
       },
     },
+    "packages/kabmo-http": {
+      "name": "@kabmo-labs/kabmo-http",
+      "version": "0.0.1",
+    },
     "packages/kabmo-idle-reaper": {
       "name": "@kabmo-labs/kabmo-idle-reaper",
       "version": "0.0.1",
@@ -673,6 +681,14 @@
       "name": "@kabmo-labs/kabmo-omp-mode",
       "version": "0.0.1",
     },
+    "packages/kabmo-omp-mode-request": {
+      "name": "@kabmo-labs/kabmo-omp-mode-request",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kabmo-labs/kabmo-guards": "workspace:*",
+        "@kabmo-labs/kabmo-omp-mode": "workspace:*",
+      },
+    },
     "packages/kabmo-omp-models-config": {
       "name": "@kabmo-labs/kabmo-omp-models-config",
       "version": "0.0.1",
@@ -771,6 +787,15 @@
         "@kabmo-labs/kabmo-guards": "workspace:*",
       },
     },
+    "packages/kabmo-omp-session-locator": {
+      "name": "@kabmo-labs/kabmo-omp-session-locator",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kabmo-labs/kabmo-http": "workspace:*",
+        "@kabmo-labs/kabmo-omp-paths": "workspace:*",
+        "@kabmo-labs/kabmo-omp-session-scan": "workspace:*",
+      },
+    },
     "packages/kabmo-omp-session-messages": {
       "name": "@kabmo-labs/kabmo-omp-session-messages",
       "version": "0.0.1",
@@ -839,6 +864,14 @@
         "@kabmo-labs/kabmo-guards": "workspace:*",
         "@kabmo-labs/kabmo-omp-operator-title": "workspace:*",
         "@kabmo-labs/kabmo-omp-paths": "workspace:*",
+        "@kabmo-labs/kabmo-omp-session-core": "workspace:*",
+      },
+    },
+    "packages/kabmo-omp-session-telemetry": {
+      "name": "@kabmo-labs/kabmo-omp-session-telemetry",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kabmo-labs/kabmo-omp-contracts": "workspace:*",
         "@kabmo-labs/kabmo-omp-session-core": "workspace:*",
       },
     },
@@ -1126,6 +1159,8 @@
 
     "@kabmo-labs/kabmo-harness-updates": ["@kabmo-labs/kabmo-harness-updates@workspace:packages/kabmo-harness-updates"],
 
+    "@kabmo-labs/kabmo-http": ["@kabmo-labs/kabmo-http@workspace:packages/kabmo-http"],
+
     "@kabmo-labs/kabmo-idle-reaper": ["@kabmo-labs/kabmo-idle-reaper@workspace:packages/kabmo-idle-reaper"],
 
     "@kabmo-labs/kabmo-mcp-contracts": ["@kabmo-labs/kabmo-mcp-contracts@workspace:packages/kabmo-mcp-contracts"],
@@ -1156,6 +1191,8 @@
 
     "@kabmo-labs/kabmo-omp-mode": ["@kabmo-labs/kabmo-omp-mode@workspace:packages/kabmo-omp-mode"],
 
+    "@kabmo-labs/kabmo-omp-mode-request": ["@kabmo-labs/kabmo-omp-mode-request@workspace:packages/kabmo-omp-mode-request"],
+
     "@kabmo-labs/kabmo-omp-models-config": ["@kabmo-labs/kabmo-omp-models-config@workspace:packages/kabmo-omp-models-config"],
 
     "@kabmo-labs/kabmo-omp-operator-title": ["@kabmo-labs/kabmo-omp-operator-title@workspace:packages/kabmo-omp-operator-title"],
@@ -1180,6 +1217,8 @@
 
     "@kabmo-labs/kabmo-omp-session-core": ["@kabmo-labs/kabmo-omp-session-core@workspace:packages/kabmo-omp-session-core"],
 
+    "@kabmo-labs/kabmo-omp-session-locator": ["@kabmo-labs/kabmo-omp-session-locator@workspace:packages/kabmo-omp-session-locator"],
+
     "@kabmo-labs/kabmo-omp-session-messages": ["@kabmo-labs/kabmo-omp-session-messages@workspace:packages/kabmo-omp-session-messages"],
 
     "@kabmo-labs/kabmo-omp-session-parse": ["@kabmo-labs/kabmo-omp-session-parse@workspace:packages/kabmo-omp-session-parse"],
@@ -1189,6 +1228,8 @@
     "@kabmo-labs/kabmo-omp-session-runtime": ["@kabmo-labs/kabmo-omp-session-runtime@workspace:packages/kabmo-omp-session-runtime"],
 
     "@kabmo-labs/kabmo-omp-session-scan": ["@kabmo-labs/kabmo-omp-session-scan@workspace:packages/kabmo-omp-session-scan"],
+
+    "@kabmo-labs/kabmo-omp-session-telemetry": ["@kabmo-labs/kabmo-omp-session-telemetry@workspace:packages/kabmo-omp-session-telemetry"],
 
     "@kabmo-labs/kabmo-omp-subagent": ["@kabmo-labs/kabmo-omp-subagent@workspace:packages/kabmo-omp-subagent"],
 

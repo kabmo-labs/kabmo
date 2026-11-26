@@ -17,7 +17,7 @@
  *    switch and does not undo it.
  */
 
-import { json } from '@/server/lib/remix-compat';
+import { json } from '@kabmo-labs/kabmo-http';
 import { importHarnessSessions } from '@/server/lib/harness/session-import.server';
 import { saveAutoImportEnabled } from '@/server/lib/harness/auto-import.server';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';

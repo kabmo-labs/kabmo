@@ -1,5 +1,5 @@
-import { json } from '@/server/lib/remix-compat';
-import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
+import { json } from '@kabmo-labs/kabmo-http';
+import type { ActionFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { prewarmRpcSession } from '@/server/lib/omp/rpc/prewarm-pool';
 import { prewarmAcpSession } from '@/server/lib/harness/acp/prewarm.server';
 import { commandAvailable } from '@/server/lib/harness/auto-probe.server';
@@ -7,7 +7,7 @@ import { loadHarnessConfig } from '@kabmo-labs/kabmo-harness-config-store/config
 import { selectedAccountId } from '@kabmo-labs/kabmo-harness-account-store';
 import { accountAdapter } from '@kabmo-labs/kabmo-harness-accounts';
 import { kabmoModeEnv } from '@kabmo-labs/kabmo-omp-extensions';
-import { parseModeSelection } from '@/server/lib/omp/mode/request';
+import { parseModeSelection } from '@kabmo-labs/kabmo-omp-mode-request';
 import { isApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 import { loadPersistedAccessMode } from '@/shared/lib/omp/config/access-mode.server';
 import { rpcErrorResponse } from '@/server/lib/omp/rpc/errors';

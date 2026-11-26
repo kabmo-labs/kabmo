@@ -16,8 +16,8 @@
  * provider had said exactly why, and a coordinator had nothing to report.
  */
 
-import { json } from '@/server/lib/remix-compat';
-import type { LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import { json } from '@kabmo-labs/kabmo-http';
+import type { LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { loadSessionAnswer } from '@/server/lib/sessions/answers.server';
 import { loadStreamStates } from '@kabmo-labs/kabmo-session-stream-state';

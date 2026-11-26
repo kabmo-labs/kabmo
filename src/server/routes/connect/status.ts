@@ -11,7 +11,7 @@
  * not get for free.
  */
 
-import { json, NO_STORE_HEADERS } from '@/server/lib/remix-compat';
+import { json, NO_STORE_HEADERS } from '@kabmo-labs/kabmo-http';
 import { connectStatus } from '@/server/lib/connect/status.server';
 
 export async function loader() {

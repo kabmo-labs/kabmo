@@ -14,7 +14,7 @@
  * nothing else.
  */
 
-import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import path from 'path';
 import { COMMIT_PAGE_SIZE } from '@/shared/lib/fs/commit-page';
 import { getDefaultFsRoot, resolveRoot } from '@kabmo-labs/kabmo-workspace-root/root';

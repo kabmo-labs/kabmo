@@ -18,8 +18,8 @@
  * omp should be able to ask again without a restart.
  */
 
-import { json } from '@/server/lib/remix-compat';
-import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import { json } from '@kabmo-labs/kabmo-http';
+import type { ActionFunctionArgs, LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { isSameOriginRequest } from '@/server/lib/http/same-origin';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';

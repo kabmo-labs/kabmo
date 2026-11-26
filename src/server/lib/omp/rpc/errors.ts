@@ -9,7 +9,7 @@
  * `{ error, code }` envelope, with the code falling back per error class.
  */
 
-import { json } from '@/server/lib/remix-compat';
+import { json } from '@kabmo-labs/kabmo-http';
 import { WebRpcError } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 import { RpcCommandError, RpcCommandTimeoutError } from '@kabmo-labs/kabmo-omp-rpc-process/process';
 import { SessionOwnedElsewhereError } from '@/server/lib/omp/session/ownership.server';

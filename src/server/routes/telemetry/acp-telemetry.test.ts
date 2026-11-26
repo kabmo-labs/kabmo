@@ -19,7 +19,7 @@ import { getDb } from '@/server/db.server';
 import { saveHarnessSession } from '@kabmo-labs/kabmo-harness-session/session-store.server';
 import { loader as rawLoader } from '@/server/routes/telemetry/raw-messages';
 import { loader as contextLoader } from '@/server/routes/telemetry/context';
-import type { LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import type { LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import type { SessionContextTelemetry } from '@/shared/types';
 
 const SESSION = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';

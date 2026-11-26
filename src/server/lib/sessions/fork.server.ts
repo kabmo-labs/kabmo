@@ -27,7 +27,7 @@ import { startRpcSession } from '@/server/lib/omp/rpc/session-registry';
 import { startAcpSession } from '@/server/lib/harness/spawn.server';
 import { freshProbe } from '@kabmo-labs/kabmo-harness-config-store/probe-cache.server';
 import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
-import { findSessionFileById } from '@/server/lib/omp/session/locator';
+import { findSessionFileById } from '@kabmo-labs/kabmo-omp-session-locator';
 import { buildTruncatedBody, isRewindCutPoint } from '@kabmo-labs/kabmo-omp-session-runtime/rewind-file';
 import {
   branchTranscript,

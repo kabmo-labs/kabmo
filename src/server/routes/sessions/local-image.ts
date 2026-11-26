@@ -28,10 +28,10 @@
 
 import path from 'node:path';
 import { antigravityHome } from '@kabmo-labs/kabmo-harness-local-transcript/antigravity-home';
-import { json, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import { json, type LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { isWithinRoot, resolveScopeForAbsolutePath } from '@kabmo-labs/kabmo-workspace-root/root';
 import { loadHarnessSession } from '@kabmo-labs/kabmo-harness-session/session-store.server';
-import { resolveSessionPathOr404 } from '@/server/lib/omp/session/locator';
+import { resolveSessionPathOr404 } from '@kabmo-labs/kabmo-omp-session-locator';
 import { getRawContentType } from '@kabmo-labs/kabmo-fs-media/mime';
 import { pathFromFileUrl } from '@/shared/lib/fs/file-url';
 

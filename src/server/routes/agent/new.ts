@@ -1,5 +1,5 @@
-import { json } from '@/server/lib/remix-compat';
-import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
+import { json } from '@kabmo-labs/kabmo-http';
+import type { ActionFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { getDb } from '@/server/db.server';
 import { startNewRpcSession } from '@/server/lib/omp/rpc/session-registry';
 import type { SessionPromptArgs } from '@/server/lib/omp/rpc/spawn-args';
@@ -7,7 +7,7 @@ import { isApprovalMode, type ApprovalMode } from '@kabmo-labs/kabmo-omp-access-
 import { loadPersistedAccessMode } from '@/shared/lib/omp/config/access-mode.server';
 import { rpcErrorResponse } from '@/server/lib/omp/rpc/errors';
 import { kabmoModeEnv } from '@kabmo-labs/kabmo-omp-extensions';
-import { parseModeSelection } from '@/server/lib/omp/mode/request';
+import { parseModeSelection } from '@kabmo-labs/kabmo-omp-mode-request';
 import { projectModelForCwd } from '@/server/lib/workspace/project-model.server';
 import { harnessDescriptor, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import { startAcpSession } from '@/server/lib/harness/spawn.server';

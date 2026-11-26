@@ -1,5 +1,5 @@
-import { json } from '@/server/lib/remix-compat';
-import type { LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import { json } from '@kabmo-labs/kabmo-http';
+import type { LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { getDb } from '@/server/db.server';
 
 /**

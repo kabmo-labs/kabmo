@@ -13,8 +13,8 @@
  * (/api/folders/*, /api/sessions/:id/*) and refresh by re-loading this route.
  */
 
-import { json, NO_STORE_HEADERS } from '@/server/lib/remix-compat';
-import type { LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import { json, NO_STORE_HEADERS } from '@kabmo-labs/kabmo-http';
+import type { LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { loadSidebarData } from '@/server/lib/omp/session/sidebar-data.server';
 import { requestAutoImport } from '@/server/lib/harness/auto-import.server';
 

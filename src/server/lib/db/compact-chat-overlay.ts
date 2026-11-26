@@ -39,7 +39,7 @@
  */
 
 import type { DbClient } from '@kabmo-labs/kabmo-db/client';
-import { findSessionFileById } from '@/server/lib/omp/session/locator';
+import { findSessionFileById } from '@kabmo-labs/kabmo-omp-session-locator';
 import { overlayRowsForOmpSession } from '@kabmo-labs/kabmo-omp-session-runtime/merge-stored';
 
 /**

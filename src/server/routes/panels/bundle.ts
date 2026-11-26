@@ -24,7 +24,7 @@
  *   the registry has already changed.
  */
 
-import { json, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import { json, type LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { findPluginDir } from '@/server/lib/panels/registry.server';
 import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
 import { join } from 'path';

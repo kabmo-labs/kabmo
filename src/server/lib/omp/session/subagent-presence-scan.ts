@@ -34,7 +34,7 @@
 import { join } from 'path';
 import { isRecord } from '@kabmo-labs/kabmo-guards';
 import { parseSubagentProgress } from '@kabmo-labs/kabmo-omp-subagent/parse';
-import { SUBAGENT_ID_RE } from '@/server/lib/omp/subagent/history/paths';
+import { SUBAGENT_ID_RE } from '@kabmo-labs/kabmo-omp-subagent/history-paths';
 
 /** A line longer than this is not a `task` result; it is dropped unparsed. */
 export const SESSION_PRESENCE_MAX_LINE_BYTES = 8 * 1024 * 1024;

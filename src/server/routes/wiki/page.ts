@@ -14,7 +14,7 @@
  * timeline has.
  */
 
-import { json, NO_STORE_HEADERS, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import { json, NO_STORE_HEADERS, type LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { resolveRoot } from '@kabmo-labs/kabmo-workspace-root/root';
 import { scopeToRepo } from '@/server/lib/fs/repo-scope';

@@ -24,7 +24,7 @@ import path from 'node:path';
 import { getDb } from '@/server/db.server';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { removeDir } from '@/test-support/remove-dir';
-import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import type { ActionFunctionArgs, LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { action, loader } from '@/server/routes/review/index';
 
 const ROOT = path.join(os.tmpdir(), `kabmo-review-route-${process.pid}`);

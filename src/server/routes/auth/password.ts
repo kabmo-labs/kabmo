@@ -23,8 +23,8 @@
  * "password changed, and you are now at the login screen".
  */
 
-import { json, NO_STORE_HEADERS } from '@/server/lib/remix-compat';
-import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
+import { json, NO_STORE_HEADERS } from '@kabmo-labs/kabmo-http';
+import type { ActionFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { methodNotAllowed, parseJsonBody } from '@/server/lib/route-adapter';
 import { verifyPassword } from '@/server/lib/auth/config';
 import { loadAuthConfig, replaceActivePassword } from '@/server/lib/auth/guard';

@@ -15,8 +15,8 @@
  * anything never probed), and `?probe=<id>` spawns exactly one.
  */
 
-import { json } from '@/server/lib/remix-compat';
-import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import { json } from '@kabmo-labs/kabmo-http';
+import type { ActionFunctionArgs, LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { harnessDescriptor, harnessIds, isBuiltinHarness, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import { customLaunch, ensureCustomHarnesses, removeCustomHarness, saveCustomHarness, type CustomHarnessInput } from '@kabmo-labs/kabmo-harness-config-store/custom.server';

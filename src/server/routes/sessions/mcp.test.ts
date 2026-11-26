@@ -22,7 +22,7 @@ import { saveHarnessSession } from '@kabmo-labs/kabmo-harness-session/session-st
 import { forgetProbe, rememberProbe } from '@kabmo-labs/kabmo-harness-config-store/probe-cache.server';
 import { UNPROBED_CAPABILITIES } from '@kabmo-labs/kabmo-harness-launch/capabilities';
 import { getSessionMcp, probeSessionMcp, setSessionMcp } from '@/server/routes/sessions/mcp';
-import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import type { ActionFunctionArgs, LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import type { SessionMcpPayload } from '@/shared/types';
 
 const ROOT = path.join(os.tmpdir(), `kabmo-session-mcp-route-${process.pid}`);

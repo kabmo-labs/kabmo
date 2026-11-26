@@ -19,7 +19,7 @@
  * host standing in the middle.
  */
 
-import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { findHttpRoute, hasHttpRoutes } from '@/server/lib/plugins/http.server';
 import { isValidPluginId } from '@/shared/lib/plugins/protocol';
 

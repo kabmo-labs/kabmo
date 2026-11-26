@@ -33,8 +33,8 @@
 import * as fsp from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import * as path from 'node:path';
-import { findSessionFileById } from '@/server/lib/omp/session/locator';
-import { siblingDirForSession } from '@/server/lib/omp/subagent/history/paths';
+import { findSessionFileById } from '@kabmo-labs/kabmo-omp-session-locator';
+import { siblingDirForSession } from '@kabmo-labs/kabmo-omp-subagent/history-paths';
 
 /** omp's legacy artifact kinds, from the filenames it wrote before 19.0.0. */
 export const ARTIFACT_KINDS = ['bash', 'bash-original', 'eval', 'read', 'async'] as const;

@@ -13,7 +13,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { modeCommandPrompt, modeEnvValue, parseModeRequest, parseModeSelection } from '@/server/lib/omp/mode/request';
+import { modeCommandPrompt, modeEnvValue, parseModeRequest, parseModeSelection } from './request';
 
 describe('parseModeRequest', () => {
   test('accepts a well-formed request', () => {

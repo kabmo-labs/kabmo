@@ -16,8 +16,8 @@
  * worktree the user can still see and retry rather than a half-deleted state.
  */
 
-import { json } from '@/server/lib/remix-compat';
-import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
+import { json } from '@kabmo-labs/kabmo-http';
+import type { ActionFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { getDataDir } from '@kabmo-labs/kabmo-paths/paths';
 import { getDb } from '@/server/db.server';

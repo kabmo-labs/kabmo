@@ -12,7 +12,7 @@
  * has, and the user learns the reason before typing a name.
  */
 
-import { json } from '@/server/lib/remix-compat';
+import { json } from '@kabmo-labs/kabmo-http';
 import { compressFormats } from '@/server/lib/fs/archive';
 
 export async function loader() {

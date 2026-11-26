@@ -9,9 +9,9 @@
  * endpoint for programmatic use; the locked settings UI does not consume it yet.
  */
 
-import { json } from '@/server/lib/remix-compat';
+import { json } from '@kabmo-labs/kabmo-http';
 import { childEnv } from '@kabmo-labs/kabmo-fs-child-env';
-import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
+import type { ActionFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { join, resolve } from 'path';
 import { pathExists } from '@kabmo-labs/kabmo-omp-paths';

@@ -18,7 +18,7 @@
  * follows.
  */
 
-import { json, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import { json, type LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { discoverPanelPlugins, invalidatePanelScan } from '@/server/lib/panels/registry.server';
 
 export async function loader({ request }: LoaderFunctionArgs) {

@@ -30,8 +30,8 @@
  * would hide the spinner and let a second install start.
  */
 
-import { json, NO_STORE_HEADERS } from '@/server/lib/remix-compat';
-import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
+import { json, NO_STORE_HEADERS } from '@kabmo-labs/kabmo-http';
+import type { ActionFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { methodNotAllowed, parseJsonBody } from '@/server/lib/route-adapter';
 import { getHarnessUpdateStatusPath } from '@kabmo-labs/kabmo-paths/paths';
 import { pumpUpdateQueue, serializeUpdateWork } from '@/server/lib/harness/update-queue.server';

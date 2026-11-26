@@ -16,8 +16,8 @@
  * because every token carries a fingerprint of the password hash.
  */
 
-import { json, NO_STORE_HEADERS } from '@/server/lib/remix-compat';
-import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
+import { json, NO_STORE_HEADERS } from '@kabmo-labs/kabmo-http';
+import type { ActionFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { clearSessionCookieHeader, isSecureRequest, sessionCookieName } from '@/server/lib/auth/token';
 

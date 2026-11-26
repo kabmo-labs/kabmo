@@ -19,8 +19,8 @@
  */
 
 import { isAbsolute } from 'path';
-import { json } from '@/server/lib/remix-compat';
-import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import { json } from '@kabmo-labs/kabmo-http';
+import type { ActionFunctionArgs, LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 import { isDependencySettled } from '@/server/lib/waiting/runtime.server';
@@ -31,7 +31,7 @@ import {
   listWaitingPrompts,
 } from '@/server/lib/waiting/store.server';
 import { attachmentHasPayload } from '@/shared/lib/chat/attachments';
-import { parseModeSelection } from '@/server/lib/omp/mode/request';
+import { parseModeSelection } from '@kabmo-labs/kabmo-omp-mode-request';
 import { isSinglePathSegment } from '@kabmo-labs/kabmo-paths/path-segment';
 import { resolveSessionRef } from '@/server/lib/sessions/resolve.server';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';

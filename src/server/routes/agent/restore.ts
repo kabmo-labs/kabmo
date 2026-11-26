@@ -17,7 +17,7 @@
  *    indistinguishable from a lost conversation.
  */
 
-import { json } from '@/server/lib/remix-compat';
+import { json } from '@kabmo-labs/kabmo-http';
 import { getLiveSession, harnessOfSession } from '@/server/lib/omp/rpc/session-registry';
 import { loadPersistedAccessMode } from '@/shared/lib/omp/config/access-mode.server';
 import { restoreRecordedHarnessSession } from '@/server/routes/agent/harness-command';

@@ -39,7 +39,7 @@
  *   attribute no surface carries and the stylesheet would apply to nothing.
  */
 
-import { json, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import { json, type LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { findPluginDir } from '@/server/lib/panels/registry.server';
 import { readPluginManifest } from '@/server/lib/panels/files.server';
 import { toManifest } from '@/server/lib/panels/manifest';

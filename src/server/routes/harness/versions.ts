@@ -28,8 +28,8 @@
  * modal's "Check again" sets it, and the automatic path does not.
  */
 
-import { json, NO_STORE_HEADERS } from '@/server/lib/remix-compat';
-import type { LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import { json, NO_STORE_HEADERS } from '@kabmo-labs/kabmo-http';
+import type { LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { HARNESS_IDS, harnessDescriptor, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import { harnessUpdateFacts, type HarnessUpdateFacts } from '@kabmo-labs/kabmo-harness-updates';
 import type { HarnessPartRow, HarnessVersionRow } from '@/shared/types/harness-version';

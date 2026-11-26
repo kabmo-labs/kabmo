@@ -28,8 +28,8 @@
  */
 
 import path from 'node:path';
-import { findSessionFileById } from '@/server/lib/omp/session/locator';
-import { siblingDirForSession } from '@/server/lib/omp/subagent/history/paths';
+import { findSessionFileById } from '@kabmo-labs/kabmo-omp-session-locator';
+import { siblingDirForSession } from '@kabmo-labs/kabmo-omp-subagent/history-paths';
 
 export interface OmpPatch {
   base?: string | null;

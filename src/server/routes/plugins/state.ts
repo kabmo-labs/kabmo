@@ -17,7 +17,7 @@
  * the only symptom is a method that answers 404.
  */
 
-import { json, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import { json, type LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { pluginLoadErrors, loadedPluginIds } from '@/server/lib/plugins/loader.server';
 import { hasRpcMethods } from '@/server/lib/plugins/rpc.server';
 

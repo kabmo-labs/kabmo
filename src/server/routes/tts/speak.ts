@@ -17,8 +17,8 @@
  * a draft. The key never travels: it is resolved from the engine's own file.
  */
 
-import { json } from '@/server/lib/remix-compat';
-import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
+import { json } from '@kabmo-labs/kabmo-http';
+import type { ActionFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { isSameOriginRequest } from '@/server/lib/http/same-origin';
 import { readTtsConfig } from '@/server/lib/tts/settings.server';

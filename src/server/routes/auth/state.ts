@@ -13,8 +13,8 @@
  * the password, no session detail.
  */
 
-import { json, NO_STORE_HEADERS } from '@/server/lib/remix-compat';
-import type { LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import { json, NO_STORE_HEADERS } from '@kabmo-labs/kabmo-http';
+import type { LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { loadAuthConfig } from '@/server/lib/auth/guard';
 import { readSessionCookie, verifySessionToken } from '@/server/lib/auth/token';
 

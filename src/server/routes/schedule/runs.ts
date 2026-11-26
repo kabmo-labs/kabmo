@@ -11,8 +11,8 @@
  * running.
  */
 
-import { json, NO_STORE_HEADERS } from '@/server/lib/remix-compat';
-import type { LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import { json, NO_STORE_HEADERS } from '@kabmo-labs/kabmo-http';
+import type { LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { requireParam } from '@/server/lib/route-adapter';
 import { listScheduledTaskRuns } from '@/server/lib/schedule/store.server';
 

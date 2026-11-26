@@ -1,4 +1,4 @@
-import { json, NO_STORE_HEADERS } from '@/server/lib/remix-compat';
+import { json, NO_STORE_HEADERS } from '@kabmo-labs/kabmo-http';
 import { fetchShellRelease, type ShellRelease } from '@/server/lib/updates/shell-release';
 import { isDesktopShellKind, type DesktopShellKind } from '@/shared/lib/updates/shell-ua';
 import { parseShellArch, type ShellArch } from '@/shared/lib/updates/shell-arch';

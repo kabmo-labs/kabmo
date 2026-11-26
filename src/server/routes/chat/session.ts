@@ -1,10 +1,10 @@
-import { json } from '@/server/lib/remix-compat';
-import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import { json } from '@kabmo-labs/kabmo-http';
+import type { ActionFunctionArgs, LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { getDb } from '@/server/db.server';
 import { getSessionData } from '@/client/data/mock/chat';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
-import { findSessionFileById } from '@/server/lib/omp/session/locator';
+import { findSessionFileById } from '@kabmo-labs/kabmo-omp-session-locator';
 import { loadSessionMessages, loadSessionModel, loadSessionThinkingLevel, loadSessionTitle } from '@kabmo-labs/kabmo-omp-session-messages/messages';
 import { mergeOmpAttachments, overlayRowsForOmpSession } from '@kabmo-labs/kabmo-omp-session-runtime/merge-stored';
 import { readRawHeaderLine } from '@kabmo-labs/kabmo-omp-session-scan/files';

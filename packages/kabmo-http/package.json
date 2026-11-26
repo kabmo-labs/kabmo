@@ -1,0 +1,15 @@
+{
+  "name": "@kabmo-labs/kabmo-http",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "The JSON response helper and route argument types every route module speaks.",
+  "exports": {
+    ".": "./src/response.ts",
+    "./response": "./src/response.ts"
+  },
+  "files": ["src"],
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/kabmo-labs/kabmo.git", "directory": "packages/kabmo-http" },
+  "publishConfig": { "access": "public" },
+  "engines": { "bun": ">=1.4.0" }
+}

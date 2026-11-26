@@ -17,8 +17,8 @@
  */
 
 import path from 'node:path';
-import { json } from '@/server/lib/remix-compat';
-import type { LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import { json } from '@kabmo-labs/kabmo-http';
+import type { LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { getDataDir } from '@kabmo-labs/kabmo-paths/paths';
 import { resolveProjectRoot } from '@kabmo-labs/kabmo-omp-worktree';
 import { listSessionFiles } from '@kabmo-labs/kabmo-omp-session-scan/files';

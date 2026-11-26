@@ -1,7 +1,7 @@
-import { json } from '@/server/lib/remix-compat';
-import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
+import { json } from '@kabmo-labs/kabmo-http';
+import type { ActionFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { getDb } from '@/server/db.server';
-import { resolveSessionFileOr404 } from '@/server/lib/omp/session/locator';
+import { resolveSessionFileOr404 } from '@kabmo-labs/kabmo-omp-session-locator';
 import { getLiveSession, harnessOfSession } from '@/server/lib/omp/rpc/session-registry';
 import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { pruneStoredAfterCut, survivingUserTexts, truncateSessionBody } from '@kabmo-labs/kabmo-omp-session-runtime/rewind-file';

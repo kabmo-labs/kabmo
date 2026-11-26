@@ -12,7 +12,7 @@
  * instead of a silent success.
  */
 
-import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { toImageContents, validateAgentImages } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 import type { AttachedTextFileData } from '@/shared/lib/chat/attachments';
 import { BtwError, type BtwImages } from '@/server/lib/btw/runtime.server';

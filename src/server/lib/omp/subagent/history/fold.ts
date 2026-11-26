@@ -14,7 +14,7 @@
  */
 
 import { isRecord } from '@kabmo-labs/kabmo-guards';
-import { SUBAGENT_ID_RE } from '@/server/lib/omp/subagent/history/paths';
+import { SUBAGENT_ID_RE } from '@kabmo-labs/kabmo-omp-subagent/history-paths';
 import { progressStatusToHistory, progressUpsertBlocked, resultStatus } from '@kabmo-labs/kabmo-omp-subagent/history-status';
 import { parseSubagentProgress } from '@kabmo-labs/kabmo-omp-subagent/parse';
 import { asAgentSource, asNumber, asString, taskResultStructuredOutput, taskResultUsageCost } from '@kabmo-labs/kabmo-omp-subagent/result-details';

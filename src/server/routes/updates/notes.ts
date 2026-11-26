@@ -1,4 +1,4 @@
-import { json, NO_STORE_HEADERS, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import { json, NO_STORE_HEADERS, type LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { buildActiveReleaseNotes } from '@/server/lib/updates/active-notes';
 import type { UpdateTarget } from '@/shared/types/updates';
 

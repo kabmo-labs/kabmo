@@ -6,7 +6,7 @@ import type { RawMessageItem, SessionContextTelemetry } from '@/shared/types/con
 import type { OmpMessageEntry, OmpUsage } from '@kabmo-labs/kabmo-omp-contracts/session';
 import { CONTEXT_LIMIT, buildInfo, contextAnchorTokens, emptyTelemetry, formatCost, formatTs, textOf, tokensOf } from '@/server/lib/omp/session/telemetry/format';
 import { loadModelsWithCache } from '@/server/lib/models/registry.server';
-import { scanSessionEntries } from '@/server/lib/omp/session/telemetry/scan';
+import { scanSessionEntries } from '@kabmo-labs/kabmo-omp-session-telemetry/scan';
 
 /**
  * Below this a request's tokens/second is noise: a cached or instant response

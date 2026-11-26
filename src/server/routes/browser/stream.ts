@@ -22,7 +22,7 @@
  * acked upstream, so dropping is lossless latest-wins.
  */
 
-import type { LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import type { LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { extractEvalActions } from '@/shared/lib/browser/activity';
 

@@ -12,7 +12,7 @@
  * root, a registered `project_path`, or (this feature) a worktree of one.
  */
 
-import { json } from '@/server/lib/remix-compat';
+import { json } from '@kabmo-labs/kabmo-http';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { getDb } from '@/server/db.server';
 import { resolveRoot } from '@kabmo-labs/kabmo-workspace-root/root';

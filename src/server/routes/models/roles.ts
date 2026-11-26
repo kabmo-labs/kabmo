@@ -1,5 +1,5 @@
-import { json } from '@/server/lib/remix-compat';
-import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import { json } from '@kabmo-labs/kabmo-http';
+import type { ActionFunctionArgs, LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { readModelRoles, writeModelRoles } from '@kabmo-labs/kabmo-omp-config-doc/roles';
 import { readModelRoleCandidates } from '@/server/lib/model-roles/catalog.server';

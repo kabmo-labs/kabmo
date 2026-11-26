@@ -141,6 +141,10 @@ export const RELEASE_PACKAGES = [
     name: '@kabmo-labs/kabmo-refresh-cadence',
   },
   {
+    dir: 'packages/kabmo-omp-session-locator',
+    name: '@kabmo-labs/kabmo-omp-session-locator',
+  },
+  {
     dir: 'packages/kabmo-omp-session-reader',
     name: '@kabmo-labs/kabmo-omp-session-reader',
   },
@@ -159,6 +163,10 @@ export const RELEASE_PACKAGES = [
   {
     dir: 'packages/kabmo-harness-session',
     name: '@kabmo-labs/kabmo-harness-session',
+  },
+  {
+    dir: 'packages/kabmo-omp-mode-request',
+    name: '@kabmo-labs/kabmo-omp-mode-request',
   },
   {
     dir: 'packages/kabmo-omp-rpc-commands',
@@ -187,6 +195,10 @@ export const RELEASE_PACKAGES = [
   {
     dir: 'packages/kabmo-workspace-root',
     name: '@kabmo-labs/kabmo-workspace-root',
+  },
+  {
+    dir: 'packages/kabmo-http',
+    name: '@kabmo-labs/kabmo-http',
   },
   {
     /** Directory under `packages/`, which is also the tag's prefix. */
@@ -292,6 +304,10 @@ export const RELEASE_PACKAGES = [
   {
     dir: 'packages/kabmo-omp-operator-title',
     name: '@kabmo-labs/kabmo-omp-operator-title',
+  },
+  {
+    dir: 'packages/kabmo-omp-session-telemetry',
+    name: '@kabmo-labs/kabmo-omp-session-telemetry',
   },
   {
     dir: 'packages/kabmo-omp-session-runtime',

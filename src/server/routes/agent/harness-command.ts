@@ -30,7 +30,7 @@ import type { AcpConfigOption } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import { applyAcpGoalAction, type AcpGoalHost } from '@/server/lib/harness/acp/acp-goal.server';
 import { saveAcpPlanState } from '@kabmo-labs/kabmo-acp-session-core/acp-goal-state.server';
 import type { HarnessSession } from '@kabmo-labs/kabmo-harness-contract';
-import type { ModeRequest } from '@/server/lib/omp/mode/request';
+import type { ModeRequest } from '@kabmo-labs/kabmo-omp-mode-request';
 import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 import { hasAssistantRow } from '@/shared/lib/chat/transcript-rows';
 

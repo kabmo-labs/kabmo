@@ -9,7 +9,7 @@
  * the file path when an id matches.
  */
 
-import { json } from '@/server/lib/remix-compat';
+import { json } from '@kabmo-labs/kabmo-http';
 import { getSessionsDir } from '@kabmo-labs/kabmo-omp-paths';
 import { clearSessionFileCaches, readRawHeaderLine, sessionIdIndex } from '@kabmo-labs/kabmo-omp-session-scan/files';
 

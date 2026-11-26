@@ -17,8 +17,8 @@
  * the dialog counts; `refused` is what it lists.
  */
 
-import { json } from '@/server/lib/remix-compat';
-import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
+import { json } from '@kabmo-labs/kabmo-http';
+import type { ActionFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { methodNotAllowed, parseJsonBody } from '@/server/lib/route-adapter';
 import { removeSessionTree } from '@/server/lib/omp/session/delete-flow.server';
 import { createAgentSessionRemover } from '@/server/lib/harness/session-delete.server';

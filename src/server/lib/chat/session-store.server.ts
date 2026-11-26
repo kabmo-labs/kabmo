@@ -13,7 +13,7 @@
 import { getDb } from '@/server/db.server';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { getSessionData } from '@/client/data/mock/chat';
-import { findSessionFileById } from '@/server/lib/omp/session/locator';
+import { findSessionFileById } from '@kabmo-labs/kabmo-omp-session-locator';
 import { loadAcpTranscript } from '@/server/lib/harness/acp/session-transcript.server';
 import { hasAssistantRow } from '@/shared/lib/chat/transcript-rows';
 

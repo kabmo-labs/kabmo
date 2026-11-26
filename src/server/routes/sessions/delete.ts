@@ -14,8 +14,8 @@
  * handler only maps the verdict onto a response.
  */
 
-import { json } from '@/server/lib/remix-compat';
-import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
+import { json } from '@kabmo-labs/kabmo-http';
+import type { ActionFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { removeSessionTree } from '@/server/lib/omp/session/delete-flow.server';
 

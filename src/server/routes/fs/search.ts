@@ -1,4 +1,4 @@
-import { json, type ActionFunctionArgs } from '@/server/lib/remix-compat';
+import { json, type ActionFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { getDefaultFsRoot, resolveRoot } from '@kabmo-labs/kabmo-workspace-root/root';
 import { scopeToRepo } from '@/server/lib/fs/repo-scope';

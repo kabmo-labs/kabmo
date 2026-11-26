@@ -27,8 +27,8 @@
  * dropped with no error anywhere.
  */
 
-import { json } from '@/server/lib/remix-compat';
-import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
+import { json } from '@kabmo-labs/kabmo-http';
+import type { ActionFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { RpcProcess } from '@kabmo-labs/kabmo-omp-rpc-process/process';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';

@@ -25,10 +25,10 @@
  * driving blind to the turn cap.
  */
 
-import { findSessionFileById } from '@/server/lib/omp/session/locator';
+import { findSessionFileById } from '@kabmo-labs/kabmo-omp-session-locator';
 import { loadPersistedModes } from '@kabmo-labs/kabmo-omp-session-runtime/modes';
 import { loadSessionModel } from '@kabmo-labs/kabmo-omp-session-messages/messages';
-import { modeCommandPrompt } from '@/server/lib/omp/mode/request';
+import { modeCommandPrompt } from '@kabmo-labs/kabmo-omp-mode-request';
 import { extractTextFromContent } from '@kabmo-labs/kabmo-omp-mapper';
 import { decideGoalProgress, runGoalAudit, type GoalAuditAnswers, type GoalAuditRequest } from '@kabmo-labs/kabmo-omp-session-runtime/goal-auditor.server';
 import { readGoalSettings, type GoalSettings } from '@kabmo-labs/kabmo-omp-session-runtime/goal-settings.server';

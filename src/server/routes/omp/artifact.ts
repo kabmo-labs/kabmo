@@ -19,7 +19,7 @@
  * broken for the life of the tab.
  */
 
-import { json, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import { json, type LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { errorResponse } from '@/server/lib/route-adapter';
 import { readArtifact } from '@/server/lib/omp/session/artifacts.server';
 

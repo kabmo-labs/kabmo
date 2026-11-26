@@ -19,7 +19,7 @@
 import { promises as fsp } from 'fs';
 import { dirname, join } from 'path';
 import { parseJsonlLenient } from '@kabmo-labs/kabmo-omp-session-core/jsonl';
-import { SUBAGENT_ID_MAX_LENGTH, SUBAGENT_ID_RE, siblingDirForSession } from '@/server/lib/omp/subagent/history/paths';
+import { SUBAGENT_ID_MAX_LENGTH, SUBAGENT_ID_RE, siblingDirForSession } from '@kabmo-labs/kabmo-omp-subagent/history-paths';
 import type { SubagentMessagesPage } from '@kabmo-labs/kabmo-omp-contracts/subagent';
 
 /** Bytes read per page call — bounds each response window. */

@@ -28,7 +28,7 @@
  * binary or oversized file before opening a tab that would only report it.
  */
 
-import { json, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import { json, type LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { resolveScopeForAbsolutePath } from '@kabmo-labs/kabmo-workspace-root/root';
 import { BINARY_SNIFF_BYTES, classifyEditorFile, unsupportedEditorMessage } from '@kabmo-labs/kabmo-fs-media/file-kind';
 import { pathFromFileUrl } from '@/shared/lib/fs/file-url';

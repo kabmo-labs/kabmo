@@ -11,7 +11,7 @@
  * settings blob; the applied one is written to the user's global git config.
  */
 
-import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import {
   applyGitIdentity,

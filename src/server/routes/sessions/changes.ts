@@ -26,8 +26,8 @@
  * path has no record in the range, so a stale click reports the real problem.
  */
 
-import { json } from '@/server/lib/remix-compat';
-import type { LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import { json } from '@kabmo-labs/kabmo-http';
+import type { LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { isSinglePathSegment } from '@kabmo-labs/kabmo-paths/path-segment';
 import { readSessionChangeDiff, readSessionChangeList, readSessionChangeStats } from '@/server/lib/changes/reader.server';
 

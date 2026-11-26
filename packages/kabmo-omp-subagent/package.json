@@ -12,13 +12,24 @@
     "./label": "./src/label.ts",
     "./parse": "./src/parse.ts",
     "./result-details": "./src/result-details.ts",
-    "./transcript-client": "./src/transcript-client.ts"
+    "./transcript-client": "./src/transcript-client.ts",
+    "./history-paths": "./src/history-paths.ts"
   },
-  "files": ["src"],
+  "files": [
+    "src"
+  ],
   "license": "MIT",
-  "repository": { "type": "git", "url": "git+https://github.com/kabmo-labs/kabmo.git", "directory": "packages/kabmo-omp-subagent" },
-  "publishConfig": { "access": "public" },
-  "engines": { "bun": ">=1.4.0" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-omp-subagent"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  },
   "dependencies": {
     "@kabmo-labs/kabmo-chat-contracts": "workspace:*",
     "@kabmo-labs/kabmo-chat-tool": "workspace:*",

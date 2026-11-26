@@ -18,8 +18,8 @@
  * schedule had left over.
  */
 
-import { json, NO_STORE_HEADERS } from '@/server/lib/remix-compat';
-import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import { json, NO_STORE_HEADERS } from '@kabmo-labs/kabmo-http';
+import type { ActionFunctionArgs, LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { runScheduledTask, isTaskRunning } from '@/server/lib/schedule/runtime.server';
 import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';

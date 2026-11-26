@@ -1,12 +1,12 @@
-import { json } from '@/server/lib/remix-compat';
-import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
+import { json } from '@kabmo-labs/kabmo-http';
+import type { ActionFunctionArgs, LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { getDb } from '@/server/db.server';
 import { markStreamSeen } from '@kabmo-labs/kabmo-session-stream-state';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { getRpcSession } from '@/server/lib/omp/rpc/session-registry';
 import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
-import { resolveSessionFileOr404 } from '@/server/lib/omp/session/locator';
+import { resolveSessionFileOr404 } from '@kabmo-labs/kabmo-omp-session-locator';
 import { setSessionTitle } from '@kabmo-labs/kabmo-omp-session-scan/title-slot';
 import { renameSessionWithAi } from '@/server/lib/omp/session/rename-with-ai.server';
 import { isSinglePathSegment } from '@kabmo-labs/kabmo-paths/path-segment';

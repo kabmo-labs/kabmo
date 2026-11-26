@@ -26,7 +26,7 @@
  *   it cannot be installed through that command.
  */
 
-import { json } from '@/server/lib/remix-compat';
+import { json } from '@kabmo-labs/kabmo-http';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import type { DiscoveryScope } from '@/server/lib/omp/config/scope';
 import type { SkillCatalogSource } from '@/shared/types';

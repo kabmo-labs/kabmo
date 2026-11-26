@@ -37,7 +37,7 @@
 
 import { getRpcSession, startRpcSession } from '@/server/lib/omp/rpc/session-registry';
 import { resolveSpawnCwd } from '@/server/lib/omp/rpc/spawn-args';
-import { resolveSessionPathOr404 } from '@/server/lib/omp/session/locator';
+import { resolveSessionPathOr404 } from '@kabmo-labs/kabmo-omp-session-locator';
 import type { AutoTitleHost } from '@/server/lib/omp/session/auto-title.server';
 import {
   GENERATE_TITLE_COMMAND,
