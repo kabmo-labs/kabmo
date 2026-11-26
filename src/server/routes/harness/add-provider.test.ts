@@ -28,7 +28,7 @@ import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { restoreEnv } from '@/test-support/env';
 import { action, loader } from '@/server/routes/harness/root';
 import { providerIdProblem, providerSlugFrom } from '@kabmo-labs/kabmo-harness-provider-slug';
-import { isVendorProviderId } from '@/shared/lib/models/provider/vendors';
+import { isVendorProviderId } from '@kabmo-labs/kabmo-provider-contracts/vendors';
 
 const ROOT = path.join(os.tmpdir(), 'kabmo-harness-add');
 const API = 'http://localhost/api/harness';

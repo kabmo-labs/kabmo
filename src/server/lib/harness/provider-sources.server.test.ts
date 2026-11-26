@@ -14,7 +14,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { registryFilePath, harnessesSharingRegistry } from '@/server/lib/harness/provider-sources.server';
+import { registryFilePath, harnessesSharingRegistry } from '@kabmo-labs/kabmo-harness-provider-runtime/provider-sources.server';
 
 describe('harnesses that share a registry file', () => {
   test('both omp transports read the same models.yml', () => {

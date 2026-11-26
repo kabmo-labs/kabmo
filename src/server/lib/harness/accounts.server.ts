@@ -20,7 +20,7 @@ import { join, resolve } from 'node:path';
 import { getDb } from '@/server/db.server';
 import { getDataDir } from '@kabmo-labs/kabmo-paths/paths';
 import { forgetProbe } from '@/server/lib/harness/probe-cache.server';
-import { readAccountIdentity } from '@/server/lib/harness/account-identity.server';
+import { readAccountIdentity } from '@kabmo-labs/kabmo-harness-provider-runtime/account-identity.server';
 import { resolveLaunch } from '@/server/lib/harness/config.server';
 import type { HarnessLaunch } from '@kabmo-labs/kabmo-harness-launch/launch-table';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';

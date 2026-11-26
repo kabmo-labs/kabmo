@@ -745,6 +745,36 @@
       "@kabmo-labs/kabmo-omp-config-files/skills-catalog": [
         "./packages/kabmo-omp-config-files/src/skills-catalog.ts"
       ],
+      "@kabmo-labs/kabmo-harness-provider-runtime/account-identity.server": [
+        "./packages/kabmo-harness-provider-runtime/src/account-identity.server.ts"
+      ],
+      "@kabmo-labs/kabmo-harness-provider-runtime/provider-entry": [
+        "./packages/kabmo-harness-provider-runtime/src/provider-entry.ts"
+      ],
+      "@kabmo-labs/kabmo-harness-provider-runtime/provider-file.server": [
+        "./packages/kabmo-harness-provider-runtime/src/provider-file.server.ts"
+      ],
+      "@kabmo-labs/kabmo-harness-provider-runtime/provider-probe.server": [
+        "./packages/kabmo-harness-provider-runtime/src/provider-probe.server.ts"
+      ],
+      "@kabmo-labs/kabmo-harness-provider-runtime/provider-sources.server": [
+        "./packages/kabmo-harness-provider-runtime/src/provider-sources.server.ts"
+      ],
+      "@kabmo-labs/kabmo-harness-provider-runtime/provider-write-error": [
+        "./packages/kabmo-harness-provider-runtime/src/provider-write-error.ts"
+      ],
+      "@kabmo-labs/kabmo-harness-provider-runtime/provider-write.server": [
+        "./packages/kabmo-harness-provider-runtime/src/provider-write.server.ts"
+      ],
+      "@kabmo-labs/kabmo-harness-provider-runtime/provider-zcode.server": [
+        "./packages/kabmo-harness-provider-runtime/src/provider-zcode.server.ts"
+      ],
+      "@kabmo-labs/kabmo-harness-provider-runtime": [
+        "./packages/kabmo-harness-provider-runtime/src/provider-write.server.ts"
+      ],
+      "@kabmo-labs/kabmo-provider-contracts/vendors": [
+        "./packages/kabmo-provider-contracts/src/vendors.ts"
+      ],
       "@kabmo-labs/kabmo-ui": [
         "./packages/kabmo-ui/src/index.tsx"
       ],

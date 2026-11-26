@@ -37,11 +37,11 @@
 
 import { withConfigLock } from '@kabmo-labs/kabmo-fs-config/config-lock';
 import { writeFileAtomic } from '@kabmo-labs/kabmo-fs-config/atomic-write';
-import { asRecord, type ProviderDraft } from '@/server/lib/harness/provider-entry';
-import { ProviderWriteError } from '@/server/lib/harness/provider-write-error';
+import { asRecord, type ProviderDraft } from './provider-entry';
+import { ProviderWriteError } from './provider-write-error';
 import { protocolOfSourceDialect } from '@kabmo-labs/kabmo-harness-provider/dialects';
-import type { ImportableProvider } from '@/server/lib/harness/provider-sources.server';
-import type { ProviderWriteResult } from '@/server/lib/harness/provider-write.server';
+import type { ImportableProvider } from './provider-sources.server';
+import type { ProviderWriteResult } from './provider-write.server';
 
 function stringList(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string' && entry.length > 0) : [];

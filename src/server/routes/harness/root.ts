@@ -31,7 +31,7 @@ import { autoImportAction, importSessionsAction } from '@/server/routes/harness/
 import { loadHarnessConfig, probeInvalidatedBy, saveHarnessConfig } from '@/server/lib/harness/config.server';
 import { listHarnessAccounts } from '@/server/lib/harness/accounts.server';
 import { harnessAccountAction } from '@/server/routes/harness/accounts';
-import { importableProvidersFor, readRegistryProviders } from '@/server/lib/harness/provider-sources.server';
+import { importableProvidersFor, readRegistryProviders } from '@kabmo-labs/kabmo-harness-provider-runtime/provider-sources.server';
 import { addProviderAction, importProviderAction, importSourceOf, isImportBody } from '@/server/routes/harness/import-action';
 import { supportedProtocols } from '@kabmo-labs/kabmo-harness-provider/dialects';
 import { credentialFieldLabel,

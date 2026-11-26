@@ -30,8 +30,8 @@ import fs from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { providerEntryFor, ProviderWriteError, writeProvider } from '@/server/lib/harness/provider-write.server';
-import { registryFilePath } from '@/server/lib/harness/provider-sources.server';
+import { providerEntryFor, ProviderWriteError, writeProvider } from '@kabmo-labs/kabmo-harness-provider-runtime/provider-write.server';
+import { registryFilePath } from '@kabmo-labs/kabmo-harness-provider-runtime/provider-sources.server';
 import { removeDir } from '@/test-support/remove-dir';
 import { testPosix } from '@/test-support/platform';
 

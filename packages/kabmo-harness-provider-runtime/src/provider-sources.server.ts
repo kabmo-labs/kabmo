@@ -40,10 +40,10 @@ import { parse as parseToml } from 'smol-toml';
 import type { ProviderRegistryKind } from '@kabmo-labs/kabmo-harness-provider/provider-contracts';
 import { providerFacts } from '@kabmo-labs/kabmo-harness-provider/provider-lookup';
 import { protocolOfSourceDialect, type CanonicalProtocol } from '@kabmo-labs/kabmo-harness-provider/dialects';
-import { isVendorProviderId } from '@/shared/lib/models/provider/vendors';
+import { isVendorProviderId } from '@kabmo-labs/kabmo-provider-contracts/vendors';
 import { HARNESS_IDS, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import { canonicalize } from '@kabmo-labs/kabmo-omp-paths';
-import { readZcodeProviderKey, readZcodeProviders } from '@/server/lib/harness/provider-zcode.server';
+import { readZcodeProviderKey, readZcodeProviders } from './provider-zcode.server';
 
 /** One provider as a source registry holds it, minus its credential. */
 export interface ImportableProvider {

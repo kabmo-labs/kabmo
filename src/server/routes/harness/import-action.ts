@@ -32,9 +32,9 @@ import { providerIdProblem, providerSlugFrom } from '@kabmo-labs/kabmo-harness-p
 import { withEnvValues } from '@kabmo-labs/kabmo-harness-config';
 import { loadHarnessConfig, saveHarnessConfig } from '@/server/lib/harness/config.server';
 import { forgetProbe } from '@/server/lib/harness/probe-cache.server';
-import { probeEndpointProtocols, type EndpointProbe } from '@/server/lib/harness/provider-probe.server';
-import { writeProvider, type ListedProvider, type ProviderDraft } from '@/server/lib/harness/provider-write.server';
-import { readProviderKey, harnessesSharingRegistry } from '@/server/lib/harness/provider-sources.server';
+import { probeEndpointProtocols, type EndpointProbe } from '@kabmo-labs/kabmo-harness-provider-runtime/provider-probe.server';
+import { writeProvider, type ListedProvider, type ProviderDraft } from '@kabmo-labs/kabmo-harness-provider-runtime/provider-write.server';
+import { readProviderKey, harnessesSharingRegistry } from '@kabmo-labs/kabmo-harness-provider-runtime/provider-sources.server';
 import { refreshModelRegistryAfterWrite } from '@/server/lib/models/registry-refresh.server';
 
 /** A provider about to be written, from any source. */

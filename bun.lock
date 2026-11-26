@@ -46,6 +46,7 @@
         "@kabmo-labs/kabmo-harness-launch": "workspace:*",
         "@kabmo-labs/kabmo-harness-mcp-facts": "workspace:*",
         "@kabmo-labs/kabmo-harness-provider": "workspace:*",
+        "@kabmo-labs/kabmo-harness-provider-runtime": "workspace:*",
         "@kabmo-labs/kabmo-harness-provider-slug": "workspace:*",
         "@kabmo-labs/kabmo-harness-registry": "workspace:*",
         "@kabmo-labs/kabmo-harness-rewind": "workspace:*",
@@ -348,6 +349,19 @@
       "version": "0.0.1",
       "dependencies": {
         "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
+      },
+    },
+    "packages/kabmo-harness-provider-runtime": {
+      "name": "@kabmo-labs/kabmo-harness-provider-runtime",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kabmo-labs/kabmo-fs-config": "workspace:*",
+        "@kabmo-labs/kabmo-harness-accounts": "workspace:*",
+        "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
+        "@kabmo-labs/kabmo-harness-provider": "workspace:*",
+        "@kabmo-labs/kabmo-provider-contracts": "workspace:*",
+        "smol-toml": "^1.9.1",
+        "yaml": "^2.9.1",
       },
     },
     "packages/kabmo-harness-provider-slug": {
@@ -802,6 +816,8 @@
     "@kabmo-labs/kabmo-harness-mcp-facts": ["@kabmo-labs/kabmo-harness-mcp-facts@workspace:packages/kabmo-harness-mcp-facts"],
 
     "@kabmo-labs/kabmo-harness-provider": ["@kabmo-labs/kabmo-harness-provider@workspace:packages/kabmo-harness-provider"],
+
+    "@kabmo-labs/kabmo-harness-provider-runtime": ["@kabmo-labs/kabmo-harness-provider-runtime@workspace:packages/kabmo-harness-provider-runtime"],
 
     "@kabmo-labs/kabmo-harness-provider-slug": ["@kabmo-labs/kabmo-harness-provider-slug@workspace:packages/kabmo-harness-provider-slug"],
 

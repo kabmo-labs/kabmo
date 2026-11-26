@@ -29,7 +29,7 @@ import { restartUtilityProcesses } from '@/server/lib/omp/rpc/utility';
 import { getModelsConfigPath } from '@kabmo-labs/kabmo-omp-models-config/models-config';
 import { forgetProbe } from '@/server/lib/harness/probe-cache.server';
 import { runAutoProbe } from '@/server/lib/harness/auto-probe.server';
-import { harnessesSharingRegistry } from '@/server/lib/harness/provider-sources.server';
+import { harnessesSharingRegistry } from '@kabmo-labs/kabmo-harness-provider-runtime/provider-sources.server';
 import { invalidateModelsCaches } from '@/shared/lib/models/server-cache';
 
 export interface RegistryWriteRefreshOptions {

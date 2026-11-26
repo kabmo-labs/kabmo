@@ -225,6 +225,7 @@ describe('package catalog', () => {
       'kabmo-harness-accounts',
       'kabmo-harness-session-modes',
       'kabmo-harness-transcript',
+      'kabmo-harness-provider-runtime',
       'kabmo-harness-provider-slug',
       'kabmo-omp-paths',
       'kabmo-omp-contracts',

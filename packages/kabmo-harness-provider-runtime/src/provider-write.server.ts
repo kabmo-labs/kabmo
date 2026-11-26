@@ -27,7 +27,7 @@
  */
 
 import { writeFileAtomic } from '@kabmo-labs/kabmo-fs-config/atomic-write';
-import { parseDocument, providerMap, serialise } from '@/server/lib/harness/provider-file.server';
+import { parseDocument, providerMap, serialise } from './provider-file.server';
 import { withConfigLock } from '@kabmo-labs/kabmo-fs-config/config-lock';
 import type { ProviderRegistryKind } from '@kabmo-labs/kabmo-harness-provider/provider-contracts';
 import { providerFacts } from '@kabmo-labs/kabmo-harness-provider/provider-lookup';
@@ -36,11 +36,11 @@ dialectFor,
 planProtocol,
 supportedProtocols,
 type CanonicalProtocol, } from '@kabmo-labs/kabmo-harness-provider/dialects';
-import { isVendorProviderId } from '@/shared/lib/models/provider/vendors';
-import { registryFilePath, readProviderKey, readRegistryProviders } from '@/server/lib/harness/provider-sources.server';
-import { asRecord, modelRowsFor, pickExisting, providerEntryFor, type ProviderDraft } from '@/server/lib/harness/provider-entry';
-import { ProviderWriteError } from '@/server/lib/harness/provider-write-error';
-import { writeZcodeProvider } from '@/server/lib/harness/provider-zcode.server';
+import { isVendorProviderId } from '@kabmo-labs/kabmo-provider-contracts/vendors';
+import { registryFilePath, readProviderKey, readRegistryProviders } from './provider-sources.server';
+import { asRecord, modelRowsFor, pickExisting, providerEntryFor, type ProviderDraft } from './provider-entry';
+import { ProviderWriteError } from './provider-write-error';
+import { writeZcodeProvider } from './provider-zcode.server';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 
 /** What a successful write changed, so the card can report it rather than guess. */

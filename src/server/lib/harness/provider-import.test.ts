@@ -24,13 +24,13 @@ import { mkdtempSync, mkdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { customProviderIds, isVendorProviderId } from '@/shared/lib/models/provider/vendors';
+import { customProviderIds, isVendorProviderId } from '@kabmo-labs/kabmo-provider-contracts/vendors';
 import { restoreEnv } from '@/test-support/env';
-import { importableProvidersFor, readRegistryProviders } from '@/server/lib/harness/provider-sources.server';
+import { importableProvidersFor, readRegistryProviders } from '@kabmo-labs/kabmo-harness-provider-runtime/provider-sources.server';
 import { providerEnv } from '@kabmo-labs/kabmo-harness-provider/providers';
 import { EMPTY_HARNESS_CONFIG, parseEnvLines, withEnvValues } from '@kabmo-labs/kabmo-harness-config';
-import { probeEndpointProtocols } from '@/server/lib/harness/provider-probe.server';
-import { writeProvider } from '@/server/lib/harness/provider-write.server';
+import { probeEndpointProtocols } from '@kabmo-labs/kabmo-harness-provider-runtime/provider-probe.server';
+import { writeProvider } from '@kabmo-labs/kabmo-harness-provider-runtime/provider-write.server';
 
 let root = '';
 const savedHome = Bun.env.HOME;

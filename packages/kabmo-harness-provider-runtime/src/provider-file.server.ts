@@ -21,8 +21,8 @@ import YAML from 'yaml';
 import { parse as parseToml, stringify as stringifyToml } from 'smol-toml';
 
 import type { ProviderRegistryKind } from '@kabmo-labs/kabmo-harness-provider/provider-contracts';
-import { asRecord } from '@/server/lib/harness/provider-entry';
-import { ProviderWriteError } from '@/server/lib/harness/provider-write-error';
+import { asRecord } from './provider-entry';
+import { ProviderWriteError } from './provider-write-error';
 
 /** Serialise a document back in its own format. */
 export function serialise(kind: ProviderRegistryKind, doc: Record<string, unknown>): string {

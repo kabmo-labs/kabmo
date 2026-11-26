@@ -31,7 +31,7 @@
 import type { ProviderRegistryKind } from '@kabmo-labs/kabmo-harness-provider/provider-contracts';
 import type { CanonicalProtocol } from '@kabmo-labs/kabmo-harness-provider/dialects';
 import { dialectFor, wireApiFor } from '@kabmo-labs/kabmo-harness-provider/dialects';
-import { ProviderWriteError } from '@/server/lib/harness/provider-write-error';
+import { ProviderWriteError } from './provider-write-error';
 
 /** What an import brings into a target registry. */
 export interface ProviderDraft {
