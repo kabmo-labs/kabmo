@@ -11,7 +11,7 @@
  * a function, never at module init.
  */
 
-import { RpcProcess } from '@/server/lib/omp/rpc/process';
+import { RpcProcess } from '@kabmo-labs/kabmo-omp-rpc-process/process';
 import { buildSessionSpawnArgs, type SessionPromptArgs } from '@/server/lib/omp/rpc/spawn-args';
 import { AgentSessionWrapper } from '@/server/lib/omp/rpc/manager';
 import { syncDiscoveryRootsWatch } from '@/server/lib/omp/config/roots-watch.server';

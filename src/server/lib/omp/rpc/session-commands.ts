@@ -9,13 +9,13 @@
  * The host object exposes the wrapper's runtime state; behavior is unchanged.
  */
 
-import { RpcCommandError, RpcCommandTimeoutError } from '@/server/lib/omp/rpc/process';
+import { RpcCommandError, RpcCommandTimeoutError } from '@kabmo-labs/kabmo-omp-rpc-process/process';
 import { AGENT_BUSY_MESSAGE, AGENT_BUSY_REFUSAL_RE, AWAITING_AGENT_START_TIMEOUT_MS, GET_STATE_TIMEOUT_MS, IMAGE_BEARING_COMMANDS, PASSTHROUGH_COMMANDS, RESTARTING_MESSAGE, STEER_ACK_TIMEOUT_MS, WebRpcError, promptAckTimeoutMs, toImageContents, type RpcSessionState, validateAgentImages } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { awaitTitleDispatch } from '@/server/lib/omp/session/title-request.server';
 import { scheduleQueueDelivery } from '@/server/lib/queue/delivery.server';
 import { clearStreamStatus, markStreamStatus } from '@kabmo-labs/kabmo-session-stream-state';
-import { buildWebState } from '@/server/lib/omp/rpc/web-state';
+import { buildWebState } from '@kabmo-labs/kabmo-omp-rpc-process/web-state';
 import {
   refuseTuiOnlyPrompt,
   refuseWhenBlockedOnDialog,

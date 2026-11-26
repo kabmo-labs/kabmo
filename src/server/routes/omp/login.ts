@@ -30,7 +30,7 @@
 import { json } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
-import { RpcProcess } from '@/server/lib/omp/rpc/process';
+import { RpcProcess } from '@kabmo-labs/kabmo-omp-rpc-process/process';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { createSseStream } from '@/server/lib/sse';
 

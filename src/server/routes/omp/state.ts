@@ -1,7 +1,7 @@
 import { json } from '@/server/lib/remix-compat';
 import type { LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
-import { runUtilityCommand } from '@/server/lib/omp/rpc/utility';
+import { runUtilityCommand } from '@kabmo-labs/kabmo-omp-rpc-process/utility';
 
 /**
  * Live agent snapshot from the shared omp utility RPC process (get_state):

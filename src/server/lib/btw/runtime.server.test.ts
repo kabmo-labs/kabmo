@@ -20,7 +20,7 @@
 
 import { describe, expect, test } from 'bun:test';
 import { BtwRuntime } from '@/server/lib/btw/runtime.server';
-import type { RpcProcess } from '@/server/lib/omp/rpc/process';
+import type { RpcProcess } from '@kabmo-labs/kabmo-omp-rpc-process/process';
 import type { BtwFrame } from '@/shared/types';
 
 interface SentCommand {

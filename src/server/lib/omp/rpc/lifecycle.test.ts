@@ -12,7 +12,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'bun:test';
 
 import { AgentSessionWrapper, WebRpcError } from '@/server/lib/omp/rpc/manager';
-import { RpcCommandTimeoutError, type RpcProcess } from '@/server/lib/omp/rpc/process';
+import { RpcCommandTimeoutError, type RpcProcess } from '@kabmo-labs/kabmo-omp-rpc-process/process';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 
 beforeEach(isolateDb);

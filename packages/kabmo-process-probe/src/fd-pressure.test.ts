@@ -7,7 +7,7 @@ import {
   describeFdPressure,
   describeSpawnFailure,
   descriptorTableSize,
-} from '@/server/lib/lifecycle/fd-pressure';
+} from './fd-pressure';
 
 describe('descriptorTableSize', () => {
   // The bug this pins: the limit used to be the constant 10240, so on this host

@@ -15,12 +15,12 @@
  * only consumers that are not the dispatcher itself.
  */
 
-import type { RpcProcess } from '@/server/lib/omp/rpc/process';
+import type { RpcProcess } from '@kabmo-labs/kabmo-omp-rpc-process/process';
 import { SESSION_BLOCKED_ON_DIALOG_MESSAGE, SESSION_BUSY_MESSAGE, WebRpcError, type AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 import { scheduleQueueDelivery } from '@/server/lib/queue/delivery.server';
 import { isTuiOnlySlashCommand, tuiOnlyCommandNotice } from '@/shared/lib/chat/composer/tui-only';
 import type { SessionRunModel } from '@kabmo-labs/kabmo-session-stream-state';
-import type { WebStateHost } from '@/server/lib/omp/rpc/web-state';
+import type { WebStateHost } from '@kabmo-labs/kabmo-omp-rpc-process/web-state';
 
 /** Runtime surface AgentSessionWrapper exposes to the command dispatcher. */
 export interface SessionCommandHost extends WebStateHost {

@@ -20,7 +20,7 @@
 
 import { afterEach, describe, expect, test } from 'bun:test';
 import { liveModeSelection } from '@/server/lib/omp/mode/live-selection';
-import { ModeMirror } from '@/server/lib/omp/rpc/mode-mirror';
+import { ModeMirror } from '@kabmo-labs/kabmo-omp-rpc-events/mode-mirror';
 import { recordSpawnProvenance } from '@/server/lib/omp/rpc/spawn-provenance';
 
 const SESSION = 'sess-1';

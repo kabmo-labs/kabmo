@@ -34,7 +34,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-
 import { methodNotAllowedResponse } from '@/server/lib/route-adapter';
 import { resolveSessionRef } from '@/server/lib/sessions/resolve.server';
 import { asOmpSession, getLiveSession, harnessOfSession } from '@/server/lib/omp/rpc/session-registry';
-import { reloadChildMcp } from '@/server/lib/omp/rpc/reload-mcp';
+import { reloadChildMcp } from '@kabmo-labs/kabmo-omp-rpc-process/reload-mcp';
 import { mcpServerEntriesFor, type McpServerEntry, type McpServerSource } from '@/server/lib/mcp/registry.server';
 import { agentMcpEntriesFor } from '@/server/lib/mcp/agent-config.server';
 import { readSessionMcpOverrides, writeSessionMcpOverrides } from '@/server/lib/mcp/session-state.server';

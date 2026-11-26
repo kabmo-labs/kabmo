@@ -1000,6 +1000,45 @@
       "@kabmo-labs/kabmo-acp-control/session-notifications": [
         "./packages/kabmo-acp-control/src/session-notifications.ts"
       ],
+      "@kabmo-labs/kabmo-omp-rpc-events": [
+        "./packages/kabmo-omp-rpc-events/src/event-fanout.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-rpc-events/event-fanout": [
+        "./packages/kabmo-omp-rpc-events/src/event-fanout.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-rpc-events/mode-mirror": [
+        "./packages/kabmo-omp-rpc-events/src/mode-mirror.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-rpc-process": [
+        "./packages/kabmo-omp-rpc-process/src/process.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-rpc-process/child-config": [
+        "./packages/kabmo-omp-rpc-process/src/child-config.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-rpc-process/frame": [
+        "./packages/kabmo-omp-rpc-process/src/frame.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-rpc-process/pending-ui-dialogs": [
+        "./packages/kabmo-omp-rpc-process/src/pending-ui-dialogs.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-rpc-process/process": [
+        "./packages/kabmo-omp-rpc-process/src/process.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-rpc-process/reload-mcp": [
+        "./packages/kabmo-omp-rpc-process/src/reload-mcp.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-rpc-process/reload-plugins": [
+        "./packages/kabmo-omp-rpc-process/src/reload-plugins.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-rpc-process/utility": [
+        "./packages/kabmo-omp-rpc-process/src/utility.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-rpc-process/web-state": [
+        "./packages/kabmo-omp-rpc-process/src/web-state.ts"
+      ],
+      "@kabmo-labs/kabmo-process-probe/fd-pressure": [
+        "./packages/kabmo-process-probe/src/fd-pressure.ts"
+      ],
       "@kabmo-labs/kabmo-ui": [
         "./packages/kabmo-ui/src/index.tsx"
       ],

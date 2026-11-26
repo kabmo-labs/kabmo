@@ -15,7 +15,7 @@
  */
 
 import net from 'net';
-import type { FdPressure } from '@/server/lib/lifecycle/fd-pressure';
+import type { FdPressure } from '@kabmo-labs/kabmo-process-probe/fd-pressure';
 
 const HEALTH_TIMEOUT_MS = 1500;
 

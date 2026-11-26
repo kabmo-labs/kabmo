@@ -14,7 +14,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { ModeMirror } from '@/server/lib/omp/rpc/mode-mirror';
+import { ModeMirror } from './mode-mirror';
 import type { GoalStatus } from '@kabmo-labs/kabmo-omp-mode/types';
 
 function frame(status: GoalStatus, enabled = true) {

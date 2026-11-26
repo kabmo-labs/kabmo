@@ -17,9 +17,9 @@
 
 import type { Subprocess } from 'bun';
 import { signalName, stripKabmoHostEnv } from '@kabmo-labs/kabmo-sdk';
-import { describeSpawnFailure } from '@/server/lib/lifecycle/fd-pressure';
+import { describeSpawnFailure } from '@kabmo-labs/kabmo-process-probe/fd-pressure';
 import { resolveOmpBin } from '@kabmo-labs/kabmo-omp-cli';
-import { RpcFrameDecoder, encodeRpcFrameLine, type RpcFrameRecord, type RpcProtocolVersion } from '@/shared/lib/omp/rpc/frame';
+import { RpcFrameDecoder, encodeRpcFrameLine, type RpcFrameRecord, type RpcProtocolVersion } from './frame';
 import { isRecord } from '@kabmo-labs/kabmo-guards';
 import { killProcessTree } from '@kabmo-labs/kabmo-process-kill';
 import { readLines } from '@kabmo-labs/kabmo-rpc-lines';

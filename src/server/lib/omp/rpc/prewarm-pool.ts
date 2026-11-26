@@ -15,7 +15,7 @@
  * mode selection; consumed exactly once by `startNewRpcSession`.
  */
 
-import { RpcProcess } from '@/server/lib/omp/rpc/process';
+import { RpcProcess } from '@kabmo-labs/kabmo-omp-rpc-process/process';
 import { buildSessionSpawnArgs } from '@/server/lib/omp/rpc/spawn-args';
 import { AgentSessionWrapper } from '@/server/lib/omp/rpc/manager';
 import { recordSpawnProvenance } from '@/server/lib/omp/rpc/spawn-provenance';

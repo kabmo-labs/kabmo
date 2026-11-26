@@ -22,7 +22,7 @@
 import { json } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { requireParam } from '@/server/lib/route-adapter';
-import { getRpcSession } from '@/server/lib/omp/rpc/manager';
+import { getRpcSession } from '@/server/lib/omp/rpc/session-registry';
 import { rpcErrorResponse } from '@/server/lib/omp/rpc/errors';
 import { SUBAGENT_ID_MAX_LENGTH, SUBAGENT_ID_RE } from '@/server/lib/omp/subagent/history/paths';
 

@@ -30,7 +30,7 @@
  * `turn_end`, `agent_end`) carry the full message either way.
  */
 
-import type { RpcProcess } from '@/server/lib/omp/rpc/process';
+import type { RpcProcess } from './process';
 
 /** Apply the attach-time configuration to a child that just became ready. */
 export async function configureChild(proc: RpcProcess): Promise<void> {

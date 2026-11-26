@@ -31,7 +31,7 @@ import { join } from 'node:path';
 import { getDb } from '@/server/db.server';
 import { writeSettingsJson } from '@kabmo-labs/kabmo-settings-store';
 import { invalidateOmpCliCache } from '@kabmo-labs/kabmo-omp-cli';
-import { disposeUtilityRpc } from '@/server/lib/omp/rpc/utility';
+import { disposeUtilityRpc } from '@kabmo-labs/kabmo-omp-rpc-process/utility';
 import { loadModelsWithCache } from '@/server/lib/models/registry.server';
 import { resolveSelectedModelContextLimit } from '@/server/lib/models/selected-context-limit.server';
 import { removeDir } from '@/test-support/remove-dir';

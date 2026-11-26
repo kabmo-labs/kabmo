@@ -24,7 +24,7 @@ import {
   RpcFrameDecoder,
   encodeRpcFrameLine,
   type RpcFrameRecord,
-} from '@/shared/lib/omp/rpc/frame';
+} from './frame';
 
 /** A frame whose JSON is exactly `byteLength` bytes (ASCII pad ⇒ bytes = chars). */
 function frameOfBytes(byteLength: number): RpcFrameRecord {

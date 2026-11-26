@@ -26,9 +26,9 @@ import {
   reloadUtilityProcesses,
   restartUtilityProcesses,
   runUtilityCommand,
-} from '@/server/lib/omp/rpc/utility';
+} from './utility';
 import { RELOAD_PLUGINS_TIMEOUT_MS } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
-import type { RpcProcess } from '@/server/lib/omp/rpc/process';
+import type { RpcProcess } from './process';
 
 const DEFAULT_COMMAND_TIMEOUT_MS = 60_000;
 

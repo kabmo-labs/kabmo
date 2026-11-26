@@ -1,0 +1,33 @@
+{
+  "name": "@kabmo-labs/kabmo-omp-rpc-process",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "The omp child process: spawn, line framing, timers, reloads, and the utility commands.",
+  "exports": {
+    ".": "./src/process.ts",
+    "./child-config": "./src/child-config.ts",
+    "./frame": "./src/frame.ts",
+    "./pending-ui-dialogs": "./src/pending-ui-dialogs.ts",
+    "./process": "./src/process.ts",
+    "./reload-mcp": "./src/reload-mcp.ts",
+    "./reload-plugins": "./src/reload-plugins.ts",
+    "./utility": "./src/utility.ts",
+    "./web-state": "./src/web-state.ts"
+  },
+  "files": ["src"],
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/kabmo-labs/kabmo.git", "directory": "packages/kabmo-omp-rpc-process" },
+  "publishConfig": { "access": "public" },
+  "engines": { "bun": ">=1.4.0" },
+  "dependencies": {
+    "@kabmo-labs/kabmo-guards": "workspace:*",
+    "@kabmo-labs/kabmo-idle-reaper": "workspace:*",
+    "@kabmo-labs/kabmo-omp-cli": "workspace:*",
+    "@kabmo-labs/kabmo-omp-rpc-protocol": "workspace:*",
+    "@kabmo-labs/kabmo-omp-rpc-util": "workspace:*",
+    "@kabmo-labs/kabmo-process-kill": "workspace:*",
+    "@kabmo-labs/kabmo-process-probe": "workspace:*",
+    "@kabmo-labs/kabmo-rpc-lines": "workspace:*",
+    "@kabmo-labs/kabmo-sdk": "workspace:*"
+  }
+}

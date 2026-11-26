@@ -6,7 +6,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import { composeShellFailureReason, currentShellBundleRefusal } from '@/server/plugins/shell.server';
-import { SPAWN_CLIFF, hasDescriptorHeadroom } from '@/server/lib/lifecycle/fd-pressure';
+import { SPAWN_CLIFF, hasDescriptorHeadroom } from '@kabmo-labs/kabmo-process-probe/fd-pressure';
 
 const FULL_TABLE = { open: 10_240, highest: 10_239, limit: SPAWN_CLIFF, nearCliff: true };
 const ROOMY_TABLE = { open: 400, highest: 402, limit: SPAWN_CLIFF, nearCliff: false };

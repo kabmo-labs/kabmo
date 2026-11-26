@@ -19,7 +19,7 @@
 
 import { readDisabledProviders } from '@kabmo-labs/kabmo-omp-config-providers/disabled-providers';
 import { getModelsConfigPath, readNativeProviders } from '@kabmo-labs/kabmo-omp-models-config/models-config';
-import { runUtilityCommand, type OmpLoginProvider, type OmpModel } from '@/server/lib/omp/rpc/utility';
+import { runUtilityCommand, type OmpLoginProvider, type OmpModel } from '@kabmo-labs/kabmo-omp-rpc-process/utility';
 import {
   catalogProviderItem,
   disabledProviderItem,

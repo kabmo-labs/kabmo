@@ -19,7 +19,7 @@
  */
 
 import { ANSWERABLE_UI_METHODS } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
-import type { RpcFrame } from '@/server/lib/omp/rpc/process';
+import type { RpcFrame } from './process';
 
 export class PendingUiDialogs {
   // Insertion order is omp's arrival order, which is the order the user should

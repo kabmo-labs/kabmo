@@ -18,7 +18,7 @@
  */
 
 import { homedir } from 'os';
-import { RpcProcess } from '@/server/lib/omp/rpc/process';
+import { RpcProcess } from './process';
 import { RELOAD_PLUGINS_TIMEOUT_MS } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 import { ensureUtilityAgentDir, removeUtilityAgentDir } from '@kabmo-labs/kabmo-omp-rpc-util/utility-agent-dir';
 

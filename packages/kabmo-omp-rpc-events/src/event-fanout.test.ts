@@ -13,7 +13,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { EventFanout } from '@/server/lib/omp/rpc/event-fanout';
+import { EventFanout } from './event-fanout';
 import type { AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 
 describe('EventFanout raw listeners', () => {

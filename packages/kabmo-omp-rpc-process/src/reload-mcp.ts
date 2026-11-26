@@ -17,7 +17,7 @@
  * run".
  */
 
-import type { RpcProcess } from '@/server/lib/omp/rpc/process';
+import type { RpcProcess } from './process';
 import type { IdleReaper } from '@kabmo-labs/kabmo-idle-reaper';
 import { RELOAD_PLUGINS_TIMEOUT_MS } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 

@@ -26,9 +26,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { describePosix } from '@/test-support/platform';
-import { RpcProcess, type RpcFrame } from '@/server/lib/omp/rpc/process';
+import { RpcProcess, type RpcFrame } from './process';
 
-const FAKE_OMP = join(import.meta.dir, '../../../../test-support/fake-omp-frames.ts');
+const FAKE_OMP = join(import.meta.dir, '../../../src/test-support/fake-omp-frames.ts');
 
 const started: RpcProcess[] = [];
 let root = '';

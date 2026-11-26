@@ -30,7 +30,8 @@
  * happened to be spawned with.
  */
 
-import { getRpcSession, getSpawnModeEnv } from '@/server/lib/omp/rpc/manager';
+import { getRpcSession } from '@/server/lib/omp/rpc/session-registry';
+import { getSpawnModeEnv } from '@/server/lib/omp/rpc/spawn-provenance';
 import { selectionFromModeEnvValue } from '@/server/lib/omp/mode/request';
 import type { PersistedModes } from '@/server/lib/omp/session/modes';
 import { isGoalOpen, isGoalStatus } from '@kabmo-labs/kabmo-omp-mode/status';

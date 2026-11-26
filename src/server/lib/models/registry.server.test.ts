@@ -33,7 +33,7 @@ import {
   loadModelsWithCache,
   readStoredProvidersForModels,
 } from '@/server/lib/models/registry.server';
-import { disposeUtilityRpc } from '@/server/lib/omp/rpc/utility';
+import { disposeUtilityRpc } from '@kabmo-labs/kabmo-omp-rpc-process/utility';
 import { removeDir } from '@/test-support/remove-dir';
 
 const dirs: string[] = [];

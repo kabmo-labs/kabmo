@@ -25,7 +25,7 @@
  * more tick.
  */
 
-import { startNewRpcSession, startRpcSession } from '@/server/lib/omp/rpc/manager';
+import { startNewRpcSession, startRpcSession } from '@/server/lib/omp/rpc/session-registry';
 import { resolveSpawnCwd } from '@/server/lib/omp/rpc/spawn-args';
 import { resolveSessionPathOr404 } from '@/server/lib/omp/session/locator';
 import { startAcpSession, type AcpSpawnRequest } from '@/server/lib/harness/spawn.server';

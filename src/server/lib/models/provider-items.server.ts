@@ -27,7 +27,7 @@ import { removeLegacyKenariModels } from '@/shared/lib/models/provider/cleanup';
 import { formatContextWindow } from '@/shared/lib/code/format';
 import type { NativeProviderInfo, NativeModelInfo } from '@kabmo-labs/kabmo-omp-models-config/models-config';
 import type { CatalogModel } from '@/server/lib/models/catalog.server';
-import type { OmpLoginProvider } from '@/server/lib/omp/rpc/utility';
+import type { OmpLoginProvider } from '@kabmo-labs/kabmo-omp-rpc-process/utility';
 import type { ProviderCredentialOrigin, ProviderItem, ProviderModel } from '@/shared/types';
 
 /** The per-model display state Kabmo owns (visibility + saved sampling knobs). */

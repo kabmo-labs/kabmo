@@ -26,11 +26,8 @@
  * caller whose UPDATE changed the row may spawn.
  */
 
-import {
-  startNewRpcSession,
-  type AgentSessionWrapper,
-} from '@/server/lib/omp/rpc/manager';
-import { getRpcSession } from '@/server/lib/omp/rpc/session-registry';
+import type { AgentSessionWrapper } from '@/server/lib/omp/rpc/manager';
+import { getRpcSession, startNewRpcSession } from '@/server/lib/omp/rpc/session-registry';
 import { ensureSessionLive } from '@/server/lib/sessions/dispatch.server';
 import type { QueueDeliveryHost } from '@/server/lib/queue/delivery.server';
 import { kabmoModeEnv } from '@kabmo-labs/kabmo-omp-extensions';

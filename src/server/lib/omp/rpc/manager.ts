@@ -12,19 +12,19 @@
  * branch/fork are omitted.
  */
 
-import { RpcProcess, type RpcFrame } from '@/server/lib/omp/rpc/process';
-import { configureChild } from '@/server/lib/omp/rpc/child-config';
-import { PendingUiDialogs } from '@/server/lib/omp/rpc/pending-ui-dialogs';
+import { RpcProcess, type RpcFrame } from '@kabmo-labs/kabmo-omp-rpc-process/process';
+import { configureChild } from '@kabmo-labs/kabmo-omp-rpc-process/child-config';
+import { PendingUiDialogs } from '@kabmo-labs/kabmo-omp-rpc-process/pending-ui-dialogs';
 import { foldSessionFrame } from '@/server/lib/omp/rpc/frame-fold';
 import { dispatchSessionCommand } from '@/server/lib/omp/rpc/session-commands';
 import { SubagentLiveness } from '@kabmo-labs/kabmo-omp-rpc-util/subagent-liveness';
-import { ModeMirror } from '@/server/lib/omp/rpc/mode-mirror';
+import { ModeMirror } from '@kabmo-labs/kabmo-omp-rpc-events/mode-mirror';
 import { IdleReaper } from '@kabmo-labs/kabmo-idle-reaper';
 import { AgentStartWatchdog } from '@kabmo-labs/kabmo-omp-rpc-util/agent-start-watchdog';
 import { RunSettle, handleChildExit } from '@/server/lib/omp/rpc/run-settle.server';
-import { EventFanout } from '@/server/lib/omp/rpc/event-fanout';
+import { EventFanout } from '@kabmo-labs/kabmo-omp-rpc-events/event-fanout';
 import { syncRunModel as syncRunModelFor } from '@/server/lib/omp/rpc/run-model';
-import { reloadChildPlugins } from '@/server/lib/omp/rpc/reload-plugins';
+import { reloadChildPlugins } from '@kabmo-labs/kabmo-omp-rpc-process/reload-plugins';
 import { noteRefusedPrompt } from '@/server/lib/omp/rpc/terminal-settle';
 import { noteAwaitingInput } from '@/server/lib/notifications/feed.server';
 import { clearStreamStatus, type SessionRunModel } from '@kabmo-labs/kabmo-session-stream-state';
@@ -345,6 +345,3 @@ export class AgentSessionWrapper {
     this.onDestroyCallback?.();
   }
 }
-
-export { getRpcSession, startRpcSession, startNewRpcSession } from '@/server/lib/omp/rpc/session-registry';
-export { getSpawnApprovalMode, getSpawnModeEnv, reconcileSpawnApprovalMode } from '@/server/lib/omp/rpc/spawn-provenance';

@@ -107,6 +107,8 @@
     "@kabmo-labs/kabmo-harness-accounts": "workspace:*",
     "@kabmo-labs/kabmo-harness-account-store": "workspace:*",
     "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
+    "@kabmo-labs/kabmo-omp-rpc-events": "workspace:*",
+    "@kabmo-labs/kabmo-omp-rpc-process": "workspace:*",
     "@kabmo-labs/kabmo-omp-rpc-protocol": "workspace:*",
     "@kabmo-labs/kabmo-realtime-signals": "workspace:*",
     "@kabmo-labs/kabmo-session-stream-state": "workspace:*",

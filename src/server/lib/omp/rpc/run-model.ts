@@ -12,7 +12,7 @@
  * because the frame fold's host contract names that method.
  */
 
-import type { RpcProcess } from '@/server/lib/omp/rpc/process';
+import type { RpcProcess } from '@kabmo-labs/kabmo-omp-rpc-process/process';
 import { GET_STATE_TIMEOUT_MS, type RpcSessionState } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 import { markStreamModel, type SessionRunModel } from '@kabmo-labs/kabmo-session-stream-state';
 

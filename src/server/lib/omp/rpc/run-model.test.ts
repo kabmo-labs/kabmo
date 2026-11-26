@@ -14,7 +14,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
 import { syncRunModel, type RunModelHost } from '@/server/lib/omp/rpc/run-model';
-import type { RpcProcess } from '@/server/lib/omp/rpc/process';
+import type { RpcProcess } from '@kabmo-labs/kabmo-omp-rpc-process/process';
 import type { RpcSessionState } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 import { onRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';

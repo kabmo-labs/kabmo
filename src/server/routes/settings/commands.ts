@@ -7,7 +7,7 @@ import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import type { CommandItem } from '@/shared/types';
 import { isRecord } from '@kabmo-labs/kabmo-guards';
 import { createSettingsListStore } from '@kabmo-labs/kabmo-settings-store';
-import { runUtilityCommand } from '@/server/lib/omp/rpc/utility';
+import { runUtilityCommand } from '@kabmo-labs/kabmo-omp-rpc-process/utility';
 import { resolveDiscoveryScope, type DiscoveryScope } from '@/server/lib/omp/config/scope';
 import { deleteCommandFile,
 locateCommandFile,

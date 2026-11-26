@@ -1,7 +1,9 @@
 import { json } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { resolveSessionPathOr404 } from '@/server/lib/omp/session/locator';
-import { WebRpcError, startRpcSession, type AgentSessionWrapper } from '@/server/lib/omp/rpc/manager';
+import { WebRpcError } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
+import type { AgentSessionWrapper } from '@/server/lib/omp/rpc/manager';
+import { startRpcSession } from '@/server/lib/omp/rpc/session-registry';
 import { resolveSpawnCwd } from '@/server/lib/omp/rpc/spawn-args';
 import { getSpawnApprovalMode, reconcileSpawnApprovalMode } from '@/server/lib/omp/rpc/session-registry';
 import { isApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';

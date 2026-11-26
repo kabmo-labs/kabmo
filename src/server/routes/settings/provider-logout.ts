@@ -27,7 +27,7 @@
 import { json } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
-import { runUtilityCommand } from '@/server/lib/omp/rpc/utility';
+import { runUtilityCommand } from '@kabmo-labs/kabmo-omp-rpc-process/utility';
 import { invalidateModelsCaches } from '@/shared/lib/models/server-cache';
 
 /** One credential omp could remove for a provider. */

@@ -16,7 +16,7 @@
  */
 
 import type { SessionFrameHost } from '@/server/lib/omp/rpc/frame-fold-contract';
-import { ModeMirror } from '@/server/lib/omp/rpc/mode-mirror';
+import { ModeMirror } from '@kabmo-labs/kabmo-omp-rpc-events/mode-mirror';
 
 export function makeHost(overrides: Partial<SessionFrameHost> = {}): SessionFrameHost {
   return {

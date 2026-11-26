@@ -2,11 +2,12 @@
   "name": "@kabmo-labs/kabmo-process-probe",
   "version": "0.0.1",
   "type": "module",
-  "description": "Process liveness probes and identity tuples.",
+  "description": "Process liveness probes, identity tuples, and the descriptor budget of this process.",
   "exports": {
     ".": "./src/identity.ts",
     "./identity": "./src/identity.ts",
-    "./proc": "./src/index.ts"
+    "./proc": "./src/index.ts",
+    "./fd-pressure": "./src/fd-pressure.ts"
   },
   "files": [
     "src"

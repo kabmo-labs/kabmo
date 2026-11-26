@@ -28,7 +28,7 @@ import { join } from 'node:path';
 import { removeDir } from '@/test-support/remove-dir';
 
 import { AgentSessionWrapper } from '@/server/lib/omp/rpc/manager';
-import type { RpcProcess } from '@/server/lib/omp/rpc/process';
+import type { RpcProcess } from '@kabmo-labs/kabmo-omp-rpc-process/process';
 import { RunSettle, type RunSettleHost } from '@/server/lib/omp/rpc/run-settle.server';
 import type { AgentEvent, RpcSessionState } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 import { loadStreamStates, markStreamStatus } from '@kabmo-labs/kabmo-session-stream-state';

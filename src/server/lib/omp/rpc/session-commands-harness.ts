@@ -10,7 +10,7 @@
  */
 
 import type { SessionCommandHost } from '@/server/lib/omp/rpc/session-commands';
-import type { RpcProcess } from '@/server/lib/omp/rpc/process';
+import type { RpcProcess } from '@kabmo-labs/kabmo-omp-rpc-process/process';
 import type { AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 
 export interface CommandHarness {
