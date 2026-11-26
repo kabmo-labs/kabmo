@@ -40,15 +40,15 @@ playwright-report/
 tmp-repro/
 
 # The native shells' build output. `build/` above covers the assembled bundles
-# (`packages/macos/build/Kabmo.app`), but SwiftPM and Cargo write a dot-directory
-# BESIDE the sources, which no pattern covers — measured: `packages/macos/.build`
+# (`apps/macos/build/Kabmo.app`), but SwiftPM and Cargo write a dot-directory
+# BESIDE the sources, which no pattern covers — measured: `apps/macos/.build`
 # alone is 3,745 untracked entries after one `swift build`.
-packages/macos/.build/
-packages/linux/.build/
-packages/linux/target/
+apps/macos/.build/
+apps/linux/.build/
+apps/linux/target/
 # .NET writes `bin/` and `obj/` inside the project, not at the shell's root.
-packages/windows/**/bin/
-packages/windows/**/obj/
+apps/windows/**/bin/
+apps/windows/**/obj/
 
 # The Kabmo wiki checkout. It is its OWN git repository, pushed to
 # https://github.com/kabmo-labs/kabmo.wiki.git — never part of the app tree.

@@ -7,10 +7,10 @@
  * an installed app would never be offered the fix. `SHELLS` is the only list the
  * runner walks, and `release/<shell>.test.js` owns each entry's own rules.
  *
- * The catalog is checked against `packages/*\/version.properties` rather than
- * against a second hand-written list: a new shell directory with a version file
- * is exactly the shape that must not be forgotten, and the comparison makes the
- * omission a test failure instead of a silent no-op.
+ * The catalog is checked against the `version.properties` files under `apps/`
+ * rather than against a second hand-written list: a new shell directory with a
+ * version file is exactly the shape that must not be forgotten, and the
+ * comparison makes the omission a test failure instead of a silent no-op.
  */
 import { afterEach, expect, test, describe } from 'bun:test';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
@@ -33,11 +33,11 @@ afterEach(() => {
   while (scratch.length > 0) rmSync(scratch.pop(), { recursive: true, force: true });
 });
 
-/** Every directory under `packages/` that declares a shell version. */
+/** Every directory under `apps/` that declares a shell version. */
 function versionFilesOnDisk() {
-  return readdirSync(join(repoRoot, 'packages'), { withFileTypes: true })
+  return readdirSync(join(repoRoot, 'apps'), { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
-    .map((entry) => `packages/${entry.name}/version.properties`)
+    .map((entry) => `apps/${entry.name}/version.properties`)
     .filter((file) => existsSync(join(repoRoot, file)))
     .sort();
 }
@@ -102,8 +102,8 @@ describe('the runner bumps every shell in one pass, or none of them', () => {
     const dir = mkdtempSync(join(tmpdir(), 'kabmo-shells-run-'));
     scratch.push(dir);
     for (const id of ids) {
-      mkdirSync(join(dir, 'packages', id), { recursive: true });
-      writeFileSync(join(dir, 'packages', id, 'version.properties'), `# shell\nversionName=1.0.0\n`);
+      mkdirSync(join(dir, 'apps', id), { recursive: true });
+      writeFileSync(join(dir, 'apps', id, 'version.properties'), `# shell\nversionName=1.0.0\n`);
     }
     return dir;
   }
@@ -112,9 +112,9 @@ describe('the runner bumps every shell in one pass, or none of them', () => {
   function entry(id, { reader, writer }, commits = [{ hash: 'a', message: 'fix(x): y' }]) {
     return {
       id,
-      dir: `packages/${id}`,
+      dir: `apps/${id}`,
       key: 'versionName',
-      versionFile: `packages/${id}/version.properties`,
+      versionFile: `apps/${id}/version.properties`,
       commitsSinceWatermark: () => commits,
       readVersionName: reader,
       replaceVersionLine: writer,
@@ -144,7 +144,7 @@ describe('the runner bumps every shell in one pass, or none of them', () => {
     expect(result.failed).toBe(false);
     expect(result.written.map((outcome) => outcome.shell.id)).toEqual(['android', 'linux']);
     for (const id of ['android', 'linux']) {
-      expect(readFileSync(join(root, `packages/${id}/version.properties`), 'utf8')).toContain('versionName=1.0.1');
+      expect(readFileSync(join(root, `apps/${id}/version.properties`), 'utf8')).toContain('versionName=1.0.1');
     }
   });
 

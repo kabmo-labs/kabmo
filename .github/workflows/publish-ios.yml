@@ -134,7 +134,7 @@ jobs:
       - name: Logic tests
         run: |
           set -euo pipefail
-          cd packages/ios
+          cd apps/ios
           swift run kabmo-shell-tests
 
       # The bundle. `KABMO_IOS_BUILD` is what the Info.plist's `CFBundleVersion` gets;
@@ -145,7 +145,7 @@ jobs:
           VERSION: ${{ steps.version.outputs.value }}
         run: |
           set -euo pipefail
-          cd packages/ios
+          cd apps/ios
           # The project's ONE naming rule — `<App>-<version>-<platform>.<ext>` — so
           # the release page reads consistently with the APK and the three desktop
           # shells. No architecture: the IPA contains only the device slice

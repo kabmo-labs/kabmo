@@ -493,11 +493,11 @@ jobs:
         # so this commit cannot cut a version by itself. `[skip ci]` because the
         # gates already ran on the push that produced it.
         run: |
-          git add packages/android/version.properties \
-                  packages/ios/version.properties \
-                  packages/windows/version.properties \
-                  packages/macos/version.properties \
-                  packages/linux/version.properties
+          git add apps/android/version.properties \
+                  apps/ios/version.properties \
+                  apps/windows/version.properties \
+                  apps/macos/version.properties \
+                  apps/linux/version.properties
           if git diff --cached --quiet; then
             echo "Nothing staged; the bump produced no change."
             exit 0
@@ -509,7 +509,7 @@ jobs:
 
   # 1e. The IPA, BUILT — a GATE on the app release, for the APK's reason.
   #
-  # `packages/ios` is a private application: there is no registry for it, and the
+  # `apps/ios` is a private application: there is no registry for it, and the
   # only artifact is the `.ipa` on the GitHub release. Building it BEFORE the tag
   # means a Swift error or an unavailable macOS runner stops `app`, so nothing is
   # tagged and nothing is published — instead of a release that goes out with no
@@ -654,7 +654,7 @@ jobs:
   # ---------------------------------------------------------------------------
   # 1i. The macOS app, BUILT — a GATE on the app release, for the APK's reason.
   #
-  # `packages/macos` is a private application: there is no registry for it, and the
+  # `apps/macos` is a private application: there is no registry for it, and the
   # only artifact is the `.zip` on the GitHub release. Building it BEFORE the tag
   # means a Swift error, a missing toolchain or a bundle declaring the wrong version
   # stops `app`, so nothing is tagged and nothing is published — instead of a release
@@ -893,7 +893,7 @@ jobs:
   # skipped with it.
   #
   # The `versionName` the bundle declares is NOT the tag: it is
-  # `packages/ios/version.properties`, which the `shells` job bumped before `ipa-build`
+  # `apps/ios/version.properties`, which the `shells` job bumped before `ipa-build`
   # compiled it. That number is what the running shell reports on its User-Agent, and
   # the asset name carries it so `fetchShellRelease('ios')` reads the same number.
   #
@@ -938,7 +938,7 @@ jobs:
   # graph.
   #
   # The `versionName` the APK declares is NOT the tag: it is
-  # `packages/android/version.properties`, which the `shells` job bumped before
+  # `apps/android/version.properties`, which the `shells` job bumped before
   # `apk-build` compiled it. That number is what the running shell reports on its
   # User-Agent, and `publish-android.yml` names the asset from the same file.
   #
@@ -977,7 +977,7 @@ jobs:
   # packaging step cannot be the step that discovers a broken app.
   #
   # The version the app declares is NOT the tag: it is
-  # `packages/windows/version.properties`, which the `shells` job bumped before
+  # `apps/windows/version.properties`, which the `shells` job bumped before
   # `win-build` compiled it. `publish-windows.yml` names the asset from the same
   # file, so the number a user downloads and the number the running app reports
   # are one fact.
@@ -1008,7 +1008,7 @@ jobs:
   # it — so a packaging step cannot be the step that discovers a broken app.
   #
   # The `versionName` the bundle declares is NOT the tag: it is
-  # `packages/macos/version.properties`, which the `shells` job bumped before
+  # `apps/macos/version.properties`, which the `shells` job bumped before
   # `macos-build` compiled it. `publish-macos.yml` names the asset from the same
   # file, so the number a user downloads and the number the app reports are one
   # fact.

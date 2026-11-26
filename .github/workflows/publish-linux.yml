@@ -171,16 +171,16 @@ jobs:
       - name: Cache the build
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: packages/linux
+          workspaces: apps/linux
 
       # The rules the panel obeys: what a row may offer, and what it may stop. No
       # display, no `omp` install — the suite is written to run on a bare runner,
       # which is why it is a plain executable rather than `cargo test`.
       - name: Rules suite
-        working-directory: packages/linux
+        working-directory: apps/linux
         run: cargo run --release --bin kabmo-desktop-tests
 
-      # The version is NOT the tag. It is `packages/linux/version.properties`,
+      # The version is NOT the tag. It is `apps/linux/version.properties`,
       # bumped by the `shells` job of `release.yml` when the shell changed — which is
       # what makes the number the archive carries the number the running shell
       # reports over the bridge.
@@ -196,7 +196,7 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Package the app
-        run: packages/linux/scripts/build-app.sh
+        run: apps/linux/scripts/build-app.sh
 
       # A version check on the ARTIFACT, not on the source: this asks the built
       # binary what it reports, so a missing or unparsed `version.properties` is
@@ -215,7 +215,7 @@ jobs:
           EXPECTED_MACHINE: ${{ matrix.machine }}
         run: |
           set -euo pipefail
-          out=packages/linux/build/Kabmo
+          out=apps/linux/build/Kabmo
 
           # The runner IS the architecture this row ships, or nothing below means
           # anything: a cross-compiled binary would pass every other check.
@@ -315,13 +315,13 @@ jobs:
           # release artifact or a glob can pick up a stale chunk), and `release/`
           # is TRACKED SOURCE — the bump scripts and their tests live there.
           mkdir -p artifacts
-          tar -C packages/linux/build -czf "artifacts/Kabmo-${VERSION}-linux-${ARCH}.tar.gz" Kabmo
-          packages/linux/scripts/package-deb.sh \
-            packages/linux/build/Kabmo artifacts "$DEB_ARCH" "$VERSION"
-          packages/linux/scripts/package-rpm.sh \
-            packages/linux/build/Kabmo artifacts "$HOST" "$VERSION"
-          packages/linux/scripts/package-appimage.sh \
-            packages/linux/build/Kabmo artifacts "$HOST" "$VERSION"
+          tar -C apps/linux/build -czf "artifacts/Kabmo-${VERSION}-linux-${ARCH}.tar.gz" Kabmo
+          apps/linux/scripts/package-deb.sh \
+            apps/linux/build/Kabmo artifacts "$DEB_ARCH" "$VERSION"
+          apps/linux/scripts/package-rpm.sh \
+            apps/linux/build/Kabmo artifacts "$HOST" "$VERSION"
+          apps/linux/scripts/package-appimage.sh \
+            apps/linux/build/Kabmo artifacts "$HOST" "$VERSION"
           ls -l artifacts/
 
       # One artifact per architecture: the attach phase merges them back, and a

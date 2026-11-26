@@ -419,7 +419,7 @@ describe('the gate contract', () => {
     const text = JSON.stringify(steps);
     for (const shell of ['android', 'ios', 'windows', 'macos', 'linux']) {
       expect(text, `the one bump commit must stage ${shell}'s version file`).toContain(
-        `packages/${shell}/version.properties`,
+        `apps/${shell}/version.properties`,
       );
     }
 
@@ -621,7 +621,7 @@ describe('the gate contract', () => {
     expect(text, 'the body must remove it again').toContain('--uninstall');
     // The archive unpacks to `Kabmo/`, so the download is not a crate name.
     expect(text, 'the archive must carry the app-named directory').toMatch(
-      /tar -C packages\/linux\/build -czf .* Kabmo/,
+      /tar -C apps\/linux\/build -czf .* Kabmo/,
     );
   });
 

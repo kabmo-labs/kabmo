@@ -1,4 +1,4 @@
-# Android shell (packages/android)
+# Android shell (apps/android)
 
 # Gradle build output, caches and the generated wrapper distribution.
 .gradle/

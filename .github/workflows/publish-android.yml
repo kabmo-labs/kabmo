@@ -207,7 +207,7 @@ jobs:
       # the checkout has none. `ANDROID_HOME` is enough for AGP, but writing the
       # file makes the failure mode explicit if the SDK root ever moves.
       - name: Point Gradle at the SDK
-        run: echo "sdk.dir=${ANDROID_HOME}" > packages/android/local.properties
+        run: echo "sdk.dir=${ANDROID_HOME}" > apps/android/local.properties
 
       # The release keystore — REQUIRED, and a missing one fails the job.
       #
@@ -240,12 +240,12 @@ jobs:
             echo "::error::ANDROID_KEYSTORE_BASE64 is not set. Refusing to build an APK that"
             echo "::error::cannot be installed over the one already on a device — a debug key"
             echo "::error::is generated fresh on every runner, so every release would carry a"
-            echo "::error::different signature. See packages/android/README.md → Signing."
+            echo "::error::different signature. See apps/android/README.md → Signing."
             exit 1
           fi
-          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > packages/android/release.jks
-          cat > packages/android/keystore.properties <<EOF
-          storeFile=${GITHUB_WORKSPACE}/packages/android/release.jks
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > apps/android/release.jks
+          cat > apps/android/keystore.properties <<EOF
+          storeFile=${GITHUB_WORKSPACE}/apps/android/release.jks
           storePassword=${KEYSTORE_PASSWORD}
           keyAlias=${KEY_ALIAS}
           keyPassword=${KEY_PASSWORD}
@@ -260,7 +260,7 @@ jobs:
           VERSION_CODE: ${{ inputs.version-code }}
         run: |
           set -euo pipefail
-          cd packages/android
+          cd apps/android
           # `release/android-version.mjs` is the ONE reader of that file — the
           # same `readVersionName` the bump script and its tests use. The inline
           # `sed -n 's/^versionName=//p' | sed …` this replaced was wrong twice:
@@ -279,7 +279,7 @@ jobs:
       - name: Unit tests
         run: |
           set -euo pipefail
-          cd packages/android
+          cd apps/android
           ./gradlew :app:testDebugUnitTest --no-daemon --console=plain
 
       # A version check on the artifact, not on the build file: `aapt2` reads
@@ -293,7 +293,7 @@ jobs:
         run: |
           set -euo pipefail
           expected="$(node release/android-version.mjs)"
-          apk=packages/android/app/build/outputs/apk/release/app-release.apk
+          apk=apps/android/app/build/outputs/apk/release/app-release.apk
           test -f "$apk" || { echo "No release APK was produced."; exit 1; }
           badging="$("$ANDROID_HOME"/build-tools/35.0.0/aapt2 dump badging "$apk")"
           echo "$badging" | head -1
@@ -319,13 +319,13 @@ jobs:
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
         run: |
           set -euo pipefail
-          apk=packages/android/app/build/outputs/apk/release/app-release.apk
+          apk=apps/android/app/build/outputs/apk/release/app-release.apk
           signer="$ANDROID_HOME"/build-tools/35.0.0/apksigner
           # `keytool` prints the fingerprint UPPERCASE and `apksigner` prints it
           # lowercase, so both are folded before they are compared — otherwise
           # the check would fail on a correctly signed APK.
           expected="$("$JAVA_HOME"/bin/keytool -list -v \
-            -keystore packages/android/release.jks \
+            -keystore apps/android/release.jks \
             -storepass "$KEYSTORE_PASSWORD" \
             -alias "$KEY_ALIAS" | sed -n 's/^[[:space:]]*SHA256: //p' | head -1 | tr -d ':' | tr 'A-F' 'a-f')"
           actual="$("$signer" verify --print-certs "$apk" \
@@ -362,7 +362,7 @@ jobs:
         run: |
           set -euo pipefail
           version="$(node release/android-version.mjs)"
-          src=packages/android/app/build/outputs/apk/release/app-release.apk
+          src=apps/android/app/build/outputs/apk/release/app-release.apk
           cp "$src" "Kabmo-${version}-android.apk"
           ls -l ./*.apk
 
@@ -385,7 +385,7 @@ jobs:
       - name: Remove signing material
         if: always()
         run: |
-          rm -f packages/android/keystore.properties packages/android/release.jks
+          rm -f apps/android/keystore.properties apps/android/release.jks
 
   # ---------------------------------------------------------------------------
   # Phase 2 — the upload. `release.yml` runs this after `app` tagged.

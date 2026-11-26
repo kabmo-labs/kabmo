@@ -64,12 +64,12 @@ describe('listDirectoryEntries', () => {
     const root = makeRoot();
     mkdirs(root, ['apps/android/dist', 'packages/core']);
 
-    const packages = await listDirectoryEntries(path.join(root, 'packages'), root);
+    const apps = await listDirectoryEntries(path.join(root, 'apps'), root);
     // `android` holds nothing but `dist`, so the two collapse into one row —
     // and the path still names the deepest directory, which is the one whose
     // contents the row expands into.
-    expect(packages.map((entry) => entry.name)).toEqual(['android/dist', 'core']);
-    expect(packages[0]!.path).toBe('apps/android/dist');
+    expect(apps.map((entry) => entry.name)).toEqual(['android/dist']);
+    expect(apps[0]!.path).toBe('apps/android/dist');
 
     const dist = await listDirectoryEntries(path.join(root, 'apps/android/dist'), root);
     expect(dist).toEqual([]);

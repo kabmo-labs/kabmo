@@ -129,7 +129,7 @@ jobs:
 
       # The toolchain this repository is built with. `swift build` on the runner's
       # default Xcode is what a developer uses, so nothing is pinned beyond it —
-      # `packages/macos/Package.swift` states the platform floor.
+      # `apps/macos/Package.swift` states the platform floor.
       #
       # The architecture line is the assertion that this row built the slice its
       # name claims: a runner that silently changed architecture would otherwise
@@ -145,24 +145,24 @@ jobs:
             || { echo "this runner is $(uname -m), but the matrix row targets $MACHO"; exit 1; }
 
       - name: Build the package
-        working-directory: packages/macos
+        working-directory: apps/macos
         run: swift build -c release
 
       # The rules the panel obeys: what a row may offer, and what it may stop.
       # A failure here is a bug in the shell's decisions, not in its rendering.
       - name: Run the logic suite
-        working-directory: packages/macos
+        working-directory: apps/macos
         run: swift run -c release kabmo-desktop-tests
 
       # The window chrome, on a real window: a press on the header moves it, a
       # press on a control does not, and the bar's menu and shortcuts exist. This
       # needs a window server, which both macOS runners provide.
       - name: Run the window suite
-        working-directory: packages/macos
+        working-directory: apps/macos
         run: swift run -c release kabmo-desktop-window-tests
 
       - name: Assemble the app bundle
-        run: packages/macos/scripts/build-app.sh
+        run: apps/macos/scripts/build-app.sh
 
       # The version the bundle declares is the one the shared `release/release-shells.mjs`
       # bumped, and the one the asset name will carry. Checked here rather than
@@ -179,7 +179,7 @@ jobs:
           set -euo pipefail
           version="$(node release/macos-version.mjs)"
           echo "Shell version: $version"
-          app=packages/macos/build/Kabmo.app
+          app=apps/macos/build/Kabmo.app
           short="$(plutil -extract CFBundleShortVersionString raw "$app/Contents/Info.plist")"
           build="$(plutil -extract CFBundleVersion raw "$app/Contents/Info.plist")"
           name="$(plutil -extract CFBundleName raw "$app/Contents/Info.plist")"
@@ -224,14 +224,14 @@ jobs:
           base="Kabmo-${version}-mac-${ARCH}"
 
           ditto -c -k --sequesterRsrc --keepParent \
-            packages/macos/build/Kabmo.app "${base}.zip"
+            apps/macos/build/Kabmo.app "${base}.zip"
 
           # The staging directory holds the bundle plus the Applications alias that
           # makes the drag obvious. `ln -s /Applications` is the convention every
           # Mac user already knows, and its absence is the difference between "drag
           # it over" and "where am I supposed to put this".
           staging="$(mktemp -d)"
-          cp -R packages/macos/build/Kabmo.app "$staging/"
+          cp -R apps/macos/build/Kabmo.app "$staging/"
           ln -s /Applications "$staging/Applications"
 
           # `hdiutil create` rather than a third-party DMG tool: it ships with

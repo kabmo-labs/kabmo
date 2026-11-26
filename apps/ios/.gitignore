@@ -1,4 +1,4 @@
-# iOS shell (packages/ios)
+# iOS shell (apps/ios)
 
 # SwiftPM build products and the generated bundle.
 .build/
