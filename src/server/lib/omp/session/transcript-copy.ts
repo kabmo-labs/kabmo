@@ -16,7 +16,7 @@
  * and `parentSession`, and the rest are entries.
  */
 
-import { serializeTitleSlot } from '@/server/lib/omp/session/title-slot';
+import { serializeTitleSlot } from '@kabmo-labs/kabmo-omp-session-scan/title-slot';
 
 export function parseJsonObject(line: string): Record<string, unknown> | null {
   try {

@@ -468,6 +468,7 @@
       "name": "@kabmo-labs/kabmo-omp-session-scan",
       "version": "0.0.1",
       "dependencies": {
+        "@kabmo-labs/kabmo-fs-config": "workspace:*",
         "@kabmo-labs/kabmo-guards": "workspace:*",
         "@kabmo-labs/kabmo-omp-operator-title": "workspace:*",
         "@kabmo-labs/kabmo-omp-paths": "workspace:*",

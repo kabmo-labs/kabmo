@@ -7,7 +7,8 @@
     ".": "./src/files.ts",
     "./file-scan": "./src/file-scan.ts",
     "./files": "./src/files.ts",
-    "./scan": "./src/scan.ts"
+    "./scan": "./src/scan.ts",
+    "./title-slot": "./src/title-slot.ts"
   },
   "files": [
     "src"
@@ -25,6 +26,7 @@
     "bun": ">=1.4.0"
   },
   "dependencies": {
+    "@kabmo-labs/kabmo-fs-config": "workspace:*",
     "@kabmo-labs/kabmo-guards": "workspace:*",
     "@kabmo-labs/kabmo-omp-operator-title": "workspace:*",
     "@kabmo-labs/kabmo-omp-paths": "workspace:*",

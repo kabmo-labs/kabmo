@@ -481,6 +481,9 @@
       "@kabmo-labs/kabmo-omp-session-scan/files": [
         "./packages/kabmo-omp-session-scan/src/files.ts"
       ],
+      "@kabmo-labs/kabmo-omp-session-scan/title-slot": [
+        "./packages/kabmo-omp-session-scan/src/title-slot.ts"
+      ],
       "@kabmo-labs/kabmo-omp-session-scan/scan": [
         "./packages/kabmo-omp-session-scan/src/scan.ts"
       ],

@@ -7,7 +7,7 @@ import { isMockMode } from '@/server/mock.server';
 import { getRpcSession } from '@/server/lib/omp/rpc/manager';
 import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { resolveSessionFileOr404 } from '@/server/lib/omp/session/locator';
-import { setSessionTitle } from '@/server/lib/omp/session/title-slot';
+import { setSessionTitle } from '@kabmo-labs/kabmo-omp-session-scan/title-slot';
 import { renameSessionWithAi } from '@/server/lib/omp/session/rename-with-ai.server';
 import { isSinglePathSegment } from '@/server/lib/fs/path-segment';
 import { loadPersistedModes } from '@/server/lib/omp/session/modes';
