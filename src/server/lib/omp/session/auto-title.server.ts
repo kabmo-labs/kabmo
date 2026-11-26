@@ -93,8 +93,8 @@ import {
   sendTitleRequest,
   waitForTitleOutcome,
   type TitleRequestHost,
-} from '@/server/lib/omp/session/title-request.server';
-import { withTitleModelOverride } from '@/server/lib/omp/session/title-model-overlay.server';
+} from '@kabmo-labs/kabmo-omp-session-runtime/title-request.server';
+import { withTitleModelOverride } from '@kabmo-labs/kabmo-omp-session-runtime/title-model-overlay.server';
 
 export {
   GENERATE_TITLE_COMMAND,
@@ -104,8 +104,8 @@ export {
   releaseTitleClaim,
   sendTitleRequest,
   waitForTitleOutcome,
-} from '@/server/lib/omp/session/title-request.server';
-export type { TitleRequestHost } from '@/server/lib/omp/session/title-request.server';
+} from '@kabmo-labs/kabmo-omp-session-runtime/title-request.server';
+export type { TitleRequestHost } from '@kabmo-labs/kabmo-omp-session-runtime/title-request.server';
 
 /** Settings blob key; mirrors the other blob keys (see `shared/lib/settings/keys`). */
 const SETTINGS_BLOB_KEY = 'kabmo_settings';

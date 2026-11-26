@@ -31,7 +31,7 @@
  * would be a write on the hot path of every boot.
  */
 
-import { getDbSync } from '@/server/db.server';
+import { getDbSync } from '@kabmo-labs/kabmo-db/lifecycle';
 
 /** The saved verdict for this exact file version, or null when unknown. */
 export async function readPresenceVerdict(sessionPath: string, version: string): Promise<boolean | null> {

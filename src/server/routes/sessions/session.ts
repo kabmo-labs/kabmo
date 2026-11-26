@@ -10,7 +10,7 @@ import { resolveSessionFileOr404 } from '@/server/lib/omp/session/locator';
 import { setSessionTitle } from '@kabmo-labs/kabmo-omp-session-scan/title-slot';
 import { renameSessionWithAi } from '@/server/lib/omp/session/rename-with-ai.server';
 import { isSinglePathSegment } from '@kabmo-labs/kabmo-paths/path-segment';
-import { loadPersistedModes } from '@/server/lib/omp/session/modes';
+import { loadPersistedModes } from '@kabmo-labs/kabmo-omp-session-runtime/modes';
 import { liveModeSelection } from '@/server/lib/omp/mode/live-selection';
 import { getLiveSession, harnessOfSession } from '@/server/lib/omp/rpc/session-registry';
 import { knownHarness, loadHarnessSession } from '@kabmo-labs/kabmo-harness-session/session-store.server';

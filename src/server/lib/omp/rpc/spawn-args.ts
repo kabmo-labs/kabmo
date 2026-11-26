@@ -18,7 +18,7 @@ import { kabmoExtensionArgs } from '@kabmo-labs/kabmo-omp-extensions';
 import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 import type { SelectedModel } from '@kabmo-labs/kabmo-model-contracts/models';
 import type { SessionPromptArgs } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
-import { ensureTitleModelOverlay, titleModelOverlayPath } from '@/server/lib/omp/session/title-model-overlay.server';
+import { ensureTitleModelOverlay, titleModelOverlayPath } from '@kabmo-labs/kabmo-omp-session-runtime/title-model-overlay.server';
 
 export type { SessionPromptArgs };
 

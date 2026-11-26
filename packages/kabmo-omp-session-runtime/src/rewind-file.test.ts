@@ -26,7 +26,7 @@ import {
   survivingUserTexts,
   truncateSessionBody,
   userEntryText,
-} from '@/server/lib/omp/session/rewind-file';
+} from './rewind-file';
 import { userTurnsRelate } from '@/shared/lib/chat/timeline/turns';
 
 /** One JSONL body from the given records. */

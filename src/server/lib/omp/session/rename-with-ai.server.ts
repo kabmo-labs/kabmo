@@ -43,11 +43,11 @@ import {
   GENERATE_TITLE_COMMAND,
   releaseTitleClaim,
   sendTitleRequest,
-} from '@/server/lib/omp/session/title-request.server';
+} from '@kabmo-labs/kabmo-omp-session-runtime/title-request.server';
 import { resolveSessionOwnership, SessionOwnedElsewhereError } from '@/server/lib/omp/session/ownership.server';
 import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { loadSessionModel } from '@kabmo-labs/kabmo-omp-session-messages/messages';
-import { withTitleModelOverride } from '@/server/lib/omp/session/title-model-overlay.server';
+import { withTitleModelOverride } from '@kabmo-labs/kabmo-omp-session-runtime/title-model-overlay.server';
 import { loadPersistedAccessMode } from '@/shared/lib/omp/config/access-mode.server';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 

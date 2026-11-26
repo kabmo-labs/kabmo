@@ -37,7 +37,7 @@
 
 import { promises as fs, statSync } from 'fs';
 import { sessionFileHasSubagents, siblingDirHasSubagentTranscript } from '@/server/lib/omp/session/subagent-presence-scan';
-import { readPresenceVerdict, writePresenceVerdict } from '@/server/lib/omp/session/subagent-presence-store';
+import { readPresenceVerdict, writePresenceVerdict } from '@kabmo-labs/kabmo-omp-session-runtime/subagent-presence-store';
 import { siblingDirForSession } from '@/server/lib/omp/subagent/history/paths';
 
 interface PresenceEntry {

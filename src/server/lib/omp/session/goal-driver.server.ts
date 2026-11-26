@@ -26,12 +26,12 @@
  */
 
 import { findSessionFileById } from '@/server/lib/omp/session/locator';
-import { loadPersistedModes } from '@/server/lib/omp/session/modes';
+import { loadPersistedModes } from '@kabmo-labs/kabmo-omp-session-runtime/modes';
 import { loadSessionModel } from '@kabmo-labs/kabmo-omp-session-messages/messages';
 import { modeCommandPrompt } from '@/server/lib/omp/mode/request';
 import { extractTextFromContent } from '@kabmo-labs/kabmo-omp-mapper';
-import { decideGoalProgress, runGoalAudit, type GoalAuditAnswers, type GoalAuditRequest } from '@/server/lib/omp/session/goal-auditor.server';
-import { readGoalSettings, type GoalSettings } from '@/server/lib/omp/session/goal-settings.server';
+import { decideGoalProgress, runGoalAudit, type GoalAuditAnswers, type GoalAuditRequest } from '@kabmo-labs/kabmo-omp-session-runtime/goal-auditor.server';
+import { readGoalSettings, type GoalSettings } from '@kabmo-labs/kabmo-omp-session-runtime/goal-settings.server';
 import type { AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 import type { GoalContinuationStop, GoalRecord } from '@kabmo-labs/kabmo-omp-mode/types';
 

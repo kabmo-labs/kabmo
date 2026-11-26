@@ -254,6 +254,7 @@ describe('package catalog', () => {
       'kabmo-omp-session-core',
       'kabmo-omp-models-config',
       'kabmo-omp-operator-title',
+      'kabmo-omp-session-runtime',
       'kabmo-omp-session-scan',
       'kabmo-omp-access-mode',
       'kabmo-omp-config-files',

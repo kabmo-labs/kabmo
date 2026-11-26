@@ -40,7 +40,7 @@ import {
   completeLines,
   lastEntryId,
   parseJsonObject,
-} from '@/server/lib/omp/session/transcript-copy';
+} from '@kabmo-labs/kabmo-omp-session-runtime/transcript-copy';
 import { isRecord } from '@kabmo-labs/kabmo-guards';
 
 /** Root holding every topic workspace, beside Kabmo database. */

@@ -24,7 +24,7 @@ import {
   buildGoalAuditPrompt,
   readGoalAuditAnswers,
   type GoalAuditAnswers,
-} from '@/server/lib/omp/session/goal-auditor.server';
+} from '@kabmo-labs/kabmo-omp-session-runtime/goal-auditor.server';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 
 export interface AcpGoalAuditRequest {

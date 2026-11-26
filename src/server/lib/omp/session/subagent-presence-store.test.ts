@@ -30,7 +30,7 @@ import { tmpdir } from 'node:os';
 import { closeDb, getDb } from '@/server/db.server';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { clearSubagentPresenceCache, sessionHasSubagents } from '@/server/lib/omp/session/subagent-presence';
-import { readPresenceVerdict } from '@/server/lib/omp/session/subagent-presence-store';
+import { readPresenceVerdict } from '@kabmo-labs/kabmo-omp-session-runtime/subagent-presence-store';
 
 const tempDirs: string[] = [];
 

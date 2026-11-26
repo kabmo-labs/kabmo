@@ -11,7 +11,7 @@ import { loadPersistedAccessMode } from '@/shared/lib/omp/config/access-mode.ser
 import { CONVERSATION_MOVING_COMMANDS, LIVE_RUN_COMMANDS, OBSERVER_ONLY_COMMANDS } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 import { rpcErrorResponse } from '@/server/lib/omp/rpc/errors';
 import { assertBtwIdle } from '@/server/lib/btw/service.server';
-import { loadPersistedModes } from '@/server/lib/omp/session/modes';
+import { loadPersistedModes } from '@kabmo-labs/kabmo-omp-session-runtime/modes';
 import { isModeCommandType, modeCommandPrompt, parseModeRequest, parseModeSelection } from '@/server/lib/omp/mode/request';
 import { kabmoModeEnv } from '@kabmo-labs/kabmo-omp-extensions';
 import { mintAgentEnvironment, rememberAgentToken } from '@/server/lib/sessions/agent-token.server';

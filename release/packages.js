@@ -290,6 +290,10 @@ export const RELEASE_PACKAGES = [
     name: '@kabmo-labs/kabmo-omp-operator-title',
   },
   {
+    dir: 'packages/kabmo-omp-session-runtime',
+    name: '@kabmo-labs/kabmo-omp-session-runtime',
+  },
+  {
     dir: 'packages/kabmo-omp-session-scan',
     name: '@kabmo-labs/kabmo-omp-session-scan',
   },

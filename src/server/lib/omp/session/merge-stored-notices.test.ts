@@ -14,7 +14,7 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { mergeOmpAttachments, type StoredMessage } from '@/server/lib/omp/session/merge-stored';
+import { mergeOmpAttachments, type StoredMessage } from '@kabmo-labs/kabmo-omp-session-runtime/merge-stored';
 
 const CONTEXT_NOTICE = 'Context window: 1000000 tokens (1% used)';
 

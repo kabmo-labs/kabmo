@@ -16,12 +16,12 @@ import { buildSessionSpawnArgs, type SessionPromptArgs } from '@/server/lib/omp/
 import { AgentSessionWrapper } from '@/server/lib/omp/rpc/manager';
 import { syncDiscoveryRootsWatch } from '@/server/lib/omp/config/roots-watch.server';
 import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
-import { localRuns } from '@/server/lib/omp/session/local-runs.server';
+import { localRuns } from '@kabmo-labs/kabmo-omp-session-runtime/local-runs.server';
 import { recordSpawnProvenance } from '@/server/lib/omp/rpc/spawn-provenance';
 import { registerSpawnedSession } from '@/server/lib/omp/rpc/session-registration';
 import { resolveSessionOwnership, SessionOwnedElsewhereError } from '@/server/lib/omp/session/ownership.server';
 import { sessionMcpSpawn } from '@/server/lib/omp/rpc/spawn-mcp';
-import { isUnrestorableModelFailure, resolveResumableModel } from '@/server/lib/omp/session/resumable-model.server';
+import { isUnrestorableModelFailure, resolveResumableModel } from '@kabmo-labs/kabmo-omp-session-runtime/resumable-model.server';
 import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 import type { SelectedModel } from '@kabmo-labs/kabmo-model-contracts/models';
 import { claimHarness, harnessOf } from '@kabmo-labs/kabmo-harness-registry';

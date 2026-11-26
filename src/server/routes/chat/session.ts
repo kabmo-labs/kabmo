@@ -6,7 +6,7 @@ import { getSessionData } from '@/client/data/mock/chat';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { findSessionFileById } from '@/server/lib/omp/session/locator';
 import { loadSessionMessages, loadSessionModel, loadSessionThinkingLevel, loadSessionTitle } from '@kabmo-labs/kabmo-omp-session-messages/messages';
-import { mergeOmpAttachments, overlayRowsForOmpSession } from '@/server/lib/omp/session/merge-stored';
+import { mergeOmpAttachments, overlayRowsForOmpSession } from '@kabmo-labs/kabmo-omp-session-runtime/merge-stored';
 import { readRawHeaderLine } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { formatNewSessionTitle } from '@kabmo-labs/kabmo-omp-session-core/default-title';
 import { importedChat } from '@/server/routes/chat/imported';

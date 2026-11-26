@@ -3,7 +3,7 @@ import pkg from '@/../package.json';
 import { shellBundle } from '@/server/lib/lifecycle/shell-entry.server';
 import { apiRoutes } from '@/server/routes';
 import { initRealtimeTopics } from '@/server/lib/realtime/topics.server';
-import { startSessionsWatch } from '@/server/lib/omp/session/sessions-watch.server';
+import { startSessionsWatch } from '@kabmo-labs/kabmo-omp-session-runtime/sessions-watch.server';
 import { authGate, initAuth, initAuthFromHandover, isAuthEnabled } from '@/server/lib/auth/guard';
 import { resolveRunPassword } from '@/server/lib/auth/env-password';
 import { readHandoverFromStdin } from '@/shared/lib/auth/handover';

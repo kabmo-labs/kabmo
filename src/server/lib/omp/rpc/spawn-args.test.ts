@@ -17,7 +17,7 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, isAbsolute } from 'node:path';
-import { titleModelOverlayPath } from '@/server/lib/omp/session/title-model-overlay.server';
+import { titleModelOverlayPath } from '@kabmo-labs/kabmo-omp-session-runtime/title-model-overlay.server';
 import { buildSessionSpawnArgs, resolveSpawnCwd } from '@/server/lib/omp/rpc/spawn-args';
 import { kabmoExtensionArgs } from '@kabmo-labs/kabmo-omp-extensions';
 

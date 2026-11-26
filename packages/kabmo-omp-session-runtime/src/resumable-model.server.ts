@@ -44,7 +44,7 @@
  * is exactly the question "can this session's model be restored?".
  */
 
-import { getDb } from '@/server/db.server';
+import { getDb } from '@kabmo-labs/kabmo-db/lifecycle';
 import { readSettingsJson } from '@kabmo-labs/kabmo-settings-store';
 import { childEnv } from '@kabmo-labs/kabmo-fs-child-env';
 import { resolveOmpBin } from '@kabmo-labs/kabmo-omp-cli';

@@ -28,13 +28,13 @@ import { startAcpSession } from '@/server/lib/harness/spawn.server';
 import { freshProbe } from '@kabmo-labs/kabmo-harness-config-store/probe-cache.server';
 import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { findSessionFileById } from '@/server/lib/omp/session/locator';
-import { buildTruncatedBody, isRewindCutPoint } from '@/server/lib/omp/session/rewind-file';
+import { buildTruncatedBody, isRewindCutPoint } from '@kabmo-labs/kabmo-omp-session-runtime/rewind-file';
 import {
   branchTranscript,
   completeLines,
   parseJsonObject,
   transcriptTitle,
-} from '@/server/lib/omp/session/transcript-copy';
+} from '@kabmo-labs/kabmo-omp-session-runtime/transcript-copy';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import { airForkPoint, harnessForksAtMessage } from '@kabmo-labs/kabmo-harness-rewind/fork';
 import type { SelectedModel } from '@kabmo-labs/kabmo-model-contracts/models';

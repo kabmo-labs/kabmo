@@ -3,7 +3,7 @@ import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { handleSimulatedStreaming } from '@/shared/lib/chat/stream-service';
 import { createSseStream } from '@/server/lib/sse';
 import { markStreamStatus } from '@kabmo-labs/kabmo-session-stream-state';
-import { localRuns } from '@/server/lib/omp/session/local-runs.server';
+import { localRuns } from '@kabmo-labs/kabmo-omp-session-runtime/local-runs.server';
 import { recordPrompt } from '@/server/lib/chat/prompt-history.server';
 
 export async function loader({ request }: LoaderFunctionArgs) {

@@ -23,8 +23,8 @@ import {
   BLOCKED_STRIKE_LIMIT,
   lastAssistantText,
 } from '@/server/lib/omp/session/goal-driver.server';
-import { decideGoalProgress, type GoalAuditAnswers } from '@/server/lib/omp/session/goal-auditor.server';
-import { readGoalSettings } from '@/server/lib/omp/session/goal-settings.server';
+import { decideGoalProgress, type GoalAuditAnswers } from '@kabmo-labs/kabmo-omp-session-runtime/goal-auditor.server';
+import { readGoalSettings } from '@kabmo-labs/kabmo-omp-session-runtime/goal-settings.server';
 import { runAcpGoalAudit, type AcpGoalAuditRequest } from '@/server/lib/harness/acp/acp-audit.server';
 import type { GoalContinuationStop } from '@kabmo-labs/kabmo-omp-mode/types';
 import {

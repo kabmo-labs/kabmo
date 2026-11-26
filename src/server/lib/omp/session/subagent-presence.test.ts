@@ -24,10 +24,10 @@ import fs from 'fs';
 import { dirname, join } from 'path';
 import { tmpdir } from 'node:os';
 
-import { getDb } from '@/server/db.server';
+import { getDb } from '@kabmo-labs/kabmo-db/lifecycle';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { clearSubagentPresenceCache, sessionHasSubagents } from '@/server/lib/omp/session/subagent-presence';
-import { writePresenceVerdict } from '@/server/lib/omp/session/subagent-presence-store';
+import { writePresenceVerdict } from '@kabmo-labs/kabmo-omp-session-runtime/subagent-presence-store';
 
 const tempDirs: string[] = [];
 

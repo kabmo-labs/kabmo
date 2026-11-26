@@ -47,8 +47,8 @@ import path from 'path';
 import { isProcessAlive } from '@kabmo-labs/kabmo-process-probe/identity';
 import { getConfigRoot } from '@kabmo-labs/kabmo-omp-paths';
 import { listInstanceRecords, type InstanceRecord } from '@/server/lib/lifecycle/instance';
-import { leaseHeldByAnother } from '@/server/lib/omp/session/lease-probe.server';
-import { fileHolderPid } from '@/server/lib/omp/session/lease-holder.server';
+import { leaseHeldByAnother } from '@kabmo-labs/kabmo-omp-session-runtime/lease-probe.server';
+import { fileHolderPid } from '@kabmo-labs/kabmo-omp-session-runtime/lease-holder.server';
 import { processParentPid } from '@kabmo-labs/kabmo-process-probe/identity';
 
 /** Who is holding a session's omp ownership lease. */

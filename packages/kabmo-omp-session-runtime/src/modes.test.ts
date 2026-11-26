@@ -13,7 +13,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { readPersistedModes } from '@/server/lib/omp/session/modes';
+import { readPersistedModes } from './modes';
 
 const line = (customType: string, data: unknown) => JSON.stringify({ type: 'custom', customType, data });
 

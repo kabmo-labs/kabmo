@@ -15,7 +15,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { mergeOmpAttachments, type StoredMessage } from '@/server/lib/omp/session/merge-stored';
+import { mergeOmpAttachments, type StoredMessage } from './merge-stored';
 
 function userTurn(overrides: Partial<StoredMessage> = {}): StoredMessage {
   return { id: 'u1', role: 'user', content: 'hello', ...overrides };

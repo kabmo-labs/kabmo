@@ -17,7 +17,7 @@
  */
 
 import { readSettingsJson } from '@kabmo-labs/kabmo-settings-store';
-import { getDb } from '@/server/db.server';
+import { getDb } from '@kabmo-labs/kabmo-db/lifecycle';
 
 const SETTINGS_BLOB_KEY = 'kabmo_settings';
 

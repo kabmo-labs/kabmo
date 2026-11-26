@@ -15,7 +15,7 @@
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { normalizeGoalBudget } from '@kabmo-labs/kabmo-omp-mode/budget';
-import { readGoalSettings } from '@/server/lib/omp/session/goal-settings.server';
+import { readGoalSettings } from './goal-settings.server';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 
 beforeEach(isolateDb);

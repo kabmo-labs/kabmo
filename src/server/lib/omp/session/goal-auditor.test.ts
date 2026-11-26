@@ -17,7 +17,7 @@ import {
   buildGoalAuditPrompt,
   decideGoalProgress,
   readGoalAuditAnswers,
-} from '@/server/lib/omp/session/goal-auditor.server';
+} from '@kabmo-labs/kabmo-omp-session-runtime/goal-auditor.server';
 
 const answers = (all_done: boolean, remaining: boolean, needs_user: boolean) => JSON.stringify({ all_done, remaining, needs_user });
 

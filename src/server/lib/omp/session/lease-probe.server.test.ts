@@ -26,7 +26,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { dlopen, FFIType, ptr } from 'bun:ffi';
 
-import { leaseHeldByAnother } from '@/server/lib/omp/session/lease-probe.server';
+import { leaseHeldByAnother } from '@kabmo-labs/kabmo-omp-session-runtime/lease-probe.server';
 
 const linuxOnly = process.platform !== 'linux';
 

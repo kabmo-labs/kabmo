@@ -92,6 +92,7 @@
         "@kabmo-labs/kabmo-omp-session-messages": "workspace:*",
         "@kabmo-labs/kabmo-omp-session-parse": "workspace:*",
         "@kabmo-labs/kabmo-omp-session-reader": "workspace:*",
+        "@kabmo-labs/kabmo-omp-session-runtime": "workspace:*",
         "@kabmo-labs/kabmo-omp-session-scan": "workspace:*",
         "@kabmo-labs/kabmo-omp-subagent": "workspace:*",
         "@kabmo-labs/kabmo-omp-worktree": "workspace:*",
@@ -797,6 +798,27 @@
         "@kabmo-labs/kabmo-refresh-cadence": "workspace:*",
       },
     },
+    "packages/kabmo-omp-session-runtime": {
+      "name": "@kabmo-labs/kabmo-omp-session-runtime",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kabmo-labs/kabmo-db": "workspace:*",
+        "@kabmo-labs/kabmo-fs-child-env": "workspace:*",
+        "@kabmo-labs/kabmo-fs-config": "workspace:*",
+        "@kabmo-labs/kabmo-guards": "workspace:*",
+        "@kabmo-labs/kabmo-model-contracts": "workspace:*",
+        "@kabmo-labs/kabmo-omp-cli": "workspace:*",
+        "@kabmo-labs/kabmo-omp-config-doc": "workspace:*",
+        "@kabmo-labs/kabmo-omp-install": "workspace:*",
+        "@kabmo-labs/kabmo-omp-mode": "workspace:*",
+        "@kabmo-labs/kabmo-omp-paths": "workspace:*",
+        "@kabmo-labs/kabmo-omp-rpc-protocol": "workspace:*",
+        "@kabmo-labs/kabmo-omp-session-core": "workspace:*",
+        "@kabmo-labs/kabmo-omp-session-scan": "workspace:*",
+        "@kabmo-labs/kabmo-realtime-signals": "workspace:*",
+        "@kabmo-labs/kabmo-settings-store": "workspace:*",
+      },
+    },
     "packages/kabmo-omp-session-scan": {
       "name": "@kabmo-labs/kabmo-omp-session-scan",
       "version": "0.0.1",
@@ -1149,6 +1171,8 @@
     "@kabmo-labs/kabmo-omp-session-parse": ["@kabmo-labs/kabmo-omp-session-parse@workspace:packages/kabmo-omp-session-parse"],
 
     "@kabmo-labs/kabmo-omp-session-reader": ["@kabmo-labs/kabmo-omp-session-reader@workspace:packages/kabmo-omp-session-reader"],
+
+    "@kabmo-labs/kabmo-omp-session-runtime": ["@kabmo-labs/kabmo-omp-session-runtime@workspace:packages/kabmo-omp-session-runtime"],
 
     "@kabmo-labs/kabmo-omp-session-scan": ["@kabmo-labs/kabmo-omp-session-scan@workspace:packages/kabmo-omp-session-scan"],
 

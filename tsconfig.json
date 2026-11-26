@@ -1039,6 +1039,51 @@
       "@kabmo-labs/kabmo-process-probe/fd-pressure": [
         "./packages/kabmo-process-probe/src/fd-pressure.ts"
       ],
+      "@kabmo-labs/kabmo-omp-session-runtime": [
+        "./packages/kabmo-omp-session-runtime/src/merge-stored.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-session-runtime/goal-auditor.server": [
+        "./packages/kabmo-omp-session-runtime/src/goal-auditor.server.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-session-runtime/goal-settings.server": [
+        "./packages/kabmo-omp-session-runtime/src/goal-settings.server.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-session-runtime/lease-holder.server": [
+        "./packages/kabmo-omp-session-runtime/src/lease-holder.server.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-session-runtime/lease-probe.server": [
+        "./packages/kabmo-omp-session-runtime/src/lease-probe.server.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-session-runtime/local-runs.server": [
+        "./packages/kabmo-omp-session-runtime/src/local-runs.server.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-session-runtime/merge-stored": [
+        "./packages/kabmo-omp-session-runtime/src/merge-stored.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-session-runtime/modes": [
+        "./packages/kabmo-omp-session-runtime/src/modes.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-session-runtime/resumable-model.server": [
+        "./packages/kabmo-omp-session-runtime/src/resumable-model.server.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-session-runtime/rewind-file": [
+        "./packages/kabmo-omp-session-runtime/src/rewind-file.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-session-runtime/sessions-watch.server": [
+        "./packages/kabmo-omp-session-runtime/src/sessions-watch.server.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-session-runtime/subagent-presence-store": [
+        "./packages/kabmo-omp-session-runtime/src/subagent-presence-store.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-session-runtime/title-model-overlay.server": [
+        "./packages/kabmo-omp-session-runtime/src/title-model-overlay.server.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-session-runtime/title-request.server": [
+        "./packages/kabmo-omp-session-runtime/src/title-request.server.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-session-runtime/transcript-copy": [
+        "./packages/kabmo-omp-session-runtime/src/transcript-copy.ts"
+      ],
       "@kabmo-labs/kabmo-ui": [
         "./packages/kabmo-ui/src/index.tsx"
       ],

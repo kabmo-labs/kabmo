@@ -37,7 +37,7 @@ import {
   triggerAutoSessionTitle,
   type AutoTitleHost,
 } from '@/server/lib/omp/session/auto-title.server';
-import { titleModelOverlayPath } from '@/server/lib/omp/session/title-model-overlay.server';
+import { titleModelOverlayPath } from '@kabmo-labs/kabmo-omp-session-runtime/title-model-overlay.server';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 
 beforeAll(isolateDb);
