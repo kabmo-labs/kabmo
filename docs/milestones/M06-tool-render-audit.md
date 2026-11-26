@@ -16,7 +16,7 @@ Status: **done** — F1, F2, F3 and F4 are closed; see "Resolution" below (2026-
   `foldAgentEvent` (`src/shared/lib/chat/omp/agent-events.ts`) to observe what
   the live timeline actually receives.
 - The JSONL reload path was exercised through `loadSessionMessages`
-  (`src/server/lib/omp/session/messages.ts`) against the author's real sessions.
+  (`packages/kabmo-omp-session-messages/src/messages.ts`) against the author's real sessions.
 - The wire schema shipped in the package
   (`@oh-my-pi/pi-coding-agent/src/modes/rpc/wire/rpc-wire.schema.json`) was read
   for the authoritative frame shape.
