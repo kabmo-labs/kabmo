@@ -205,7 +205,7 @@ export async function setAcpConfig(
   effects: AcpConfigEffects,
 ): Promise<unknown> {
   if (configId === 'mode' && typeof value === 'string' && !target.configOptions.some((option) => option.id === 'mode') && target.modes) {
-    return setAcpMode(target, value, effects);
+    return setAcpMode(target, value);
   }
   // The synthesized selector from a `models` block is answered by
   // `session/set_model`: the agent never published a `model` config option, so a
@@ -228,7 +228,7 @@ export async function setAcpConfig(
 }
 
 /** `session/set_mode`: the pre-config-options way to move a mode. */
-export async function setAcpMode(target: AcpConfigWriter, modeId: string, effects: AcpConfigEffects): Promise<unknown> {
+export async function setAcpMode(target: AcpConfigWriter, modeId: string): Promise<unknown> {
   const result = await target.writeMode(modeId);
   if (target.modes) target.modes = { ...target.modes, currentModeId: modeId };
   target.emit({ type: 'mode_changed', modeId });

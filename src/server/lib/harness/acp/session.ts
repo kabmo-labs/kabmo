@@ -272,7 +272,7 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
 
   /** `session/set_mode`: the pre-config-options way to move a mode. */
   async setMode(modeId: string): Promise<unknown> {
-    return setAcpMode(this.config, modeId, ACP_CONFIG_EFFECTS);
+    return setAcpMode(this.config, modeId);
   }
 
   /** Answer a pending approval — every exit answers the agent, or it hangs. */
