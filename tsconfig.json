@@ -1162,6 +1162,27 @@
       "@kabmo-labs/kabmo-omp-session-changes/changes-patch": [
         "./packages/kabmo-omp-session-changes/src/changes-patch.ts"
       ],
+      "@kabmo-labs/kabmo-session-deleted": [
+        "./packages/kabmo-session-deleted/src/deleted-sessions.server.ts"
+      ],
+      "@kabmo-labs/kabmo-session-deleted/deleted-sessions.server": [
+        "./packages/kabmo-session-deleted/src/deleted-sessions.server.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-subagent-presence": [
+        "./packages/kabmo-omp-subagent-presence/src/presence.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-subagent-presence/presence": [
+        "./packages/kabmo-omp-subagent-presence/src/presence.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-subagent-presence/scan": [
+        "./packages/kabmo-omp-subagent-presence/src/scan.ts"
+      ],
+      "@kabmo-labs/kabmo-worktree-types": [
+        "./packages/kabmo-worktree-types/src/types.ts"
+      ],
+      "@kabmo-labs/kabmo-worktree-types/types": [
+        "./packages/kabmo-worktree-types/src/types.ts"
+      ],
       "@kabmo-labs/kabmo-ui": [
         "./packages/kabmo-ui/src/index.tsx"
       ],

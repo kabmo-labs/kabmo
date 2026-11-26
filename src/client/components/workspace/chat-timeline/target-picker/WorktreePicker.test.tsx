@@ -29,7 +29,7 @@ import {
   selectedWorktree,
   worktreeLabel,
 } from '@/client/components/workspace/chat-timeline/target-picker/WorktreePicker';
-import type { WorktreeInfo } from '@/shared/lib/workspace/worktree/types';
+import type { WorktreeInfo } from '@kabmo-labs/kabmo-worktree-types';
 import type { WorkspaceFolderData } from '@/shared/types';
 
 const folder: WorkspaceFolderData = {

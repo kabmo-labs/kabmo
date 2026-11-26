@@ -1,0 +1,15 @@
+{
+  "name": "@kabmo-labs/kabmo-worktree-types",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "The worktree shapes the workspace panel, the sidebar and the server all speak.",
+  "exports": {
+    ".": "./src/types.ts",
+    "./types": "./src/types.ts"
+  },
+  "files": ["src"],
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/kabmo-labs/kabmo.git", "directory": "packages/kabmo-worktree-types" },
+  "publishConfig": { "access": "public" },
+  "engines": { "bun": ">=1.4.0" }
+}

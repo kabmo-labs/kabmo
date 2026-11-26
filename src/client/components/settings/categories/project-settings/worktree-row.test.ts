@@ -19,7 +19,7 @@ import {
   removalRefusal,
   worktreeRowDetail,
 } from '@/client/components/settings/categories/project-settings/worktree-row';
-import type { WorktreeInfo } from '@/shared/lib/workspace/worktree/types';
+import type { WorktreeInfo } from '@kabmo-labs/kabmo-worktree-types';
 
 const base: WorktreeInfo = {
   path: '/data/worktrees/abc/cosmic-dolphin',

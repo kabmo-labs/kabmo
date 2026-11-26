@@ -9,7 +9,7 @@ import type { BranchRowStyle } from '@/client/components/common/session-branch/s
 import { WorktreeBadge } from '@/client/components/layout/session-sidebar/WorktreeBadge';
 import { SessionTimeCell } from '@/client/components/common/session-row/TimeCell';
 import { SESSION_ROW_ATTENTION_CLASS } from '@/client/components/common/session-row/row-state';
-import type { SessionWorktreeInfo } from '@/shared/lib/workspace/worktree/types';
+import type { SessionWorktreeInfo } from '@kabmo-labs/kabmo-worktree-types';
 
 /** What a subagent row under this chrome's rows borrows from it. */
 export const SESSION_ITEM_BRANCH_STYLE: BranchRowStyle = {

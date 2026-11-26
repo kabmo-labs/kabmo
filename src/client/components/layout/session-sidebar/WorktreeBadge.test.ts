@@ -18,7 +18,7 @@ import {
   worktreeBadgeLabel,
   worktreeBadgeTitle,
 } from '@/client/components/layout/session-sidebar/WorktreeBadge';
-import type { SessionWorktreeInfo } from '@/shared/lib/workspace/worktree/types';
+import type { SessionWorktreeInfo } from '@kabmo-labs/kabmo-worktree-types';
 
 const ready: SessionWorktreeInfo = {
   branch: 'wt/cosmic-dolphin',

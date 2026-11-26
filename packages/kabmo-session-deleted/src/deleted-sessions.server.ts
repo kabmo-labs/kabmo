@@ -22,7 +22,7 @@
  * carry.
  */
 
-import { getDb } from '@/server/db.server';
+import { getDb } from '@kabmo-labs/kabmo-db/lifecycle';
 
 /** Tombstone one deleted session. Idempotent: a repeated delete is a no-op. */
 export async function markSessionDeleted(sessionId: string): Promise<void> {

@@ -1,0 +1,16 @@
+{
+  "name": "@kabmo-labs/kabmo-session-deleted",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "The tombstone rows that keep a deleted session from reappearing.",
+  "exports": {
+    ".": "./src/deleted-sessions.server.ts",
+    "./deleted-sessions.server": "./src/deleted-sessions.server.ts"
+  },
+  "files": ["src"],
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/kabmo-labs/kabmo.git", "directory": "packages/kabmo-session-deleted" },
+  "publishConfig": { "access": "public" },
+  "engines": { "bun": ">=1.4.0" },
+  "dependencies": { "@kabmo-labs/kabmo-db": "workspace:*" }
+}

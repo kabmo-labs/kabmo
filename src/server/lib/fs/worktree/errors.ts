@@ -11,7 +11,7 @@
  * Codes are stable; messages are for people.
  */
 
-import type { WorktreeErrorCode, WorktreeFailure } from '@/shared/lib/workspace/worktree/types';
+import type { WorktreeErrorCode, WorktreeFailure } from '@kabmo-labs/kabmo-worktree-types';
 
 export class WorktreeError extends Error {
   readonly code: WorktreeErrorCode;

@@ -61,7 +61,7 @@ import type { BranchRowStyle } from '@/client/components/common/session-branch/s
 import { TrailingSlot } from '@/client/components/common/session-row/TrailingSlot';
 import { SESSION_ROW_ATTENTION_CLASS } from '@/client/components/common/session-row/row-state';
 import { WorktreeBadge } from '@/client/components/layout/session-sidebar/WorktreeBadge';
-import type { SessionWorktreeInfo } from '@/shared/lib/workspace/worktree/types';
+import type { SessionWorktreeInfo } from '@kabmo-labs/kabmo-worktree-types';
 
 export type SessionRowDensity = 'compact' | 'touch';
 

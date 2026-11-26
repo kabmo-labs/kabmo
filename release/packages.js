@@ -141,6 +141,10 @@ export const RELEASE_PACKAGES = [
     name: '@kabmo-labs/kabmo-refresh-cadence',
   },
   {
+    dir: 'packages/kabmo-omp-subagent-presence',
+    name: '@kabmo-labs/kabmo-omp-subagent-presence',
+  },
+  {
     dir: 'packages/kabmo-omp-session-changes',
     name: '@kabmo-labs/kabmo-omp-session-changes',
   },
@@ -193,8 +197,16 @@ export const RELEASE_PACKAGES = [
     name: '@kabmo-labs/kabmo-realtime-signals',
   },
   {
+    dir: 'packages/kabmo-session-deleted',
+    name: '@kabmo-labs/kabmo-session-deleted',
+  },
+  {
     dir: 'packages/kabmo-session-stream-state',
     name: '@kabmo-labs/kabmo-session-stream-state',
+  },
+  {
+    dir: 'packages/kabmo-worktree-types',
+    name: '@kabmo-labs/kabmo-worktree-types',
   },
   {
     dir: 'packages/kabmo-workspace-root',

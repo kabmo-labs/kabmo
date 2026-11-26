@@ -36,7 +36,7 @@ import { resolveProjectId } from '@/server/lib/fs/worktree/project-id';
 import { getDb } from '@/server/db.server';
 import { isMock } from '@/server/routes/worktrees/shared';
 import { mockRefusal, resolveWorktreeProject, worktreeFailureResponse } from '@/server/routes/worktrees/shared';
-import type { WorktreeInfo, WorktreeListPayload } from '@/shared/lib/workspace/worktree/types';
+import type { WorktreeInfo, WorktreeListPayload } from '@kabmo-labs/kabmo-worktree-types';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   if (isMock()) return mockRefusal();

@@ -17,7 +17,7 @@ import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { getDb } from '@/server/db.server';
 import { resolveRoot } from '@kabmo-labs/kabmo-workspace-root/root';
 import { asWorktreeFailure } from '@/server/lib/fs/worktree/errors';
-import type { WorktreeFailure } from '@/shared/lib/workspace/worktree/types';
+import type { WorktreeFailure } from '@kabmo-labs/kabmo-worktree-types';
 
 /** A registered workspace's `project_path`, or null when the folder is unbound. */
 export async function projectPathForFolder(folderId: number | string | null): Promise<string | null> {

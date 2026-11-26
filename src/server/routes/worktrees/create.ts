@@ -26,7 +26,7 @@ import { asWorktreeFailure } from '@/server/lib/fs/worktree/errors';
 import { createWorktree, planWorktree } from '@/server/lib/fs/worktree/create';
 import { invalidateWorktreeTopology } from '@/server/lib/fs/worktree/topology';
 import { readWorktreeSettings } from '@/server/lib/fs/worktree/settings.server';
-import type { WorktreeValidation } from '@/shared/lib/workspace/worktree/types';
+import type { WorktreeValidation } from '@kabmo-labs/kabmo-worktree-types';
 import { isMock, mockRefusal, resolveWorktreeProject, worktreeFailureResponse } from '@/server/routes/worktrees/shared';
 
 interface CreateBody {

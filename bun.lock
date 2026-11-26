@@ -102,6 +102,7 @@
         "@kabmo-labs/kabmo-omp-session-sidebar": "workspace:*",
         "@kabmo-labs/kabmo-omp-session-telemetry": "workspace:*",
         "@kabmo-labs/kabmo-omp-subagent": "workspace:*",
+        "@kabmo-labs/kabmo-omp-subagent-presence": "workspace:*",
         "@kabmo-labs/kabmo-omp-worktree": "workspace:*",
         "@kabmo-labs/kabmo-paths": "workspace:*",
         "@kabmo-labs/kabmo-platform": "workspace:*",
@@ -113,11 +114,13 @@
         "@kabmo-labs/kabmo-rpc-lines": "workspace:*",
         "@kabmo-labs/kabmo-runtime-flags": "workspace:*",
         "@kabmo-labs/kabmo-sdk": "workspace:*",
+        "@kabmo-labs/kabmo-session-deleted": "workspace:*",
         "@kabmo-labs/kabmo-session-stream-state": "workspace:*",
         "@kabmo-labs/kabmo-settings-contracts": "workspace:*",
         "@kabmo-labs/kabmo-settings-store": "workspace:*",
         "@kabmo-labs/kabmo-ui": "workspace:*",
         "@kabmo-labs/kabmo-workspace-root": "workspace:*",
+        "@kabmo-labs/kabmo-worktree-types": "workspace:*",
         "@shikijs/langs": "^4.4.3",
         "@shikijs/themes": "^4.4.3",
         "@tailwindcss/postcss": "^4.1.14",
@@ -908,6 +911,16 @@
         "@kabmo-labs/kabmo-omp-session-parse": "workspace:*",
       },
     },
+    "packages/kabmo-omp-subagent-presence": {
+      "name": "@kabmo-labs/kabmo-omp-subagent-presence",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kabmo-labs/kabmo-db": "workspace:*",
+        "@kabmo-labs/kabmo-guards": "workspace:*",
+        "@kabmo-labs/kabmo-omp-session-runtime": "workspace:*",
+        "@kabmo-labs/kabmo-omp-subagent": "workspace:*",
+      },
+    },
     "packages/kabmo-omp-worktree": {
       "name": "@kabmo-labs/kabmo-omp-worktree",
       "version": "0.0.1",
@@ -972,6 +985,13 @@
         "preact",
       ],
     },
+    "packages/kabmo-session-deleted": {
+      "name": "@kabmo-labs/kabmo-session-deleted",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kabmo-labs/kabmo-db": "workspace:*",
+      },
+    },
     "packages/kabmo-session-stream-state": {
       "name": "@kabmo-labs/kabmo-session-stream-state",
       "version": "0.0.1",
@@ -1009,6 +1029,10 @@
         "@kabmo-labs/kabmo-omp-paths": "workspace:*",
         "@kabmo-labs/kabmo-omp-worktree": "workspace:*",
       },
+    },
+    "packages/kabmo-worktree-types": {
+      "name": "@kabmo-labs/kabmo-worktree-types",
+      "version": "0.0.1",
     },
   },
   "overrides": {
@@ -1257,6 +1281,8 @@
 
     "@kabmo-labs/kabmo-omp-subagent": ["@kabmo-labs/kabmo-omp-subagent@workspace:packages/kabmo-omp-subagent"],
 
+    "@kabmo-labs/kabmo-omp-subagent-presence": ["@kabmo-labs/kabmo-omp-subagent-presence@workspace:packages/kabmo-omp-subagent-presence"],
+
     "@kabmo-labs/kabmo-omp-worktree": ["@kabmo-labs/kabmo-omp-worktree@workspace:packages/kabmo-omp-worktree"],
 
     "@kabmo-labs/kabmo-paths": ["@kabmo-labs/kabmo-paths@workspace:packages/kabmo-paths"],
@@ -1279,6 +1305,8 @@
 
     "@kabmo-labs/kabmo-sdk": ["@kabmo-labs/kabmo-sdk@workspace:packages/kabmo-sdk"],
 
+    "@kabmo-labs/kabmo-session-deleted": ["@kabmo-labs/kabmo-session-deleted@workspace:packages/kabmo-session-deleted"],
+
     "@kabmo-labs/kabmo-session-stream-state": ["@kabmo-labs/kabmo-session-stream-state@workspace:packages/kabmo-session-stream-state"],
 
     "@kabmo-labs/kabmo-settings-contracts": ["@kabmo-labs/kabmo-settings-contracts@workspace:packages/kabmo-settings-contracts"],
@@ -1288,6 +1316,8 @@
     "@kabmo-labs/kabmo-ui": ["@kabmo-labs/kabmo-ui@workspace:packages/kabmo-ui"],
 
     "@kabmo-labs/kabmo-workspace-root": ["@kabmo-labs/kabmo-workspace-root@workspace:packages/kabmo-workspace-root"],
+
+    "@kabmo-labs/kabmo-worktree-types": ["@kabmo-labs/kabmo-worktree-types@workspace:packages/kabmo-worktree-types"],
 
     "@lezer/common": ["@lezer/common@1.5.4", "", {}, "sha512-xt3Q4z64xM+xhg4M7NXqw1N//1O74bUFo5kz6fwMeC4qwxSuRdwkYSmjcqCEEKYkNw5e67f2hcNqBoNERAEU0w=="],
 

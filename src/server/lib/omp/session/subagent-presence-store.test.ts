@@ -29,7 +29,7 @@ import { tmpdir } from 'node:os';
 
 import { closeDb, getDb } from '@/server/db.server';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
-import { clearSubagentPresenceCache, sessionHasSubagents } from '@/server/lib/omp/session/subagent-presence';
+import { clearSubagentPresenceCache, sessionHasSubagents } from '@kabmo-labs/kabmo-omp-subagent-presence';
 import { readPresenceVerdict } from '@kabmo-labs/kabmo-omp-session-runtime/subagent-presence-store';
 
 const tempDirs: string[] = [];

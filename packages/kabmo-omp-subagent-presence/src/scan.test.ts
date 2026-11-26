@@ -23,7 +23,7 @@ import fs from 'fs';
 import { dirname, join } from 'path';
 import { tmpdir } from 'node:os';
 
-import { SESSION_PRESENCE_MAX_LINE_BYTES, sessionFileHasSubagents } from '@/server/lib/omp/session/subagent-presence-scan';
+import { SESSION_PRESENCE_MAX_LINE_BYTES, sessionFileHasSubagents } from './scan';
 
 const tempDirs: string[] = [];
 

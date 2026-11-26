@@ -29,7 +29,7 @@ import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { getLiveRunSessionIds } from '@/server/lib/omp/rpc/session-registry';
 import { findSessionFileById } from '@kabmo-labs/kabmo-omp-session-locator';
 import { scanSessionInfoCached } from '@kabmo-labs/kabmo-omp-session-scan/files';
-import { sessionHasSubagents } from '@/server/lib/omp/session/subagent-presence';
+import { sessionHasSubagents } from '@kabmo-labs/kabmo-omp-subagent-presence';
 import type { SidebarActivityPayload } from '@/shared/types/realtime';
 
 export async function loadSidebarActivity(): Promise<SidebarActivityPayload> {

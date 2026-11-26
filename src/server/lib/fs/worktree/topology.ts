@@ -19,7 +19,7 @@
 
 import { canonicalPath, pathHolds } from '@kabmo-labs/kabmo-fs-canonical';
 import { listWorktrees, type WorktreeEntry } from '@/server/lib/fs/worktree/list';
-import type { SessionWorktreeInfo } from '@/shared/lib/workspace/worktree/types';
+import type { SessionWorktreeInfo } from '@kabmo-labs/kabmo-worktree-types';
 
 const TOPOLOGY_TTL_MS = 10_000;
 

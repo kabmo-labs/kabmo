@@ -35,7 +35,7 @@ import { resolveAccountLaunch } from '@kabmo-labs/kabmo-harness-account-store';
 import { ensureCustomHarnesses } from '@kabmo-labs/kabmo-harness-config-store/custom.server';
 import { harnessSessionKnown, importHarnessSession } from '@kabmo-labs/kabmo-harness-session/session-store.server';
 import { sessionsWithoutTranscript } from '@kabmo-labs/kabmo-harness-session/session-transcript.server';
-import { loadDeletedSessionIds } from '@/server/lib/sessions/deleted-sessions.server';
+import { loadDeletedSessionIds } from '@kabmo-labs/kabmo-session-deleted';
 import { canonicalPath } from '@kabmo-labs/kabmo-fs-canonical';
 import { resolveProjectRoot } from '@kabmo-labs/kabmo-omp-worktree';
 import { getDb } from '@/server/db.server';

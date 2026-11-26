@@ -37,7 +37,7 @@ import {
   slugWorktreeName,
   WORKTREE_BRANCH_PREFIX,
 } from '@/shared/lib/workspace/worktree/branch-name';
-import type { WorktreeInfo } from '@/shared/lib/workspace/worktree/types';
+import type { WorktreeInfo } from '@kabmo-labs/kabmo-worktree-types';
 import { carryIgnoredInto, type CarryResult } from '@/server/lib/fs/worktree/carry';
 import { WorktreeError } from '@/server/lib/fs/worktree/errors';
 import {

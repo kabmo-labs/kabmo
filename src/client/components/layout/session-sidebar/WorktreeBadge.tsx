@@ -17,7 +17,7 @@
  * its transcript is reachable) but must not read as an ordinary checkout.
  */
 
-import type { SessionWorktreeInfo } from '@/shared/lib/workspace/worktree/types';
+import type { SessionWorktreeInfo } from '@kabmo-labs/kabmo-worktree-types';
 
 export const WORKTREE_BADGE_MISSING_SUFFIX = 'missing';
 

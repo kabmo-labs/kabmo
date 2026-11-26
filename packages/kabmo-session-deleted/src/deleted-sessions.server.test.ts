@@ -15,7 +15,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { getDb } from '@/server/db.server';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
-import { loadDeletedSessionIds, markSessionDeleted } from '@/server/lib/sessions/deleted-sessions.server';
+import { loadDeletedSessionIds, markSessionDeleted } from './deleted-sessions.server';
 
 beforeEach(async () => {
   await isolateDb();

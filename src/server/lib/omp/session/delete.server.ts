@@ -44,7 +44,7 @@ import { isSinglePathSegment } from '@kabmo-labs/kabmo-paths/path-segment';
 import { deleteSessionRelations } from '@/server/lib/sessions/relations.server';
 import { removeSessionMcpOverlay } from '@/server/lib/mcp/session-overlay.server';
 import { purgeChangeJournal } from '@/server/lib/changes/purge.server';
-import { markSessionDeleted } from '@/server/lib/sessions/deleted-sessions.server';
+import { markSessionDeleted } from '@kabmo-labs/kabmo-session-deleted';
 
 export interface SessionPurgeResult {
   /** Something keyed to this id existed — a transcript, a mock session row, or
