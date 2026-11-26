@@ -74,6 +74,14 @@ export const RELEASE_PACKAGES = [
     name: '@kabmo-labs/kabmo-harness-catalog',
   },
   {
+    dir: 'packages/kabmo-harness-contract',
+    name: '@kabmo-labs/kabmo-harness-contract',
+  },
+  {
+    dir: 'packages/kabmo-harness-registry',
+    name: '@kabmo-labs/kabmo-harness-registry',
+  },
+  {
     dir: 'packages/kabmo-harness-accounts',
     name: '@kabmo-labs/kabmo-harness-accounts',
   },

@@ -178,6 +178,9 @@
       "@kabmo-labs/kabmo-harness-config-fields": [
         "./packages/kabmo-harness-config-fields/src/config-fields.ts"
       ],
+      "@kabmo-labs/kabmo-harness-contract": [
+        "./packages/kabmo-harness-contract/src/session.ts"
+      ],
       "@kabmo-labs/kabmo-harness-enabled": [
         "./packages/kabmo-harness-enabled/src/enabled.ts"
       ],
@@ -204,6 +207,9 @@
       ],
       "@kabmo-labs/kabmo-harness-provider-slug": [
         "./packages/kabmo-harness-provider-slug/src/provider-slug.ts"
+      ],
+      "@kabmo-labs/kabmo-harness-registry": [
+        "./packages/kabmo-harness-registry/src/registry.ts"
       ],
       "@kabmo-labs/kabmo-harness-rewind": [
         "./packages/kabmo-harness-rewind/src/fork.ts"

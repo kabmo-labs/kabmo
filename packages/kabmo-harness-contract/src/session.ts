@@ -16,7 +16,7 @@
  * surfaces exist.
  */
 
-import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
+import type { AgentEvent } from '@kabmo-labs/kabmo-omp-contracts/events';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 
 export interface HarnessEventSource {

@@ -30,7 +30,7 @@ import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files
 import { invalidateOmpSidebarData } from '@/server/lib/omp/session/reader';
 import { ModeMirror } from '@/server/lib/omp/rpc/mode-mirror';
 import { recordSpawnProvenance } from '@/server/lib/omp/rpc/spawn-provenance';
-import { claimHarness } from '@/server/lib/harness/registry';
+import { claimHarness } from '@kabmo-labs/kabmo-harness-registry';
 import { removeDir } from '@/test-support/remove-dir';
 import {
   archiveSession,

@@ -24,10 +24,10 @@ import { sessionMcpSpawn } from '@/server/lib/omp/rpc/spawn-mcp';
 import { isUnrestorableModelFailure, resolveResumableModel } from '@/server/lib/omp/session/resumable-model.server';
 import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 import type { SelectedModel } from '@kabmo-labs/kabmo-model-contracts/models';
-import { claimHarness, harnessOf } from '@/server/lib/harness/registry';
+import { claimHarness, harnessOf } from '@kabmo-labs/kabmo-harness-registry';
 import { saveHarnessSession } from '@/server/lib/harness/session-store.server';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
-import type { HarnessSession } from '@/server/lib/harness/session';
+import type { HarnessSession } from '@kabmo-labs/kabmo-harness-contract';
 
 /**
  * A session this process is running: omp over RPC, or any ACP agent.

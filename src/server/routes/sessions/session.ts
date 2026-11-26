@@ -19,7 +19,7 @@ import { loadAcpGoalState } from '@/server/lib/harness/acp/acp-goal-state.server
 import { selectValues } from '@/server/lib/harness/launch';
 import type { AcpConfigOption } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import type { SessionModeState } from '@kabmo-labs/kabmo-harness-session-modes';
-import { asHarnessSession } from '@/server/lib/harness/registry';
+import { asHarnessSession } from '@kabmo-labs/kabmo-harness-registry';
 import { applyHarnessMode } from '@/server/routes/agent/harness-command';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
 import { archiveDependents } from '@/server/lib/sessions/lifecycle.server';

@@ -21,11 +21,10 @@
  * about a driver it does not have.
  */
 
-import type { AgentSessionWrapper } from '@/server/lib/omp/rpc/manager';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
-import type { HarnessSession } from '@/server/lib/harness/session';
+import type { HarnessSession } from '@kabmo-labs/kabmo-harness-contract';
 
-type AnySession = AgentSessionWrapper | HarnessSession;
+type AnySession = object;
 
 declare global {
   // eslint-disable-next-line no-var

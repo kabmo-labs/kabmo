@@ -27,7 +27,7 @@ import {
   reorderQueueItems,
 } from '@/server/routes/sessions/queue';
 import { registerAcpSession } from '@/server/lib/harness/register.server';
-import type { HarnessSession } from '@/server/lib/harness/session';
+import type { HarnessSession } from '@kabmo-labs/kabmo-harness-contract';
 
 // `tmpdir()`, not `/tmp`: there is no `/tmp` on Windows, so the literal
 // resolved against the current drive and the tree was never where the suite

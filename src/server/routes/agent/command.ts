@@ -16,7 +16,7 @@ import { resetGoalDriverState } from '@/server/lib/omp/session/goal-driver.serve
 import { forwardToPeer, isPeerRelayed, peerOriginForSession } from '@/server/lib/omp/rpc/peer-proxy.server';
 import { applyHarnessMode, resumeRecordedHarnessSession } from '@/server/routes/agent/harness-command';
 import { restoreChatResponse } from '@/server/routes/agent/restore';
-import { asHarnessSession } from '@/server/lib/harness/registry';
+import { asHarnessSession } from '@kabmo-labs/kabmo-harness-registry';
 import { asOmpSession, getLiveSession } from '@/server/lib/omp/rpc/session-registry';
 import { recordPrompt } from '@/server/lib/chat/prompt-history.server';
 import { RECALLABLE_COMMAND_TYPES } from '@/shared/lib/chat/composer/history';

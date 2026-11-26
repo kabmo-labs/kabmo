@@ -16,7 +16,7 @@
  */
 
 import type { AgentSessionWrapper } from '@/server/lib/omp/rpc/manager';
-import type { HarnessSession } from '@/server/lib/harness/session';
+import type { HarnessSession } from '@kabmo-labs/kabmo-harness-contract';
 import { attachChangeJournal } from '@/server/lib/changes/attach.server';
 
 /** Any session this registry can hold: the function only touches `sessionId` and

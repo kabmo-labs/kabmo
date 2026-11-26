@@ -14,7 +14,7 @@
  * answers for a live id.
  */
 
-import type { HarnessSession } from '@/server/lib/harness/session';
+import type { HarnessSession } from '@kabmo-labs/kabmo-harness-contract';
 import { attachChangeJournal } from '@/server/lib/changes/attach.server';
 
 /** Pulled from the omp registry module so there is one map, not two. */

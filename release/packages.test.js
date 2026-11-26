@@ -200,6 +200,8 @@ describe('package catalog', () => {
       'kabmo-model-contracts',
       'kabmo-format',
       'kabmo-harness-catalog',
+      'kabmo-harness-contract',
+      'kabmo-harness-registry',
       'kabmo-harness-accounts',
       'kabmo-harness-session-modes',
       'kabmo-harness-transcript',

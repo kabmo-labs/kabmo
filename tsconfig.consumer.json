@@ -47,6 +47,8 @@
     "packages/kabmo-bytes/src",
     "packages/kabmo-platform/src",
     "packages/kabmo-harness-catalog/src",
+    "packages/kabmo-harness-contract/src",
+    "packages/kabmo-harness-registry/src",
     "packages/kabmo-harness-accounts/src",
     "packages/kabmo-harness-session-modes/src",
     "packages/kabmo-harness-transcript/src",

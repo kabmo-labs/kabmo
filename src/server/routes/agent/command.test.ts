@@ -28,9 +28,9 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
 import { buildAgentSnapshot, sendCommand } from '@/server/routes/agent/command';
 import { registerAcpSession } from '@/server/lib/harness/register.server';
-import { claimHarness } from '@/server/lib/harness/registry';
+import { claimHarness } from '@kabmo-labs/kabmo-harness-registry';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
-import type { HarnessSession } from '@/server/lib/harness/session';
+import type { HarnessSession } from '@kabmo-labs/kabmo-harness-contract';
 
 beforeEach(async () => {
   await isolateDb();

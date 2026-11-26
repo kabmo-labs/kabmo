@@ -31,10 +31,12 @@
         "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
         "@kabmo-labs/kabmo-harness-config": "workspace:*",
         "@kabmo-labs/kabmo-harness-config-fields": "workspace:*",
+        "@kabmo-labs/kabmo-harness-contract": "workspace:*",
         "@kabmo-labs/kabmo-harness-enabled": "workspace:*",
         "@kabmo-labs/kabmo-harness-mcp-facts": "workspace:*",
         "@kabmo-labs/kabmo-harness-provider": "workspace:*",
         "@kabmo-labs/kabmo-harness-provider-slug": "workspace:*",
+        "@kabmo-labs/kabmo-harness-registry": "workspace:*",
         "@kabmo-labs/kabmo-harness-rewind": "workspace:*",
         "@kabmo-labs/kabmo-harness-session-modes": "workspace:*",
         "@kabmo-labs/kabmo-harness-transcript": "workspace:*",
@@ -201,6 +203,14 @@
         "@kabmo-labs/kabmo-harness-provider": "workspace:*",
       },
     },
+    "packages/kabmo-harness-contract": {
+      "name": "@kabmo-labs/kabmo-harness-contract",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
+        "@kabmo-labs/kabmo-omp-contracts": "workspace:*",
+      },
+    },
     "packages/kabmo-harness-enabled": {
       "name": "@kabmo-labs/kabmo-harness-enabled",
       "version": "0.0.1",
@@ -225,6 +235,14 @@
     "packages/kabmo-harness-provider-slug": {
       "name": "@kabmo-labs/kabmo-harness-provider-slug",
       "version": "0.0.1",
+    },
+    "packages/kabmo-harness-registry": {
+      "name": "@kabmo-labs/kabmo-harness-registry",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
+        "@kabmo-labs/kabmo-harness-contract": "workspace:*",
+      },
     },
     "packages/kabmo-harness-rewind": {
       "name": "@kabmo-labs/kabmo-harness-rewind",
@@ -514,6 +532,8 @@
 
     "@kabmo-labs/kabmo-harness-config-fields": ["@kabmo-labs/kabmo-harness-config-fields@workspace:packages/kabmo-harness-config-fields"],
 
+    "@kabmo-labs/kabmo-harness-contract": ["@kabmo-labs/kabmo-harness-contract@workspace:packages/kabmo-harness-contract"],
+
     "@kabmo-labs/kabmo-harness-enabled": ["@kabmo-labs/kabmo-harness-enabled@workspace:packages/kabmo-harness-enabled"],
 
     "@kabmo-labs/kabmo-harness-mcp-facts": ["@kabmo-labs/kabmo-harness-mcp-facts@workspace:packages/kabmo-harness-mcp-facts"],
@@ -521,6 +541,8 @@
     "@kabmo-labs/kabmo-harness-provider": ["@kabmo-labs/kabmo-harness-provider@workspace:packages/kabmo-harness-provider"],
 
     "@kabmo-labs/kabmo-harness-provider-slug": ["@kabmo-labs/kabmo-harness-provider-slug@workspace:packages/kabmo-harness-provider-slug"],
+
+    "@kabmo-labs/kabmo-harness-registry": ["@kabmo-labs/kabmo-harness-registry@workspace:packages/kabmo-harness-registry"],
 
     "@kabmo-labs/kabmo-harness-rewind": ["@kabmo-labs/kabmo-harness-rewind@workspace:packages/kabmo-harness-rewind"],
 
