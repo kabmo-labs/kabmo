@@ -1318,6 +1318,24 @@
       "@kabmo-labs/kabmo-omp-sidebar-data/sidebar-activity.server": [
         "./packages/kabmo-omp-sidebar-data/src/activity.server.ts"
       ],
+      "@kabmo-labs/kabmo-acp-session-core/acp-goal.server": [
+        "./packages/kabmo-acp-session-core/src/acp-goal.server.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core/turn-outcome.server": [
+        "./packages/kabmo-acp-session-core/src/turn-outcome.server.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core/acp-telemetry.server": [
+        "./packages/kabmo-acp-session-core/src/acp-telemetry.server.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core/acp-frames.server": [
+        "./packages/kabmo-acp-session-core/src/acp-frames.server.ts"
+      ],
+      "@kabmo-labs/kabmo-app-contracts/todo-snapshot": [
+        "./packages/kabmo-app-contracts/src/todo-snapshot.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-control/acp-todos.server": [
+        "./packages/kabmo-acp-control/src/acp-todos.server.ts"
+      ],
       "@kabmo-labs/kabmo-ui": [
         "./packages/kabmo-ui/src/index.tsx"
       ],

@@ -5,7 +5,7 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { latestTodoSnapshot, todoProgress } from '@/shared/lib/chat/todo/snapshot';
+import { latestTodoSnapshot, todoProgress } from '@kabmo-labs/kabmo-app-contracts/todo-snapshot';
 import type { TodoPhase, TodoStatus } from '@kabmo-labs/kabmo-app-contracts/todo';
 
 /**

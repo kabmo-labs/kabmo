@@ -13,7 +13,7 @@
 
 import { afterAll, beforeEach, describe, expect, test } from 'bun:test';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
-import { AcpFrameRecorder, frameRole, loadAcpFramesPage } from '@/server/lib/harness/acp/acp-frames.server';
+import { AcpFrameRecorder, frameRole, loadAcpFramesPage } from './acp-frames.server';
 
 const SESSION = 'frame-session';
 

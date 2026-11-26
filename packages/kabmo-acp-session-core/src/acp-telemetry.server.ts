@@ -18,7 +18,7 @@
  */
 
 import type { SessionContextTelemetry } from '@kabmo-labs/kabmo-app-contracts/context';
-import { getDb } from '@/server/db.server';
+import { getDb } from '@kabmo-labs/kabmo-db/lifecycle';
 import { liveSessionFactsFor } from '@kabmo-labs/kabmo-live-sessions';
 
 /** What the live session exposes for this bridge. */

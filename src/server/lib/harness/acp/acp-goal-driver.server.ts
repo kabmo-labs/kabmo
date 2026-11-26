@@ -31,7 +31,7 @@ import {
   continueAcpGoal,
   finishAcpGoal,
   type AcpGoalHost,
-} from '@/server/lib/harness/acp/acp-goal.server';
+} from '@kabmo-labs/kabmo-acp-session-core/acp-goal.server';
 import { hasAcpGoalSession, loadAcpGoalState } from '@kabmo-labs/kabmo-acp-session-core/acp-goal-state.server';
 
 interface DriverState {

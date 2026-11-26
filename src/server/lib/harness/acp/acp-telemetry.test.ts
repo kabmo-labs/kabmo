@@ -12,7 +12,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { buildAcpTelemetry, loadAcpUsage, saveAcpUsage, type AcpTelemetrySession } from '@/server/lib/harness/acp/acp-telemetry.server';
+import { buildAcpTelemetry, loadAcpUsage, saveAcpUsage, type AcpTelemetrySession } from '@kabmo-labs/kabmo-acp-session-core/acp-telemetry.server';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 
 beforeEach(async () => {

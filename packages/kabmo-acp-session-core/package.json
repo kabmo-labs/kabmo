@@ -19,31 +19,54 @@
     "./session-inbound": "./src/session-inbound.ts",
     "./session-roots.server": "./src/session-roots.server.ts",
     "./session-start": "./src/session-start.ts",
-    "./session-wiring": "./src/session-wiring.ts"
+    "./session-wiring": "./src/session-wiring.ts",
+    "./acp-goal.server": "./src/acp-goal.server.ts",
+    "./turn-outcome.server": "./src/turn-outcome.server.ts",
+    "./acp-telemetry.server": "./src/acp-telemetry.server.ts",
+    "./acp-frames.server": "./src/acp-frames.server.ts"
   },
-  "files": ["src"],
+  "files": [
+    "src"
+  ],
   "license": "MIT",
-  "repository": { "type": "git", "url": "git+https://github.com/kabmo-labs/kabmo.git", "directory": "packages/kabmo-acp-session-core" },
-  "publishConfig": { "access": "public" },
-  "engines": { "bun": ">=1.4.0" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-acp-session-core"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  },
   "dependencies": {
     "@kabmo-labs/kabmo-acp-client": "workspace:*",
     "@kabmo-labs/kabmo-acp-mapper": "workspace:*",
     "@kabmo-labs/kabmo-acp-prompt": "workspace:*",
     "@kabmo-labs/kabmo-acp-protocol": "workspace:*",
     "@kabmo-labs/kabmo-acp-session-config": "workspace:*",
+    "@kabmo-labs/kabmo-acp-session-core": "workspace:*",
     "@kabmo-labs/kabmo-acp-turn": "workspace:*",
+    "@kabmo-labs/kabmo-app-contracts": "workspace:*",
     "@kabmo-labs/kabmo-chat-contracts": "workspace:*",
     "@kabmo-labs/kabmo-chat-tool": "workspace:*",
     "@kabmo-labs/kabmo-db": "workspace:*",
     "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
     "@kabmo-labs/kabmo-harness-launch": "workspace:*",
+    "@kabmo-labs/kabmo-harness-session": "workspace:*",
     "@kabmo-labs/kabmo-idle-reaper": "workspace:*",
+    "@kabmo-labs/kabmo-live-sessions": "workspace:*",
     "@kabmo-labs/kabmo-omp-mapper": "workspace:*",
     "@kabmo-labs/kabmo-omp-messages-map": "workspace:*",
     "@kabmo-labs/kabmo-omp-mode": "workspace:*",
+    "@kabmo-labs/kabmo-omp-mode-request": "workspace:*",
     "@kabmo-labs/kabmo-omp-rpc-protocol": "workspace:*",
+    "@kabmo-labs/kabmo-omp-session-core": "workspace:*",
+    "@kabmo-labs/kabmo-omp-session-locator": "workspace:*",
+    "@kabmo-labs/kabmo-omp-session-messages": "workspace:*",
     "@kabmo-labs/kabmo-omp-session-parse": "workspace:*",
+    "@kabmo-labs/kabmo-omp-session-scan": "workspace:*",
     "@kabmo-labs/kabmo-realtime-signals": "workspace:*",
     "@kabmo-labs/kabmo-session-stream-state": "workspace:*"
   }

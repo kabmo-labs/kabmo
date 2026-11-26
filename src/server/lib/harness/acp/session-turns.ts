@@ -36,15 +36,15 @@
 
 import { scheduleQueueDelivery } from '@/server/lib/queue/delivery.server';
 import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
-import { saveAcpUsage } from '@/server/lib/harness/acp/acp-telemetry.server';
+import { saveAcpUsage } from '@kabmo-labs/kabmo-acp-session-core/acp-telemetry.server';
 import { lastAssistantText } from '@/server/lib/omp/session/goal-driver.server';
 import { noteChildOutcome } from '@/server/lib/sessions/notify.server';
 import { saveSessionAnswer } from '@/server/lib/sessions/answers.server';
-import { transcriptFailure } from '@/server/lib/harness/acp/turn-outcome.server';
+import { transcriptFailure } from '@kabmo-labs/kabmo-acp-session-core/turn-outcome.server';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import type { AcpTurns, AcpTurnEndInfo } from '@kabmo-labs/kabmo-acp-turn/turn';
 import { driveAcpGoalAfterTurn } from '@/server/lib/harness/acp/acp-goal-driver.server';
-import type { AcpGoalHost } from '@/server/lib/harness/acp/acp-goal.server';
+import type { AcpGoalHost } from '@kabmo-labs/kabmo-acp-session-core/acp-goal.server';
 import { assistantTextOf, spawnsBackgroundWork, toolIdsOf } from '@kabmo-labs/kabmo-acp-session-core/background-work';
 import { isLostSession } from '@kabmo-labs/kabmo-acp-session/session-lost';
 

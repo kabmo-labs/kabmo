@@ -6,8 +6,8 @@ import { computeSessionContextTelemetry } from '@/client/data/context-data';
 import { computeRawMessagesPage, type RawMessageRole } from '@/server/lib/omp/session/telemetry-raw';
 import { resolveSessionRef } from '@/server/lib/sessions/resolve.server';
 import { buildAcpRawMessages } from '@/server/lib/harness/acp/acp-raw-messages.server';
-import { loadAcpFramesPage } from '@/server/lib/harness/acp/acp-frames.server';
-import { loadAcpUsage } from '@/server/lib/harness/acp/acp-telemetry.server';
+import { loadAcpFramesPage } from '@kabmo-labs/kabmo-acp-session-core/acp-frames.server';
+import { loadAcpUsage } from '@kabmo-labs/kabmo-acp-session-core/acp-telemetry.server';
 import type { ChatMessageData } from '@kabmo-labs/kabmo-chat-contracts/chat';
 import type { RawMessageItem } from '@/shared/types';
 

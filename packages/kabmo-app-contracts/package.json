@@ -23,7 +23,8 @@
     "./updates": "./src/updates.ts",
     "./waiting": "./src/waiting.ts",
     "./wiki": "./src/wiki.ts",
-    "./workspace": "./src/workspace.ts"
+    "./workspace": "./src/workspace.ts",
+    "./todo-snapshot": "./src/todo-snapshot.ts"
   },
   "files": [
     "src"

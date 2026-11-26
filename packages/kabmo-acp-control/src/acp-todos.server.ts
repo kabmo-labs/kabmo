@@ -16,7 +16,7 @@
  */
 
 import type { SessionTodoState, TodoItem, TodoPhase, TodoStatus } from '@kabmo-labs/kabmo-app-contracts/todo';
-import { todoProgress } from '@/shared/lib/chat/todo/snapshot';
+import { todoProgress } from '@kabmo-labs/kabmo-app-contracts/todo-snapshot';
 
 function statusOf(value: unknown): TodoStatus {
   return value === 'completed' || value === 'in_progress' || value === 'pending' ? value : 'pending';

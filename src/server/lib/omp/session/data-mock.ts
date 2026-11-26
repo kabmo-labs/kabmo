@@ -14,7 +14,7 @@
  * (`@/server/lib/wiki/payload.server`).
  */
 
-import { todoProgress } from '@/shared/lib/chat/todo/snapshot';
+import { todoProgress } from '@kabmo-labs/kabmo-app-contracts/todo-snapshot';
 import type { SessionTodoState, TodoPhase } from '@kabmo-labs/kabmo-app-contracts/todo';
 import type { SessionPlanState } from '@kabmo-labs/kabmo-app-contracts/plan';
 

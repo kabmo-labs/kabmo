@@ -19,7 +19,7 @@
  * hot path of every token.
  */
 
-import { getDb } from '@/server/db.server';
+import { getDb } from '@kabmo-labs/kabmo-db/lifecycle';
 import type { RawMessageItem } from '@kabmo-labs/kabmo-app-contracts/context';
 
 const FLUSH_DEBOUNCE_MS = 250;

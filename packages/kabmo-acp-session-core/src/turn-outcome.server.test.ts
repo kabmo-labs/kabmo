@@ -25,7 +25,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { transcriptFailure } from '@/server/lib/harness/acp/turn-outcome.server';
+import { transcriptFailure } from './turn-outcome.server';
 import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { removeDir } from '@/test-support/remove-dir';
 

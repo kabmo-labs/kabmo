@@ -11,7 +11,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { buildAcpTodos } from '@/server/lib/harness/acp/acp-todos.server';
+import { buildAcpTodos } from '@kabmo-labs/kabmo-acp-control/acp-todos.server';
 
 describe('buildAcpTodos', () => {
   test('maps content and status into one phase with a real roll-up', () => {

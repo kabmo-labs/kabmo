@@ -29,7 +29,7 @@
 
 import type { ToolCallData } from '@/shared/types';
 import type { TodoItem, TodoPhase, TodoProgress, TodoStatus } from '@kabmo-labs/kabmo-app-contracts/todo';
-import { todoProgress } from '@/shared/lib/chat/todo/snapshot';
+import { todoProgress } from '@kabmo-labs/kabmo-app-contracts/todo-snapshot';
 import { parseNestedPhaseEntry, stripTrailingStatusNote } from '@/shared/lib/chat/todo/nested-phase';
 
 export interface TodoDataSummary {
