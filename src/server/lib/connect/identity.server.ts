@@ -21,7 +21,7 @@
 
 import fs from 'fs';
 import path from 'path';
-import { getDataDir } from '@/server/lib/lifecycle/paths';
+import { getDataDir } from '@kabmo-labs/kabmo-paths/paths';
 
 interface IdentityFile {
   v: 1;

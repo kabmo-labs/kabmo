@@ -201,6 +201,7 @@ describe('package catalog', () => {
       'kabmo-acp-client',
       'kabmo-omp-extensions',
       'kabmo-harness-launch',
+      'kabmo-paths',
       'kabmo-guards',
       'kabmo-bytes',
       'kabmo-platform',

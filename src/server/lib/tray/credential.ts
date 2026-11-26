@@ -26,7 +26,7 @@
 
 import fs from 'node:fs';
 
-import { getDataDir } from '@/server/lib/lifecycle/paths';
+import { getDataDir } from '@kabmo-labs/kabmo-paths/paths';
 
 /** `<data>/autostart-credential` — read only by the login entry's own run. */
 export function getAutostartCredentialPath(): string {

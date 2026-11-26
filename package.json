@@ -130,6 +130,7 @@
     "@kabmo-labs/kabmo-omp-session-messages": "workspace:*",
     "@kabmo-labs/kabmo-omp-session-parse": "workspace:*",
     "@kabmo-labs/kabmo-omp-session-scan": "workspace:*",
+    "@kabmo-labs/kabmo-paths": "workspace:*",
     "@kabmo-labs/kabmo-platform": "workspace:*",
     "@kabmo-labs/kabmo-process-kill": "workspace:*",
     "@kabmo-labs/kabmo-rpc-lines": "workspace:*",

@@ -24,7 +24,7 @@ import { join } from 'node:path';
 import { action } from '@/server/routes/harness/update';
 import { action as statusAction, loader as statusLoader } from '@/server/routes/harness/update-status';
 import { readUpdateJob, writeUpdateJob } from '@/server/lib/harness/update-job-store';
-import { getHarnessUpdateStatusPath } from '@/server/lib/lifecycle/paths';
+import { getHarnessUpdateStatusPath } from '@kabmo-labs/kabmo-paths/paths';
 import type { HarnessUpdateJob } from '@/shared/types/harness-update';
 
 let dir = '';

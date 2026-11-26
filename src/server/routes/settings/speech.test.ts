@@ -17,7 +17,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { getDb } from '@/server/db.server';
 import { mergeSettingsJson } from '@/server/lib/db/settings-store';
-import { getTtsSecretPath } from '@/server/lib/lifecycle/paths';
+import { getTtsSecretPath } from '@kabmo-labs/kabmo-paths/paths';
 import { invalidateLocalTtsCapability } from '@/server/lib/tts/local.server';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { removeDir } from '@/test-support/remove-dir';

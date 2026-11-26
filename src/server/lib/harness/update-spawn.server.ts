@@ -24,7 +24,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { resolveBunBin } from '@/server/lib/lifecycle/bun';
 import { packageDir } from '@/server/lib/fs/package-root';
-import { getHarnessUpdateLockPath, getHarnessUpdateSpecPath, getHarnessUpdateStatusPath } from '@/server/lib/lifecycle/paths';
+import { getHarnessUpdateLockPath, getHarnessUpdateSpecPath, getHarnessUpdateStatusPath } from '@kabmo-labs/kabmo-paths/paths';
 import { writeUpdateJob } from '@/server/lib/harness/update-job-store';
 import type { HarnessUpdateJob, HarnessUpdateJobSpec } from '@/shared/types/harness-update';
 

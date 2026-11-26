@@ -31,7 +31,7 @@ import fs from 'fs';
 import { flockAvailable, tryFlock } from '@/server/lib/lifecycle/flock';
 import { getProcessState } from '@/server/lib/lifecycle/identity';
 import { describeOccupant, findOccupant } from '@/server/lib/lifecycle/occupant';
-import { getLockPath } from '@/server/lib/lifecycle/paths';
+import { getLockPath } from '@kabmo-labs/kabmo-paths/paths';
 import { probeAddresses, unavailableAddresses } from '@/server/lib/lifecycle/probe';
 
 const LOCK_WAIT_MS = 3_000;

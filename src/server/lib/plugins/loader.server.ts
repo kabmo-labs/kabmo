@@ -34,7 +34,7 @@ import { readPluginManifest } from '@/server/lib/panels/files.server';
 import { toManifest } from '@/server/lib/panels/manifest';
 import { pluginSettingsDefinitions } from '@/server/lib/panels/settings-schema.server';
 import { createPluginStorage } from '@/server/lib/plugins/storage.server';
-import { getDataDir } from '@/server/lib/lifecycle/paths';
+import { getDataDir } from '@kabmo-labs/kabmo-paths/paths';
 import { importPluginModule } from '@/server/lib/plugins/module-import.server';
 import { createPluginSettings, clearPluginSettingListeners } from '@/server/lib/plugins/settings.server';
 import { registerRpcMethod, clearPluginRpcMethods } from '@/server/lib/plugins/rpc.server';

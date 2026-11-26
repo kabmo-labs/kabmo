@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import { getDataDir, getRunDir } from '@/server/lib/lifecycle/paths';
+import { getDataDir, getRunDir } from '@kabmo-labs/kabmo-paths/paths';
 import { joinPath } from '@/cli/lib/path-utils.js';
 
 /**

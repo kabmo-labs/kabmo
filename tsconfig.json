@@ -502,6 +502,15 @@
       "@kabmo-labs/kabmo-omp-session-core/timestamps": [
         "./packages/kabmo-omp-session-core/src/timestamps.ts"
       ],
+      "@kabmo-labs/kabmo-paths": [
+        "./packages/kabmo-paths/src/paths.ts"
+      ],
+      "@kabmo-labs/kabmo-paths/path-segment": [
+        "./packages/kabmo-paths/src/path-segment.ts"
+      ],
+      "@kabmo-labs/kabmo-paths/paths": [
+        "./packages/kabmo-paths/src/paths.ts"
+      ],
       "@kabmo-labs/kabmo-platform": [
         "./packages/kabmo-platform/src/platform.ts"
       ],

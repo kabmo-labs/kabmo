@@ -14,8 +14,8 @@
  */
 
 import path from 'node:path';
-import { getDataDir } from '@/server/lib/lifecycle/paths';
-import { isSinglePathSegment } from '@/server/lib/fs/path-segment';
+import { getDataDir } from '@kabmo-labs/kabmo-paths/paths';
+import { isSinglePathSegment } from '@kabmo-labs/kabmo-paths/path-segment';
 
 export function changesRoot(): string {
   return path.join(getDataDir(), 'changes');

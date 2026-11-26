@@ -23,7 +23,7 @@
 import fs from 'fs';
 import { scryptSync } from 'node:crypto';
 
-import { getAuthPath, getDataDir } from '@/server/lib/lifecycle/paths';
+import { getAuthPath, getDataDir } from '@kabmo-labs/kabmo-paths/paths';
 
 /** Shape of the persisted secret file. `version` guards a future change. */
 export interface AuthSecretFile {

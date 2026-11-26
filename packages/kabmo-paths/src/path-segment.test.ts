@@ -22,7 +22,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import fs from 'fs';
 import { tmpdir } from 'node:os';
 import path from 'path';
-import { isSinglePathSegment } from '@/server/lib/fs/path-segment';
+import { isSinglePathSegment } from './path-segment';
 import { purgeBtwForSession } from '@/server/lib/btw/purge.server';
 
 describe('isSinglePathSegment', () => {

@@ -24,7 +24,7 @@ import { testPosix } from '@/test-support/platform';
 import { flockAvailable } from '@/server/lib/lifecycle/flock';
 import type { FlockHandle } from '@/server/lib/lifecycle/flock';
 import { getProcessState } from '@/server/lib/lifecycle/identity';
-import { getLockPath } from '@/server/lib/lifecycle/paths';
+import { getLockPath } from '@kabmo-labs/kabmo-paths/paths';
 import { acquirePortLock } from '@/server/lib/lifecycle/port-guard';
 import type { PortLock } from '@/server/lib/lifecycle/port-guard';
 import { createLoopbackHarness, realFetch } from '@/test-support/loopback';

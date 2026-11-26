@@ -1,0 +1,26 @@
+{
+  "name": "@kabmo-labs/kabmo-paths",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Kabmo data and lease directories plus path-segment helpers.",
+  "exports": {
+    ".": "./src/paths.ts",
+    "./path-segment": "./src/path-segment.ts",
+    "./paths": "./src/paths.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-paths"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  }
+}

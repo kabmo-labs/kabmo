@@ -14,7 +14,7 @@ import fs from 'node:fs';
 import { json } from '@/server/lib/remix-compat';
 import { resolveWithinRoot } from '@/server/lib/fs/root';
 import { toRelPath } from '@/server/lib/fs/transfer';
-import { isSinglePathSegment } from '@/server/lib/fs/path-segment';
+import { isSinglePathSegment } from '@kabmo-labs/kabmo-paths/path-segment';
 import { compressEntries, extractArchive } from '@/server/lib/fs/archive';
 import { COMPRESS_FORMATS } from '@/shared/lib/fs/archive';
 

@@ -21,7 +21,7 @@ import { acquirePortLock, claimPort, PortInUseError } from '@/server/lib/lifecyc
 import { ensureTlsCertificate, isTlsEnabledByArgv } from '@/server/lib/lifecycle/tls';
 import { SHELL_ROUTE } from '@/server/lib/lifecycle/shell-route';
 import { isMockMode } from '@/server/mock.server';
-import { migrateLegacyDataDir } from '@/server/lib/lifecycle/paths';
+import { migrateLegacyDataDir } from '@kabmo-labs/kabmo-paths/paths';
 import { pruneHarnessLeases } from '@/server/lib/harness/session-lease.server';
 import { seedDefaultMarketplace } from '@/server/lib/panels/seed.server';
 import { installRejectionGuard } from '@/server/lib/lifecycle/rejection-guard';

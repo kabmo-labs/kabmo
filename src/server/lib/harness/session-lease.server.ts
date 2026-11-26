@@ -35,7 +35,7 @@
 
 import fs from 'node:fs';
 
-import { getHarnessLeaseDir, getHarnessLeasePath } from '@/server/lib/lifecycle/paths';
+import { getHarnessLeaseDir, getHarnessLeasePath } from '@kabmo-labs/kabmo-paths/paths';
 import { harnessDescriptor, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 
 /** What the lease says the child is doing. */

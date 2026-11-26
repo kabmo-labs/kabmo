@@ -33,7 +33,7 @@ import { forgetProbe, rememberProbe } from '@/server/lib/harness/probe-cache.ser
 import { forgetCliVersion } from '@/server/lib/harness/update-state.server';
 import { loadHarnessConfig, saveHarnessConfig } from '@/server/lib/harness/config.server';
 import { invalidateOmpCliCache } from '@/server/lib/omp/core/cli';
-import { getHarnessUpdateStatusPath } from '@/server/lib/lifecycle/paths';
+import { getHarnessUpdateStatusPath } from '@kabmo-labs/kabmo-paths/paths';
 import { readUpdateJob, settleDeadJob, writeUpdateJob } from '@/server/lib/harness/update-job-store';
 import { spawnUpdateWorker } from '@/server/lib/harness/update-spawn.server';
 import { HARNESS_IDS, isBuiltinHarness, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';

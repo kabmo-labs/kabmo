@@ -12,7 +12,7 @@ import packageJson from '@/../package.json';
 import { parseArgs, helpText } from '@/cli/lib/args.js';
 import { configure, error, fail } from '@/cli/lib/output.js';
 import { resolvePath } from '@/cli/lib/path-utils.js';
-import { migrateLegacyDataDir } from '@/server/lib/lifecycle/paths';
+import { migrateLegacyDataDir } from '@kabmo-labs/kabmo-paths/paths';
 
 const { version } = packageJson;
 

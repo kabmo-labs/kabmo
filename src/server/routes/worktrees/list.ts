@@ -19,7 +19,7 @@
 import path from 'node:path';
 import { json } from '@/server/lib/remix-compat';
 import type { LoaderFunctionArgs } from '@/server/lib/remix-compat';
-import { getDataDir } from '@/server/lib/lifecycle/paths';
+import { getDataDir } from '@kabmo-labs/kabmo-paths/paths';
 import { resolveProjectRoot } from '@/server/lib/omp/core/worktree';
 import { listSessionFiles } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { scanSessionInfoCached } from '@kabmo-labs/kabmo-omp-session-scan/files';

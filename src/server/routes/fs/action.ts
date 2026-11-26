@@ -9,7 +9,7 @@ import { revealInFileManager } from '@/server/lib/fs/reveal';
 import { duplicateEntry, nextDuplicateName, pasteEntry, toRelPath } from '@/server/lib/fs/transfer';
 import { runArchiveAction, runBatchDeleteAction } from '@/server/routes/fs/action-bulk';
 import { normalizeRelativePath } from '@/server/lib/fs/relative-path';
-import { isSinglePathSegment } from '@/server/lib/fs/path-segment';
+import { isSinglePathSegment } from '@kabmo-labs/kabmo-paths/path-segment';
 import { checkWriteConflict, parseBaseMtime, stableMtime } from '@/server/lib/fs/write-conflict';
 import { transferRefusal } from '@/shared/lib/fs/clipboard';
 import { toDiskText } from '@/shared/lib/code/line-endings';

@@ -19,7 +19,7 @@
 import { json } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
-import { getDataDir } from '@/server/lib/lifecycle/paths';
+import { getDataDir } from '@kabmo-labs/kabmo-paths/paths';
 import { getDb } from '@/server/db.server';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
 import { pathHolds } from '@kabmo-labs/kabmo-fs-canonical';

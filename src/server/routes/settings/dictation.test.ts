@@ -19,7 +19,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { getDb } from '@/server/db.server';
 import { mergeSettingsJson } from '@/server/lib/db/settings-store';
-import { getDictationSecretPath } from '@/server/lib/lifecycle/paths';
+import { getDictationSecretPath } from '@kabmo-labs/kabmo-paths/paths';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { removeDir } from '@/test-support/remove-dir';
 import { loader, action } from '@/server/routes/settings/dictation';

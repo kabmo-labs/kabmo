@@ -15,7 +15,7 @@
 
 import fs from 'fs';
 
-import { getInstancePath, getRunDir } from '@/server/lib/lifecycle/paths';
+import { getInstancePath, getRunDir } from '@kabmo-labs/kabmo-paths/paths';
 
 export type InstanceMode = 'dev' | 'prod';
 export type InstanceLaunchMode = 'daemon' | 'foreground' | 'direct';

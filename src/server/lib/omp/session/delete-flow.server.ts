@@ -33,7 +33,7 @@ import { createAgentSessionRemover, type AgentSessionRemover } from '@/server/li
 import { purgeSessionData } from '@/server/lib/omp/session/delete.server';
 import { dependentsDeepestFirst } from '@/server/lib/sessions/lifecycle.server';
 import { purgeBtwForSession } from '@/server/lib/btw/purge.server';
-import { isSinglePathSegment } from '@/server/lib/fs/path-segment';
+import { isSinglePathSegment } from '@kabmo-labs/kabmo-paths/path-segment';
 import { isMockMode } from '@/server/mock.server';
 
 export interface SessionRemoval {

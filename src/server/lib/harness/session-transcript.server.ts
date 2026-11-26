@@ -31,7 +31,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { antigravityHome } from '@/server/lib/antigravity/home.server';
 import { codexHome, findCodexRollout } from '@/server/lib/harness/codex/transcript.server';
-import { isSinglePathSegment } from '@/server/lib/fs/path-segment';
+import { isSinglePathSegment } from '@kabmo-labs/kabmo-paths/path-segment';
 
 /** The two facts a store check needs: which agent, and which session. */
 export interface SessionRef {

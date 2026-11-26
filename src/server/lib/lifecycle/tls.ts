@@ -30,7 +30,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 
-import { getDataDir } from '@/server/lib/lifecycle/paths';
+import { getDataDir } from '@kabmo-labs/kabmo-paths/paths';
 
 /**
  * argv flag that turns TLS on for this run.

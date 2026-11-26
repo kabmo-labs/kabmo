@@ -38,7 +38,7 @@
 
 import fs from 'fs';
 import path from 'path';
-import { getDataDir } from '@/server/lib/lifecycle/paths';
+import { getDataDir } from '@kabmo-labs/kabmo-paths/paths';
 import { firstLine, gitRun, type GitRun } from '@/server/lib/wiki/git';
 import type { WikiUnavailableReason } from '@/shared/types/wiki';
 import { childEnv } from '@kabmo-labs/kabmo-fs-child-env';

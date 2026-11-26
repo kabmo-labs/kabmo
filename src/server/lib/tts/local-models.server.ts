@@ -21,7 +21,7 @@
 
 import fs from 'fs/promises';
 import path from 'path';
-import { getTtsModelsDir } from '@/server/lib/lifecycle/paths';
+import { getTtsModelsDir } from '@kabmo-labs/kabmo-paths/paths';
 import {
   catalogModel,
   type InstallJob,

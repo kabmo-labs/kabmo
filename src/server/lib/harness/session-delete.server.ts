@@ -37,7 +37,7 @@ import { withGatewayCompatibility } from '@kabmo-labs/kabmo-acp-client/gateway-e
 import { loadHarnessConfig } from '@/server/lib/harness/config.server';
 import { resolveAccountLaunch } from '@/server/lib/harness/accounts.server';
 import { customHarness, ensureCustomHarnesses } from '@/server/lib/harness/custom.server';
-import { isSinglePathSegment } from '@/server/lib/fs/path-segment';
+import { isSinglePathSegment } from '@kabmo-labs/kabmo-paths/path-segment';
 import { dshStoreDirs } from '@/server/lib/harness/session-transcript.server';
 import type { HarnessLaunch } from '@kabmo-labs/kabmo-harness-launch/launch-table';
 import type { HarnessSessionRecord } from '@/server/lib/harness/session-store.server';

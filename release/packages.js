@@ -77,6 +77,10 @@ export const RELEASE_PACKAGES = [
     name: '@kabmo-labs/kabmo-harness-launch',
   },
   {
+    dir: 'packages/kabmo-paths',
+    name: '@kabmo-labs/kabmo-paths',
+  },
+  {
     /** Directory under `packages/`, which is also the tag's prefix. */
     dir: 'packages/kabmo-guards',
     name: '@kabmo-labs/kabmo-guards',

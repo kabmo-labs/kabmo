@@ -25,7 +25,7 @@
  * second server instance see the same answer.
  */
 
-import { getHarnessUpdateStatusPath } from '@/server/lib/lifecycle/paths';
+import { getHarnessUpdateStatusPath } from '@kabmo-labs/kabmo-paths/paths';
 import { readUpdateJob, settleDeadJob, writeUpdateJob } from '@/server/lib/harness/update-job-store';
 import { pumpUpdateQueue, readAllUpdateJobs, serializeUpdateWork } from '@/server/lib/harness/update-queue.server';
 import { spawnUpdateWorker } from '@/server/lib/harness/update-spawn.server';

@@ -33,7 +33,7 @@
 import { json, NO_STORE_HEADERS } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed, parseJsonBody } from '@/server/lib/route-adapter';
-import { getHarnessUpdateStatusPath } from '@/server/lib/lifecycle/paths';
+import { getHarnessUpdateStatusPath } from '@kabmo-labs/kabmo-paths/paths';
 import { pumpUpdateQueue, serializeUpdateWork } from '@/server/lib/harness/update-queue.server';
 import { readUpdateJob, removeUpdateJob } from '@/server/lib/harness/update-job-store';
 import { isBuiltinHarness } from '@kabmo-labs/kabmo-harness-catalog';

@@ -32,7 +32,7 @@ import {
 } from '@/server/lib/harness/update-queue.server';
 import { startHarnessUpdateJob, unfinishedUpdateJob } from '@/server/lib/harness/update-job.server';
 import { readUpdateJob, writeUpdateJob } from '@/server/lib/harness/update-job-store';
-import { getHarnessUpdateStatusPath } from '@/server/lib/lifecycle/paths';
+import { getHarnessUpdateStatusPath } from '@kabmo-labs/kabmo-paths/paths';
 import { jobQueued, jobRunning } from '@/shared/lib/harness/update-job';
 import { UNPROBED_CAPABILITIES, type HarnessProbe } from '@kabmo-labs/kabmo-harness-launch/capabilities';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';

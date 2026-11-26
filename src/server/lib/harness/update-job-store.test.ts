@@ -24,7 +24,7 @@ import {
   UPDATE_START_GRACE_MS,
 } from '@/server/lib/harness/update-job-store';
 import { jobQueued, jobRunning } from '@/shared/lib/harness/update-job';
-import { getHarnessUpdateStatusPath } from '@/server/lib/lifecycle/paths';
+import { getHarnessUpdateStatusPath } from '@kabmo-labs/kabmo-paths/paths';
 import type { HarnessUpdateJob } from '@/shared/types/harness-update';
 
 let dir = '';

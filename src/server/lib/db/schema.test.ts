@@ -28,7 +28,7 @@ import path from 'path';
 import { hashPassword, readSessionSecret, verifyPassword, writeSessionSecret } from '@/server/lib/auth/config';
 import { clientAddressFor, rememberClientAddress } from '@/server/lib/auth/client-address';
 import { UNKNOWN_CLIENT_KEY } from '@/server/lib/auth/rate-limit';
-import { getAuthPath } from '@/server/lib/lifecycle/paths';
+import { getAuthPath } from '@kabmo-labs/kabmo-paths/paths';
 import { createDb } from '@/server/lib/db/client';
 import { removeDir } from '@/test-support/remove-dir';
 import { initSchema } from '@/server/lib/db/schema';

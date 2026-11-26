@@ -32,7 +32,7 @@ import {
 } from '@/server/lib/waiting/store.server';
 import { attachmentHasPayload } from '@/shared/lib/chat/attachments';
 import { parseModeSelection } from '@/server/lib/omp/mode/request';
-import { isSinglePathSegment } from '@/server/lib/fs/path-segment';
+import { isSinglePathSegment } from '@kabmo-labs/kabmo-paths/path-segment';
 import { resolveSessionRef } from '@/server/lib/sessions/resolve.server';
 import { isMockMode } from '@/server/mock.server';
 

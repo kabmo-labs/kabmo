@@ -22,7 +22,7 @@ import { syncWorkspaceFoldersFromDiscovery } from '@/server/lib/db/workspace-syn
 import { isMockMode } from '@/server/mock.server';
 import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
 import { migrateLegacyProjectSettings } from '@/shared/lib/workspace/project-settings-migration';
-import { getDataDir } from '@/server/lib/lifecycle/paths';
+import { getDataDir } from '@kabmo-labs/kabmo-paths/paths';
 
 /**
  * The handle and its promise live on `globalThis`, not in module bindings.

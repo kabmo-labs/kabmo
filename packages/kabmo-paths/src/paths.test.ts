@@ -14,7 +14,7 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:
 import { homedir, tmpdir } from 'node:os';
 import * as path from 'node:path';
 
-import { getDataDir, migrateLegacyDataDir } from '@/server/lib/lifecycle/paths';
+import { getDataDir, migrateLegacyDataDir } from './paths';
 
 const saved = {
   kabmo: Bun.env.KABMO_DATA_DIR,

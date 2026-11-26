@@ -30,7 +30,7 @@ import { join, resolve } from 'path';
 import type { PanelRegistryPayload } from '@/shared/types';
 import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
 import { packageDir } from '@/server/lib/fs/package-root';
-import { getDataDir } from '@/server/lib/lifecycle/paths';
+import { getDataDir } from '@kabmo-labs/kabmo-paths/paths';
 import { readDisabledPlugins, readPluginAutoUpdate } from '@/server/lib/panels/state.server';
 import { readAllGitStatuses } from '@/server/lib/panels/git-status.server';
 import { readBlockedSyncs } from '@/server/lib/panels/baseline.server';

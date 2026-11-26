@@ -26,7 +26,7 @@
  * --tray` is the only thing that has to be true.
  */
 
-import { getDataDir } from '@/server/lib/lifecycle/paths';
+import { getDataDir } from '@kabmo-labs/kabmo-paths/paths';
 import { resolveBunBin } from '@/server/lib/lifecycle/bun';
 import { packageDir } from '@/server/lib/fs/package-root';
 import { getDb } from '@/server/db.server';

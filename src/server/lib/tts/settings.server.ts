@@ -18,7 +18,7 @@ import fs from 'fs/promises';
 import { getDb } from '@/server/db.server';
 import { readAllSettingsJson } from '@/server/lib/db/settings-store';
 import { writeFileAtomic } from '@kabmo-labs/kabmo-fs-config/atomic-write';
-import { getTtsSecretPath } from '@/server/lib/lifecycle/paths';
+import { getTtsSecretPath } from '@kabmo-labs/kabmo-paths/paths';
 import { readSettingsBlob } from '@/shared/lib/settings/keys';
 import { isTtsEngine, TTS_ENGINES, type TtsEngine } from '@/shared/lib/tts/engines';
 import { normalizeTtsConfig, type TtsConfig } from '@/shared/lib/tts/settings';

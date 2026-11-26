@@ -18,7 +18,7 @@ import { resolveOmpBin } from '@/server/lib/omp/core/cli';
 import { ompInstallCommands } from '@/server/lib/omp/core/install-hint';
 import { getAgentDir, getConfigRoot } from '@kabmo-labs/kabmo-omp-paths';
 import { isMockMode } from '@/server/mock.server';
-import { getDataDir } from '@/server/lib/lifecycle/paths';
+import { getDataDir } from '@kabmo-labs/kabmo-paths/paths';
 import { checkOmpUpdate } from '@/server/lib/updates/omp';
 import { resolveInstallContext, resolveKabmoVersion } from '@/server/lib/updates/install';
 

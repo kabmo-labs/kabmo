@@ -21,7 +21,7 @@ import path from 'path';
 import { listBtwTopics, deleteBtwTopic } from '@/server/lib/btw/store.server';
 import { forgetBtwRuntime, getBtwRuntime } from '@/server/lib/btw/registry.server';
 import { getBtwRoot, removeBtwWorkspace, resolveBtwWorkspacePaths } from '@/server/lib/btw/session-copy.server';
-import { isSinglePathSegment } from '@/server/lib/fs/path-segment';
+import { isSinglePathSegment } from '@kabmo-labs/kabmo-paths/path-segment';
 
 /**
  * Drop every topic of `sessionId`, its child, its rows, and its workspace.

@@ -28,7 +28,7 @@
 
 import { json } from '@/server/lib/remix-compat';
 import type { LoaderFunctionArgs } from '@/server/lib/remix-compat';
-import { isSinglePathSegment } from '@/server/lib/fs/path-segment';
+import { isSinglePathSegment } from '@kabmo-labs/kabmo-paths/path-segment';
 import { readSessionChangeDiff, readSessionChangeList, readSessionChangeStats } from '@/server/lib/changes/reader.server';
 
 /** GET /api/sessions/:sessionId/changes */

@@ -26,7 +26,7 @@ import { json } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed, parseJsonBody } from '@/server/lib/route-adapter';
 import { getDb } from '@/server/db.server';
-import { isSinglePathSegment } from '@/server/lib/fs/path-segment';
+import { isSinglePathSegment } from '@kabmo-labs/kabmo-paths/path-segment';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
 import { SESSION_BATCH_LIMIT } from '@/shared/lib/sessions/batch-limits';
 

@@ -39,7 +39,7 @@ import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { join } from 'path';
 import fs from 'fs';
-import { isSinglePathSegment } from '@/server/lib/fs/path-segment';
+import { isSinglePathSegment } from '@kabmo-labs/kabmo-paths/path-segment';
 import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
 import { expandHome } from '@/server/routes/folders/create';
 import { isMockMode } from '@/server/mock.server';

@@ -15,7 +15,7 @@
 
 import fs from 'node:fs';
 
-import { getDataDir } from '@/server/lib/lifecycle/paths';
+import { getDataDir } from '@kabmo-labs/kabmo-paths/paths';
 import type { TrayIconStyle } from '@/shared/lib/theme/tray-icon-style';
 
 /** The tray's own name, shown in the menu and the tooltip. */

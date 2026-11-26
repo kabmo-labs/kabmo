@@ -37,7 +37,7 @@ import { importPluginModule } from '@/server/lib/plugins/module-import.server';
 import { callRpcMethod } from '@/server/lib/plugins/rpc.server';
 import { pluginTopicValue } from '@/server/lib/plugins/realtime.server';
 import { findHttpRoute } from '@/server/lib/plugins/http.server';
-import { getDataDir } from '@/server/lib/lifecycle/paths';
+import { getDataDir } from '@kabmo-labs/kabmo-paths/paths';
 
 const PLUGIN_ID = 'session-info';
 let marketplaceRoot = '';

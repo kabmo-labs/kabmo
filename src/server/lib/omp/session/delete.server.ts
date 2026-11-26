@@ -40,7 +40,7 @@ import { invalidateOmpSidebarData } from '@/server/lib/omp/session/reader';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
 import { failWaitingOn } from '@/server/lib/waiting/store.server';
 import { siblingDirForSession } from '@/server/lib/omp/subagent/history/paths';
-import { isSinglePathSegment } from '@/server/lib/fs/path-segment';
+import { isSinglePathSegment } from '@kabmo-labs/kabmo-paths/path-segment';
 import { deleteSessionRelations } from '@/server/lib/sessions/relations.server';
 import { removeSessionMcpOverlay } from '@/server/lib/mcp/session-overlay.server';
 import { purgeChangeJournal } from '@/server/lib/changes/purge.server';

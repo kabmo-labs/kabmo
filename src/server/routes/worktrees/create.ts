@@ -20,7 +20,7 @@ import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { getDb } from '@/server/db.server';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
-import { getDataDir } from '@/server/lib/lifecycle/paths';
+import { getDataDir } from '@kabmo-labs/kabmo-paths/paths';
 import { putWorktreeRow, worktreeIdentityFor } from '@/server/lib/db/worktree-registry.server';
 import { asWorktreeFailure } from '@/server/lib/fs/worktree/errors';
 import { createWorktree, planWorktree } from '@/server/lib/fs/worktree/create';

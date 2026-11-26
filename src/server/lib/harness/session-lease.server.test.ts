@@ -17,7 +17,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'no
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { getHarnessLeasePath } from '@/server/lib/lifecycle/paths';
+import { getHarnessLeasePath } from '@kabmo-labs/kabmo-paths/paths';
 import {
   noteHarnessLease,
   pruneHarnessLeases,
