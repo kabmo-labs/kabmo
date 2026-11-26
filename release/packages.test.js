@@ -267,6 +267,7 @@ describe('package catalog', () => {
       'kabmo-harness-updates',
       'kabmo-harness-config-fields',
       'kabmo-harness-mcp-facts',
+      'kabmo-harness-schema',
       'kabmo-harness-rewind',
       'kabmo-ui',
     ]);

@@ -52,6 +52,7 @@
         "@kabmo-labs/kabmo-harness-provider-slug": "workspace:*",
         "@kabmo-labs/kabmo-harness-registry": "workspace:*",
         "@kabmo-labs/kabmo-harness-rewind": "workspace:*",
+        "@kabmo-labs/kabmo-harness-schema": "workspace:*",
         "@kabmo-labs/kabmo-harness-session-modes": "workspace:*",
         "@kabmo-labs/kabmo-harness-transcript": "workspace:*",
         "@kabmo-labs/kabmo-harness-update-job": "workspace:*",
@@ -402,6 +403,13 @@
       "version": "0.0.1",
       "dependencies": {
         "@kabmo-labs/kabmo-harness-transcript": "workspace:*",
+      },
+    },
+    "packages/kabmo-harness-schema": {
+      "name": "@kabmo-labs/kabmo-harness-schema",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kabmo-labs/kabmo-db": "workspace:*",
       },
     },
     "packages/kabmo-harness-session-modes": {
@@ -902,6 +910,8 @@
     "@kabmo-labs/kabmo-harness-registry": ["@kabmo-labs/kabmo-harness-registry@workspace:packages/kabmo-harness-registry"],
 
     "@kabmo-labs/kabmo-harness-rewind": ["@kabmo-labs/kabmo-harness-rewind@workspace:packages/kabmo-harness-rewind"],
+
+    "@kabmo-labs/kabmo-harness-schema": ["@kabmo-labs/kabmo-harness-schema@workspace:packages/kabmo-harness-schema"],
 
     "@kabmo-labs/kabmo-harness-session-modes": ["@kabmo-labs/kabmo-harness-session-modes@workspace:packages/kabmo-harness-session-modes"],
 

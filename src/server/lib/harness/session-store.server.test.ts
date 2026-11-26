@@ -31,7 +31,7 @@ import {
   saveHarnessSessionTitle,
   saveHarnessSessionTitleIfEmpty,
 } from '@/server/lib/harness/session-store.server';
-import { ensureHarnessSchema } from '@/server/lib/harness/schema.server';
+import { ensureHarnessSchema } from '@kabmo-labs/kabmo-harness-schema/schema.server';
 import { HARNESS_IDS } from '@kabmo-labs/kabmo-harness-catalog';
 
 beforeEach(async () => {

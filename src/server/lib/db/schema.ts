@@ -22,7 +22,7 @@ import { ensureProviderIconSchema, repairProviderIconSvgs } from '@/server/lib/m
 import { ensureUsageIndexSchema } from '@/server/lib/usage/index-schema.server';
 import { ensureWorktreeSchema } from '@/server/lib/db/worktree-registry.server';
 import { ensureReviewSchema } from '@/server/lib/review/schema.server';
-import { ensureHarnessSchema } from '@/server/lib/harness/schema.server';
+import { ensureHarnessSchema } from '@kabmo-labs/kabmo-harness-schema/schema.server';
 import { ensureSessionRelationsSchema } from '@/server/lib/sessions/schema.server';
 import { ensurePromptHistorySchema } from '@/server/lib/chat/schema.server';
 import { ensureSessionMcpSchema } from '@/server/lib/mcp/schema.server';

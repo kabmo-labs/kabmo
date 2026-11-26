@@ -117,6 +117,7 @@
     "@kabmo-labs/kabmo-harness-provider-runtime": "workspace:*",
     "@kabmo-labs/kabmo-harness-registry": "workspace:*",
     "@kabmo-labs/kabmo-harness-rewind": "workspace:*",
+    "@kabmo-labs/kabmo-harness-schema": "workspace:*",
     "@kabmo-labs/kabmo-harness-session-modes": "workspace:*",
     "@kabmo-labs/kabmo-harness-transcript": "workspace:*",
     "@kabmo-labs/kabmo-harness-updates": "workspace:*",

@@ -342,6 +342,10 @@ export const RELEASE_PACKAGES = [
     name: '@kabmo-labs/kabmo-harness-mcp-facts',
   },
   {
+    dir: 'packages/kabmo-harness-schema',
+    name: '@kabmo-labs/kabmo-harness-schema',
+  },
+  {
     dir: 'packages/kabmo-harness-rewind',
     name: '@kabmo-labs/kabmo-harness-rewind',
   },

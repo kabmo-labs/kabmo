@@ -868,6 +868,12 @@
       "@kabmo-labs/kabmo-omp-session-reader/reader": [
         "./packages/kabmo-omp-session-reader/src/reader.ts"
       ],
+      "@kabmo-labs/kabmo-harness-schema": [
+        "./packages/kabmo-harness-schema/src/schema.server.ts"
+      ],
+      "@kabmo-labs/kabmo-harness-schema/schema.server": [
+        "./packages/kabmo-harness-schema/src/schema.server.ts"
+      ],
       "@kabmo-labs/kabmo-ui": [
         "./packages/kabmo-ui/src/index.tsx"
       ],
