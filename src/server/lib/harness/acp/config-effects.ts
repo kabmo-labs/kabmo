@@ -15,7 +15,7 @@
  */
 
 import { saveAcpGrant } from '@/server/lib/harness/acp/grants.server';
-import { markStreamModel } from '@/shared/lib/omp/session/stream-state.server';
+import { markStreamModel } from '@kabmo-labs/kabmo-session-stream-state';
 import type { AcpConfigEffects } from '@kabmo-labs/kabmo-acp-session-config/session-config';
 
 export const ACP_CONFIG_EFFECTS: AcpConfigEffects = {

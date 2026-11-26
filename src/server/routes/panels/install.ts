@@ -45,7 +45,7 @@ import {
 import { normalisePluginSpec } from '@/shared/lib/panels/plugin-repo';
 import { setPluginAutoUpdate, setPluginEnabled } from '@/server/lib/panels/state.server';
 import { syncPluginServer } from '@/server/lib/plugins/server-half.server';
-import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
+import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 
 export async function action({ request }: ActionFunctionArgs) {
   if (request.method !== 'POST') return methodNotAllowed({ request, params: {} });

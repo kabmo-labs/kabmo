@@ -20,7 +20,7 @@ import { json } from '@/server/lib/remix-compat';
 import type { LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { loadSessionAnswer } from '@/server/lib/sessions/answers.server';
-import { loadStreamStates } from '@/shared/lib/omp/session/stream-state.server';
+import { loadStreamStates } from '@kabmo-labs/kabmo-session-stream-state';
 
 export async function getSessionAnswer({ request, params }: LoaderFunctionArgs) {
   if (request.method !== 'GET') return methodNotAllowed({ request, params });

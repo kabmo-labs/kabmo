@@ -35,7 +35,7 @@
  */
 
 import { scheduleQueueDelivery } from '@/server/lib/queue/delivery.server';
-import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
+import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 import { saveAcpUsage } from '@/server/lib/harness/acp/acp-telemetry.server';
 import { lastAssistantText } from '@/server/lib/omp/session/goal-driver.server';
 import { noteChildOutcome } from '@/server/lib/sessions/notify.server';

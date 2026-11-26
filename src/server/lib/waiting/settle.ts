@@ -27,7 +27,7 @@
  * second longer, and a prompt delivered into a running turn is lost entirely.
  */
 
-import type { SessionStreamStatus } from '@/shared/lib/omp/session/stream-state.server';
+import type { SessionStreamStatus } from '@kabmo-labs/kabmo-session-stream-state';
 
 /** Slack applied after a dependency's last stream write, in ms. */
 export const SETTLE_GRACE_MS = 1_500;

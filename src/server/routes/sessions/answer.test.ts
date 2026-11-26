@@ -18,7 +18,7 @@ import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { getDb } from '@/server/db.server';
 import { getSessionAnswer } from '@/server/routes/sessions/answer';
 import { saveSessionAnswer } from '@/server/lib/sessions/answers.server';
-import { markStreamStatus } from '@/shared/lib/omp/session/stream-state.server';
+import { markStreamStatus } from '@kabmo-labs/kabmo-session-stream-state';
 
 beforeEach(isolateDb);
 afterEach(releaseDb);

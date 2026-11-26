@@ -5,7 +5,7 @@ import { getDb } from '@/server/db.server';
 import { PROJECT_ACCENT_OPTIONS } from '@/shared/lib/workspace/project-accent';
 import { deleteWorkspaceFolder, projectConfigFromFolder, updateWorkspaceFolder } from '@/shared/lib/workspace/project-settings';
 import { isRecord } from '@kabmo-labs/kabmo-guards';
-import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
+import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 import { syncDiscoveryRootsWatch } from '@/server/lib/omp/config/roots-watch.server';
 import { prepareProjectPatch } from '@/server/lib/workspace/project-patch.server';
 

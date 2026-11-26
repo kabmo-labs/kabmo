@@ -157,6 +157,14 @@ export const RELEASE_PACKAGES = [
     name: '@kabmo-labs/kabmo-harness-session',
   },
   {
+    dir: 'packages/kabmo-realtime-signals',
+    name: '@kabmo-labs/kabmo-realtime-signals',
+  },
+  {
+    dir: 'packages/kabmo-session-stream-state',
+    name: '@kabmo-labs/kabmo-session-stream-state',
+  },
+  {
     dir: 'packages/kabmo-workspace-root',
     name: '@kabmo-labs/kabmo-workspace-root',
   },

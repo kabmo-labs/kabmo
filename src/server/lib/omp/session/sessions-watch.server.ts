@@ -35,7 +35,7 @@
 
 import { watch, type FSWatcher } from 'node:fs';
 import { getSessionsDir } from '@kabmo-labs/kabmo-omp-paths';
-import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
+import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 
 /** One publish per burst. A transcript append is not a structural change. */
 const SESSIONS_WATCH_DEBOUNCE_MS = 750;

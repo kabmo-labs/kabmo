@@ -31,7 +31,7 @@ import { AgentSessionWrapper } from '@/server/lib/omp/rpc/manager';
 import type { RpcProcess } from '@/server/lib/omp/rpc/process';
 import { RunSettle, type RunSettleHost } from '@/server/lib/omp/rpc/run-settle.server';
 import type { AgentEvent, RpcSessionState } from '@/server/lib/omp/rpc/constants';
-import { loadStreamStates, markStreamStatus } from '@/shared/lib/omp/session/stream-state.server';
+import { loadStreamStates, markStreamStatus } from '@kabmo-labs/kabmo-session-stream-state';
 
 let root: string;
 let savedDbPath: string | undefined;

@@ -2,7 +2,7 @@ import { json } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { getDb } from '@/server/db.server';
-import { markStreamSeen } from '@/shared/lib/omp/session/stream-state.server';
+import { markStreamSeen } from '@kabmo-labs/kabmo-session-stream-state';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { getRpcSession } from '@/server/lib/omp/rpc/manager';
 import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
@@ -21,7 +21,7 @@ import type { AcpConfigOption } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import type { SessionModeState } from '@kabmo-labs/kabmo-harness-session-modes';
 import { asHarnessSession } from '@kabmo-labs/kabmo-harness-registry';
 import { applyHarnessMode } from '@/server/routes/agent/harness-command';
-import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
+import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 import { archiveDependents } from '@/server/lib/sessions/lifecycle.server';
 
 /**

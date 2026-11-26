@@ -221,6 +221,8 @@ describe('package catalog', () => {
       'kabmo-harness-config-store',
       'kabmo-harness-local-transcript',
       'kabmo-harness-session',
+      'kabmo-realtime-signals',
+      'kabmo-session-stream-state',
       'kabmo-workspace-root',
       'kabmo-guards',
       'kabmo-bytes',

@@ -51,7 +51,7 @@ import { AcpSubagents, type AcpSubagentRecord } from '@kabmo-labs/kabmo-acp-mapp
 import { AcpInbound } from '@/server/lib/harness/acp/session-inbound';
 import { DEFAULT_APPROVAL_MODE, isApprovalMode, type ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 import { dispatchCommand, type AcpCommandHost } from '@/server/lib/harness/acp/commands';
-import { markStreamStatus } from '@/shared/lib/omp/session/stream-state.server';
+import { markStreamStatus } from '@kabmo-labs/kabmo-session-stream-state';
 import type { AcpSessionOptions } from '@kabmo-labs/kabmo-acp-session/session-options';
 import type { AcpMcpServer } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import type { HarnessCapabilities } from '@kabmo-labs/kabmo-harness-launch/capabilities';

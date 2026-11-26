@@ -46,7 +46,7 @@ import { buildPanelPlugin } from '@/server/lib/panels/build.server';
 import { readGitOrigin } from '@/server/lib/panels/git-clone.server';
 import { baselineDescribesInstall, changedPaths, hashTrackedFiles, type TrackedFileHashes } from '@/server/lib/panels/local-edits.server';
 import { readBaseline, writeBaseline, writeBlockedSync } from '@/server/lib/panels/baseline.server';
-import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
+import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 
 export interface BundledSyncOutcome {
   pluginId: string;

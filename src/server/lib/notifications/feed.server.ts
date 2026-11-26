@@ -24,10 +24,11 @@
  * never turn a finished run into a failed one.
  */
 
-import { getDb } from '@/server/db.server';
+import { getDb } from '@kabmo-labs/kabmo-db/lifecycle';
 import { readAllSettingsJson } from '@kabmo-labs/kabmo-settings-store';
 import { getRealtimeHub } from '@/server/lib/realtime/hub.server';
 import { TOPIC_NOTIFICATIONS } from '@/shared/lib/realtime/protocol';
+import { registerRunSettledReporter } from '@kabmo-labs/kabmo-session-stream-state';
 import {
   NOTIFICATION_SETTING_KEYS,
   type NotificationEvent as NotificationEventKey,
@@ -193,3 +194,14 @@ export async function noteAwaitingInput(sessionId: string): Promise<void> {
     console.warn('[notifications] could not record an awaiting-input event:', error);
   }
 }
+
+/**
+ * The stream-state module announces a settled run through a registered reporter
+ * rather than an import: it sits below the realtime layer, and the feed resolves
+ * a session title through the sidebar reader — importing it from the frame path
+ * would drag the hub and the whole reader into every status write. Registration
+ * is idempotent and module-level, so a `bun --hot` reload re-registers.
+ */
+registerRunSettledReporter((sessionId, failure, durationMs) => {
+  void noteRunSettled(sessionId, failure, durationMs);
+});

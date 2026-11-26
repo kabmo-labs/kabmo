@@ -27,7 +27,7 @@ import { syncRunModel as syncRunModelFor } from '@/server/lib/omp/rpc/run-model'
 import { reloadChildPlugins } from '@/server/lib/omp/rpc/reload-plugins';
 import { noteRefusedPrompt } from '@/server/lib/omp/rpc/terminal-settle';
 import { noteAwaitingInput } from '@/server/lib/notifications/feed.server';
-import { clearStreamStatus, type SessionRunModel } from '@/shared/lib/omp/session/stream-state.server';
+import { clearStreamStatus, type SessionRunModel } from '@kabmo-labs/kabmo-session-stream-state';
 import { GET_STATE_TIMEOUT_MS, IDLE_REAP_MS, READY_TIMEOUT_MS, SUBAGENT_STALE_MS, type AgentEvent, type EventListener, type RpcSessionState } from '@/server/lib/omp/rpc/constants';
 
 export type {

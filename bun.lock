@@ -94,10 +94,12 @@
         "@kabmo-labs/kabmo-process-kill": "workspace:*",
         "@kabmo-labs/kabmo-process-probe": "workspace:*",
         "@kabmo-labs/kabmo-provider-contracts": "workspace:*",
+        "@kabmo-labs/kabmo-realtime-signals": "workspace:*",
         "@kabmo-labs/kabmo-refresh-cadence": "workspace:*",
         "@kabmo-labs/kabmo-rpc-lines": "workspace:*",
         "@kabmo-labs/kabmo-runtime-flags": "workspace:*",
         "@kabmo-labs/kabmo-sdk": "workspace:*",
+        "@kabmo-labs/kabmo-session-stream-state": "workspace:*",
         "@kabmo-labs/kabmo-settings-contracts": "workspace:*",
         "@kabmo-labs/kabmo-settings-store": "workspace:*",
         "@kabmo-labs/kabmo-ui": "workspace:*",
@@ -757,6 +759,10 @@
         "@kabmo-labs/kabmo-settings-contracts": "workspace:*",
       },
     },
+    "packages/kabmo-realtime-signals": {
+      "name": "@kabmo-labs/kabmo-realtime-signals",
+      "version": "0.0.1",
+    },
     "packages/kabmo-refresh-cadence": {
       "name": "@kabmo-labs/kabmo-refresh-cadence",
       "version": "0.0.1",
@@ -782,6 +788,14 @@
         "happy-dom",
         "preact",
       ],
+    },
+    "packages/kabmo-session-stream-state": {
+      "name": "@kabmo-labs/kabmo-session-stream-state",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kabmo-labs/kabmo-db": "workspace:*",
+        "@kabmo-labs/kabmo-realtime-signals": "workspace:*",
+      },
     },
     "packages/kabmo-settings-contracts": {
       "name": "@kabmo-labs/kabmo-settings-contracts",
@@ -1044,6 +1058,8 @@
 
     "@kabmo-labs/kabmo-provider-contracts": ["@kabmo-labs/kabmo-provider-contracts@workspace:packages/kabmo-provider-contracts"],
 
+    "@kabmo-labs/kabmo-realtime-signals": ["@kabmo-labs/kabmo-realtime-signals@workspace:packages/kabmo-realtime-signals"],
+
     "@kabmo-labs/kabmo-refresh-cadence": ["@kabmo-labs/kabmo-refresh-cadence@workspace:packages/kabmo-refresh-cadence"],
 
     "@kabmo-labs/kabmo-rpc-lines": ["@kabmo-labs/kabmo-rpc-lines@workspace:packages/kabmo-rpc-lines"],
@@ -1051,6 +1067,8 @@
     "@kabmo-labs/kabmo-runtime-flags": ["@kabmo-labs/kabmo-runtime-flags@workspace:packages/kabmo-runtime-flags"],
 
     "@kabmo-labs/kabmo-sdk": ["@kabmo-labs/kabmo-sdk@workspace:packages/kabmo-sdk"],
+
+    "@kabmo-labs/kabmo-session-stream-state": ["@kabmo-labs/kabmo-session-stream-state@workspace:packages/kabmo-session-stream-state"],
 
     "@kabmo-labs/kabmo-settings-contracts": ["@kabmo-labs/kabmo-settings-contracts@workspace:packages/kabmo-settings-contracts"],
 

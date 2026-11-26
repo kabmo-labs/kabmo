@@ -23,7 +23,7 @@ import { methodNotAllowed, parseJsonBody } from '@/server/lib/route-adapter';
 import { getDb } from '@/server/db.server';
 import { deleteWorkspaceFolder } from '@/shared/lib/workspace/project-settings';
 import { syncDiscoveryRootsWatch } from '@/server/lib/omp/config/roots-watch.server';
-import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
+import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 import { WORKSPACE_BATCH_LIMIT } from '@/shared/lib/sessions/batch-limits';
 
 export async function batchDeleteFolders({ request }: ActionFunctionArgs) {

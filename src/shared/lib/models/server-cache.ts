@@ -13,7 +13,7 @@
 
 import type { ModelsData } from '@/shared/types';
 import type { ModelRoleCandidate } from '@/shared/types/model-roles';
-import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
+import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 
 declare global {
   // eslint-disable-next-line no-var

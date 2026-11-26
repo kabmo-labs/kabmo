@@ -27,7 +27,7 @@ import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed, parseJsonBody } from '@/server/lib/route-adapter';
 import { getDb } from '@/server/db.server';
 import { isSinglePathSegment } from '@kabmo-labs/kabmo-paths/path-segment';
-import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
+import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 import { SESSION_BATCH_LIMIT } from '@/shared/lib/sessions/batch-limits';
 
 /** One request cannot carry an unbounded selection; the client splits a larger

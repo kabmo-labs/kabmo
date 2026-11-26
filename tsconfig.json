@@ -919,6 +919,12 @@
       "@kabmo-labs/kabmo-workspace-root/external-roots": [
         "./packages/kabmo-workspace-root/src/external-roots.ts"
       ],
+      "@kabmo-labs/kabmo-realtime-signals": [
+        "./packages/kabmo-realtime-signals/src/signals.ts"
+      ],
+      "@kabmo-labs/kabmo-session-stream-state": [
+        "./packages/kabmo-session-stream-state/src/stream-state.ts"
+      ],
       "@kabmo-labs/kabmo-ui": [
         "./packages/kabmo-ui/src/index.tsx"
       ],

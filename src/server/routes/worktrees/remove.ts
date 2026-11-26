@@ -21,7 +21,7 @@ import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { getDataDir } from '@kabmo-labs/kabmo-paths/paths';
 import { getDb } from '@/server/db.server';
-import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
+import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 import { pathHolds } from '@kabmo-labs/kabmo-fs-canonical';
 import { removeWorktreeRow, worktreeRowFor } from '@/server/lib/db/worktree-registry.server';
 import { removeWorktree } from '@/server/lib/fs/worktree/remove';

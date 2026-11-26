@@ -2,7 +2,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { handleSimulatedStreaming } from '@/shared/lib/chat/stream-service';
 import { createSseStream } from '@/server/lib/sse';
-import { markStreamStatus } from '@/shared/lib/omp/session/stream-state.server';
+import { markStreamStatus } from '@kabmo-labs/kabmo-session-stream-state';
 import { localRuns } from '@/server/lib/omp/session/local-runs.server';
 import { recordPrompt } from '@/server/lib/chat/prompt-history.server';
 

@@ -39,9 +39,34 @@
  * fire-and-forget: a status write must never fail a prompt.
  */
 
-import { getDb } from '@/server/db.server';
-import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
-import { noteRunSettled } from '@/server/lib/notifications/feed.server';
+import { getDb } from '@kabmo-labs/kabmo-db/lifecycle';
+import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
+
+/**
+ * The run-outcome announcer, registered by whoever owns the notification feed.
+ *
+ * The banner is the feed's job — it resolves the session title and writes the
+ * notice — and this module sits below it: the status row is written on the frame
+ * path, so importing the feed here would drag the realtime hub and the session
+ * reader into every writer. The feed registers itself at load instead, and a
+ * missing registration means no banner, never a failed status write.
+ */
+type RunSettledReporter = (sessionId: string, failure: string | null, durationMs: number | null) => void;
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __kabmoRunSettledReporter: RunSettledReporter | undefined;
+}
+
+/**
+ * Register the run-outcome announcer. The slot lives on `globalThis` for the
+ * reason the signal registry does: `bun --hot` re-evaluates this module while the
+ * feed's one-shot registration does not re-run, so a module-level slot would
+ * leave the new instance reporting to nobody.
+ */
+export function registerRunSettledReporter(reporter: RunSettledReporter | null): void {
+  globalThis.__kabmoRunSettledReporter = reporter ?? undefined;
+}
 
 export type SessionStreamStatus = 'stream' | 'finish' | 'abort';
 
@@ -133,7 +158,7 @@ export async function markStreamStatus(
     // after the write: the banner names the badge that just appeared.
     if (status === 'finish' && previous?.status === 'stream') {
       const durationMs = previous.started_at ? Date.now() - previous.started_at : null;
-      void noteRunSettled(sessionId, reason || null, durationMs);
+      globalThis.__kabmoRunSettledReporter?.(sessionId, reason || null, durationMs);
     }
   } catch {
     // Status tracking is best-effort by design.

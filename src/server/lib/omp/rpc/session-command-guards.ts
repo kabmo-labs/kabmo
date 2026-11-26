@@ -19,7 +19,7 @@ import type { RpcProcess } from '@/server/lib/omp/rpc/process';
 import { SESSION_BLOCKED_ON_DIALOG_MESSAGE, SESSION_BUSY_MESSAGE, WebRpcError, type AgentEvent } from '@/server/lib/omp/rpc/constants';
 import { scheduleQueueDelivery } from '@/server/lib/queue/delivery.server';
 import { isTuiOnlySlashCommand, tuiOnlyCommandNotice } from '@/shared/lib/chat/composer/tui-only';
-import type { SessionRunModel } from '@/shared/lib/omp/session/stream-state.server';
+import type { SessionRunModel } from '@kabmo-labs/kabmo-session-stream-state';
 import type { WebStateHost } from '@/server/lib/omp/rpc/web-state';
 
 /** Runtime surface AgentSessionWrapper exposes to the command dispatcher. */

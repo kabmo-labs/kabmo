@@ -25,7 +25,7 @@
  * or a queued follow-up cannot rename a chat to its own text.
  */
 
-import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
+import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 import { updateHarnessLeaseTitle } from '@kabmo-labs/kabmo-harness-lease/session-lease.server';
 import {
   saveHarnessSessionTitle,

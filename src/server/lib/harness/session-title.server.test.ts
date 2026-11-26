@@ -21,7 +21,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { loadAcpSessions, saveHarnessSession } from '@kabmo-labs/kabmo-harness-session/session-store.server';
 import { noteAgentTitle, notePromptTitle, titleFromPrompt } from '@/server/lib/harness/session-title.server';
-import { onRealtimeSignal } from '@/server/lib/realtime/signals.server';
+import { onRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 
 /** Run one write and report the signals it raised, in order. */
 async function writeAndCollectSignals(write: () => Promise<boolean>): Promise<{ written: boolean; signals: string[] }> {

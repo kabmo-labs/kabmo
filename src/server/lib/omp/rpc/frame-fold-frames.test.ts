@@ -20,14 +20,14 @@ import { foldSessionFrame } from '@/server/lib/omp/rpc/frame-fold';
 import { releasesStreamRowOnPromptResult } from '@/shared/lib/omp/session/stream-heal.server';
 import { makeHost } from '@/server/lib/omp/rpc/frame-fold-host.test-util';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
-import { onRealtimeSignal } from '@/server/lib/realtime/signals.server';
+import { onRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import {
   loadStreamStates,
   markStreamStatus,
   type SessionRunModel,
   type SessionStreamState,
-} from '@/shared/lib/omp/session/stream-state.server';
+} from '@kabmo-labs/kabmo-session-stream-state';
 
 /**
  * The `prompt_result` frame is where omp reports `agentInvoked`, and the

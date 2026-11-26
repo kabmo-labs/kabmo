@@ -1,0 +1,18 @@
+{
+  "name": "@kabmo-labs/kabmo-session-stream-state",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Server-authoritative per-session stream status: the spinner, its terminal badge, and the run model.",
+  "exports": {
+    ".": "./src/stream-state.ts"
+  },
+  "files": ["src"],
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/kabmo-labs/kabmo.git", "directory": "packages/kabmo-session-stream-state" },
+  "publishConfig": { "access": "public" },
+  "engines": { "bun": ">=1.4.0" },
+  "dependencies": {
+    "@kabmo-labs/kabmo-db": "workspace:*",
+    "@kabmo-labs/kabmo-realtime-signals": "workspace:*"
+  }
+}

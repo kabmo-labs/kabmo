@@ -5,7 +5,7 @@ import { getDb } from '@/server/db.server';
 import { deleteWorkspaceFolder, parseFolderSettingsPatch, updateWorkspaceFolder } from '@/shared/lib/workspace/project-settings';
 import { revealInFileManager } from '@/server/lib/fs/reveal';
 import { syncDiscoveryRootsWatch } from '@/server/lib/omp/config/roots-watch.server';
-import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
+import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 
 export async function pinFolder({ request, params }: ActionFunctionArgs) {
   if (request.method !== 'POST') {

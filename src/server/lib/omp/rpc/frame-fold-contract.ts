@@ -12,7 +12,7 @@ import type { AutoTitleHost } from '@/server/lib/omp/session/auto-title.server';
 import type { QueueDeliveryHost } from '@/server/lib/queue/delivery.server';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
 import type { ModeMirror } from '@/server/lib/omp/rpc/mode-mirror';
-import type { SessionRunModel } from '@/shared/lib/omp/session/stream-state.server';
+import type { SessionRunModel } from '@kabmo-labs/kabmo-session-stream-state';
 
 /**
  * Wrapper surface the fold reads and writes. Every field is owned by the

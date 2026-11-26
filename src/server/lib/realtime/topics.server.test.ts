@@ -21,7 +21,7 @@ import { afterEach, describe, expect, test, vi } from 'bun:test';
 
 import { getRealtimeHub, registerTopics, resetRealtimeHub, type RealtimeConnection } from '@/server/lib/realtime/hub.server';
 import { initRealtimeTopics, publishTopic, republishSessionDataTopics } from '@/server/lib/realtime/topics.server';
-import { emitRealtimeSignal, clearRealtimeSignalListeners } from '@/server/lib/realtime/signals.server';
+import { emitRealtimeSignal, clearRealtimeSignalListeners } from '@kabmo-labs/kabmo-realtime-signals';
 import { TOPIC_MODELS, TOPIC_USAGE, gitTopic, sessionQueueTopic, sessionTodosTopic, sessionTopic, type RealtimeServerFrame } from '@/shared/lib/realtime/protocol';
 
 interface FakeConnection extends RealtimeConnection {

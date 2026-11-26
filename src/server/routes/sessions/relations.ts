@@ -14,7 +14,7 @@
 import { json } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed, parseJsonBody } from '@/server/lib/route-adapter';
-import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
+import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 import { SessionRelationError } from '@/server/lib/sessions/relation-types';
 import {
   getSessionRelation,

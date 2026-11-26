@@ -43,10 +43,10 @@ import {
 } from '@/server/lib/omp/session/auto-title.server';
 import { scheduleQueueDelivery, type QueueDeliveryHost } from '@/server/lib/queue/delivery.server';
 import { requestWaitingSweep } from '@/server/lib/waiting/sweep-trigger';
-import { markStreamStatus, loadStreamStatuses } from '@/shared/lib/omp/session/stream-state.server';
+import { markStreamStatus, loadStreamStatuses } from '@kabmo-labs/kabmo-session-stream-state';
 import { driveGoalAfterTurn, lastAssistantText } from '@/server/lib/omp/session/goal-driver.server';
 import { noteChildOutcome } from '@/server/lib/sessions/notify.server';
-import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
+import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 import { publishSidebarStructure } from '@/server/lib/realtime/topics.server';
 import { AGENT_BUSY_REFUSAL_RE } from '@/server/lib/omp/rpc/constants';
 import { deriveTurnError, turnStoppedAbnormally } from '@kabmo-labs/kabmo-omp-session-parse/turn-error';

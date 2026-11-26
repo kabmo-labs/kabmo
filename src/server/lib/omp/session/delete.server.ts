@@ -37,7 +37,7 @@ import type { DbClient } from '@kabmo-labs/kabmo-db/client';
 import { findSessionFileById } from '@/server/lib/omp/session/locator';
 import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { invalidateOmpSidebarData } from '@kabmo-labs/kabmo-omp-session-reader';
-import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
+import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 import { failWaitingOn } from '@/server/lib/waiting/store.server';
 import { siblingDirForSession } from '@/server/lib/omp/subagent/history/paths';
 import { isSinglePathSegment } from '@kabmo-labs/kabmo-paths/path-segment';

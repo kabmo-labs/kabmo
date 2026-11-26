@@ -14,7 +14,7 @@
 
 import type { RpcProcess } from '@/server/lib/omp/rpc/process';
 import { GET_STATE_TIMEOUT_MS, type RpcSessionState } from '@/server/lib/omp/rpc/constants';
-import { markStreamModel, type SessionRunModel } from '@/shared/lib/omp/session/stream-state.server';
+import { markStreamModel, type SessionRunModel } from '@kabmo-labs/kabmo-session-stream-state';
 
 /** Wrapper fields this probe reads and rewrites. */
 export interface RunModelHost {

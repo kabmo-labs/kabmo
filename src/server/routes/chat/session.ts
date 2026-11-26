@@ -15,7 +15,7 @@ import { getSessionRelation } from '@/server/lib/sessions/relations.server';
 import { windowMessages } from '@/server/routes/chat/window';
 import { readCodexRolloutTranscript } from '@kabmo-labs/kabmo-harness-local-transcript/codex-transcript';
 import { getLiveRunSessionIds, getLiveSession, harnessOfSession } from '@/server/lib/omp/rpc/session-registry';
-import { loadStreamStates } from '@/shared/lib/omp/session/stream-state.server';
+import { loadStreamStates } from '@kabmo-labs/kabmo-session-stream-state';
 import { configByCategory, selectValues } from '@kabmo-labs/kabmo-harness-launch/launch';
 import type { AcpConfigOption } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import { liveMetaFields, type LiveSessionMeta } from '@/server/routes/chat/live-meta';

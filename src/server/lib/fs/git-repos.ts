@@ -27,7 +27,7 @@
 
 import fs from 'fs';
 import path from 'path';
-import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
+import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 
 const MAX_GIT_DEPTH = 8;
 

@@ -14,7 +14,7 @@
  * stream-status flip does not re-scan every session file.
  */
 
-import { loadStreamStates } from '@/shared/lib/omp/session/stream-state.server';
+import { loadStreamStates } from '@kabmo-labs/kabmo-session-stream-state';
 import { healStaleStreamStatuses } from '@/shared/lib/omp/session/stream-heal.server';
 import { getAwaitingInputSessionIds, getLiveRunSessionIds, listRpcSessions } from '@/server/lib/omp/rpc/session-registry';
 import type { SidebarStatusEntry } from '@/shared/types/realtime';

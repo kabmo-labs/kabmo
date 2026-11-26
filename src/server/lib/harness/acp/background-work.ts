@@ -31,7 +31,7 @@
  */
 
 import { stampMessageModel } from '@kabmo-labs/kabmo-acp-session-config/session-config';
-import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
+import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 import { extractTextFromContent } from '@kabmo-labs/kabmo-omp-mapper';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
 

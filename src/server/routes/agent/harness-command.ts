@@ -24,7 +24,7 @@ import { transcriptFromReplay } from '@/server/lib/harness/acp/replay-transcript
 import { getDb } from '@/server/db.server';
 import { selectValues } from '@kabmo-labs/kabmo-harness-launch/launch';
 import { harnessOfSession } from '@/server/lib/omp/rpc/session-registry';
-import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
+import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 import { HARNESS_IDS, harnessDescriptor } from '@kabmo-labs/kabmo-harness-catalog';
 import type { AcpConfigOption } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import { applyAcpGoalAction, type AcpGoalHost } from '@/server/lib/harness/acp/acp-goal.server';

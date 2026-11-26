@@ -12,14 +12,14 @@
 import { afterEach, beforeEach, describe, expect, setDefaultTimeout, test } from 'bun:test';
 
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
-import { getDb } from '@/server/db.server';
-import { onRealtimeSignal } from '@/server/lib/realtime/signals.server';
+import { getDb } from '@kabmo-labs/kabmo-db/lifecycle';
+import { onRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 import {
   loadStreamStates,
   loadStreamStatuses,
   markStreamModel,
   markStreamStatus,
-} from '@/shared/lib/omp/session/stream-state.server';
+} from './stream-state';
 
 /**
  * A budget, and the SHARED isolation helpers — not a hand-rolled teardown.

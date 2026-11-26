@@ -26,7 +26,7 @@
 import { getDb } from '@/server/db.server';
 import { readSettingsJson, writeSettingsJson } from '@kabmo-labs/kabmo-settings-store';
 import { LEGACY_SETTINGS_BLOB_KEY } from '@/shared/lib/settings/keys';
-import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
+import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 
 /** `app_settings` key holding the disabled plugin ids. */
 const PANEL_PLUGINS_KEY = 'omp_panel_plugins';

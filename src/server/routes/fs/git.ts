@@ -30,7 +30,7 @@ import { readBlame, readBlameHistory } from '@/server/lib/fs/git-blame';
 import { listBranchDetails } from '@/server/lib/fs/git-branch';
 import { listStashes } from '@/server/lib/fs/git-stash';
 import { GIT_ACTIONS } from '@/server/lib/fs/git-actions';
-import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
+import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);

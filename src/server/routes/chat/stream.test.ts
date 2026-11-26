@@ -24,10 +24,10 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { loadStreamStatuses } from '@/shared/lib/omp/session/stream-state.server';
+import { loadStreamStatuses } from '@kabmo-labs/kabmo-session-stream-state';
 import { getLiveRunSessionIds } from '@/server/lib/omp/rpc/session-registry';
 import { localRuns } from '@/server/lib/omp/session/local-runs.server';
-import { onRealtimeSignal } from '@/server/lib/realtime/signals.server';
+import { onRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { action } from '@/server/routes/chat/stream';
 import { listPrompts } from '@/server/lib/chat/prompt-history.server';

@@ -25,7 +25,7 @@ import { AGENT_BUSY_MESSAGE, AWAITING_AGENT_START_TIMEOUT_MS, RESTARTING_MESSAGE
 import { cancelQueuedDelivery } from '@/server/lib/queue/delivery.server';
 import { makeHarness, rejectionOf } from '@/server/lib/omp/rpc/session-commands-harness';
 import { getDb } from '@/server/db.server';
-import { loadStreamStates } from '@/shared/lib/omp/session/stream-state.server';
+import { loadStreamStates } from '@kabmo-labs/kabmo-session-stream-state';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 
 /**

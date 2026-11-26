@@ -14,7 +14,7 @@ import { AGENT_BUSY_MESSAGE, AGENT_BUSY_REFUSAL_RE, AWAITING_AGENT_START_TIMEOUT
 import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { awaitTitleDispatch } from '@/server/lib/omp/session/title-request.server';
 import { scheduleQueueDelivery } from '@/server/lib/queue/delivery.server';
-import { clearStreamStatus, markStreamStatus } from '@/shared/lib/omp/session/stream-state.server';
+import { clearStreamStatus, markStreamStatus } from '@kabmo-labs/kabmo-session-stream-state';
 import { buildWebState } from '@/server/lib/omp/rpc/web-state';
 import {
   refuseTuiOnlyPrompt,

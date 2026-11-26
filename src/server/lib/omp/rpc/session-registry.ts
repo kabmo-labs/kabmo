@@ -15,7 +15,7 @@ import { RpcProcess } from '@/server/lib/omp/rpc/process';
 import { buildSessionSpawnArgs, type SessionPromptArgs } from '@/server/lib/omp/rpc/constants';
 import { AgentSessionWrapper } from '@/server/lib/omp/rpc/manager';
 import { syncDiscoveryRootsWatch } from '@/server/lib/omp/config/roots-watch.server';
-import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
+import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 import { localRuns } from '@/server/lib/omp/session/local-runs.server';
 import { recordSpawnProvenance } from '@/server/lib/omp/rpc/spawn-provenance';
 import { registerSpawnedSession } from '@/server/lib/omp/rpc/session-registration';

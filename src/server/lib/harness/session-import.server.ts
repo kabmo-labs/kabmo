@@ -39,7 +39,7 @@ import { loadDeletedSessionIds } from '@/server/lib/sessions/deleted-sessions.se
 import { canonicalPath } from '@kabmo-labs/kabmo-fs-canonical';
 import { resolveProjectRoot } from '@kabmo-labs/kabmo-omp-worktree';
 import { getDb } from '@/server/db.server';
-import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
+import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 import { harnessDescriptor, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import type { AcpSessionInfo } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import type { HarnessSessionImport } from '@/shared/types/harness';

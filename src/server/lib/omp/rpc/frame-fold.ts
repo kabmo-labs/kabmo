@@ -24,9 +24,9 @@ import {
   consumeAutoTitleOutput,
   triggerAutoSessionTitle,
 } from '@/server/lib/omp/session/auto-title.server';
-import { clearStreamStatus, markStreamStatus } from '@/shared/lib/omp/session/stream-state.server';
+import { clearStreamStatus, markStreamStatus } from '@kabmo-labs/kabmo-session-stream-state';
 import { releasesStreamRowOnPromptResult } from '@/shared/lib/omp/session/stream-heal.server';
-import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
+import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 import { publishSidebarStructure } from '@/server/lib/realtime/topics.server';
 import { NON_TERMINAL_CONTINUATION_GRACE_MS, type AgentEvent } from '@/server/lib/omp/rpc/constants';
 import { assistantFailure, settleTerminalRun } from '@/server/lib/omp/rpc/terminal-settle';
