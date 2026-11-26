@@ -14,7 +14,7 @@
  * grant, so there is exactly ONE value here and every ACP caller uses it.
  */
 
-import { saveAcpGrant } from '@/server/lib/harness/acp/grants.server';
+import { saveAcpGrant } from './grants.server';
 import { markStreamModel } from '@kabmo-labs/kabmo-session-stream-state';
 import type { AcpConfigEffects } from '@kabmo-labs/kabmo-acp-session-config/session-config';
 

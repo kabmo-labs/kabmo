@@ -12,7 +12,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { additionalDirectoriesFor } from '@/server/lib/harness/acp/session-roots.server';
+import { additionalDirectoriesFor } from './session-roots.server';
 
 describe('additionalDirectoriesFor', () => {
   test('sends the extra roots when the agent advertised the capability', () => {

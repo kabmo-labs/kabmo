@@ -83,6 +83,7 @@
     "@kabmo-labs/kabmo-acp-protocol": "workspace:*",
     "@kabmo-labs/kabmo-acp-mapper": "workspace:*",
     "@kabmo-labs/kabmo-acp-client": "workspace:*",
+    "@kabmo-labs/kabmo-acp-session-core": "workspace:*",
     "@kabmo-labs/kabmo-acp-turn": "workspace:*",
     "@kabmo-labs/kabmo-acp-prompt": "workspace:*",
     "@kabmo-labs/kabmo-acp-session": "workspace:*",

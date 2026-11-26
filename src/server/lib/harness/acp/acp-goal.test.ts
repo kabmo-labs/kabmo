@@ -19,7 +19,7 @@ import {
   finishAcpGoal,
   type AcpGoalHost,
 } from '@/server/lib/harness/acp/acp-goal.server';
-import { loadAcpGoalState, loadAcpGoalState as load } from '@/server/lib/harness/acp/acp-goal-state.server';
+import { loadAcpGoalState, loadAcpGoalState as load } from '@kabmo-labs/kabmo-acp-session-core/acp-goal-state.server';
 import { driveAcpGoalAfterTurn } from '@/server/lib/harness/acp/acp-goal-driver.server';
 import type { GoalAuditAnswers } from '@/server/lib/omp/session/goal-auditor.server';
 

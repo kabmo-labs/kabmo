@@ -15,7 +15,7 @@
 
 import { describe, expect, test } from 'bun:test';
 import { AcpFrameMapper } from '@kabmo-labs/kabmo-acp-mapper/frames';
-import { AcpReplay, MAX_REPLAY_EVENTS } from '@/server/lib/harness/acp/replay';
+import { AcpReplay, MAX_REPLAY_EVENTS } from './replay';
 
 const frame = (text: string) => ({ type: 'message_update', message: { id: 'm', content: [{ type: 'text', text }] } });
 

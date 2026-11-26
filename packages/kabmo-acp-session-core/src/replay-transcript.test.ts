@@ -13,7 +13,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { transcriptFromReplay } from '@/server/lib/harness/acp/replay-transcript';
+import { transcriptFromReplay } from './replay-transcript';
 
 const textMessage = (role: string, id: string, text: string, extra: Record<string, unknown> = {}) => ({
   role,

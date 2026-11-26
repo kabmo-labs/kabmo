@@ -19,7 +19,7 @@
 import type { AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 import type { HarnessCapabilities } from '@kabmo-labs/kabmo-harness-launch/capabilities';
 import { noteAgentTitle } from '@kabmo-labs/kabmo-harness-session/session-title.server';
-import { ACP_CONFIG_EFFECTS } from '@/server/lib/harness/acp/config-effects';
+import { ACP_CONFIG_EFFECTS } from '@kabmo-labs/kabmo-acp-session-core/config-effects';
 import { metadataCapabilities, parseAgentCommands, type AgentCommand } from '@kabmo-labs/kabmo-acp-session/session-facts';
 import {
   adoptConfigList,
@@ -29,7 +29,7 @@ import {
 } from '@kabmo-labs/kabmo-acp-session-config/session-config';
 import type { AcpConfigOption, AcpProtocolVersion, AcpSessionModeState } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
-import { saveAcpPlanState } from '@/server/lib/harness/acp/acp-goal-state.server';
+import { saveAcpPlanState } from '@kabmo-labs/kabmo-acp-session-core/acp-goal-state.server';
 import { normalizeConfigOptions, planEntries } from '@kabmo-labs/kabmo-acp-protocol/v2';
 import type { AcpSubagentRecord, AcpSubagents } from '@kabmo-labs/kabmo-acp-mapper/subagents';
 

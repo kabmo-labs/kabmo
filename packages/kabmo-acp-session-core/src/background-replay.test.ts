@@ -13,8 +13,8 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { collectReplayFrame, newToolNotice, type ReplaySegment } from '@/server/lib/harness/acp/background-replay';
-import { AcpBackgroundProbe } from '@/server/lib/harness/acp/background-probe';
+import { collectReplayFrame, newToolNotice, type ReplaySegment } from './background-replay';
+import { AcpBackgroundProbe } from './background-probe';
 
 const seg = (): ReplaySegment => ({ text: '', sawUser: false, tools: [] });
 

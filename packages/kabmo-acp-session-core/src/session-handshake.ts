@@ -29,7 +29,7 @@ import { applyLaunchSelections, configOption, modelFromOption, modelsAsSelector 
 import { toAcpV2McpServers } from '@kabmo-labs/kabmo-acp-protocol/v2';
 import type { SessionDirs } from '@kabmo-labs/kabmo-acp-protocol/verbs';
 import { authMethodsOf, describeSignIn, headlessAuthMethod, isAuthRequiredError } from '@kabmo-labs/kabmo-acp-client/auth';
-import { additionalDirectoriesFor, sessionRoots } from '@/server/lib/harness/acp/session-roots.server';
+import { additionalDirectoriesFor, sessionRoots } from './session-roots.server';
 import { capabilitiesFrom } from '@kabmo-labs/kabmo-harness-launch/launch';
 import type { AcpAgentCommand,
 AcpConfigOption,

@@ -22,6 +22,7 @@
         "@kabmo-labs/kabmo-acp-protocol": "workspace:*",
         "@kabmo-labs/kabmo-acp-session": "workspace:*",
         "@kabmo-labs/kabmo-acp-session-config": "workspace:*",
+        "@kabmo-labs/kabmo-acp-session-core": "workspace:*",
         "@kabmo-labs/kabmo-acp-stdio": "workspace:*",
         "@kabmo-labs/kabmo-acp-turn": "workspace:*",
         "@kabmo-labs/kabmo-auth": "workspace:*",
@@ -208,6 +209,31 @@
         "@kabmo-labs/kabmo-acp-protocol": "workspace:*",
         "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
         "@kabmo-labs/kabmo-omp-contracts": "workspace:*",
+      },
+    },
+    "packages/kabmo-acp-session-core": {
+      "name": "@kabmo-labs/kabmo-acp-session-core",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kabmo-labs/kabmo-acp-client": "workspace:*",
+        "@kabmo-labs/kabmo-acp-mapper": "workspace:*",
+        "@kabmo-labs/kabmo-acp-prompt": "workspace:*",
+        "@kabmo-labs/kabmo-acp-protocol": "workspace:*",
+        "@kabmo-labs/kabmo-acp-session-config": "workspace:*",
+        "@kabmo-labs/kabmo-acp-turn": "workspace:*",
+        "@kabmo-labs/kabmo-chat-contracts": "workspace:*",
+        "@kabmo-labs/kabmo-chat-tool": "workspace:*",
+        "@kabmo-labs/kabmo-db": "workspace:*",
+        "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
+        "@kabmo-labs/kabmo-harness-launch": "workspace:*",
+        "@kabmo-labs/kabmo-idle-reaper": "workspace:*",
+        "@kabmo-labs/kabmo-omp-mapper": "workspace:*",
+        "@kabmo-labs/kabmo-omp-messages-map": "workspace:*",
+        "@kabmo-labs/kabmo-omp-mode": "workspace:*",
+        "@kabmo-labs/kabmo-omp-rpc-protocol": "workspace:*",
+        "@kabmo-labs/kabmo-omp-session-parse": "workspace:*",
+        "@kabmo-labs/kabmo-realtime-signals": "workspace:*",
+        "@kabmo-labs/kabmo-session-stream-state": "workspace:*",
       },
     },
     "packages/kabmo-acp-stdio": {
@@ -939,6 +965,8 @@
     "@kabmo-labs/kabmo-acp-session": ["@kabmo-labs/kabmo-acp-session@workspace:packages/kabmo-acp-session"],
 
     "@kabmo-labs/kabmo-acp-session-config": ["@kabmo-labs/kabmo-acp-session-config@workspace:packages/kabmo-acp-session-config"],
+
+    "@kabmo-labs/kabmo-acp-session-core": ["@kabmo-labs/kabmo-acp-session-core@workspace:packages/kabmo-acp-session-core"],
 
     "@kabmo-labs/kabmo-acp-stdio": ["@kabmo-labs/kabmo-acp-stdio@workspace:packages/kabmo-acp-stdio"],
 

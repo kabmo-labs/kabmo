@@ -30,7 +30,7 @@ import {
   loadAcpGoalState,
   saveAcpGoalState,
   type AcpGoalState,
-} from '@/server/lib/harness/acp/acp-goal-state.server';
+} from '@kabmo-labs/kabmo-acp-session-core/acp-goal-state.server';
 import { notePromptTitle } from '@kabmo-labs/kabmo-harness-session/session-title.server';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 

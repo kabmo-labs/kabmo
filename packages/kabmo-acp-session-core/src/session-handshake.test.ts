@@ -11,7 +11,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { handshakeAcpSession, type AcpHandshakeTarget } from '@/server/lib/harness/acp/session-handshake';
+import { handshakeAcpSession, type AcpHandshakeTarget } from './session-handshake';
 import type { AcpConfigOption } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 
 function target(): AcpHandshakeTarget {

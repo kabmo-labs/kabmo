@@ -14,11 +14,11 @@
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
-import { getDb } from '@/server/db.server';
+import { getDb } from '@kabmo-labs/kabmo-db/lifecycle';
 import {
   AcpTranscriptRecorder,
   loadAcpTranscript,
-} from '@/server/lib/harness/acp/session-transcript.server';
+} from './session-transcript.server';
 
 const SESSION = 'child-1';
 

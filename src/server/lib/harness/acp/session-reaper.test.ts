@@ -15,7 +15,7 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { reclaimIdleAcpSession } from '@/server/lib/harness/acp/session-idle';
+import { reclaimIdleAcpSession } from '@kabmo-labs/kabmo-acp-session-core/session-idle';
 import { UNPROBED_CAPABILITIES } from '@kabmo-labs/kabmo-harness-launch/capabilities';
 import { mountSession, notify } from '@/server/lib/harness/acp/session.test-util';
 

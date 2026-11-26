@@ -18,11 +18,11 @@ import {
   AcpBackgroundProbe,
   BACKGROUND_LOAD_TIMEOUT_MS,
   backgroundPullPrompt,
-} from '@/server/lib/harness/acp/background-probe';
+} from './background-probe';
 import {
   deliverBackgroundNotice,
   type BackgroundNoticeHost,
-} from '@/server/lib/harness/acp/background-work';
+} from './background-work';
 import type { AcpProcess } from '@kabmo-labs/kabmo-acp-client/client';
 import type { AcpFrameMapper } from '@kabmo-labs/kabmo-acp-mapper/frames';
 import { promptBlocks } from '@kabmo-labs/kabmo-acp-prompt/prompt';

@@ -15,7 +15,7 @@ import {
   backgroundNotice,
   backgroundNoticeFrames,
   spawnsBackgroundWork,
-} from '@/server/lib/harness/acp/background-work';
+} from './background-work';
 
 const toolCall = (name: string) => ({
   role: 'assistant',

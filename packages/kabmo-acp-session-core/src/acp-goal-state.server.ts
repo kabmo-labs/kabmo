@@ -12,7 +12,7 @@
  * strip, markers and reload logic work unchanged.
  */
 
-import { getDb } from '@/server/db.server';
+import { getDb } from '@kabmo-labs/kabmo-db/lifecycle';
 import type { GoalContinuation, GoalRecord } from '@kabmo-labs/kabmo-omp-mode/types';
 
 /** The row, as the composer and the driver read it. */

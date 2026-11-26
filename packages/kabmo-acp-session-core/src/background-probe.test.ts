@@ -10,7 +10,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { AcpBackgroundProbe } from '@/server/lib/harness/acp/background-probe';
+import { AcpBackgroundProbe } from './background-probe';
 
 const chunk = (update: Record<string, unknown>) => ({ update });
 const textChunk = (kind: 'user_message_chunk' | 'agent_message_chunk', text: string) =>

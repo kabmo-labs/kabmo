@@ -16,7 +16,7 @@
  * write there would be erased by the next layout save.
  */
 
-import { getDb } from '@/server/db.server';
+import { getDb } from '@kabmo-labs/kabmo-db/lifecycle';
 import type { DbClient } from '@kabmo-labs/kabmo-db/client';
 
 const GRANTS_SQL = `

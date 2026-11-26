@@ -21,8 +21,8 @@
  * (`chatMessageFromEvent`), so a recorded row and a replayed row agree.
  */
 
-import { getDb } from '@/server/db.server';
-import { chatMessageFromEvent } from '@/server/lib/harness/acp/replay-transcript';
+import { getDb } from '@kabmo-labs/kabmo-db/lifecycle';
+import { chatMessageFromEvent } from '@kabmo-labs/kabmo-acp-session-core/replay-transcript';
 import { hasAssistantRow } from '@/shared/lib/chat/transcript-rows';
 import {
   pairToolOutputs,

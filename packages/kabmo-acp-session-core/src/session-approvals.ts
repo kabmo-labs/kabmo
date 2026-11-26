@@ -15,7 +15,7 @@
 
 import { settlePermissionDialog } from '@kabmo-labs/kabmo-acp-session-config/session-config';
 import type { PendingPermissions } from '@kabmo-labs/kabmo-acp-client/permissions';
-import { ACP_CONFIG_EFFECTS } from '@/server/lib/harness/acp/config-effects';
+import { ACP_CONFIG_EFFECTS } from './config-effects';
 
 /** The process slice answering a dialog needs. */
 export interface AcpPermissionResponder {

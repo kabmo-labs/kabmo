@@ -32,7 +32,7 @@ import {
   finishAcpGoal,
   type AcpGoalHost,
 } from '@/server/lib/harness/acp/acp-goal.server';
-import { hasAcpGoalSession, loadAcpGoalState } from '@/server/lib/harness/acp/acp-goal-state.server';
+import { hasAcpGoalSession, loadAcpGoalState } from '@kabmo-labs/kabmo-acp-session-core/acp-goal-state.server';
 
 interface DriverState {
   goalId: string;

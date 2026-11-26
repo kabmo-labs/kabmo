@@ -15,7 +15,7 @@ import { liveModeSelection } from '@/server/lib/omp/mode/live-selection';
 import { getLiveSession, harnessOfSession } from '@/server/lib/omp/rpc/session-registry';
 import { knownHarness, loadHarnessSession } from '@kabmo-labs/kabmo-harness-session/session-store.server';
 import { HARNESS_IDS } from '@kabmo-labs/kabmo-harness-catalog';
-import { loadAcpGoalState } from '@/server/lib/harness/acp/acp-goal-state.server';
+import { loadAcpGoalState } from '@kabmo-labs/kabmo-acp-session-core/acp-goal-state.server';
 import { selectValues } from '@kabmo-labs/kabmo-harness-launch/launch';
 import type { AcpConfigOption } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import type { SessionModeState } from '@kabmo-labs/kabmo-harness-session-modes';

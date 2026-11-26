@@ -28,8 +28,8 @@
  * after the turn regardless. Never invents a failure for an answer it missed.
  */
 
-import { collectReplayFrame, newToolNotice, type ReplaySegment } from '@/server/lib/harness/acp/background-replay';
-import { backgroundNotice } from '@/server/lib/harness/acp/background-work';
+import { collectReplayFrame, newToolNotice, type ReplaySegment } from './background-replay';
+import { backgroundNotice } from './background-work';
 
 export const BACKGROUND_FIRST_DELAY_MS = 2_000;
 export const BACKGROUND_MAX_DELAY_MS = 30_000;

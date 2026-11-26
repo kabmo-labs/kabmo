@@ -45,7 +45,7 @@ import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import type { AcpTurns, AcpTurnEndInfo } from '@kabmo-labs/kabmo-acp-turn/turn';
 import { driveAcpGoalAfterTurn } from '@/server/lib/harness/acp/acp-goal-driver.server';
 import type { AcpGoalHost } from '@/server/lib/harness/acp/acp-goal.server';
-import { assistantTextOf, spawnsBackgroundWork, toolIdsOf } from '@/server/lib/harness/acp/background-work';
+import { assistantTextOf, spawnsBackgroundWork, toolIdsOf } from '@kabmo-labs/kabmo-acp-session-core/background-work';
 import { isLostSession } from '@kabmo-labs/kabmo-acp-session/session-lost';
 
 /** What a turn reads and moves on the session. */

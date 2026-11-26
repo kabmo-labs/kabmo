@@ -18,7 +18,7 @@
  * must not be advertised to the agent either.
  */
 
-import { getDb } from '@/server/db.server';
+import { getDb } from '@kabmo-labs/kabmo-db/lifecycle';
 import { worktreeRowFor } from '@kabmo-labs/kabmo-db/worktree-registry';
 
 /** The session's own root plus any registered parent repository root. */

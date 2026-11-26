@@ -28,7 +28,7 @@ import { ensurePromptHistorySchema } from '@/server/lib/chat/schema.server';
 import { ensureSessionMcpSchema } from '@/server/lib/mcp/schema.server';
 import { ensureNotificationSchema } from '@/server/lib/notifications/schema.server';
 import { ensureConnectSchema } from '@/server/lib/connect/devices.server';
-import { ensureAcpGrantSchema } from '@/server/lib/harness/acp/grants.server';
+import { ensureAcpGrantSchema } from '@kabmo-labs/kabmo-acp-session-core/grants.server';
 import { migrateWorkspaceFolderColumns } from '@/shared/lib/workspace/schema-migrations';
 import { migrateSessionStreamStateColumns } from '@/shared/lib/omp/session/schema-migrations';
 

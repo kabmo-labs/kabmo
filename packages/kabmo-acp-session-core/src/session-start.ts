@@ -16,13 +16,13 @@
 
 import type { AcpProcess } from '@kabmo-labs/kabmo-acp-client/client';
 import type { AcpFrameMapper } from '@kabmo-labs/kabmo-acp-mapper/frames';
-import type { AcpReplay } from '@/server/lib/harness/acp/replay';
+import type { AcpReplay } from './replay';
 import type {
   AcpHandshakeSelections,
   AcpHandshakeTarget,
-} from '@/server/lib/harness/acp/session-handshake';
-import { handshakeAcpSession } from '@/server/lib/harness/acp/session-handshake';
-import { loadAcpGrants } from '@/server/lib/harness/acp/grants.server';
+} from './session-handshake';
+import { handshakeAcpSession } from './session-handshake';
+import { loadAcpGrants } from './grants.server';
 import type { IdleReaper } from '@kabmo-labs/kabmo-idle-reaper';
 
 /** The session slice a start drives: the handshake target, its clock and id. */

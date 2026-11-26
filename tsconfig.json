@@ -943,6 +943,54 @@
       "@kabmo-labs/kabmo-db/worktree-registry": [
         "./packages/kabmo-db/src/worktree-registry.server.ts"
       ],
+      "@kabmo-labs/kabmo-acp-session-core": [
+        "./packages/kabmo-acp-session-core/src/session-start.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core/acp-goal-state.server": [
+        "./packages/kabmo-acp-session-core/src/acp-goal-state.server.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core/background-probe": [
+        "./packages/kabmo-acp-session-core/src/background-probe.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core/background-replay": [
+        "./packages/kabmo-acp-session-core/src/background-replay.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core/background-work": [
+        "./packages/kabmo-acp-session-core/src/background-work.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core/config-effects": [
+        "./packages/kabmo-acp-session-core/src/config-effects.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core/grants.server": [
+        "./packages/kabmo-acp-session-core/src/grants.server.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core/replay": [
+        "./packages/kabmo-acp-session-core/src/replay.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core/replay-transcript": [
+        "./packages/kabmo-acp-session-core/src/replay-transcript.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core/session-approvals": [
+        "./packages/kabmo-acp-session-core/src/session-approvals.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core/session-handshake": [
+        "./packages/kabmo-acp-session-core/src/session-handshake.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core/session-idle": [
+        "./packages/kabmo-acp-session-core/src/session-idle.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core/session-inbound": [
+        "./packages/kabmo-acp-session-core/src/session-inbound.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core/session-roots.server": [
+        "./packages/kabmo-acp-session-core/src/session-roots.server.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core/session-start": [
+        "./packages/kabmo-acp-session-core/src/session-start.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core/session-wiring": [
+        "./packages/kabmo-acp-session-core/src/session-wiring.ts"
+      ],
       "@kabmo-labs/kabmo-ui": [
         "./packages/kabmo-ui/src/index.tsx"
       ],

@@ -18,7 +18,7 @@
  * (`markStream`, `onNotification`, `onClientRequest`, `proc`).
  */
 
-import { AcpReplay } from '@/server/lib/harness/acp/replay';
+import { AcpReplay } from '@kabmo-labs/kabmo-acp-session-core/replay';
 import { AcpSession } from '@/server/lib/harness/acp/session';
 import { AcpUsageMeter } from '@kabmo-labs/kabmo-acp-session/session-usage';
 import { AcpFrameMapper } from '@kabmo-labs/kabmo-acp-mapper/frames';
