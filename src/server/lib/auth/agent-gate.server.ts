@@ -21,7 +21,7 @@ import {
   agentTokenScopeForPath,
   bearerToken,
   lookupAgentToken,
-} from '@/server/lib/sessions/agent-token.server';
+} from '@kabmo-labs/kabmo-session-relations/agent-token.server';
 import { resolveAgentAccess } from '@/server/lib/sessions/relation-access.server';
 
 export type AgentGateOutcome =

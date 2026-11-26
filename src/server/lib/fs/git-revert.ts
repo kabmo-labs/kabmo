@@ -39,7 +39,7 @@
  * a decision (`--ours`/`--theirs`/edit), so it has its own actions.
  */
 
-import { runGit } from '@/server/lib/fs/git-run';
+import { runGit } from '@kabmo-labs/kabmo-git-runner/git-run';
 
 /** Runs a git command and throws with its stderr when it exits non-zero. */
 async function expectOk(args: string[], cwd: string, timeout?: number): Promise<void> {

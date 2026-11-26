@@ -18,7 +18,7 @@ import { ensureSessionRelationsSchema } from '@/server/lib/sessions/schema.serve
 import {
   createSessionRelation,
   setParentNotifications,
-} from '@/server/lib/sessions/relations.server';
+} from '@kabmo-labs/kabmo-session-relations/relations.server';
 import {
   cancelNoticeTimer,
   materializeNotice,

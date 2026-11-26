@@ -17,7 +17,7 @@
  */
 
 import { getDb } from '@/server/db.server';
-import { listChildRelations, listOwnedRelations } from '@/server/lib/sessions/relations.server';
+import { listChildRelations, listOwnedRelations } from '@kabmo-labs/kabmo-session-relations/relations.server';
 
 /** Every dependent descendant, parents first, deduplicated, excluding the root. */
 export async function collectDependents(sessionId: string): Promise<string[]> {

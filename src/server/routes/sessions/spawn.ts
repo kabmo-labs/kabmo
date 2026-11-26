@@ -26,7 +26,7 @@ import {
   SessionSpawnError,
   spawnChildSession,
 } from '@/server/lib/sessions/spawn.server';
-import { bearerToken, verifyAgentToken } from '@/server/lib/sessions/agent-token.server';
+import { bearerToken, verifyAgentToken } from '@kabmo-labs/kabmo-session-relations/agent-token.server';
 
 type Visibility = 'visible' | 'hidden';
 type ParentNotifications = 'auto' | 'stuck' | 'off';

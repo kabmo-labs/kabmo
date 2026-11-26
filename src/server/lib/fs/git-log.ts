@@ -4,7 +4,7 @@ import { COMMIT_PAGE_SIZE } from '@/shared/lib/fs/commit-page';
 import { SAMPLE_GIT_COMMITS } from '@/client/data/mock/git-commits';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { runShell, shellOk } from '@/server/lib/fs/shell';
-import { GIT_ENV, runGit } from '@/server/lib/fs/git-run';
+import { GIT_ENV, runGit } from '@kabmo-labs/kabmo-git-runner/git-run';
 
 /**
  * Header/body and record separators in the `git log` format below.

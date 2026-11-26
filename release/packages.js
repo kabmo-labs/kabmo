@@ -205,8 +205,16 @@ export const RELEASE_PACKAGES = [
     name: '@kabmo-labs/kabmo-session-deleted',
   },
   {
+    dir: 'packages/kabmo-session-relations',
+    name: '@kabmo-labs/kabmo-session-relations',
+  },
+  {
     dir: 'packages/kabmo-session-stream-state',
     name: '@kabmo-labs/kabmo-session-stream-state',
+  },
+  {
+    dir: 'packages/kabmo-worktree-topology',
+    name: '@kabmo-labs/kabmo-worktree-topology',
   },
   {
     dir: 'packages/kabmo-worktree-types',

@@ -14,7 +14,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { flushTicks, mountSession, notify } from '@/server/lib/harness/acp/session.test-util';
-import { createSessionRelation } from '@/server/lib/sessions/relations.server';
+import { createSessionRelation } from '@kabmo-labs/kabmo-session-relations/relations.server';
 import { materializeNotice } from '@/server/lib/sessions/notify.server';
 import {
   parseChildOutcomeNotice,

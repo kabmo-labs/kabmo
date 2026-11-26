@@ -26,7 +26,7 @@ import { loadStreamStates } from '@kabmo-labs/kabmo-session-stream-state';
 import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 import type { QueueDeliveryHost } from '@/server/lib/queue/delivery.server';
 import { resolveSessionRef } from '@/server/lib/sessions/resolve.server';
-import { mintAgentEnvironment, rememberAgentToken } from '@/server/lib/sessions/agent-token.server';
+import { mintAgentEnvironment, rememberAgentToken } from '@kabmo-labs/kabmo-session-relations/agent-token.server';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 
 export interface DispatchDeps {

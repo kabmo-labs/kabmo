@@ -41,7 +41,7 @@ import { join } from 'path';
 import fs from 'fs';
 import { getDb } from '@/server/db.server';
 import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
-import { runGit } from '@/server/lib/fs/git-run';
+import { runGit } from '@kabmo-labs/kabmo-git-runner/git-run';
 import { expandHome } from '@/server/routes/folders/create';
 import { defaultFolderName, registerWorkspaceFolder } from '@/server/lib/workspace/register-folder.server';
 import { isGitUrl, repoSlug } from '@/shared/lib/git/url';

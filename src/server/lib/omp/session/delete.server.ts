@@ -41,7 +41,7 @@ import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 import { failWaitingOn } from '@/server/lib/waiting/store.server';
 import { siblingDirForSession } from '@kabmo-labs/kabmo-omp-subagent/history-paths';
 import { isSinglePathSegment } from '@kabmo-labs/kabmo-paths/path-segment';
-import { deleteSessionRelations } from '@/server/lib/sessions/relations.server';
+import { deleteSessionRelations } from '@kabmo-labs/kabmo-session-relations/relations.server';
 import { removeSessionMcpOverlay } from '@/server/lib/mcp/session-overlay.server';
 import { purgeChangeJournal } from '@/server/lib/changes/purge.server';
 import { markSessionDeleted } from '@kabmo-labs/kabmo-session-deleted';

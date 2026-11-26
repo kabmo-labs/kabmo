@@ -39,7 +39,7 @@
 
 import fs from 'node:fs';
 import path from 'path';
-import { runGit } from '@/server/lib/fs/git-run';
+import { runGit } from '@kabmo-labs/kabmo-git-runner/git-run';
 import type { GitOperation, GitState } from '@/shared/types';
 
 // The state vocabulary lives in `shared/types/git.ts` because the panel renders
@@ -153,7 +153,7 @@ async function isDetachedHead(cwd: string): Promise<boolean> {
 }
 
 /** Human wording for an operation, for a banner or a refusal message. */
-export { OPERATION_LABELS } from '@/shared/lib/fs/git-unmerged';
+export { OPERATION_LABELS } from '@kabmo-labs/kabmo-git-runner/git-unmerged';
 
 /** The abort verb per operation — the ONE place the mapping is written down. */
 export function abortArgsFor(operation: GitOperation): string[] {

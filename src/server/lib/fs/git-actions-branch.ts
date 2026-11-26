@@ -23,7 +23,7 @@
 import { invalidateRemoteRefs, markRemoteRefsFresh } from '@/server/lib/fs/git-sync';
 import { pullBranch, pushBranch } from '@/server/lib/fs/git-publish';
 import { abortArgsFor, readGitState } from '@/server/lib/fs/git-state';
-import { OPERATION_LABELS } from '@/shared/lib/fs/git-unmerged';
+import { OPERATION_LABELS } from '@kabmo-labs/kabmo-git-runner/git-unmerged';
 import { continueArgsFor, mergeBranch, resolveConflict, type ConflictSide } from '@/server/lib/fs/git-merge';
 import { deleteBranch, renameBranch } from '@/server/lib/fs/git-branch';
 import { applyStash, dropStash, pushStash } from '@/server/lib/fs/git-stash';

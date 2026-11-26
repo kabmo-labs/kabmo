@@ -33,7 +33,7 @@ import { join } from 'node:path';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { getDb } from '@/server/db.server';
 import { ensureSessionRelationsSchema } from '@/server/lib/sessions/schema.server';
-import { createSessionRelation } from '@/server/lib/sessions/relations.server';
+import { createSessionRelation } from '@kabmo-labs/kabmo-session-relations/relations.server';
 import { cancelNoticeTimer, materializeNotice } from '@/server/lib/sessions/notify.server';
 import { foldSessionFrame } from '@/server/lib/omp/rpc/frame-fold';
 import { makeHost } from '@/server/lib/omp/rpc/frame-fold-host.test-util';

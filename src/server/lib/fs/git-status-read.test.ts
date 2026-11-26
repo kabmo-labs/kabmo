@@ -20,7 +20,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { testPosix } from '@/test-support/platform';
-import { parsePorcelainZ } from '@/server/lib/fs/git-run';
+import { parsePorcelainZ } from '@kabmo-labs/kabmo-git-runner/git-run';
 import { readGitStatus } from '@/server/lib/fs/git-status-read';
 import { removeDir } from '@/test-support/remove-dir';
 

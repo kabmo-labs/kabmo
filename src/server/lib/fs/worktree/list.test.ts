@@ -24,8 +24,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { canonicalPath, pathHolds } from '@kabmo-labs/kabmo-fs-canonical';
-import { findBranchInUse, listWorktrees, parseWorktreePorcelain } from '@/server/lib/fs/worktree/list';
-import { invalidateWorktreeTopology, readProjectWorktrees, worktreeForCwd } from '@/server/lib/fs/worktree/topology';
+import { findBranchInUse, listWorktrees, parseWorktreePorcelain } from '@kabmo-labs/kabmo-worktree-topology/list';
+import { invalidateWorktreeTopology, readProjectWorktrees, worktreeForCwd } from '@kabmo-labs/kabmo-worktree-topology/topology';
 import { removeDir } from '@/test-support/remove-dir';
 
 const FIXTURE_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'kabmo-worktree-list-'));

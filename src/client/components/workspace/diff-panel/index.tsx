@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'preact/hooks';
 import { useSessionUiState } from '@/client/hooks/workspace/session-state';
-import { isUnmergedCode } from '@/shared/lib/fs/git-unmerged';
+import { isUnmergedCode } from '@kabmo-labs/kabmo-git-runner/git-unmerged';
 import { useFileDiff } from '@/client/hooks/workspace/diff-file';
 import { useJournalDiff } from '@/client/hooks/workspace/journal-diff';
 import { useDiffGitActions } from '@/client/hooks/workspace/diff-git-actions';

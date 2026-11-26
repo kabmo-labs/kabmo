@@ -31,7 +31,7 @@
  * other side in half the states is worse than no button.
  */
 
-import { runGit } from '@/server/lib/fs/git-run';
+import { runGit } from '@kabmo-labs/kabmo-git-runner/git-run';
 import { readGitState } from '@/server/lib/fs/git-state';
 import type { GitOperation } from '@/shared/types';
 

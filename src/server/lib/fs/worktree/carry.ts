@@ -20,7 +20,7 @@
 import { existsSync, statSync } from 'fs';
 import { copyFile, mkdir } from 'fs/promises';
 import path from 'path';
-import { runGit } from '@/server/lib/fs/git-run';
+import { runGit } from '@kabmo-labs/kabmo-git-runner/git-run';
 import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
 
 /** Folders worth asking git about. A name here that git does not ignore is skipped. */

@@ -31,8 +31,8 @@
 import path from 'path';
 import { signalName } from '@kabmo-labs/kabmo-sdk';
 import { isWithinRoot } from '@kabmo-labs/kabmo-workspace-root/root';
-import { isUnmergedCode } from '@/shared/lib/fs/git-unmerged';
-import type { GitChange } from '@/shared/types';
+import { isUnmergedCode } from './git-unmerged';
+import type { GitChange } from '@kabmo-labs/kabmo-app-contracts/git';
 
 export interface GitRunResult {
   stdout: string;

@@ -40,6 +40,7 @@
         "@kabmo-labs/kabmo-fs-media": "workspace:*",
         "@kabmo-labs/kabmo-fs-toolchain": "workspace:*",
         "@kabmo-labs/kabmo-git-env": "workspace:*",
+        "@kabmo-labs/kabmo-git-runner": "workspace:*",
         "@kabmo-labs/kabmo-guards": "workspace:*",
         "@kabmo-labs/kabmo-harness-account-store": "workspace:*",
         "@kabmo-labs/kabmo-harness-accounts": "workspace:*",
@@ -116,12 +117,14 @@
         "@kabmo-labs/kabmo-runtime-flags": "workspace:*",
         "@kabmo-labs/kabmo-sdk": "workspace:*",
         "@kabmo-labs/kabmo-session-deleted": "workspace:*",
+        "@kabmo-labs/kabmo-session-relations": "workspace:*",
         "@kabmo-labs/kabmo-session-stream-state": "workspace:*",
         "@kabmo-labs/kabmo-settings-contracts": "workspace:*",
         "@kabmo-labs/kabmo-settings-store": "workspace:*",
         "@kabmo-labs/kabmo-ui": "workspace:*",
         "@kabmo-labs/kabmo-workspace-root": "workspace:*",
         "@kabmo-labs/kabmo-workspace-sidebar": "workspace:*",
+        "@kabmo-labs/kabmo-worktree-topology": "workspace:*",
         "@kabmo-labs/kabmo-worktree-types": "workspace:*",
         "@shikijs/langs": "^4.4.3",
         "@shikijs/themes": "^4.4.3",
@@ -383,6 +386,16 @@
     "packages/kabmo-git-env": {
       "name": "@kabmo-labs/kabmo-git-env",
       "version": "0.0.1",
+    },
+    "packages/kabmo-git-runner": {
+      "name": "@kabmo-labs/kabmo-git-runner",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kabmo-labs/kabmo-app-contracts": "workspace:*",
+        "@kabmo-labs/kabmo-git-env": "workspace:*",
+        "@kabmo-labs/kabmo-sdk": "workspace:*",
+        "@kabmo-labs/kabmo-workspace-root": "workspace:*",
+      },
     },
     "packages/kabmo-guards": {
       "name": "@kabmo-labs/kabmo-guards",
@@ -1021,6 +1034,14 @@
         "@kabmo-labs/kabmo-db": "workspace:*",
       },
     },
+    "packages/kabmo-session-relations": {
+      "name": "@kabmo-labs/kabmo-session-relations",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kabmo-labs/kabmo-app-contracts": "workspace:*",
+        "@kabmo-labs/kabmo-db": "workspace:*",
+      },
+    },
     "packages/kabmo-session-stream-state": {
       "name": "@kabmo-labs/kabmo-session-stream-state",
       "version": "0.0.1",
@@ -1064,6 +1085,15 @@
       "version": "0.0.1",
       "dependencies": {
         "@kabmo-labs/kabmo-app-contracts": "workspace:*",
+      },
+    },
+    "packages/kabmo-worktree-topology": {
+      "name": "@kabmo-labs/kabmo-worktree-topology",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kabmo-labs/kabmo-fs-canonical": "workspace:*",
+        "@kabmo-labs/kabmo-git-runner": "workspace:*",
+        "@kabmo-labs/kabmo-omp-worktree": "workspace:*",
       },
     },
     "packages/kabmo-worktree-types": {
@@ -1192,6 +1222,8 @@
     "@kabmo-labs/kabmo-fs-toolchain": ["@kabmo-labs/kabmo-fs-toolchain@workspace:packages/kabmo-fs-toolchain"],
 
     "@kabmo-labs/kabmo-git-env": ["@kabmo-labs/kabmo-git-env@workspace:packages/kabmo-git-env"],
+
+    "@kabmo-labs/kabmo-git-runner": ["@kabmo-labs/kabmo-git-runner@workspace:packages/kabmo-git-runner"],
 
     "@kabmo-labs/kabmo-guards": ["@kabmo-labs/kabmo-guards@workspace:packages/kabmo-guards"],
 
@@ -1345,6 +1377,8 @@
 
     "@kabmo-labs/kabmo-session-deleted": ["@kabmo-labs/kabmo-session-deleted@workspace:packages/kabmo-session-deleted"],
 
+    "@kabmo-labs/kabmo-session-relations": ["@kabmo-labs/kabmo-session-relations@workspace:packages/kabmo-session-relations"],
+
     "@kabmo-labs/kabmo-session-stream-state": ["@kabmo-labs/kabmo-session-stream-state@workspace:packages/kabmo-session-stream-state"],
 
     "@kabmo-labs/kabmo-settings-contracts": ["@kabmo-labs/kabmo-settings-contracts@workspace:packages/kabmo-settings-contracts"],
@@ -1356,6 +1390,8 @@
     "@kabmo-labs/kabmo-workspace-root": ["@kabmo-labs/kabmo-workspace-root@workspace:packages/kabmo-workspace-root"],
 
     "@kabmo-labs/kabmo-workspace-sidebar": ["@kabmo-labs/kabmo-workspace-sidebar@workspace:packages/kabmo-workspace-sidebar"],
+
+    "@kabmo-labs/kabmo-worktree-topology": ["@kabmo-labs/kabmo-worktree-topology@workspace:packages/kabmo-worktree-topology"],
 
     "@kabmo-labs/kabmo-worktree-types": ["@kabmo-labs/kabmo-worktree-types@workspace:packages/kabmo-worktree-types"],
 

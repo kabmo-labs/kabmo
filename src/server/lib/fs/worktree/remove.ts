@@ -20,10 +20,10 @@
 import { existsSync, rmSync } from 'fs';
 import path from 'path';
 import { canonicalPath, pathHolds } from '@kabmo-labs/kabmo-fs-canonical';
-import { runGit } from '@/server/lib/fs/git-run';
+import { runGit } from '@kabmo-labs/kabmo-git-runner/git-run';
 import { resolveProjectRoot } from '@kabmo-labs/kabmo-omp-worktree';
 import { WorktreeError } from '@/server/lib/fs/worktree/errors';
-import { isWorkTree, listWorktrees } from '@/server/lib/fs/worktree/list';
+import { isWorkTree, listWorktrees } from '@kabmo-labs/kabmo-worktree-topology/list';
 
 /** Changed + untracked count in `directory`; 0 when git cannot answer. */
 export async function dirtyCount(directory: string): Promise<number> {

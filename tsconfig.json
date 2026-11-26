@@ -1252,6 +1252,36 @@
       "@kabmo-labs/kabmo-workspace-sidebar/sidebar-sort": [
         "./packages/kabmo-workspace-sidebar/src/sidebar-sort.ts"
       ],
+      "@kabmo-labs/kabmo-git-runner": [
+        "./packages/kabmo-git-runner/src/git-run.ts"
+      ],
+      "@kabmo-labs/kabmo-git-runner/git-run": [
+        "./packages/kabmo-git-runner/src/git-run.ts"
+      ],
+      "@kabmo-labs/kabmo-git-runner/git-unmerged": [
+        "./packages/kabmo-git-runner/src/git-unmerged.ts"
+      ],
+      "@kabmo-labs/kabmo-worktree-topology": [
+        "./packages/kabmo-worktree-topology/src/topology.ts"
+      ],
+      "@kabmo-labs/kabmo-worktree-topology/list": [
+        "./packages/kabmo-worktree-topology/src/list.ts"
+      ],
+      "@kabmo-labs/kabmo-worktree-topology/topology": [
+        "./packages/kabmo-worktree-topology/src/topology.ts"
+      ],
+      "@kabmo-labs/kabmo-session-relations/relations.server": [
+        "./packages/kabmo-session-relations/src/relations.server.ts"
+      ],
+      "@kabmo-labs/kabmo-session-relations/agent-token.server": [
+        "./packages/kabmo-session-relations/src/agent-token.server.ts"
+      ],
+      "@kabmo-labs/kabmo-session-relations/relation-types": [
+        "./packages/kabmo-session-relations/src/relation-types.ts"
+      ],
+      "@kabmo-labs/kabmo-session-relations/sidebar-relations.server": [
+        "./packages/kabmo-session-relations/src/sidebar-relations.server.ts"
+      ],
       "@kabmo-labs/kabmo-ui": [
         "./packages/kabmo-ui/src/index.tsx"
       ],

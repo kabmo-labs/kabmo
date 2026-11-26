@@ -20,7 +20,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { authGate, initAuth } from '@/server/lib/auth/guard';
-import { createAgentToken, rememberAgentToken } from '@/server/lib/sessions/agent-token.server';
+import { createAgentToken, rememberAgentToken } from '@kabmo-labs/kabmo-session-relations/agent-token.server';
 import { ensureSessionRelationsSchema } from '@/server/lib/sessions/schema.server';
 import { getDb } from '@/server/db.server';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';

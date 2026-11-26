@@ -31,7 +31,7 @@
  * entry is also disposed after `ACP_PREWARM_TTL_MS`.
  */
 
-import { mintAgentEnvironment } from '@/server/lib/sessions/agent-token.server';
+import { mintAgentEnvironment } from '@kabmo-labs/kabmo-session-relations/agent-token.server';
 import { loadHarnessConfig } from '@kabmo-labs/kabmo-harness-config-store/config.server';
 import { resolveAccountLaunch } from '@kabmo-labs/kabmo-harness-account-store';
 import { sessionLaunchCommand } from '@kabmo-labs/kabmo-harness-launch/launch';

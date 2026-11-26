@@ -17,7 +17,7 @@
 
 import { json, NO_STORE_HEADERS, type ActionFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { listPairedDevices, revokeDevice, touchDevice } from '@/server/lib/connect/devices.server';
-import { bearerToken } from '@/server/lib/sessions/agent-token.server';
+import { bearerToken } from '@kabmo-labs/kabmo-session-relations/agent-token.server';
 import { verifyDeviceToken } from '@/server/lib/connect/devices.server';
 import type { ConnectRouteKind } from '@/shared/lib/connect/types';
 

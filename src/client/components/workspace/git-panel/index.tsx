@@ -15,7 +15,7 @@ import { useGitPanelData } from '@/client/hooks/workspace/git-panel-data';
 import { useGitActions } from '@/client/hooks/workspace/git-actions';
 import { useCommitBox } from '@/client/hooks/workspace/commit-box';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
-import { isUnmergedCode } from '@/shared/lib/fs/git-unmerged';
+import { isUnmergedCode } from '@kabmo-labs/kabmo-git-runner/git-unmerged';
 import { useGitActionOutcome } from '@/client/hooks/workspace/git-action-outcome';
 import { confirmRequestFor } from '@/client/components/workspace/git-panel/confirm-request';
 import type { ConfirmRequest } from '@/client/components/workspace/git-panel/confirm-request';

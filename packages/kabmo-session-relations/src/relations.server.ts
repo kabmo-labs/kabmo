@@ -18,8 +18,8 @@
  * subtree height so a deep branch cannot be lifted under a deep parent.
  */
 
-import { getDb } from '@/server/db.server';
-import { forgetAgentTokenCache } from '@/server/lib/sessions/agent-token.server';
+import { getDb } from '@kabmo-labs/kabmo-db/lifecycle';
+import { forgetAgentTokenCache } from './agent-token.server';
 
 import {
   MAX_SESSION_DEPTH,
@@ -30,7 +30,7 @@ import {
   type SessionOriginKind,
   type SessionRelation,
   type SessionVisibility,
-} from '@/server/lib/sessions/relation-types';
+} from './relation-types';
 
 function requireId(value: string, field: string): string {
   const trimmed = value.trim();

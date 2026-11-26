@@ -25,7 +25,7 @@
 
 import { invalidateRemoteRefs } from '@/server/lib/fs/git-sync';
 import { readGitState } from '@/server/lib/fs/git-state';
-import { runGit } from '@/server/lib/fs/git-run';
+import { runGit } from '@kabmo-labs/kabmo-git-runner/git-run';
 import { revertAll, revertPath } from '@/server/lib/fs/git-revert';
 import {
   cherryPick,

@@ -15,14 +15,14 @@ import { json } from '@kabmo-labs/kabmo-http';
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { methodNotAllowed, parseJsonBody } from '@/server/lib/route-adapter';
 import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
-import { SessionRelationError } from '@/server/lib/sessions/relation-types';
+import { SessionRelationError } from '@kabmo-labs/kabmo-session-relations/relation-types';
 import {
   getSessionRelation,
   listChildRelations,
   listForkRelations,
   listOwnedRelations,
   setSessionParent,
-} from '@/server/lib/sessions/relations.server';
+} from '@kabmo-labs/kabmo-session-relations/relations.server';
 
 export async function getSessionRelations({ request, params }: LoaderFunctionArgs) {
   if (request.method !== 'GET') return methodNotAllowed({ request, params });

@@ -15,7 +15,7 @@
 
 import { freshProbe } from '@kabmo-labs/kabmo-harness-config-store/probe-cache.server';
 import { startAcpSession, takeAcpReplayEvents } from '@/server/lib/harness/spawn.server';
-import { mintAgentEnvironment, rememberAgentToken } from '@/server/lib/sessions/agent-token.server';
+import { mintAgentEnvironment, rememberAgentToken } from '@kabmo-labs/kabmo-session-relations/agent-token.server';
 import {
   knownHarness, loadHarnessSession, loadHarnessSessionTitle, repointHarnessSession,
   type HarnessSessionRecord,

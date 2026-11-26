@@ -26,7 +26,7 @@
 import path from 'path';
 import { mkdir } from 'fs/promises';
 import { getDataDir } from '@kabmo-labs/kabmo-paths/paths';
-import { runGit } from '@/server/lib/fs/git-run';
+import { runGit } from '@kabmo-labs/kabmo-git-runner/git-run';
 import { canonicalPath } from '@kabmo-labs/kabmo-fs-canonical';
 import { resolveProjectRoot } from '@kabmo-labs/kabmo-omp-worktree';
 import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
@@ -45,7 +45,7 @@ import {
   resolveConfiguredWorktreeRoot,
   resolveTargetDirectory,
 } from '@/server/lib/fs/worktree/location';
-import { findBranchInUse, isWorkTree, refExists } from '@/server/lib/fs/worktree/list';
+import { findBranchInUse, isWorkTree, refExists } from '@kabmo-labs/kabmo-worktree-topology/list';
 import { resolveProjectId } from '@/server/lib/fs/worktree/project-id';
 
 /**

@@ -13,12 +13,12 @@
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
-import { getDb } from '@/server/db.server';
+import { getDb } from '@kabmo-labs/kabmo-db/lifecycle';
 import { ensureSessionRelationsSchema } from '@/server/lib/sessions/schema.server';
 import {
   MAX_SESSION_DEPTH,
   SessionRelationError,
-} from '@/server/lib/sessions/relation-types';
+} from './relation-types';
 import {
   createSessionRelation,
   deleteSessionRelations,
@@ -29,7 +29,7 @@ import {
   setParentNotifications,
   setSessionParent,
   setSessionVisibility,
-} from '@/server/lib/sessions/relations.server';
+} from './relations.server';
 
 beforeEach(async () => {
   await isolateDb();

@@ -5,7 +5,7 @@
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
-import { getDb } from '@/server/db.server';
+import { getDb } from '@kabmo-labs/kabmo-db/lifecycle';
 import { ensureSessionRelationsSchema } from '@/server/lib/sessions/schema.server';
 import {
   agentTokenScopeForPath,
@@ -16,7 +16,7 @@ import {
   rememberAgentToken,
   revokeAgentToken,
   verifyAgentToken,
-} from '@/server/lib/sessions/agent-token.server';
+} from './agent-token.server';
 
 beforeEach(async () => {
   await isolateDb();

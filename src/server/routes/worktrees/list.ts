@@ -26,7 +26,7 @@ import { scanSessionInfoCached } from '@kabmo-labs/kabmo-omp-session-scan/files'
 import { canonicalPath } from '@kabmo-labs/kabmo-fs-canonical';
 import { worktreeIdentityFor, listWorktreeRows } from '@kabmo-labs/kabmo-db/worktree-registry';
 import { dirtyCount, commitsAheadOf } from '@/server/lib/fs/worktree/remove';
-import { listWorktrees, isWorkTree } from '@/server/lib/fs/worktree/list';
+import { listWorktrees, isWorkTree } from '@kabmo-labs/kabmo-worktree-topology/list';
 import {
   defaultWorktreeRoot,
   resolveConfiguredWorktreeRoot,

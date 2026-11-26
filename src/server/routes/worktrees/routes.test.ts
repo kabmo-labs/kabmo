@@ -24,7 +24,7 @@ import { getDb } from '@/server/db.server';
 import { loader as listLoader } from '@/server/routes/worktrees/list';
 import { action as createAction, validateAction } from '@/server/routes/worktrees/create';
 import { action as removeAction } from '@/server/routes/worktrees/remove';
-import { invalidateWorktreeTopology } from '@/server/lib/fs/worktree/topology';
+import { invalidateWorktreeTopology } from '@kabmo-labs/kabmo-worktree-topology/topology';
 import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { removeDir } from '@/test-support/remove-dir';

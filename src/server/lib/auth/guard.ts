@@ -30,7 +30,7 @@
 import { hashPassword, deriveCredentialKey, readSessionSecret, writeSessionSecret, type ActiveAuthConfig } from '@/server/lib/auth/config';
 import { readSessionCookie, verifySessionToken } from '@/server/lib/auth/token';
 import { agentGate } from '@/server/lib/auth/agent-gate.server';
-import { bearerToken } from '@/server/lib/sessions/agent-token.server';
+import { bearerToken } from '@kabmo-labs/kabmo-session-relations/agent-token.server';
 import { markDeviceConnected, verifyDeviceToken, readDeviceCookie } from '@/server/lib/connect/devices.server';
 import { rememberClientAddress } from '@/server/lib/auth/client-address';
 import type { CredentialHandover } from '@/shared/lib/auth/handover';

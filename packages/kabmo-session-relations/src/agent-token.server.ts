@@ -17,7 +17,7 @@
  * outlive the process that minted it.
  */
 
-import { getDb } from '@/server/db.server';
+import { getDb } from '@kabmo-labs/kabmo-db/lifecycle';
 
 interface CacheEntry {
   sessionId: string;

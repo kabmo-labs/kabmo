@@ -20,7 +20,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'preact/hooks';
-import type { ConflictMarkers } from '@/shared/lib/fs/git-unmerged';
+import type { ConflictMarkers } from '@kabmo-labs/kabmo-git-runner/git-unmerged';
 
 export interface DiffGitActions {
   /** A write is in flight; the toolbar locks its actions. */

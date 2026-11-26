@@ -25,7 +25,7 @@ import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 import { pathHolds } from '@kabmo-labs/kabmo-fs-canonical';
 import { removeWorktreeRow, worktreeRowFor } from '@kabmo-labs/kabmo-db/worktree-registry';
 import { removeWorktree } from '@/server/lib/fs/worktree/remove';
-import { invalidateWorktreeTopology } from '@/server/lib/fs/worktree/topology';
+import { invalidateWorktreeTopology } from '@kabmo-labs/kabmo-worktree-topology/topology';
 import { resolveProjectRoot } from '@kabmo-labs/kabmo-omp-worktree';
 import { listRpcSessions } from '@/server/lib/omp/rpc/session-registry';
 import { removeSession } from '@/server/lib/omp/session/delete-flow.server';

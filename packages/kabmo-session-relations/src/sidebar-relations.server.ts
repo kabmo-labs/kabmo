@@ -13,7 +13,7 @@
  */
 
 import type { SessionItemData } from '@kabmo-labs/kabmo-app-contracts/workspace';
-import { listSessionRelations } from '@/server/lib/sessions/relations.server';
+import { listSessionRelations } from './relations.server';
 
 export async function decorateSidebarSessions(
   sessions: readonly SessionItemData[],

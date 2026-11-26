@@ -37,7 +37,7 @@ import {
   type BlamePayload,
   type BlameUnavailable,
 } from '@/shared/lib/fs/git-blame';
-import { repoRelative, resolveRepoPath, runGit } from '@/server/lib/fs/git-run';
+import { repoRelative, resolveRepoPath, runGit } from '@kabmo-labs/kabmo-git-runner/git-run';
 
 /** Past this a blame is refused: 20 000 lines already costs 0.5 s and 1.7 MB. */
 const MAX_BLAME_BYTES = 8 * 1024 * 1024;

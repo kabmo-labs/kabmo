@@ -10,7 +10,7 @@ import { readHandoverFromStdin } from '@/shared/lib/auth/handover';
 import { ssrRoutes } from '@/server/plugins/ssr';
 import { setListener } from '@/server/lib/lifecycle/listener';
 import { getDatabasePath } from '@/server/db.server';
-import { initAgentTokens } from '@/server/lib/sessions/agent-token.server';
+import { initAgentTokens } from '@kabmo-labs/kabmo-session-relations/agent-token.server';
 import { initDeviceTokens } from '@/server/lib/connect/devices.server';
 import { logDetectedRegistry } from '@/server/lib/models/detected-registry.server';
 import { ompStartupError, ompStartupLogLines } from '@kabmo-labs/kabmo-omp-install/startup';

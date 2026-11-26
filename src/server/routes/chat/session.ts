@@ -11,7 +11,7 @@ import { readRawHeaderLine } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { formatNewSessionTitle } from '@kabmo-labs/kabmo-omp-session-core/default-title';
 import { importedChat } from '@/server/routes/chat/imported';
 import { loadAcpTranscript } from '@/server/lib/harness/acp/session-transcript.server';
-import { getSessionRelation } from '@/server/lib/sessions/relations.server';
+import { getSessionRelation } from '@kabmo-labs/kabmo-session-relations/relations.server';
 import { windowMessages } from '@/server/routes/chat/window';
 import { readCodexRolloutTranscript } from '@kabmo-labs/kabmo-harness-local-transcript/codex-transcript';
 import { getLiveRunSessionIds, getLiveSession, harnessOfSession } from '@/server/lib/omp/rpc/session-registry';

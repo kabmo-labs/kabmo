@@ -44,13 +44,13 @@ import {
   createSessionRelation,
   deleteSessionRelations,
   listForkRelations,
-} from '@/server/lib/sessions/relations.server';
+} from '@kabmo-labs/kabmo-session-relations/relations.server';
 import { isSessionArchived, resolveSessionRef, sessionExists } from '@/server/lib/sessions/resolve.server';
 import {
   agentEnvironment,
   createAgentToken,
   rememberAgentToken,
-} from '@/server/lib/sessions/agent-token.server';
+} from '@kabmo-labs/kabmo-session-relations/agent-token.server';
 
 export type SessionForkErrorCode =
   | 'source_not_found'

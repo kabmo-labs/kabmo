@@ -1,7 +1,7 @@
 import { Minus, Plus, Undo2 } from 'lucide-preact';
 import type { GitChange } from '@/shared/types';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
-import { isUnmergedCode } from '@/shared/lib/fs/git-unmerged';
+import { isUnmergedCode } from '@kabmo-labs/kabmo-git-runner/git-unmerged';
 import { GitFileItem } from '@/client/components/workspace/git-panel/FileItem';
 import { GitConflictItem } from '@/client/components/workspace/git-panel/ConflictItem';
 import { GitTreeView } from '@/client/components/workspace/git-panel/TreeView';

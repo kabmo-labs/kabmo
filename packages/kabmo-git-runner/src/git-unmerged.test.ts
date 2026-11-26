@@ -23,7 +23,7 @@ import {
   UNMERGED_CODES,
   isUnmergedCode,
   parseConflictMarkers,
-} from '@/shared/lib/fs/git-unmerged';
+} from './git-unmerged';
 
 describe('isUnmergedCode', () => {
   test('accepts exactly the seven unmerged pairs', () => {

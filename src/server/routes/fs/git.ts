@@ -23,8 +23,8 @@ import { discoveredRepos, rescanRepos, startRepoScan } from '@/server/lib/fs/git
 import { readRepoDetails } from '@/server/lib/fs/git-repo-details';
 import { fetchGitCommits, readHeadCommitMessage } from '@/server/lib/fs/git-log';
 import { fetchWorkingFileDiff } from '@/server/lib/fs/git-diff';
-import { repoRelative, resolveRepoPath } from '@/server/lib/fs/git-run';
-import { parseConflictMarkers } from '@/shared/lib/fs/git-unmerged';
+import { repoRelative, resolveRepoPath } from '@kabmo-labs/kabmo-git-runner/git-run';
+import { parseConflictMarkers } from '@kabmo-labs/kabmo-git-runner/git-unmerged';
 import { readGitStatus } from '@/server/lib/fs/git-status-read';
 import { readBlame, readBlameHistory } from '@/server/lib/fs/git-blame';
 import { listBranchDetails } from '@/server/lib/fs/git-branch';

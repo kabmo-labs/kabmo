@@ -5,10 +5,10 @@
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
-import { getDb } from '@/server/db.server';
+import { getDb } from '@kabmo-labs/kabmo-db/lifecycle';
 import { ensureSessionRelationsSchema } from '@/server/lib/sessions/schema.server';
-import { createSessionRelation } from '@/server/lib/sessions/relations.server';
-import { decorateSidebarSessions } from '@/server/lib/sessions/sidebar-relations.server';
+import { createSessionRelation } from './relations.server';
+import { decorateSidebarSessions } from './sidebar-relations.server';
 import type { SessionItemData } from '@/shared/types';
 
 function row(id: string): SessionItemData {

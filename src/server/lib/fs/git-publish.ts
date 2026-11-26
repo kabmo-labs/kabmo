@@ -22,7 +22,7 @@
  * convention, not a guarantee.
  */
 
-import { runGit, type GitRunResult } from '@/server/lib/fs/git-run';
+import { runGit, type GitRunResult } from '@kabmo-labs/kabmo-git-runner/git-run';
 import { readGitState } from '@/server/lib/fs/git-state';
 
 /** Runs a git command and throws with its stderr when it exits non-zero. */

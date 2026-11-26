@@ -22,7 +22,7 @@
 
 import { readSettingsJson } from '@kabmo-labs/kabmo-settings-store';
 import { getDb } from '@/server/db.server';
-import { runGit } from '@/server/lib/fs/git-run';
+import { runGit } from '@kabmo-labs/kabmo-git-runner/git-run';
 import { SETTINGS_BLOB_KEY } from '@/shared/lib/settings/keys';
 import {
   normalizeGitIdentities,

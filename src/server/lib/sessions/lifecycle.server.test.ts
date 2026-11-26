@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { getDb } from '@/server/db.server';
 import { ensureSessionRelationsSchema } from '@/server/lib/sessions/schema.server';
-import { createSessionRelation } from '@/server/lib/sessions/relations.server';
+import { createSessionRelation } from '@kabmo-labs/kabmo-session-relations/relations.server';
 import {
   archiveDependents,
   collectDependents,

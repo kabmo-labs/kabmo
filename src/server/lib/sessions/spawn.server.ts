@@ -22,7 +22,7 @@ import {
   agentEnvironment,
   createAgentToken,
   rememberAgentToken,
-} from '@/server/lib/sessions/agent-token.server';
+} from '@kabmo-labs/kabmo-session-relations/agent-token.server';
 import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 import { projectModelForCwd } from '@/server/lib/workspace/project-model.server';
 import { startAcpSession } from '@/server/lib/harness/spawn.server';
@@ -33,11 +33,11 @@ import { harnessDescriptor, type HarnessId } from '@kabmo-labs/kabmo-harness-cat
 import { WORKER_BRIEF } from '@/shared/lib/chat/orchestration/notice';
 import type { SelectedModel } from '@kabmo-labs/kabmo-model-contracts/models';
 import type { AgentImage } from '@kabmo-labs/kabmo-chat-contracts/agent';
-import { MAX_SESSION_DEPTH } from '@/server/lib/sessions/relation-types';
+import { MAX_SESSION_DEPTH } from '@kabmo-labs/kabmo-session-relations/relation-types';
 import {
   createSessionRelation,
   getSessionRelation,
-} from '@/server/lib/sessions/relations.server';
+} from '@kabmo-labs/kabmo-session-relations/relations.server';
 import {
   folderIdForCwd,
   isSessionArchived,
