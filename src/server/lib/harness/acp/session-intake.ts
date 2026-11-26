@@ -13,8 +13,8 @@
  * instead of an error.
  */
 
-import { promptBlocks } from '@/server/lib/harness/acp/prompt';
-import { promptFileLinks } from '@/server/lib/harness/acp/prompt-files';
+import { promptBlocks } from '@kabmo-labs/kabmo-acp-prompt/prompt';
+import { promptFileLinks } from '@kabmo-labs/kabmo-acp-prompt/prompt-files';
 
 /** The session slice a prompt needs. `AcpSession` satisfies it as-is. */
 export interface AcpPromptHost {

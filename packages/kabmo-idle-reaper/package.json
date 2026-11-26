@@ -1,0 +1,24 @@
+{
+  "name": "@kabmo-labs/kabmo-idle-reaper",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Reap idle child sessions after a quiet period.",
+  "exports": {
+    ".": "./src/idle-reaper.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-idle-reaper"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  }
+}

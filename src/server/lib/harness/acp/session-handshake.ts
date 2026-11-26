@@ -25,7 +25,7 @@
  */
 
 import { newSessionAfterActivation } from '@kabmo-labs/kabmo-acp-client/activation';
-import { applyLaunchSelections, configOption, modelFromOption, modelsAsSelector } from '@/server/lib/harness/acp/prompt';
+import { applyLaunchSelections, configOption, modelFromOption, modelsAsSelector } from '@kabmo-labs/kabmo-acp-prompt/prompt';
 import { toAcpV2McpServers } from '@kabmo-labs/kabmo-acp-protocol/v2';
 import type { SessionDirs } from '@kabmo-labs/kabmo-acp-protocol/verbs';
 import { authMethodsOf, describeSignIn, headlessAuthMethod, isAuthRequiredError } from '@kabmo-labs/kabmo-acp-client/auth';

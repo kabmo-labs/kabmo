@@ -9,7 +9,7 @@
  * and one throwing subscriber must not starve the others.
  */
 
-import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
+import type { AgentEvent } from '@kabmo-labs/kabmo-omp-contracts/events';
 
 export class SessionListeners {
   private readonly listeners = new Set<(event: AgentEvent) => void>();

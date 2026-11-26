@@ -19,7 +19,7 @@
  * history.
  */
 
-import { configOption, modelFromOption } from '@/server/lib/harness/acp/prompt';
+import { configOption, modelFromOption } from '@kabmo-labs/kabmo-acp-prompt';
 import type { AcpConfigOption, AcpSessionModeState } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 

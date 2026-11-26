@@ -23,7 +23,7 @@ import type {
 } from '@/server/lib/harness/acp/session-handshake';
 import { handshakeAcpSession } from '@/server/lib/harness/acp/session-handshake';
 import { loadAcpGrants } from '@/server/lib/harness/acp/grants.server';
-import type { IdleReaper } from '@/server/lib/omp/rpc/idle-reaper';
+import type { IdleReaper } from '@kabmo-labs/kabmo-idle-reaper';
 
 /** The session slice a start drives: the handshake target, its clock and id. */
 export interface AcpStartTarget extends AcpHandshakeTarget {

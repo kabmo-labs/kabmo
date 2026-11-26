@@ -11,7 +11,7 @@
  * hook instead of a `prompt_error` for a stop the user asked for.
  */
 
-import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
+import type { AgentEvent } from '@kabmo-labs/kabmo-omp-contracts/events';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import { noteChildOutcome } from '@/server/lib/sessions/notify.server';
 

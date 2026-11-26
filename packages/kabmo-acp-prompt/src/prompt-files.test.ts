@@ -17,8 +17,8 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { promptFileLinks } from '@/server/lib/harness/acp/prompt-files';
-import { promptBlocks } from '@/server/lib/harness/acp/prompt';
+import { promptFileLinks } from './prompt-files';
+import { promptBlocks } from './prompt';
 
 const scratch: string[] = [];
 

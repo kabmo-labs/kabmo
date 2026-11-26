@@ -25,7 +25,7 @@ import { loadHarnessConfig } from '@/server/lib/harness/config.server';
 import { resolveAccountLaunch } from '@/server/lib/harness/accounts.server';
 import { sessionLaunchCommand } from '@kabmo-labs/kabmo-harness-launch/launch';
 import { extractTextFromContent } from '@kabmo-labs/kabmo-omp-mapper';
-import type { AcpSessionOptions } from '@/server/lib/harness/acp/session-options';
+import type { AcpSessionOptions } from '@kabmo-labs/kabmo-acp-session/session-options';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
 

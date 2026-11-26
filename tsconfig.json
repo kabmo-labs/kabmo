@@ -112,6 +112,48 @@
       "@kabmo-labs/kabmo-acp-turn": [
         "./packages/kabmo-acp-turn/src/turn.ts"
       ],
+      "@kabmo-labs/kabmo-acp-prompt": [
+        "./packages/kabmo-acp-prompt/src/prompt.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-prompt/prompt": [
+        "./packages/kabmo-acp-prompt/src/prompt.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-prompt/prompt-files": [
+        "./packages/kabmo-acp-prompt/src/prompt-files.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session": [
+        "./packages/kabmo-acp-session/src/session-options.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session/session-config-view": [
+        "./packages/kabmo-acp-session/src/session-config-view.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session/session-exit": [
+        "./packages/kabmo-acp-session/src/session-exit.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session/session-facts": [
+        "./packages/kabmo-acp-session/src/session-facts.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session/session-lifecycle": [
+        "./packages/kabmo-acp-session/src/session-lifecycle.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session/session-listeners": [
+        "./packages/kabmo-acp-session/src/session-listeners.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session/session-lost": [
+        "./packages/kabmo-acp-session/src/session-lost.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session/session-options": [
+        "./packages/kabmo-acp-session/src/session-options.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session/session-process": [
+        "./packages/kabmo-acp-session/src/session-process.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session/session-usage": [
+        "./packages/kabmo-acp-session/src/session-usage.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session/session-web-state": [
+        "./packages/kabmo-acp-session/src/session-web-state.ts"
+      ],
       "@kabmo-labs/kabmo-acp-turn/turn": [
         "./packages/kabmo-acp-turn/src/turn.ts"
       ],
@@ -324,6 +366,9 @@
       ],
       "@kabmo-labs/kabmo-harness-updates": [
         "./packages/kabmo-harness-updates/src/updates.ts"
+      ],
+      "@kabmo-labs/kabmo-idle-reaper": [
+        "./packages/kabmo-idle-reaper/src/idle-reaper.ts"
       ],
       "@kabmo-labs/kabmo-model-contracts": [
         "./packages/kabmo-model-contracts/src/models.ts"

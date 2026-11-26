@@ -16,7 +16,7 @@
 
 import { AcpProcess, type AcpClientOptions } from '@kabmo-labs/kabmo-acp-client/client';
 import { withGatewayCompatibility } from '@kabmo-labs/kabmo-acp-client/gateway-env';
-import type { AcpSessionOptions } from '@/server/lib/harness/acp/session-options';
+import type { AcpSessionOptions } from './session-options';
 
 /** The frame sinks a session supplies; `AcpProcess` re-binds them on adoption. */
 export type SessionFrameSinks = Pick<

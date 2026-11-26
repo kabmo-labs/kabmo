@@ -15,7 +15,7 @@
  * wanted?".
  */
 
-import { IdleReaper } from '@/server/lib/omp/rpc/idle-reaper';
+import { IdleReaper } from '@kabmo-labs/kabmo-idle-reaper';
 import { IDLE_REAP_MS } from '@/server/lib/omp/rpc/constants';
 import type { HarnessCapabilities } from '@kabmo-labs/kabmo-harness-launch/capabilities';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';

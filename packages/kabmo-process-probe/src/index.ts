@@ -36,3 +36,9 @@ function selectProbe(): ProcessProbe {
 
 /** The probe for the running platform. */
 export const processProbe: ProcessProbe = selectProbe();
+
+export { darwinProbe } from './darwin';
+export { linuxProbe } from './linux';
+export { psProbe } from './ps';
+export { win32Probe } from './win32';
+export type { ProcessLiveness, ProcessProbe } from './types';

@@ -15,7 +15,7 @@
  */
 
 import { AcpProcess } from '@kabmo-labs/kabmo-acp-client/client';
-import { openSessionProcess } from '@/server/lib/harness/acp/session-process';
+import { openSessionProcess } from '@kabmo-labs/kabmo-acp-session/session-process';
 import { AcpTurns, type AcpTurnEndInfo } from '@kabmo-labs/kabmo-acp-turn/turn';
 import { acpBackgroundProbe, acpTurns, acpWiringFor } from '@/server/lib/harness/acp/session-wiring';
 import { AcpFrameMapper } from '@kabmo-labs/kabmo-acp-mapper/frames';
@@ -30,7 +30,7 @@ AcpSessionModels, } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import { promptContent, startAcpPrompt } from '@/server/lib/harness/acp/session-intake';
 import { cancelAcpTurn, dropAcpSession, endAcpSessionTurn } from '@/server/lib/harness/acp/session-stop';
 import { setAcpConfig, setAcpMode, type AcpConfigWriter } from '@/server/lib/harness/acp/session-config';
-import { acpConfigView, type AcpConfigProcess } from '@/server/lib/harness/acp/session-config-view';
+import { acpConfigView, type AcpConfigProcess } from '@kabmo-labs/kabmo-acp-session/session-config-view';
 import * as verbs from '@kabmo-labs/kabmo-acp-protocol/verbs';
 import { acpPendingDialogs, answerAcpDialog } from '@/server/lib/harness/acp/session-approvals';
 import { beginAcpTurn } from '@/server/lib/harness/acp/session-turns';
@@ -38,26 +38,26 @@ import { capabilitiesFrom } from '@kabmo-labs/kabmo-harness-launch/launch';
 import { PendingPermissions } from '@kabmo-labs/kabmo-acp-client/permissions';
 import { handleAcpNotification } from '@/server/lib/harness/acp/session-notify';
 import { RawNotificationSink, type RawNotificationListener } from '@kabmo-labs/kabmo-acp-protocol/raw-listeners';
-import { AcpUsageMeter, type AcpContextUsage } from '@/server/lib/harness/acp/session-usage';
+import { AcpUsageMeter, type AcpContextUsage } from '@kabmo-labs/kabmo-acp-session/session-usage';
 import { handleAcpClientRequest, type AcpClientRequestAnswer } from '@/server/lib/harness/acp/session-requests';
-import { reportAcpExit, type AcpExitInfo } from '@/server/lib/harness/acp/session-exit';
-import { acpExited, closeAcpSession, destroyAcp } from '@/server/lib/harness/acp/session-lifecycle';
-import { SessionListeners } from '@/server/lib/harness/acp/session-listeners';
+import { reportAcpExit, type AcpExitInfo } from '@kabmo-labs/kabmo-acp-session/session-exit';
+import { acpExited, closeAcpSession, destroyAcp } from '@kabmo-labs/kabmo-acp-session/session-lifecycle';
+import { SessionListeners } from '@kabmo-labs/kabmo-acp-session/session-listeners';
 import type { AcpBackgroundProbe } from '@/server/lib/harness/acp/background-probe';
-import { acpWebState } from '@/server/lib/harness/acp/session-web-state';
+import { acpWebState } from '@kabmo-labs/kabmo-acp-session/session-web-state';
 import { acpIdleReaper } from '@/server/lib/harness/acp/session-idle';
 import { AcpSubagents, type AcpSubagentRecord } from '@kabmo-labs/kabmo-acp-mapper/subagents';
 import { AcpInbound } from '@/server/lib/harness/acp/session-inbound';
 import { DEFAULT_APPROVAL_MODE, isApprovalMode, type ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 import { dispatchCommand, type AcpCommandHost } from '@/server/lib/harness/acp/commands';
 import { markStreamStatus } from '@/shared/lib/omp/session/stream-state.server';
-import type { AcpSessionOptions } from '@/server/lib/harness/acp/session-options';
+import type { AcpSessionOptions } from '@kabmo-labs/kabmo-acp-session/session-options';
 import type { AcpMcpServer } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import type { HarnessCapabilities } from '@kabmo-labs/kabmo-harness-launch/capabilities';
 import type { HarnessSession } from '@kabmo-labs/kabmo-harness-contract';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
-import type { IdleReaper } from '@/server/lib/omp/rpc/idle-reaper';
+import type { IdleReaper } from '@kabmo-labs/kabmo-idle-reaper';
 
 /** The process verbs the config view calls, bound to the CURRENT session id. */
 function configProcess(proc: AcpProcess): AcpConfigProcess {

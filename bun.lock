@@ -18,7 +18,9 @@
         "@fontsource/fira-code": "^5.3.0",
         "@kabmo-labs/kabmo-acp-client": "workspace:*",
         "@kabmo-labs/kabmo-acp-mapper": "workspace:*",
+        "@kabmo-labs/kabmo-acp-prompt": "workspace:*",
         "@kabmo-labs/kabmo-acp-protocol": "workspace:*",
+        "@kabmo-labs/kabmo-acp-session": "workspace:*",
         "@kabmo-labs/kabmo-acp-stdio": "workspace:*",
         "@kabmo-labs/kabmo-acp-turn": "workspace:*",
         "@kabmo-labs/kabmo-auth": "workspace:*",
@@ -48,6 +50,7 @@
         "@kabmo-labs/kabmo-harness-session-modes": "workspace:*",
         "@kabmo-labs/kabmo-harness-transcript": "workspace:*",
         "@kabmo-labs/kabmo-harness-updates": "workspace:*",
+        "@kabmo-labs/kabmo-idle-reaper": "workspace:*",
         "@kabmo-labs/kabmo-model-contracts": "workspace:*",
         "@kabmo-labs/kabmo-omp-access-mode": "workspace:*",
         "@kabmo-labs/kabmo-omp-config-doc": "workspace:*",
@@ -139,11 +142,31 @@
         "@kabmo-labs/kabmo-omp-contracts": "workspace:*",
       },
     },
+    "packages/kabmo-acp-prompt": {
+      "name": "@kabmo-labs/kabmo-acp-prompt",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kabmo-labs/kabmo-acp-protocol": "workspace:*",
+      },
+    },
     "packages/kabmo-acp-protocol": {
       "name": "@kabmo-labs/kabmo-acp-protocol",
       "version": "0.0.1",
       "dependencies": {
         "@kabmo-labs/kabmo-fs-toolchain": "workspace:*",
+      },
+    },
+    "packages/kabmo-acp-session": {
+      "name": "@kabmo-labs/kabmo-acp-session",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kabmo-labs/kabmo-acp-client": "workspace:*",
+        "@kabmo-labs/kabmo-acp-prompt": "workspace:*",
+        "@kabmo-labs/kabmo-acp-protocol": "workspace:*",
+        "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
+        "@kabmo-labs/kabmo-harness-launch": "workspace:*",
+        "@kabmo-labs/kabmo-omp-access-mode": "workspace:*",
+        "@kabmo-labs/kabmo-omp-contracts": "workspace:*",
       },
     },
     "packages/kabmo-acp-stdio": {
@@ -333,6 +356,10 @@
       "dependencies": {
         "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
       },
+    },
+    "packages/kabmo-idle-reaper": {
+      "name": "@kabmo-labs/kabmo-idle-reaper",
+      "version": "0.0.1",
     },
     "packages/kabmo-model-contracts": {
       "name": "@kabmo-labs/kabmo-model-contracts",
@@ -601,7 +628,11 @@
 
     "@kabmo-labs/kabmo-acp-mapper": ["@kabmo-labs/kabmo-acp-mapper@workspace:packages/kabmo-acp-mapper"],
 
+    "@kabmo-labs/kabmo-acp-prompt": ["@kabmo-labs/kabmo-acp-prompt@workspace:packages/kabmo-acp-prompt"],
+
     "@kabmo-labs/kabmo-acp-protocol": ["@kabmo-labs/kabmo-acp-protocol@workspace:packages/kabmo-acp-protocol"],
+
+    "@kabmo-labs/kabmo-acp-session": ["@kabmo-labs/kabmo-acp-session@workspace:packages/kabmo-acp-session"],
 
     "@kabmo-labs/kabmo-acp-stdio": ["@kabmo-labs/kabmo-acp-stdio@workspace:packages/kabmo-acp-stdio"],
 
@@ -660,6 +691,8 @@
     "@kabmo-labs/kabmo-harness-transcript": ["@kabmo-labs/kabmo-harness-transcript@workspace:packages/kabmo-harness-transcript"],
 
     "@kabmo-labs/kabmo-harness-updates": ["@kabmo-labs/kabmo-harness-updates@workspace:packages/kabmo-harness-updates"],
+
+    "@kabmo-labs/kabmo-idle-reaper": ["@kabmo-labs/kabmo-idle-reaper@workspace:packages/kabmo-idle-reaper"],
 
     "@kabmo-labs/kabmo-model-contracts": ["@kabmo-labs/kabmo-model-contracts@workspace:packages/kabmo-model-contracts"],
 

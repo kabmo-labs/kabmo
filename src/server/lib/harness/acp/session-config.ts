@@ -29,7 +29,7 @@
  * module exists to make impossible.
  */
 
-import { configOption, modelFromOption } from '@/server/lib/harness/acp/prompt';
+import { configOption, modelFromOption } from '@kabmo-labs/kabmo-acp-prompt/prompt';
 import { isDurableGrantKey, permissionGrantKey } from '@kabmo-labs/kabmo-acp-client/grants';
 import { saveAcpGrant } from '@/server/lib/harness/acp/grants.server';
 import type { AcpConfigOption, AcpSessionModeState, AcpSessionModels } from '@kabmo-labs/kabmo-acp-protocol/protocol';

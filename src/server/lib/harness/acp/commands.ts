@@ -20,7 +20,7 @@
  *    no such selector, naming the harness, rather than silently doing nothing.
  */
 
-import { configOption, promptBlocks } from '@/server/lib/harness/acp/prompt';
+import { configOption, promptBlocks } from '@kabmo-labs/kabmo-acp-prompt/prompt';
 import { acpOptionValues } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import { notePromptTitle } from '@/server/lib/harness/session-title.server';
 import { isApprovalMode, type ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';

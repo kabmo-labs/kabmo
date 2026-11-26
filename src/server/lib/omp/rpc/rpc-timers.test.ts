@@ -20,7 +20,7 @@
 
 import { describe, expect, test, vi } from 'bun:test';
 
-import { IdleReaper } from '@/server/lib/omp/rpc/idle-reaper';
+import { IdleReaper } from '@kabmo-labs/kabmo-idle-reaper';
 import { AgentStartWatchdog, type AgentStartWatchdogHost } from '@/server/lib/omp/rpc/agent-start-watchdog';
 
 describe('IdleReaper', () => {

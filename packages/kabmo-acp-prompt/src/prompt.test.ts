@@ -15,7 +15,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { applyLaunchSelections, applySelections, modelFromOption } from '@/server/lib/harness/acp/prompt';
+import { applyLaunchSelections, applySelections, modelFromOption } from './prompt';
 import type { AcpConfigOption } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 
 function selector(currentValue: string | undefined): AcpConfigOption {

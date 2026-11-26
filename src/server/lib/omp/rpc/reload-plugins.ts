@@ -22,7 +22,7 @@
  */
 
 import type { RpcProcess } from '@/server/lib/omp/rpc/process';
-import type { IdleReaper } from '@/server/lib/omp/rpc/idle-reaper';
+import type { IdleReaper } from '@kabmo-labs/kabmo-idle-reaper';
 import { RELOAD_PLUGINS_TIMEOUT_MS } from '@/server/lib/omp/rpc/constants';
 
 /** Child state a reload touches. Not a turn, but still work: keep the reaper off. */

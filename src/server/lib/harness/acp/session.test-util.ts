@@ -20,14 +20,14 @@
 
 import { AcpReplay } from '@/server/lib/harness/acp/replay';
 import { AcpSession } from '@/server/lib/harness/acp/session';
-import { AcpUsageMeter } from '@/server/lib/harness/acp/session-usage';
+import { AcpUsageMeter } from '@kabmo-labs/kabmo-acp-session/session-usage';
 import { AcpFrameMapper } from '@kabmo-labs/kabmo-acp-mapper/frames';
 import { AcpTurns } from '@kabmo-labs/kabmo-acp-turn/turn';
-import { SessionListeners } from '@/server/lib/harness/acp/session-listeners';
+import { SessionListeners } from '@kabmo-labs/kabmo-acp-session/session-listeners';
 import { RawNotificationSink } from '@kabmo-labs/kabmo-acp-protocol/raw-listeners';
 import { PendingPermissions } from '@kabmo-labs/kabmo-acp-client/permissions';
 import { AcpSubagents } from '@kabmo-labs/kabmo-acp-mapper/subagents';
-import { acpConfigView } from '@/server/lib/harness/acp/session-config-view';
+import { acpConfigView } from '@kabmo-labs/kabmo-acp-session/session-config-view';
 import { stampMessageModel } from '@/server/lib/harness/acp/session-config';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
 

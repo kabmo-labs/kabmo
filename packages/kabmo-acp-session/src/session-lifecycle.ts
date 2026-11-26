@@ -12,7 +12,7 @@
  * the child-outcome row both read that distinction, so they belong together.
  */
 
-import type { AcpExitInfo } from '@/server/lib/harness/acp/session-exit';
+import type { AcpExitInfo } from './session-exit';
 
 /** What a teardown has to stop, clear and report. */
 export interface AcpLifecycleHost {

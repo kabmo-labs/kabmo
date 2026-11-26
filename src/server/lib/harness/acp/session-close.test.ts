@@ -13,7 +13,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { acpExited, destroyAcp, type AcpLifecycleHost } from '@/server/lib/harness/acp/session-lifecycle';
+import { acpExited, destroyAcp, type AcpLifecycleHost } from '@kabmo-labs/kabmo-acp-session/session-lifecycle';
 
 function makeHost(overrides: Partial<AcpLifecycleHost> = {}) {
   const log: string[] = [];

@@ -77,6 +77,10 @@ export const RELEASE_PACKAGES = [
     name: '@kabmo-labs/kabmo-harness-launch',
   },
   {
+    dir: 'packages/kabmo-idle-reaper',
+    name: '@kabmo-labs/kabmo-idle-reaper',
+  },
+  {
     dir: 'packages/kabmo-paths',
     name: '@kabmo-labs/kabmo-paths',
   },
@@ -208,6 +212,14 @@ export const RELEASE_PACKAGES = [
   {
     dir: 'packages/kabmo-acp-turn',
     name: '@kabmo-labs/kabmo-acp-turn',
+  },
+  {
+    dir: 'packages/kabmo-acp-prompt',
+    name: '@kabmo-labs/kabmo-acp-prompt',
+  },
+  {
+    dir: 'packages/kabmo-acp-session',
+    name: '@kabmo-labs/kabmo-acp-session',
   },
   {
     dir: 'packages/kabmo-omp-mapper',

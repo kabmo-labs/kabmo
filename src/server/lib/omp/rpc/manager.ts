@@ -19,7 +19,7 @@ import { foldSessionFrame } from '@/server/lib/omp/rpc/frame-fold';
 import { dispatchSessionCommand } from '@/server/lib/omp/rpc/session-commands';
 import { SubagentLiveness } from '@/server/lib/omp/rpc/subagent-liveness';
 import { ModeMirror } from '@/server/lib/omp/rpc/mode-mirror';
-import { IdleReaper } from '@/server/lib/omp/rpc/idle-reaper';
+import { IdleReaper } from '@kabmo-labs/kabmo-idle-reaper';
 import { AgentStartWatchdog } from '@/server/lib/omp/rpc/agent-start-watchdog';
 import { RunSettle, handleChildExit } from '@/server/lib/omp/rpc/run-settle.server';
 import { EventFanout } from '@/server/lib/omp/rpc/event-fanout';

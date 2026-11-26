@@ -16,7 +16,7 @@
 
 import { cancelAllAcpPermissions } from '@/server/lib/harness/acp/session-permissions';
 import { endAcpTurn } from '@/server/lib/harness/acp/session-turns';
-import { LOST_SESSION_NOTICE } from '@/server/lib/harness/acp/session-lost';
+import { LOST_SESSION_NOTICE } from '@kabmo-labs/kabmo-acp-session/session-lost';
 import type { AcpSession } from '@/server/lib/harness/acp/session';
 import type { AcpTurnEndInfo } from '@kabmo-labs/kabmo-acp-turn/turn';
 
