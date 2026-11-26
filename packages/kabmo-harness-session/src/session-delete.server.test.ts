@@ -26,7 +26,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { createAgentSessionRemover } from '@/server/lib/harness/session-delete.server';
+import { createAgentSessionRemover } from '@kabmo-labs/kabmo-harness-session/session-delete.server';
 import { fakeAcpDeleteAgent } from '@/test-support/fake-acp-delete';
 import type { HarnessLaunch } from '@kabmo-labs/kabmo-harness-launch/launch-table';
 import type { HarnessSessionRecord } from '@kabmo-labs/kabmo-harness-session/session-store.server';

@@ -24,7 +24,7 @@ import {
   cancelAccountLogin,
   startAccountLogin,
   submitAccountLoginInput,
-} from '@/server/lib/harness/account-login.server';
+} from '@kabmo-labs/kabmo-harness-account-store/account-login.server';
 
 type AccountBody = {
   op?: unknown;

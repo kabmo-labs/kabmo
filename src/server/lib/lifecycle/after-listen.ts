@@ -19,7 +19,7 @@
  */
 
 import { getDb } from '@/server/db.server';
-import { startHarnessAutoProbe } from '@/server/lib/harness/auto-probe.server';
+import { startHarnessAutoProbe } from '@kabmo-labs/kabmo-harness-config-store/auto-probe.server';
 import { startHarnessAutoImport } from '@/server/lib/harness/auto-import.server';
 import { ensureCustomHarnesses } from '@kabmo-labs/kabmo-harness-config-store/custom.server';
 import { pumpUpdateQueue } from '@/server/lib/harness/update-queue.server';

@@ -1126,6 +1126,15 @@
       "@kabmo-labs/kabmo-omp-session-telemetry/scan": [
         "./packages/kabmo-omp-session-telemetry/src/scan.ts"
       ],
+      "@kabmo-labs/kabmo-harness-account-store/account-login.server": [
+        "./packages/kabmo-harness-account-store/src/account-login.server.ts"
+      ],
+      "@kabmo-labs/kabmo-harness-config-store/auto-probe.server": [
+        "./packages/kabmo-harness-config-store/src/auto-probe.server.ts"
+      ],
+      "@kabmo-labs/kabmo-harness-session/session-delete.server": [
+        "./packages/kabmo-harness-session/src/session-delete.server.ts"
+      ],
       "@kabmo-labs/kabmo-ui": [
         "./packages/kabmo-ui/src/index.tsx"
       ],

@@ -23,7 +23,7 @@ import {
   autoProbeTargets,
   runAutoProbe,
   type AutoProbeOptions,
-} from '@/server/lib/harness/auto-probe.server';
+} from '@kabmo-labs/kabmo-harness-config-store/auto-probe.server';
 import type { HarnessProbe } from '@kabmo-labs/kabmo-harness-launch/capabilities';
 import { loadProbes, probes } from '@kabmo-labs/kabmo-harness-config-store/probe-cache.server';
 import { saveHarnessEnabled } from '@kabmo-labs/kabmo-harness-config-store/enabled.server';

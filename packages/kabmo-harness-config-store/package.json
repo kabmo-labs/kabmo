@@ -5,16 +5,27 @@
   "description": "Load and save harness config, custom harnesses, and probe cache.",
   "exports": {
     ".": "./src/config.server.ts",
+    "./auto-probe.server": "./src/auto-probe.server.ts",
     "./config.server": "./src/config.server.ts",
     "./custom.server": "./src/custom.server.ts",
     "./enabled.server": "./src/enabled.server.ts",
     "./probe-cache.server": "./src/probe-cache.server.ts"
   },
-  "files": ["src"],
+  "files": [
+    "src"
+  ],
   "license": "MIT",
-  "repository": { "type": "git", "url": "git+https://github.com/kabmo-labs/kabmo.git", "directory": "packages/kabmo-harness-config-store" },
-  "publishConfig": { "access": "public" },
-  "engines": { "bun": ">=1.4.0" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-harness-config-store"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  },
   "dependencies": {
     "@kabmo-labs/kabmo-db": "workspace:*",
     "@kabmo-labs/kabmo-harness-catalog": "workspace:*",

@@ -25,7 +25,7 @@ import type { HarnessProbe } from '@kabmo-labs/kabmo-harness-launch/capabilities
 import { forgetProbe, loadProbes, rememberProbe } from '@kabmo-labs/kabmo-harness-config-store/probe-cache.server';
 import { loadDisabledHarnesses, saveHarnessEnabled } from '@kabmo-labs/kabmo-harness-config-store/enabled.server';
 import { harnessEnabled } from '@kabmo-labs/kabmo-harness-enabled';
-import { commandAvailable, probeWithConfig } from '@/server/lib/harness/auto-probe.server';
+import { commandAvailable, probeWithConfig } from '@kabmo-labs/kabmo-harness-config-store/auto-probe.server';
 import { autoImportEnabled, loadAutoImportDisabled } from '@/server/lib/harness/auto-import.server';
 import { autoImportAction, importSessionsAction } from '@/server/routes/harness/session-actions';
 import { loadHarnessConfig, probeInvalidatedBy, saveHarnessConfig } from '@kabmo-labs/kabmo-harness-config-store/config.server';

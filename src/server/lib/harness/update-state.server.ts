@@ -22,7 +22,7 @@
  * `forgetCliVersion` and `forgetProbe` so the next read states what is on disk.
  */
 
-import { commandAvailable } from '@/server/lib/harness/auto-probe.server';
+import { commandAvailable } from '@kabmo-labs/kabmo-harness-config-store/auto-probe.server';
 import { whichOnToolchainPath } from '@kabmo-labs/kabmo-fs-toolchain';
 import { loadHarnessConfig } from '@kabmo-labs/kabmo-harness-config-store/config.server';
 import { fetchNpmLatest } from '@/server/lib/updates/npm';

@@ -27,7 +27,7 @@
 import { getDb } from '@/server/db.server';
 import { readSettingsJson, writeSettingsJson } from '@kabmo-labs/kabmo-settings-store';
 import { loadProbes } from '@kabmo-labs/kabmo-harness-config-store/probe-cache.server';
-import { autoProbeTargets } from '@/server/lib/harness/auto-probe.server';
+import { autoProbeTargets } from '@kabmo-labs/kabmo-harness-config-store/auto-probe.server';
 import { importHarnessSessions } from '@/server/lib/harness/session-import.server';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { harnessDescriptor, harnessIds, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';

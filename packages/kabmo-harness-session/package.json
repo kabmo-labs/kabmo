@@ -5,9 +5,10 @@
   "description": "Harness session rows and transcript sources.",
   "exports": {
     ".": "./src/session-store.server.ts",
+    "./session-delete.server": "./src/session-delete.server.ts",
     "./session-store.server": "./src/session-store.server.ts",
-    "./session-transcript.server": "./src/session-transcript.server.ts",
-    "./session-title.server": "./src/session-title.server.ts"
+    "./session-title.server": "./src/session-title.server.ts",
+    "./session-transcript.server": "./src/session-transcript.server.ts"
   },
   "files": [
     "src"

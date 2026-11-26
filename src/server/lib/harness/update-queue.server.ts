@@ -27,7 +27,7 @@
  * the first's record and waits instead of racing it into a second worker.
  */
 
-import { probeWithConfig } from '@/server/lib/harness/auto-probe.server';
+import { probeWithConfig } from '@kabmo-labs/kabmo-harness-config-store/auto-probe.server';
 import { whichOnToolchainPath } from '@kabmo-labs/kabmo-fs-toolchain';
 import { forgetProbe, rememberProbe } from '@kabmo-labs/kabmo-harness-config-store/probe-cache.server';
 import { forgetCliVersion } from '@/server/lib/harness/update-state.server';

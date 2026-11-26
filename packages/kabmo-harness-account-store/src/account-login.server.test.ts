@@ -12,7 +12,7 @@ import {
   extractLoginUrl,
   startAccountLogin,
   submitAccountLoginInput,
-} from '@/server/lib/harness/account-login.server';
+} from '@kabmo-labs/kabmo-harness-account-store/account-login.server';
 
 const roots: string[] = [];
 const savedDataDir = Bun.env.KABMO_DATA_DIR;

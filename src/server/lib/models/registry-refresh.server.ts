@@ -28,7 +28,7 @@ import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import { restartUtilityProcesses } from '@kabmo-labs/kabmo-omp-rpc-process/utility';
 import { getModelsConfigPath } from '@kabmo-labs/kabmo-omp-models-config/models-config';
 import { forgetProbe } from '@kabmo-labs/kabmo-harness-config-store/probe-cache.server';
-import { runAutoProbe } from '@/server/lib/harness/auto-probe.server';
+import { runAutoProbe } from '@kabmo-labs/kabmo-harness-config-store/auto-probe.server';
 import { harnessesSharingRegistry } from '@kabmo-labs/kabmo-harness-provider-runtime/provider-sources.server';
 import { invalidateModelsCaches } from '@/shared/lib/models/server-cache';
 
