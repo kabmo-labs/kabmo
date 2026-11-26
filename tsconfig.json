@@ -1381,6 +1381,24 @@
       "@kabmo-labs/kabmo-harness-session/auto-import.server": [
         "./packages/kabmo-harness-session/src/auto-import.server.ts"
       ],
+      "@kabmo-labs/kabmo-chat-rows": [
+        "./packages/kabmo-chat-rows/src/tool-results.ts"
+      ],
+      "@kabmo-labs/kabmo-chat-rows/tool-results": [
+        "./packages/kabmo-chat-rows/src/tool-results.ts"
+      ],
+      "@kabmo-labs/kabmo-chat-rows/transcript-rows": [
+        "./packages/kabmo-chat-rows/src/transcript-rows.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core/session-transcript.server": [
+        "./packages/kabmo-acp-session-core/src/session-transcript.server.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core/acp-raw-messages.server": [
+        "./packages/kabmo-acp-session-core/src/acp-raw-messages.server.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core/prewarm.server": [
+        "./packages/kabmo-acp-session-core/src/prewarm.server.ts"
+      ],
       "@kabmo-labs/kabmo-ui": [
         "./packages/kabmo-ui/src/index.tsx"
       ],

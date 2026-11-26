@@ -14,7 +14,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { buildAcpRawMessages } from '@/server/lib/harness/acp/acp-raw-messages.server';
+import { buildAcpRawMessages } from './acp-raw-messages.server';
 import type { ChatMessageData } from '@kabmo-labs/kabmo-chat-contracts/chat';
 
 const user: ChatMessageData = {

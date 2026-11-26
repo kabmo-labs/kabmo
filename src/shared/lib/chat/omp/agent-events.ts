@@ -33,12 +33,12 @@ import {
   pairToolOutputs,
   recordToolResult,
   refreshToolMessage,
-} from '@/shared/lib/chat/omp/tool-results';
+} from '@kabmo-labs/kabmo-chat-rows/tool-results';
 import { foldToolEnd, foldToolStart, foldToolUpdate } from '@/shared/lib/chat/omp/tool-frames';
 
 // Re-exported so stream.ts and the timeline hook keep their existing import
 // site; the implementation lives in tool-results.ts.
-export type { ToolResultRecord } from '@/shared/lib/chat/omp/tool-results';
+export type { ToolResultRecord } from '@kabmo-labs/kabmo-chat-rows/tool-results';
 export type { OmpAgentFoldDeps } from '@/shared/lib/chat/omp/fold-deps';
 
 export function foldAgentEvent(data: OmpAgentEvent, deps: OmpAgentFoldDeps): void {

@@ -14,7 +14,7 @@
 
 import { describe, expect, test } from 'bun:test';
 import { restoreEligible } from '@/server/routes/agent/harness-command';
-import { hasAssistantRow } from '@/shared/lib/chat/transcript-rows';
+import { hasAssistantRow } from '@kabmo-labs/kabmo-chat-rows/transcript-rows';
 import type { HarnessSessionRecord } from '@kabmo-labs/kabmo-harness-session/session-store.server';
 
 function record(overrides: Partial<HarnessSessionRecord> = {}): HarnessSessionRecord {

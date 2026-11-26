@@ -27,7 +27,7 @@ import {
   restartPrewarmedAcpSessions,
   type AcpPrewarmDeps,
   type PrewarmedAcp,
-} from '@/server/lib/harness/acp/prewarm.server';
+} from '@kabmo-labs/kabmo-acp-session-core/prewarm.server';
 import type { AcpProcess } from '@kabmo-labs/kabmo-acp-client/client';
 
 interface Fake {

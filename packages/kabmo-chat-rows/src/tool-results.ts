@@ -16,8 +16,7 @@
  * the deps type itself — so neither module imports the other.
  */
 
-import type { RefObject } from 'preact/compat';
-import type { ChatMessageData, ToolCallData } from '@/shared/types';
+import type { ChatMessageData, ToolCallData } from '@kabmo-labs/kabmo-chat-contracts/chat';
 import type { ToolImageRef } from '@kabmo-labs/kabmo-chat-contracts/chat';
 import { extractTextFromContent } from '@kabmo-labs/kabmo-omp-mapper';
 import { extractToolImages } from '@kabmo-labs/kabmo-omp-session-parse/tool-images';
@@ -48,10 +47,20 @@ const MAX_TOOL_OUTPUT_CHARS = 200_000;
 /** Max tool results retained per session; oldest entries are dropped first. */
 const MAX_TRACKED_TOOL_RESULTS = 200;
 
+/**
+ * A mutable cell. Structurally a Preact `RefObject`, stated here so this module
+ * holds no framework: the server builds these as plain objects, and importing
+ * `preact/compat` for the spelling would drag the client framework into every
+ * server package that pairs tool output.
+ */
+export interface Ref<T> {
+  current: T | null;
+}
+
 /** The slice of the fold's deps this module needs. */
 export interface ToolResultHost {
-  toolResultsRef: RefObject<Map<string, ToolResultRecord>>;
-  lastToolMessageRef: RefObject<ChatMessageData>;
+  toolResultsRef: Ref<Map<string, ToolResultRecord>>;
+  lastToolMessageRef: Ref<ChatMessageData>;
   /** Re-emit an updated assistant message into the timeline. */
   onMessageUpdate?: (msg: ChatMessageData) => void;
   /**

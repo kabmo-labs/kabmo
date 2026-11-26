@@ -1,0 +1,32 @@
+{
+  "name": "@kabmo-labs/kabmo-chat-rows",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Pair a tool call with its output, and read the assistant rows a transcript already owns.",
+  "exports": {
+    ".": "./src/tool-results.ts",
+    "./tool-results": "./src/tool-results.ts",
+    "./transcript-rows": "./src/transcript-rows.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-chat-rows"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  },
+  "dependencies": {
+    "@kabmo-labs/kabmo-app-contracts": "workspace:*",
+    "@kabmo-labs/kabmo-chat-contracts": "workspace:*",
+    "@kabmo-labs/kabmo-omp-mapper": "workspace:*",
+    "@kabmo-labs/kabmo-omp-session-parse": "workspace:*"
+  }
+}

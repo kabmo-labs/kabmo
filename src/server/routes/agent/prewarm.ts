@@ -1,7 +1,7 @@
 import { json } from '@kabmo-labs/kabmo-http';
 import type { ActionFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { prewarmRpcSession } from '@/server/lib/omp/rpc/prewarm-pool';
-import { prewarmAcpSession } from '@/server/lib/harness/acp/prewarm.server';
+import { prewarmAcpSession } from '@kabmo-labs/kabmo-acp-session-core/prewarm.server';
 import { commandAvailable } from '@kabmo-labs/kabmo-harness-config-store/auto-probe.server';
 import { loadHarnessConfig } from '@kabmo-labs/kabmo-harness-config-store/config.server';
 import { selectedAccountId } from '@kabmo-labs/kabmo-harness-account-store';

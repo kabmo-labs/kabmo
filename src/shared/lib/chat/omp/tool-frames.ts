@@ -14,7 +14,7 @@
  * snapshot (output AND details), `tool_execution_end` closes both.
  */
 
-import type { ToolCallData } from '@/shared/types';
+import type { ChatMessageData, ToolCallData } from '@kabmo-labs/kabmo-chat-contracts/chat';
 import { toolResultText } from '@kabmo-labs/kabmo-omp-mapper';
 import { extractToolImages } from '@kabmo-labs/kabmo-omp-session-parse/tool-images';
 import { describeToolActivity } from '@/shared/lib/chat/timeline/tool-verbs';
@@ -25,7 +25,7 @@ import {
   refreshToolMessage,
   resultDetails,
   toolMessageFor,
-} from '@/shared/lib/chat/omp/tool-results';
+} from '@kabmo-labs/kabmo-chat-rows/tool-results';
 
 /** `tool_execution_start`: name the activity and open the call's clock. */
 export function foldToolStart(data: Record<string, unknown>, deps: OmpAgentFoldDeps): void {
@@ -42,13 +42,14 @@ export function foldToolStart(data: Record<string, unknown>, deps: OmpAgentFoldD
   // finding no target and leaving it at whatever the transcript said.
   const last = callId ? toolMessageFor(deps, callId) : deps.lastToolMessageRef.current;
   if (last?.toolCalls?.some(tc => tc.id === callId)) {
-    deps.lastToolMessageRef.current = {
+    const updated: ChatMessageData = {
       ...last,
       toolCalls: last.toolCalls.map(tc => (
         tc.id === callId ? { ...tc, status: 'running' as ToolCallData['status'], startedAt } : tc
       )),
     };
-    deps.callbacksRef.current?.onMessageUpdate?.(deps.lastToolMessageRef.current);
+    deps.lastToolMessageRef.current = updated;
+    deps.callbacksRef.current?.onMessageUpdate?.(updated);
   }
 }
 

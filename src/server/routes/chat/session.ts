@@ -10,7 +10,7 @@ import { mergeOmpAttachments, overlayRowsForOmpSession } from '@kabmo-labs/kabmo
 import { readRawHeaderLine } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { formatNewSessionTitle } from '@kabmo-labs/kabmo-omp-session-core/default-title';
 import { importedChat } from '@/server/routes/chat/imported';
-import { loadAcpTranscript } from '@/server/lib/harness/acp/session-transcript.server';
+import { loadAcpTranscript } from '@kabmo-labs/kabmo-acp-session-core/session-transcript.server';
 import { getSessionRelation } from '@kabmo-labs/kabmo-session-relations/relations.server';
 import { windowMessages } from '@/server/routes/chat/window';
 import { readCodexRolloutTranscript } from '@kabmo-labs/kabmo-harness-local-transcript/codex-transcript';
@@ -19,7 +19,7 @@ import { loadStreamStates } from '@kabmo-labs/kabmo-session-stream-state';
 import { configByCategory, selectValues } from '@kabmo-labs/kabmo-harness-launch/launch';
 import type { AcpConfigOption } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import { liveMetaFields, type LiveSessionMeta } from '@/server/routes/chat/live-meta';
-import { hasAssistantRow } from '@/shared/lib/chat/transcript-rows';
+import { hasAssistantRow } from '@kabmo-labs/kabmo-chat-rows/transcript-rows';
 import { normalizeTranscriptRows } from '@kabmo-labs/kabmo-chat-tool/normalize';
 
 /** Newest-message window served by default for omp JSONL sessions; the client

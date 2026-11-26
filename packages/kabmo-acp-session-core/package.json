@@ -32,7 +32,10 @@
     "./session-permissions": "./src/session-permissions.ts",
     "./acp-goal-driver.server": "./src/acp-goal-driver.server.ts",
     "./acp-audit.server": "./src/acp-audit.server.ts",
-    "./one-shot.server": "./src/one-shot.server.ts"
+    "./one-shot.server": "./src/one-shot.server.ts",
+    "./session-transcript.server": "./src/session-transcript.server.ts",
+    "./acp-raw-messages.server": "./src/acp-raw-messages.server.ts",
+    "./prewarm.server": "./src/prewarm.server.ts"
   },
   "files": [
     "src"
@@ -61,6 +64,7 @@
     "@kabmo-labs/kabmo-acp-turn": "workspace:*",
     "@kabmo-labs/kabmo-app-contracts": "workspace:*",
     "@kabmo-labs/kabmo-chat-contracts": "workspace:*",
+    "@kabmo-labs/kabmo-chat-rows": "workspace:*",
     "@kabmo-labs/kabmo-chat-tool": "workspace:*",
     "@kabmo-labs/kabmo-db": "workspace:*",
     "@kabmo-labs/kabmo-guards": "workspace:*",
@@ -69,6 +73,7 @@
     "@kabmo-labs/kabmo-harness-config-store": "workspace:*",
     "@kabmo-labs/kabmo-harness-contract": "workspace:*",
     "@kabmo-labs/kabmo-harness-launch": "workspace:*",
+    "@kabmo-labs/kabmo-harness-lease": "workspace:*",
     "@kabmo-labs/kabmo-harness-session": "workspace:*",
     "@kabmo-labs/kabmo-idle-reaper": "workspace:*",
     "@kabmo-labs/kabmo-live-sessions": "workspace:*",

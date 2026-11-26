@@ -23,7 +23,7 @@
 
 import { getDb } from '@kabmo-labs/kabmo-db/lifecycle';
 import { chatMessageFromEvent } from '@kabmo-labs/kabmo-acp-session-core/replay-transcript';
-import { hasAssistantRow } from '@/shared/lib/chat/transcript-rows';
+import { hasAssistantRow } from '@kabmo-labs/kabmo-chat-rows/transcript-rows';
 import {
   pairToolOutputs,
   putToolResult,
@@ -31,7 +31,7 @@ import {
   resultDetails,
   type ToolResultHost,
   type ToolResultRecord,
-} from '@/shared/lib/chat/omp/tool-results';
+} from '@kabmo-labs/kabmo-chat-rows/tool-results';
 import { toolResultText } from '@kabmo-labs/kabmo-omp-mapper';
 import { extractToolImages } from '@kabmo-labs/kabmo-omp-session-parse/tool-images';
 import type { ChatMessageData } from '@kabmo-labs/kabmo-chat-contracts/chat';

@@ -14,15 +14,13 @@
  */
 
 import type { Dispatch, RefObject, SetStateAction } from 'preact/compat';
-import type { ChatMessageData, OmpAgentCallbacks, OmpAgentState } from '@/shared/types';
-import type { ToolResultHost, ToolResultRecord } from '@/shared/lib/chat/omp/tool-results';
+import type { OmpAgentCallbacks, OmpAgentState } from '@/shared/types';
+import type { ToolResultHost } from '@kabmo-labs/kabmo-chat-rows/tool-results';
 
 export interface OmpAgentFoldDeps extends ToolResultHost {
   sessionId: string;
   setState: Dispatch<SetStateAction<OmpAgentState>>;
   callbacksRef: RefObject<OmpAgentCallbacks>;
-  toolResultsRef: RefObject<Map<string, ToolResultRecord>>;
-  lastToolMessageRef: RefObject<ChatMessageData>;
   /** Last activity phrase published to the indicator; guards per-token frames
    *  from re-setting identical state. */
   activityRef: RefObject<string>;

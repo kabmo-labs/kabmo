@@ -32,7 +32,7 @@ import { saveAcpPlanState } from '@kabmo-labs/kabmo-acp-session-core/acp-goal-st
 import type { HarnessSession } from '@kabmo-labs/kabmo-harness-contract';
 import type { ModeRequest } from '@kabmo-labs/kabmo-omp-mode-request';
 import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
-import { hasAssistantRow } from '@/shared/lib/chat/transcript-rows';
+import { hasAssistantRow } from '@kabmo-labs/kabmo-chat-rows/transcript-rows';
 
 /**
  * Respawn the ACP session a recorded non-omp chat belongs to, or null when this

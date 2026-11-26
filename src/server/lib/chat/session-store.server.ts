@@ -14,8 +14,8 @@ import { getDb } from '@/server/db.server';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { getSessionData } from '@/client/data/mock/chat';
 import { findSessionFileById } from '@kabmo-labs/kabmo-omp-session-locator';
-import { loadAcpTranscript } from '@/server/lib/harness/acp/session-transcript.server';
-import { hasAssistantRow } from '@/shared/lib/chat/transcript-rows';
+import { loadAcpTranscript } from '@kabmo-labs/kabmo-acp-session-core/session-transcript.server';
+import { hasAssistantRow } from '@kabmo-labs/kabmo-chat-rows/transcript-rows';
 
 export interface JsonlSessionSource {
   kind: 'jsonl';

@@ -95,6 +95,7 @@
     "@kabmo-labs/kabmo-bytes": "workspace:*",
     "@kabmo-labs/kabmo-chat-contracts": "workspace:*",
     "@kabmo-labs/kabmo-chat-notices": "workspace:*",
+    "@kabmo-labs/kabmo-chat-rows": "workspace:*",
     "@kabmo-labs/kabmo-chat-tool": "workspace:*",
     "@kabmo-labs/kabmo-db": "workspace:*",
     "@kabmo-labs/kabmo-fs-config": "workspace:*",

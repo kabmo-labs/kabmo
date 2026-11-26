@@ -18,7 +18,7 @@
  */
 
 import { toChatMessage } from '@kabmo-labs/kabmo-omp-mapper';
-import { pairToolOutputs } from '@/shared/lib/chat/omp/tool-results';
+import { pairToolOutputs } from '@kabmo-labs/kabmo-chat-rows/tool-results';
 import type { OmpAgentFoldDeps } from '@/shared/lib/chat/omp/fold-deps';
 import type { OmpAgentCallbacks, OmpAgentEvent } from '@kabmo-labs/kabmo-chat-contracts/agent';
 

@@ -31,6 +31,7 @@
         "@kabmo-labs/kabmo-bytes": "workspace:*",
         "@kabmo-labs/kabmo-chat-contracts": "workspace:*",
         "@kabmo-labs/kabmo-chat-notices": "workspace:*",
+        "@kabmo-labs/kabmo-chat-rows": "workspace:*",
         "@kabmo-labs/kabmo-chat-tool": "workspace:*",
         "@kabmo-labs/kabmo-db": "workspace:*",
         "@kabmo-labs/kabmo-format": "workspace:*",
@@ -268,6 +269,7 @@
         "@kabmo-labs/kabmo-acp-turn": "workspace:*",
         "@kabmo-labs/kabmo-app-contracts": "workspace:*",
         "@kabmo-labs/kabmo-chat-contracts": "workspace:*",
+        "@kabmo-labs/kabmo-chat-rows": "workspace:*",
         "@kabmo-labs/kabmo-chat-tool": "workspace:*",
         "@kabmo-labs/kabmo-db": "workspace:*",
         "@kabmo-labs/kabmo-guards": "workspace:*",
@@ -276,6 +278,7 @@
         "@kabmo-labs/kabmo-harness-config-store": "workspace:*",
         "@kabmo-labs/kabmo-harness-contract": "workspace:*",
         "@kabmo-labs/kabmo-harness-launch": "workspace:*",
+        "@kabmo-labs/kabmo-harness-lease": "workspace:*",
         "@kabmo-labs/kabmo-harness-session": "workspace:*",
         "@kabmo-labs/kabmo-idle-reaper": "workspace:*",
         "@kabmo-labs/kabmo-live-sessions": "workspace:*",
@@ -355,6 +358,16 @@
         "@kabmo-labs/kabmo-format": "workspace:*",
         "@kabmo-labs/kabmo-guards": "workspace:*",
         "@kabmo-labs/kabmo-omp-contracts": "workspace:*",
+      },
+    },
+    "packages/kabmo-chat-rows": {
+      "name": "@kabmo-labs/kabmo-chat-rows",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kabmo-labs/kabmo-app-contracts": "workspace:*",
+        "@kabmo-labs/kabmo-chat-contracts": "workspace:*",
+        "@kabmo-labs/kabmo-omp-mapper": "workspace:*",
+        "@kabmo-labs/kabmo-omp-session-parse": "workspace:*",
       },
     },
     "packages/kabmo-chat-tool": {
@@ -1275,6 +1288,8 @@
     "@kabmo-labs/kabmo-chat-contracts": ["@kabmo-labs/kabmo-chat-contracts@workspace:packages/kabmo-chat-contracts"],
 
     "@kabmo-labs/kabmo-chat-notices": ["@kabmo-labs/kabmo-chat-notices@workspace:packages/kabmo-chat-notices"],
+
+    "@kabmo-labs/kabmo-chat-rows": ["@kabmo-labs/kabmo-chat-rows@workspace:packages/kabmo-chat-rows"],
 
     "@kabmo-labs/kabmo-chat-tool": ["@kabmo-labs/kabmo-chat-tool@workspace:packages/kabmo-chat-tool"],
 

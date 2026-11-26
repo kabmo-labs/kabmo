@@ -279,6 +279,7 @@ describe('package catalog', () => {
       'kabmo-omp-config-mcp',
       'kabmo-omp-config-doc',
       'kabmo-chat-contracts',
+      'kabmo-chat-rows',
       'kabmo-chat-tool',
       'kabmo-chat-notices',
       'kabmo-omp-session-parse',

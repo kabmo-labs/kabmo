@@ -390,6 +390,10 @@ export const RELEASE_PACKAGES = [
     name: '@kabmo-labs/kabmo-chat-contracts',
   },
   {
+    dir: 'packages/kabmo-chat-rows',
+    name: '@kabmo-labs/kabmo-chat-rows',
+  },
+  {
     dir: 'packages/kabmo-chat-tool',
     name: '@kabmo-labs/kabmo-chat-tool',
   },
