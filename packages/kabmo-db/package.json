@@ -6,7 +6,8 @@
   "exports": {
     ".": "./src/client.ts",
     "./client": "./src/client.ts",
-    "./lifecycle": "./src/lifecycle.ts"
+    "./lifecycle": "./src/lifecycle.ts",
+    "./worktree-registry": "./src/worktree-registry.server.ts"
   },
   "files": [
     "src"

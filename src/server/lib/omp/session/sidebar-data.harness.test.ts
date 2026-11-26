@@ -33,7 +33,7 @@ import { loadSidebarStructure } from '@/server/lib/omp/session/sidebar-data.serv
 import { invalidateOmpSidebarData } from '@kabmo-labs/kabmo-omp-session-reader';
 import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { importHarnessSession, saveHarnessSession } from '@kabmo-labs/kabmo-harness-session/session-store.server';
-import { noteAgentTitle, notePromptTitle } from '@/server/lib/harness/session-title.server';
+import { noteAgentTitle, notePromptTitle } from '@kabmo-labs/kabmo-harness-session/session-title.server';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { removeDir } from '@/test-support/remove-dir';
 

@@ -22,7 +22,7 @@
 
 import { configOption, promptBlocks } from '@kabmo-labs/kabmo-acp-prompt/prompt';
 import { acpOptionValues } from '@kabmo-labs/kabmo-acp-protocol/protocol';
-import { notePromptTitle } from '@/server/lib/harness/session-title.server';
+import { notePromptTitle } from '@kabmo-labs/kabmo-harness-session/session-title.server';
 import { isApprovalMode, type ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 import type { AcpConfigOption, AcpSessionModeState } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import type { HarnessCapabilities } from '@kabmo-labs/kabmo-harness-launch/capabilities';

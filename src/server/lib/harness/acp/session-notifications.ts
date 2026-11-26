@@ -18,7 +18,7 @@
 
 import type { AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 import type { HarnessCapabilities } from '@kabmo-labs/kabmo-harness-launch/capabilities';
-import { noteAgentTitle } from '@/server/lib/harness/session-title.server';
+import { noteAgentTitle } from '@kabmo-labs/kabmo-harness-session/session-title.server';
 import { ACP_CONFIG_EFFECTS } from '@/server/lib/harness/acp/config-effects';
 import { metadataCapabilities, parseAgentCommands, type AgentCommand } from '@kabmo-labs/kabmo-acp-session/session-facts';
 import {

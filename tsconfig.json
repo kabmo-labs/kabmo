@@ -934,6 +934,15 @@
       "@kabmo-labs/kabmo-omp-rpc-protocol/dialog-methods": [
         "./packages/kabmo-omp-rpc-protocol/src/dialog-methods.ts"
       ],
+      "@kabmo-labs/kabmo-harness-account-store": [
+        "./packages/kabmo-harness-account-store/src/accounts.server.ts"
+      ],
+      "@kabmo-labs/kabmo-harness-session/session-title.server": [
+        "./packages/kabmo-harness-session/src/session-title.server.ts"
+      ],
+      "@kabmo-labs/kabmo-db/worktree-registry": [
+        "./packages/kabmo-db/src/worktree-registry.server.ts"
+      ],
       "@kabmo-labs/kabmo-ui": [
         "./packages/kabmo-ui/src/index.tsx"
       ],

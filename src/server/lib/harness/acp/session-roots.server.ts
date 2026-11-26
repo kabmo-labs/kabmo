@@ -19,7 +19,7 @@
  */
 
 import { getDb } from '@/server/db.server';
-import { worktreeRowFor } from '@/server/lib/db/worktree-registry.server';
+import { worktreeRowFor } from '@kabmo-labs/kabmo-db/worktree-registry';
 
 /** The session's own root plus any registered parent repository root. */
 export async function sessionRoots(cwd: string): Promise<string[]> {

@@ -21,7 +21,7 @@ import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { getDb } from '@/server/db.server';
 import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 import { getDataDir } from '@kabmo-labs/kabmo-paths/paths';
-import { putWorktreeRow, worktreeIdentityFor } from '@/server/lib/db/worktree-registry.server';
+import { putWorktreeRow, worktreeIdentityFor } from '@kabmo-labs/kabmo-db/worktree-registry';
 import { asWorktreeFailure } from '@/server/lib/fs/worktree/errors';
 import { createWorktree, planWorktree } from '@/server/lib/fs/worktree/create';
 import { invalidateWorktreeTopology } from '@/server/lib/fs/worktree/topology';

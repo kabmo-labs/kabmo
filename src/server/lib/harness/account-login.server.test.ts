@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { testPosix } from '@/test-support/platform';
-import { createHarnessAccount, verifyHarnessAccount } from '@/server/lib/harness/accounts.server';
+import { createHarnessAccount, verifyHarnessAccount } from '@kabmo-labs/kabmo-harness-account-store';
 import {
   accountLoginStatus,
   cancelAccountLogin,

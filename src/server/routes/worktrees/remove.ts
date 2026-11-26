@@ -23,7 +23,7 @@ import { getDataDir } from '@kabmo-labs/kabmo-paths/paths';
 import { getDb } from '@/server/db.server';
 import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 import { pathHolds } from '@kabmo-labs/kabmo-fs-canonical';
-import { removeWorktreeRow, worktreeRowFor } from '@/server/lib/db/worktree-registry.server';
+import { removeWorktreeRow, worktreeRowFor } from '@kabmo-labs/kabmo-db/worktree-registry';
 import { removeWorktree } from '@/server/lib/fs/worktree/remove';
 import { invalidateWorktreeTopology } from '@/server/lib/fs/worktree/topology';
 import { resolveProjectRoot } from '@kabmo-labs/kabmo-omp-worktree';

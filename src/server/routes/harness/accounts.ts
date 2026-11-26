@@ -18,7 +18,7 @@ import {
   renameHarnessAccount,
   selectHarnessAccount,
   verifyHarnessAccount,
-} from '@/server/lib/harness/accounts.server';
+} from '@kabmo-labs/kabmo-harness-account-store';
 import {
   accountLoginStatus,
   cancelAccountLogin,

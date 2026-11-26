@@ -31,7 +31,7 @@ import {
   saveAcpGoalState,
   type AcpGoalState,
 } from '@/server/lib/harness/acp/acp-goal-state.server';
-import { notePromptTitle } from '@/server/lib/harness/session-title.server';
+import { notePromptTitle } from '@kabmo-labs/kabmo-harness-session/session-title.server';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 
 /** The process surface these actions drive. `AcpSession` satisfies it. */

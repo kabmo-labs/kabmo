@@ -17,7 +17,7 @@
 
 import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
-import { getDb } from '@/server/db.server';
+import { getDb } from '@kabmo-labs/kabmo-db/lifecycle';
 import { getDataDir } from '@kabmo-labs/kabmo-paths/paths';
 import { forgetProbe } from '@kabmo-labs/kabmo-harness-config-store/probe-cache.server';
 import { readAccountIdentity } from '@kabmo-labs/kabmo-harness-provider-runtime/account-identity.server';

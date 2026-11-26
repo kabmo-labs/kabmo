@@ -31,7 +31,7 @@ import { AcpProcess } from '@kabmo-labs/kabmo-acp-client/client';
 import { listAllSessions } from '@kabmo-labs/kabmo-acp-protocol/verbs';
 import { withGatewayCompatibility } from '@kabmo-labs/kabmo-acp-client/gateway-env';
 import { loadHarnessConfig } from '@kabmo-labs/kabmo-harness-config-store/config.server';
-import { resolveAccountLaunch } from '@/server/lib/harness/accounts.server';
+import { resolveAccountLaunch } from '@kabmo-labs/kabmo-harness-account-store';
 import { ensureCustomHarnesses } from '@kabmo-labs/kabmo-harness-config-store/custom.server';
 import { harnessSessionKnown, importHarnessSession } from '@kabmo-labs/kabmo-harness-session/session-store.server';
 import { sessionsWithoutTranscript } from '@kabmo-labs/kabmo-harness-session/session-transcript.server';

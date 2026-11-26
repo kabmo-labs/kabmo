@@ -35,7 +35,7 @@ import fs from 'node:fs';
 import { AcpProcess } from '@kabmo-labs/kabmo-acp-client/client';
 import { withGatewayCompatibility } from '@kabmo-labs/kabmo-acp-client/gateway-env';
 import { loadHarnessConfig } from '@kabmo-labs/kabmo-harness-config-store/config.server';
-import { resolveAccountLaunch } from '@/server/lib/harness/accounts.server';
+import { resolveAccountLaunch } from '@kabmo-labs/kabmo-harness-account-store';
 import { customHarness, ensureCustomHarnesses } from '@kabmo-labs/kabmo-harness-config-store/custom.server';
 import { isSinglePathSegment } from '@kabmo-labs/kabmo-paths/path-segment';
 import { dshStoreDirs } from '@kabmo-labs/kabmo-harness-session/session-transcript.server';

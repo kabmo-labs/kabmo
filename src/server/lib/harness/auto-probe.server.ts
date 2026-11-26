@@ -38,7 +38,7 @@ import {
   launchFromConfig,
   loadHarnessConfig,
 } from '@kabmo-labs/kabmo-harness-config-store/config.server';
-import { resolveAccountLaunch } from '@/server/lib/harness/accounts.server';
+import { resolveAccountLaunch } from '@kabmo-labs/kabmo-harness-account-store';
 import type { HarnessConfig } from '@kabmo-labs/kabmo-harness-config';
 import { loadDisabledHarnesses } from '@kabmo-labs/kabmo-harness-config-store/enabled.server';
 import { blockedProbe, probeHarness } from '@kabmo-labs/kabmo-harness-launch/launch';

@@ -4,7 +4,7 @@ import { prewarmRpcSession } from '@/server/lib/omp/rpc/prewarm-pool';
 import { prewarmAcpSession } from '@/server/lib/harness/acp/prewarm.server';
 import { commandAvailable } from '@/server/lib/harness/auto-probe.server';
 import { loadHarnessConfig } from '@kabmo-labs/kabmo-harness-config-store/config.server';
-import { selectedAccountId } from '@/server/lib/harness/accounts.server';
+import { selectedAccountId } from '@kabmo-labs/kabmo-harness-account-store';
 import { accountAdapter } from '@kabmo-labs/kabmo-harness-accounts';
 import { kabmoModeEnv } from '@kabmo-labs/kabmo-omp-extensions';
 import { parseModeSelection } from '@/server/lib/omp/mode/request';

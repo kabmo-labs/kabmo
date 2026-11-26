@@ -24,7 +24,7 @@ import { resolveProjectRoot } from '@kabmo-labs/kabmo-omp-worktree';
 import { listSessionFiles } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { scanSessionInfoCached } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { canonicalPath } from '@kabmo-labs/kabmo-fs-canonical';
-import { worktreeIdentityFor, listWorktreeRows } from '@/server/lib/db/worktree-registry.server';
+import { worktreeIdentityFor, listWorktreeRows } from '@kabmo-labs/kabmo-db/worktree-registry';
 import { dirtyCount, commitsAheadOf } from '@/server/lib/fs/worktree/remove';
 import { listWorktrees, isWorkTree } from '@/server/lib/fs/worktree/list';
 import {

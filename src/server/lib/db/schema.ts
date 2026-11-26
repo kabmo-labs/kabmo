@@ -20,7 +20,7 @@ import { ensurePluginSchema } from '@/server/lib/plugins/schema.server';
 import { ensureModelRolePresetSchema } from '@/server/lib/model-roles/schema.server';
 import { ensureProviderIconSchema, repairProviderIconSvgs } from '@/server/lib/models/provider-icon-store.server';
 import { ensureUsageIndexSchema } from '@/server/lib/usage/index-schema.server';
-import { ensureWorktreeSchema } from '@/server/lib/db/worktree-registry.server';
+import { ensureWorktreeSchema } from '@kabmo-labs/kabmo-db/worktree-registry';
 import { ensureReviewSchema } from '@/server/lib/review/schema.server';
 import { ensureHarnessSchema } from '@kabmo-labs/kabmo-harness-schema/schema.server';
 import { ensureSessionRelationsSchema } from '@/server/lib/sessions/schema.server';

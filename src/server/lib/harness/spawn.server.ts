@@ -26,7 +26,7 @@ import { AcpFrameRecorder } from '@/server/lib/harness/acp/acp-frames.server';
 import { claimPrewarmedAcpSession } from '@/server/lib/harness/acp/prewarm.server';
 import { rememberAgentToken } from '@/server/lib/sessions/agent-token.server';
 import { loadHarnessConfig } from '@kabmo-labs/kabmo-harness-config-store/config.server';
-import { resolveAccountLaunch, selectedAccountId } from '@/server/lib/harness/accounts.server';
+import { resolveAccountLaunch, selectedAccountId } from '@kabmo-labs/kabmo-harness-account-store';
 import { accountAdapter } from '@kabmo-labs/kabmo-harness-accounts';
 import { sessionLaunchCommand } from '@kabmo-labs/kabmo-harness-launch/launch';
 import { resolveDefaultModel, modelProvider } from '@kabmo-labs/kabmo-harness-config';

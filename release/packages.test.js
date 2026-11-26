@@ -218,6 +218,7 @@ describe('package catalog', () => {
       'kabmo-omp-rpc-util',
       'kabmo-refresh-cadence',
       'kabmo-omp-session-reader',
+      'kabmo-harness-account-store',
       'kabmo-harness-config-store',
       'kabmo-harness-local-transcript',
       'kabmo-harness-session',

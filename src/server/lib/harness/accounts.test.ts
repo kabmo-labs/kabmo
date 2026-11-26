@@ -11,7 +11,7 @@ import {
   selectHarnessAccount,
   selectedAccountId,
   verifyHarnessAccount,
-} from '@/server/lib/harness/accounts.server';
+} from '@kabmo-labs/kabmo-harness-account-store';
 import { EMPTY_HARNESS_CONFIG } from '@kabmo-labs/kabmo-harness-config';
 
 const roots: string[] = [];

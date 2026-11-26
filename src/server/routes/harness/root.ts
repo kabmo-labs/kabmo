@@ -29,7 +29,7 @@ import { commandAvailable, probeWithConfig } from '@/server/lib/harness/auto-pro
 import { autoImportEnabled, loadAutoImportDisabled } from '@/server/lib/harness/auto-import.server';
 import { autoImportAction, importSessionsAction } from '@/server/routes/harness/session-actions';
 import { loadHarnessConfig, probeInvalidatedBy, saveHarnessConfig } from '@kabmo-labs/kabmo-harness-config-store/config.server';
-import { listHarnessAccounts } from '@/server/lib/harness/accounts.server';
+import { listHarnessAccounts } from '@kabmo-labs/kabmo-harness-account-store';
 import { harnessAccountAction } from '@/server/routes/harness/accounts';
 import { importableProvidersFor, readRegistryProviders } from '@kabmo-labs/kabmo-harness-provider-runtime/provider-sources.server';
 import { addProviderAction, importProviderAction, importSourceOf, isImportBody } from '@/server/routes/harness/import-action';

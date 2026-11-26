@@ -22,7 +22,7 @@
 
 import { AcpSession } from '@/server/lib/harness/acp/session';
 import { loadHarnessConfig } from '@kabmo-labs/kabmo-harness-config-store/config.server';
-import { resolveAccountLaunch } from '@/server/lib/harness/accounts.server';
+import { resolveAccountLaunch } from '@kabmo-labs/kabmo-harness-account-store';
 import { sessionLaunchCommand } from '@kabmo-labs/kabmo-harness-launch/launch';
 import { extractTextFromContent } from '@kabmo-labs/kabmo-omp-mapper';
 import type { AcpSessionOptions } from '@kabmo-labs/kabmo-acp-session/session-options';

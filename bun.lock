@@ -38,6 +38,7 @@
         "@kabmo-labs/kabmo-fs-toolchain": "workspace:*",
         "@kabmo-labs/kabmo-git-env": "workspace:*",
         "@kabmo-labs/kabmo-guards": "workspace:*",
+        "@kabmo-labs/kabmo-harness-account-store": "workspace:*",
         "@kabmo-labs/kabmo-harness-accounts": "workspace:*",
         "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
         "@kabmo-labs/kabmo-harness-config": "workspace:*",
@@ -313,6 +314,20 @@
       "name": "@kabmo-labs/kabmo-guards",
       "version": "0.0.1",
     },
+    "packages/kabmo-harness-account-store": {
+      "name": "@kabmo-labs/kabmo-harness-account-store",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kabmo-labs/kabmo-db": "workspace:*",
+        "@kabmo-labs/kabmo-harness-accounts": "workspace:*",
+        "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
+        "@kabmo-labs/kabmo-harness-config": "workspace:*",
+        "@kabmo-labs/kabmo-harness-config-store": "workspace:*",
+        "@kabmo-labs/kabmo-harness-launch": "workspace:*",
+        "@kabmo-labs/kabmo-harness-provider-runtime": "workspace:*",
+        "@kabmo-labs/kabmo-paths": "workspace:*",
+      },
+    },
     "packages/kabmo-harness-accounts": {
       "name": "@kabmo-labs/kabmo-harness-accounts",
       "version": "0.0.1",
@@ -451,7 +466,9 @@
       "dependencies": {
         "@kabmo-labs/kabmo-db": "workspace:*",
         "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
+        "@kabmo-labs/kabmo-harness-lease": "workspace:*",
         "@kabmo-labs/kabmo-harness-local-transcript": "workspace:*",
+        "@kabmo-labs/kabmo-realtime-signals": "workspace:*",
       },
     },
     "packages/kabmo-harness-session-modes": {
@@ -954,6 +971,8 @@
     "@kabmo-labs/kabmo-git-env": ["@kabmo-labs/kabmo-git-env@workspace:packages/kabmo-git-env"],
 
     "@kabmo-labs/kabmo-guards": ["@kabmo-labs/kabmo-guards@workspace:packages/kabmo-guards"],
+
+    "@kabmo-labs/kabmo-harness-account-store": ["@kabmo-labs/kabmo-harness-account-store@workspace:packages/kabmo-harness-account-store"],
 
     "@kabmo-labs/kabmo-harness-accounts": ["@kabmo-labs/kabmo-harness-accounts@workspace:packages/kabmo-harness-accounts"],
 

@@ -145,6 +145,10 @@ export const RELEASE_PACKAGES = [
     name: '@kabmo-labs/kabmo-omp-session-reader',
   },
   {
+    dir: 'packages/kabmo-harness-account-store',
+    name: '@kabmo-labs/kabmo-harness-account-store',
+  },
+  {
     dir: 'packages/kabmo-harness-config-store',
     name: '@kabmo-labs/kabmo-harness-config-store',
   },
