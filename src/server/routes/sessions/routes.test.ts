@@ -24,7 +24,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { getDb } from '@/server/db.server';
-import type { DbClient } from '@/server/lib/db/client';
+import type { DbClient } from '@kabmo-labs/kabmo-db/client';
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { invalidateOmpSidebarData } from '@/server/lib/omp/session/reader';

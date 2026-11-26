@@ -4,7 +4,7 @@ import { getDb } from '@/server/db.server';
 import { INITIAL_MODELS_CATALOG } from '@/client/data/models/catalog';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import type { AIModelOption, ModelsData, ProviderItem } from '@/shared/types';
-import { readSettingsJson, writeSettingsJson } from '@/server/lib/db/settings-store';
+import { readSettingsJson, writeSettingsJson } from '@kabmo-labs/kabmo-settings-store';
 import { modelKey } from '@/shared/lib/models/identity';
 import {
   EMPTY_MODELS,

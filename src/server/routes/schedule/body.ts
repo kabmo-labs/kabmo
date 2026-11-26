@@ -16,7 +16,7 @@
 
 import { getDb } from '@/server/db.server';
 import { normalizeModel } from '@/server/lib/queue/store.server';
-import { readSettingsJson } from '@/server/lib/db/settings-store';
+import { readSettingsJson } from '@kabmo-labs/kabmo-settings-store';
 import { loadPersistedAccessMode } from '@/shared/lib/omp/config/access-mode.server';
 import { harnessDescriptor } from '@kabmo-labs/kabmo-harness-catalog';
 import { isValidTimeZone, serverTimeZone } from '@/shared/lib/schedule/timezone';

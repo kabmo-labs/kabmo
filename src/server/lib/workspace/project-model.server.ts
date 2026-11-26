@@ -17,7 +17,7 @@
  * may hand over a worktree or a symlinked path of the same project.
  */
 
-import type { DbClient } from '@/server/lib/db/client';
+import type { DbClient } from '@kabmo-labs/kabmo-db/client';
 import { projectPathKey } from '@kabmo-labs/kabmo-omp-paths';
 import { parseProjectModel } from '@/shared/lib/workspace/project-model';
 import type { SelectedModel } from '@/shared/types';

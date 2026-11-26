@@ -30,7 +30,7 @@ import { getDataDir } from '@kabmo-labs/kabmo-paths/paths';
 import { resolveBunBin } from '@/server/lib/lifecycle/bun';
 import { packageDir } from '@/server/lib/fs/package-root';
 import { getDb } from '@/server/db.server';
-import { readAllSettingsJson } from '@/server/lib/db/settings-store';
+import { readAllSettingsJson } from '@kabmo-labs/kabmo-settings-store';
 import { readSettingsBlob } from '@/shared/lib/settings/keys';
 import { resolveTheme } from '@/shared/lib/theme/catalog';
 import {

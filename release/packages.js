@@ -121,6 +121,22 @@ export const RELEASE_PACKAGES = [
     name: '@kabmo-labs/kabmo-mcp-contracts',
   },
   {
+    dir: 'packages/kabmo-db',
+    name: '@kabmo-labs/kabmo-db',
+  },
+  {
+    dir: 'packages/kabmo-settings-store',
+    name: '@kabmo-labs/kabmo-settings-store',
+  },
+  {
+    dir: 'packages/kabmo-omp-subagent',
+    name: '@kabmo-labs/kabmo-omp-subagent',
+  },
+  {
+    dir: 'packages/kabmo-omp-rpc-util',
+    name: '@kabmo-labs/kabmo-omp-rpc-util',
+  },
+  {
     /** Directory under `packages/`, which is also the tag's prefix. */
     dir: 'packages/kabmo-guards',
     name: '@kabmo-labs/kabmo-guards',

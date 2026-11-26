@@ -13,7 +13,7 @@
  * child runs `--no-tools`.
  */
 
-import type { DbClient } from '@/server/lib/db/client';
+import type { DbClient } from '@kabmo-labs/kabmo-db/client';
 
 const BTW_SCHEMA_SQL = `
   CREATE TABLE IF NOT EXISTS btw_topics (

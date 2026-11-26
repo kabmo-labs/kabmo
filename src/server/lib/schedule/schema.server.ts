@@ -15,7 +15,7 @@
  * it should have run".
  */
 
-import type { DbClient } from '@/server/lib/db/client';
+import type { DbClient } from '@kabmo-labs/kabmo-db/client';
 
 const SCHEDULE_SCHEMA_SQL = `
   CREATE TABLE IF NOT EXISTS scheduled_tasks (

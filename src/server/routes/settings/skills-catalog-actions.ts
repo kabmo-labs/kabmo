@@ -35,7 +35,7 @@ import { searchSkillCatalog, toCatalogSkills } from '@kabmo-labs/kabmo-omp-confi
 import { inspectSkillRepo, toSkillRepoRef } from '@/server/lib/omp/config/skills-git-repo';
 import { installSkillCopies } from '@/server/lib/omp/config/skills-git-install';
 import { readCatalogSources, writeCatalogSources } from '@/server/lib/omp/config/skill-sources';
-import type { DbClient } from '@/server/lib/db/client';
+import type { DbClient } from '@kabmo-labs/kabmo-db/client';
 import { reloadLiveSessions } from '@/server/lib/omp/session/reload.server';
 
 export interface CatalogDeps {

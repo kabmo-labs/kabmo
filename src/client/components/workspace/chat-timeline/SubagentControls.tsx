@@ -18,7 +18,7 @@
 
 import { useState } from 'preact/hooks';
 import { Send, Square } from 'lucide-preact';
-import { cancelSubagent, steerSubagent } from '@/shared/lib/omp/subagent/control';
+import { cancelSubagent, steerSubagent } from '@kabmo-labs/kabmo-omp-subagent/control';
 
 interface SubagentControlsProps {
   sessionId: string;

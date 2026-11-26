@@ -1,0 +1,16 @@
+{
+  "name": "@kabmo-labs/kabmo-settings-store",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Read and write the settings JSON rows.",
+  "exports": { ".": "./src/settings-store.ts", "./settings-store": "./src/settings-store.ts" },
+  "files": ["src"],
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/kabmo-labs/kabmo.git", "directory": "packages/kabmo-settings-store" },
+  "publishConfig": { "access": "public" },
+  "engines": { "bun": ">=1.4.0" },
+  "dependencies": {
+    "@kabmo-labs/kabmo-db": "workspace:*",
+    "@kabmo-labs/kabmo-runtime-flags": "workspace:*"
+  }
+}

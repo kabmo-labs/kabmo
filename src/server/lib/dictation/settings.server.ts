@@ -16,7 +16,7 @@
 
 import fs from 'fs/promises';
 import { getDb } from '@/server/db.server';
-import { readAllSettingsJson } from '@/server/lib/db/settings-store';
+import { readAllSettingsJson } from '@kabmo-labs/kabmo-settings-store';
 import { writeFileAtomic } from '@kabmo-labs/kabmo-fs-config/atomic-write';
 import { getDictationSecretPath } from '@kabmo-labs/kabmo-paths/paths';
 import { readSettingsBlob } from '@/shared/lib/settings/keys';

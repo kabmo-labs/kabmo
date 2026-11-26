@@ -12,7 +12,7 @@
  * demo rows instead of duplicating them.
  */
 
-import type { DbClient } from '@/server/lib/db/client';
+import type { DbClient } from '@kabmo-labs/kabmo-db/client';
 import { SAMPLE_TOOLS_SESSION_ID, getSampleToolsSession } from '@/client/data/samples/tools-session';
 import { SAMPLE_DIALOGUE_SESSION_ID, getSampleDialogueSession } from '@/client/data/samples/dialogue-session';
 import { SAMPLE_DEVICES_SESSION_ID, getSampleDevicesSession } from '@/client/data/samples/virtual-devices-session';

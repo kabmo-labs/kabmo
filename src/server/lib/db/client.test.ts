@@ -20,7 +20,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { createDb, type DbClient } from '@/server/lib/db/client';
+import { createDb, type DbClient } from '@kabmo-labs/kabmo-db/client';
 
 const opened: DbClient[] = [];
 const dirs: string[] = [];

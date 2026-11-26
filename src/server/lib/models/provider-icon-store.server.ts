@@ -23,7 +23,7 @@
  * negative row every panel load would retry a 4s timeout per provider.
  */
 
-import type { DbClient } from '@/server/lib/db/client';
+import type { DbClient } from '@kabmo-labs/kabmo-db/client';
 import { drawableSvg } from '@/server/lib/models/provider-icon-svg';
 
 const PROVIDER_ICON_SCHEMA_SQL = `

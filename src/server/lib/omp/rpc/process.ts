@@ -23,10 +23,10 @@ import { RpcFrameDecoder, encodeRpcFrameLine, type RpcFrameRecord, type RpcProto
 import { isRecord } from '@kabmo-labs/kabmo-guards';
 import { killProcessTree } from '@kabmo-labs/kabmo-process-kill';
 import { readLines } from '@kabmo-labs/kabmo-rpc-lines';
-import { MAX_PROTOCOL_ERROR_NOTICES, RpcCommandError, RpcCommandTimeoutError, STDERR_TAIL_LIMIT, type PendingCommand, type RpcFrame, type RpcProcessOptions, type RpcResponseFrame } from '@/server/lib/omp/rpc/process-helpers';
+import { MAX_PROTOCOL_ERROR_NOTICES, RpcCommandError, RpcCommandTimeoutError, STDERR_TAIL_LIMIT, type PendingCommand, type RpcFrame, type RpcProcessOptions, type RpcResponseFrame } from '@kabmo-labs/kabmo-omp-rpc-util/process-helpers';
 
-export { RpcCommandError, RpcCommandTimeoutError } from '@/server/lib/omp/rpc/process-helpers';
-export type { RpcFrame, RpcProcessOptions, RpcResponseFrame } from '@/server/lib/omp/rpc/process-helpers';
+export { RpcCommandError, RpcCommandTimeoutError } from '@kabmo-labs/kabmo-omp-rpc-util/process-helpers';
+export type { RpcFrame, RpcProcessOptions, RpcResponseFrame } from '@kabmo-labs/kabmo-omp-rpc-util/process-helpers';
 
 export class RpcProcess {
   readonly cwd: string;

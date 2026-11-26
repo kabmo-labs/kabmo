@@ -33,7 +33,7 @@
 import fs from 'fs';
 import path from 'path';
 import { getDb } from '@/server/db.server';
-import type { DbClient } from '@/server/lib/db/client';
+import type { DbClient } from '@kabmo-labs/kabmo-db/client';
 import { findSessionFileById } from '@/server/lib/omp/session/locator';
 import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { invalidateOmpSidebarData } from '@/server/lib/omp/session/reader';

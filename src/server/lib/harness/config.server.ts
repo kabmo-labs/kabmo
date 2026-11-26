@@ -15,7 +15,7 @@
  */
 
 import { getDb } from '@/server/db.server';
-import { readSettingsJson, writeSettingsJson } from '@/server/lib/db/settings-store';
+import { readSettingsJson, writeSettingsJson } from '@kabmo-labs/kabmo-settings-store';
 import { HARNESS_LAUNCH, type HarnessLaunch } from '@kabmo-labs/kabmo-harness-launch/launch-table';
 import { customLaunch } from '@/server/lib/harness/custom.server';
 import { harnessConfigKey,

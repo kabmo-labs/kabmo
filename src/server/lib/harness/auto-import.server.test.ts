@@ -16,7 +16,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { getDb } from '@/server/db.server';
 import { ensureHarnessSchema } from '@/server/lib/harness/schema.server';
-import { writeSettingsJson } from '@/server/lib/db/settings-store';
+import { writeSettingsJson } from '@kabmo-labs/kabmo-settings-store';
 import {
   autoImportEnabled,
   loadAutoImportDisabled,

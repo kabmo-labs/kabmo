@@ -18,7 +18,7 @@
  * picker cannot tell apart.
  */
 
-import type { DbClient } from '@/server/lib/db/client';
+import type { DbClient } from '@kabmo-labs/kabmo-db/client';
 
 const MODEL_ROLE_PRESET_SCHEMA_SQL = `
   CREATE TABLE IF NOT EXISTS model_role_presets (

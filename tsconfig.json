@@ -799,6 +799,63 @@
       "@kabmo-labs/kabmo-harness-lease/update-job-store": [
         "./packages/kabmo-harness-lease/src/update-job-store.ts"
       ],
+      "@kabmo-labs/kabmo-db": [
+        "./packages/kabmo-db/src/client.ts"
+      ],
+      "@kabmo-labs/kabmo-db/client": [
+        "./packages/kabmo-db/src/client.ts"
+      ],
+      "@kabmo-labs/kabmo-settings-store": [
+        "./packages/kabmo-settings-store/src/settings-store.ts"
+      ],
+      "@kabmo-labs/kabmo-settings-store/settings-store": [
+        "./packages/kabmo-settings-store/src/settings-store.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-subagent": [
+        "./packages/kabmo-omp-subagent/src/parse.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-subagent/control": [
+        "./packages/kabmo-omp-subagent/src/control.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-subagent/history-client": [
+        "./packages/kabmo-omp-subagent/src/history-client.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-subagent/history-settlement": [
+        "./packages/kabmo-omp-subagent/src/history-settlement.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-subagent/history-status": [
+        "./packages/kabmo-omp-subagent/src/history-status.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-subagent/label": [
+        "./packages/kabmo-omp-subagent/src/label.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-subagent/parse": [
+        "./packages/kabmo-omp-subagent/src/parse.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-subagent/result-details": [
+        "./packages/kabmo-omp-subagent/src/result-details.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-subagent/transcript-client": [
+        "./packages/kabmo-omp-subagent/src/transcript-client.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-rpc-util": [
+        "./packages/kabmo-omp-rpc-util/src/process-helpers.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-rpc-util/agent-start-watchdog": [
+        "./packages/kabmo-omp-rpc-util/src/agent-start-watchdog.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-rpc-util/process-helpers": [
+        "./packages/kabmo-omp-rpc-util/src/process-helpers.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-rpc-util/retry-saga": [
+        "./packages/kabmo-omp-rpc-util/src/retry-saga.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-rpc-util/subagent-liveness": [
+        "./packages/kabmo-omp-rpc-util/src/subagent-liveness.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-rpc-util/utility-agent-dir": [
+        "./packages/kabmo-omp-rpc-util/src/utility-agent-dir.ts"
+      ],
       "@kabmo-labs/kabmo-ui": [
         "./packages/kabmo-ui/src/index.tsx"
       ],

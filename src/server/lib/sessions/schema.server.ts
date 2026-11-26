@@ -24,7 +24,7 @@
  * has no business being reordered or edited.
  */
 
-import type { DbClient } from '@/server/lib/db/client';
+import type { DbClient } from '@kabmo-labs/kabmo-db/client';
 
 const SESSION_RELATIONS_SQL = `
   CREATE TABLE IF NOT EXISTS session_relations (

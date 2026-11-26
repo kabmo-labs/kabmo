@@ -18,7 +18,7 @@
  */
 
 import { getDb } from '@/server/db.server';
-import { readSettingsJson, writeSettingsJson } from '@/server/lib/db/settings-store';
+import { readSettingsJson, writeSettingsJson } from '@kabmo-labs/kabmo-settings-store';
 import { HARNESS_DISABLED_KEY,
 harnessSwitchable,
 parseDisabledHarnesses,

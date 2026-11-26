@@ -17,7 +17,7 @@
  */
 
 import { getDb } from '@/server/db.server';
-import type { DbClient } from '@/server/lib/db/client';
+import type { DbClient } from '@kabmo-labs/kabmo-db/client';
 
 const GRANTS_SQL = `
   CREATE TABLE IF NOT EXISTS acp_permission_grants (

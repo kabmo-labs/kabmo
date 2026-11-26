@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { getDb } from '@/server/db.server';
-import { writeSettingsJson } from '@/server/lib/db/settings-store';
+import { writeSettingsJson } from '@kabmo-labs/kabmo-settings-store';
 import {
   applyGitIdentity,
   readGitIdentity,

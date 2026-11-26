@@ -19,7 +19,7 @@ import fs from 'fs';
 import { tmpdir } from 'os';
 import path from 'path';
 
-import { ensureUtilityAgentDir, removeUtilityAgentDir } from '@/server/lib/omp/rpc/utility-agent-dir';
+import { ensureUtilityAgentDir, removeUtilityAgentDir } from '@kabmo-labs/kabmo-omp-rpc-util/utility-agent-dir';
 
 let realAgentDir = '';
 let previousAgentDir: string | undefined;

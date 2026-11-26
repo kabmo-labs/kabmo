@@ -15,7 +15,7 @@
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { getDb } from '@/server/db.server';
-import type { DbClient } from '@/server/lib/db/client';
+import type { DbClient } from '@kabmo-labs/kabmo-db/client';
 import { exportSessionMarkdown } from '@/server/routes/sessions/export';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 

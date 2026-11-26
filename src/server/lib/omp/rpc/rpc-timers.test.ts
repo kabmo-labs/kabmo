@@ -21,7 +21,7 @@
 import { describe, expect, test, vi } from 'bun:test';
 
 import { IdleReaper } from '@kabmo-labs/kabmo-idle-reaper';
-import { AgentStartWatchdog, type AgentStartWatchdogHost } from '@/server/lib/omp/rpc/agent-start-watchdog';
+import { AgentStartWatchdog, type AgentStartWatchdogHost } from '@kabmo-labs/kabmo-omp-rpc-util/agent-start-watchdog';
 
 describe('IdleReaper', () => {
   test('fires the idle callback once the window elapses', () => {

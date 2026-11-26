@@ -28,7 +28,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:tes
 import * as fsp from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { createDb, type DbClient } from '@/server/lib/db/client';
+import { createDb, type DbClient } from '@kabmo-labs/kabmo-db/client';
 import { syncWorkspaceFoldersFromDiscovery } from '@/server/lib/db/workspace-sync';
 import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { invalidateOmpSidebarData } from '@/server/lib/omp/session/reader';

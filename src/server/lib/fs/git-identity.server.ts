@@ -20,7 +20,7 @@
  * `['--file', tempPath]` so it never touches the developer's real config.
  */
 
-import { readSettingsJson } from '@/server/lib/db/settings-store';
+import { readSettingsJson } from '@kabmo-labs/kabmo-settings-store';
 import { getDb } from '@/server/db.server';
 import { runGit } from '@/server/lib/fs/git-run';
 import { SETTINGS_BLOB_KEY } from '@/shared/lib/settings/keys';

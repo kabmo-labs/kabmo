@@ -10,7 +10,8 @@
  * conversion and byte-offset paging.
  */
 
-import type { ChatMessageData, SubagentMessagesPage } from '@/shared/types';
+import type { ChatMessageData } from '@kabmo-labs/kabmo-chat-contracts/chat';
+import type { SubagentMessagesPage } from '@kabmo-labs/kabmo-omp-contracts/subagent';
 import { toChatMessage } from '@kabmo-labs/kabmo-omp-mapper';
 import { normalizeMessageTools } from '@kabmo-labs/kabmo-chat-tool/normalize';
 import { extractText } from '@kabmo-labs/kabmo-omp-session-parse/parse-message-blocks';

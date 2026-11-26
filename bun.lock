@@ -29,6 +29,7 @@
         "@kabmo-labs/kabmo-chat-contracts": "workspace:*",
         "@kabmo-labs/kabmo-chat-notices": "workspace:*",
         "@kabmo-labs/kabmo-chat-tool": "workspace:*",
+        "@kabmo-labs/kabmo-db": "workspace:*",
         "@kabmo-labs/kabmo-format": "workspace:*",
         "@kabmo-labs/kabmo-fs-canonical": "workspace:*",
         "@kabmo-labs/kabmo-fs-child-env": "workspace:*",
@@ -75,11 +76,13 @@
         "@kabmo-labs/kabmo-omp-paths": "workspace:*",
         "@kabmo-labs/kabmo-omp-proc": "workspace:*",
         "@kabmo-labs/kabmo-omp-registry": "workspace:*",
+        "@kabmo-labs/kabmo-omp-rpc-util": "workspace:*",
         "@kabmo-labs/kabmo-omp-schema": "workspace:*",
         "@kabmo-labs/kabmo-omp-session-core": "workspace:*",
         "@kabmo-labs/kabmo-omp-session-messages": "workspace:*",
         "@kabmo-labs/kabmo-omp-session-parse": "workspace:*",
         "@kabmo-labs/kabmo-omp-session-scan": "workspace:*",
+        "@kabmo-labs/kabmo-omp-subagent": "workspace:*",
         "@kabmo-labs/kabmo-omp-worktree": "workspace:*",
         "@kabmo-labs/kabmo-paths": "workspace:*",
         "@kabmo-labs/kabmo-platform": "workspace:*",
@@ -90,6 +93,7 @@
         "@kabmo-labs/kabmo-runtime-flags": "workspace:*",
         "@kabmo-labs/kabmo-sdk": "workspace:*",
         "@kabmo-labs/kabmo-settings-contracts": "workspace:*",
+        "@kabmo-labs/kabmo-settings-store": "workspace:*",
         "@kabmo-labs/kabmo-ui": "workspace:*",
         "@shikijs/langs": "^4.4.3",
         "@shikijs/themes": "^4.4.3",
@@ -248,6 +252,10 @@
         "@kabmo-labs/kabmo-guards": "workspace:*",
         "@kabmo-labs/kabmo-omp-proc": "workspace:*",
       },
+    },
+    "packages/kabmo-db": {
+      "name": "@kabmo-labs/kabmo-db",
+      "version": "0.0.1",
     },
     "packages/kabmo-format": {
       "name": "@kabmo-labs/kabmo-format",
@@ -583,6 +591,15 @@
         "@kabmo-labs/kabmo-omp-paths": "workspace:*",
       },
     },
+    "packages/kabmo-omp-rpc-util": {
+      "name": "@kabmo-labs/kabmo-omp-rpc-util",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kabmo-labs/kabmo-omp-cli": "workspace:*",
+        "@kabmo-labs/kabmo-omp-paths": "workspace:*",
+        "@kabmo-labs/kabmo-omp-subagent": "workspace:*",
+      },
+    },
     "packages/kabmo-omp-schema": {
       "name": "@kabmo-labs/kabmo-omp-schema",
       "version": "0.0.1",
@@ -630,6 +647,19 @@
         "@kabmo-labs/kabmo-omp-operator-title": "workspace:*",
         "@kabmo-labs/kabmo-omp-paths": "workspace:*",
         "@kabmo-labs/kabmo-omp-session-core": "workspace:*",
+      },
+    },
+    "packages/kabmo-omp-subagent": {
+      "name": "@kabmo-labs/kabmo-omp-subagent",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kabmo-labs/kabmo-chat-contracts": "workspace:*",
+        "@kabmo-labs/kabmo-chat-tool": "workspace:*",
+        "@kabmo-labs/kabmo-guards": "workspace:*",
+        "@kabmo-labs/kabmo-model-contracts": "workspace:*",
+        "@kabmo-labs/kabmo-omp-contracts": "workspace:*",
+        "@kabmo-labs/kabmo-omp-mapper": "workspace:*",
+        "@kabmo-labs/kabmo-omp-session-parse": "workspace:*",
       },
     },
     "packages/kabmo-omp-worktree": {
@@ -691,6 +721,14 @@
     "packages/kabmo-settings-contracts": {
       "name": "@kabmo-labs/kabmo-settings-contracts",
       "version": "0.0.1",
+    },
+    "packages/kabmo-settings-store": {
+      "name": "@kabmo-labs/kabmo-settings-store",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kabmo-labs/kabmo-db": "workspace:*",
+        "@kabmo-labs/kabmo-runtime-flags": "workspace:*",
+      },
     },
     "packages/kabmo-ui": {
       "name": "@kabmo-labs/kabmo-ui",
@@ -801,6 +839,8 @@
 
     "@kabmo-labs/kabmo-chat-tool": ["@kabmo-labs/kabmo-chat-tool@workspace:packages/kabmo-chat-tool"],
 
+    "@kabmo-labs/kabmo-db": ["@kabmo-labs/kabmo-db@workspace:packages/kabmo-db"],
+
     "@kabmo-labs/kabmo-format": ["@kabmo-labs/kabmo-format@workspace:packages/kabmo-format"],
 
     "@kabmo-labs/kabmo-fs-canonical": ["@kabmo-labs/kabmo-fs-canonical@workspace:packages/kabmo-fs-canonical"],
@@ -893,6 +933,8 @@
 
     "@kabmo-labs/kabmo-omp-registry": ["@kabmo-labs/kabmo-omp-registry@workspace:packages/kabmo-omp-registry"],
 
+    "@kabmo-labs/kabmo-omp-rpc-util": ["@kabmo-labs/kabmo-omp-rpc-util@workspace:packages/kabmo-omp-rpc-util"],
+
     "@kabmo-labs/kabmo-omp-schema": ["@kabmo-labs/kabmo-omp-schema@workspace:packages/kabmo-omp-schema"],
 
     "@kabmo-labs/kabmo-omp-session-core": ["@kabmo-labs/kabmo-omp-session-core@workspace:packages/kabmo-omp-session-core"],
@@ -902,6 +944,8 @@
     "@kabmo-labs/kabmo-omp-session-parse": ["@kabmo-labs/kabmo-omp-session-parse@workspace:packages/kabmo-omp-session-parse"],
 
     "@kabmo-labs/kabmo-omp-session-scan": ["@kabmo-labs/kabmo-omp-session-scan@workspace:packages/kabmo-omp-session-scan"],
+
+    "@kabmo-labs/kabmo-omp-subagent": ["@kabmo-labs/kabmo-omp-subagent@workspace:packages/kabmo-omp-subagent"],
 
     "@kabmo-labs/kabmo-omp-worktree": ["@kabmo-labs/kabmo-omp-worktree@workspace:packages/kabmo-omp-worktree"],
 
@@ -922,6 +966,8 @@
     "@kabmo-labs/kabmo-sdk": ["@kabmo-labs/kabmo-sdk@workspace:packages/kabmo-sdk"],
 
     "@kabmo-labs/kabmo-settings-contracts": ["@kabmo-labs/kabmo-settings-contracts@workspace:packages/kabmo-settings-contracts"],
+
+    "@kabmo-labs/kabmo-settings-store": ["@kabmo-labs/kabmo-settings-store@workspace:packages/kabmo-settings-store"],
 
     "@kabmo-labs/kabmo-ui": ["@kabmo-labs/kabmo-ui@workspace:packages/kabmo-ui"],
 

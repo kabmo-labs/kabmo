@@ -1,4 +1,4 @@
-import type { DbClient } from '@/server/lib/db/client';
+import type { DbClient } from '@kabmo-labs/kabmo-db/client';
 import { DEFAULT_PROJECTS_LIST } from '@/client/data/settings/project';
 
 const MIGRATION_KEY = 'omp_projects_config_migrated';

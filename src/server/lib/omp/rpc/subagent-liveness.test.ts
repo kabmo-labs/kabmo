@@ -5,7 +5,7 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { SubagentLiveness } from '@/server/lib/omp/rpc/subagent-liveness';
+import { SubagentLiveness } from '@kabmo-labs/kabmo-omp-rpc-util/subagent-liveness';
 
 const NOW = 1_000_000;
 const STALE_MS = 60_000;

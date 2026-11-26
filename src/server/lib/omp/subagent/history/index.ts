@@ -24,8 +24,8 @@ import { parseJsonlLenient } from '@kabmo-labs/kabmo-omp-session-core/jsonl';
 import { isRecord } from '@kabmo-labs/kabmo-guards';
 import { createFolder } from '@/server/lib/omp/subagent/history/fold';
 import { SUBAGENT_ID_RE, siblingDirForSession } from '@/server/lib/omp/subagent/history/paths';
-import { foldSettlements } from '@/shared/lib/omp/subagent/history/settlement';
-import { asString } from '@/shared/lib/omp/subagent/result-details';
+import { foldSettlements } from '@kabmo-labs/kabmo-omp-subagent/history-settlement';
+import { asString } from '@kabmo-labs/kabmo-omp-subagent/result-details';
 import type { OmpMessageEntry } from '@kabmo-labs/kabmo-omp-session-parse/messages-parse';
 import type { SubagentHistoryEntry } from '@kabmo-labs/kabmo-omp-contracts/subagent';
 

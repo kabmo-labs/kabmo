@@ -13,7 +13,7 @@
  * creation, and each later column arrives in the module that explains it.
  */
 
-import type { DbClient } from '@/server/lib/db/client';
+import type { DbClient } from '@kabmo-labs/kabmo-db/client';
 
 async function addColumn(db: DbClient, statement: string): Promise<void> {
   try {

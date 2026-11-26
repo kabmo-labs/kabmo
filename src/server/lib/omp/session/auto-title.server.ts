@@ -85,7 +85,7 @@
  * rejection is a property of the opening message, not of when it is asked).
  */
 
-import { readSettingsJson } from '@/server/lib/db/settings-store';
+import { readSettingsJson } from '@kabmo-labs/kabmo-settings-store';
 import { getDb } from '@/server/db.server';
 import { GET_STATE_TIMEOUT_MS, type RpcSessionState } from '@/server/lib/omp/rpc/constants';
 import {

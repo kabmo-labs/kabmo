@@ -20,7 +20,7 @@
  * bounded.
  */
 
-import type { DbClient } from '@/server/lib/db/client';
+import type { DbClient } from '@kabmo-labs/kabmo-db/client';
 
 export async function ensureNotificationSchema(db: DbClient): Promise<void> {
   await db.exec(`

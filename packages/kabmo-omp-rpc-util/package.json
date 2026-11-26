@@ -1,0 +1,24 @@
+{
+  "name": "@kabmo-labs/kabmo-omp-rpc-util",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "omp RPC child helpers: watchdog, process helpers, retry, liveness, utility dirs.",
+  "exports": {
+    ".": "./src/process-helpers.ts",
+    "./agent-start-watchdog": "./src/agent-start-watchdog.ts",
+    "./process-helpers": "./src/process-helpers.ts",
+    "./retry-saga": "./src/retry-saga.ts",
+    "./subagent-liveness": "./src/subagent-liveness.ts",
+    "./utility-agent-dir": "./src/utility-agent-dir.ts"
+  },
+  "files": ["src"],
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/kabmo-labs/kabmo.git", "directory": "packages/kabmo-omp-rpc-util" },
+  "publishConfig": { "access": "public" },
+  "engines": { "bun": ">=1.4.0" },
+  "dependencies": {
+    "@kabmo-labs/kabmo-omp-cli": "workspace:*",
+    "@kabmo-labs/kabmo-omp-paths": "workspace:*",
+    "@kabmo-labs/kabmo-omp-subagent": "workspace:*"
+  }
+}

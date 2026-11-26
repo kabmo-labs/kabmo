@@ -27,7 +27,7 @@
  * window filters keep such records in EVERY period.
  */
 
-import type { DbClient } from '@/server/lib/db/client';
+import type { DbClient } from '@kabmo-labs/kabmo-db/client';
 
 /** Bumped when a rollup row's meaning changes; the index is dropped and rebuilt. */
 export const USAGE_INDEX_VERSION = 2;

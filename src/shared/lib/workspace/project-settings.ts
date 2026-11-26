@@ -1,4 +1,4 @@
-import type { DbClient } from '@/server/lib/db/client';
+import type { DbClient } from '@kabmo-labs/kabmo-db/client';
 import type { ProjectConfigItem } from '@/shared/types';
 import { isRecord } from '@kabmo-labs/kabmo-guards';
 

@@ -15,7 +15,7 @@
 import path from 'path';
 import os from 'os';
 import fs from 'fs';
-import { createDb, type DbClient } from '@/server/lib/db/client';
+import { createDb, type DbClient } from '@kabmo-labs/kabmo-db/client';
 import { initSchema } from '@/server/lib/db/schema';
 import { seedMockData } from '@/server/lib/db/seed';
 import { syncWorkspaceFoldersFromDiscovery } from '@/server/lib/db/workspace-sync';

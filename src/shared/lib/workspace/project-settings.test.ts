@@ -17,7 +17,7 @@ import { mkdtempSync } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 
-import { createDb, type DbClient } from '@/server/lib/db/client';
+import { createDb, type DbClient } from '@kabmo-labs/kabmo-db/client';
 import {
   deleteWorkspaceFolder,
   parseFolderSettingsPatch,

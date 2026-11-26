@@ -15,8 +15,8 @@
 
 import { extractText } from '@kabmo-labs/kabmo-omp-session-parse/parse-message-blocks';
 import { isRecord } from '@kabmo-labs/kabmo-guards';
-import { resultStatus } from '@/shared/lib/omp/subagent/history/status';
-import { asNumber, asString } from '@/shared/lib/omp/subagent/result-details';
+import { resultStatus } from './history-status';
+import { asNumber, asString } from './result-details';
 import type { OmpMessageEntry } from '@kabmo-labs/kabmo-omp-session-parse/messages-parse';
 import type { SubagentHistoryEntry } from '@kabmo-labs/kabmo-omp-contracts/subagent';
 

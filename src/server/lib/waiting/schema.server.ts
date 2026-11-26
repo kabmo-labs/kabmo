@@ -13,7 +13,7 @@
  * so the row itself has to say whether the prompt was already sent.
  */
 
-import type { DbClient } from '@/server/lib/db/client';
+import type { DbClient } from '@kabmo-labs/kabmo-db/client';
 
 const WAITING_SCHEMA_SQL = `
   CREATE TABLE IF NOT EXISTS waiting_prompts (

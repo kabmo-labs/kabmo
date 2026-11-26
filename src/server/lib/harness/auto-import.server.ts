@@ -25,7 +25,7 @@
  */
 
 import { getDb } from '@/server/db.server';
-import { readSettingsJson, writeSettingsJson } from '@/server/lib/db/settings-store';
+import { readSettingsJson, writeSettingsJson } from '@kabmo-labs/kabmo-settings-store';
 import { loadProbes } from '@/server/lib/harness/probe-cache.server';
 import { autoProbeTargets } from '@/server/lib/harness/auto-probe.server';
 import { importHarnessSessions } from '@/server/lib/harness/session-import.server';

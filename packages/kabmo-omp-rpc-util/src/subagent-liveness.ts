@@ -21,7 +21,7 @@
  * session alive until it goes stale).
  */
 
-import { parseSubagentLifecycle, readSubagentProgressFrame } from '@/shared/lib/omp/subagent/parse';
+import { parseSubagentLifecycle, readSubagentProgressFrame } from '@kabmo-labs/kabmo-omp-subagent/parse';
 
 /** Statuses that end a subagent. Mirrors omp's own registry, which deletes an
  *  entry the moment a non-`started` lifecycle arrives. */

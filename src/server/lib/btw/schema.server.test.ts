@@ -18,7 +18,7 @@ import { afterAll, describe, expect, test } from 'bun:test';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { rmSync } from 'node:fs';
-import { createDb, type DbClient } from '@/server/lib/db/client';
+import { createDb, type DbClient } from '@kabmo-labs/kabmo-db/client';
 import { ensureBtwSchema } from '@/server/lib/btw/schema.server';
 
 const paths: string[] = [];

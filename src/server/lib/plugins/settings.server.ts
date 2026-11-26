@@ -21,7 +21,7 @@
  */
 
 import { getDb } from '@/server/db.server';
-import type { DbClient } from '@/server/lib/db/client';
+import type { DbClient } from '@kabmo-labs/kabmo-db/client';
 import { PLUGIN_SECRET_MASK } from '@/shared/lib/plugins/settings';
 import type { PluginSettingDefinition, PluginSettingsApi } from '@kabmo-labs/kabmo-sdk';
 

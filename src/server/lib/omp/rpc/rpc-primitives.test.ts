@@ -28,11 +28,9 @@ import { rpcErrorResponse } from '@/server/lib/omp/rpc/errors';
 import { EventFanout } from '@/server/lib/omp/rpc/event-fanout';
 import { PendingUiDialogs } from '@/server/lib/omp/rpc/pending-ui-dialogs';
 import { WebRpcError, type AgentEvent } from '@/server/lib/omp/rpc/constants';
-import {
-  RpcCommandError,
-  RpcCommandTimeoutError,
-  STDERR_TAIL_LIMIT,
-} from '@/server/lib/omp/rpc/process-helpers';
+import { RpcCommandError,
+RpcCommandTimeoutError,
+STDERR_TAIL_LIMIT, } from '@kabmo-labs/kabmo-omp-rpc-util/process-helpers';
 import { stripKabmoHostEnv } from '@kabmo-labs/kabmo-sdk';
 import {
   getSpawnApprovalMode,

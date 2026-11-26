@@ -29,7 +29,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { getDb } from '@/server/db.server';
-import { writeSettingsJson } from '@/server/lib/db/settings-store';
+import { writeSettingsJson } from '@kabmo-labs/kabmo-settings-store';
 import { invalidateOmpCliCache } from '@kabmo-labs/kabmo-omp-cli';
 import { disposeUtilityRpc } from '@/server/lib/omp/rpc/utility';
 import { loadModelsWithCache } from '@/server/lib/models/registry.server';

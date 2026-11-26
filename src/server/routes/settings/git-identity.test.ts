@@ -14,7 +14,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { action, loader } from '@/server/routes/settings/git-identity';
 import { getDb } from '@/server/db.server';
-import { writeSettingsJson } from '@/server/lib/db/settings-store';
+import { writeSettingsJson } from '@kabmo-labs/kabmo-settings-store';
 import { SETTINGS_BLOB_KEY } from '@/shared/lib/settings/keys';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 

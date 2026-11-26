@@ -22,7 +22,7 @@
  * a chat has to send the AGENT's id, not Kabmo's.
  */
 
-import type { DbClient } from '@/server/lib/db/client';
+import type { DbClient } from '@kabmo-labs/kabmo-db/client';
 
 const HARNESS_SESSIONS_SQL = `
   CREATE TABLE IF NOT EXISTS harness_sessions (

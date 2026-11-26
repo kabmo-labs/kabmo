@@ -25,7 +25,7 @@
  */
 
 import { getDb } from '@/server/db.server';
-import { readAllSettingsJson } from '@/server/lib/db/settings-store';
+import { readAllSettingsJson } from '@kabmo-labs/kabmo-settings-store';
 import { getRealtimeHub } from '@/server/lib/realtime/hub.server';
 import { TOPIC_NOTIFICATIONS } from '@/shared/lib/realtime/protocol';
 import {

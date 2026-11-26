@@ -45,7 +45,7 @@
  */
 
 import { getDb } from '@/server/db.server';
-import { readSettingsJson } from '@/server/lib/db/settings-store';
+import { readSettingsJson } from '@kabmo-labs/kabmo-settings-store';
 import { childEnv } from '@kabmo-labs/kabmo-fs-child-env';
 import { resolveOmpBin } from '@kabmo-labs/kabmo-omp-cli';
 import { readModelRoles } from '@kabmo-labs/kabmo-omp-config-doc/roles';

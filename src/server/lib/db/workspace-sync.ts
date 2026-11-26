@@ -30,7 +30,7 @@
  * gate existed, 13 of those in a single minute.
  */
 
-import type { DbClient } from '@/server/lib/db/client';
+import type { DbClient } from '@kabmo-labs/kabmo-db/client';
 import { projectPathKey } from '@kabmo-labs/kabmo-omp-paths';
 import { loadOmpSidebarData } from '@/server/lib/omp/session/reader';
 import { orderedOmpProjects, projectDisplayName } from '@/shared/lib/omp/session/sidebar';

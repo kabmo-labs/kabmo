@@ -20,7 +20,7 @@
 import { homedir } from 'os';
 import { RpcProcess } from '@/server/lib/omp/rpc/process';
 import { RELOAD_PLUGINS_TIMEOUT_MS } from '@/server/lib/omp/rpc/constants';
-import { ensureUtilityAgentDir, removeUtilityAgentDir } from '@/server/lib/omp/rpc/utility-agent-dir';
+import { ensureUtilityAgentDir, removeUtilityAgentDir } from '@kabmo-labs/kabmo-omp-rpc-util/utility-agent-dir';
 
 // Extensions stay ENABLED: they can register models and login providers, and
 // omitting them made the web UI's model/provider lists disagree with the CLI's.

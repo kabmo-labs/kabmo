@@ -15,16 +15,16 @@
 
 import { afterEach, describe, expect, test } from 'bun:test';
 
-import { asAgentSource, asNumber, asString, taskResultStructuredOutput, taskResultUsageCost } from '@/shared/lib/omp/subagent/result-details';
-import { applySettlement, foldSettlements } from '@/shared/lib/omp/subagent/history/settlement';
-import { progressStatusToHistory, progressUpsertBlocked, resultStatus } from '@/shared/lib/omp/subagent/history/status';
+import { asAgentSource, asNumber, asString, taskResultStructuredOutput, taskResultUsageCost } from './result-details';
+import { applySettlement, foldSettlements } from './history-settlement';
+import { progressStatusToHistory, progressUpsertBlocked, resultStatus } from './history-status';
 import {
   fetchSubagentHistory,
   formatSubagentCost,
   formatSubagentDuration,
   formatSubagentMeta,
   historyEntryToSubagentInfo,
-} from '@/shared/lib/omp/subagent/history/client';
+} from './history-client';
 import type { OmpMessageEntry } from '@kabmo-labs/kabmo-omp-session-parse/messages-parse';
 import type { SubagentHistoryEntry } from '@kabmo-labs/kabmo-omp-contracts/subagent';
 

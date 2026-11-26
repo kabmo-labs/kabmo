@@ -11,7 +11,7 @@
  * `app_settings` (same pattern as project-settings-migration).
  */
 
-import type { DbClient } from '@/server/lib/db/client';
+import type { DbClient } from '@kabmo-labs/kabmo-db/client';
 
 const QUEUE_FK_MARKER = 'queue_fk_removed';
 

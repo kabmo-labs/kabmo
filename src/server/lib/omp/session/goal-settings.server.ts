@@ -16,7 +16,7 @@
  * lookup must never be the reason a turn's settle path throws.
  */
 
-import { readSettingsJson } from '@/server/lib/db/settings-store';
+import { readSettingsJson } from '@kabmo-labs/kabmo-settings-store';
 import { getDb } from '@/server/db.server';
 
 const SETTINGS_BLOB_KEY = 'kabmo_settings';

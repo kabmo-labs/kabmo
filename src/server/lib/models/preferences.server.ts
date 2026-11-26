@@ -18,7 +18,7 @@
  */
 
 import { getDb } from '@/server/db.server';
-import { readSettingsJson, writeSettingsJson } from '@/server/lib/db/settings-store';
+import { readSettingsJson, writeSettingsJson } from '@kabmo-labs/kabmo-settings-store';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { INITIAL_MODELS_CATALOG } from '@/client/data/models/catalog';
 import {

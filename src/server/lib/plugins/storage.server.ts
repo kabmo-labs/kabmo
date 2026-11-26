@@ -18,7 +18,7 @@
  */
 
 import { getDb } from '@/server/db.server';
-import type { DbClient } from '@/server/lib/db/client';
+import type { DbClient } from '@kabmo-labs/kabmo-db/client';
 import type { PluginJson, PluginKvStorage, PluginRecordStorage } from '@kabmo-labs/kabmo-sdk';
 
 /**

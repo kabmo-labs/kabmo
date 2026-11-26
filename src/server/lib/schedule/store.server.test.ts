@@ -26,7 +26,7 @@ import { afterAll, describe, expect, test } from 'bun:test';
 import { rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createDb, type DbClient } from '@/server/lib/db/client';
+import { createDb, type DbClient } from '@kabmo-labs/kabmo-db/client';
 import { ensureScheduleSchema } from '@/server/lib/schedule/schema.server';
 import { rowToScheduledTask, type TaskRow } from '@/server/lib/schedule/rows.server';
 import { serverTimeZone } from '@/shared/lib/schedule/timezone';

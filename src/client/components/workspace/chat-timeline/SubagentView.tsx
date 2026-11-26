@@ -9,7 +9,7 @@ import { RunFooter } from '@/client/components/workspace/chat-timeline/RunFooter
 import { useSubagentTranscript } from '@/client/hooks/chat/subagent';
 import { useModelNames } from '@/client/hooks/models/use-model-names';
 import { isNoticeRow } from '@kabmo-labs/kabmo-chat-notices/notice-row';
-import { subagentHeaderTitle } from '@/shared/lib/omp/subagent/label';
+import { subagentHeaderTitle } from '@kabmo-labs/kabmo-omp-subagent/label';
 import { previousNonNoticeIndex, resolveRunFooters, streamingRowIndex } from '@/shared/lib/chat/timeline/run-footer';
 import { formatCompactTokens } from '@kabmo-labs/kabmo-format/number';
 

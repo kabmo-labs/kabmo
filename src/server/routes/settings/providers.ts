@@ -5,7 +5,7 @@ import { getDb } from '@/server/db.server';
 import { DEFAULT_PROVIDERS_LIST, PRESET_NEW_PROVIDERS } from '@/client/data/settings/provider';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import type { ProviderItem } from '@/shared/types';
-import { createSettingsListStore } from '@/server/lib/db/settings-store';
+import { createSettingsListStore } from '@kabmo-labs/kabmo-settings-store';
 import { disableNativeProvider, enableNativeProvider } from '@kabmo-labs/kabmo-omp-config-providers/disabled-providers';
 import { removeOmpProvider } from '@kabmo-labs/kabmo-omp-config-providers/providers';
 import { PROVIDERS_SETTINGS_KEY as SETTINGS_KEY, deduplicateProviderItems, mergeProviders } from '@/server/lib/models/provider-registry.server';

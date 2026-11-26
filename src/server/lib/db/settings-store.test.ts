@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
-import type { DbClient } from '@/server/lib/db/client';
-import { isPlainObject, mergeSettingsJson, readSettingsJson } from '@/server/lib/db/settings-store';
+import type { DbClient } from '@kabmo-labs/kabmo-db/client';
+import { isPlainObject, mergeSettingsJson, readSettingsJson } from '@kabmo-labs/kabmo-settings-store';
 
 /** Minimal in-memory stand-in for the `app_settings` rows the store talks to. */
 function fakeDb(rows: Record<string, string> = {}) {

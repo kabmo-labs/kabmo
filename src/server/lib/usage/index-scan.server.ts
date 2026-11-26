@@ -23,7 +23,7 @@
  */
 
 import { getDb } from '@/server/db.server';
-import type { DbClient } from '@/server/lib/db/client';
+import type { DbClient } from '@kabmo-labs/kabmo-db/client';
 import { usageSources } from '@/server/lib/usage/index-sources.server';
 import type { UsageFileState, UsageSourceFile, UsageSourceRead } from '@/server/lib/usage/sources/types';
 import type { UsageIndexState } from '@/shared/types';

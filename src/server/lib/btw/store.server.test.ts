@@ -25,7 +25,7 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createDb } from '@/server/lib/db/client';
+import { createDb } from '@kabmo-labs/kabmo-db/client';
 import { getDb } from '@/server/db.server';
 import {
   appendBtwTurn,

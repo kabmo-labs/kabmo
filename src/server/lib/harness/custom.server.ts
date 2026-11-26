@@ -24,7 +24,7 @@
 
 import { getDb } from '@/server/db.server';
 import { forgetProbe } from '@/server/lib/harness/probe-cache.server';
-import { readSettingsJson, writeSettingsJson } from '@/server/lib/db/settings-store';
+import { readSettingsJson, writeSettingsJson } from '@kabmo-labs/kabmo-settings-store';
 import { HARNESS_DISABLED_KEY } from '@kabmo-labs/kabmo-harness-enabled';
 import { harnessConfigKey, parseEnvLines, splitCommand } from '@kabmo-labs/kabmo-harness-config';
 import { HARNESS_CATALOG,

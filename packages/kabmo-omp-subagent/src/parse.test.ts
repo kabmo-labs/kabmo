@@ -16,7 +16,7 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { parseSubagentProgress, readSubagentProgressFrame } from '@/shared/lib/omp/subagent/parse';
+import { parseSubagentProgress, readSubagentProgressFrame } from './parse';
 
 /** One `subagent_progress` frame as omp emits it (trimmed to the read fields). */
 const REAL_FRAME = {

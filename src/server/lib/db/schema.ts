@@ -11,7 +11,7 @@
  * between the two DDL blocks, after the tables they touch exist.
  */
 
-import type { DbClient } from '@/server/lib/db/client';
+import type { DbClient } from '@kabmo-labs/kabmo-db/client';
 import { migrateQueueTableFk } from '@/server/lib/queue/schema-migration.server';
 import { ensureBtwSchema } from '@/server/lib/btw/schema.server';
 import { ensureScheduleSchema } from '@/server/lib/schedule/schema.server';

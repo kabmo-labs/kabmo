@@ -17,7 +17,7 @@
  * removal purges it, through `purgePluginState`.
  */
 
-import type { DbClient } from '@/server/lib/db/client';
+import type { DbClient } from '@kabmo-labs/kabmo-db/client';
 
 /** The stored next fire per schedule id, for one plugin. */
 export async function readPluginScheduleState(db: DbClient, pluginId: string): Promise<Map<string, number>> {

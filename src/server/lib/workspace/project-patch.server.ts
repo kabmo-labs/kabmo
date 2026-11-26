@@ -28,7 +28,7 @@
  */
 
 import { getDb } from '@/server/db.server';
-import type { DbClient } from '@/server/lib/db/client';
+import type { DbClient } from '@kabmo-labs/kabmo-db/client';
 import { projectPathKey } from '@kabmo-labs/kabmo-omp-paths';
 import { expandHome } from '@/server/routes/folders/create';
 import { normalizeHexAccent } from '@/shared/lib/workspace/project-accent';

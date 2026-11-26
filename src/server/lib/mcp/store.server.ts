@@ -13,10 +13,10 @@
  */
 
 import { DEFAULT_MCP_SERVERS } from '@/client/data/settings/mcp';
-import { createSettingsListStore } from '@/server/lib/db/settings-store';
+import { createSettingsListStore } from '@kabmo-labs/kabmo-settings-store';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { normalizeMcpItem } from '@/shared/lib/mcp/item';
-import type { DbClient } from '@/server/lib/db/client';
+import type { DbClient } from '@kabmo-labs/kabmo-db/client';
 import type { McpServerItem } from '@/shared/types';
 
 export const MCP_SETTINGS_KEY = 'omp_mcp_servers';

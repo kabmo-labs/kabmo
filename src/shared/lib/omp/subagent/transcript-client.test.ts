@@ -19,7 +19,7 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { convertMessages, mergeMessages } from '@/shared/lib/omp/subagent/transcript-client';
+import { convertMessages, mergeMessages } from '@kabmo-labs/kabmo-omp-subagent/transcript-client';
 import type { ChatMessageData } from '@/shared/types';
 
 /** An assistant message entry carrying text, as omp writes it to the JSONL. */

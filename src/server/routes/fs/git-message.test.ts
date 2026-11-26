@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { action } from '@/server/routes/fs/git-message';
 import { getDb } from '@/server/db.server';
-import { writeSettingsJson } from '@/server/lib/db/settings-store';
+import { writeSettingsJson } from '@kabmo-labs/kabmo-settings-store';
 import { SETTINGS_BLOB_KEY } from '@/shared/lib/settings/keys';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { removeDir } from '@/test-support/remove-dir';

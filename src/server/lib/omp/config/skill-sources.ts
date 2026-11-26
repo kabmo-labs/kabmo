@@ -18,8 +18,8 @@
 
 import type { SkillCatalogSource } from '@kabmo-labs/kabmo-settings-contracts/skill';
 import { DEFAULT_CATALOG_SOURCES } from '@/client/data/settings/skill';
-import { readSettingsJson, writeSettingsJson } from '@/server/lib/db/settings-store';
-import type { DbClient } from '@/server/lib/db/client';
+import { readSettingsJson, writeSettingsJson } from '@kabmo-labs/kabmo-settings-store';
+import type { DbClient } from '@kabmo-labs/kabmo-db/client';
 
 export const SOURCES_KEY = 'omp_catalog_sources';
 

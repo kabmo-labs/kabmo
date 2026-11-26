@@ -20,7 +20,7 @@
  */
 
 import { getDb } from '@/server/db.server';
-import { readSettingsJson, writeSettingsJson } from '@/server/lib/db/settings-store';
+import { readSettingsJson, writeSettingsJson } from '@kabmo-labs/kabmo-settings-store';
 import type { TrackedFileHashes } from '@/server/lib/panels/local-edits.server';
 
 /** `app_settings` key holding the per-plugin file baselines. */

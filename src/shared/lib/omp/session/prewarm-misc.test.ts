@@ -25,7 +25,7 @@ import { loadPersistedAccessMode } from '@/shared/lib/omp/config/access-mode.ser
 import { ACCESS_MODE_SETTING_KEY, DEFAULT_APPROVAL_MODE } from '@kabmo-labs/kabmo-omp-access-mode';
 import { TYPE_ORDER, contentProfile } from '@kabmo-labs/kabmo-omp-session-parse/telemetry-blocks';
 import { migrateSessionStreamStateColumns } from '@/shared/lib/omp/session/schema-migrations';
-import { createDb } from '@/server/lib/db/client';
+import { createDb } from '@kabmo-labs/kabmo-db/client';
 import { hashPassword, verifyPassword } from '@/server/lib/auth/config';
 import { getDb } from '@/server/db.server';
 

@@ -18,7 +18,7 @@ import { afterAll, describe, expect, test } from 'bun:test';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createDb, type DbClient } from '@/server/lib/db/client';
+import { createDb, type DbClient } from '@kabmo-labs/kabmo-db/client';
 import { removeDir } from '@/test-support/remove-dir';
 import { initSchema } from '@/server/lib/db/schema';
 import { compactChatOverlayRows } from '@/server/lib/db/compact-chat-overlay';

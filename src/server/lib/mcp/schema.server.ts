@@ -17,7 +17,7 @@
  * before any client exists.
  */
 
-import type { DbClient } from '@/server/lib/db/client';
+import type { DbClient } from '@kabmo-labs/kabmo-db/client';
 
 const SESSION_MCP_SQL = `
   CREATE TABLE IF NOT EXISTS session_mcp_state (
