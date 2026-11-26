@@ -96,10 +96,10 @@ export function useSpeechAutoplay({
     const timer = setTimeout(() => {
       if (generatingNow.current) return;
       const slot = lastRun(messages);
-      if (!slot || !slot.answerText.trim()) return;
+      if (!slot || !slot.speechText.trim()) return;
       if (slot.msg.id === lastSpoken.current) return;
       lastSpoken.current = slot.msg.id;
-      speak(slot.answerText, slot.msg.id, config);
+      speak(slot.speechText, slot.msg.id, config);
     }, SETTLE_DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [isGenerating, messages, sessionId, speak, stop]);

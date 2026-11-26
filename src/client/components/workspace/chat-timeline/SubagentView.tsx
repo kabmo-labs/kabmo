@@ -155,6 +155,7 @@ export function SubagentView({ sessionId, subagent, onBack, provider, providerNa
                       {...(harness ? { harness } : {})}
                       durationMs={footer.durationMs}
                       answerText={footer.answerText}
+                      speechText={footer.speechText}
                       isMobile={isMobile}
                       showActions={false}
                     />

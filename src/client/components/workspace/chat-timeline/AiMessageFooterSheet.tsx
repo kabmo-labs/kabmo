@@ -19,6 +19,8 @@ import { SpeechButton } from '@/client/components/workspace/chat-timeline/Speech
 export interface AiMessageFooterSheetProps {
   msgId: string;
   content: string;
+  /** What the speaker reads; `content` stays the Copy target. */
+  speechText: string;
   speechKey: string;
   showActions: boolean;
   canFork: boolean;
@@ -35,6 +37,7 @@ export interface AiMessageFooterSheetProps {
 export function AiMessageFooterSheet({
   msgId,
   content,
+  speechText,
   speechKey,
   showActions,
   canFork,
@@ -110,7 +113,7 @@ export function AiMessageFooterSheet({
             onClick={onClose}
           />
           <SpeechButton
-            text={content}
+            text={speechText}
             speechKey={speechKey}
             variant="sheet"
             onStarted={onClose}

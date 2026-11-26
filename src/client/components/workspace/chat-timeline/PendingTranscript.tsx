@@ -117,6 +117,7 @@ export function PendingTranscript({
                 {...(harness ? { harness } : {})}
                 durationMs={footer.durationMs}
                 answerText={footer.answerText}
+                speechText={footer.speechText}
                 retryTargetId={footer.runUserId}
                 onRetry={onRetry}
                 onNewChat={onNewChat}

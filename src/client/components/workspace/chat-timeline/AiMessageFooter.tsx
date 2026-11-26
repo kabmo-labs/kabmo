@@ -33,6 +33,13 @@ interface AiMessageFooterProps {
    */
   harness?: string;
   content: string;
+  /**
+   * What the speaker reads (`RunFooterSlot.speechText`). Separate from
+   * `content`, which Copy/New-chat/plugins take: a run's whole joined answer is
+   * correct to copy, but reading it aloud narrates every interim line too.
+   * Defaults to `content` for surfaces that only hold one message.
+   */
+  speechText?: string;
   msgId: string;
   /**
    * The run's stable id for playback. Separate from `msgId`, which Retry
@@ -68,6 +75,7 @@ export function AiMessageFooter({
   durationMs,
   usage,
   content,
+  speechText,
   msgId,
   speechKey,
   thinkingLevel,
@@ -84,6 +92,7 @@ export function AiMessageFooter({
   // button would only ever answer "whole chat", which is the dropdown's job.
   const canFork = Boolean(onFork && forkTargetId) && canForkAt(harness, 'assistant');
   const spokenKey = speechKey ?? msgId;
+  const spokenText = speechText ?? content;
 
   const handleRetry = () => {
     setIsMenuOpen(false);
@@ -170,7 +179,7 @@ export function AiMessageFooter({
             )}
           </div>
           <div className="ml-auto flex shrink-0 items-center gap-1">
-            <SpeechButton text={content} speechKey={spokenKey} variant="mobile" />
+            <SpeechButton text={spokenText} speechKey={spokenKey} variant="mobile" />
             <button
               type="button"
               aria-label="More actions"
@@ -189,6 +198,7 @@ export function AiMessageFooter({
           <AiMessageFooterSheet
             msgId={msgId}
             content={content}
+            speechText={spokenText}
             speechKey={spokenKey}
             showActions={showActions}
             canFork={canFork}
@@ -235,7 +245,7 @@ export function AiMessageFooter({
           ariaLabel="Copy response"
           emptyTitle="Nothing to copy — this run produced no text"
         />
-        <SpeechButton text={content} speechKey={spokenKey} variant="desktop" />
+        <SpeechButton text={spokenText} speechKey={spokenKey} variant="desktop" />
         {showActions && canFork && (
           <button type="button" className="flex items-center hover:text-ink transition-colors p-1 rounded hover:bg-ink/5 cursor-pointer" title="Fork from here" aria-label="Fork session from this answer" onClick={handleFork}>
             <GitFork size={12} />

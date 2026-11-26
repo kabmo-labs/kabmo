@@ -28,25 +28,36 @@ const messages: ChatMessageData[] = [
 
 let container: HTMLElement;
 
-function Harness({ generating, speak, stop }: {
+function Harness({ generating, speak, stop, msgs = messages }: {
   generating: boolean;
   speak: (text: string, key: string) => void;
   stop: () => void;
+  msgs?: ChatMessageData[];
 }) {
-  useSpeechAutoplay({ messages, isGenerating: generating, sessionId: 's1', speak, stop });
+  useSpeechAutoplay({ messages: msgs, isGenerating: generating, sessionId: 's1', speak, stop });
   return null;
 }
 
-async function mount(generating: boolean, speak: (text: string, key: string) => void, stop: () => void): Promise<void> {
+async function mount(
+  generating: boolean,
+  speak: (text: string, key: string) => void,
+  stop: () => void,
+  msgs: ChatMessageData[] = messages,
+): Promise<void> {
   container = document.body.appendChild(document.createElement('div'));
   act(() => {
-    render(h(Harness, { generating, speak, stop }), container);
+    render(h(Harness, { generating, speak, stop, msgs }), container);
   });
 }
 
-function settle(generating: boolean, speak: (text: string, key: string) => void, stop: () => void): void {
+function settle(
+  generating: boolean,
+  speak: (text: string, key: string) => void,
+  stop: () => void,
+  msgs: ChatMessageData[] = messages,
+): void {
   act(() => {
-    render(h(Harness, { generating, speak, stop }), container);
+    render(h(Harness, { generating, speak, stop, msgs }), container);
   });
   act(() => {
     vi.advanceTimersByTime(500);
@@ -105,6 +116,22 @@ describe('speech autoplay', () => {
     await mount(true, speak, () => {});
     await settle(false, speak, () => {});
     expect(spoken).toEqual([]);
+  });
+
+  test('speaks only the run’s last answer, not the interim lines', async () => {
+    const run: ChatMessageData[] = [
+      { id: 'u1', role: 'user', content: 'question' },
+      { id: 'a1', role: 'ai', content: 'let me check the file' },
+      { id: 'a2', role: 'ai', content: 'running the tests' },
+      { id: 'a3', role: 'ai', content: 'the final answer' },
+    ];
+    const spoken: Array<{ text: string; key: string }> = [];
+    const speak = (text: string, key: string) => spoken.push({ text, key });
+
+    await mount(true, speak, () => {}, run);
+    settle(false, speak, () => {}, run);
+
+    expect(spoken).toEqual([{ text: 'the final answer', key: 'a3' }]);
   });
 
   test('a new turn stops the previous playback', async () => {

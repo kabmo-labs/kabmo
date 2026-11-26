@@ -42,6 +42,14 @@ export interface RunFooterSlot {
    * that segment carried only tool calls).
    */
   answerText: string;
+  /**
+   * The run's LAST row that says something — what text-to-speech reads. The
+   * joined `answerText` belongs to Copy, never to the speaker: reading it aloud
+   * narrated every interim assistant line between tool calls before the answer.
+   * Scanning back from the owner also covers a run whose owner row is a tool
+   * call (the same case `answerText` was introduced for).
+   */
+  speechText: string;
 }
 
 /**
@@ -59,6 +67,22 @@ function runAnswerText(messages: ChatMessageData[], startIndex: number, ownerInd
     if (text) parts.push(text);
   }
   return parts.join('\n\n');
+}
+
+/**
+ * Text for the speaker: the last row of the run that carries any, scanning back
+ * from the owner. Interim assistant lines ("let me check …") are separate rows,
+ * so speaking `answerText` read the whole working transcript; Copy still wants
+ * all of it.
+ */
+function runSpeechText(messages: ChatMessageData[], startIndex: number, ownerIndex: number): string {
+  for (let i = ownerIndex; i >= Math.max(0, startIndex); i--) {
+    const msg = messages[i];
+    if (!msg || msg.role === 'user' || isNoticeRow(msg)) continue;
+    const text = messageAnswerText(msg).trim();
+    if (text) return text;
+  }
+  return '';
 }
 
 /**
@@ -139,6 +163,7 @@ export function resolveRunFooters(
       runStartIndex,
       runUserId: runUser?.id ?? '',
       answerText: runAnswerText(messages, runStartIndex, ownerIndex),
+      speechText: runSpeechText(messages, runStartIndex, ownerIndex),
     };
   }
 

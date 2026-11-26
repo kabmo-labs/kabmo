@@ -135,6 +135,38 @@ describe('assistant footer speech', () => {
     expect(button!.disabled).toBe(true);
   });
 
+  test('reads the run’s final row, not the joined answer Copy takes', () => {
+    const spoken: string[] = [];
+    const el = withTts(
+      h(RunFooter, {
+        msg: answerRow,
+        answerText: 'let me check\n\nthe answer',
+        speechText: 'the answer',
+      }),
+      handle({ speak: text => spoken.push(text) }),
+    );
+
+    act(() => (el.querySelector('button[aria-label="Read answer aloud"]') as HTMLButtonElement).click());
+    expect(spoken).toEqual(['the answer']);
+  });
+
+  test('speaks the final text even when the owner row is a tool call', () => {
+    const spoken: string[] = [];
+    const el = withTts(
+      h(RunFooter, {
+        msg: { ...answerRow, content: '', toolCalls: [{ id: 't1', type: 'bash', title: 'run' }] },
+        speechText: 'the actual answer',
+      }),
+      handle({ speak: text => spoken.push(text) }),
+    );
+
+    const button = el.querySelector('button[aria-label="Read answer aloud"]') as HTMLButtonElement | null;
+    expect(button).not.toBeNull();
+    expect(button!.disabled).toBe(false);
+    act(() => button!.click());
+    expect(spoken).toEqual(['the actual answer']);
+  });
+
   test('showActions=false keeps the speaker', () => {
     const el = withTts(
       h(RunFooter, { msg: answerRow, showActions: false }),

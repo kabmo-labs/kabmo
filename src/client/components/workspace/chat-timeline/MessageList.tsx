@@ -201,6 +201,7 @@ export const MessageList = memo(function MessageList({
                     {...(harness ? { harness } : {})}
                     durationMs={inlineFooter.durationMs}
                     answerText={inlineFooter.answerText}
+                    speechText={inlineFooter.speechText}
                     retryTargetId={inlineFooter.runUserId}
                     onRetry={onRetry}
                     onNewChat={onNewChat}
@@ -233,6 +234,7 @@ export const MessageList = memo(function MessageList({
               {...(harness ? { harness } : {})}
               durationMs={trailingFooter.durationMs}
               answerText={trailingFooter.answerText}
+              speechText={trailingFooter.speechText}
               retryTargetId={trailingFooter.runUserId}
               onRetry={onRetry}
               onNewChat={onNewChat}

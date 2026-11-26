@@ -27,6 +27,7 @@ function footer(ownerIndex: number, runStartIndex: number): RunFooterSlot {
     runStartIndex,
     runUserId: `user-${runStartIndex}`,
     answerText: '',
+    speechText: '',
   };
 }
 

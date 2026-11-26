@@ -138,6 +138,34 @@ describe('resolveRunFooters run start', () => {
     expect(slot?.answerText).toBe('the actual answer');
   });
 
+  test('speaks only the run’s last answer while Copy keeps every part', () => {
+    const messages = [
+      user('u1'),
+      { ...ai('a1'), content: 'let me check' },
+      { ...ai('a2'), content: 'running the tests' },
+      { ...ai('a3'), content: 'the final answer' },
+      user('u2'),
+    ];
+    const slot = slotFor(messages);
+
+    expect(slot?.answerText).toBe('let me check\n\nrunning the tests\n\nthe final answer');
+    expect(slot?.speechText).toBe('the final answer');
+  });
+
+  test('falls back to the last row that says something when the owner is a tool call', () => {
+    const messages = [
+      user('u1'),
+      { ...ai('a1'), content: 'the actual answer' },
+      { ...ai('a2'), content: '', toolCalls: [{ id: 't1', type: 'bash', title: 'run' }] },
+    ];
+    expect(slotFor(messages)?.speechText).toBe('the actual answer');
+  });
+
+  test('a run with no text anywhere has no speech text', () => {
+    const messages = [user('u1'), { ...ai('a1'), content: '' }];
+    expect(slotFor(messages)?.speechText).toBe('');
+  });
+
   test('reads the answer out of a notice when omp diverted the turn text there', () => {
     const diverted = { ...notice('n1'), notice: 'diverted answer', model: 'deepseek-v4' };
     expect(slotFor([user('u1'), diverted])?.answerText).toBe('diverted answer');

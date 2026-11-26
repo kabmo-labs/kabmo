@@ -26,6 +26,12 @@ interface RunFooterProps {
    */
   answerText?: string;
   /**
+   * The run's final spoken text (`RunFooterSlot.speechText`): the last row that
+   * says something, never the joined answer. Falls back to the owner row's own
+   * text for call sites that only have a message.
+   */
+  speechText?: string;
+  /**
    * The user row that opened the run (`RunFooterSlot.runUserId`): the turn
    * Retry re-runs. The owner row is the run's LAST row, so handing its id to
    * Retry made the button a silent no-op on every multi-row run.
@@ -71,6 +77,7 @@ export function RunFooter({
   harness,
   durationMs,
   answerText,
+  speechText,
   retryTargetId,
   onRetry,
   onNewChat,
@@ -104,6 +111,7 @@ export function RunFooter({
         durationMs={durationMs ?? msg.durationMs}
         usage={msg.usage}
         content={answerText ?? messageAnswerText(msg)}
+        speechText={speechText ?? messageAnswerText(msg)}
         msgId={retryTargetId || msg.id}
         speechKey={msg.id}
         onRetry={onRetry}
