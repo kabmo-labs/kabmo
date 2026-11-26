@@ -92,3 +92,24 @@ export function awaitingInputSessionIds(): string[] {
 export function reconcileLiveSessions(): void {
   globalThis.__kabmoLiveSessionReconcile?.();
 }
+
+/**
+ * "This session is parked on a dialog only the user can answer" — raised where
+ * the dialog is seen, noticed by the feed that owns the banner. Registered for
+ * the same reason as the reads above: the notifier needs the session title and
+ * the notification store, which the frame path must not acquire.
+ */
+type AwaitingReporter = (sessionId: string) => void | Promise<void>;
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __kabmoAwaitingInputReporter: AwaitingReporter | undefined;
+}
+
+export function registerAwaitingInputReporter(reporter: AwaitingReporter | null): void {
+  globalThis.__kabmoAwaitingInputReporter = reporter ?? undefined;
+}
+
+export function reportAwaitingInput(sessionId: string): void {
+  void globalThis.__kabmoAwaitingInputReporter?.(sessionId);
+}

@@ -31,7 +31,7 @@ import {
   parseChildOutcomeNotice,
   type ChildOutcomeEntry,
   type OrchestrationBlock,
-} from '@/shared/lib/chat/orchestration/notice';
+} from '@kabmo-labs/kabmo-app-contracts/notice';
 
 const KIND_LABEL: Record<OrchestrationBlock['kind'], string> = {
   contract: 'Orchestration',

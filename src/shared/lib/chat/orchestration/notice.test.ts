@@ -20,7 +20,7 @@ import {
   parseChildOutcomeNotice,
   parseOrchestrationBlock,
   renderChildOutcomeNotice,
-} from '@/shared/lib/chat/orchestration/notice';
+} from '@kabmo-labs/kabmo-app-contracts/notice';
 
 describe('parseOrchestrationBlock', () => {
   test('leaves anything a human wrote alone', () => {

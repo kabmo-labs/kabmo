@@ -23,6 +23,7 @@
  */
 
 import { getDb } from '@/server/db.server';
+import { registerChildOutcomeReporter } from '@kabmo-labs/kabmo-session-relations/child-outcome';
 import { appendQueueItem } from '@/server/lib/queue/store.server';
 import { deliverQueueNow } from '@/server/lib/queue/delivery.server';
 import { getSessionRelation } from '@kabmo-labs/kabmo-session-relations/relations.server';
@@ -33,7 +34,7 @@ import { loadSessionTitle } from '@kabmo-labs/kabmo-omp-session-messages/message
 import {
   renderChildOutcomeNotice,
   type ChildOutcomeEntry,
-} from '@/shared/lib/chat/orchestration/notice';
+} from '@kabmo-labs/kabmo-app-contracts/notice';
 
 export const NOTICE_WINDOW_MS = 2_000;
 const OUTPUT_EXCERPT_LIMIT = 4_000;
@@ -235,3 +236,10 @@ export async function drainPendingNotices(): Promise<void> {
     });
   }
 }
+
+/**
+ * The reporter the ACP turn layer asks instead of importing this module: deciding
+ * whether a parent hears about a child needs the parent's preference, its
+ * archived state and the queue, all of which live above the turnout.
+ */
+registerChildOutcomeReporter(noteChildOutcome);

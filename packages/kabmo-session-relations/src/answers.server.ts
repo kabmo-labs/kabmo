@@ -13,7 +13,7 @@
  * path is simpler than two.
  */
 
-import { getDb } from '@/server/db.server';
+import { getDb } from '@kabmo-labs/kabmo-db/lifecycle';
 
 export async function saveSessionAnswer(sessionId: string, answer: string): Promise<void> {
   const text = answer.trim();

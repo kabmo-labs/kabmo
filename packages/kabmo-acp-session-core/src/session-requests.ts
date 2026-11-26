@@ -11,7 +11,7 @@
  * auto-answer cannot disagree.
  */
 
-import { answerPermissionRequest, cancelAcpPermission } from '@/server/lib/harness/acp/session-permissions';
+import { answerPermissionRequest, cancelAcpPermission } from './session-permissions';
 import { handleAcpFsRequest, isAcpFsMethod } from '@kabmo-labs/kabmo-acp-client/client-fs';
 import { ACP_ERROR } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import { normalizePermissionParams } from '@kabmo-labs/kabmo-acp-protocol/v2';

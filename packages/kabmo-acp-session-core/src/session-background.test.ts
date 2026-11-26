@@ -13,7 +13,7 @@
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
-import { mountSession, notify } from '@/server/lib/harness/acp/session.test-util';
+import { mountSession, notify } from './session.test-util';
 import { AcpBackgroundProbe } from '@kabmo-labs/kabmo-acp-session-core/background-probe';
 import { deliverBackgroundNotice } from '@kabmo-labs/kabmo-acp-session-core/background-work';
 import { extractTextFromContent } from '@kabmo-labs/kabmo-omp-mapper';

@@ -20,7 +20,7 @@ import type { PendingPermissions } from '@kabmo-labs/kabmo-acp-client/permission
 import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 import { allowOption, autoApproval, type PermissionOption } from '@kabmo-labs/kabmo-acp-client/permissions';
 import { permissionGrantKey } from '@kabmo-labs/kabmo-acp-client/grants';
-import { noteAwaitingInput } from '@/server/lib/notifications/feed.server';
+import { reportAwaitingInput } from '@kabmo-labs/kabmo-live-sessions';
 import { isRecord } from '@kabmo-labs/kabmo-guards';
 import type { AcpSubagents } from '@kabmo-labs/kabmo-acp-mapper/subagents';
 
@@ -133,7 +133,7 @@ export function answerPermissionRequest(
   // banner arrives even when no page is open to see the dialog.
   // Announced against the PARENT chat: that is the page a reader has open, and
   // a child id is not a chat the notification feed can address.
-  void noteAwaitingInput(host.sessionId);
+  void reportAwaitingInput(host.sessionId);
   // Answered LATER; the transport must not send a refusal now or the agent
   // sees two answers to one request.
   return Promise.resolve({ answered: false, deferred: true });

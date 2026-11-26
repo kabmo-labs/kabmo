@@ -20,7 +20,7 @@
  * writes, minus the boot.
  */
 
-import { AcpSession } from '@/server/lib/harness/acp/session';
+import { AcpSession } from '@kabmo-labs/kabmo-acp-session-core/session';
 import { AcpTranscriptRecorder } from '@/server/lib/harness/acp/session-transcript.server';
 import { AcpFrameRecorder } from '@kabmo-labs/kabmo-acp-session-core/acp-frames.server';
 import { claimPrewarmedAcpSession } from '@/server/lib/harness/acp/prewarm.server';

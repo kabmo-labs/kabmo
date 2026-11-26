@@ -19,7 +19,7 @@
  * `one-shot.server.ts`, shared with the commit-message generator.
  */
 
-import { runAcpOneShot } from '@/server/lib/harness/acp/one-shot.server';
+import { runAcpOneShot } from './one-shot.server';
 import {
   buildGoalAuditPrompt,
   readGoalAuditAnswers,

@@ -8,7 +8,9 @@
     "./relations.server": "./src/relations.server.ts",
     "./agent-token.server": "./src/agent-token.server.ts",
     "./relation-types": "./src/relation-types.ts",
-    "./sidebar-relations.server": "./src/sidebar-relations.server.ts"
+    "./sidebar-relations.server": "./src/sidebar-relations.server.ts",
+    "./answers.server": "./src/answers.server.ts",
+    "./child-outcome": "./src/child-outcome.ts"
   },
   "files": [
     "src"

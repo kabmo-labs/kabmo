@@ -30,7 +30,7 @@ import { getLiveSession, harnessOfSession, startNewRpcSession } from '@/server/l
 import { harnessProbeModels } from '@kabmo-labs/kabmo-harness-config-store/probe-cache.server';
 import { getDb } from '@/server/db.server';
 import { harnessDescriptor, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
-import { WORKER_BRIEF } from '@/shared/lib/chat/orchestration/notice';
+import { WORKER_BRIEF } from '@kabmo-labs/kabmo-app-contracts/notice';
 import type { SelectedModel } from '@kabmo-labs/kabmo-model-contracts/models';
 import type { AgentImage } from '@kabmo-labs/kabmo-chat-contracts/agent';
 import { MAX_SESSION_DEPTH } from '@kabmo-labs/kabmo-session-relations/relation-types';

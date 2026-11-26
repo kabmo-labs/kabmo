@@ -29,6 +29,7 @@ import { readAllSettingsJson } from '@kabmo-labs/kabmo-settings-store';
 import { getRealtimeHub } from '@/server/lib/realtime/hub.server';
 import { TOPIC_NOTIFICATIONS } from '@/shared/lib/realtime/protocol';
 import { registerRunSettledReporter } from '@kabmo-labs/kabmo-session-stream-state';
+import { registerAwaitingInputReporter } from '@kabmo-labs/kabmo-live-sessions';
 import {
   NOTIFICATION_SETTING_KEYS,
   type NotificationEvent as NotificationEventKey,
@@ -205,3 +206,5 @@ export async function noteAwaitingInput(sessionId: string): Promise<void> {
 registerRunSettledReporter((sessionId, failure, durationMs) => {
   void noteRunSettled(sessionId, failure, durationMs);
 });
+
+registerAwaitingInputReporter(noteAwaitingInput);

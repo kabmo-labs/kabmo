@@ -34,16 +34,16 @@
  * omp's wrapper.
  */
 
-import { scheduleQueueDelivery } from '@/server/lib/queue/delivery.server';
+import { nudgeQueueDelivery } from '@kabmo-labs/kabmo-omp-rpc-commands/queue-nudge';
 import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 import { saveAcpUsage } from '@kabmo-labs/kabmo-acp-session-core/acp-telemetry.server';
 import { lastAssistantText } from '@kabmo-labs/kabmo-omp-session-runtime/goal-driver.server';
-import { noteChildOutcome } from '@/server/lib/sessions/notify.server';
-import { saveSessionAnswer } from '@/server/lib/sessions/answers.server';
+import { reportChildOutcome } from '@kabmo-labs/kabmo-session-relations/child-outcome';
+import { saveSessionAnswer } from '@kabmo-labs/kabmo-session-relations/answers.server';
 import { transcriptFailure } from '@kabmo-labs/kabmo-acp-session-core/turn-outcome.server';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import type { AcpTurns, AcpTurnEndInfo } from '@kabmo-labs/kabmo-acp-turn/turn';
-import { driveAcpGoalAfterTurn } from '@/server/lib/harness/acp/acp-goal-driver.server';
+import { driveAcpGoalAfterTurn } from './acp-goal-driver.server';
 import type { AcpGoalHost } from '@kabmo-labs/kabmo-acp-session-core/acp-goal.server';
 import { assistantTextOf, spawnsBackgroundWork, toolIdsOf } from '@kabmo-labs/kabmo-acp-session-core/background-work';
 import { isLostSession } from '@kabmo-labs/kabmo-acp-session/session-lost';
@@ -164,7 +164,7 @@ export async function settleAcpTurn(
   if (isLostSession(info.failure) && target.dropLostSession) {
     target.dropLostSession();
   }
-  const reported = noteChildOutcome({
+  const reported = reportChildOutcome({
     sessionId: target.sessionId,
     status,
     // A failed turn's text is the error, not a report: the reason is the detail.
@@ -177,6 +177,6 @@ export async function settleAcpTurn(
   }).catch((error: unknown) => {
     console.error('[sessions] could not record an ACP child outcome:', error);
   });
-  scheduleQueueDelivery(target);
+  nudgeQueueDelivery(target);
   return reported;
 }

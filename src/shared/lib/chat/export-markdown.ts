@@ -18,7 +18,7 @@
 
 import type { AgentActionData, ChatMessageData, ToolCallData } from '@/shared/types';
 import { isNoticeRow, messageAnswerText } from '@kabmo-labs/kabmo-chat-notices/notice-row';
-import { parseOrchestrationBlock } from '@/shared/lib/chat/orchestration/notice';
+import { parseOrchestrationBlock } from '@kabmo-labs/kabmo-app-contracts/notice';
 
 export interface SessionMarkdownInput {
   id: string;

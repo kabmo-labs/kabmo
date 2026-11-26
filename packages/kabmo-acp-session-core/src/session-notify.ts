@@ -13,7 +13,7 @@
  * log is fed before the mapper folds it and before the turn gate can drop one.
  */
 
-import { handleAcpCancelRequest } from '@/server/lib/harness/acp/session-requests';
+import { handleAcpCancelRequest } from './session-requests';
 import { handleSessionNotification, type AcpNotificationHost } from '@kabmo-labs/kabmo-acp-control/session-notifications';
 import type { RawNotificationSink } from '@kabmo-labs/kabmo-acp-protocol/raw-listeners';
 import type { PendingPermissions } from '@kabmo-labs/kabmo-acp-client/permissions';

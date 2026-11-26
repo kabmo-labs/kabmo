@@ -17,7 +17,7 @@ import { describe, expect, test } from 'bun:test';
 
 import { reclaimIdleAcpSession } from '@kabmo-labs/kabmo-acp-session-core/session-idle';
 import { UNPROBED_CAPABILITIES } from '@kabmo-labs/kabmo-harness-launch/capabilities';
-import { mountSession, notify } from '@/server/lib/harness/acp/session.test-util';
+import { mountSession, notify } from './session.test-util';
 
 describe('ACP idle reclaim decision', () => {
   const restorable = { ...UNPROBED_CAPABILITIES, loadSession: true };

@@ -28,7 +28,7 @@ import { modelProvider, resolveDefaultModel } from '@kabmo-labs/kabmo-harness-co
 import { harnessDescriptor, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import { validateCommitPrompt } from '@/shared/lib/git/commit-prompt';
 import { runOmpPrint, type OmpPrintOutcome } from '@kabmo-labs/kabmo-omp-install/print.server';
-import { runAcpOneShot, type AcpOneShotOutcome } from '@/server/lib/harness/acp/one-shot.server';
+import { runAcpOneShot, type AcpOneShotOutcome } from '@kabmo-labs/kabmo-acp-session-core/one-shot.server';
 import { limitCommitContext, readCommitContext } from '@/server/lib/fs/git-commit-context';
 import { buildCommitMessagePrompt, cleanCommitMessage } from '@/server/lib/fs/git-commit-prompt';
 

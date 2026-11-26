@@ -28,7 +28,7 @@ import { listQueue } from '@/server/lib/queue/store.server';
 import {
   parseChildOutcomeNotice,
   parseOrchestrationBlock,
-} from '@/shared/lib/chat/orchestration/notice';
+} from '@kabmo-labs/kabmo-app-contracts/notice';
 
 const parents = new Set<string>();
 

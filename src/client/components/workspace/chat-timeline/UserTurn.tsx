@@ -30,7 +30,7 @@ import { PluginMessageActions } from '@/client/components/workspace/chat-timelin
 import { OrchestrationNotice } from '@/client/components/workspace/chat-timeline/OrchestrationNotice';
 import { formatMessageStamp } from '@kabmo-labs/kabmo-format/time';
 import { transcriptBlockPadding, transcriptGutter } from '@/shared/lib/chat/timeline/gutter';
-import { parseOrchestrationBlock } from '@/shared/lib/chat/orchestration/notice';
+import { parseOrchestrationBlock } from '@kabmo-labs/kabmo-app-contracts/notice';
 
 export interface UserTurnProps {
   msg: ChatMessageData | any;

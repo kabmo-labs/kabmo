@@ -15,8 +15,8 @@
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
-import { mountSession } from '@/server/lib/harness/acp/session.test-util';
-import type { AcpSession } from '@/server/lib/harness/acp/session';
+import { mountSession } from './session.test-util';
+import type { AcpSession } from './session';
 import type { AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 
 // A prompt reaches the title writer, which opens the database — isolate it.

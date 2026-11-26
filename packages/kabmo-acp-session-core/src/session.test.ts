@@ -13,13 +13,13 @@
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
-import { flushTicks, mountSession, notify } from '@/server/lib/harness/acp/session.test-util';
+import { flushTicks, mountSession, notify } from './session.test-util';
 import { createSessionRelation } from '@kabmo-labs/kabmo-session-relations/relations.server';
 import { materializeNotice } from '@/server/lib/sessions/notify.server';
 import {
   parseChildOutcomeNotice,
   parseOrchestrationBlock,
-} from '@/shared/lib/chat/orchestration/notice';
+} from '@kabmo-labs/kabmo-app-contracts/notice';
 import type { AcpConfigOption } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 
 // A prompt reaches the title writer (`harness/session-title.server.ts`), which

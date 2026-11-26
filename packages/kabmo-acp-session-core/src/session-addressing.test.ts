@@ -14,7 +14,7 @@
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
-import { flushTicks, mountSession, notify } from '@/server/lib/harness/acp/session.test-util';
+import { flushTicks, mountSession, notify } from './session.test-util';
 
 beforeEach(async () => {
   await isolateDb();

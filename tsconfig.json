@@ -943,54 +943,6 @@
       "@kabmo-labs/kabmo-db/worktree-registry": [
         "./packages/kabmo-db/src/worktree-registry.server.ts"
       ],
-      "@kabmo-labs/kabmo-acp-session-core": [
-        "./packages/kabmo-acp-session-core/src/session-start.ts"
-      ],
-      "@kabmo-labs/kabmo-acp-session-core/acp-goal-state.server": [
-        "./packages/kabmo-acp-session-core/src/acp-goal-state.server.ts"
-      ],
-      "@kabmo-labs/kabmo-acp-session-core/background-probe": [
-        "./packages/kabmo-acp-session-core/src/background-probe.ts"
-      ],
-      "@kabmo-labs/kabmo-acp-session-core/background-replay": [
-        "./packages/kabmo-acp-session-core/src/background-replay.ts"
-      ],
-      "@kabmo-labs/kabmo-acp-session-core/background-work": [
-        "./packages/kabmo-acp-session-core/src/background-work.ts"
-      ],
-      "@kabmo-labs/kabmo-acp-session-core/config-effects": [
-        "./packages/kabmo-acp-session-core/src/config-effects.ts"
-      ],
-      "@kabmo-labs/kabmo-acp-session-core/grants.server": [
-        "./packages/kabmo-acp-session-core/src/grants.server.ts"
-      ],
-      "@kabmo-labs/kabmo-acp-session-core/replay": [
-        "./packages/kabmo-acp-session-core/src/replay.ts"
-      ],
-      "@kabmo-labs/kabmo-acp-session-core/replay-transcript": [
-        "./packages/kabmo-acp-session-core/src/replay-transcript.ts"
-      ],
-      "@kabmo-labs/kabmo-acp-session-core/session-approvals": [
-        "./packages/kabmo-acp-session-core/src/session-approvals.ts"
-      ],
-      "@kabmo-labs/kabmo-acp-session-core/session-handshake": [
-        "./packages/kabmo-acp-session-core/src/session-handshake.ts"
-      ],
-      "@kabmo-labs/kabmo-acp-session-core/session-idle": [
-        "./packages/kabmo-acp-session-core/src/session-idle.ts"
-      ],
-      "@kabmo-labs/kabmo-acp-session-core/session-inbound": [
-        "./packages/kabmo-acp-session-core/src/session-inbound.ts"
-      ],
-      "@kabmo-labs/kabmo-acp-session-core/session-roots.server": [
-        "./packages/kabmo-acp-session-core/src/session-roots.server.ts"
-      ],
-      "@kabmo-labs/kabmo-acp-session-core/session-start": [
-        "./packages/kabmo-acp-session-core/src/session-start.ts"
-      ],
-      "@kabmo-labs/kabmo-acp-session-core/session-wiring": [
-        "./packages/kabmo-acp-session-core/src/session-wiring.ts"
-      ],
       "@kabmo-labs/kabmo-acp-control": [
         "./packages/kabmo-acp-control/src/commands.ts"
       ],
@@ -1318,18 +1270,6 @@
       "@kabmo-labs/kabmo-omp-sidebar-data/sidebar-activity.server": [
         "./packages/kabmo-omp-sidebar-data/src/activity.server.ts"
       ],
-      "@kabmo-labs/kabmo-acp-session-core/acp-goal.server": [
-        "./packages/kabmo-acp-session-core/src/acp-goal.server.ts"
-      ],
-      "@kabmo-labs/kabmo-acp-session-core/turn-outcome.server": [
-        "./packages/kabmo-acp-session-core/src/turn-outcome.server.ts"
-      ],
-      "@kabmo-labs/kabmo-acp-session-core/acp-telemetry.server": [
-        "./packages/kabmo-acp-session-core/src/acp-telemetry.server.ts"
-      ],
-      "@kabmo-labs/kabmo-acp-session-core/acp-frames.server": [
-        "./packages/kabmo-acp-session-core/src/acp-frames.server.ts"
-      ],
       "@kabmo-labs/kabmo-app-contracts/todo-snapshot": [
         "./packages/kabmo-app-contracts/src/todo-snapshot.ts"
       ],
@@ -1338,6 +1278,102 @@
       ],
       "@kabmo-labs/kabmo-omp-session-runtime/goal-driver.server": [
         "./packages/kabmo-omp-session-runtime/src/goal-driver.server.ts"
+      ],
+      "@kabmo-labs/kabmo-session-relations/answers.server": [
+        "./packages/kabmo-session-relations/src/answers.server.ts"
+      ],
+      "@kabmo-labs/kabmo-session-relations/child-outcome": [
+        "./packages/kabmo-session-relations/src/child-outcome.ts"
+      ],
+      "@kabmo-labs/kabmo-app-contracts/notice": [
+        "./packages/kabmo-app-contracts/src/notice.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core": [
+        "./packages/kabmo-acp-session-core/src/session-start.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core./acp-goal-state.server": [
+        "./packages/kabmo-acp-session-core/src/acp-goal-state.server.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core./background-probe": [
+        "./packages/kabmo-acp-session-core/src/background-probe.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core./background-replay": [
+        "./packages/kabmo-acp-session-core/src/background-replay.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core./background-work": [
+        "./packages/kabmo-acp-session-core/src/background-work.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core./config-effects": [
+        "./packages/kabmo-acp-session-core/src/config-effects.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core./grants.server": [
+        "./packages/kabmo-acp-session-core/src/grants.server.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core./replay": [
+        "./packages/kabmo-acp-session-core/src/replay.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core./replay-transcript": [
+        "./packages/kabmo-acp-session-core/src/replay-transcript.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core./session-approvals": [
+        "./packages/kabmo-acp-session-core/src/session-approvals.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core./session-handshake": [
+        "./packages/kabmo-acp-session-core/src/session-handshake.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core./session-idle": [
+        "./packages/kabmo-acp-session-core/src/session-idle.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core./session-inbound": [
+        "./packages/kabmo-acp-session-core/src/session-inbound.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core./session-roots.server": [
+        "./packages/kabmo-acp-session-core/src/session-roots.server.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core./session-start": [
+        "./packages/kabmo-acp-session-core/src/session-start.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core./session-wiring": [
+        "./packages/kabmo-acp-session-core/src/session-wiring.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core./acp-goal.server": [
+        "./packages/kabmo-acp-session-core/src/acp-goal.server.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core./turn-outcome.server": [
+        "./packages/kabmo-acp-session-core/src/turn-outcome.server.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core./acp-telemetry.server": [
+        "./packages/kabmo-acp-session-core/src/acp-telemetry.server.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core./acp-frames.server": [
+        "./packages/kabmo-acp-session-core/src/acp-frames.server.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core./session": [
+        "./packages/kabmo-acp-session-core/src/session.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core./session-stop": [
+        "./packages/kabmo-acp-session-core/src/session-stop.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core./session-turns": [
+        "./packages/kabmo-acp-session-core/src/session-turns.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core./session-notify": [
+        "./packages/kabmo-acp-session-core/src/session-notify.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core./session-requests": [
+        "./packages/kabmo-acp-session-core/src/session-requests.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core./session-permissions": [
+        "./packages/kabmo-acp-session-core/src/session-permissions.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core./acp-goal-driver.server": [
+        "./packages/kabmo-acp-session-core/src/acp-goal-driver.server.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core./acp-audit.server": [
+        "./packages/kabmo-acp-session-core/src/acp-audit.server.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-core./one-shot.server": [
+        "./packages/kabmo-acp-session-core/src/one-shot.server.ts"
       ],
       "@kabmo-labs/kabmo-ui": [
         "./packages/kabmo-ui/src/index.tsx"

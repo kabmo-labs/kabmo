@@ -17,7 +17,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { getDb } from '@/server/db.server';
 import { getSessionAnswer } from '@/server/routes/sessions/answer';
-import { saveSessionAnswer } from '@/server/lib/sessions/answers.server';
+import { saveSessionAnswer } from '@kabmo-labs/kabmo-session-relations/answers.server';
 import { markStreamStatus } from '@kabmo-labs/kabmo-session-stream-state';
 
 beforeEach(isolateDb);

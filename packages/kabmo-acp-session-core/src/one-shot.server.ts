@@ -20,7 +20,7 @@
  * ever asks and the agent may need its own tools to read the report.
  */
 
-import { AcpSession } from '@/server/lib/harness/acp/session';
+import { AcpSession } from './session';
 import { loadHarnessConfig } from '@kabmo-labs/kabmo-harness-config-store/config.server';
 import { resolveAccountLaunch } from '@kabmo-labs/kabmo-harness-account-store';
 import { sessionLaunchCommand } from '@kabmo-labs/kabmo-harness-launch/launch';

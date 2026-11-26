@@ -17,7 +17,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PendingPermissions } from '@kabmo-labs/kabmo-acp-client/permissions';
-import { handleAcpClientRequest, type AcpClientRequestHost } from '@/server/lib/harness/acp/session-requests';
+import { handleAcpClientRequest, type AcpClientRequestHost } from './session-requests';
 import { ACP_ERROR } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import type { AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 

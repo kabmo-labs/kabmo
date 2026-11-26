@@ -14,10 +14,10 @@
  * `answers_permission_requests_on_cancel() === false`).
  */
 
-import { cancelAllAcpPermissions } from '@/server/lib/harness/acp/session-permissions';
-import { endAcpTurn } from '@/server/lib/harness/acp/session-turns';
+import { cancelAllAcpPermissions } from './session-permissions';
+import { endAcpTurn } from './session-turns';
 import { LOST_SESSION_NOTICE } from '@kabmo-labs/kabmo-acp-session/session-lost';
-import type { AcpSession } from '@/server/lib/harness/acp/session';
+import type { AcpSession } from './session';
 import type { AcpTurnEndInfo } from '@kabmo-labs/kabmo-acp-turn/turn';
 
 /** Stop the turn and settle what it parked. */

@@ -16,7 +16,7 @@ import type { Dispatch, SetStateAction } from 'preact/compat';
 import type { ChatMessageData, ExtensionUiDialogRequest, IncomingExtensionUiRequest, OmpAgentCallbacks } from '@/shared/types';
 import { triggerChatCompletionSound } from '@/client/hooks/ui/notification-sound';
 import { isNoticeRow } from '@kabmo-labs/kabmo-chat-notices/notice-row';
-import { parseOrchestrationBlock } from '@/shared/lib/chat/orchestration/notice';
+import { parseOrchestrationBlock } from '@kabmo-labs/kabmo-app-contracts/notice';
 import {
   bindStreamingCoalescer,
   disposeStreamingCoalescer,

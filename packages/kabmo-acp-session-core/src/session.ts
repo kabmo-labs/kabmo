@@ -28,19 +28,19 @@ AcpProtocolVersion,
 AcpSessionModeState,
 AcpSessionModels, } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import { promptContent, startAcpPrompt } from '@kabmo-labs/kabmo-acp-session-config/session-intake';
-import { cancelAcpTurn, dropAcpSession, endAcpSessionTurn } from '@/server/lib/harness/acp/session-stop';
+import { cancelAcpTurn, dropAcpSession, endAcpSessionTurn } from './session-stop';
 import { setAcpConfig, setAcpMode, type AcpConfigWriter } from '@kabmo-labs/kabmo-acp-session-config/session-config';
 import { ACP_CONFIG_EFFECTS } from '@kabmo-labs/kabmo-acp-session-core/config-effects';
 import { acpConfigView, type AcpConfigProcess } from '@kabmo-labs/kabmo-acp-session/session-config-view';
 import * as verbs from '@kabmo-labs/kabmo-acp-protocol/verbs';
 import { acpPendingDialogs, answerAcpDialog } from '@kabmo-labs/kabmo-acp-session-core/session-approvals';
-import { beginAcpTurn } from '@/server/lib/harness/acp/session-turns';
+import { beginAcpTurn } from './session-turns';
 import { capabilitiesFrom } from '@kabmo-labs/kabmo-harness-launch/launch';
 import { PendingPermissions } from '@kabmo-labs/kabmo-acp-client/permissions';
-import { handleAcpNotification } from '@/server/lib/harness/acp/session-notify';
+import { handleAcpNotification } from './session-notify';
 import { RawNotificationSink, type RawNotificationListener } from '@kabmo-labs/kabmo-acp-protocol/raw-listeners';
 import { AcpUsageMeter, type AcpContextUsage } from '@kabmo-labs/kabmo-acp-session/session-usage';
-import { handleAcpClientRequest, type AcpClientRequestAnswer } from '@/server/lib/harness/acp/session-requests';
+import { handleAcpClientRequest, type AcpClientRequestAnswer } from './session-requests';
 import { reportAcpExit, type AcpExitInfo } from '@kabmo-labs/kabmo-acp-session/session-exit';
 import { acpExited, closeAcpSession, destroyAcp } from '@kabmo-labs/kabmo-acp-session/session-lifecycle';
 import { SessionListeners } from '@kabmo-labs/kabmo-acp-session/session-listeners';

@@ -18,7 +18,7 @@
  */
 
 import { harnessDescriptor, harnessIdForName, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
-import { ORCHESTRATION_CONTRACT } from '@/shared/lib/chat/orchestration/notice';
+import { ORCHESTRATION_CONTRACT } from '@kabmo-labs/kabmo-app-contracts/notice';
 
 export interface HarnessDelegation {
   harness: HarnessId;

@@ -26,7 +26,7 @@ import {
   ORCHESTRATION_CONTRACT,
   WORKER_BRIEF,
   renderChildOutcomeNotice,
-} from '@/shared/lib/chat/orchestration/notice';
+} from '@kabmo-labs/kabmo-app-contracts/notice';
 import type { ChatMessageData } from '@/shared/types';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'Event'] as const;
