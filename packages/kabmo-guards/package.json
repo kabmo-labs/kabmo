@@ -9,6 +9,7 @@
   "files": [
     "src"
   ],
+  "sideEffects": false,
   "license": "MIT",
   "repository": {
     "type": "git",
