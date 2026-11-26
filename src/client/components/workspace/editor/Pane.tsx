@@ -30,7 +30,7 @@ import type { DiskDigest } from '@/client/hooks/editor/use-disk-digest';
 import type { CloseGuard } from '@/client/hooks/editor/use-close-guard';
 import type { UseFileEditorResult } from '@/client/hooks/editor/file-editor-types';
 import type { WriteConflict } from '@/client/hooks/editor/use-write-conflict';
-import type { OpenedFile } from '@/shared/types/fs';
+import type { OpenedFile } from '@kabmo-labs/kabmo-app-contracts/fs';
 
 interface EditorPaneProps {
   className?: string;

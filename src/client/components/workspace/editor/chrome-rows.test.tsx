@@ -31,7 +31,7 @@ import { PanelHeader } from '@/client/components/workspace/panel-header';
 import { EditorTabs } from '@/client/components/workspace/editor/Tabs';
 import { EditorToolbar } from '@/client/components/workspace/editor/Toolbar';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
-import type { OpenedFile } from '@/shared/types/fs';
+import type { OpenedFile } from '@kabmo-labs/kabmo-app-contracts/fs';
 
 const FILES: OpenedFile[] = [{ id: 1, name: 'keep.ts', path: 'src/keep.ts' }];
 

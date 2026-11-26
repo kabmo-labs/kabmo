@@ -17,7 +17,7 @@
  * window and the cost, and a chat with neither says it is not started.
  */
 
-import type { SessionContextTelemetry } from '@/shared/types/context';
+import type { SessionContextTelemetry } from '@kabmo-labs/kabmo-app-contracts/context';
 import { getDb } from '@/server/db.server';
 import { getLiveSession, harnessOfSession } from '@/server/lib/omp/rpc/session-registry';
 

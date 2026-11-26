@@ -1,7 +1,7 @@
 import type { TargetedMouseEvent } from 'preact';
 import { useState } from 'preact/hooks';
 import { Check, ChevronDown, ChevronRight, Copy } from 'lucide-preact';
-import type { GitCommit, GitCommitFile } from '@/shared/types/git';
+import type { GitCommit, GitCommitFile } from '@kabmo-labs/kabmo-app-contracts/git';
 import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
 import { CommitActions } from '@/client/components/workspace/git-panel/commit-modal/CommitActions';
 import { CommitDiffViewer } from '@/client/components/workspace/git-panel/commit-modal/CommitDiffViewer';

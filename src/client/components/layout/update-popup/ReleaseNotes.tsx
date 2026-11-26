@@ -12,7 +12,7 @@
 import type { TargetedMouseEvent } from 'preact';
 import { ExternalLink } from 'lucide-preact';
 import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
-import type { ReleaseNote, UpdateChangelog } from '@/shared/types/updates';
+import type { ReleaseNote, UpdateChangelog } from '@kabmo-labs/kabmo-app-contracts/updates';
 
 const LINK_CLASS = 'inline-flex items-center gap-1 text-[10px] font-medium text-ink/50 hover:text-ink transition-colors';
 

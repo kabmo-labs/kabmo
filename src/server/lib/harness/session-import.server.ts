@@ -42,7 +42,7 @@ import { getDb } from '@/server/db.server';
 import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 import { harnessDescriptor, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import type { AcpSessionInfo } from '@kabmo-labs/kabmo-acp-protocol/protocol';
-import type { HarnessSessionImport } from '@/shared/types/harness';
+import type { HarnessSessionImport } from '@kabmo-labs/kabmo-app-contracts/harness';
 
 /** One fresh process' worth of listing, disposed whatever happens. */
 async function listOnce(

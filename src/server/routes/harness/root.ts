@@ -38,7 +38,7 @@ import { credentialFieldLabel,
 providerLevel,
 registryLabel, } from '@kabmo-labs/kabmo-harness-provider/providers';
 import { providerFacts } from '@kabmo-labs/kabmo-harness-provider/provider-lookup';
-import type { HarnessProviderSupport } from '@/shared/types/harness';
+import type { HarnessProviderSupport } from '@kabmo-labs/kabmo-app-contracts/harness';
 import { parseHarnessConfig, type HarnessConfig } from '@kabmo-labs/kabmo-harness-config';
 
 /**

@@ -16,7 +16,7 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { restoreHeldDraft, waitingDraftSessionId } from '@/client/hooks/chat/waiting/restore';
 import { forgetSession, getSessionValue } from '@/shared/lib/workspace/session-state/store';
 import { CHAT_DRAFT_ATTACHMENTS_KEY, CHAT_DRAFT_KEY } from '@/shared/lib/chat/composer/draft';
-import type { WaitingPrompt } from '@/shared/types/waiting';
+import type { WaitingPrompt } from '@kabmo-labs/kabmo-app-contracts/waiting';
 
 function prompt(overrides: Partial<WaitingPrompt> = {}): WaitingPrompt {
   return {

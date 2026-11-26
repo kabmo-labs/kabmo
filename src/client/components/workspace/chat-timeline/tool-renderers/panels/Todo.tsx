@@ -19,7 +19,7 @@
 import { useMemo } from 'preact/hooks';
 import { ListTodo } from 'lucide-preact';
 import type { ToolCallData } from '@/shared/types';
-import type { TodoItem } from '@/shared/types/todo';
+import type { TodoItem } from '@kabmo-labs/kabmo-app-contracts/todo';
 import { parseTodoData } from '@/shared/lib/chat/todo/parser';
 import { closedTaskCount, todoProgressLabel, todoProgressPercent } from '@/shared/lib/chat/todo/progress';
 import { TodoRow } from '@/client/components/common/todo-row';

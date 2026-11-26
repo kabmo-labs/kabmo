@@ -20,7 +20,7 @@
  */
 
 import { resolveWikiReference, wikiEntryLookup } from '@/shared/lib/wiki/pages';
-import type { WikiEntry, WikiNavLink, WikiNavSection } from '@/shared/types/wiki';
+import type { WikiEntry, WikiNavLink, WikiNavSection } from '@kabmo-labs/kabmo-app-contracts/wiki';
 
 /** Extension stripped from a path's basename. */
 const MARKDOWN_EXT_RE = /\.(md|markdown)$/i;

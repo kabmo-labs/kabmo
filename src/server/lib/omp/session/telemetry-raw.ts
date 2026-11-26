@@ -13,7 +13,7 @@
  * 11 MB session against 1.9 ms for the page itself.
  */
 
-import type { RawMessageItem } from '@/shared/types/context';
+import type { RawMessageItem } from '@kabmo-labs/kabmo-app-contracts/context';
 import { buildInfo, formatTs, scanSessionEntries, textOf, tokensOf, type OmpMessage, type OmpMessageEntry } from '@/server/lib/omp/session/telemetry';
 import { contentProfile } from '@kabmo-labs/kabmo-omp-session-parse/telemetry-blocks';
 

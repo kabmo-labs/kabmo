@@ -25,7 +25,7 @@
 
 import { AlertCircle, ArrowLeft, Loader2 } from 'lucide-preact';
 import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
-import type { SessionPlanFile } from '@/shared/types/plan';
+import type { SessionPlanFile } from '@kabmo-labs/kabmo-app-contracts/plan';
 
 interface PlanPageViewProps {
   file: SessionPlanFile | null;

@@ -17,7 +17,7 @@
  * cannot free a claim belonging to a different run.
  */
 
-import type { UpdateTarget } from '@/shared/types/updates';
+import type { UpdateTarget } from '@kabmo-labs/kabmo-app-contracts/updates';
 
 /** What the console is told when a second run is refused. */
 export function updateBusyMessage(target: UpdateTarget): string {

@@ -33,7 +33,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'preact/hooks';
 import { AlertCircle, Check } from 'lucide-preact';
 import { candidatesForRole, matchPreset, MODEL_ROLES, roleMapsEqual, ROLE_IDS } from '@/shared/lib/omp/config/model-roles';
-import type { ModelRoleCandidate, ModelRolePreset } from '@/shared/types/model-roles';
+import type { ModelRoleCandidate, ModelRolePreset } from '@kabmo-labs/kabmo-app-contracts/model-roles';
 import { RoleRow } from '@/client/components/settings/categories/omp-settings/RoleRow';
 import { PresetBar } from '@/client/components/settings/categories/omp-settings/PresetBar';
 

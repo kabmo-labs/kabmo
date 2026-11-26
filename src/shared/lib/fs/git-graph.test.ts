@@ -18,7 +18,7 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import type { GitCommit } from '@/shared/types/git';
+import type { GitCommit } from '@kabmo-labs/kabmo-app-contracts/git';
 import {
   buildBezierPath,
   computeCommitLanes,

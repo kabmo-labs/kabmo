@@ -23,7 +23,7 @@ import { act } from 'preact/test-utils';
 import { useCommitPagination } from '@/client/hooks/workspace/commit-pagination';
 import { useCommitInteractions } from '@/client/hooks/workspace/commit-interactions';
 import { COMMIT_PAGE_SIZE } from '@/shared/lib/fs/commit-page';
-import type { CommitHistoryPage, GitCommit, GitCommitFile } from '@/shared/types/git';
+import type { CommitHistoryPage, GitCommit, GitCommitFile } from '@kabmo-labs/kabmo-app-contracts/git';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'Event', 'CustomEvent'] as const;
 /** The runner's own globals, restored on teardown so later files still have them. */

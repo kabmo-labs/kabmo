@@ -12,7 +12,7 @@
  * stays addressable by id (and still notifies its parent).
  */
 
-import type { SessionItemData } from '@/shared/types';
+import type { SessionItemData } from '@kabmo-labs/kabmo-app-contracts/workspace';
 import { listSessionRelations } from '@/server/lib/sessions/relations.server';
 
 export async function decorateSidebarSessions(

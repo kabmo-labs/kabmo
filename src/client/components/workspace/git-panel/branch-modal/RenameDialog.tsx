@@ -1,7 +1,7 @@
 import { CHECKBOX_CLASS } from '@/client/components/common/checkbox/style';
 import { useState } from 'preact/hooks';
 import { Modal } from '@/client/components/common/Modal';
-import type { GitBranchDetail } from '@/shared/types/git';
+import type { GitBranchDetail } from '@kabmo-labs/kabmo-app-contracts/git';
 
 interface RenameBranchDialogProps {
   /** The branch being renamed; `null` renders nothing. */

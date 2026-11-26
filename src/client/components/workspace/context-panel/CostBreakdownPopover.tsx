@@ -1,7 +1,7 @@
 
 import { useRef } from 'preact/hooks';
 import { X } from 'lucide-preact';
-import type { ContextCostBreakdown } from '@/shared/types/context';
+import type { ContextCostBreakdown } from '@kabmo-labs/kabmo-app-contracts/context';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 
 interface CostBreakdownPopoverProps {

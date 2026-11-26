@@ -27,7 +27,7 @@
 import { resolve } from 'path';
 
 import { packageDir } from '@/server/lib/fs/package-root';
-import type { ThemePalette } from '@/shared/types/theme';
+import type { ThemePalette } from '@kabmo-labs/kabmo-app-contracts/theme';
 
 /**
  * The route the themed manifest is served from.

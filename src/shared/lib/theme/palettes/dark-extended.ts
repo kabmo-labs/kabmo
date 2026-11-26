@@ -20,7 +20,7 @@
  * Generated data — re-port rather than hand-editing a color here.
  */
 
-import type { ThemePalette } from '@/shared/types/theme';
+import type { ThemePalette } from '@kabmo-labs/kabmo-app-contracts/theme';
 
 export const DARK_EXTENDED_PALETTES = [
   {

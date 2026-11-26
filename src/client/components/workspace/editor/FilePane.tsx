@@ -13,7 +13,7 @@ import type { EditorFindState } from '@/client/hooks/editor/use-editor-find';
 import type { EditorCommand } from '@/shared/lib/code/editor/keymap';
 import { EDITOR_MAX_FONT_SIZE, EDITOR_MIN_FONT_SIZE } from '@/shared/lib/code/editor/typography';
 import { BINARY_VIEWERS, RENDERED_VIEWERS, type ViewerKind } from '@/shared/lib/fs/document-kind';
-import type { OpenedFile } from '@/shared/types/fs';
+import type { OpenedFile } from '@kabmo-labs/kabmo-app-contracts/fs';
 import { isProbeableTab } from '@/client/hooks/workspace/missing-files';
 import { saveFileBytes } from '@/client/hooks/editor/save-bytes';
 import type { EditorThemeState } from '@/client/hooks/editor/theme';

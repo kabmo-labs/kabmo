@@ -25,7 +25,7 @@
  * `one-dark-pro-soft`).
  */
 
-import type { ThemePalette } from '@/shared/types/theme';
+import type { ThemePalette } from '@kabmo-labs/kabmo-app-contracts/theme';
 
 /** The two facts the chrome color depends on, as each writer knows them. */
 export interface WindowChromeMode {

@@ -1,7 +1,7 @@
 import { CHECKBOX_CLASS } from '@/client/components/common/checkbox/style';
 import { AlertTriangle } from 'lucide-preact';
 import { Modal } from '@/client/components/common/Modal';
-import type { GitBranchDetail } from '@/shared/types/git';
+import type { GitBranchDetail } from '@kabmo-labs/kabmo-app-contracts/git';
 
 interface DeleteBranchDialogProps {
   /** The branch being deleted; `null` renders nothing. */

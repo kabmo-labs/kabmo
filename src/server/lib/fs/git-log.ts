@@ -1,5 +1,5 @@
 import path from 'path';
-import type { GitCommit, GitCommitFile } from '@/shared/types/git';
+import type { GitCommit, GitCommitFile } from '@kabmo-labs/kabmo-app-contracts/git';
 import { COMMIT_PAGE_SIZE } from '@/shared/lib/fs/commit-page';
 import { SAMPLE_GIT_COMMITS } from '@/client/data/mock/git-commits';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';

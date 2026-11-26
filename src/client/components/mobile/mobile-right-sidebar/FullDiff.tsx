@@ -4,7 +4,7 @@ import { DiffPanel } from '@/client/components/workspace/diff-panel';
 import { getGitStatusInfo } from '@/shared/lib/fs/git-status';
 import { diffTabId, journalDiffTabId } from '@/shared/lib/workspace/file-tab-id';
 import { phoneRowStyle } from '@/client/lib/ui/phone-row';
-import type { JournalDiffRef } from '@/shared/types/fs';
+import type { JournalDiffRef } from '@kabmo-labs/kabmo-app-contracts/fs';
 
 interface MobileFullDiffProps {
   diff: {

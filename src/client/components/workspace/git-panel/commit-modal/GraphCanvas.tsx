@@ -1,5 +1,5 @@
 import { useMemo } from 'preact/hooks';
-import type { GitCommit } from '@/shared/types/git';
+import type { GitCommit } from '@kabmo-labs/kabmo-app-contracts/git';
 import { LANE_COLORS, buildBezierPath, computeCommitLanes, computeGraphLinks } from '@/shared/lib/fs/git-graph';
 
 interface GraphCanvasProps {

@@ -15,7 +15,7 @@
  * rendered as a plain pending one.
  */
 
-import type { TodoItem, TodoPhase, TodoProgress, TodoStatus } from '@/shared/types/todo';
+import type { TodoItem, TodoPhase, TodoProgress, TodoStatus } from '@kabmo-labs/kabmo-app-contracts/todo';
 
 export interface TodoStatusVisual {
   /** Short label for the row's status pill. */

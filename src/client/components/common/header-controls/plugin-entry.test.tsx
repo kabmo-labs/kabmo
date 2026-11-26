@@ -35,7 +35,7 @@ import { resetRealtimeClient } from '@/shared/lib/realtime/client';
 import { invalidateModelsCache } from '@/shared/lib/models/client';
 import { sessionTelemetryTopic, TOPIC_PANELS } from '@/shared/lib/realtime/protocol';
 import type { PanelRegistryPayload } from '@/shared/types';
-import type { SessionContextTelemetry } from '@/shared/types/context';
+import type { SessionContextTelemetry } from '@kabmo-labs/kabmo-app-contracts/context';
 import { startRealtimeTestServer, type RealtimeTestServer } from '@/test-support/realtime-server';
 import { installDomGlobals, pristineWebSocket, restoreDomGlobals } from '@/test-support/pristine-globals';
 import type { TopicResolver } from '@/server/lib/realtime/hub.server';

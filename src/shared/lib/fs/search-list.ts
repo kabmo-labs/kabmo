@@ -29,7 +29,7 @@
  * every scroll.
  */
 
-import type { SearchResultItem } from '@/shared/types/fs';
+import type { SearchResultItem } from '@kabmo-labs/kabmo-app-contracts/fs';
 
 /** One rendered line of the result list. */
 export type SearchListEntry =

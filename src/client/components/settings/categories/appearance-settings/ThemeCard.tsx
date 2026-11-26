@@ -15,7 +15,7 @@
  */
 
 import { Check } from 'lucide-preact';
-import type { ThemePalette } from '@/shared/types/theme';
+import type { ThemePalette } from '@kabmo-labs/kabmo-app-contracts/theme';
 import { THEME_SWATCHES } from '@/shared/lib/theme/catalog';
 
 interface ThemeCardProps {

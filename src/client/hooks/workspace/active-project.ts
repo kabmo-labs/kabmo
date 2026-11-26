@@ -17,7 +17,7 @@
 import { useMemo } from 'preact/hooks';
 import { useSearchParams } from '@/client/lib/router/search-params';
 import { activeProjectForSession, effectiveRootFor } from '@/shared/lib/workspace/active-project';
-import type { WorkspaceFolderData } from '@/shared/types/workspace';
+import type { WorkspaceFolderData } from '@kabmo-labs/kabmo-app-contracts/workspace';
 
 export interface ActiveWorkspaceProject {
   folder: WorkspaceFolderData | null;

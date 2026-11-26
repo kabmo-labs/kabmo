@@ -30,7 +30,7 @@ import { memo } from 'preact/compat';
 import { highlightSearchLine } from '@/shared/lib/code/highlight-cache';
 import { getLanguageFromPath } from '@/shared/lib/code/language';
 import { replacePreviewSegments } from '@/shared/lib/fs/search-row';
-import type { SearchResultItem } from '@/shared/types/fs';
+import type { SearchResultItem } from '@kabmo-labs/kabmo-app-contracts/fs';
 
 interface SearchRowProps {
   file: string;

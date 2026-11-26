@@ -28,7 +28,7 @@
  */
 
 import { isWikiMarkdownPath, resolveWikiReference, wikiEntryLookup, wikiHeadingSlug } from '@/shared/lib/wiki/pages';
-import type { WikiEntry } from '@/shared/types/wiki';
+import type { WikiEntry } from '@kabmo-labs/kabmo-app-contracts/wiki';
 
 export interface WikiRenderScope {
   /** Path of the page being rendered, inside the wiki tree. */

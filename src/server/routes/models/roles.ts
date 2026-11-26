@@ -10,7 +10,7 @@ import {
   seedPresetFromCurrentRoles,
 } from '@/server/lib/model-roles/store.server';
 import { normalizeRoleMap } from '@/shared/lib/omp/config/model-roles';
-import type { ModelRolesPayload } from '@/shared/types/model-roles';
+import type { ModelRolesPayload } from '@kabmo-labs/kabmo-app-contracts/model-roles';
 
 /**
  * Model roles: the live `modelRoles` map from config.yml, the presets Kabmo

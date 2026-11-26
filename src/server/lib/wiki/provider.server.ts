@@ -19,7 +19,7 @@
  * verdict — including "not GitLab" — is cached for the life of the process.
  */
 
-import type { WikiProvider } from '@/shared/types/wiki';
+import type { WikiProvider } from '@kabmo-labs/kabmo-app-contracts/wiki';
 
 const HOST_PROBE_TIMEOUT_MS = 3_000;
 

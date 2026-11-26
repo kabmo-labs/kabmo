@@ -14,7 +14,7 @@ import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { resolveKabmoVersion } from '@/server/lib/updates/install';
 import { releaseTagUrl } from '@/server/lib/updates/release-url';
 import { checkOmpUpdate } from '@/server/lib/updates/omp';
-import type { UpdateCheckResult, UpdateTargetInfo } from '@/shared/types/updates';
+import type { UpdateCheckResult, UpdateTargetInfo } from '@kabmo-labs/kabmo-app-contracts/updates';
 
 /** The demo range's endpoints; `buildUpdateChangelog` serves the matching notes. */
 export const MOCK_CURRENT_VERSION = '3.6.0';

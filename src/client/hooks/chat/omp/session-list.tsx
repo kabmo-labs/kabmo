@@ -40,7 +40,7 @@ import {
 import { subscribeClientSignal } from '@/client/lib/signals';
 import { buildSidebarSessionStatus } from '@/client/hooks/chat/omp/session-statuses';
 import type { WorkspaceFolderData } from '@/shared/types';
-import type { SidebarActivityPayload, SidebarPayload, SidebarStatusPayload } from '@/shared/types/realtime';
+import type { SidebarActivityPayload, SidebarPayload, SidebarStatusPayload } from '@kabmo-labs/kabmo-app-contracts/realtime';
 
 /** Re-exported so a consumer (and a test) names the shape without reaching
  *  into a server module for it. */

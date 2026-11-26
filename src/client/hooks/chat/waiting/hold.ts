@@ -18,7 +18,7 @@
  */
 
 import type { Attachment } from '@kabmo-labs/kabmo-chat-contracts/chat';
-import type { WorkspaceFolderData } from '@/shared/types/workspace';
+import type { WorkspaceFolderData } from '@kabmo-labs/kabmo-app-contracts/workspace';
 import { prepareQueuedAttachments } from '@/shared/lib/chat/attachments';
 import { createWaitingPromptRequest } from '@/client/hooks/chat/waiting/store';
 import { markPendingSessionWaiting } from '@/client/hooks/chat/omp/pending-waiting';

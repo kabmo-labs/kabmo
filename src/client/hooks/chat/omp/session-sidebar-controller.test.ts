@@ -30,7 +30,7 @@ import { forgetSession, setSessionKey } from '@/shared/lib/workspace/session-sta
 import { CHAT_DRAFT_KEY } from '@/shared/lib/chat/composer/draft';
 import { TOPIC_SIDEBAR } from '@/shared/lib/realtime/protocol';
 import { restoreDomGlobals } from '@/test-support/pristine-globals';
-import type { SidebarPayload } from '@/shared/types/realtime';
+import type { SidebarPayload } from '@kabmo-labs/kabmo-app-contracts/realtime';
 import {
   disposeSidebarController,
   mountSidebarController,

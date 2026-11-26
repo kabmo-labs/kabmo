@@ -19,7 +19,7 @@ import { detectWikiProvider } from '@/server/lib/wiki/provider.server';
 import { parseWikiRemote, redactRemoteUrl, wikiWebUrl } from '@/server/lib/wiki/remote';
 import { buildWikiEntries } from '@/shared/lib/wiki/pages';
 import { findWikiSidebarPath, parseWikiSidebar, withRemainingPages } from '@/shared/lib/wiki/sidebar';
-import type { WikiNavSection, WikiRepoPayload } from '@/shared/types/wiki';
+import type { WikiNavSection, WikiRepoPayload } from '@kabmo-labs/kabmo-app-contracts/wiki';
 
 /** The checkout's `origin`; null when there is none to read. */
 async function readOriginRemote(dir: string): Promise<{ remote: string | null; error: string }> {

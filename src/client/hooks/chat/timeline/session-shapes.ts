@@ -11,7 +11,7 @@
  * seeding rules and sits against the per-file size ceiling.
  */
 
-import type { LiveHarnessModels } from '@/shared/types/harness';
+import type { LiveHarnessModels } from '@kabmo-labs/kabmo-app-contracts/harness';
 
 export interface SessionDataShape {
   id?: string;

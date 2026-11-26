@@ -19,7 +19,7 @@ import { act } from 'preact/test-utils';
 
 import { useActiveReleaseNotes } from '@/client/hooks/ui/updates/notes';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
-import type { ActiveReleaseNotes, UpdateTarget } from '@/shared/types/updates';
+import type { ActiveReleaseNotes, UpdateTarget } from '@kabmo-labs/kabmo-app-contracts/updates';
 
 let container: HTMLElement;
 const originalFetch = Bun.fetch;

@@ -1,5 +1,5 @@
 import path from 'path';
-import type { FileDiffData } from '@/shared/types/git';
+import type { FileDiffData } from '@kabmo-labs/kabmo-app-contracts/git';
 import { runGit } from '@/server/lib/fs/git-run';
 
 /**

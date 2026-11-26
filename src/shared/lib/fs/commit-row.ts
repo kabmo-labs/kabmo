@@ -1,4 +1,4 @@
-import type { GitCommit, GitCommitFile } from '@/shared/types/git';
+import type { GitCommit, GitCommitFile } from '@kabmo-labs/kabmo-app-contracts/git';
 
 /**
  * Normalizes the changed-file rows a commit carries.

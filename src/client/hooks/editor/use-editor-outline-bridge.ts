@@ -19,7 +19,7 @@
 import type { RefObject } from 'preact';
 import type { CodeSurfaceHandle } from '@/client/components/common/code-surface';
 import type { UseFileEditorResult } from '@/client/hooks/editor/use-file-editor';
-import type { OpenedFile } from '@/shared/types/fs';
+import type { OpenedFile } from '@kabmo-labs/kabmo-app-contracts/fs';
 import { useEditorDocument } from '@/client/hooks/editor/use-editor-document';
 import { useLineJump } from '@/client/hooks/editor/use-line-jump';
 

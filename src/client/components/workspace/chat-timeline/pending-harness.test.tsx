@@ -27,7 +27,7 @@ import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-gl
 import { silenceRealtime, restoreRealtime } from '@/test-support/silent-socket';
 import { resetHarnessesStore } from '@/client/hooks/models/harness-catalog';
 import { invalidateModelsCache } from '@/shared/lib/models/client';
-import type { HarnessSummary } from '@/shared/types/harness';
+import type { HarnessSummary } from '@kabmo-labs/kabmo-app-contracts/harness';
 
 let container: HTMLElement;
 

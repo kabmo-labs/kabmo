@@ -42,7 +42,7 @@ import {
   roleAcceptsCandidate,
   roleMapsEqual,
 } from '@/shared/lib/omp/config/model-roles';
-import type { ModelRoleCandidate, ModelRolePreset } from '@/shared/types/model-roles';
+import type { ModelRoleCandidate, ModelRolePreset } from '@kabmo-labs/kabmo-app-contracts/model-roles';
 
 /** omp 18.12.6 `MODEL_ROLE_IDS`. */
 const OMP_ROLES = [

@@ -25,7 +25,7 @@ import { useEffect } from 'preact/hooks';
 import { opensInPreview, viewerKindFor } from '@/shared/lib/fs/document-kind';
 import { getSessionValue } from '@/shared/lib/workspace/session-state/store';
 import { setDirtyTabs } from '@/client/lib/editor-dirty-tabs';
-import type { OpenedFile } from '@/shared/types/fs';
+import type { OpenedFile } from '@kabmo-labs/kabmo-app-contracts/fs';
 
 interface UseEditorTabStateOptions {
   openedFiles: OpenedFile[];

@@ -34,7 +34,7 @@ import {
   todoStatusVisual,
 } from '@/shared/lib/chat/todo/progress';
 import { parseNestedPhaseEntry, stripTrailingStatusNote } from '@/shared/lib/chat/todo/nested-phase';
-import type { TodoItem, TodoPhase, TodoProgress, TodoStatus } from '@/shared/types/todo';
+import type { TodoItem, TodoPhase, TodoProgress, TodoStatus } from '@kabmo-labs/kabmo-app-contracts/todo';
 
 const progress = (partial: Partial<TodoProgress>): TodoProgress => ({
   total: 0,

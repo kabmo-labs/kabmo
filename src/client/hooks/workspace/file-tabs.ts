@@ -10,7 +10,7 @@ import {
   dropScrollPosition,
   type ScrollPositions,
 } from '@/shared/lib/workspace/scroll-positions';
-import type { JournalDiffRef, OpenedFile } from '@/shared/types/fs';
+import type { JournalDiffRef, OpenedFile } from '@kabmo-labs/kabmo-app-contracts/fs';
 
 export interface OpenFileInput {
   id?: number | string;

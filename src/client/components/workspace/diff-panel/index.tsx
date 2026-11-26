@@ -5,7 +5,7 @@ import { useFileDiff } from '@/client/hooks/workspace/diff-file';
 import { useJournalDiff } from '@/client/hooks/workspace/journal-diff';
 import { useDiffGitActions } from '@/client/hooks/workspace/diff-git-actions';
 import { getLanguageFromPath } from '@/shared/lib/code/language';
-import type { JournalDiffRef } from '@/shared/types/fs';
+import type { JournalDiffRef } from '@kabmo-labs/kabmo-app-contracts/fs';
 import { DiffToolbar, type DiffContentMode, type DiffViewMode } from '@/client/components/workspace/diff-panel/Toolbar';
 import { ConflictBanner } from '@/client/components/workspace/diff-panel/ConflictBanner';
 import { ThemedMergeDiffView } from '@/client/components/workspace/diff-panel/ThemedMergeDiffView';

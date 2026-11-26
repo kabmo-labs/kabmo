@@ -16,7 +16,7 @@
 
 import { useMemo, useState } from 'preact/hooks';
 import { FileText, Search } from 'lucide-preact';
-import type { SessionPlanFile } from '@/shared/types/plan';
+import type { SessionPlanFile } from '@kabmo-labs/kabmo-app-contracts/plan';
 
 interface PlanNavProps {
   files: readonly SessionPlanFile[];

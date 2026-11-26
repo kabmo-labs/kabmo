@@ -21,7 +21,7 @@
 import { AlertCircle, ArrowUpRight, Check, CircleDashed, Loader2, PackageX } from 'lucide-preact';
 import { HarnessGlyph, HARNESS_GLYPH_SIZE } from '@/client/components/common/harness-glyph';
 import { harnessStatus, type HarnessState } from '@/shared/lib/harness/status';
-import type { HarnessSummary } from '@/shared/types/harness';
+import type { HarnessSummary } from '@kabmo-labs/kabmo-app-contracts/harness';
 
 interface HarnessToggleListProps {
   /** Every non-built-in harness, switched on or off. */

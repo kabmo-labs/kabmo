@@ -17,7 +17,7 @@ import { useHarnessUpdate } from '@/client/hooks/models/use-harness-update';
 import { UpdateLogDialog } from '@/client/components/layout/session-sidebar/about-modal/UpdateLogDialog';
 import { useDialogBehaviour } from '@/client/hooks/ui/dialog-behaviour';
 import { UPDATE_POPUP_OPEN_EVENT } from '@/shared/lib/updates/popup-state';
-import type { UpdateTarget } from '@/shared/types/updates';
+import type { UpdateTarget } from '@kabmo-labs/kabmo-app-contracts/updates';
 import { MAX_WIDTH as CARD_MAX_WIDTH } from '@/client/components/workspace/model-dropdown/popover-metrics';
 
 export interface AboutModalProps {

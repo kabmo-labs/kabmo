@@ -66,8 +66,8 @@ interface WorkspacePanelsProps {
   /** The tab strip's menu: reopen a closed tab, copy a path, reveal a file. */
   onReopenClosed?: () => boolean;
   reopenableCount?: () => number;
-  onCopyPath?: (tab: import('@/shared/types/fs').OpenedFile) => void;
-  onRevealInFiles?: (tab: import('@/shared/types/fs').OpenedFile) => void;
+  onCopyPath?: (tab: import('@kabmo-labs/kabmo-app-contracts/fs').OpenedFile) => void;
+  onRevealInFiles?: (tab: import('@kabmo-labs/kabmo-app-contracts/fs').OpenedFile) => void;
   /** The outcome of a file dropped on the chat or the editor, for the toasts. */
   onDropResult?: (result: EditorDropResult) => void;
   onChangeRightPanel: (panel: string) => void;

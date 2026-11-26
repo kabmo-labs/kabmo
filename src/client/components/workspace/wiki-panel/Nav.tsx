@@ -20,7 +20,7 @@
 
 import { useMemo, useState } from 'preact/hooks';
 import { ExternalLink, Search } from 'lucide-preact';
-import type { WikiNavSection } from '@/shared/types/wiki';
+import type { WikiNavSection } from '@kabmo-labs/kabmo-app-contracts/wiki';
 
 interface WikiNavProps {
   sections: readonly WikiNavSection[];

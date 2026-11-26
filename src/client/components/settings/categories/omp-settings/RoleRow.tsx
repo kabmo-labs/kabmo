@@ -22,7 +22,7 @@
  */
 
 import { SearchSelect } from '@/client/components/common/search-select';
-import type { ModelRoleCandidate } from '@/shared/types/model-roles';
+import type { ModelRoleCandidate } from '@kabmo-labs/kabmo-app-contracts/model-roles';
 import type { ModelRoleInfo } from '@/shared/lib/omp/config/model-roles';
 
 interface RoleRowProps {

@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'preact/hooks';
-import type { GitCommit, GitCommitFile } from '@/shared/types/git';
+import type { GitCommit, GitCommitFile } from '@kabmo-labs/kabmo-app-contracts/git';
 
 interface UseCommitInteractionsOptions {
   onExecuteAction?: (actionType: string, file?: string, extra?: Record<string, string>) => void;

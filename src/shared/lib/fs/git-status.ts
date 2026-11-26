@@ -1,4 +1,4 @@
-import type { GitChange } from '@/shared/types/git';
+import type { GitChange } from '@kabmo-labs/kabmo-app-contracts/git';
 import { UNMERGED_CODES, isUnmergedCode } from '@/shared/lib/fs/git-unmerged';
 
 export interface GitStatusInfo {

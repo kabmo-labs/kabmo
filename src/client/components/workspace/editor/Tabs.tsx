@@ -10,7 +10,7 @@ import { EditorHideButton } from '@/client/components/workspace/editor/EditorHid
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 import { CONTROL_ROW_HEIGHT } from '@/client/lib/ui/control-plate';
 import { getGitStatusInfo } from '@/shared/lib/fs/git-status';
-import type { OpenedFile } from '@/shared/types/fs';
+import type { OpenedFile } from '@kabmo-labs/kabmo-app-contracts/fs';
 
 interface EditorTabsProps {
   openedFiles: OpenedFile[];

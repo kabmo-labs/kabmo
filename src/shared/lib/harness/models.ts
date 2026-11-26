@@ -31,7 +31,7 @@
  */
 
 import type { AIModelOption } from '@/shared/types';
-import type { HarnessSelectorValue, HarnessSummary, LiveHarnessModels } from '@/shared/types/harness';
+import type { HarnessSelectorValue, HarnessSummary, LiveHarnessModels } from '@kabmo-labs/kabmo-app-contracts/harness';
 
 export interface HarnessModelList {
   /** Exactly the rows to render — never a union of two harnesses' catalogs. */

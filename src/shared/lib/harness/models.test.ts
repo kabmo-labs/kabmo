@@ -14,7 +14,7 @@
 
 import { describe, expect, test } from 'bun:test';
 import { acpModelOption, harnessModels, pickerHarnesses } from '@/shared/lib/harness/models';
-import type { HarnessSummary } from '@/shared/types/harness';
+import type { HarnessSummary } from '@kabmo-labs/kabmo-app-contracts/harness';
 import type { AIModelOption } from '@/shared/types';
 
 const ompModels: AIModelOption[] = [

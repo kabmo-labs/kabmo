@@ -15,7 +15,7 @@
 
 import type {
   HarnessConfig, HarnessProviderSupport, HarnessesPayload, HarnessSummary, LiveHarnessModels,
-} from '@/shared/types/harness';
+} from '@kabmo-labs/kabmo-app-contracts/harness';
 import type { HarnessAccountView } from '@kabmo-labs/kabmo-harness-accounts';
 import { registerHarnessDescriptors } from '@kabmo-labs/kabmo-harness-catalog';
 

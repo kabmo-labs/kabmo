@@ -26,7 +26,7 @@ import { childEnv } from '@kabmo-labs/kabmo-fs-child-env';
 import { resolveOmpBin } from '@kabmo-labs/kabmo-omp-cli';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { mockRoleCandidates } from '@/server/lib/model-roles/mock.server';
-import type { ModelRoleCandidate } from '@/shared/types/model-roles';
+import type { ModelRoleCandidate } from '@kabmo-labs/kabmo-app-contracts/model-roles';
 
 const CANDIDATES_TTL_MS = 60_000;
 const LIST_TIMEOUT_MS = 30_000;

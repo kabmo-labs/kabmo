@@ -26,7 +26,7 @@
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { useRealtimeTopic } from '@/client/hooks/ui/realtime';
 import { wikiTopic } from '@/shared/lib/realtime/protocol';
-import type { WikiPagePayload, WikiRepoPayload } from '@/shared/types/wiki';
+import type { WikiPagePayload, WikiRepoPayload } from '@kabmo-labs/kabmo-app-contracts/wiki';
 
 /** `root\0repo` — the working tree a wiki read belongs to. */
 export function wikiScopeKey(rootPath: string | undefined, repo: string): string {

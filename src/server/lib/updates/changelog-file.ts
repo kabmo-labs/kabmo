@@ -16,7 +16,7 @@
  */
 
 import { OMP_REPO, releaseTagUrl, REPO, ompReleaseTagUrl } from '@/server/lib/updates/release-url';
-import type { ReleaseNote } from '@/shared/types/updates';
+import type { ReleaseNote } from '@kabmo-labs/kabmo-app-contracts/updates';
 
 /**
  * The changelog as served, on the branch the releases are cut from.

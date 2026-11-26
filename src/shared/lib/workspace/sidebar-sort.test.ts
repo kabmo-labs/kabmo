@@ -10,7 +10,7 @@ import {
   DEFAULT_SESSION_SORT_OPTION,
   isValidSessionSortOption,
   sortFolders,
-} from '@/shared/lib/workspace/sidebar-sort';
+} from '@kabmo-labs/kabmo-workspace-sidebar/sidebar-sort';
 import type { SessionItemData, SessionSortOption, WorkspaceFolderData } from '@/shared/types';
 
 /** Minimal session factory — only the fields the comparator reads. */

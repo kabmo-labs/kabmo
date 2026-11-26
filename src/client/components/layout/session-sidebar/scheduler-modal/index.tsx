@@ -24,7 +24,7 @@ import { useScheduledTasks, type ScheduleDraft } from '@/client/hooks/workspace/
 import { TaskForm } from '@/client/components/layout/session-sidebar/scheduler-modal/TaskForm';
 import { TaskList } from '@/client/components/layout/session-sidebar/scheduler-modal/TaskList';
 import { useScheduleFolders } from '@/client/components/layout/session-sidebar/scheduler-modal/folders';
-import type { ScheduledTask } from '@/shared/types/schedule';
+import type { ScheduledTask } from '@kabmo-labs/kabmo-app-contracts/schedule';
 import type { ToastTone } from '@/shared/lib/ui/toast-duration';
 
 export interface SchedulerModalProps {

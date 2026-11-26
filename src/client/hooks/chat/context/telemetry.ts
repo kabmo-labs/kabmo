@@ -24,7 +24,7 @@
  */
 
 import { useEffect, useState } from 'preact/hooks';
-import type { SessionContextTelemetry } from '@/shared/types/context';
+import type { SessionContextTelemetry } from '@kabmo-labs/kabmo-app-contracts/context';
 import { useRealtimeTopic } from '@/client/hooks/ui/realtime';
 import { sessionTelemetryTopic } from '@/shared/lib/realtime/protocol';
 import { clampContextPercent } from '@/shared/lib/chat/context/usage';

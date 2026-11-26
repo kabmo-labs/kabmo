@@ -22,7 +22,7 @@ import { useEffect } from 'preact/hooks';
 import { ListTree } from 'lucide-preact';
 import { Modal } from '@/client/components/common/Modal';
 import { WikiNav } from '@/client/components/workspace/wiki-panel/Nav';
-import type { WikiNavSection } from '@/shared/types/wiki';
+import type { WikiNavSection } from '@kabmo-labs/kabmo-app-contracts/wiki';
 
 interface WikiNavTriggerProps {
   open: boolean;

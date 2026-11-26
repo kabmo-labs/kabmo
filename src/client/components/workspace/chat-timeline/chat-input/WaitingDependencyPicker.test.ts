@@ -14,7 +14,7 @@
 
 import { describe, expect, test } from 'bun:test';
 import { waitingCandidates } from '@/client/components/workspace/chat-timeline/chat-input/WaitingDependencyPicker';
-import type { WorkspaceFolderData } from '@/shared/types/workspace';
+import type { WorkspaceFolderData } from '@kabmo-labs/kabmo-app-contracts/workspace';
 
 function folder(id: number, name: string, sessions: { id: string; title: string }[]): WorkspaceFolderData {
   return {

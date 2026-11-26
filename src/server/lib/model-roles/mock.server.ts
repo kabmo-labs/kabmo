@@ -14,7 +14,7 @@
  */
 
 import { INITIAL_MODELS_CATALOG } from '@/client/data/models/catalog';
-import type { ModelRoleCandidate } from '@/shared/types/model-roles';
+import type { ModelRoleCandidate } from '@kabmo-labs/kabmo-app-contracts/model-roles';
 
 const DEMO_KIND_MODELS: Array<Pick<ModelRoleCandidate, 'id' | 'name' | 'provider' | 'kind'>> = [
   { id: 'brave', name: 'Brave', provider: 'web', kind: 'search' },

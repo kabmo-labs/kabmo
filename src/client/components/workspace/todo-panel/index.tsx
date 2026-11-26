@@ -31,7 +31,7 @@ import { TodoPhaseGroup } from '@/client/components/workspace/todo-panel/PhaseGr
 import { currentTaskLocation, todoProgressLabel, todoProgressPercent } from '@/shared/lib/chat/todo/progress';
 import { useRealtimeTopic } from '@/client/hooks/ui/realtime';
 import { sessionTodosTopic } from '@/shared/lib/realtime/protocol';
-import type { SessionTodosPayload } from '@/shared/types/todo';
+import type { SessionTodosPayload } from '@kabmo-labs/kabmo-app-contracts/todo';
 
 interface TodoPanelProps {
   className?: string;

@@ -24,7 +24,7 @@ import { act } from 'preact/test-utils';
 import { Window } from 'happy-dom';
 
 import { ModelDropdownPanel } from '@/client/components/workspace/model-dropdown/Panel';
-import type { HarnessSummary } from '@/shared/types/harness';
+import type { HarnessSummary } from '@kabmo-labs/kabmo-app-contracts/harness';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
 
 let container: HTMLElement;

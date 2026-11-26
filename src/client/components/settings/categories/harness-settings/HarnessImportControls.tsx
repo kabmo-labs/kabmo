@@ -20,7 +20,7 @@
 
 import { useState } from 'preact/hooks';
 import { Loader2 } from 'lucide-preact';
-import type { HarnessSessionImport, HarnessSummary } from '@/shared/types/harness';
+import type { HarnessSessionImport, HarnessSummary } from '@kabmo-labs/kabmo-app-contracts/harness';
 
 interface HarnessImportControlsProps {
   summary: HarnessSummary;

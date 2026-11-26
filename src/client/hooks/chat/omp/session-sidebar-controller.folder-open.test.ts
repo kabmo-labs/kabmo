@@ -19,7 +19,7 @@ import { act } from 'preact/test-utils';
 import { listPendingSessions, releasePendingSession, startPendingSession } from '@/client/hooks/chat/omp/pending-sessions';
 import { TOPIC_SIDEBAR, TOPIC_SIDEBAR_STATUS } from '@/shared/lib/realtime/protocol';
 import { restoreDomGlobals } from '@/test-support/pristine-globals';
-import type { SidebarPayload, SidebarStatusPayload } from '@/shared/types/realtime';
+import type { SidebarPayload, SidebarStatusPayload } from '@kabmo-labs/kabmo-app-contracts/realtime';
 import {
   disposeSidebarController,
   mountSidebarController,

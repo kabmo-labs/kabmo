@@ -1,6 +1,6 @@
 import { json, NO_STORE_HEADERS, type LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { buildActiveReleaseNotes } from '@/server/lib/updates/active-notes';
-import type { UpdateTarget } from '@/shared/types/updates';
+import type { UpdateTarget } from '@kabmo-labs/kabmo-app-contracts/updates';
 
 /**
  * GET /api/updates/notes?target=kabmo|omp — the changelog section for the

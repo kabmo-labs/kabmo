@@ -22,7 +22,7 @@
  * panel, which made it the only role a user could not set from the console.
  */
 
-import type { ModelRoleCandidate } from '@/shared/types/model-roles';
+import type { ModelRoleCandidate } from '@kabmo-labs/kabmo-app-contracts/model-roles';
 
 export interface ModelRoleInfo {
   /** omp's display name for the role (`MODEL_ROLES[role].name`). */

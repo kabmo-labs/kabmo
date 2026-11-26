@@ -14,7 +14,7 @@
 import { useCallback, useEffect, useState } from 'preact/hooks';
 import { useRealtimeTopic } from '@/client/hooks/ui/realtime';
 import { TOPIC_WAITING } from '@/shared/lib/realtime/protocol';
-import type { WaitingPrompt } from '@/shared/types/waiting';
+import type { WaitingPrompt } from '@kabmo-labs/kabmo-app-contracts/waiting';
 
 export interface WaitingPromptsState {
   prompts: WaitingPrompt[];

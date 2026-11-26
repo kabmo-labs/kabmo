@@ -13,7 +13,7 @@ import { AlertCircle, ExternalLink, RefreshCw, Sparkles } from 'lucide-preact';
 import { Modal } from '@/client/components/common/Modal';
 import { openLinksExternally, ReleaseSection } from '@/client/components/layout/update-popup/ReleaseNotes';
 import { useActiveReleaseNotes } from '@/client/hooks/ui/updates/notes';
-import type { UpdateTarget } from '@/shared/types/updates';
+import type { UpdateTarget } from '@kabmo-labs/kabmo-app-contracts/updates';
 
 export interface NotesDialogProps {
   target: UpdateTarget;

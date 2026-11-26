@@ -20,11 +20,11 @@
 
 import { getDb } from '@/server/db.server';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
-import { DEFAULT_SESSION_SORT_OPTION, isValidSessionSortOption, sortFolders } from '@/shared/lib/workspace/sidebar-sort';
+import { DEFAULT_SESSION_SORT_OPTION, isValidSessionSortOption, sortFolders } from '@kabmo-labs/kabmo-workspace-sidebar/sidebar-sort';
 import { groupSessionsByRoot, sessionTitleFor } from '@kabmo-labs/kabmo-omp-session-sidebar';
 import { loadOmpSidebarData } from '@kabmo-labs/kabmo-omp-session-reader';
 import { sessionHasSubagents } from '@kabmo-labs/kabmo-omp-subagent-presence';
-import type { SessionItemData, SessionSortOption, WorkspaceFolderData } from '@/shared/types';
+import type { SessionItemData, SessionSortOption, WorkspaceFolderData } from '@kabmo-labs/kabmo-app-contracts/workspace';
 import { sessionWorktreeMap } from '@/server/lib/fs/worktree/topology';
 import { DEFAULT_HARNESS_ID, HARNESS_IDS } from '@kabmo-labs/kabmo-harness-catalog';
 import { knownHarness, loadAcpSessions, loadHarnessBySession } from '@kabmo-labs/kabmo-harness-session/session-store.server';
@@ -32,7 +32,7 @@ import { sessionsWithoutTranscript } from '@kabmo-labs/kabmo-harness-session/ses
 import { loadDeletedSessionIds } from '@kabmo-labs/kabmo-session-deleted';
 import { loadSidebarStatus } from '@/server/lib/omp/session/sidebar-status.server';
 import { canonicalPath } from '@kabmo-labs/kabmo-fs-canonical';
-import { acpRowsFor } from '@/server/lib/omp/session/acp-rows.server';
+import { acpRowsFor } from '@kabmo-labs/kabmo-harness-session/acp-rows.server';
 import { decorateSidebarSessions } from '@/server/lib/sessions/sidebar-relations.server';
 import type { SessionWorktreeInfo } from '@kabmo-labs/kabmo-worktree-types';
 import type { OmpSession } from '@kabmo-labs/kabmo-omp-contracts/session';

@@ -23,7 +23,7 @@ import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 
 import { useSearchStream } from '@/client/hooks/workspace/search-stream';
-import type { SearchResultItem } from '@/shared/types/fs';
+import type { SearchResultItem } from '@kabmo-labs/kabmo-app-contracts/fs';
 
 type StreamState = {
   results: SearchResultItem[];

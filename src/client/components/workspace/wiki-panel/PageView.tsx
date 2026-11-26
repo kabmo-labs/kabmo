@@ -17,7 +17,7 @@
 import { useMemo } from 'preact/hooks';
 import { AlertCircle, ArrowLeft, ExternalLink, Loader2 } from 'lucide-preact';
 import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
-import type { WikiEntry, WikiPagePayload, WikiRepoInfo } from '@/shared/types/wiki';
+import type { WikiEntry, WikiPagePayload, WikiRepoInfo } from '@kabmo-labs/kabmo-app-contracts/wiki';
 
 interface WikiPageViewProps {
   repo: WikiRepoInfo;

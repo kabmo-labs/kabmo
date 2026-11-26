@@ -11,7 +11,7 @@ import { HarnessTabs } from '@/client/components/workspace/model-dropdown/Harnes
 import { usePopoverSize } from '@/client/components/workspace/model-dropdown/use-popover-size';
 import { ModelFullscreen } from '@/client/components/workspace/model-dropdown/Fullscreen';
 import { PickerCloseButton } from '@/client/components/workspace/model-dropdown/CloseButton';
-import type { HarnessSummary } from '@/shared/types/harness';
+import type { HarnessSummary } from '@kabmo-labs/kabmo-app-contracts/harness';
 
 interface ModelDropdownPanelProps {
   search: string;

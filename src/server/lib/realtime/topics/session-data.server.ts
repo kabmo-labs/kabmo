@@ -30,8 +30,8 @@ import { loadAcpSessions } from '@kabmo-labs/kabmo-harness-session/session-store
 import { acpTelemetryFor } from '@/server/lib/harness/acp/acp-telemetry.server';
 import { buildAcpTodos } from '@/server/lib/harness/acp/acp-todos.server';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
-import type { SessionTodosPayload } from '@/shared/types/todo';
-import type { SessionPlanPayload } from '@/shared/types/plan';
+import type { SessionTodosPayload } from '@kabmo-labs/kabmo-app-contracts/todo';
+import type { SessionPlanPayload } from '@kabmo-labs/kabmo-app-contracts/plan';
 
 /**
  * One session's todo snapshot, as the panel renders it.

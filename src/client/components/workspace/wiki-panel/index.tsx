@@ -30,7 +30,7 @@ import { useSessionState } from '@/client/hooks/workspace/session-state';
 import { useRepoList, useRepoScope } from '@/client/hooks/workspace/repo-scope';
 import { useWikiPage, useWikiTree, wikiScopeKey } from '@/client/hooks/workspace/wiki';
 import { sectionsFromEntries } from '@/shared/lib/wiki/sidebar';
-import type { WikiUnavailableReason } from '@/shared/types/wiki';
+import type { WikiUnavailableReason } from '@kabmo-labs/kabmo-app-contracts/wiki';
 
 interface WikiPanelProps {
   className?: string;

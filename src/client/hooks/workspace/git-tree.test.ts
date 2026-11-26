@@ -20,7 +20,7 @@
 
 import { describe, expect, test } from 'bun:test';
 import { buildGitTree } from '@/client/hooks/workspace/git-tree';
-import type { GitChange } from '@/shared/types/git';
+import type { GitChange } from '@kabmo-labs/kabmo-app-contracts/git';
 
 const change = (file: string, staged = false): GitChange => ({ file, status: 'M', staged });
 

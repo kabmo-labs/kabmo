@@ -1,4 +1,4 @@
-import type { GitCommit } from '@/shared/types/git';
+import type { GitCommit } from '@kabmo-labs/kabmo-app-contracts/git';
 
 export const LANE_COLORS = [
   '#38bdf8', // sky/blue

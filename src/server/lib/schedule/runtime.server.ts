@@ -34,7 +34,7 @@ import { loadPersistedAccessMode } from '@/shared/lib/omp/config/access-mode.ser
 import { claimDueTasks, finishScheduledRun, startScheduledRun } from '@/server/lib/schedule/store.server';
 import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
-import type { ScheduledTask } from '@/shared/types/schedule';
+import type { ScheduledTask } from '@kabmo-labs/kabmo-app-contracts/schedule';
 
 /**
  * How often the clock is consulted. The shortest schedulable interval is one

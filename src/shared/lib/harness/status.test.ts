@@ -22,7 +22,7 @@
 
 import { describe, expect, test } from 'bun:test';
 import { harnessStatus } from '@/shared/lib/harness/status';
-import type { HarnessSummary } from '@/shared/types/harness';
+import type { HarnessSummary } from '@kabmo-labs/kabmo-app-contracts/harness';
 
 function summary(overrides: Partial<HarnessSummary> = {}): HarnessSummary {
   return {

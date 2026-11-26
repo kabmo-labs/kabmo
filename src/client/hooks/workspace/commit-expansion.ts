@@ -23,7 +23,7 @@
  */
 
 import { useCallback, useState } from 'preact/hooks';
-import type { CommitHistoryPage } from '@/shared/types/git';
+import type { CommitHistoryPage } from '@kabmo-labs/kabmo-app-contracts/git';
 
 interface ExpansionState {
   /** The page the open row belongs to. */

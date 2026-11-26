@@ -33,7 +33,7 @@ import type {
   TodoPhase,
   TodoProgress,
   TodoSnapshot,
-} from '@/shared/types/todo';
+} from '@kabmo-labs/kabmo-app-contracts/todo';
 
 const TODO_STATUSES: Record<string, true> = {
   pending: true,

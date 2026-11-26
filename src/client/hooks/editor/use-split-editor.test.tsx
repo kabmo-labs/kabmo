@@ -31,7 +31,7 @@ import { SessionStateProvider } from '@/client/components/common/session-state-p
 import { useSplitEditor, type SplitEditorHandle } from '@/client/hooks/editor/use-split-editor';
 import { forgetSession } from '@/shared/lib/workspace/session-state/store';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
-import type { OpenedFile } from '@/shared/types/fs';
+import type { OpenedFile } from '@kabmo-labs/kabmo-app-contracts/fs';
 
 const SESSION = 'new-split-editor';
 /** The runner's own fetch, reached through `Bun` so a leaked stub cannot be mistaken for it. */

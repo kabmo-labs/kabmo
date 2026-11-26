@@ -9,7 +9,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { Trash2 } from 'lucide-preact';
 import { PickerSearch } from '@/client/components/common/picker-search';
 import { matchesPickerQuery } from '@/shared/lib/ui/picker-filter';
-import type { BtwTopic, BtwTurnStatus } from '@/shared/types/btw';
+import type { BtwTopic, BtwTurnStatus } from '@kabmo-labs/kabmo-app-contracts/btw';
 
 export interface BtwTopicMenuProps {
   topics: BtwTopic[];

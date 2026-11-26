@@ -22,7 +22,7 @@
 import { describe, expect, test } from 'bun:test';
 import { runScheduledTask, type ScheduleDeps, type ScheduleSessionHandle } from '@/server/lib/schedule/runtime.server';
 import type { AcpSpawnRequest } from '@/server/lib/harness/spawn.server';
-import type { ScheduledTask } from '@/shared/types/schedule';
+import type { ScheduledTask } from '@kabmo-labs/kabmo-app-contracts/schedule';
 
 interface RunRecord {
   runId: string;

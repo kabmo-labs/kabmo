@@ -1,0 +1,16 @@
+{
+  "name": "@kabmo-labs/kabmo-workspace-sidebar",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "How the sidebar orders sessions and folders.",
+  "exports": {
+    ".": "./src/sidebar-sort.ts",
+    "./sidebar-sort": "./src/sidebar-sort.ts"
+  },
+  "files": ["src"],
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/kabmo-labs/kabmo.git", "directory": "packages/kabmo-workspace-sidebar" },
+  "publishConfig": { "access": "public" },
+  "engines": { "bun": ">=1.4.0" },
+  "dependencies": { "@kabmo-labs/kabmo-app-contracts": "workspace:*" }
+}

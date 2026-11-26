@@ -24,7 +24,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import { findWikiSidebarPath, parseWikiSidebar, sectionsFromEntries, withRemainingPages } from '@/shared/lib/wiki/sidebar';
-import type { WikiEntry, WikiNavLink, WikiNavSection } from '@/shared/types/wiki';
+import type { WikiEntry, WikiNavLink, WikiNavSection } from '@kabmo-labs/kabmo-app-contracts/wiki';
 
 const base = (path: string): string => (path.split('/').pop() ?? path).replace(/\.(md|markdown)$/i, '');
 

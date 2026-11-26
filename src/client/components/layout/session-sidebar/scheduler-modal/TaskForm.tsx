@@ -17,7 +17,7 @@ import { CHECKBOX_CLASS } from '@/client/components/common/checkbox/style';
 import { useEffect, useState } from 'preact/hooks';
 import { Loader2 } from 'lucide-preact';
 import { validateSchedule } from '@/shared/lib/schedule/parse';
-import type { ScheduleKind, ScheduledTaskModel } from '@/shared/types/schedule';
+import type { ScheduleKind, ScheduledTaskModel } from '@kabmo-labs/kabmo-app-contracts/schedule';
 import type { ScheduleDraft } from '@/client/hooks/workspace/scheduled-tasks';
 import type { ScheduleFolderOption } from '@/client/components/layout/session-sidebar/scheduler-modal/folders';
 import { SearchSelect } from '@/client/components/common/search-select';

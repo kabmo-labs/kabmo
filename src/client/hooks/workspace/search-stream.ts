@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
-import type { SearchResultItem } from '@/shared/types/fs';
+import type { SearchResultItem } from '@kabmo-labs/kabmo-app-contracts/fs';
 import { readSseStream } from '@/shared/lib/chat/read-sse';
 
 interface SearchStreamState {

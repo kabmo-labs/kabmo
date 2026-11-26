@@ -8,7 +8,7 @@
  */
 
 import { useEffect, useRef, useState } from 'preact/hooks';
-import type { ActiveReleaseNotes, UpdateTarget } from '@/shared/types/updates';
+import type { ActiveReleaseNotes, UpdateTarget } from '@kabmo-labs/kabmo-app-contracts/updates';
 
 export interface UseActiveReleaseNotesResult {
   data: ActiveReleaseNotes | null;

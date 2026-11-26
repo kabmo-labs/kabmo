@@ -9,7 +9,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
-import type { UpdateChangelog } from '@/shared/types/updates';
+import type { UpdateChangelog } from '@kabmo-labs/kabmo-app-contracts/updates';
 
 export interface UseUpdateChangelogResult {
   data: UpdateChangelog | null;

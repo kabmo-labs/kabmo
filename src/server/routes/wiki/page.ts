@@ -21,7 +21,7 @@ import { scopeToRepo } from '@/server/lib/fs/repo-scope';
 import { gitRun } from '@/server/lib/wiki/git';
 import { ensureWikiMirror, readWikiPage } from '@/server/lib/wiki/mirror.server';
 import { parseWikiRemote } from '@/server/lib/wiki/remote';
-import type { WikiPagePayload } from '@/shared/types/wiki';
+import type { WikiPagePayload } from '@kabmo-labs/kabmo-app-contracts/wiki';
 
 /** MOCK=true: a page that exercises the renderer (table, mermaid, code, link). */
 const MOCK_PAGE = `# Getting Started

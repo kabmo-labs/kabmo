@@ -17,7 +17,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'preact/hooks';
 import { useRealtimeTopic } from '@/client/hooks/ui/realtime';
 import { TOPIC_SCHEDULE } from '@/shared/lib/realtime/protocol';
-import type { ScheduleKind, ScheduledTask, ScheduledTaskModel, ScheduledTaskRun } from '@/shared/types/schedule';
+import type { ScheduleKind, ScheduledTask, ScheduledTaskModel, ScheduledTaskRun } from '@kabmo-labs/kabmo-app-contracts/schedule';
 
 export interface ScheduleDraft {
   name: string;

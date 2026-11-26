@@ -23,7 +23,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { useSearchParams } from '@/client/lib/router/search-params';
 import { clearBranchParams } from '@/client/lib/router/branch-params';
-import { DEFAULT_SESSION_SORT_OPTION, isValidSessionSortOption, sortFolders } from '@/shared/lib/workspace/sidebar-sort';
+import { DEFAULT_SESSION_SORT_OPTION, isValidSessionSortOption, sortFolders } from '@kabmo-labs/kabmo-workspace-sidebar/sidebar-sort';
 import { useSessionStatusAck } from '@/client/hooks/chat/omp/session-statuses';
 import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
 import {

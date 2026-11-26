@@ -30,7 +30,7 @@ import { getLiveRunSessionIds } from '@/server/lib/omp/rpc/session-registry';
 import { findSessionFileById } from '@kabmo-labs/kabmo-omp-session-locator';
 import { scanSessionInfoCached } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { sessionHasSubagents } from '@kabmo-labs/kabmo-omp-subagent-presence';
-import type { SidebarActivityPayload } from '@/shared/types/realtime';
+import type { SidebarActivityPayload } from '@kabmo-labs/kabmo-app-contracts/realtime';
 
 export async function loadSidebarActivity(): Promise<SidebarActivityPayload> {
   const activity: SidebarActivityPayload = {};

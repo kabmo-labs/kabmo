@@ -22,7 +22,7 @@ import { getDb } from '@/server/db.server';
 import { isApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 import { normalizeModel } from '@/server/lib/queue/store.server';
 import type { Attachment, QueuedMessageModel } from '@kabmo-labs/kabmo-chat-contracts/chat';
-import type { WaitingPrompt, WaitingPromptModes, WaitingPromptStatus } from '@/shared/types/waiting';
+import type { WaitingPrompt, WaitingPromptModes, WaitingPromptStatus } from '@kabmo-labs/kabmo-app-contracts/waiting';
 
 /** How long a finished (dispatched/cancelled/error) row stays readable. */
 export const WAITING_RETENTION_MS = 24 * 60 * 60 * 1000;

@@ -44,7 +44,7 @@ import {
   type SearchGroup,
   type SearchRowMetrics,
 } from '@/shared/lib/fs/search-list';
-import type { SearchResultItem } from '@/shared/types/fs';
+import type { SearchResultItem } from '@kabmo-labs/kabmo-app-contracts/fs';
 
 /** The container's vertical padding, carried by the spacers so offsets stay exact. */
 const PAD_TOP = 8;

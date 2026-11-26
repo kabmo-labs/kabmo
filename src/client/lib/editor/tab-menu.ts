@@ -26,7 +26,7 @@
  * copy elsewhere would be a second answer to "what was closed".
  */
 
-import type { OpenedFile } from '@/shared/types/fs';
+import type { OpenedFile } from '@kabmo-labs/kabmo-app-contracts/fs';
 import { canSplitTo } from '@/shared/lib/workspace/split-editor';
 
 /** What a tab menu row asks for. */

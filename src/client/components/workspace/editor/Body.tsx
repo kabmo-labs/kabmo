@@ -7,7 +7,7 @@ import type { EditorCommand } from '@/shared/lib/code/editor/keymap';
 import type { CodeSurfaceHandle } from '@/client/components/common/code-surface';
 import type { RefObject } from 'preact';
 import type { ViewerKind } from '@/shared/lib/fs/document-kind';
-import type { OpenedFile } from '@/shared/types/fs';
+import type { OpenedFile } from '@kabmo-labs/kabmo-app-contracts/fs';
 import type { EditorThemeState } from '@/client/hooks/editor/theme';
 
 interface EditorBodyProps {

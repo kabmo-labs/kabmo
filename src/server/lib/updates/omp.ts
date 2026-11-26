@@ -18,7 +18,7 @@ import { invalidateOmpCliCache, resolveOmpBin } from '@kabmo-labs/kabmo-omp-cli'
 import { fetchNpmLatest, OMP_PACKAGE } from '@/server/lib/updates/npm';
 import { pumpStream } from '@/server/lib/updates/install-steps';
 import { isNewer } from '@kabmo-labs/kabmo-harness-update-job/semver';
-import type { UpdateTargetInfo } from '@/shared/types/updates';
+import type { UpdateTargetInfo } from '@kabmo-labs/kabmo-app-contracts/updates';
 
 /** Runs a command, capturing stdout/stderr separately. Non-zero exits keep the captured output. */
 async function runCapture(bin: string, args: string[], timeoutMs: number, maxBuffer: number): Promise<{ stdout: string; stderr: string; exitCode: number | null }> {

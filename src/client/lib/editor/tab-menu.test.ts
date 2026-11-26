@@ -14,7 +14,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import { buildTabMenuRows, tabIdsAfterClose } from '@/client/lib/editor/tab-menu';
-import type { OpenedFile } from '@/shared/types/fs';
+import type { OpenedFile } from '@kabmo-labs/kabmo-app-contracts/fs';
 
 function tab(id: string, path = `src/${id}.ts`): OpenedFile {
   return { id, name: `${id}.ts`, path };

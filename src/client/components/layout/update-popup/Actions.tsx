@@ -17,7 +17,7 @@ import { Check, Copy, Download, ExternalLink } from 'lucide-preact';
 import { useCopyFlag } from '@/client/hooks/ui/copy-flag';
 import { copyToClipboard } from '@/client/hooks/ui/clipboard';
 import type { UseUpdatesResult } from '@/client/hooks/ui/updates';
-import type { UpdateChangelog } from '@/shared/types/updates';
+import type { UpdateChangelog } from '@kabmo-labs/kabmo-app-contracts/updates';
 
 export interface ActionsProps {
   data: UpdateChangelog | null;

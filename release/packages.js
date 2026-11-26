@@ -41,6 +41,10 @@ export const RELEASE_PACKAGES = [
     name: '@kabmo-labs/kabmo-acp-mapper',
   },
   {
+    dir: 'packages/kabmo-app-contracts',
+    name: '@kabmo-labs/kabmo-app-contracts',
+  },
+  {
     dir: 'packages/kabmo-auth',
     name: '@kabmo-labs/kabmo-auth',
   },
@@ -207,6 +211,10 @@ export const RELEASE_PACKAGES = [
   {
     dir: 'packages/kabmo-worktree-types',
     name: '@kabmo-labs/kabmo-worktree-types',
+  },
+  {
+    dir: 'packages/kabmo-workspace-sidebar',
+    name: '@kabmo-labs/kabmo-workspace-sidebar',
   },
   {
     dir: 'packages/kabmo-workspace-root',

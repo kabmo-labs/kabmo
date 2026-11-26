@@ -13,7 +13,7 @@
  */
 
 import { ChevronDown, ChevronRight } from 'lucide-preact';
-import type { TodoPhase } from '@/shared/types/todo';
+import type { TodoPhase } from '@kabmo-labs/kabmo-app-contracts/todo';
 import { closedTaskCount } from '@/shared/lib/chat/todo/progress';
 import { TodoRow } from '@/client/components/common/todo-row';
 

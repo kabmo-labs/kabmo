@@ -30,7 +30,7 @@
  *   must not, because `hairline` IS the absent state.
  */
 
-import type { ThemePalette } from '@/shared/types/theme';
+import type { ThemePalette } from '@kabmo-labs/kabmo-app-contracts/theme';
 import {
   ICON_STYLE_ATTRIBUTE,
   ICON_STYLE_WITHOUT_ATTRIBUTE,

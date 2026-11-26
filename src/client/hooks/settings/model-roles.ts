@@ -20,7 +20,7 @@
  */
 
 import { useCallback, useState } from 'preact/hooks';
-import type { ModelRoleCandidate, ModelRolePreset } from '@/shared/types/model-roles';
+import type { ModelRoleCandidate, ModelRolePreset } from '@kabmo-labs/kabmo-app-contracts/model-roles';
 
 export interface ModelRoleState {
   roles: Record<string, string>;

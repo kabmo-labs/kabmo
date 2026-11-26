@@ -1,5 +1,5 @@
 import { AlertCircle, Check, Download, Loader2, RefreshCw, Sparkles } from 'lucide-preact';
-import type { UpdateTarget, UpdateTargetInfo } from '@/shared/types/updates';
+import type { UpdateTarget, UpdateTargetInfo } from '@kabmo-labs/kabmo-app-contracts/updates';
 import { updateOutcomeTone, type ToastTone } from '@/shared/lib/ui/toast-duration';
 import type { UseUpdatesResult } from '@/client/hooks/ui/updates';
 import { UpdateLog } from '@/client/components/common/UpdateLog';

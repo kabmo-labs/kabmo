@@ -32,7 +32,7 @@ import { importHarnessSessions } from '@/server/lib/harness/session-import.serve
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { harnessDescriptor, harnessIds, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import { ensureCustomHarnesses } from '@kabmo-labs/kabmo-harness-config-store/custom.server';
-import type { HarnessSessionImport } from '@/shared/types/harness';
+import type { HarnessSessionImport } from '@kabmo-labs/kabmo-app-contracts/harness';
 
 declare global {
   // eslint-disable-next-line no-var

@@ -31,7 +31,7 @@ import type { ComponentType } from 'preact/compat';
 import type { act as PreactAct } from 'preact/test-utils';
 import type { useFileTabs as UseFileTabsHook } from '@/client/hooks/workspace/file-tabs';
 import type { OpenFileInput } from '@/client/hooks/workspace/file-tabs';
-import type { OpenedFile } from '@/shared/types/fs';
+import type { OpenedFile } from '@kabmo-labs/kabmo-app-contracts/fs';
 import { fileTabId } from '@/shared/lib/workspace/file-tab-id';
 import { forgetSession } from '@/shared/lib/workspace/session-state/store';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';

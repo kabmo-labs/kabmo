@@ -20,7 +20,7 @@ import { h, render } from 'preact';
 import { useState } from 'preact/hooks';
 import { act } from 'preact/test-utils';
 import { CommitRow } from '@/client/components/workspace/git-panel/commit-modal/CommitRow';
-import type { GitCommit } from '@/shared/types/git';
+import type { GitCommit } from '@kabmo-labs/kabmo-app-contracts/git';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'Event', 'getSelection'] as const;
 const nativeGlobals: Partial<Record<(typeof DOM_GLOBALS)[number], unknown>> = {};

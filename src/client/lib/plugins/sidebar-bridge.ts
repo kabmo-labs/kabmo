@@ -28,7 +28,7 @@ import { pluginContext } from '@/client/lib/plugins/context';
 import { publishClientSignal } from '@/client/lib/signals';
 import { openSessionInUrl } from '@/client/lib/router/open-session';
 import { startPendingSession } from '@/client/hooks/chat/omp/pending-sessions';
-import type { SidebarPayload, SidebarStatusPayload } from '@/shared/types/realtime';
+import type { SidebarPayload, SidebarStatusPayload } from '@kabmo-labs/kabmo-app-contracts/realtime';
 import type { WorkspaceFolderData } from '@/shared/types';
 
 /** What a subscriber is handed on every push. */

@@ -26,6 +26,7 @@
         "@kabmo-labs/kabmo-acp-session-core": "workspace:*",
         "@kabmo-labs/kabmo-acp-stdio": "workspace:*",
         "@kabmo-labs/kabmo-acp-turn": "workspace:*",
+        "@kabmo-labs/kabmo-app-contracts": "workspace:*",
         "@kabmo-labs/kabmo-auth": "workspace:*",
         "@kabmo-labs/kabmo-bytes": "workspace:*",
         "@kabmo-labs/kabmo-chat-contracts": "workspace:*",
@@ -120,6 +121,7 @@
         "@kabmo-labs/kabmo-settings-store": "workspace:*",
         "@kabmo-labs/kabmo-ui": "workspace:*",
         "@kabmo-labs/kabmo-workspace-root": "workspace:*",
+        "@kabmo-labs/kabmo-workspace-sidebar": "workspace:*",
         "@kabmo-labs/kabmo-worktree-types": "workspace:*",
         "@shikijs/langs": "^4.4.3",
         "@shikijs/themes": "^4.4.3",
@@ -283,6 +285,21 @@
         "@kabmo-labs/kabmo-acp-mapper": "workspace:*",
         "@kabmo-labs/kabmo-omp-contracts": "workspace:*",
         "@kabmo-labs/kabmo-omp-session-parse": "workspace:*",
+      },
+    },
+    "packages/kabmo-app-contracts": {
+      "name": "@kabmo-labs/kabmo-app-contracts",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kabmo-labs/kabmo-chat-contracts": "workspace:*",
+        "@kabmo-labs/kabmo-harness-accounts": "workspace:*",
+        "@kabmo-labs/kabmo-harness-config": "workspace:*",
+        "@kabmo-labs/kabmo-harness-launch": "workspace:*",
+        "@kabmo-labs/kabmo-harness-provider": "workspace:*",
+        "@kabmo-labs/kabmo-harness-updates": "workspace:*",
+        "@kabmo-labs/kabmo-sdk": "workspace:*",
+        "@kabmo-labs/kabmo-session-stream-state": "workspace:*",
+        "@kabmo-labs/kabmo-worktree-types": "workspace:*",
       },
     },
     "packages/kabmo-auth": {
@@ -521,10 +538,22 @@
       "name": "@kabmo-labs/kabmo-harness-session",
       "version": "0.0.1",
       "dependencies": {
+        "@kabmo-labs/kabmo-acp-client": "workspace:*",
+        "@kabmo-labs/kabmo-acp-protocol": "workspace:*",
+        "@kabmo-labs/kabmo-app-contracts": "workspace:*",
         "@kabmo-labs/kabmo-db": "workspace:*",
+        "@kabmo-labs/kabmo-fs-canonical": "workspace:*",
+        "@kabmo-labs/kabmo-harness-account-store": "workspace:*",
         "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
+        "@kabmo-labs/kabmo-harness-config-store": "workspace:*",
+        "@kabmo-labs/kabmo-harness-launch": "workspace:*",
         "@kabmo-labs/kabmo-harness-lease": "workspace:*",
         "@kabmo-labs/kabmo-harness-local-transcript": "workspace:*",
+        "@kabmo-labs/kabmo-harness-schema": "workspace:*",
+        "@kabmo-labs/kabmo-harness-session": "workspace:*",
+        "@kabmo-labs/kabmo-omp-session-sidebar": "workspace:*",
+        "@kabmo-labs/kabmo-omp-worktree": "workspace:*",
+        "@kabmo-labs/kabmo-paths": "workspace:*",
         "@kabmo-labs/kabmo-realtime-signals": "workspace:*",
       },
     },
@@ -1030,6 +1059,13 @@
         "@kabmo-labs/kabmo-omp-worktree": "workspace:*",
       },
     },
+    "packages/kabmo-workspace-sidebar": {
+      "name": "@kabmo-labs/kabmo-workspace-sidebar",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kabmo-labs/kabmo-app-contracts": "workspace:*",
+      },
+    },
     "packages/kabmo-worktree-types": {
       "name": "@kabmo-labs/kabmo-worktree-types",
       "version": "0.0.1",
@@ -1128,6 +1164,8 @@
     "@kabmo-labs/kabmo-acp-stdio": ["@kabmo-labs/kabmo-acp-stdio@workspace:packages/kabmo-acp-stdio"],
 
     "@kabmo-labs/kabmo-acp-turn": ["@kabmo-labs/kabmo-acp-turn@workspace:packages/kabmo-acp-turn"],
+
+    "@kabmo-labs/kabmo-app-contracts": ["@kabmo-labs/kabmo-app-contracts@workspace:packages/kabmo-app-contracts"],
 
     "@kabmo-labs/kabmo-auth": ["@kabmo-labs/kabmo-auth@workspace:packages/kabmo-auth"],
 
@@ -1316,6 +1354,8 @@
     "@kabmo-labs/kabmo-ui": ["@kabmo-labs/kabmo-ui@workspace:packages/kabmo-ui"],
 
     "@kabmo-labs/kabmo-workspace-root": ["@kabmo-labs/kabmo-workspace-root@workspace:packages/kabmo-workspace-root"],
+
+    "@kabmo-labs/kabmo-workspace-sidebar": ["@kabmo-labs/kabmo-workspace-sidebar@workspace:packages/kabmo-workspace-sidebar"],
 
     "@kabmo-labs/kabmo-worktree-types": ["@kabmo-labs/kabmo-worktree-types@workspace:packages/kabmo-worktree-types"],
 

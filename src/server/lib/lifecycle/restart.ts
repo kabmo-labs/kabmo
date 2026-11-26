@@ -28,7 +28,7 @@ import { capitalizeFirstLetter } from '@/shared/lib/chat/capitalize';
 import { loadAuthConfig } from '@/server/lib/auth/guard';
 import { PASSWORD_HANDOVER_ENV, PASSWORD_HANDOVER_STDIN, serializeHandover } from '@/shared/lib/auth/handover';
 import { copyAt, type InstalledCopy } from '@/server/lib/updates/installed-cli';
-import type { UpdateApplyResult } from '@/shared/types/updates';
+import type { UpdateApplyResult } from '@kabmo-labs/kabmo-app-contracts/updates';
 
 /**
  * Package root of the running copy — the directory holding its `package.json`

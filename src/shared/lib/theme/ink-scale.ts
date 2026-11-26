@@ -1,6 +1,6 @@
 /** The muted ink ladder, plus the one step that clears AA. */
 
-import type { ThemePalette } from '@/shared/types/theme';
+import type { ThemePalette } from '@kabmo-labs/kabmo-app-contracts/theme';
 import { mixHex, parseHexColor, relativeLuminance } from '@/shared/lib/theme/color';
 
 /** The fifteen steps, lightest first. The number IS the percentage of ink, so

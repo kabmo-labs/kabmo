@@ -52,7 +52,7 @@ import {
   pruneWaitingPrompts,
   requeueWaitingPrompt,
 } from '@/server/lib/waiting/store.server';
-import type { WaitingPrompt } from '@/shared/types/waiting';
+import type { WaitingPrompt } from '@kabmo-labs/kabmo-app-contracts/waiting';
 
 /** How often the clock is consulted. */
 const TICK_MS = 5_000;

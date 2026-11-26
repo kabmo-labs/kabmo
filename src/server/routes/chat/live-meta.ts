@@ -12,7 +12,7 @@
  * reopened ACP chat named a model its agent never ran.
  */
 
-import type { LiveHarnessModels } from '@/shared/types/harness';
+import type { LiveHarnessModels } from '@kabmo-labs/kabmo-app-contracts/harness';
 
 /** What a LIVE non-omp session adds to the session payload: its resolved model,
  *  its thinking level, and the selector lists it published. */

@@ -23,7 +23,7 @@ import type { HarnessSessionRow } from '@kabmo-labs/kabmo-harness-session/sessio
 import { knownHarness } from '@kabmo-labs/kabmo-harness-session/session-store.server';
 import { HARNESS_IDS } from '@kabmo-labs/kabmo-harness-catalog';
 import { deriveSessionTitle } from '@kabmo-labs/kabmo-omp-session-sidebar';
-import type { SessionItemData } from '@/shared/types';
+import type { SessionItemData } from '@kabmo-labs/kabmo-app-contracts/workspace';
 
 /**
  * The ACP rows that belong to one folder.

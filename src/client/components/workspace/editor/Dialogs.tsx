@@ -19,7 +19,7 @@
 import { CloseDirtyTabModal } from '@/client/hooks/editor/use-unload-guard';
 import { SaveDeletedFileModal } from '@/client/components/workspace/editor/SaveDeletedFileModal';
 import type { CloseGuard } from '@/client/hooks/editor/use-close-guard';
-import type { OpenedFile } from '@/shared/types/fs';
+import type { OpenedFile } from '@kabmo-labs/kabmo-app-contracts/fs';
 
 interface EditorDialogsProps {
   closeGuard: CloseGuard;

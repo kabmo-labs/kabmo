@@ -26,7 +26,7 @@
  * outranks "not probed" (something did answer).
  */
 
-import type { HarnessSummary } from '@/shared/types/harness';
+import type { HarnessSummary } from '@kabmo-labs/kabmo-app-contracts/harness';
 
 export type HarnessState =
   /** Installed and answering. */

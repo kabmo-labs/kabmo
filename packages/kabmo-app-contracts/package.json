@@ -1,0 +1,54 @@
+{
+  "name": "@kabmo-labs/kabmo-app-contracts",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "The shapes the console, the sidebar and the server all speak: workspace, git, fs, panels, harness, schedule, theme.",
+  "exports": {
+    "./browser": "./src/browser.ts",
+    "./btw": "./src/btw.ts",
+    "./context": "./src/context.ts",
+    "./fs": "./src/fs.ts",
+    "./git": "./src/git.ts",
+    "./harness-version": "./src/harness-version.ts",
+    "./harness": "./src/harness.ts",
+    "./model-roles": "./src/model-roles.ts",
+    "./panels": "./src/panels.ts",
+    "./panels-registry": "./src/panels-registry.ts",
+    "./plan": "./src/plan.ts",
+    "./realtime": "./src/realtime.ts",
+    "./schedule": "./src/schedule.ts",
+    "./theme": "./src/theme.ts",
+    "./todo": "./src/todo.ts",
+    "./tokenUsage": "./src/tokenUsage.ts",
+    "./updates": "./src/updates.ts",
+    "./waiting": "./src/waiting.ts",
+    "./wiki": "./src/wiki.ts",
+    "./workspace": "./src/workspace.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-app-contracts"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  },
+  "dependencies": {
+    "@kabmo-labs/kabmo-chat-contracts": "workspace:*",
+    "@kabmo-labs/kabmo-harness-accounts": "workspace:*",
+    "@kabmo-labs/kabmo-harness-config": "workspace:*",
+    "@kabmo-labs/kabmo-harness-launch": "workspace:*",
+    "@kabmo-labs/kabmo-harness-provider": "workspace:*",
+    "@kabmo-labs/kabmo-harness-updates": "workspace:*",
+    "@kabmo-labs/kabmo-sdk": "workspace:*",
+    "@kabmo-labs/kabmo-session-stream-state": "workspace:*",
+    "@kabmo-labs/kabmo-worktree-types": "workspace:*"
+  }
+}

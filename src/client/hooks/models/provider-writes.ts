@@ -23,7 +23,7 @@
  * re-read for the card to show it.
  */
 
-import type { HarnessConfig, HarnessImportOutcome, HarnessProviderSupport } from '@/shared/types/harness';
+import type { HarnessConfig, HarnessImportOutcome, HarnessProviderSupport } from '@kabmo-labs/kabmo-app-contracts/harness';
 import type { AddProviderInput } from '@/client/components/settings/categories/harness-settings/AddProviderForm';
 
 /** The answer both provider writes share. */

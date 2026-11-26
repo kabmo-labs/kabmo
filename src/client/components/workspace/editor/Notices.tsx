@@ -25,7 +25,7 @@ import { ExternalChangeStrip } from '@/client/components/workspace/editor/Extern
 import { ConflictStrip } from '@/client/components/workspace/editor/ConflictStrip';
 import type { DiskDigest } from '@/client/hooks/editor/use-disk-digest';
 import type { WriteConflict } from '@/client/hooks/editor/use-write-conflict';
-import type { OpenedFile } from '@/shared/types/fs';
+import type { OpenedFile } from '@kabmo-labs/kabmo-app-contracts/fs';
 
 interface EditorNoticesProps {
   activeFile: OpenedFile | undefined;

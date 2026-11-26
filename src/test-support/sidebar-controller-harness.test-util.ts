@@ -29,7 +29,7 @@ import { TOPIC_SIDEBAR, TOPIC_SIDEBAR_STATUS } from '@/shared/lib/realtime/proto
 import { startRealtimeTestServer, type RealtimeTestServer } from '@/test-support/realtime-server';
 import type { TopicResolver } from '@/server/lib/realtime/hub.server';
 import { installDomGlobals, pristineWebSocket } from '@/test-support/pristine-globals';
-import type { SidebarPayload, SidebarStatusPayload } from '@/shared/types/realtime';
+import type { SidebarPayload, SidebarStatusPayload } from '@kabmo-labs/kabmo-app-contracts/realtime';
 import type { WorkspaceFolderData } from '@/shared/types';
 
 let container: HTMLElement | undefined;

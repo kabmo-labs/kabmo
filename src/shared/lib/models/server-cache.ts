@@ -12,7 +12,7 @@
  */
 
 import type { ModelsData } from '@/shared/types';
-import type { ModelRoleCandidate } from '@/shared/types/model-roles';
+import type { ModelRoleCandidate } from '@kabmo-labs/kabmo-app-contracts/model-roles';
 import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 
 declare global {

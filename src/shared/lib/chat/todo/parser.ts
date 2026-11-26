@@ -28,7 +28,7 @@
  */
 
 import type { ToolCallData } from '@/shared/types';
-import type { TodoItem, TodoPhase, TodoProgress, TodoStatus } from '@/shared/types/todo';
+import type { TodoItem, TodoPhase, TodoProgress, TodoStatus } from '@kabmo-labs/kabmo-app-contracts/todo';
 import { todoProgress } from '@/shared/lib/chat/todo/snapshot';
 import { parseNestedPhaseEntry, stripTrailingStatusNote } from '@/shared/lib/chat/todo/nested-phase';
 

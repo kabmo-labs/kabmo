@@ -29,7 +29,7 @@
  *     the reader filters on `isMarkdown`.
  */
 
-import type { WikiEntry } from '@/shared/types/wiki';
+import type { WikiEntry } from '@kabmo-labs/kabmo-app-contracts/wiki';
 
 /** Wiki chrome: navigation/footer/header fragments, not pages. */
 const WIKI_CHROME: Record<string, true> = {

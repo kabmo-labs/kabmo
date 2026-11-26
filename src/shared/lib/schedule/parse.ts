@@ -24,7 +24,7 @@
  * iterations. Months are skipped whole when the month field excludes them.
  */
 
-import type { ScheduleKind } from '@/shared/types/schedule';
+import type { ScheduleKind } from '@kabmo-labs/kabmo-app-contracts/schedule';
 import { isValidTimeZone, serverTimeZone, wallClock, wallTimeToInstant } from '@/shared/lib/schedule/timezone';
 
 /** Shortest interval the runtime can honour: it ticks once a minute. */

@@ -9,7 +9,7 @@
  * both.
  */
 
-import type { PanelPluginAuthor, PanelPluginOrigin, PanelSlotName } from '@/shared/types/panels';
+import type { PanelPluginAuthor, PanelPluginOrigin, PanelSlotName } from './panels';
 
 /** A marketplace as the client sees it: no filesystem paths. */
 export interface PanelMarketplaceItem {

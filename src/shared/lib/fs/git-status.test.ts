@@ -17,7 +17,7 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import type { GitChange } from '@/shared/types/git';
+import type { GitChange } from '@kabmo-labs/kabmo-app-contracts/git';
 import { buildGitStatusMaps, getGitStatusInfo } from '@/shared/lib/fs/git-status';
 
 function change(file: string, status: string, staged = false): GitChange {

@@ -1,4 +1,4 @@
-import type { GitCommit } from '@/shared/types/git';
+import type { GitCommit } from '@kabmo-labs/kabmo-app-contracts/git';
 
 interface CommitActionsProps {
   commit: GitCommit;

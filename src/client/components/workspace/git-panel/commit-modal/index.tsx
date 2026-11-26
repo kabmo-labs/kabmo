@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { Loader2 } from 'lucide-preact';
-import type { CommitHistoryPage } from '@/shared/types/git';
+import type { CommitHistoryPage } from '@kabmo-labs/kabmo-app-contracts/git';
 import { Header } from '@/client/components/workspace/git-panel/commit-modal/Header';
 import { GraphCanvas } from '@/client/components/workspace/git-panel/commit-modal/GraphCanvas';
 import { CommitRow } from '@/client/components/workspace/git-panel/commit-modal/CommitRow';

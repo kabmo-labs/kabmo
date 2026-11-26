@@ -15,7 +15,7 @@
  * are ignored rather than guessed.
  */
 
-import type { SessionTodoState, TodoItem, TodoPhase, TodoStatus } from '@/shared/types/todo';
+import type { SessionTodoState, TodoItem, TodoPhase, TodoStatus } from '@kabmo-labs/kabmo-app-contracts/todo';
 import { todoProgress } from '@/shared/lib/chat/todo/snapshot';
 
 function statusOf(value: unknown): TodoStatus {

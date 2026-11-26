@@ -20,7 +20,7 @@
 import { useState } from 'preact/hooks';
 import { Plus, Trash2 } from 'lucide-preact';
 import { SettingsNotice } from '@/client/components/settings/categories/harness-settings/parts';
-import type { HarnessSummary } from '@/shared/types/harness';
+import type { HarnessSummary } from '@kabmo-labs/kabmo-app-contracts/harness';
 
 interface CustomHarnessFormProps {
   harnesses: readonly HarnessSummary[];

@@ -12,7 +12,7 @@ import type { FileClipboard, ClipboardTarget } from '@/client/hooks/workspace/fi
 import type { FileArchive } from '@/client/hooks/workspace/file-archive';
 import type { FileSelection } from '@/client/hooks/workspace/file-selection';
 import type { FileTreeDragProps } from '@/client/components/workspace/file-explorer/drag-props';
-import type { GitChange } from '@/shared/types/git';
+import type { GitChange } from '@kabmo-labs/kabmo-app-contracts/git';
 
 interface FileTreeItemProps extends FileTreeDragProps {
   file: any;

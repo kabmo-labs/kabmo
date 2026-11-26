@@ -20,7 +20,7 @@ import { render, type ComponentChild } from 'preact';
 import { act } from 'preact/test-utils';
 import { WikiNavModal, WikiNavTrigger } from '@/client/components/workspace/wiki-panel/NavModal';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
-import type { WikiNavSection } from '@/shared/types/wiki';
+import type { WikiNavSection } from '@kabmo-labs/kabmo-app-contracts/wiki';
 
 const SECTIONS: WikiNavSection[] = [
   {

@@ -27,7 +27,7 @@ import { HarnessProviderPanel } from '@/client/components/settings/categories/ha
 import { HarnessAccountsPanel } from '@/client/components/settings/categories/harness-settings/AccountsPanel';
 import { accountAdapter, type HarnessAccountView } from '@kabmo-labs/kabmo-harness-accounts';
 import type { AccountMutationResult } from '@/client/hooks/models/harness-accounts';
-import type { HarnessImportOutcome, HarnessProviderSupport, HarnessSessionImport, HarnessSummary } from '@/shared/types/harness';
+import type { HarnessImportOutcome, HarnessProviderSupport, HarnessSessionImport, HarnessSummary } from '@kabmo-labs/kabmo-app-contracts/harness';
 import { HarnessImportControls } from '@/client/components/settings/categories/harness-settings/HarnessImportControls';
 import type { AddProviderInput } from '@/client/components/settings/categories/harness-settings/AddProviderForm';
 

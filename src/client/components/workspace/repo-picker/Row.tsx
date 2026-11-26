@@ -29,7 +29,7 @@
 
 import type { ComponentChild } from 'preact';
 import { AlertTriangle, ArrowDown, ArrowUp, Check, Copy, FolderOpen, GitBranch } from 'lucide-preact';
-import type { GitRepoDetail } from '@/shared/types/git';
+import type { GitRepoDetail } from '@kabmo-labs/kabmo-app-contracts/git';
 import { OPERATION_LABELS } from '@/shared/lib/fs/git-unmerged';
 
 interface RepoRowProps {

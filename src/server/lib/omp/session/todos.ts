@@ -28,7 +28,7 @@
 import { findSessionFileById } from '@kabmo-labs/kabmo-omp-session-locator';
 import { parseJsonlLenient } from '@kabmo-labs/kabmo-omp-session-core/jsonl';
 import { latestTodoSnapshot, todoProgress } from '@/shared/lib/chat/todo/snapshot';
-import type { SessionTodoState } from '@/shared/types/todo';
+import type { SessionTodoState } from '@kabmo-labs/kabmo-app-contracts/todo';
 
 /** Sessions larger than this are refused rather than parsed; a transcript past
  *  it is pathological, and the read runs behind an HTTP request. */

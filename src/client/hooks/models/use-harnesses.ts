@@ -22,7 +22,7 @@
  */
 
 import { useEffect, useState } from 'preact/hooks';
-import type { HarnessConfig, HarnessSessionImport, HarnessSummary, LiveHarnessModels } from '@/shared/types/harness';
+import type { HarnessConfig, HarnessSessionImport, HarnessSummary, LiveHarnessModels } from '@kabmo-labs/kabmo-app-contracts/harness';
 import type { HarnessesController } from '@/client/hooks/models/use-harnesses-controller';
 import {
   emit, invalidateCatalog, listeners, loadCatalog, store,

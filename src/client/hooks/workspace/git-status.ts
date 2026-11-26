@@ -1,5 +1,5 @@
 import { useMemo } from 'preact/hooks';
-import type { GitChange } from '@/shared/types/git';
+import type { GitChange } from '@kabmo-labs/kabmo-app-contracts/git';
 import { buildGitStatusMaps } from '@/shared/lib/fs/git-status';
 import { useRealtimeTopic } from '@/client/hooks/ui/realtime';
 import { gitTopic } from '@/shared/lib/realtime/protocol';

@@ -15,8 +15,8 @@
  */
 
 import { todoProgress } from '@/shared/lib/chat/todo/snapshot';
-import type { SessionTodoState, TodoPhase } from '@/shared/types/todo';
-import type { SessionPlanState } from '@/shared/types/plan';
+import type { SessionTodoState, TodoPhase } from '@kabmo-labs/kabmo-app-contracts/todo';
+import type { SessionPlanState } from '@kabmo-labs/kabmo-app-contracts/plan';
 
 /** Demo list: one phase of every status the todo panel must draw. */
 const MOCK_TODO_PHASES: TodoPhase[] = [

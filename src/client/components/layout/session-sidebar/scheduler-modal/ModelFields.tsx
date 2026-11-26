@@ -27,7 +27,7 @@ import {
 import { APPROVAL_MODES, type ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 import { selectableThinkingLevels } from '@kabmo-labs/kabmo-model-contracts/thinking-levels';
 import type { AIModelOption } from '@/shared/types';
-import type { ScheduledTaskModel } from '@/shared/types/schedule';
+import type { ScheduledTaskModel } from '@kabmo-labs/kabmo-app-contracts/schedule';
 
 interface ModelFieldsProps {
   harness: string;

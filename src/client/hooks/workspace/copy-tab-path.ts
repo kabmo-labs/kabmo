@@ -13,7 +13,7 @@
  */
 
 import { useCallback } from 'preact/hooks';
-import type { OpenedFile } from '@/shared/types/fs';
+import type { OpenedFile } from '@kabmo-labs/kabmo-app-contracts/fs';
 
 export function useCopyTabPath(): (tab: OpenedFile) => void {
   return useCallback((tab: OpenedFile) => {

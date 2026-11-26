@@ -23,7 +23,7 @@ import { invalidateOmpCliCache } from '@kabmo-labs/kabmo-omp-cli';
 import { buildActiveReleaseNotes, selectActiveNote } from '@/server/lib/updates/active-notes';
 import { readInstalledVersion } from '@/server/lib/updates/install';
 import { ompReleaseTagUrl, releaseTagUrl } from '@/server/lib/updates/release-url';
-import type { ReleaseNote } from '@/shared/types/updates';
+import type { ReleaseNote } from '@kabmo-labs/kabmo-app-contracts/updates';
 
 /** The runner's own fetch, reached through `Bun` so a stub leaked onto the global cannot be mistaken for it. */
 const originalFetch = Bun.fetch;

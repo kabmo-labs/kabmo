@@ -18,7 +18,7 @@
  */
 
 import { useEffect, useRef } from 'preact/hooks';
-import type { OpenedFile } from '@/shared/types/fs';
+import type { OpenedFile } from '@kabmo-labs/kabmo-app-contracts/fs';
 import { VIEWER_LABELS, type ViewerKind } from '@/shared/lib/fs/document-kind';
 import type { EditorDocument } from '@/shared/lib/code/outline/document';
 import { clearEditorDocument, publishEditorDocument } from '@/client/lib/editor-document';

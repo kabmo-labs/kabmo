@@ -1183,6 +1183,75 @@
       "@kabmo-labs/kabmo-worktree-types/types": [
         "./packages/kabmo-worktree-types/src/types.ts"
       ],
+      "@kabmo-labs/kabmo-app-contracts/browser": [
+        "./packages/kabmo-app-contracts/src/browser.ts"
+      ],
+      "@kabmo-labs/kabmo-app-contracts/btw": [
+        "./packages/kabmo-app-contracts/src/btw.ts"
+      ],
+      "@kabmo-labs/kabmo-app-contracts/context": [
+        "./packages/kabmo-app-contracts/src/context.ts"
+      ],
+      "@kabmo-labs/kabmo-app-contracts/fs": [
+        "./packages/kabmo-app-contracts/src/fs.ts"
+      ],
+      "@kabmo-labs/kabmo-app-contracts/git": [
+        "./packages/kabmo-app-contracts/src/git.ts"
+      ],
+      "@kabmo-labs/kabmo-app-contracts/harness-version": [
+        "./packages/kabmo-app-contracts/src/harness-version.ts"
+      ],
+      "@kabmo-labs/kabmo-app-contracts/harness": [
+        "./packages/kabmo-app-contracts/src/harness.ts"
+      ],
+      "@kabmo-labs/kabmo-app-contracts/model-roles": [
+        "./packages/kabmo-app-contracts/src/model-roles.ts"
+      ],
+      "@kabmo-labs/kabmo-app-contracts/panels": [
+        "./packages/kabmo-app-contracts/src/panels.ts"
+      ],
+      "@kabmo-labs/kabmo-app-contracts/panels-registry": [
+        "./packages/kabmo-app-contracts/src/panels-registry.ts"
+      ],
+      "@kabmo-labs/kabmo-app-contracts/plan": [
+        "./packages/kabmo-app-contracts/src/plan.ts"
+      ],
+      "@kabmo-labs/kabmo-app-contracts/realtime": [
+        "./packages/kabmo-app-contracts/src/realtime.ts"
+      ],
+      "@kabmo-labs/kabmo-app-contracts/schedule": [
+        "./packages/kabmo-app-contracts/src/schedule.ts"
+      ],
+      "@kabmo-labs/kabmo-app-contracts/theme": [
+        "./packages/kabmo-app-contracts/src/theme.ts"
+      ],
+      "@kabmo-labs/kabmo-app-contracts/todo": [
+        "./packages/kabmo-app-contracts/src/todo.ts"
+      ],
+      "@kabmo-labs/kabmo-app-contracts/tokenUsage": [
+        "./packages/kabmo-app-contracts/src/tokenUsage.ts"
+      ],
+      "@kabmo-labs/kabmo-app-contracts/updates": [
+        "./packages/kabmo-app-contracts/src/updates.ts"
+      ],
+      "@kabmo-labs/kabmo-app-contracts/waiting": [
+        "./packages/kabmo-app-contracts/src/waiting.ts"
+      ],
+      "@kabmo-labs/kabmo-app-contracts/wiki": [
+        "./packages/kabmo-app-contracts/src/wiki.ts"
+      ],
+      "@kabmo-labs/kabmo-app-contracts/workspace": [
+        "./packages/kabmo-app-contracts/src/workspace.ts"
+      ],
+      "@kabmo-labs/kabmo-harness-session/acp-rows.server": [
+        "./packages/kabmo-harness-session/src/acp-rows.server.ts"
+      ],
+      "@kabmo-labs/kabmo-workspace-sidebar": [
+        "./packages/kabmo-workspace-sidebar/src/sidebar-sort.ts"
+      ],
+      "@kabmo-labs/kabmo-workspace-sidebar/sidebar-sort": [
+        "./packages/kabmo-workspace-sidebar/src/sidebar-sort.ts"
+      ],
       "@kabmo-labs/kabmo-ui": [
         "./packages/kabmo-ui/src/index.tsx"
       ],

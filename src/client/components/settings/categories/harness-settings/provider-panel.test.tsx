@@ -25,7 +25,7 @@ import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 
 import { HarnessProviderPanel } from '@/client/components/settings/categories/harness-settings/ProviderPanel';
-import type { HarnessProviderSupport } from '@/shared/types/harness';
+import type { HarnessProviderSupport } from '@kabmo-labs/kabmo-app-contracts/harness';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
 
 let container: HTMLElement;

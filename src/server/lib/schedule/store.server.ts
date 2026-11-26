@@ -31,7 +31,7 @@ import type {
   ScheduledTask,
   ScheduledTaskModel,
   ScheduledTaskRun,
-} from '@/shared/types/schedule';
+} from '@kabmo-labs/kabmo-app-contracts/schedule';
 
 /** Runs kept per task; the panel shows the newest handful, and an interval
  *  task would otherwise grow the table without bound. */

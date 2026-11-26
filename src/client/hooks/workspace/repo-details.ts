@@ -23,7 +23,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
-import type { GitRepoDetail } from '@/shared/types/git';
+import type { GitRepoDetail } from '@kabmo-labs/kabmo-app-contracts/git';
 
 export interface RepoDetailsHandle {
   /** Rows from the last successful read; `[]` before the first one lands. */

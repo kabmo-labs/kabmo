@@ -19,7 +19,7 @@
 
 import { CHAT_DRAFT_ATTACHMENTS_KEY, CHAT_DRAFT_KEY } from '@/shared/lib/chat/composer/draft';
 import { setSessionKey } from '@/shared/lib/workspace/session-state/store';
-import type { WaitingPrompt } from '@/shared/types/waiting';
+import type { WaitingPrompt } from '@kabmo-labs/kabmo-app-contracts/waiting';
 
 /** The chat a prompt belongs to: the pending slot, else the session it targets. */
 export function waitingDraftSessionId(prompt: WaitingPrompt): string | null {

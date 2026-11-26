@@ -13,7 +13,7 @@ import { applyOmpUpdate } from '@/server/lib/updates/omp';
 import { withUpdateSlot } from '@/server/lib/updates/single-flight';
 import { recycleStandbyProcesses } from '@/server/lib/omp/session/standby.server';
 import type { InstalledCopy } from '@/server/lib/updates/installed-cli';
-import type { UpdateApplyResult, UpdateTarget } from '@/shared/types/updates';
+import type { UpdateApplyResult, UpdateTarget } from '@kabmo-labs/kabmo-app-contracts/updates';
 
 /** A stage label or a line of command output, as the update produces it. */
 export interface UpdateProgressHooks {

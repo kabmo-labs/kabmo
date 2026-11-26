@@ -1,6 +1,6 @@
 import { json, NO_STORE_HEADERS } from '@kabmo-labs/kabmo-http';
 import { checkAllUpdates } from '@/server/lib/updates/check';
-import type { UpdateCheckResult, UpdateTargetInfo } from '@/shared/types/updates';
+import type { UpdateCheckResult, UpdateTargetInfo } from '@kabmo-labs/kabmo-app-contracts/updates';
 
 function failureResult(message: string): UpdateCheckResult {
   const target = (): UpdateTargetInfo => ({

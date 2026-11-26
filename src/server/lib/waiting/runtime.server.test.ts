@@ -23,7 +23,7 @@
 import { describe, expect, test } from 'bun:test';
 import { sweepWaitingPrompts, MAX_DISPATCH_ATTEMPTS, type StreamRowMap, type WaitingDeps } from '@/server/lib/waiting/runtime.server';
 import type { Attachment } from '@kabmo-labs/kabmo-chat-contracts/chat';
-import type { WaitingPrompt } from '@/shared/types/waiting';
+import type { WaitingPrompt } from '@kabmo-labs/kabmo-app-contracts/waiting';
 
 const NOW = 1_800_000_000_000;
 const OLD = NOW - 60_000;

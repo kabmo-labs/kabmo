@@ -22,7 +22,7 @@ import { Window } from 'happy-dom';
 import type { h as PreactH, render as PreactRender } from 'preact';
 import type { act as PreactAct } from 'preact/test-utils';
 import type { EditorTabs as EditorTabsComponent } from '@/client/components/workspace/editor/Tabs';
-import type { OpenedFile } from '@/shared/types/fs';
+import type { OpenedFile } from '@kabmo-labs/kabmo-app-contracts/fs';
 
 let EditorTabs: typeof EditorTabsComponent;
 let h: typeof PreactH;

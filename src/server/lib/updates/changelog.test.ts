@@ -27,7 +27,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { MAX_NOTES_BYTES, MAX_VERSIONS, capReleaseNotes, selectReleaseRange } from '@/server/lib/updates/changelog';
 import { CHANGELOG_URL, OMP_CHANGELOG_URL, fetchChangelogNotes, fetchOmpChangelogNotes, parseChangelogSections } from '@/server/lib/updates/changelog-file';
 import { releaseTagUrl } from '@/server/lib/updates/release-url';
-import type { ReleaseNote } from '@/shared/types/updates';
+import type { ReleaseNote } from '@kabmo-labs/kabmo-app-contracts/updates';
 
 /** The runner's own fetch, reached through `Bun` so a stub leaked onto the global cannot be mistaken for it. */
 const originalFetch = Bun.fetch;

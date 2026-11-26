@@ -32,7 +32,7 @@
 import { useState } from 'preact/hooks';
 import { Check, Plus, Save, Trash2 } from 'lucide-preact';
 import { SearchSelect } from '@/client/components/common/search-select';
-import type { ModelRolePreset } from '@/shared/types/model-roles';
+import type { ModelRolePreset } from '@kabmo-labs/kabmo-app-contracts/model-roles';
 
 interface PresetBarProps {
   presets: ModelRolePreset[];

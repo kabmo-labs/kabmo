@@ -23,7 +23,7 @@ import { act } from 'preact/test-utils';
 
 import { HarnessTabs, harnessBlock, harnessBlockedReason, harnessTabTitle } from '@/client/components/workspace/model-dropdown/HarnessTabs';
 import { HARNESS_GLYPH_SIZE } from '@/client/components/common/harness-glyph';
-import type { HarnessSummary } from '@/shared/types/harness';
+import type { HarnessSummary } from '@kabmo-labs/kabmo-app-contracts/harness';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'Event', 'MouseEvent', 'KeyboardEvent'] as const;
 const nativeGlobals: Partial<Record<(typeof DOM_GLOBALS)[number], unknown>> = {};

@@ -18,7 +18,7 @@ import type { h as PreactH, render as PreactRender } from 'preact';
 import type { act as PreactAct } from 'preact/test-utils';
 import type { useCommitExpansion as UseCommitExpansion } from '@/client/hooks/workspace/commit-expansion';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
-import type { CommitHistoryPage } from '@/shared/types/git';
+import type { CommitHistoryPage } from '@kabmo-labs/kabmo-app-contracts/git';
 
 // Imported dynamically after the window exists: a static import evaluates
 // Preact against the runner's windowless global and the render dies first.

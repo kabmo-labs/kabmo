@@ -12,7 +12,7 @@
  * couples them to the mount.
  */
 
-import type { OpenedFile } from '@/shared/types/fs';
+import type { OpenedFile } from '@kabmo-labs/kabmo-app-contracts/fs';
 
 export interface EditorProps {
   className?: string;

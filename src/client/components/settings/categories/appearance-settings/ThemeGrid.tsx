@@ -14,7 +14,7 @@
 
 import { useMemo, useState } from 'preact/hooks';
 import { Moon, Sun } from 'lucide-preact';
-import type { ThemePalette, ThemeVariant } from '@/shared/types/theme';
+import type { ThemePalette, ThemeVariant } from '@kabmo-labs/kabmo-app-contracts/theme';
 import { THEMES } from '@/shared/lib/theme/catalog';
 import { ThemeCard } from '@/client/components/settings/categories/appearance-settings/ThemeCard';
 

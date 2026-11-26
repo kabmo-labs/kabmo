@@ -26,7 +26,7 @@ import {
   Trash2,
 } from 'lucide-preact';
 import { describeSchedule, formatDuration } from '@/shared/lib/schedule/parse';
-import type { ScheduledTask, ScheduledTaskRun } from '@/shared/types/schedule';
+import type { ScheduledTask, ScheduledTaskRun } from '@kabmo-labs/kabmo-app-contracts/schedule';
 
 interface TaskListProps {
   tasks: ScheduledTask[];

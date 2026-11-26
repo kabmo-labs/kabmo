@@ -36,7 +36,7 @@ import {
   splitAfterActivate,
   type SplitEditorState,
 } from '@/shared/lib/workspace/split-editor';
-import type { OpenedFile } from '@/shared/types/fs';
+import type { OpenedFile } from '@kabmo-labs/kabmo-app-contracts/fs';
 
 interface UseSplitEditorOptions {
   openedFiles: OpenedFile[];

@@ -19,7 +19,7 @@
  */
 
 import { Ban, CheckCircle2, Circle, Loader2, OctagonAlert } from 'lucide-preact';
-import type { TodoItem, TodoStatus } from '@/shared/types/todo';
+import type { TodoItem, TodoStatus } from '@kabmo-labs/kabmo-app-contracts/todo';
 import { taskNote, todoStatusVisual } from '@/shared/lib/chat/todo/progress';
 import { parseNestedPhaseEntry } from '@/shared/lib/chat/todo/nested-phase';
 

@@ -18,8 +18,8 @@ import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 
 import { HarnessCard } from '@/client/components/settings/categories/harness-settings/HarnessCard';
-import { UNKNOWN_CAPABILITIES } from '@/shared/types/harness';
-import type { HarnessSummary } from '@/shared/types/harness';
+import { UNKNOWN_CAPABILITIES } from '@kabmo-labs/kabmo-app-contracts/harness';
+import type { HarnessSummary } from '@kabmo-labs/kabmo-app-contracts/harness';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
 
 let container: HTMLElement;

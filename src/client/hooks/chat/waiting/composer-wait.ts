@@ -16,7 +16,7 @@
 import { useMemo } from 'preact/hooks';
 import { useHeldWait } from '@/client/hooks/chat/waiting/held';
 import { waitingCandidates, type WaitingCandidate } from '@/client/components/workspace/chat-timeline/chat-input/WaitingDependencyPicker';
-import type { WorkspaceFolderData } from '@/shared/types/workspace';
+import type { WorkspaceFolderData } from '@kabmo-labs/kabmo-app-contracts/workspace';
 import type { ToastTone } from '@/shared/lib/ui/toast-duration';
 
 export interface ComposerWaitOptions {

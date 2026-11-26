@@ -2,7 +2,7 @@ import { formatNewSessionTitle } from '@kabmo-labs/kabmo-omp-session-core/defaul
 import { contentProfile } from '@kabmo-labs/kabmo-omp-session-parse/telemetry-blocks';
 import { toEpochMs } from '@kabmo-labs/kabmo-omp-session-core/timestamps';
 import { isRecord } from '@kabmo-labs/kabmo-guards';
-import type { RawMessageItem, SessionContextTelemetry } from '@/shared/types/context';
+import type { RawMessageItem, SessionContextTelemetry } from '@kabmo-labs/kabmo-app-contracts/context';
 import type { OmpMessageEntry, OmpUsage } from '@kabmo-labs/kabmo-omp-contracts/session';
 import { CONTEXT_LIMIT, buildInfo, contextAnchorTokens, emptyTelemetry, formatCost, formatTs, textOf, tokensOf } from '@/server/lib/omp/session/telemetry/format';
 import { loadModelsWithCache } from '@/server/lib/models/registry.server';

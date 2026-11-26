@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { Loader2, RefreshCw, Search } from 'lucide-preact';
-import type { GitBranchDetail } from '@/shared/types/git';
+import type { GitBranchDetail } from '@kabmo-labs/kabmo-app-contracts/git';
 import { Modal } from '@/client/components/common/Modal';
 import { BranchRow } from '@/client/components/workspace/git-panel/branch-modal/BranchRow';
 import { RenameBranchDialog } from '@/client/components/workspace/git-panel/branch-modal/RenameDialog';

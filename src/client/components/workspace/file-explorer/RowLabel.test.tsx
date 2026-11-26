@@ -21,7 +21,7 @@ import { act } from 'preact/test-utils';
 import { TreeRowLabel } from '@/client/components/workspace/file-explorer/RowLabel';
 import { buildGitStatusMaps } from '@/shared/lib/fs/git-status';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
-import type { GitChange } from '@/shared/types/git';
+import type { GitChange } from '@kabmo-labs/kabmo-app-contracts/git';
 
 let container: HTMLElement;
 

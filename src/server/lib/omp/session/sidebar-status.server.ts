@@ -17,7 +17,7 @@
 import { loadStreamStates } from '@kabmo-labs/kabmo-session-stream-state';
 import { healStaleStreamStatuses } from '@/shared/lib/omp/session/stream-heal.server';
 import { getAwaitingInputSessionIds, getLiveRunSessionIds, listRpcSessions } from '@/server/lib/omp/rpc/session-registry';
-import type { SidebarStatusEntry } from '@/shared/types/realtime';
+import type { SidebarStatusEntry } from '@kabmo-labs/kabmo-app-contracts/realtime';
 
 /**
  * The sidebar's VOLATILE fields, keyed by session id: live stream status, the

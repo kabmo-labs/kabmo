@@ -31,7 +31,7 @@
  * the key, from the source file, in the request that writes the target.
  */
 
-import type { HarnessImportOutcome, HarnessProviderSupport } from '@/shared/types/harness';
+import type { HarnessImportOutcome, HarnessProviderSupport } from '@kabmo-labs/kabmo-app-contracts/harness';
 import { PROTOCOL_LABELS } from '@kabmo-labs/kabmo-harness-provider/dialects';
 import { EnvProviderForm } from '@/client/components/settings/categories/harness-settings/EnvProviderForm';
 import {

@@ -14,7 +14,7 @@
  * client, the SSR shell and the tests all read the same catalog.
  */
 
-import type { ThemePalette, ThemeSwatch } from '@/shared/types/theme';
+import type { ThemePalette, ThemeSwatch } from '@kabmo-labs/kabmo-app-contracts/theme';
 import { KABMO_PALETTES } from '@/shared/lib/theme/palettes/kabmo';
 import { DARK_PALETTES } from '@/shared/lib/theme/palettes/dark';
 import { DARK_EXTENDED_PALETTES } from '@/shared/lib/theme/palettes/dark-extended';

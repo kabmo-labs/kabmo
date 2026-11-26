@@ -33,7 +33,7 @@
  * the document declares — both derived rather than palette slots.
  */
 
-import type { ThemePalette } from '@/shared/types/theme';
+import type { ThemePalette } from '@kabmo-labs/kabmo-app-contracts/theme';
 import { mixHex, parseHexColor, rgbaToHex } from '@/shared/lib/theme/color';
 import { resolveTheme } from '@/shared/lib/theme/catalog';
 import { inkScale } from '@/shared/lib/theme/ink-scale';

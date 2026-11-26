@@ -19,7 +19,7 @@
  */
 
 import type { ChatMessageData } from '@kabmo-labs/kabmo-chat-contracts/chat';
-import type { RawMessageItem } from '@/shared/types/context';
+import type { RawMessageItem } from '@kabmo-labs/kabmo-app-contracts/context';
 
 const ZERO_TOKENS = {
   total: 0,

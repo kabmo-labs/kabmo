@@ -20,7 +20,7 @@ import type {
   ScheduledTask,
   ScheduledTaskModel,
   ScheduledTaskRun,
-} from '@/shared/types/schedule';
+} from '@kabmo-labs/kabmo-app-contracts/schedule';
 
 export interface TaskRow {
   id: string;

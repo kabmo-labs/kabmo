@@ -15,7 +15,7 @@
  */
 
 import type { WorkspaceFolderData } from '@/shared/types';
-import type { SidebarActivityPayload, SidebarStatusPayload } from '@/shared/types/realtime';
+import type { SidebarActivityPayload, SidebarStatusPayload } from '@kabmo-labs/kabmo-app-contracts/realtime';
 
 /** Merge a structure payload with the volatile map, by session id. */
 export function mergeStatus(

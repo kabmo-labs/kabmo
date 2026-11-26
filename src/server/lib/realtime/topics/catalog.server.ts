@@ -30,7 +30,7 @@ import {
   sessionTelemetryTopic,
   sessionTodosTopic,
 } from '@/shared/lib/realtime/protocol';
-import type { SidebarActivityPayload, SidebarPayload, SidebarStatusPayload } from '@/shared/types/realtime';
+import type { SidebarActivityPayload, SidebarPayload, SidebarStatusPayload } from '@kabmo-labs/kabmo-app-contracts/realtime';
 import { isValidPluginId } from '@/shared/lib/plugins/protocol';
 import type { TopicDescriptor } from '@/server/lib/realtime/hub.types';
 import { loadSidebarStructure } from '@/server/lib/omp/session/sidebar-data.server';

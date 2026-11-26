@@ -7,7 +7,7 @@ import { PanelHeading } from '@/client/components/workspace/panel-header/title-p
 import { SearchResults } from '@/client/components/workspace/search-panel/Results';
 import { setSearchReveal } from '@/client/lib/search-reveal';
 import { groupSearchResults, MAX_SEARCH_RESULTS } from '@/shared/lib/fs/search-list';
-import type { SearchResultItem } from '@/shared/types/fs';
+import type { SearchResultItem } from '@kabmo-labs/kabmo-app-contracts/fs';
 import type { FindOptions } from '@/shared/lib/code/editor/find-scan';
 
 interface SearchPanelBodyProps {

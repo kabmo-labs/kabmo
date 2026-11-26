@@ -1,7 +1,7 @@
 import { CHECKBOX_CLASS } from '@/client/components/common/checkbox/style';
 import { useCallback, useEffect, useId, useState } from 'preact/hooks';
 import { Archive, Download, Plus, Trash2 } from 'lucide-preact';
-import type { GitStashEntry } from '@/shared/types/git';
+import type { GitStashEntry } from '@kabmo-labs/kabmo-app-contracts/git';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
 
 interface GitStashSectionProps {

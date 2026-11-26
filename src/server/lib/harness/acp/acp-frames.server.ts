@@ -20,7 +20,7 @@
  */
 
 import { getDb } from '@/server/db.server';
-import type { RawMessageItem } from '@/shared/types/context';
+import type { RawMessageItem } from '@kabmo-labs/kabmo-app-contracts/context';
 
 const FLUSH_DEBOUNCE_MS = 250;
 

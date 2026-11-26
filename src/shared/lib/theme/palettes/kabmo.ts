@@ -13,7 +13,7 @@
  * until now.
  */
 
-import type { ThemePalette } from '@/shared/types/theme';
+import type { ThemePalette } from '@kabmo-labs/kabmo-app-contracts/theme';
 
 export const KABMO_PALETTES = [
   {

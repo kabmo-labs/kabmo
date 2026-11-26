@@ -25,7 +25,7 @@
  * first value and the client rewrites every later one, from this one function.
  */
 
-import type { ThemePalette } from '@/shared/types/theme';
+import type { ThemePalette } from '@kabmo-labs/kabmo-app-contracts/theme';
 import { parseHexColor, rgbaToHex } from '@/shared/lib/theme/color';
 
 /** The `<style>` element's id: the SSR shell writes it, the theme writer updates it. */

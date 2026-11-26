@@ -11,7 +11,7 @@
  * (Math.max over strings -> NaN -> a no-op sort).
  */
 
-import type { SessionSortOption, WorkspaceFolderData } from '@/shared/types';
+import type { SessionSortOption, WorkspaceFolderData } from '@kabmo-labs/kabmo-app-contracts/workspace';
 
 /** Epoch ms of an ISO timestamp; NaN when missing or unparseable. */
 function parseTime(value?: string | null): number {

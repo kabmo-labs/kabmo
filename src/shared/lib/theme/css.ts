@@ -26,7 +26,7 @@
  * string only when a served document predates it.
  */
 
-import type { ThemePalette } from '@/shared/types/theme';
+import type { ThemePalette } from '@kabmo-labs/kabmo-app-contracts/theme';
 import { THEMES } from '@/shared/lib/theme/catalog';
 import {
   MUTED_STEPS,

@@ -16,7 +16,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'preact/hooks';
-import type { HarnessVersionRow } from '@/shared/types/harness-version';
+import type { HarnessVersionRow } from '@kabmo-labs/kabmo-app-contracts/harness-version';
 
 interface VersionStore {
   rows: HarnessVersionRow[];

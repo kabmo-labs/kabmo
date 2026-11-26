@@ -33,7 +33,7 @@ import { contextRingGeometry } from '@/shared/lib/chat/context/usage';
 import { startRealtimeTestServer, type RealtimeTestServer } from '@/test-support/realtime-server';
 import { installDomGlobals, pristineWebSocket, restoreDomGlobals } from '@/test-support/pristine-globals';
 import type { TopicResolver } from '@/server/lib/realtime/hub.server';
-import type { SessionContextTelemetry } from '@/shared/types/context';
+import type { SessionContextTelemetry } from '@kabmo-labs/kabmo-app-contracts/context';
 
 const SESSION = 'session-context-ring';
 const TOPIC = sessionTelemetryTopic(SESSION);

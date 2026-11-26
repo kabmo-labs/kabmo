@@ -1,5 +1,5 @@
 import { Check, GitBranch, GitMerge, Pencil, Trash2 } from 'lucide-preact';
-import type { GitBranchDetail } from '@/shared/types/git';
+import type { GitBranchDetail } from '@kabmo-labs/kabmo-app-contracts/git';
 
 interface BranchRowProps {
   branch: GitBranchDetail;

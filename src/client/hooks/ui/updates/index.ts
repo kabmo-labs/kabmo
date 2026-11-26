@@ -15,7 +15,7 @@ import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { readSseStream } from '@/shared/lib/chat/read-sse';
 import { appendUpdateLog, type UpdateLogState } from '@/shared/lib/updates/progress';
 import { readServerIdentity, waitForServerRestart, RESTART_WAIT_TIMEOUT_MS, type RestartWatchDeps, type ServerIdentity } from '@/client/hooks/ui/updates/restart';
-import type { UpdateApplyResult, UpdateCheckResult, UpdateTarget } from '@/shared/types/updates';
+import type { UpdateApplyResult, UpdateCheckResult, UpdateTarget } from '@kabmo-labs/kabmo-app-contracts/updates';
 
 export interface UseUpdatesResult {
   info: UpdateCheckResult | null;

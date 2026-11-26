@@ -37,7 +37,7 @@ import { applyUpdate } from '@/server/lib/updates/apply';
 import { UpdateInProgressError } from '@/server/lib/updates/single-flight';
 import { isManualMethod, REPO_URL } from '@/server/lib/updates/install-method';
 import { checkAllUpdates, MOCK_CURRENT_VERSION, MOCK_LATEST_VERSION } from '@/server/lib/updates/check';
-import type { UpdateApplyResult, UpdateTarget } from '@/shared/types/updates';
+import type { UpdateApplyResult, UpdateTarget } from '@kabmo-labs/kabmo-app-contracts/updates';
 
 const originalDataDir = Bun.env.KABMO_DATA_DIR;
 const originalOmpBin = Bun.env.KABMO_OMP_BIN;

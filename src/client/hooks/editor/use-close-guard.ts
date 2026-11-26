@@ -30,7 +30,7 @@ import { useCallback, useState } from 'preact/hooks';
 
 import { isTabDirty } from '@/client/lib/editor-dirty-tabs';
 import { useUnloadGuard, type DirtyCloseAnswer } from '@/client/hooks/editor/use-unload-guard';
-import type { OpenedFile } from '@/shared/types/fs';
+import type { OpenedFile } from '@kabmo-labs/kabmo-app-contracts/fs';
 
 interface UseCloseGuardOptions {
   openedFiles: OpenedFile[];

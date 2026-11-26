@@ -35,7 +35,7 @@ import { PlanNav } from '@/client/components/workspace/plan-panel/Nav';
 import { PlanPageView } from '@/client/components/workspace/plan-panel/PageView';
 import { useRealtimeTopic } from '@/client/hooks/ui/realtime';
 import { sessionPlanTopic } from '@/shared/lib/realtime/protocol';
-import type { SessionPlanPayload } from '@/shared/types/plan';
+import type { SessionPlanPayload } from '@kabmo-labs/kabmo-app-contracts/plan';
 
 interface PlanPanelProps {
   className?: string;

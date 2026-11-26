@@ -25,7 +25,7 @@
 
 import { useState } from 'preact/hooks';
 import { Check, Loader2, Plus } from 'lucide-preact';
-import type { HarnessImportOutcome, HarnessProviderSupport } from '@/shared/types/harness';
+import type { HarnessImportOutcome, HarnessProviderSupport } from '@kabmo-labs/kabmo-app-contracts/harness';
 import { providerIdProblem, providerSlugFrom } from '@kabmo-labs/kabmo-harness-provider-slug';
 
 const INPUT_CLASS =

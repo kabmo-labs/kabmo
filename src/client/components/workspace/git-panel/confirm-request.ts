@@ -1,4 +1,4 @@
-import type { GitOperation } from '@/shared/types/git';
+import type { GitOperation } from '@kabmo-labs/kabmo-app-contracts/git';
 import { OPERATION_LABELS } from '@/shared/lib/fs/git-unmerged';
 
 /** The confirm dialog's shape, as `ConfirmActionModal` renders it. */

@@ -20,7 +20,7 @@
 
 import { useState } from 'preact/hooks';
 import { AlertCircle, Check, Loader2 } from 'lucide-preact';
-import type { HarnessProviderSupport } from '@/shared/types/harness';
+import type { HarnessProviderSupport } from '@kabmo-labs/kabmo-app-contracts/harness';
 
 const INPUT_CLASS =
   'w-full rounded-md border border-ink/20 bg-paper px-2 py-1.5 font-mono text-[11px] text-ink outline-none transition-colors placeholder:text-ink/30 focus:border-ink/50';

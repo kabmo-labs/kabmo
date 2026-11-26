@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'preact/hooks';
-import type { CommitHistoryPage, GitCommit } from '@/shared/types/git';
+import type { CommitHistoryPage, GitCommit } from '@kabmo-labs/kabmo-app-contracts/git';
 import { COMMIT_PAGE_SIZE } from '@/shared/lib/fs/commit-page';
 import { normalizeCommits } from '@/shared/lib/fs/commit-row';
 

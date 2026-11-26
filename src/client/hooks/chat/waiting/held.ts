@@ -16,7 +16,7 @@
 import { useCallback, useEffect, useMemo, useRef } from 'preact/hooks';
 import { useWaitingPrompts } from '@/client/hooks/chat/waiting/store';
 import { useCancelWait } from '@/client/hooks/chat/waiting/cancel';
-import type { WaitingPrompt } from '@/shared/types/waiting';
+import type { WaitingPrompt } from '@kabmo-labs/kabmo-app-contracts/waiting';
 import type { ToastTone } from '@/shared/lib/ui/toast-duration';
 
 export interface HeldWaitOptions {
