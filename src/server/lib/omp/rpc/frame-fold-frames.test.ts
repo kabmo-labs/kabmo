@@ -17,7 +17,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
 import { foldSessionFrame } from '@/server/lib/omp/rpc/frame-fold';
-import { releasesStreamRowOnPromptResult } from '@/shared/lib/omp/session/stream-heal.server';
+import { releasesStreamRowOnPromptResult } from '@kabmo-labs/kabmo-session-stream-state/stream-heal.server';
 import { makeHost } from '@/server/lib/omp/rpc/frame-fold-host.test-util';
 import type { AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 import { onRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';

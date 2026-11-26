@@ -1,0 +1,48 @@
+{
+  "name": "@kabmo-labs/kabmo-omp-sidebar-data",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "The sidebar payload: folders, sessions, live status and activity stamps.",
+  "exports": {
+    ".": "./src/data.server.ts",
+    "./activity.server": "./src/activity.server.ts",
+    "./data.server": "./src/data.server.ts",
+    "./status.server": "./src/status.server.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-omp-sidebar-data"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  },
+  "dependencies": {
+    "@kabmo-labs/kabmo-app-contracts": "workspace:*",
+    "@kabmo-labs/kabmo-db": "workspace:*",
+    "@kabmo-labs/kabmo-fs-canonical": "workspace:*",
+    "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
+    "@kabmo-labs/kabmo-harness-session": "workspace:*",
+    "@kabmo-labs/kabmo-live-sessions": "workspace:*",
+    "@kabmo-labs/kabmo-omp-contracts": "workspace:*",
+    "@kabmo-labs/kabmo-omp-session-locator": "workspace:*",
+    "@kabmo-labs/kabmo-omp-session-reader": "workspace:*",
+    "@kabmo-labs/kabmo-omp-session-scan": "workspace:*",
+    "@kabmo-labs/kabmo-omp-session-sidebar": "workspace:*",
+    "@kabmo-labs/kabmo-omp-subagent-presence": "workspace:*",
+    "@kabmo-labs/kabmo-runtime-flags": "workspace:*",
+    "@kabmo-labs/kabmo-session-deleted": "workspace:*",
+    "@kabmo-labs/kabmo-session-relations": "workspace:*",
+    "@kabmo-labs/kabmo-session-stream-state": "workspace:*",
+    "@kabmo-labs/kabmo-workspace-sidebar": "workspace:*",
+    "@kabmo-labs/kabmo-worktree-topology": "workspace:*",
+    "@kabmo-labs/kabmo-worktree-types": "workspace:*"
+  }
+}

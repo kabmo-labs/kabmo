@@ -1,0 +1,15 @@
+{
+  "name": "@kabmo-labs/kabmo-live-sessions",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "The facts any module may ask about the sessions this process runs.",
+  "exports": {
+    ".": "./src/facts.ts",
+    "./facts": "./src/facts.ts"
+  },
+  "files": ["src"],
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/kabmo-labs/kabmo.git", "directory": "packages/kabmo-live-sessions" },
+  "publishConfig": { "access": "public" },
+  "engines": { "bun": ">=1.4.0" }
+}

@@ -15,8 +15,8 @@
  */
 
 import { loadStreamStates } from '@kabmo-labs/kabmo-session-stream-state';
-import { healStaleStreamStatuses } from '@/shared/lib/omp/session/stream-heal.server';
-import { getAwaitingInputSessionIds, getLiveRunSessionIds, listRpcSessions } from '@/server/lib/omp/rpc/session-registry';
+import { healStaleStreamStatuses } from '@kabmo-labs/kabmo-session-stream-state/stream-heal.server';
+import { awaitingInputSessionIds, liveRunSessionIds, reconcileLiveSessions } from '@kabmo-labs/kabmo-live-sessions';
 import type { SidebarStatusEntry } from '@kabmo-labs/kabmo-app-contracts/realtime';
 
 /**
@@ -55,12 +55,12 @@ export async function loadSidebarStatus(
     // The live-run set is passed for the OTHER half only: the rows this process
     // owns. It is deliberately not the staleness rule, which must stay
     // instance-independent.
-    await healStaleStreamStatuses(getLiveRunSessionIds());
+    await healStaleStreamStatuses(liveRunSessionIds());
     // The heal judges a row from its owner pid alone; a row this process owns
     // while no run is behind it needs the OWNER's view of the child, which only
     // a `get_state` can give (see `run-settle.server.ts`). Fire-and-forget: the
     // list never waits on a probe, and the next read carries the settled status.
-    for (const session of listRpcSessions()) void session.runSettle.reconcile('request');
+    reconcileLiveSessions();
   }
 
   const status: Record<string, SidebarStatusEntry> = {};
@@ -75,7 +75,7 @@ export async function loadSidebarStatus(
   // Sessions blocked on a dialog nobody has answered yet. Read live from the
   // process registry (never persisted): the child that owns the question is the
   // same thing that owns the flag, so a restart cannot leave a stale badge.
-  for (const id of getAwaitingInputSessionIds()) {
+  for (const id of awaitingInputSessionIds()) {
     status[id] = { ...(status[id] ?? {}), awaitingInput: true };
   }
   return status;

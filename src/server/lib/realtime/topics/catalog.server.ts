@@ -33,9 +33,9 @@ import {
 import type { SidebarActivityPayload, SidebarPayload, SidebarStatusPayload } from '@kabmo-labs/kabmo-app-contracts/realtime';
 import { isValidPluginId } from '@/shared/lib/plugins/protocol';
 import type { TopicDescriptor } from '@/server/lib/realtime/hub.types';
-import { loadSidebarStructure } from '@/server/lib/omp/session/sidebar-data.server';
-import { loadSidebarStatus } from '@/server/lib/omp/session/sidebar-status.server';
-import { loadSidebarActivity } from '@/server/lib/omp/session/sidebar-activity.server';
+import { loadSidebarStructure } from '@kabmo-labs/kabmo-omp-sidebar-data/data.server';
+import { loadSidebarStatus } from '@kabmo-labs/kabmo-omp-sidebar-data/status.server';
+import { loadSidebarActivity } from '@kabmo-labs/kabmo-omp-sidebar-data/activity.server';
 import { sessionDescriptor } from '@/server/lib/realtime/topics/session.server';
 import { btwDescriptor } from '@/server/lib/realtime/topics/btw.server';
 import { SESSION_DATA_TOPICS } from '@/server/lib/realtime/topics/session-data.server';

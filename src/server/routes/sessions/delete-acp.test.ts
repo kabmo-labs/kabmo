@@ -32,7 +32,7 @@ import { saveHarnessConfig } from '@kabmo-labs/kabmo-harness-config-store/config
 import { saveHarnessSession } from '@kabmo-labs/kabmo-harness-session/session-store.server';
 import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { invalidateOmpSidebarData } from '@kabmo-labs/kabmo-omp-session-reader';
-import { loadSidebarStructure } from '@/server/lib/omp/session/sidebar-data.server';
+import { loadSidebarStructure } from '@kabmo-labs/kabmo-omp-sidebar-data/data.server';
 import { deleteSession } from '@/server/routes/sessions/delete';
 import { EMPTY_HARNESS_CONFIG } from '@kabmo-labs/kabmo-harness-config';
 import { fakeAcpDeleteAgent } from '@/test-support/fake-acp-delete';

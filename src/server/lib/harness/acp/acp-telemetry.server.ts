@@ -19,7 +19,7 @@
 
 import type { SessionContextTelemetry } from '@kabmo-labs/kabmo-app-contracts/context';
 import { getDb } from '@/server/db.server';
-import { getLiveSession, harnessOfSession } from '@/server/lib/omp/rpc/session-registry';
+import { liveSessionFactsFor } from '@kabmo-labs/kabmo-live-sessions';
 
 /** What the live session exposes for this bridge. */
 export interface AcpTelemetrySession {
@@ -143,8 +143,8 @@ export async function acpTelemetryFor(
   sessionId: string,
   title: string | null | undefined,
 ): Promise<SessionContextTelemetry | null> {
-  const live = getLiveSession(sessionId);
-  if (live && harnessOfSession(live) !== 'omp-rpc') {
+  const live = liveSessionFactsFor(sessionId);
+  if (live && live.harness !== 'omp-rpc') {
     return buildAcpTelemetry(live as unknown as AcpTelemetrySession, title);
   }
   const stored = await loadAcpUsage(sessionId);

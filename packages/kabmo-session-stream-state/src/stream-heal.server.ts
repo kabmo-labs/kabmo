@@ -17,7 +17,7 @@
  * going to finish.
  */
 
-import { getDb } from '@/server/db.server';
+import { getDb } from '@kabmo-labs/kabmo-db/lifecycle';
 import { getProcessState, isProcessAlive, type ProcessState } from '@kabmo-labs/kabmo-process-probe/identity';
 
 /**

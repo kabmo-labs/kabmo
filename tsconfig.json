@@ -1288,6 +1288,36 @@
       "@kabmo-labs/kabmo-session-lifecycle/lifecycle.server": [
         "./packages/kabmo-session-lifecycle/src/lifecycle.server.ts"
       ],
+      "@kabmo-labs/kabmo-live-sessions": [
+        "./packages/kabmo-live-sessions/src/facts.ts"
+      ],
+      "@kabmo-labs/kabmo-live-sessions/facts": [
+        "./packages/kabmo-live-sessions/src/facts.ts"
+      ],
+      "@kabmo-labs/kabmo-session-stream-state/stream-heal.server": [
+        "./packages/kabmo-session-stream-state/src/stream-heal.server.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-sidebar-data": [
+        "./packages/kabmo-omp-sidebar-data/src/data.server.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-sidebar-data/activity.server": [
+        "./packages/kabmo-omp-sidebar-data/src/activity.server.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-sidebar-data/data.server": [
+        "./packages/kabmo-omp-sidebar-data/src/data.server.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-sidebar-data/status.server": [
+        "./packages/kabmo-omp-sidebar-data/src/status.server.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-sidebar-data/sidebar-data.server": [
+        "./packages/kabmo-omp-sidebar-data/src/data.server.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-sidebar-data/sidebar-status.server": [
+        "./packages/kabmo-omp-sidebar-data/src/status.server.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-sidebar-data/sidebar-activity.server": [
+        "./packages/kabmo-omp-sidebar-data/src/activity.server.ts"
+      ],
       "@kabmo-labs/kabmo-ui": [
         "./packages/kabmo-ui/src/index.tsx"
       ],

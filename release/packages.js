@@ -342,6 +342,10 @@ export const RELEASE_PACKAGES = [
     name: '@kabmo-labs/kabmo-omp-operator-title',
   },
   {
+    dir: 'packages/kabmo-omp-sidebar-data',
+    name: '@kabmo-labs/kabmo-omp-sidebar-data',
+  },
+  {
     dir: 'packages/kabmo-omp-session-sidebar',
     name: '@kabmo-labs/kabmo-omp-session-sidebar',
   },
@@ -356,6 +360,10 @@ export const RELEASE_PACKAGES = [
   {
     dir: 'packages/kabmo-omp-session-scan',
     name: '@kabmo-labs/kabmo-omp-session-scan',
+  },
+  {
+    dir: 'packages/kabmo-live-sessions',
+    name: '@kabmo-labs/kabmo-live-sessions',
   },
   {
     dir: 'packages/kabmo-omp-access-mode',

@@ -67,6 +67,7 @@
         "@kabmo-labs/kabmo-harness-updates": "workspace:*",
         "@kabmo-labs/kabmo-http": "workspace:*",
         "@kabmo-labs/kabmo-idle-reaper": "workspace:*",
+        "@kabmo-labs/kabmo-live-sessions": "workspace:*",
         "@kabmo-labs/kabmo-mcp-contracts": "workspace:*",
         "@kabmo-labs/kabmo-model-contracts": "workspace:*",
         "@kabmo-labs/kabmo-omp-access-mode": "workspace:*",
@@ -103,6 +104,7 @@
         "@kabmo-labs/kabmo-omp-session-scan": "workspace:*",
         "@kabmo-labs/kabmo-omp-session-sidebar": "workspace:*",
         "@kabmo-labs/kabmo-omp-session-telemetry": "workspace:*",
+        "@kabmo-labs/kabmo-omp-sidebar-data": "workspace:*",
         "@kabmo-labs/kabmo-omp-subagent": "workspace:*",
         "@kabmo-labs/kabmo-omp-subagent-presence": "workspace:*",
         "@kabmo-labs/kabmo-omp-worktree": "workspace:*",
@@ -601,6 +603,10 @@
       "name": "@kabmo-labs/kabmo-idle-reaper",
       "version": "0.0.1",
     },
+    "packages/kabmo-live-sessions": {
+      "name": "@kabmo-labs/kabmo-live-sessions",
+      "version": "0.0.1",
+    },
     "packages/kabmo-mcp-contracts": {
       "name": "@kabmo-labs/kabmo-mcp-contracts",
       "version": "0.0.1",
@@ -941,6 +947,31 @@
         "@kabmo-labs/kabmo-omp-session-core": "workspace:*",
       },
     },
+    "packages/kabmo-omp-sidebar-data": {
+      "name": "@kabmo-labs/kabmo-omp-sidebar-data",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kabmo-labs/kabmo-app-contracts": "workspace:*",
+        "@kabmo-labs/kabmo-db": "workspace:*",
+        "@kabmo-labs/kabmo-fs-canonical": "workspace:*",
+        "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
+        "@kabmo-labs/kabmo-harness-session": "workspace:*",
+        "@kabmo-labs/kabmo-live-sessions": "workspace:*",
+        "@kabmo-labs/kabmo-omp-contracts": "workspace:*",
+        "@kabmo-labs/kabmo-omp-session-locator": "workspace:*",
+        "@kabmo-labs/kabmo-omp-session-reader": "workspace:*",
+        "@kabmo-labs/kabmo-omp-session-scan": "workspace:*",
+        "@kabmo-labs/kabmo-omp-session-sidebar": "workspace:*",
+        "@kabmo-labs/kabmo-omp-subagent-presence": "workspace:*",
+        "@kabmo-labs/kabmo-runtime-flags": "workspace:*",
+        "@kabmo-labs/kabmo-session-deleted": "workspace:*",
+        "@kabmo-labs/kabmo-session-relations": "workspace:*",
+        "@kabmo-labs/kabmo-session-stream-state": "workspace:*",
+        "@kabmo-labs/kabmo-workspace-sidebar": "workspace:*",
+        "@kabmo-labs/kabmo-worktree-topology": "workspace:*",
+        "@kabmo-labs/kabmo-worktree-types": "workspace:*",
+      },
+    },
     "packages/kabmo-omp-subagent": {
       "name": "@kabmo-labs/kabmo-omp-subagent",
       "version": "0.0.1",
@@ -1056,6 +1087,7 @@
       "version": "0.0.1",
       "dependencies": {
         "@kabmo-labs/kabmo-db": "workspace:*",
+        "@kabmo-labs/kabmo-process-probe": "workspace:*",
         "@kabmo-labs/kabmo-realtime-signals": "workspace:*",
       },
     },
@@ -1286,6 +1318,8 @@
 
     "@kabmo-labs/kabmo-idle-reaper": ["@kabmo-labs/kabmo-idle-reaper@workspace:packages/kabmo-idle-reaper"],
 
+    "@kabmo-labs/kabmo-live-sessions": ["@kabmo-labs/kabmo-live-sessions@workspace:packages/kabmo-live-sessions"],
+
     "@kabmo-labs/kabmo-mcp-contracts": ["@kabmo-labs/kabmo-mcp-contracts@workspace:packages/kabmo-mcp-contracts"],
 
     "@kabmo-labs/kabmo-model-contracts": ["@kabmo-labs/kabmo-model-contracts@workspace:packages/kabmo-model-contracts"],
@@ -1357,6 +1391,8 @@
     "@kabmo-labs/kabmo-omp-session-sidebar": ["@kabmo-labs/kabmo-omp-session-sidebar@workspace:packages/kabmo-omp-session-sidebar"],
 
     "@kabmo-labs/kabmo-omp-session-telemetry": ["@kabmo-labs/kabmo-omp-session-telemetry@workspace:packages/kabmo-omp-session-telemetry"],
+
+    "@kabmo-labs/kabmo-omp-sidebar-data": ["@kabmo-labs/kabmo-omp-sidebar-data@workspace:packages/kabmo-omp-sidebar-data"],
 
     "@kabmo-labs/kabmo-omp-subagent": ["@kabmo-labs/kabmo-omp-subagent@workspace:packages/kabmo-omp-subagent"],
 

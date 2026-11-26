@@ -30,7 +30,7 @@ import { DEFAULT_HARNESS_ID, HARNESS_IDS } from '@kabmo-labs/kabmo-harness-catal
 import { knownHarness, loadAcpSessions, loadHarnessBySession } from '@kabmo-labs/kabmo-harness-session/session-store.server';
 import { sessionsWithoutTranscript } from '@kabmo-labs/kabmo-harness-session/session-transcript.server';
 import { loadDeletedSessionIds } from '@kabmo-labs/kabmo-session-deleted';
-import { loadSidebarStatus } from '@/server/lib/omp/session/sidebar-status.server';
+import { loadSidebarStatus } from './status.server';
 import { canonicalPath } from '@kabmo-labs/kabmo-fs-canonical';
 import { acpRowsFor } from '@kabmo-labs/kabmo-harness-session/acp-rows.server';
 import { decorateSidebarSessions } from '@kabmo-labs/kabmo-session-relations/sidebar-relations.server';

@@ -27,7 +27,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { getDb } from '@/server/db.server';
-import { loadSidebarStructure } from '@/server/lib/omp/session/sidebar-data.server';
+import { loadSidebarStructure } from '@kabmo-labs/kabmo-omp-sidebar-data/data.server';
 import { invalidateOmpSidebarData } from '@kabmo-labs/kabmo-omp-session-reader';
 import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';

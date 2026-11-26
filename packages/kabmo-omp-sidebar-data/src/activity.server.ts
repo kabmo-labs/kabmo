@@ -26,7 +26,7 @@
  */
 
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
-import { getLiveRunSessionIds } from '@/server/lib/omp/rpc/session-registry';
+import { liveRunSessionIds } from '@kabmo-labs/kabmo-live-sessions';
 import { findSessionFileById } from '@kabmo-labs/kabmo-omp-session-locator';
 import { scanSessionInfoCached } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { sessionHasSubagents } from '@kabmo-labs/kabmo-omp-subagent-presence';
@@ -42,7 +42,7 @@ export async function loadSidebarActivity(): Promise<SidebarActivityPayload> {
   // the one thing this payload must never be.
   if (isMockMode()) return activity;
 
-  const live = getLiveRunSessionIds();
+  const live = liveRunSessionIds();
   if (live.size === 0) return activity;
   const entries = await Promise.all(
     [...live].map(async (sessionId) => {
