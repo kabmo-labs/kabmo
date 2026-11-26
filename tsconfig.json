@@ -802,6 +802,9 @@
       "@kabmo-labs/kabmo-db": [
         "./packages/kabmo-db/src/client.ts"
       ],
+      "@kabmo-labs/kabmo-db/lifecycle": [
+        "./packages/kabmo-db/src/lifecycle.ts"
+      ],
       "@kabmo-labs/kabmo-db/client": [
         "./packages/kabmo-db/src/client.ts"
       ],

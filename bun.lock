@@ -259,6 +259,11 @@
     "packages/kabmo-db": {
       "name": "@kabmo-labs/kabmo-db",
       "version": "0.0.1",
+      "dependencies": {
+        "@kabmo-labs/kabmo-omp-paths": "workspace:*",
+        "@kabmo-labs/kabmo-paths": "workspace:*",
+        "@kabmo-labs/kabmo-runtime-flags": "workspace:*",
+      },
     },
     "packages/kabmo-format": {
       "name": "@kabmo-labs/kabmo-format",

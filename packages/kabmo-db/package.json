@@ -3,10 +3,29 @@
   "version": "0.0.1",
   "type": "module",
   "description": "The SQLite client shape every server package reads through.",
-  "exports": { ".": "./src/client.ts", "./client": "./src/client.ts" },
-  "files": ["src"],
+  "exports": {
+    ".": "./src/client.ts",
+    "./client": "./src/client.ts",
+    "./lifecycle": "./src/lifecycle.ts"
+  },
+  "files": [
+    "src"
+  ],
   "license": "MIT",
-  "repository": { "type": "git", "url": "git+https://github.com/kabmo-labs/kabmo.git", "directory": "packages/kabmo-db" },
-  "publishConfig": { "access": "public" },
-  "engines": { "bun": ">=1.4.0" }
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-db"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  },
+  "dependencies": {
+    "@kabmo-labs/kabmo-omp-paths": "workspace:*",
+    "@kabmo-labs/kabmo-paths": "workspace:*",
+    "@kabmo-labs/kabmo-runtime-flags": "workspace:*"
+  }
 }
