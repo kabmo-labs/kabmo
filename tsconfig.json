@@ -991,6 +991,15 @@
       "@kabmo-labs/kabmo-acp-session-core/session-wiring": [
         "./packages/kabmo-acp-session-core/src/session-wiring.ts"
       ],
+      "@kabmo-labs/kabmo-acp-control": [
+        "./packages/kabmo-acp-control/src/commands.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-control/commands": [
+        "./packages/kabmo-acp-control/src/commands.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-control/session-notifications": [
+        "./packages/kabmo-acp-control/src/session-notifications.ts"
+      ],
       "@kabmo-labs/kabmo-ui": [
         "./packages/kabmo-ui/src/index.tsx"
       ],

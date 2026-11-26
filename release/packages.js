@@ -334,6 +334,10 @@ export const RELEASE_PACKAGES = [
     name: '@kabmo-labs/kabmo-acp-session',
   },
   {
+    dir: 'packages/kabmo-acp-control',
+    name: '@kabmo-labs/kabmo-acp-control',
+  },
+  {
     dir: 'packages/kabmo-acp-session-core',
     name: '@kabmo-labs/kabmo-acp-session-core',
   },

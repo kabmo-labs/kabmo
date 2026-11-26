@@ -14,7 +14,7 @@
  */
 
 import { handleAcpCancelRequest } from '@/server/lib/harness/acp/session-requests';
-import { handleSessionNotification, type AcpNotificationHost } from '@/server/lib/harness/acp/session-notifications';
+import { handleSessionNotification, type AcpNotificationHost } from '@kabmo-labs/kabmo-acp-control/session-notifications';
 import type { RawNotificationSink } from '@kabmo-labs/kabmo-acp-protocol/raw-listeners';
 import type { PendingPermissions } from '@kabmo-labs/kabmo-acp-client/permissions';
 

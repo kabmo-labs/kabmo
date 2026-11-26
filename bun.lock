@@ -17,6 +17,7 @@
         "@dskripchenko/drawio": "^0.1.0",
         "@fontsource/fira-code": "^5.3.0",
         "@kabmo-labs/kabmo-acp-client": "workspace:*",
+        "@kabmo-labs/kabmo-acp-control": "workspace:*",
         "@kabmo-labs/kabmo-acp-mapper": "workspace:*",
         "@kabmo-labs/kabmo-acp-prompt": "workspace:*",
         "@kabmo-labs/kabmo-acp-protocol": "workspace:*",
@@ -161,6 +162,23 @@
         "@kabmo-labs/kabmo-fs-canonical": "workspace:*",
         "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
         "@kabmo-labs/kabmo-omp-access-mode": "workspace:*",
+      },
+    },
+    "packages/kabmo-acp-control": {
+      "name": "@kabmo-labs/kabmo-acp-control",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kabmo-labs/kabmo-acp-client": "workspace:*",
+        "@kabmo-labs/kabmo-acp-mapper": "workspace:*",
+        "@kabmo-labs/kabmo-acp-prompt": "workspace:*",
+        "@kabmo-labs/kabmo-acp-protocol": "workspace:*",
+        "@kabmo-labs/kabmo-acp-session": "workspace:*",
+        "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
+        "@kabmo-labs/kabmo-harness-launch": "workspace:*",
+        "@kabmo-labs/kabmo-harness-session": "workspace:*",
+        "@kabmo-labs/kabmo-omp-access-mode": "workspace:*",
+        "@kabmo-labs/kabmo-omp-rpc-protocol": "workspace:*",
+        "@kabmo-labs/kabmo-realtime-signals": "workspace:*",
       },
     },
     "packages/kabmo-acp-mapper": {
@@ -955,6 +973,8 @@
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw=="],
 
     "@kabmo-labs/kabmo-acp-client": ["@kabmo-labs/kabmo-acp-client@workspace:packages/kabmo-acp-client"],
+
+    "@kabmo-labs/kabmo-acp-control": ["@kabmo-labs/kabmo-acp-control@workspace:packages/kabmo-acp-control"],
 
     "@kabmo-labs/kabmo-acp-mapper": ["@kabmo-labs/kabmo-acp-mapper@workspace:packages/kabmo-acp-mapper"],
 

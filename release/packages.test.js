@@ -265,6 +265,7 @@ describe('package catalog', () => {
       'kabmo-acp-turn',
       'kabmo-acp-prompt',
       'kabmo-acp-session',
+      'kabmo-acp-control',
       'kabmo-acp-session-core',
       'kabmo-acp-session-config',
       'kabmo-omp-mapper',

@@ -1,0 +1,29 @@
+{
+  "name": "@kabmo-labs/kabmo-acp-control",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "The ACP command router and the session notification router.",
+  "exports": {
+    ".": "./src/commands.ts",
+    "./commands": "./src/commands.ts",
+    "./session-notifications": "./src/session-notifications.ts"
+  },
+  "files": ["src"],
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/kabmo-labs/kabmo.git", "directory": "packages/kabmo-acp-control" },
+  "publishConfig": { "access": "public" },
+  "engines": { "bun": ">=1.4.0" },
+  "dependencies": {
+    "@kabmo-labs/kabmo-acp-client": "workspace:*",
+    "@kabmo-labs/kabmo-acp-mapper": "workspace:*",
+    "@kabmo-labs/kabmo-acp-prompt": "workspace:*",
+    "@kabmo-labs/kabmo-acp-protocol": "workspace:*",
+    "@kabmo-labs/kabmo-acp-session": "workspace:*",
+    "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
+    "@kabmo-labs/kabmo-harness-launch": "workspace:*",
+    "@kabmo-labs/kabmo-harness-session": "workspace:*",
+    "@kabmo-labs/kabmo-omp-access-mode": "workspace:*",
+    "@kabmo-labs/kabmo-omp-rpc-protocol": "workspace:*",
+    "@kabmo-labs/kabmo-realtime-signals": "workspace:*"
+  }
+}

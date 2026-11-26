@@ -50,7 +50,7 @@ import { acpIdleReaper } from '@kabmo-labs/kabmo-acp-session-core/session-idle';
 import { AcpSubagents, type AcpSubagentRecord } from '@kabmo-labs/kabmo-acp-mapper/subagents';
 import { AcpInbound } from '@kabmo-labs/kabmo-acp-session-core/session-inbound';
 import { DEFAULT_APPROVAL_MODE, isApprovalMode, type ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
-import { dispatchCommand, type AcpCommandHost } from '@/server/lib/harness/acp/commands';
+import { dispatchCommand, type AcpCommandHost } from '@kabmo-labs/kabmo-acp-control/commands';
 import { markStreamStatus } from '@kabmo-labs/kabmo-session-stream-state';
 import type { AcpSessionOptions } from '@kabmo-labs/kabmo-acp-session/session-options';
 import type { AcpMcpServer } from '@kabmo-labs/kabmo-acp-protocol/protocol';
