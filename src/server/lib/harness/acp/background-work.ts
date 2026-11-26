@@ -30,7 +30,7 @@
  * synthetic notice a session moves.
  */
 
-import { stampMessageModel } from '@/server/lib/harness/acp/session-config';
+import { stampMessageModel } from '@kabmo-labs/kabmo-acp-session-config/session-config';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
 import { extractTextFromContent } from '@kabmo-labs/kabmo-omp-mapper';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';

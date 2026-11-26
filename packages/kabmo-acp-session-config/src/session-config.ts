@@ -31,10 +31,8 @@
 
 import { configOption, modelFromOption } from '@kabmo-labs/kabmo-acp-prompt/prompt';
 import { isDurableGrantKey, permissionGrantKey } from '@kabmo-labs/kabmo-acp-client/grants';
-import { saveAcpGrant } from '@/server/lib/harness/acp/grants.server';
 import type { AcpConfigOption, AcpSessionModeState, AcpSessionModels } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import type { PendingPermissions } from '@kabmo-labs/kabmo-acp-client/permissions';
-import { markStreamModel } from '@/shared/lib/omp/session/stream-state.server';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
 
@@ -102,9 +100,9 @@ export function adoptConfigAnswer(
  * while a turn is streaming, and the sidebar/indicator read that row, not
  * `get_state`.
  */
-export function publishConfigChange(target: AcpConfigNotice, configId?: string): void {
+export function publishConfigChange(target: AcpConfigNotice, configId: string | undefined, effects: AcpConfigEffects): void {
   if (target.runModel && target.isStreaming) {
-    void markStreamModel(target.sessionId, target.runModel).catch(() => {});
+    void effects.markStreamModel(target.sessionId, target.runModel).catch(() => {});
   }
   const written = configId ? target.configOptions.find((option) => option.id === configId) : null;
   // No id means the agent pushed a fresh list (`config_option_update`): any of
@@ -129,6 +127,15 @@ export function stampMessageModel(event: AgentEvent, model: { provider: string; 
   };
 }
 
+/** The outside effects a config answer needs. Injected so this package stays
+ *  free of the database (grants) and the live run row (stream state). */
+export interface AcpConfigEffects {
+  /** Persist a standing approval for the session; resolves when stored. */
+  saveGrant(sessionId: string, grantKey: string): Promise<void>;
+  /** Rename the live run row a streaming `set_model` landed under. */
+  markStreamModel(sessionId: string, model: { provider: string; modelId: string }): Promise<void>;
+}
+
 /** The process slice answering a dialog needs; `AcpProcess` satisfies it. */
 export interface AcpResponder {
   respond(id: string | number, result: unknown): void;
@@ -149,6 +156,7 @@ export function settlePermissionDialog(
   responder: AcpResponder,
   dialogId: string,
   choice: { confirmed: boolean; optionId?: string; grantSessionId?: string },
+  effects: AcpConfigEffects,
 ): string | null {
   const entry = permissions.take(dialogId);
   if (!entry) return null;
@@ -167,7 +175,7 @@ export function settlePermissionDialog(
   // approve unrelated calls on the next spawn. It still holds for this session.
   const grantSession = choice.grantSessionId ?? entry.sessionId;
   if (key !== null && grantSession && isDurableGrantKey(key)) {
-    void saveAcpGrant(grantSession, key).catch(() => {});
+    void effects.saveGrant(grantSession, key).catch(() => {});
   }
   return key;
 }
@@ -194,9 +202,10 @@ export async function setAcpConfig(
   target: AcpConfigWriter,
   configId: string,
   value: string | boolean,
+  effects: AcpConfigEffects,
 ): Promise<unknown> {
   if (configId === 'mode' && typeof value === 'string' && !target.configOptions.some((option) => option.id === 'mode') && target.modes) {
-    return setAcpMode(target, value);
+    return setAcpMode(target, value, effects);
   }
   // The synthesized selector from a `models` block is answered by
   // `session/set_model`: the agent never published a `model` config option, so a
@@ -209,17 +218,17 @@ export async function setAcpConfig(
     const result = await target.writeModel(value);
     target.models = { ...target.models, currentModelId: value };
     adoptConfigAnswer(target, result, { configId, value });
-    publishConfigChange(target, configId);
+    publishConfigChange(target, configId, effects);
     return result;
   }
   const result = await target.writeConfigOption(configId, value);
   adoptConfigAnswer(target, result, { configId, value });
-  publishConfigChange(target, configId);
+  publishConfigChange(target, configId, effects);
   return result;
 }
 
 /** `session/set_mode`: the pre-config-options way to move a mode. */
-export async function setAcpMode(target: AcpConfigWriter, modeId: string): Promise<unknown> {
+export async function setAcpMode(target: AcpConfigWriter, modeId: string, effects: AcpConfigEffects): Promise<unknown> {
   const result = await target.writeMode(modeId);
   if (target.modes) target.modes = { ...target.modes, currentModeId: modeId };
   target.emit({ type: 'mode_changed', modeId });

@@ -27,9 +27,10 @@ AcpId,
 AcpProtocolVersion,
 AcpSessionModeState,
 AcpSessionModels, } from '@kabmo-labs/kabmo-acp-protocol/protocol';
-import { promptContent, startAcpPrompt } from '@/server/lib/harness/acp/session-intake';
+import { promptContent, startAcpPrompt } from '@kabmo-labs/kabmo-acp-session-config/session-intake';
 import { cancelAcpTurn, dropAcpSession, endAcpSessionTurn } from '@/server/lib/harness/acp/session-stop';
-import { setAcpConfig, setAcpMode, type AcpConfigWriter } from '@/server/lib/harness/acp/session-config';
+import { setAcpConfig, setAcpMode, type AcpConfigWriter } from '@kabmo-labs/kabmo-acp-session-config/session-config';
+import { ACP_CONFIG_EFFECTS } from '@/server/lib/harness/acp/config-effects';
 import { acpConfigView, type AcpConfigProcess } from '@kabmo-labs/kabmo-acp-session/session-config-view';
 import * as verbs from '@kabmo-labs/kabmo-acp-protocol/verbs';
 import { acpPendingDialogs, answerAcpDialog } from '@/server/lib/harness/acp/session-approvals';
@@ -266,12 +267,12 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
 
   /** Dispatcher seam: the selector writes this session accepts. */
   async setConfig(configId: string, value: string | boolean): Promise<unknown> {
-    return setAcpConfig(this.config, configId, value);
+    return setAcpConfig(this.config, configId, value, ACP_CONFIG_EFFECTS);
   }
 
   /** `session/set_mode`: the pre-config-options way to move a mode. */
   async setMode(modeId: string): Promise<unknown> {
-    return setAcpMode(this.config, modeId);
+    return setAcpMode(this.config, modeId, ACP_CONFIG_EFFECTS);
   }
 
   /** Answer a pending approval — every exit answers the agent, or it hangs. */

@@ -15,8 +15,13 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { adoptConfigAnswer, adoptConfigList, publishConfigChange } from '@/server/lib/harness/acp/session-config';
+import { adoptConfigAnswer, adoptConfigList, publishConfigChange } from '@kabmo-labs/kabmo-acp-session-config/session-config';
 import type { AcpConfigOption } from '@kabmo-labs/kabmo-acp-protocol/protocol';
+
+const effects = {
+  saveGrant: async () => {},
+  markStreamModel: async () => {},
+};
 
 const option = (id: string, category: string, currentValue: string, values: string[]): AcpConfigOption => ({
   id,
@@ -67,7 +72,7 @@ describe('ACP config adoption', () => {
       },
     };
     adoptConfigList(session, [option('sel-model', 'model', 'p/new', ['p/new'])]);
-    publishConfigChange(session);
+    publishConfigChange(session, undefined, effects);
     expect(emitted).toContainEqual({ type: 'model_changed' });
   });
 });

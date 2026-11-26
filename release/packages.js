@@ -222,6 +222,10 @@ export const RELEASE_PACKAGES = [
     name: '@kabmo-labs/kabmo-acp-session',
   },
   {
+    dir: 'packages/kabmo-acp-session-config',
+    name: '@kabmo-labs/kabmo-acp-session-config',
+  },
+  {
     dir: 'packages/kabmo-omp-mapper',
     name: '@kabmo-labs/kabmo-omp-mapper',
   },

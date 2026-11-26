@@ -13,7 +13,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { startAcpPrompt, sendAcpMidTurn, type AcpPromptHost } from '@/server/lib/harness/acp/session-intake';
+import { startAcpPrompt, sendAcpMidTurn, type AcpPromptHost } from '@kabmo-labs/kabmo-acp-session-config/session-intake';
 
 function host(overrides: Partial<AcpPromptHost> = {}): AcpPromptHost & {
   events: string[];

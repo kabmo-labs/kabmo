@@ -19,13 +19,14 @@
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
 import type { HarnessCapabilities } from '@kabmo-labs/kabmo-harness-launch/capabilities';
 import { noteAgentTitle } from '@/server/lib/harness/session-title.server';
+import { ACP_CONFIG_EFFECTS } from '@/server/lib/harness/acp/config-effects';
 import { metadataCapabilities, parseAgentCommands, type AgentCommand } from '@kabmo-labs/kabmo-acp-session/session-facts';
 import {
   adoptConfigList,
   publishConfigChange,
   stampMessageModel,
   type AcpConfigNotice,
-} from '@/server/lib/harness/acp/session-config';
+} from '@kabmo-labs/kabmo-acp-session-config/session-config';
 import type { AcpConfigOption, AcpProtocolVersion, AcpSessionModeState } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import { saveAcpPlanState } from '@/server/lib/harness/acp/acp-goal-state.server';
@@ -131,7 +132,7 @@ export function handleSessionNotification(
       ? normalizeConfigOptions(record.configOptions)
       : (record.configOptions as AcpConfigOption[]);
     adoptConfigList(host, options);
-    publishConfigChange(host);
+    publishConfigChange(host, undefined, ACP_CONFIG_EFFECTS);
     // v2 removed `current_mode_update`; a mode change arrives here. The
     // composer's Plan control reads the persisted flag, so mirror it.
     const mode = options.find((option) => option.category === 'mode');

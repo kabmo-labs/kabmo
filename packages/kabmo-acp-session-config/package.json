@@ -1,0 +1,33 @@
+{
+  "name": "@kabmo-labs/kabmo-acp-session-config",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "ACP config selectors, permission dialogs, and prompt intake.",
+  "exports": {
+    ".": "./src/session-config.ts",
+    "./session-config": "./src/session-config.ts",
+    "./session-intake": "./src/session-intake.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-acp-session-config"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  },
+  "dependencies": {
+    "@kabmo-labs/kabmo-acp-client": "workspace:*",
+    "@kabmo-labs/kabmo-acp-prompt": "workspace:*",
+    "@kabmo-labs/kabmo-acp-protocol": "workspace:*",
+    "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
+    "@kabmo-labs/kabmo-omp-contracts": "workspace:*"
+  }
+}

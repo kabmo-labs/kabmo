@@ -21,6 +21,7 @@
         "@kabmo-labs/kabmo-acp-prompt": "workspace:*",
         "@kabmo-labs/kabmo-acp-protocol": "workspace:*",
         "@kabmo-labs/kabmo-acp-session": "workspace:*",
+        "@kabmo-labs/kabmo-acp-session-config": "workspace:*",
         "@kabmo-labs/kabmo-acp-stdio": "workspace:*",
         "@kabmo-labs/kabmo-acp-turn": "workspace:*",
         "@kabmo-labs/kabmo-auth": "workspace:*",
@@ -166,6 +167,17 @@
         "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
         "@kabmo-labs/kabmo-harness-launch": "workspace:*",
         "@kabmo-labs/kabmo-omp-access-mode": "workspace:*",
+        "@kabmo-labs/kabmo-omp-contracts": "workspace:*",
+      },
+    },
+    "packages/kabmo-acp-session-config": {
+      "name": "@kabmo-labs/kabmo-acp-session-config",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kabmo-labs/kabmo-acp-client": "workspace:*",
+        "@kabmo-labs/kabmo-acp-prompt": "workspace:*",
+        "@kabmo-labs/kabmo-acp-protocol": "workspace:*",
+        "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
         "@kabmo-labs/kabmo-omp-contracts": "workspace:*",
       },
     },
@@ -633,6 +645,8 @@
     "@kabmo-labs/kabmo-acp-protocol": ["@kabmo-labs/kabmo-acp-protocol@workspace:packages/kabmo-acp-protocol"],
 
     "@kabmo-labs/kabmo-acp-session": ["@kabmo-labs/kabmo-acp-session@workspace:packages/kabmo-acp-session"],
+
+    "@kabmo-labs/kabmo-acp-session-config": ["@kabmo-labs/kabmo-acp-session-config@workspace:packages/kabmo-acp-session-config"],
 
     "@kabmo-labs/kabmo-acp-stdio": ["@kabmo-labs/kabmo-acp-stdio@workspace:packages/kabmo-acp-stdio"],
 

@@ -13,8 +13,9 @@
  * writes over `PendingPermissions`.
  */
 
-import { settlePermissionDialog } from '@/server/lib/harness/acp/session-config';
+import { settlePermissionDialog } from '@kabmo-labs/kabmo-acp-session-config/session-config';
 import type { PendingPermissions } from '@kabmo-labs/kabmo-acp-client/permissions';
+import { ACP_CONFIG_EFFECTS } from '@/server/lib/harness/acp/config-effects';
 
 /** The process slice answering a dialog needs. */
 export interface AcpPermissionResponder {
@@ -45,5 +46,5 @@ export function answerAcpDialog(
     confirmed,
     ...(optionId ? { optionId } : {}),
     ...(grantSessionId ? { grantSessionId } : {}),
-  });
+  }, ACP_CONFIG_EFFECTS);
 }

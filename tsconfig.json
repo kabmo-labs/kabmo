@@ -154,6 +154,15 @@
       "@kabmo-labs/kabmo-acp-session/session-web-state": [
         "./packages/kabmo-acp-session/src/session-web-state.ts"
       ],
+      "@kabmo-labs/kabmo-acp-session-config": [
+        "./packages/kabmo-acp-session-config/src/session-config.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-config/session-config": [
+        "./packages/kabmo-acp-session-config/src/session-config.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-session-config/session-intake": [
+        "./packages/kabmo-acp-session-config/src/session-intake.ts"
+      ],
       "@kabmo-labs/kabmo-acp-turn/turn": [
         "./packages/kabmo-acp-turn/src/turn.ts"
       ],

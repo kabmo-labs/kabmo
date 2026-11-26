@@ -86,6 +86,7 @@
     "@kabmo-labs/kabmo-acp-turn": "workspace:*",
     "@kabmo-labs/kabmo-acp-prompt": "workspace:*",
     "@kabmo-labs/kabmo-acp-session": "workspace:*",
+    "@kabmo-labs/kabmo-acp-session-config": "workspace:*",
     "@kabmo-labs/kabmo-acp-stdio": "workspace:*",
     "@kabmo-labs/kabmo-auth": "workspace:*",
     "@kabmo-labs/kabmo-bytes": "workspace:*",

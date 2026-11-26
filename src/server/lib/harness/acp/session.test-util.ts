@@ -28,7 +28,7 @@ import { RawNotificationSink } from '@kabmo-labs/kabmo-acp-protocol/raw-listener
 import { PendingPermissions } from '@kabmo-labs/kabmo-acp-client/permissions';
 import { AcpSubagents } from '@kabmo-labs/kabmo-acp-mapper/subagents';
 import { acpConfigView } from '@kabmo-labs/kabmo-acp-session/session-config-view';
-import { stampMessageModel } from '@/server/lib/harness/acp/session-config';
+import { stampMessageModel } from '@kabmo-labs/kabmo-acp-session-config/session-config';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
 
 export interface Turn {
