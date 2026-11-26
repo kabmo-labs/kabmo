@@ -22,7 +22,7 @@
  * back to liveness — never treated as confirmation that the PID is ours.
  */
 
-import { processProbe } from '@/server/lib/lifecycle/proc';
+import { processProbe } from './index';
 
 export type ProcessState = 'dead' | 'matched' | 'mismatched' | 'unknown';
 

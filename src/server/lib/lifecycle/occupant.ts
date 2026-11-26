@@ -14,7 +14,7 @@
  * discoverable, and before this module it was invisible to every CLI command.
  */
 
-import { getProcessState, isProcessAlive } from '@/server/lib/lifecycle/identity';
+import { getProcessState, isProcessAlive } from '@kabmo-labs/kabmo-process-probe/identity';
 import { readInstanceRecord } from '@/server/lib/lifecycle/instance';
 import { fetchHealth } from '@/server/lib/lifecycle/probe';
 

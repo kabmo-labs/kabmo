@@ -69,6 +69,7 @@
         "@kabmo-labs/kabmo-paths": "workspace:*",
         "@kabmo-labs/kabmo-platform": "workspace:*",
         "@kabmo-labs/kabmo-process-kill": "workspace:*",
+        "@kabmo-labs/kabmo-process-probe": "workspace:*",
         "@kabmo-labs/kabmo-rpc-lines": "workspace:*",
         "@kabmo-labs/kabmo-sdk": "workspace:*",
         "@kabmo-labs/kabmo-ui": "workspace:*",
@@ -491,6 +492,10 @@
         "@kabmo-labs/kabmo-fs-child-env": "workspace:*",
       },
     },
+    "packages/kabmo-process-probe": {
+      "name": "@kabmo-labs/kabmo-process-probe",
+      "version": "0.0.1",
+    },
     "packages/kabmo-rpc-lines": {
       "name": "@kabmo-labs/kabmo-rpc-lines",
       "version": "0.0.1",
@@ -697,6 +702,8 @@
     "@kabmo-labs/kabmo-platform": ["@kabmo-labs/kabmo-platform@workspace:packages/kabmo-platform"],
 
     "@kabmo-labs/kabmo-process-kill": ["@kabmo-labs/kabmo-process-kill@workspace:packages/kabmo-process-kill"],
+
+    "@kabmo-labs/kabmo-process-probe": ["@kabmo-labs/kabmo-process-probe@workspace:packages/kabmo-process-probe"],
 
     "@kabmo-labs/kabmo-rpc-lines": ["@kabmo-labs/kabmo-rpc-lines@workspace:packages/kabmo-rpc-lines"],
 

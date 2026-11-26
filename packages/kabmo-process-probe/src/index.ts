@@ -15,11 +15,11 @@
  * fallback stays for the platforms that have no other option.
  */
 
-import type { ProcessProbe } from '@/server/lib/lifecycle/proc/types';
-import { darwinProbe } from '@/server/lib/lifecycle/proc/darwin';
-import { linuxProbe } from '@/server/lib/lifecycle/proc/linux';
-import { psProbe } from '@/server/lib/lifecycle/proc/ps';
-import { win32Probe } from '@/server/lib/lifecycle/proc/win32';
+import type { ProcessProbe } from './types';
+import { darwinProbe } from './darwin';
+import { linuxProbe } from './linux';
+import { psProbe } from './ps';
+import { win32Probe } from './win32';
 
 function selectProbe(): ProcessProbe {
   switch (process.platform) {

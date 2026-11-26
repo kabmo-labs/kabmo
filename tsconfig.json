@@ -142,6 +142,15 @@
       "@kabmo-labs/kabmo-process-kill": [
         "./packages/kabmo-process-kill/src/kill-tree.ts"
       ],
+      "@kabmo-labs/kabmo-process-probe": [
+        "./packages/kabmo-process-probe/src/identity.ts"
+      ],
+      "@kabmo-labs/kabmo-process-probe/identity": [
+        "./packages/kabmo-process-probe/src/identity.ts"
+      ],
+      "@kabmo-labs/kabmo-process-probe/proc": [
+        "./packages/kabmo-process-probe/src/index.ts"
+      ],
       "@kabmo-labs/kabmo-rpc-lines": [
         "./packages/kabmo-rpc-lines/src/lines.ts"
       ],

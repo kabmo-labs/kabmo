@@ -44,12 +44,12 @@
 
 import fs from 'fs';
 import path from 'path';
-import { isProcessAlive } from '@/server/lib/lifecycle/identity';
+import { isProcessAlive } from '@kabmo-labs/kabmo-process-probe/identity';
 import { getConfigRoot } from '@kabmo-labs/kabmo-omp-paths';
 import { listInstanceRecords, type InstanceRecord } from '@/server/lib/lifecycle/instance';
 import { leaseHeldByAnother } from '@/server/lib/omp/session/lease-probe.server';
 import { fileHolderPid } from '@/server/lib/omp/session/lease-holder.server';
-import { processParentPid } from '@/server/lib/lifecycle/identity';
+import { processParentPid } from '@kabmo-labs/kabmo-process-probe/identity';
 
 /** Who is holding a session's omp ownership lease. */
 export interface SessionOwnership {

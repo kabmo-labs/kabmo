@@ -28,7 +28,7 @@
 import { dlopen, FFIType, ptr } from 'bun:ffi';
 import type { FFIFunction, Library } from 'bun:ffi';
 
-import type { ProcessLiveness, ProcessProbe } from '@/server/lib/lifecycle/proc/types';
+import type { ProcessLiveness, ProcessProbe } from './types';
 
 /** `sysctl` MIB pieces. */
 const CTL_KERN = 1;

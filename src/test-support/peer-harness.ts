@@ -24,7 +24,7 @@ import { join } from 'node:path';
 import type { RealtimeConnection } from '@/server/lib/realtime/hub.server';
 import { sessionLeasePath } from '@/server/lib/omp/session/ownership.server';
 import { leaseHeldByAnother } from '@/server/lib/omp/session/lease-probe.server';
-import { isProcessAlive, processParentPid } from '@/server/lib/lifecycle/identity';
+import { isProcessAlive, processParentPid } from '@kabmo-labs/kabmo-process-probe/identity';
 import type { RealtimeServerFrame } from '@/shared/lib/realtime/protocol';
 
 /** Spin the event loop until `condition` holds, up to `timeoutMs`. */

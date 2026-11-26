@@ -25,11 +25,11 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { processProbe } from '@/server/lib/lifecycle/proc';
-import { darwinProbe } from '@/server/lib/lifecycle/proc/darwin';
-import { linuxProbe } from '@/server/lib/lifecycle/proc/linux';
-import { psProbe } from '@/server/lib/lifecycle/proc/ps';
-import { win32Probe } from '@/server/lib/lifecycle/proc/win32';
+import { processProbe } from './index';
+import { darwinProbe } from './darwin';
+import { linuxProbe } from './linux';
+import { psProbe } from './ps';
+import { win32Probe } from './win32';
 import { testPosix } from '@/test-support/platform';
 
 /** Beyond every OS pid ceiling (macOS 99999, Linux pid_max <= 2^22). */

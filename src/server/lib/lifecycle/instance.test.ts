@@ -24,7 +24,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 
-import { getProcessState, isProcessAlive } from '@/server/lib/lifecycle/identity';
+import { getProcessState, isProcessAlive } from '@kabmo-labs/kabmo-process-probe/identity';
 import { getInstancePath, getRunDir } from '@kabmo-labs/kabmo-paths/paths';
 import {
   listInstanceRecords,

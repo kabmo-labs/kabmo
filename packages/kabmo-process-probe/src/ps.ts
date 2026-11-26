@@ -17,7 +17,7 @@
 
 import { spawnSync } from 'bun';
 
-import type { ProcessProbe } from '@/server/lib/lifecycle/proc/types';
+import type { ProcessProbe } from './types';
 
 interface ProcessRow {
   pid: number;

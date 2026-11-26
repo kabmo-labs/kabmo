@@ -202,6 +202,7 @@ describe('package catalog', () => {
       'kabmo-omp-extensions',
       'kabmo-harness-launch',
       'kabmo-paths',
+      'kabmo-process-probe',
       'kabmo-guards',
       'kabmo-bytes',
       'kabmo-platform',

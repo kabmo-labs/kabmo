@@ -18,7 +18,7 @@
  */
 
 import { getDb } from '@/server/db.server';
-import { getProcessState, isProcessAlive, type ProcessState } from '@/server/lib/lifecycle/identity';
+import { getProcessState, isProcessAlive, type ProcessState } from '@kabmo-labs/kabmo-process-probe/identity';
 
 /**
  * Whether a `stream` row has no live run behind it and must heal to `finish`.

@@ -40,7 +40,7 @@
  * shell to save a slot is worse than letting one extra through.
  */
 
-import { processProbe } from '@/server/lib/lifecycle/proc';
+import { processProbe } from '@kabmo-labs/kabmo-process-probe/proc';
 import { childEnv } from '@kabmo-labs/kabmo-fs-child-env';
 
 const PS_TIMEOUT_MS = 1500;

@@ -133,6 +133,7 @@
     "@kabmo-labs/kabmo-paths": "workspace:*",
     "@kabmo-labs/kabmo-platform": "workspace:*",
     "@kabmo-labs/kabmo-process-kill": "workspace:*",
+    "@kabmo-labs/kabmo-process-probe": "workspace:*",
     "@kabmo-labs/kabmo-rpc-lines": "workspace:*",
     "@kabmo-labs/kabmo-sdk": "workspace:*",
     "@kabmo-labs/kabmo-ui": "workspace:*",

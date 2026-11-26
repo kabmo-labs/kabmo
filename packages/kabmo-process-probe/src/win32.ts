@@ -24,7 +24,7 @@
  * `ps` snapshot that silently comes back empty.
  */
 
-import type { ProcessProbe } from '@/server/lib/lifecycle/proc/types';
+import type { ProcessProbe } from './types';
 
 function signalAlive(pid: number): boolean {
   try {

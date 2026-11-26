@@ -13,7 +13,7 @@ import fs from 'node:fs';
 import { ensureDataDirs, getLogFilePath } from '@/cli/lib/paths.js';
 import { uiPasswordHandover } from '@/cli/lib/ui-password.js';
 import { PASSWORD_HANDOVER_ENV, PASSWORD_HANDOVER_STDIN } from '@/shared/lib/auth/handover';
-import { getProcessState, isProcessAlive } from '@/server/lib/lifecycle/identity';
+import { getProcessState, isProcessAlive } from '@kabmo-labs/kabmo-process-probe/identity';
 import { launchModeArg } from '@/server/lib/lifecycle/launch-mode';
 import { TLS_FLAG } from '@/server/lib/lifecycle/tls';
 import { TRAY_FLAG } from '@/server/lib/lifecycle/argv-flags';

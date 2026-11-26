@@ -16,7 +16,7 @@
 
 import fs from 'fs';
 
-import type { ProcessProbe } from '@/server/lib/lifecycle/proc/types';
+import type { ProcessProbe } from './types';
 
 /** Field 3 of `/proc/<pid>/stat`, 1-indexed, once the comm field is stripped. */
 const STATE_FIELD = 0;

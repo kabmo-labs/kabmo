@@ -7,7 +7,7 @@
 // should land here rather than in the middle of the discovery helpers.
 
 import { killChildTree, STOP_TIMEOUT_MS } from '@/cli/lib/process-lifecycle.js';
-import { getProcessState, isProcessAlive } from '@/server/lib/lifecycle/identity';
+import { getProcessState, isProcessAlive } from '@kabmo-labs/kabmo-process-probe/identity';
 import { removeInstanceRecord } from '@/server/lib/lifecycle/instance';
 import { findOccupant } from '@/server/lib/lifecycle/occupant';
 
