@@ -925,6 +925,15 @@
       "@kabmo-labs/kabmo-session-stream-state": [
         "./packages/kabmo-session-stream-state/src/stream-state.ts"
       ],
+      "@kabmo-labs/kabmo-omp-rpc-protocol": [
+        "./packages/kabmo-omp-rpc-protocol/src/constants.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-rpc-protocol/constants": [
+        "./packages/kabmo-omp-rpc-protocol/src/constants.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-rpc-protocol/dialog-methods": [
+        "./packages/kabmo-omp-rpc-protocol/src/dialog-methods.ts"
+      ],
       "@kabmo-labs/kabmo-ui": [
         "./packages/kabmo-ui/src/index.tsx"
       ],

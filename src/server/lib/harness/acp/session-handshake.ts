@@ -41,7 +41,7 @@ AcpSessionModeState,
 AcpSessionModels,
 AcpSessionNewResult, } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import type { HarnessCapabilities } from '@kabmo-labs/kabmo-harness-launch/capabilities';
-import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
+import type { AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 
 /** The process slice a handshake drives; `AcpProcess` satisfies it as-is. */

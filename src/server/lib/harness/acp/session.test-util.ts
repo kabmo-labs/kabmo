@@ -29,7 +29,7 @@ import { PendingPermissions } from '@kabmo-labs/kabmo-acp-client/permissions';
 import { AcpSubagents } from '@kabmo-labs/kabmo-acp-mapper/subagents';
 import { acpConfigView } from '@kabmo-labs/kabmo-acp-session/session-config-view';
 import { stampMessageModel } from '@kabmo-labs/kabmo-acp-session-config/session-config';
-import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
+import type { AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 
 export interface Turn {
   /** Resolves once `session/prompt` has actually been sent. The dispatch is

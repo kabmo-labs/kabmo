@@ -16,7 +16,7 @@
  */
 
 import type { RpcProcess } from '@/server/lib/omp/rpc/process';
-import { SESSION_BLOCKED_ON_DIALOG_MESSAGE, SESSION_BUSY_MESSAGE, WebRpcError, type AgentEvent } from '@/server/lib/omp/rpc/constants';
+import { SESSION_BLOCKED_ON_DIALOG_MESSAGE, SESSION_BUSY_MESSAGE, WebRpcError, type AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 import { scheduleQueueDelivery } from '@/server/lib/queue/delivery.server';
 import { isTuiOnlySlashCommand, tuiOnlyCommandNotice } from '@/shared/lib/chat/composer/tui-only';
 import type { SessionRunModel } from '@kabmo-labs/kabmo-session-stream-state';

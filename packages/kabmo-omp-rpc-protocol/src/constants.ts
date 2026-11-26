@@ -9,13 +9,7 @@
  * repo's per-file size ceiling.
  */
 
-import { homedir } from 'os';
-import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
-import { kabmoExtensionArgs } from '@kabmo-labs/kabmo-omp-extensions';
-import { ensureTitleModelOverlay, titleModelOverlayPath } from '@/server/lib/omp/session/title-model-overlay.server';
 import type { AgentEvent } from '@kabmo-labs/kabmo-omp-contracts/events';
-import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
-import type { SelectedModel } from '@kabmo-labs/kabmo-model-contracts/models';
 
 export type { AgentEvent };
 
@@ -230,7 +224,7 @@ export const IMAGE_BEARING_COMMANDS = new Set(['prompt', 'steer', 'follow_up', '
 // (`@/shared/lib/omp/dialog-methods`) because the two must agree — a method
 // missing from one side is a dialog one half remembers and the other drops,
 // which is how a grouped `ask` frame went unanswerable on both.
-export { ANSWERABLE_UI_METHODS } from '@/shared/lib/omp/dialog-methods';
+export { ANSWERABLE_UI_METHODS } from './dialog-methods';
 
 export const MAX_ATTACHED_IMAGES = 20;
 export const MAX_ATTACHED_IMAGE_BYTES = 20 * 1024 * 1024;
@@ -266,80 +260,10 @@ export function promptAckTimeoutMs(images: unknown): number {
   return toImageContents(images) ? IMAGE_PROMPT_ACK_TIMEOUT_MS : PROMPT_ACK_TIMEOUT_MS;
 }
 
-/** Pick a spawn cwd that actually exists. A session records the directory it
- * was created in, but that directory may have been deleted since: spawn()
- * would fail with ENOENT and `omp --cwd <missing>` throws in setProjectDir. */
-export async function resolveSpawnCwd(recordedCwd?: string | null): Promise<string> {
-  if (recordedCwd && (await pathExists(recordedCwd))) return recordedCwd;
-  try {
-    const serverCwd = process.cwd();
-    if (serverCwd && (await pathExists(serverCwd))) return serverCwd;
-  } catch {
-    // process.cwd() itself throws when the server's own cwd was removed.
-  }
-  return homedir();
-}
-
-/** Extra CLI args for spawning `omp --mode rpc-ui` for a session.
- *
- *  `-e <extensions/kabmo-modes/index.ts>` is always appended when the file is
- *  present: Kabmo's plan/goal toggles are driven from inside the child
- *  (omp has no RPC verb for either mode), so the extension is not optional
- *  equipment for a session that happens to have a mode on — it is how the
- *  composer's controls reach the agent at all.
- *
- *  `--config <overlay>` points the child at Kabmo's title-model overlay,
- *  which exists (empty) before this runs. It is how a session's own model
- *  reaches omp's title generation: the child watches that path, so
- *  `rename-with-ai` rewrites the `tiny` role for the duration of one request.
- *  See `session/title-model-overlay.server.ts`. */
 /** A spawn-time system prompt and skill filter, for a session born from a stage. */
 export interface SessionPromptArgs {
   /** Appended to omp's own coding-assistant prompt. */
   systemPrompt?: string;
   /** Comma-separated globs that narrow the skill catalog. */
   skills?: readonly string[];
-}
-
-export function buildSessionSpawnArgs(
-  sessionFile: string,
-  approvalMode?: ApprovalMode,
-  resumeModel?: SelectedModel,
-  promptArgs?: SessionPromptArgs,
-): string[] {
-  const args: string[] = [];
-  ensureTitleModelOverlay();
-  args.push('--config', titleModelOverlayPath());
-  if (sessionFile) {
-    // An absolute path resolves deterministically: omp's createSessionManager
-    // opens it directly via SessionManager.open without any interactive
-    // resume/fork prompts.
-    args.push('--resume', sessionFile);
-  }
-  // The model the session is RESTORED with. omp restores the model its
-  // transcript's last `model_change` names, and it does NOT fall back when
-  // that model is no longer in the registry: the child exits(1) with
-  // "Could not restore model <provider>/<id>" and every command to the
-  // session fails with it. `--model` names a model that DOES resolve, so a
-  // session whose recorded model is gone still starts.
-  if (resumeModel?.provider && resumeModel.modelId) {
-    args.push('--model', `${resumeModel.provider}/${resumeModel.modelId}`);
-  }
-  if (approvalMode) {
-    // Spawn-time only: omp exposes no RPC command to change the tool-approval
-    // mode, so the flag is the sole lever. It works with or without --resume.
-    args.push('--approval-mode', approvalMode);
-  }
-  // A stage's system prompt is APPENDED, not substituted: omp's own coding
-  // prompt carries the tool contract, and replacing it is how an agent stops
-  // using its tools correctly. Measured on omp 19.1.0: both flags are accepted
-  // in `--mode rpc-ui` and the child reaches `ready`.
-  if (promptArgs?.systemPrompt) {
-    args.push('--append-system-prompt', promptArgs.systemPrompt);
-  }
-  if (promptArgs?.skills && promptArgs.skills.length > 0) {
-    args.push(`--skills=${promptArgs.skills.join(',')}`);
-  }
-  args.push(...kabmoExtensionArgs());
-  return args;
 }

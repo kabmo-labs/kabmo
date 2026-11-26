@@ -27,7 +27,7 @@ import { tmpdir } from 'os';
 import { rpcErrorResponse } from '@/server/lib/omp/rpc/errors';
 import { EventFanout } from '@/server/lib/omp/rpc/event-fanout';
 import { PendingUiDialogs } from '@/server/lib/omp/rpc/pending-ui-dialogs';
-import { WebRpcError, type AgentEvent } from '@/server/lib/omp/rpc/constants';
+import { WebRpcError, type AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 import { RpcCommandError,
 RpcCommandTimeoutError,
 STDERR_TAIL_LIMIT, } from '@kabmo-labs/kabmo-omp-rpc-util/process-helpers';

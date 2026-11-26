@@ -87,7 +87,7 @@
 
 import { readSettingsJson } from '@kabmo-labs/kabmo-settings-store';
 import { getDb } from '@/server/db.server';
-import { GET_STATE_TIMEOUT_MS, type RpcSessionState } from '@/server/lib/omp/rpc/constants';
+import { GET_STATE_TIMEOUT_MS, type RpcSessionState } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 import {
   GENERATE_TITLE_COMMAND,
   sendTitleRequest,

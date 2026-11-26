@@ -36,7 +36,7 @@ import { loadHarnessConfig } from '@kabmo-labs/kabmo-harness-config-store/config
 import { resolveAccountLaunch } from '@/server/lib/harness/accounts.server';
 import { sessionLaunchCommand } from '@kabmo-labs/kabmo-harness-launch/launch';
 import { AcpProcess } from '@kabmo-labs/kabmo-acp-client/client';
-import { IDLE_REAP_MS } from '@/server/lib/omp/rpc/constants';
+import { IDLE_REAP_MS } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 import { withGatewayCompatibility } from '@kabmo-labs/kabmo-acp-client/gateway-env';
 import { noteHarnessLease, removeHarnessLease } from '@kabmo-labs/kabmo-harness-lease/session-lease.server';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';

@@ -26,7 +26,7 @@ import { join } from 'path';
 import { invalidateOmpCliCache, resolveOmpBin } from '@kabmo-labs/kabmo-omp-cli';
 import { resolveProjectRoot } from '@kabmo-labs/kabmo-omp-worktree';
 import { buildWebState, type WebStateHost } from '@/server/lib/omp/rpc/web-state';
-import type { RpcSessionState } from '@/server/lib/omp/rpc/constants';
+import type { RpcSessionState } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 
 const tempDirs: string[] = [];
 const realEnv = {

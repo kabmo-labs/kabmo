@@ -23,7 +23,7 @@ import { toChatMessage } from '@kabmo-labs/kabmo-omp-messages-map';
 import { normalizeMessageTools } from '@kabmo-labs/kabmo-chat-tool/normalize';
 import type { OmpMessageEntry } from '@kabmo-labs/kabmo-omp-session-parse/messages-parse';
 import type { ChatMessageData } from '@kabmo-labs/kabmo-chat-contracts/chat';
-import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
+import type { AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 
 const MESSAGE_EVENT_TYPES: Record<string, true> = {
   message_start: true,

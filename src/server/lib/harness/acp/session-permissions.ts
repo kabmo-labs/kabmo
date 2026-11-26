@@ -14,7 +14,7 @@
  * failure this module exists to make impossible.
  */
 
-import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
+import type { AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 import type { AcpId } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import type { PendingPermissions } from '@kabmo-labs/kabmo-acp-client/permissions';
 import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';

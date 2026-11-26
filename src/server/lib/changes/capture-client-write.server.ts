@@ -13,7 +13,7 @@
  * change at all.
  */
 
-import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
+import type { AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 import type { PendingCall } from '@/server/lib/changes/capture-types';
 
 /** The pending call a client-side write journals as. */

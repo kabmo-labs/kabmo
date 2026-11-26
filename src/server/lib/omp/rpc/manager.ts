@@ -28,15 +28,16 @@ import { reloadChildPlugins } from '@/server/lib/omp/rpc/reload-plugins';
 import { noteRefusedPrompt } from '@/server/lib/omp/rpc/terminal-settle';
 import { noteAwaitingInput } from '@/server/lib/notifications/feed.server';
 import { clearStreamStatus, type SessionRunModel } from '@kabmo-labs/kabmo-session-stream-state';
-import { GET_STATE_TIMEOUT_MS, IDLE_REAP_MS, READY_TIMEOUT_MS, SUBAGENT_STALE_MS, type AgentEvent, type EventListener, type RpcSessionState } from '@/server/lib/omp/rpc/constants';
+import { GET_STATE_TIMEOUT_MS, IDLE_REAP_MS, READY_TIMEOUT_MS, SUBAGENT_STALE_MS, type AgentEvent, type EventListener, type RpcSessionState } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 
 export type {
   AgentEvent,
   EventListener,
   RpcSessionState,
   WebSessionState,
-} from '@/server/lib/omp/rpc/constants';
-export { WebRpcError, resolveSpawnCwd } from '@/server/lib/omp/rpc/constants';
+} from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
+export { WebRpcError } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
+export { resolveSpawnCwd } from '@/server/lib/omp/rpc/spawn-args';
 
 /** Overrides for the wrapper's own timers; tests shrink the idle window. */
 export interface AgentSessionWrapperOptions {

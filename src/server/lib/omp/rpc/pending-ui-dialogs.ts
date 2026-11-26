@@ -18,7 +18,7 @@
  * per-file size ceiling.
  */
 
-import { ANSWERABLE_UI_METHODS } from '@/server/lib/omp/rpc/constants';
+import { ANSWERABLE_UI_METHODS } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 import type { RpcFrame } from '@/server/lib/omp/rpc/process';
 
 export class PendingUiDialogs {

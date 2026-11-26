@@ -47,7 +47,7 @@ import {
   parseOrchestrationBlock,
   type ChildOutcomeEntry,
 } from '@/shared/lib/chat/orchestration/notice';
-import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
+import type { AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 
 const PARENT = 'parent-1';
 const CHILD = 'child-1';

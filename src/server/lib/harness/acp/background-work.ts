@@ -33,7 +33,7 @@
 import { stampMessageModel } from '@kabmo-labs/kabmo-acp-session-config/session-config';
 import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 import { extractTextFromContent } from '@kabmo-labs/kabmo-omp-mapper';
-import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
+import type { AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 
 /** Tool names that hand work to a process the turn does not await.
  *

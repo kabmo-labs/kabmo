@@ -48,7 +48,7 @@ import { driveGoalAfterTurn, lastAssistantText } from '@/server/lib/omp/session/
 import { noteChildOutcome } from '@/server/lib/sessions/notify.server';
 import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 import { publishSidebarStructure } from '@/server/lib/realtime/topics.server';
-import { AGENT_BUSY_REFUSAL_RE } from '@/server/lib/omp/rpc/constants';
+import { AGENT_BUSY_REFUSAL_RE } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 import { deriveTurnError, turnStoppedAbnormally } from '@kabmo-labs/kabmo-omp-session-parse/turn-error';
 import type { ChildOutcomeNotice } from '@/server/lib/sessions/notify.server';
 

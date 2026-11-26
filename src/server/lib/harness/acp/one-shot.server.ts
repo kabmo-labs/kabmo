@@ -27,7 +27,7 @@ import { sessionLaunchCommand } from '@kabmo-labs/kabmo-harness-launch/launch';
 import { extractTextFromContent } from '@kabmo-labs/kabmo-omp-mapper';
 import type { AcpSessionOptions } from '@kabmo-labs/kabmo-acp-session/session-options';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
-import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
+import type { AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 
 export interface AcpOneShotRequest {
   harness: HarnessId;

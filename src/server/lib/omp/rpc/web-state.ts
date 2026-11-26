@@ -14,7 +14,7 @@
  * rpc-manager.ts stays under the repo's per-file size ceiling.
  */
 
-import type { RpcSessionState, WebSessionState } from '@/server/lib/omp/rpc/constants';
+import type { RpcSessionState, WebSessionState } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 
 /** Wrapper state the reconciliation reads and writes. */
 export interface WebStateHost {

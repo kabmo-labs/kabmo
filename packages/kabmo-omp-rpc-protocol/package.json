@@ -1,0 +1,20 @@
+{
+  "name": "@kabmo-labs/kabmo-omp-rpc-protocol",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "The omp RPC command vocabulary: timeouts, refusal messages, command sets, image limits, and the dialog methods both halves must agree on.",
+  "exports": {
+    ".": "./src/constants.ts",
+    "./constants": "./src/constants.ts",
+    "./dialog-methods": "./src/dialog-methods.ts"
+  },
+  "files": ["src"],
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/kabmo-labs/kabmo.git", "directory": "packages/kabmo-omp-rpc-protocol" },
+  "publishConfig": { "access": "public" },
+  "engines": { "bun": ">=1.4.0" },
+  "dependencies": {
+    "@kabmo-labs/kabmo-chat-contracts": "workspace:*",
+    "@kabmo-labs/kabmo-omp-contracts": "workspace:*"
+  }
+}

@@ -14,7 +14,7 @@
 
 import { describe, expect, test } from 'bun:test';
 import { EventFanout } from '@/server/lib/omp/rpc/event-fanout';
-import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
+import type { AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 
 describe('EventFanout raw listeners', () => {
   test('a raw listener sees the shell trace before the strip', () => {

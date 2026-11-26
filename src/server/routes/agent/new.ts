@@ -2,7 +2,7 @@ import { json } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { getDb } from '@/server/db.server';
 import { startNewRpcSession } from '@/server/lib/omp/rpc/manager';
-import type { SessionPromptArgs } from '@/server/lib/omp/rpc/constants';
+import type { SessionPromptArgs } from '@/server/lib/omp/rpc/spawn-args';
 import { isApprovalMode, type ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 import { loadPersistedAccessMode } from '@/shared/lib/omp/config/access-mode.server';
 import { rpcErrorResponse } from '@/server/lib/omp/rpc/errors';

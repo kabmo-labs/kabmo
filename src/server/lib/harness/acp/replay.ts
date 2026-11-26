@@ -23,7 +23,7 @@
  */
 
 import { AcpFrameMapper } from '@kabmo-labs/kabmo-acp-mapper/frames';
-import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
+import type { AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 
 /** How long to wait for a marker when the adapter sends none. Large replays
  *  stream for seconds; this bounds a peer that never marks the end at all. */

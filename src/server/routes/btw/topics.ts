@@ -13,7 +13,7 @@
  */
 
 import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
-import { toImageContents, validateAgentImages } from '@/server/lib/omp/rpc/constants';
+import { toImageContents, validateAgentImages } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 import type { AttachedTextFileData } from '@/shared/lib/chat/attachments';
 import { BtwError, type BtwImages } from '@/server/lib/btw/runtime.server';
 import { abortBtw, askBtw, getBtwState, promoteBtw, removeBtw } from '@/server/lib/btw/service.server';

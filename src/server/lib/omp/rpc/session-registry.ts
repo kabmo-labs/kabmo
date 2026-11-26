@@ -12,7 +12,7 @@
  */
 
 import { RpcProcess } from '@/server/lib/omp/rpc/process';
-import { buildSessionSpawnArgs, type SessionPromptArgs } from '@/server/lib/omp/rpc/constants';
+import { buildSessionSpawnArgs, type SessionPromptArgs } from '@/server/lib/omp/rpc/spawn-args';
 import { AgentSessionWrapper } from '@/server/lib/omp/rpc/manager';
 import { syncDiscoveryRootsWatch } from '@/server/lib/omp/config/roots-watch.server';
 import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';

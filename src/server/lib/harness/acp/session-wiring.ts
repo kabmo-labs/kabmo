@@ -29,7 +29,7 @@ import { promptBlocks } from '@kabmo-labs/kabmo-acp-prompt/prompt';
 import { promptFileLinks } from '@kabmo-labs/kabmo-acp-prompt/prompt-files';
 import { AcpTurns, type AcpTurnEndInfo } from '@kabmo-labs/kabmo-acp-turn/turn';
 import { stampMessageModel } from '@kabmo-labs/kabmo-acp-session-config/session-config';
-import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
+import type { AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 import type { IdleReaper } from '@kabmo-labs/kabmo-idle-reaper';
 
 /** Everything the two seams read off the session. The counts are the background

@@ -18,7 +18,7 @@ import { normalizePermissionParams } from '@kabmo-labs/kabmo-acp-protocol/v2';
 import type { AcpId, AcpProtocolVersion } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import type { PendingPermissions } from '@kabmo-labs/kabmo-acp-client/permissions';
 import type { AcpSubagents } from '@kabmo-labs/kabmo-acp-mapper/subagents';
-import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
+import type { AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 
 export interface AcpClientRequestHost {

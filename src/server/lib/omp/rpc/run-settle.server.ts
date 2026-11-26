@@ -48,7 +48,7 @@
 import type { RpcProcess } from '@/server/lib/omp/rpc/process';
 import { noteRunEndedWithoutFrame } from '@/server/lib/omp/rpc/terminal-settle';
 import { buildWebState, type WebStateHost } from '@/server/lib/omp/rpc/web-state';
-import { GET_STATE_TIMEOUT_MS, SUBAGENT_STALE_MS, type AgentEvent, type RpcSessionState } from '@/server/lib/omp/rpc/constants';
+import { GET_STATE_TIMEOUT_MS, SUBAGENT_STALE_MS, type AgentEvent, type RpcSessionState } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 import { markStreamStatus } from '@kabmo-labs/kabmo-session-stream-state';
 
 /**

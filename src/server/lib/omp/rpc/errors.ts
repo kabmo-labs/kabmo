@@ -10,7 +10,7 @@
  */
 
 import { json } from '@/server/lib/remix-compat';
-import { WebRpcError } from '@/server/lib/omp/rpc/constants';
+import { WebRpcError } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 import { RpcCommandError, RpcCommandTimeoutError } from '@/server/lib/omp/rpc/process';
 import { SessionOwnedElsewhereError } from '@/server/lib/omp/session/ownership.server';
 

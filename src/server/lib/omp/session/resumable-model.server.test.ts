@@ -27,7 +27,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import { isUnrestorableModelFailure } from '@/server/lib/omp/session/resumable-model.server';
-import { buildSessionSpawnArgs } from '@/server/lib/omp/rpc/constants';
+import { buildSessionSpawnArgs } from '@/server/lib/omp/rpc/spawn-args';
 
 describe('the unrestorable-model failure', () => {
   // omp's own wording, as it appears in the child's stderr tail.

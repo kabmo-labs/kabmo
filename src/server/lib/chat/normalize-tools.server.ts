@@ -24,7 +24,7 @@
  * untouched, so a re-published or peer-relayed frame costs nothing.
  */
 
-import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
+import type { AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 import type { ToolRender } from '@kabmo-labs/kabmo-chat-contracts/tool-render';
 import { isToolRenderKey, resolveToolRender } from '@kabmo-labs/kabmo-chat-tool/render-key';
 import { isRecord } from '@kabmo-labs/kabmo-guards';

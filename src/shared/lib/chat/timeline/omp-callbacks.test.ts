@@ -304,7 +304,7 @@ describe('createOmpAgentCallbacks optimistic user reconciliation', () => {
 /**
  * Every method omp PARKS on must reach the client's dialog queue.
  *
- * The list is shared with the server (`@/shared/lib/omp/dialog-methods`) and
+ * The list is shared with the server (`@kabmo-labs/kabmo-omp-rpc-protocol/dialog-methods`) and
  * the grouped `ask` frame — the shape `configureChild` opts into with
  * `set_ask_dialog` — was missing from this gate's local copy. The frame was
  * dropped silently, so the ask card had no dialog to render and drew every

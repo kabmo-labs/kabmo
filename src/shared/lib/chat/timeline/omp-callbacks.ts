@@ -27,7 +27,7 @@ import { appendNoticeRow } from '@/shared/lib/chat/timeline/command-output';
 import { reportPromptError } from '@/shared/lib/chat/timeline/prompt-error';
 import { retryNotice } from '@/shared/lib/chat/timeline/provider-retry';
 import { handleAgentStart, handleResumeStream, handleTurnStart } from '@/shared/lib/chat/timeline/run-signals';
-import { isAnswerableUiRequest } from '@/shared/lib/omp/dialog-methods';
+import { isAnswerableUiRequest } from '@kabmo-labs/kabmo-omp-rpc-protocol/dialog-methods';
 
 export interface OmpAgentCallbacksDeps {
   setGenerating: (v: boolean) => void;

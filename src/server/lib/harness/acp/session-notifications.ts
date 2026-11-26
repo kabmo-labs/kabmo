@@ -16,7 +16,7 @@
  * child and the session file stays under the size ceiling.
  */
 
-import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
+import type { AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 import type { HarnessCapabilities } from '@kabmo-labs/kabmo-harness-launch/capabilities';
 import { noteAgentTitle } from '@/server/lib/harness/session-title.server';
 import { ACP_CONFIG_EFFECTS } from '@/server/lib/harness/acp/config-effects';

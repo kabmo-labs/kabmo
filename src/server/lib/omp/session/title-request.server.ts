@@ -39,7 +39,7 @@
  * generation.
  */
 
-import { PROMPT_ACK_TIMEOUT_MS } from '@/server/lib/omp/rpc/constants';
+import { PROMPT_ACK_TIMEOUT_MS } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 
 /** omp's builtin that generates a title from the conversation. Sent with no
  *  args so omp derives it through its own `renameTitle`. */

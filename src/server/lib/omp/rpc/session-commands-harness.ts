@@ -11,7 +11,7 @@
 
 import type { SessionCommandHost } from '@/server/lib/omp/rpc/session-commands';
 import type { RpcProcess } from '@/server/lib/omp/rpc/process';
-import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
+import type { AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 
 export interface CommandHarness {
   host: SessionCommandHost;

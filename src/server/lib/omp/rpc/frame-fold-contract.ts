@@ -10,7 +10,7 @@
 
 import type { AutoTitleHost } from '@/server/lib/omp/session/auto-title.server';
 import type { QueueDeliveryHost } from '@/server/lib/queue/delivery.server';
-import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
+import type { AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 import type { ModeMirror } from '@/server/lib/omp/rpc/mode-mirror';
 import type { SessionRunModel } from '@kabmo-labs/kabmo-session-stream-state';
 

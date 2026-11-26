@@ -30,7 +30,7 @@
  */
 
 import { RpcProcess, type RpcFrame } from '@/server/lib/omp/rpc/process';
-import { GET_STATE_TIMEOUT_MS, READY_TIMEOUT_MS, type RpcSessionState } from '@/server/lib/omp/rpc/constants';
+import { GET_STATE_TIMEOUT_MS, READY_TIMEOUT_MS, type RpcSessionState } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 import { resolveOmpBin } from '@kabmo-labs/kabmo-omp-cli';
 import { buildBtwSpawnArgs, type BtwSpawnSettings } from '@/server/lib/btw/child.server';
 import {

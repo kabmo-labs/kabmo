@@ -104,6 +104,7 @@
     "@kabmo-labs/kabmo-git-env": "workspace:*",
     "@kabmo-labs/kabmo-harness-accounts": "workspace:*",
     "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
+    "@kabmo-labs/kabmo-omp-rpc-protocol": "workspace:*",
     "@kabmo-labs/kabmo-realtime-signals": "workspace:*",
     "@kabmo-labs/kabmo-session-stream-state": "workspace:*",
     "@kabmo-labs/kabmo-workspace-root": "workspace:*",

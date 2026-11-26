@@ -5,7 +5,7 @@ import { WebRpcError, resolveSpawnCwd, startRpcSession, type AgentSessionWrapper
 import { getSpawnApprovalMode, reconcileSpawnApprovalMode } from '@/server/lib/omp/rpc/session-registry';
 import { isApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 import { loadPersistedAccessMode } from '@/shared/lib/omp/config/access-mode.server';
-import { CONVERSATION_MOVING_COMMANDS, LIVE_RUN_COMMANDS, OBSERVER_ONLY_COMMANDS } from '@/server/lib/omp/rpc/constants';
+import { CONVERSATION_MOVING_COMMANDS, LIVE_RUN_COMMANDS, OBSERVER_ONLY_COMMANDS } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 import { rpcErrorResponse } from '@/server/lib/omp/rpc/errors';
 import { assertBtwIdle } from '@/server/lib/btw/service.server';
 import { loadPersistedModes } from '@/server/lib/omp/session/modes';

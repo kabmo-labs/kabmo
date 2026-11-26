@@ -24,7 +24,7 @@
  * each open tab. See `shared/lib/omp/session/shell-trace.ts`.
  */
 
-import type { AgentEvent, EventListener } from '@/server/lib/omp/rpc/constants';
+import type { AgentEvent, EventListener } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 import { stripShellTrace } from '@kabmo-labs/kabmo-omp-session-parse/shell-trace';
 
 export class EventFanout {

@@ -57,7 +57,7 @@ import type { AcpMcpServer } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import type { HarnessCapabilities } from '@kabmo-labs/kabmo-harness-launch/capabilities';
 import type { HarnessSession } from '@kabmo-labs/kabmo-harness-contract';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
-import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
+import type { AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 import type { IdleReaper } from '@kabmo-labs/kabmo-idle-reaper';
 
 /** The process verbs the config view calls, bound to the CURRENT session id. */

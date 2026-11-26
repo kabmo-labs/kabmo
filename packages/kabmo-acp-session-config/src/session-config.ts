@@ -34,7 +34,7 @@ import { isDurableGrantKey, permissionGrantKey } from '@kabmo-labs/kabmo-acp-cli
 import type { AcpConfigOption, AcpSessionModeState, AcpSessionModels } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import type { PendingPermissions } from '@kabmo-labs/kabmo-acp-client/permissions';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
-import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
+import type { AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 
 /** The fields a config answer rewrites. */
 export interface AcpConfigTarget {

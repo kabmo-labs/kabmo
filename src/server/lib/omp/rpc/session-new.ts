@@ -17,7 +17,7 @@
 import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 import { DEFAULT_APPROVAL_MODE } from '@kabmo-labs/kabmo-omp-access-mode';
 import type { AgentSessionWrapper } from '@/server/lib/omp/rpc/manager';
-import type { SessionPromptArgs } from '@/server/lib/omp/rpc/constants';
+import type { SessionPromptArgs } from '@/server/lib/omp/rpc/spawn-args';
 import { claimPrewarmedSession } from '@/server/lib/omp/rpc/prewarm-pool';
 import { ompSessionRegistry, startRpcSession } from '@/server/lib/omp/rpc/session-registry';
 import { registerSpawnedSession } from '@/server/lib/omp/rpc/session-registration';

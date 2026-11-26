@@ -13,7 +13,7 @@
  */
 
 import type { RpcProcess } from '@/server/lib/omp/rpc/process';
-import { GET_STATE_TIMEOUT_MS, type RpcSessionState } from '@/server/lib/omp/rpc/constants';
+import { GET_STATE_TIMEOUT_MS, type RpcSessionState } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 import { markStreamModel, type SessionRunModel } from '@kabmo-labs/kabmo-session-stream-state';
 
 /** Wrapper fields this probe reads and rewrites. */

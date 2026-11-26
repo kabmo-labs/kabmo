@@ -45,7 +45,7 @@ import { ensureCustomHarnesses } from '@kabmo-labs/kabmo-harness-config-store/cu
 import type { HarnessConfig } from '@kabmo-labs/kabmo-harness-config';
 import type { AcpProcess } from '@kabmo-labs/kabmo-acp-client/client';
 import type { HarnessSession } from '@kabmo-labs/kabmo-harness-contract';
-import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
+import type { AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 import type { SelectedModel } from '@kabmo-labs/kabmo-model-contracts/models';
 import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 

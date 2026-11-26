@@ -15,7 +15,7 @@
  */
 
 import type { RpcProcess, RpcFrame } from '@/server/lib/omp/rpc/process';
-import { GET_STATE_TIMEOUT_MS, IDLE_REAP_MS, promptAckTimeoutMs } from '@/server/lib/omp/rpc/constants';
+import { GET_STATE_TIMEOUT_MS, IDLE_REAP_MS, promptAckTimeoutMs } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 import { buildBtwPrompt } from '@/server/lib/btw/prompt';
 import { boundSideReply } from '@/server/lib/btw/reply';
 import { appendBtwTurn, settleRunningBtwTurns, updateBtwTurn } from '@/server/lib/btw/store.server';

@@ -30,7 +30,7 @@
  * `liveModeSelection`.
  */
 
-import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
+import type { AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 import { type GoalContinuation,
 type GoalRecord, } from '@kabmo-labs/kabmo-omp-mode/types';
 import { isModeMarker } from '@kabmo-labs/kabmo-omp-mode/constants';

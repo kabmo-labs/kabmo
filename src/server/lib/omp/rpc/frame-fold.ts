@@ -28,7 +28,7 @@ import { clearStreamStatus, markStreamStatus } from '@kabmo-labs/kabmo-session-s
 import { releasesStreamRowOnPromptResult } from '@/shared/lib/omp/session/stream-heal.server';
 import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 import { publishSidebarStructure } from '@/server/lib/realtime/topics.server';
-import { NON_TERMINAL_CONTINUATION_GRACE_MS, type AgentEvent } from '@/server/lib/omp/rpc/constants';
+import { NON_TERMINAL_CONTINUATION_GRACE_MS, type AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 import { assistantFailure, settleTerminalRun } from '@/server/lib/omp/rpc/terminal-settle';
 import { noteRetryFrame } from '@kabmo-labs/kabmo-omp-rpc-util/retry-saga';
 import { parseModeMarker } from '@kabmo-labs/kabmo-omp-mode/markers';

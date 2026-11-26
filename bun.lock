@@ -80,6 +80,7 @@
         "@kabmo-labs/kabmo-omp-paths": "workspace:*",
         "@kabmo-labs/kabmo-omp-proc": "workspace:*",
         "@kabmo-labs/kabmo-omp-registry": "workspace:*",
+        "@kabmo-labs/kabmo-omp-rpc-protocol": "workspace:*",
         "@kabmo-labs/kabmo-omp-rpc-util": "workspace:*",
         "@kabmo-labs/kabmo-omp-schema": "workspace:*",
         "@kabmo-labs/kabmo-omp-session-core": "workspace:*",
@@ -642,6 +643,14 @@
         "@kabmo-labs/kabmo-omp-paths": "workspace:*",
       },
     },
+    "packages/kabmo-omp-rpc-protocol": {
+      "name": "@kabmo-labs/kabmo-omp-rpc-protocol",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kabmo-labs/kabmo-chat-contracts": "workspace:*",
+        "@kabmo-labs/kabmo-omp-contracts": "workspace:*",
+      },
+    },
     "packages/kabmo-omp-rpc-util": {
       "name": "@kabmo-labs/kabmo-omp-rpc-util",
       "version": "0.0.1",
@@ -1029,6 +1038,8 @@
     "@kabmo-labs/kabmo-omp-proc": ["@kabmo-labs/kabmo-omp-proc@workspace:packages/kabmo-omp-proc"],
 
     "@kabmo-labs/kabmo-omp-registry": ["@kabmo-labs/kabmo-omp-registry@workspace:packages/kabmo-omp-registry"],
+
+    "@kabmo-labs/kabmo-omp-rpc-protocol": ["@kabmo-labs/kabmo-omp-rpc-protocol@workspace:packages/kabmo-omp-rpc-protocol"],
 
     "@kabmo-labs/kabmo-omp-rpc-util": ["@kabmo-labs/kabmo-omp-rpc-util@workspace:packages/kabmo-omp-rpc-util"],
 

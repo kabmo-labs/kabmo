@@ -24,7 +24,7 @@
 
 import { subagentCardStatus, type AcpSubagentRecord, type AcpSubagents, type SubagentCardStatus } from '@kabmo-labs/kabmo-acp-mapper/subagents';
 import { subagentFrames } from '@kabmo-labs/kabmo-acp-mapper/subagent-frames';
-import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
+import type { AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 
 /** How many setup-time frames may be held. A burst larger than this is a
  *  misbehaving adapter, and the notice says the tail was dropped. */

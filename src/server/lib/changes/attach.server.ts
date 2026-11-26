@@ -18,7 +18,7 @@
  */
 
 import os from 'node:os';
-import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
+import type { AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 import { ChangeJournal } from '@/server/lib/changes/journal.server';
 import { ChangeCapture } from '@/server/lib/changes/capture.server';
 

@@ -35,7 +35,7 @@ import {
 import { toolResultText } from '@kabmo-labs/kabmo-omp-mapper';
 import { extractToolImages } from '@kabmo-labs/kabmo-omp-session-parse/tool-images';
 import type { ChatMessageData } from '@kabmo-labs/kabmo-chat-contracts/chat';
-import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
+import type { AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 
 /** One write per burst. A turn emits a frame per chunk; the row is the unit. */
 const FLUSH_DEBOUNCE_MS = 250;
