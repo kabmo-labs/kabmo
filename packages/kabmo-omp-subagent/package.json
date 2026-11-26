@@ -7,13 +7,16 @@
     ".": "./src/parse.ts",
     "./control": "./src/control.ts",
     "./history-client": "./src/history-client.ts",
+    "./history-fold": "./src/history-fold.ts",
+    "./history-index": "./src/history-index.ts",
+    "./history-paths": "./src/history-paths.ts",
     "./history-settlement": "./src/history-settlement.ts",
     "./history-status": "./src/history-status.ts",
+    "./history-transcript": "./src/history-transcript.ts",
     "./label": "./src/label.ts",
     "./parse": "./src/parse.ts",
     "./result-details": "./src/result-details.ts",
-    "./transcript-client": "./src/transcript-client.ts",
-    "./history-paths": "./src/history-paths.ts"
+    "./transcript-client": "./src/transcript-client.ts"
   },
   "files": [
     "src"

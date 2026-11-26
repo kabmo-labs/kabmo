@@ -7,7 +7,7 @@ import { afterAll, describe, expect, test } from 'bun:test';
 import fs from 'fs';
 import { join } from 'path';
 
-import { readSubagentTranscriptPage } from '@/server/lib/omp/subagent/history/transcript';
+import { readSubagentTranscriptPage } from './history-transcript';
 
 const tempDirs: string[] = [];
 

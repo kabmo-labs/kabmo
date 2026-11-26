@@ -1135,6 +1135,15 @@
       "@kabmo-labs/kabmo-harness-session/session-delete.server": [
         "./packages/kabmo-harness-session/src/session-delete.server.ts"
       ],
+      "@kabmo-labs/kabmo-omp-subagent/history-fold": [
+        "./packages/kabmo-omp-subagent/src/history-fold.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-subagent/history-index": [
+        "./packages/kabmo-omp-subagent/src/history-index.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-subagent/history-transcript": [
+        "./packages/kabmo-omp-subagent/src/history-transcript.ts"
+      ],
       "@kabmo-labs/kabmo-ui": [
         "./packages/kabmo-ui/src/index.tsx"
       ],
