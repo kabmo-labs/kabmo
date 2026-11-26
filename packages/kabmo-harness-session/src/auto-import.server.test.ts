@@ -14,7 +14,7 @@
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
-import { getDb } from '@/server/db.server';
+import { getDb } from '@kabmo-labs/kabmo-db/lifecycle';
 import { ensureHarnessSchema } from '@kabmo-labs/kabmo-harness-schema/schema.server';
 import { writeSettingsJson } from '@kabmo-labs/kabmo-settings-store';
 import {
@@ -22,7 +22,7 @@ import {
   loadAutoImportDisabled,
   runAutoImport,
   saveAutoImportEnabled,
-} from '@/server/lib/harness/auto-import.server';
+} from './auto-import.server';
 
 beforeEach(async () => {
   await isolateDb();

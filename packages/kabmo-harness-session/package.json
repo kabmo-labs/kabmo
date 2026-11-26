@@ -9,7 +9,9 @@
     "./session-store.server": "./src/session-store.server.ts",
     "./session-title.server": "./src/session-title.server.ts",
     "./session-transcript.server": "./src/session-transcript.server.ts",
-    "./acp-rows.server": "./src/acp-rows.server.ts"
+    "./acp-rows.server": "./src/acp-rows.server.ts",
+    "./session-import.server": "./src/session-import.server.ts",
+    "./auto-import.server": "./src/auto-import.server.ts"
   },
   "files": [
     "src"
@@ -43,6 +45,9 @@
     "@kabmo-labs/kabmo-omp-session-sidebar": "workspace:*",
     "@kabmo-labs/kabmo-omp-worktree": "workspace:*",
     "@kabmo-labs/kabmo-paths": "workspace:*",
-    "@kabmo-labs/kabmo-realtime-signals": "workspace:*"
+    "@kabmo-labs/kabmo-realtime-signals": "workspace:*",
+    "@kabmo-labs/kabmo-runtime-flags": "workspace:*",
+    "@kabmo-labs/kabmo-session-deleted": "workspace:*",
+    "@kabmo-labs/kabmo-settings-store": "workspace:*"
   }
 }

@@ -24,11 +24,11 @@
  * lists, so importing would only add duplicate rows the merge then drops.
  */
 
-import { getDb } from '@/server/db.server';
+import { getDb } from '@kabmo-labs/kabmo-db/lifecycle';
 import { readSettingsJson, writeSettingsJson } from '@kabmo-labs/kabmo-settings-store';
 import { loadProbes } from '@kabmo-labs/kabmo-harness-config-store/probe-cache.server';
 import { autoProbeTargets } from '@kabmo-labs/kabmo-harness-config-store/auto-probe.server';
-import { importHarnessSessions } from '@/server/lib/harness/session-import.server';
+import { importHarnessSessions } from './session-import.server';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { harnessDescriptor, harnessIds, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import { ensureCustomHarnesses } from '@kabmo-labs/kabmo-harness-config-store/custom.server';

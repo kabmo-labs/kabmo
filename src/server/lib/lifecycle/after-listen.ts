@@ -20,7 +20,7 @@
 
 import { getDb } from '@/server/db.server';
 import { startHarnessAutoProbe } from '@kabmo-labs/kabmo-harness-config-store/auto-probe.server';
-import { startHarnessAutoImport } from '@/server/lib/harness/auto-import.server';
+import { startHarnessAutoImport } from '@kabmo-labs/kabmo-harness-session/auto-import.server';
 import { ensureCustomHarnesses } from '@kabmo-labs/kabmo-harness-config-store/custom.server';
 import { pumpUpdateQueue } from '@/server/lib/harness/update-queue.server';
 import { compactChatOverlayRows } from '@/server/lib/db/compact-chat-overlay';

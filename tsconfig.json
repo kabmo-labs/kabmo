@@ -1375,6 +1375,12 @@
       "@kabmo-labs/kabmo-acp-session-core/one-shot.server": [
         "./packages/kabmo-acp-session-core/src/one-shot.server.ts"
       ],
+      "@kabmo-labs/kabmo-harness-session/session-import.server": [
+        "./packages/kabmo-harness-session/src/session-import.server.ts"
+      ],
+      "@kabmo-labs/kabmo-harness-session/auto-import.server": [
+        "./packages/kabmo-harness-session/src/auto-import.server.ts"
+      ],
       "@kabmo-labs/kabmo-ui": [
         "./packages/kabmo-ui/src/index.tsx"
       ],
