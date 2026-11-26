@@ -37,7 +37,6 @@ export type {
   WebSessionState,
 } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 export { WebRpcError } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
-export { resolveSpawnCwd } from '@/server/lib/omp/rpc/spawn-args';
 
 /** Overrides for the wrapper's own timers; tests shrink the idle window. */
 export interface AgentSessionWrapperOptions {

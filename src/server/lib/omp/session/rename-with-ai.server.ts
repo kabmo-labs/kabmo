@@ -35,7 +35,8 @@
  * generation takes a few seconds.
  */
 
-import { getRpcSession, resolveSpawnCwd, startRpcSession } from '@/server/lib/omp/rpc/manager';
+import { getRpcSession, startRpcSession } from '@/server/lib/omp/rpc/manager';
+import { resolveSpawnCwd } from '@/server/lib/omp/rpc/spawn-args';
 import { resolveSessionPathOr404 } from '@/server/lib/omp/session/locator';
 import type { AutoTitleHost } from '@/server/lib/omp/session/auto-title.server';
 import {

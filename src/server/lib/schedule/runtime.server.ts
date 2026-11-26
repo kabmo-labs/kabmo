@@ -25,7 +25,8 @@
  * more tick.
  */
 
-import { startNewRpcSession, startRpcSession, resolveSpawnCwd } from '@/server/lib/omp/rpc/manager';
+import { startNewRpcSession, startRpcSession } from '@/server/lib/omp/rpc/manager';
+import { resolveSpawnCwd } from '@/server/lib/omp/rpc/spawn-args';
 import { resolveSessionPathOr404 } from '@/server/lib/omp/session/locator';
 import { startAcpSession, type AcpSpawnRequest } from '@/server/lib/harness/spawn.server';
 import { loadHarnessSession } from '@kabmo-labs/kabmo-harness-session/session-store.server';
