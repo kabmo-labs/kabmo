@@ -1,0 +1,19 @@
+{
+  "name": "@kabmo-labs/kabmo-omp-session-sidebar",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Session/project labels, ordering and grouping as the sidebar renders them.",
+  "exports": {
+    ".": "./src/sidebar.ts",
+    "./sidebar": "./src/sidebar.ts"
+  },
+  "files": ["src"],
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/kabmo-labs/kabmo.git", "directory": "packages/kabmo-omp-session-sidebar" },
+  "publishConfig": { "access": "public" },
+  "engines": { "bun": ">=1.4.0" },
+  "dependencies": {
+    "@kabmo-labs/kabmo-omp-contracts": "workspace:*",
+    "@kabmo-labs/kabmo-omp-session-core": "workspace:*"
+  }
+}

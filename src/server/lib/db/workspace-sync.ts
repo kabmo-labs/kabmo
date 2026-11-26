@@ -33,7 +33,7 @@
 import type { DbClient } from '@kabmo-labs/kabmo-db/client';
 import { projectPathKey } from '@kabmo-labs/kabmo-omp-paths';
 import { loadOmpSidebarData } from '@kabmo-labs/kabmo-omp-session-reader';
-import { orderedOmpProjects, projectDisplayName } from '@/shared/lib/omp/session/sidebar';
+import { orderedOmpProjects, projectDisplayName } from '@kabmo-labs/kabmo-omp-session-sidebar';
 
 /**
  * `app_settings` key recording that the bootstrap has had its one run. Never a

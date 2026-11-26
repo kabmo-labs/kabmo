@@ -23,11 +23,11 @@ import { sessionCwd } from '@/server/lib/changes/sessions.server';
 import {
   readSessionChangeIndex as readOmpIndex,
   readSessionChangeList as readOmpList,
-} from '@/server/lib/omp/session/changes';
-import type { OmpPatch } from '@/server/lib/omp/session/changes-patch';
+} from '@kabmo-labs/kabmo-omp-session-changes/changes';
+import type { OmpPatch } from '@kabmo-labs/kabmo-omp-session-changes/changes-patch';
 import { findSessionFileById } from '@kabmo-labs/kabmo-omp-session-locator';
 import { siblingDirForSession } from '@kabmo-labs/kabmo-omp-subagent/history-paths';
-import type { SessionChangeRecord } from '@/shared/types/session-changes';
+import type { SessionChangeRecord } from '@kabmo-labs/kabmo-omp-contracts/session-changes';
 
 interface CacheEntry {
   signature: string;

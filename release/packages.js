@@ -141,6 +141,10 @@ export const RELEASE_PACKAGES = [
     name: '@kabmo-labs/kabmo-refresh-cadence',
   },
   {
+    dir: 'packages/kabmo-omp-session-changes',
+    name: '@kabmo-labs/kabmo-omp-session-changes',
+  },
+  {
     dir: 'packages/kabmo-omp-session-locator',
     name: '@kabmo-labs/kabmo-omp-session-locator',
   },
@@ -304,6 +308,10 @@ export const RELEASE_PACKAGES = [
   {
     dir: 'packages/kabmo-omp-operator-title',
     name: '@kabmo-labs/kabmo-omp-operator-title',
+  },
+  {
+    dir: 'packages/kabmo-omp-session-sidebar',
+    name: '@kabmo-labs/kabmo-omp-session-sidebar',
   },
   {
     dir: 'packages/kabmo-omp-session-telemetry',

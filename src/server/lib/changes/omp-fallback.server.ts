@@ -18,7 +18,7 @@
 
 import path from 'node:path';
 import { readBlob } from '@/server/lib/changes/blobs.server';
-import { readSessionChangeIndex } from '@/server/lib/omp/session/changes';
+import { readSessionChangeIndex } from '@kabmo-labs/kabmo-omp-session-changes/changes';
 import { findSessionFileById } from '@kabmo-labs/kabmo-omp-session-locator';
 import { siblingDirForSession } from '@kabmo-labs/kabmo-omp-subagent/history-paths';
 

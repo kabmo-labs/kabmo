@@ -1144,6 +1144,24 @@
       "@kabmo-labs/kabmo-omp-subagent/history-transcript": [
         "./packages/kabmo-omp-subagent/src/history-transcript.ts"
       ],
+      "@kabmo-labs/kabmo-omp-session-sidebar": [
+        "./packages/kabmo-omp-session-sidebar/src/sidebar.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-session-sidebar/sidebar": [
+        "./packages/kabmo-omp-session-sidebar/src/sidebar.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-contracts/session-changes": [
+        "./packages/kabmo-omp-contracts/src/session-changes.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-session-changes": [
+        "./packages/kabmo-omp-session-changes/src/changes.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-session-changes/changes": [
+        "./packages/kabmo-omp-session-changes/src/changes.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-session-changes/changes-patch": [
+        "./packages/kabmo-omp-session-changes/src/changes-patch.ts"
+      ],
       "@kabmo-labs/kabmo-ui": [
         "./packages/kabmo-ui/src/index.tsx"
       ],

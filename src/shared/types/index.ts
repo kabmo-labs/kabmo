@@ -22,7 +22,7 @@ export * from '@kabmo-labs/kabmo-settings-contracts/plugin';
 export * from '@kabmo-labs/kabmo-settings-contracts/write';
 export * from '@/shared/types/context';
 export * from '@kabmo-labs/kabmo-omp-contracts/session';
-export * from '@/shared/types/session-changes';
+export * from '@kabmo-labs/kabmo-omp-contracts/session-changes';
 export * from '@kabmo-labs/kabmo-chat-contracts/agent';
 export * from '@kabmo-labs/kabmo-omp-contracts/instructions';
 export * from '@kabmo-labs/kabmo-omp-contracts/subagent';

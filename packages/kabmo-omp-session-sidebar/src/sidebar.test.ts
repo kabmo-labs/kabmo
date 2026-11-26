@@ -24,7 +24,7 @@ import {
   orderedOmpProjects,
   projectDisplayName,
   sessionTitleFor,
-} from '@/shared/lib/omp/session/sidebar';
+} from './sidebar';
 import type { OmpProject, OmpSession, OmpSidebarData } from '@kabmo-labs/kabmo-omp-contracts/session';
 
 const session = (overrides: Partial<OmpSession>): OmpSession => ({

@@ -36,8 +36,8 @@ import path from 'node:path';
 import { readRawHeaderLine } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { findSessionFileById } from '@kabmo-labs/kabmo-omp-session-locator';
 import { siblingDirForSession } from '@kabmo-labs/kabmo-omp-subagent/history-paths';
-import { patchExistence, type OmpPatch } from '@/server/lib/omp/session/changes-patch';
-import type { SessionChangeRecord } from '@/shared/types/session-changes';
+import { patchExistence, type OmpPatch } from './changes-patch';
+import type { SessionChangeRecord } from '@kabmo-labs/kabmo-omp-contracts/session-changes';
 
 const JOURNAL_FILE = 'changes.jsonl';
 

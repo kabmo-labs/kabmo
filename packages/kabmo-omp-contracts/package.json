@@ -8,7 +8,8 @@
     "./instructions": "./src/instructions.ts",
     "./events": "./src/events.ts",
     "./session": "./src/session.ts",
-    "./subagent": "./src/subagent.ts"
+    "./subagent": "./src/subagent.ts",
+    "./session-changes": "./src/session-changes.ts"
   },
   "files": [
     "src"

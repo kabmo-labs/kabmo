@@ -34,7 +34,7 @@ import {
   type NotificationEvent as NotificationEventKey,
 } from '@/shared/lib/notifications/settings';
 import { readSettingsBlob } from '@/shared/lib/settings/keys';
-import { sessionTitleFor } from '@/shared/lib/omp/session/sidebar';
+import { sessionTitleFor } from '@kabmo-labs/kabmo-omp-session-sidebar';
 import { loadOmpSidebarData } from '@kabmo-labs/kabmo-omp-session-reader';
 import { loadHarnessSessionTitle } from '@kabmo-labs/kabmo-harness-session/session-store.server';
 import { appendNotificationEvent } from '@/server/lib/notifications/store.server';

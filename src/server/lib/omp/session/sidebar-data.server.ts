@@ -21,7 +21,7 @@
 import { getDb } from '@/server/db.server';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { DEFAULT_SESSION_SORT_OPTION, isValidSessionSortOption, sortFolders } from '@/shared/lib/workspace/sidebar-sort';
-import { groupSessionsByRoot, sessionTitleFor } from '@/shared/lib/omp/session/sidebar';
+import { groupSessionsByRoot, sessionTitleFor } from '@kabmo-labs/kabmo-omp-session-sidebar';
 import { loadOmpSidebarData } from '@kabmo-labs/kabmo-omp-session-reader';
 import { sessionHasSubagents } from '@/server/lib/omp/session/subagent-presence';
 import type { SessionItemData, SessionSortOption, WorkspaceFolderData } from '@/shared/types';

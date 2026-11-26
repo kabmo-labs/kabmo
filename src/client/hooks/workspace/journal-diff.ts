@@ -17,7 +17,7 @@ import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import type { FileDiffState } from '@/client/hooks/workspace/diff-file';
 import { journalUnavailableMessage } from '@/shared/lib/fs/journal-unavailable';
 import type { JournalDiffRef } from '@/shared/types/fs';
-import type { SessionChangeUnavailableReason } from '@/shared/types/session-changes';
+import type { SessionChangeUnavailableReason } from '@kabmo-labs/kabmo-omp-contracts/session-changes';
 
 interface JournalDiffResponse {
   success?: boolean;
