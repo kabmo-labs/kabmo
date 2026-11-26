@@ -1282,6 +1282,12 @@
       "@kabmo-labs/kabmo-session-relations/sidebar-relations.server": [
         "./packages/kabmo-session-relations/src/sidebar-relations.server.ts"
       ],
+      "@kabmo-labs/kabmo-session-lifecycle": [
+        "./packages/kabmo-session-lifecycle/src/lifecycle.server.ts"
+      ],
+      "@kabmo-labs/kabmo-session-lifecycle/lifecycle.server": [
+        "./packages/kabmo-session-lifecycle/src/lifecycle.server.ts"
+      ],
       "@kabmo-labs/kabmo-ui": [
         "./packages/kabmo-ui/src/index.tsx"
       ],

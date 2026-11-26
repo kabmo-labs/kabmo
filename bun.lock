@@ -117,6 +117,7 @@
         "@kabmo-labs/kabmo-runtime-flags": "workspace:*",
         "@kabmo-labs/kabmo-sdk": "workspace:*",
         "@kabmo-labs/kabmo-session-deleted": "workspace:*",
+        "@kabmo-labs/kabmo-session-lifecycle": "workspace:*",
         "@kabmo-labs/kabmo-session-relations": "workspace:*",
         "@kabmo-labs/kabmo-session-stream-state": "workspace:*",
         "@kabmo-labs/kabmo-settings-contracts": "workspace:*",
@@ -1034,6 +1035,14 @@
         "@kabmo-labs/kabmo-db": "workspace:*",
       },
     },
+    "packages/kabmo-session-lifecycle": {
+      "name": "@kabmo-labs/kabmo-session-lifecycle",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kabmo-labs/kabmo-db": "workspace:*",
+        "@kabmo-labs/kabmo-session-relations": "workspace:*",
+      },
+    },
     "packages/kabmo-session-relations": {
       "name": "@kabmo-labs/kabmo-session-relations",
       "version": "0.0.1",
@@ -1376,6 +1385,8 @@
     "@kabmo-labs/kabmo-sdk": ["@kabmo-labs/kabmo-sdk@workspace:packages/kabmo-sdk"],
 
     "@kabmo-labs/kabmo-session-deleted": ["@kabmo-labs/kabmo-session-deleted@workspace:packages/kabmo-session-deleted"],
+
+    "@kabmo-labs/kabmo-session-lifecycle": ["@kabmo-labs/kabmo-session-lifecycle@workspace:packages/kabmo-session-lifecycle"],
 
     "@kabmo-labs/kabmo-session-relations": ["@kabmo-labs/kabmo-session-relations@workspace:packages/kabmo-session-relations"],
 

@@ -16,7 +16,7 @@
  * the same session, and a corrupted cycle must not hang a delete.
  */
 
-import { getDb } from '@/server/db.server';
+import { getDb } from '@kabmo-labs/kabmo-db/lifecycle';
 import { listChildRelations, listOwnedRelations } from '@kabmo-labs/kabmo-session-relations/relations.server';
 
 /** Every dependent descendant, parents first, deduplicated, excluding the root. */

@@ -233,6 +233,7 @@ describe('package catalog', () => {
       'kabmo-omp-rpc-protocol',
       'kabmo-realtime-signals',
       'kabmo-session-deleted',
+      'kabmo-session-lifecycle',
       'kabmo-session-relations',
       'kabmo-session-stream-state',
       'kabmo-worktree-topology',

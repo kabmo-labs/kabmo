@@ -205,6 +205,10 @@ export const RELEASE_PACKAGES = [
     name: '@kabmo-labs/kabmo-session-deleted',
   },
   {
+    dir: 'packages/kabmo-session-lifecycle',
+    name: '@kabmo-labs/kabmo-session-lifecycle',
+  },
+  {
     dir: 'packages/kabmo-session-relations',
     name: '@kabmo-labs/kabmo-session-relations',
   },

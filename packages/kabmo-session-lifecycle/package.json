@@ -1,0 +1,19 @@
+{
+  "name": "@kabmo-labs/kabmo-session-lifecycle",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Archive, unarchive and settle a session's lifecycle.",
+  "exports": {
+    ".": "./src/lifecycle.server.ts",
+    "./lifecycle.server": "./src/lifecycle.server.ts"
+  },
+  "files": ["src"],
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/kabmo-labs/kabmo.git", "directory": "packages/kabmo-session-lifecycle" },
+  "publishConfig": { "access": "public" },
+  "engines": { "bun": ">=1.4.0" },
+  "dependencies": {
+    "@kabmo-labs/kabmo-db": "workspace:*",
+    "@kabmo-labs/kabmo-session-relations": "workspace:*"
+  }
+}

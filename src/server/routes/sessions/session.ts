@@ -22,7 +22,7 @@ import type { SessionModeState } from '@kabmo-labs/kabmo-harness-session-modes';
 import { asHarnessSession } from '@kabmo-labs/kabmo-harness-registry';
 import { applyHarnessMode } from '@/server/routes/agent/harness-command';
 import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
-import { archiveDependents } from '@/server/lib/sessions/lifecycle.server';
+import { archiveDependents } from '@kabmo-labs/kabmo-session-lifecycle/lifecycle.server';
 
 /**
  * GET /api/sessions/:sessionId/modes — the plan/goal mode selection.
