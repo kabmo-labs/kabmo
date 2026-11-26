@@ -877,6 +877,39 @@
       "@kabmo-labs/kabmo-harness-schema/schema.server": [
         "./packages/kabmo-harness-schema/src/schema.server.ts"
       ],
+      "@kabmo-labs/kabmo-harness-config-store": [
+        "./packages/kabmo-harness-config-store/src/config.server.ts"
+      ],
+      "@kabmo-labs/kabmo-harness-config-store/config.server": [
+        "./packages/kabmo-harness-config-store/src/config.server.ts"
+      ],
+      "@kabmo-labs/kabmo-harness-config-store/custom.server": [
+        "./packages/kabmo-harness-config-store/src/custom.server.ts"
+      ],
+      "@kabmo-labs/kabmo-harness-config-store/enabled.server": [
+        "./packages/kabmo-harness-config-store/src/enabled.server.ts"
+      ],
+      "@kabmo-labs/kabmo-harness-config-store/probe-cache.server": [
+        "./packages/kabmo-harness-config-store/src/probe-cache.server.ts"
+      ],
+      "@kabmo-labs/kabmo-harness-session": [
+        "./packages/kabmo-harness-session/src/session-store.server.ts"
+      ],
+      "@kabmo-labs/kabmo-harness-session/session-store.server": [
+        "./packages/kabmo-harness-session/src/session-store.server.ts"
+      ],
+      "@kabmo-labs/kabmo-harness-session/session-transcript.server": [
+        "./packages/kabmo-harness-session/src/session-transcript.server.ts"
+      ],
+      "@kabmo-labs/kabmo-harness-local-transcript": [
+        "./packages/kabmo-harness-local-transcript/src/antigravity-home.ts"
+      ],
+      "@kabmo-labs/kabmo-harness-local-transcript/antigravity-home": [
+        "./packages/kabmo-harness-local-transcript/src/antigravity-home.ts"
+      ],
+      "@kabmo-labs/kabmo-harness-local-transcript/codex-transcript": [
+        "./packages/kabmo-harness-local-transcript/src/codex-transcript.ts"
+      ],
       "@kabmo-labs/kabmo-ui": [
         "./packages/kabmo-ui/src/index.tsx"
       ],

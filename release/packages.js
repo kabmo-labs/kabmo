@@ -145,6 +145,18 @@ export const RELEASE_PACKAGES = [
     name: '@kabmo-labs/kabmo-omp-session-reader',
   },
   {
+    dir: 'packages/kabmo-harness-config-store',
+    name: '@kabmo-labs/kabmo-harness-config-store',
+  },
+  {
+    dir: 'packages/kabmo-harness-local-transcript',
+    name: '@kabmo-labs/kabmo-harness-local-transcript',
+  },
+  {
+    dir: 'packages/kabmo-harness-session',
+    name: '@kabmo-labs/kabmo-harness-session',
+  },
+  {
     /** Directory under `packages/`, which is also the tag's prefix. */
     dir: 'packages/kabmo-guards',
     name: '@kabmo-labs/kabmo-guards',

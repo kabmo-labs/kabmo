@@ -25,7 +25,7 @@ import * as path from 'node:path';
 import { loadPersistedAccessMode } from '@/shared/lib/omp/config/access-mode.server';
 import { startRpcSession } from '@/server/lib/omp/rpc/session-registry';
 import { startAcpSession } from '@/server/lib/harness/spawn.server';
-import { freshProbe } from '@/server/lib/harness/probe-cache.server';
+import { freshProbe } from '@kabmo-labs/kabmo-harness-config-store/probe-cache.server';
 import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { findSessionFileById } from '@/server/lib/omp/session/locator';
 import { buildTruncatedBody, isRewindCutPoint } from '@/server/lib/omp/session/rewind-file';

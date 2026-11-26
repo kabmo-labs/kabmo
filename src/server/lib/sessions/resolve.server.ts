@@ -16,7 +16,7 @@
 import { getLiveSession, harnessOfSession } from '@/server/lib/omp/rpc/session-registry';
 import { findSessionFileById } from '@/server/lib/omp/session/locator';
 import { readRawHeaderLine } from '@kabmo-labs/kabmo-omp-session-scan/files';
-import { knownHarness, loadHarnessSession } from '@/server/lib/harness/session-store.server';
+import { knownHarness, loadHarnessSession } from '@kabmo-labs/kabmo-harness-session/session-store.server';
 import { canonicalPath } from '@kabmo-labs/kabmo-fs-canonical';
 import { resolveProjectRoot } from '@kabmo-labs/kabmo-omp-worktree';
 import { getDb } from '@/server/db.server';

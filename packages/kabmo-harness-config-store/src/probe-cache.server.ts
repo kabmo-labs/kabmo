@@ -32,7 +32,7 @@
  * edit (`forgetProbe` from `probeInvalidatedBy`) and an install (`update.ts`).
  */
 
-import { getDb } from '@/server/db.server';
+import { getDb } from '@kabmo-labs/kabmo-db/lifecycle';
 import type { HarnessProbe } from '@kabmo-labs/kabmo-harness-launch/capabilities';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 

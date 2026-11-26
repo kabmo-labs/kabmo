@@ -22,8 +22,8 @@
  * the existing probe and spawn paths do, once `resolveLaunch` can see the row.
  */
 
-import { getDb } from '@/server/db.server';
-import { forgetProbe } from '@/server/lib/harness/probe-cache.server';
+import { getDb } from '@kabmo-labs/kabmo-db/lifecycle';
+import { forgetProbe } from './probe-cache.server';
 import { readSettingsJson, writeSettingsJson } from '@kabmo-labs/kabmo-settings-store';
 import { HARNESS_DISABLED_KEY } from '@kabmo-labs/kabmo-harness-enabled';
 import { harnessConfigKey, parseEnvLines, splitCommand } from '@kabmo-labs/kabmo-harness-config';

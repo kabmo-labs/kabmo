@@ -1,0 +1,21 @@
+{
+  "name": "@kabmo-labs/kabmo-harness-session",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Harness session rows and transcript sources.",
+  "exports": {
+    ".": "./src/session-store.server.ts",
+    "./session-store.server": "./src/session-store.server.ts",
+    "./session-transcript.server": "./src/session-transcript.server.ts"
+  },
+  "files": ["src"],
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/kabmo-labs/kabmo.git", "directory": "packages/kabmo-harness-session" },
+  "publishConfig": { "access": "public" },
+  "engines": { "bun": ">=1.4.0" },
+  "dependencies": {
+    "@kabmo-labs/kabmo-db": "workspace:*",
+    "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
+    "@kabmo-labs/kabmo-harness-local-transcript": "workspace:*"
+  }
+}

@@ -18,7 +18,7 @@ import { join } from 'node:path';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { getDb } from '@/server/db.server';
 import { ensureSessionRelationsSchema } from '@/server/lib/sessions/schema.server';
-import { saveHarnessSession } from '@/server/lib/harness/session-store.server';
+import { saveHarnessSession } from '@kabmo-labs/kabmo-harness-session/session-store.server';
 import { getSessionRelation } from '@/server/lib/sessions/relations.server';
 import { forkSession, type ForkSessionDeps, type ForkedSession } from '@/server/lib/sessions/fork.server';
 import { buildTitleLine } from '@/server/lib/omp/session/transcript-copy';

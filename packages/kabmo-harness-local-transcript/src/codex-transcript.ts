@@ -23,7 +23,7 @@
 
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { loadHarnessConfig } from '@/server/lib/harness/config.server';
+import { loadHarnessConfig } from '@kabmo-labs/kabmo-harness-config-store/config.server';
 import type { ChatMessageData, ToolCallData } from '@kabmo-labs/kabmo-chat-contracts/chat';
 import { normalizeToolCall } from '@kabmo-labs/kabmo-chat-tool/normalize';
 

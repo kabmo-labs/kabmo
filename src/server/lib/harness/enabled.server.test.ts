@@ -20,7 +20,7 @@
 
 import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
-import { loadDisabledHarnesses, saveHarnessEnabled } from '@/server/lib/harness/enabled.server';
+import { loadDisabledHarnesses, saveHarnessEnabled } from '@kabmo-labs/kabmo-harness-config-store/enabled.server';
 
 beforeEach(async () => {
   await isolateDb();

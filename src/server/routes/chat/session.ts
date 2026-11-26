@@ -13,7 +13,7 @@ import { importedChat } from '@/server/routes/chat/imported';
 import { loadAcpTranscript } from '@/server/lib/harness/acp/session-transcript.server';
 import { getSessionRelation } from '@/server/lib/sessions/relations.server';
 import { windowMessages } from '@/server/routes/chat/window';
-import { readCodexRolloutTranscript } from '@/server/lib/harness/codex/transcript.server';
+import { readCodexRolloutTranscript } from '@kabmo-labs/kabmo-harness-local-transcript/codex-transcript';
 import { getLiveRunSessionIds, getLiveSession, harnessOfSession } from '@/server/lib/omp/rpc/session-registry';
 import { loadStreamStates } from '@/shared/lib/omp/session/stream-state.server';
 import { configByCategory, selectValues } from '@kabmo-labs/kabmo-harness-launch/launch';

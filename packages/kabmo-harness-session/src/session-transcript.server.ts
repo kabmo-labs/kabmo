@@ -29,8 +29,8 @@ import { Database } from 'bun:sqlite';
 import fs from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { antigravityHome } from '@/server/lib/antigravity/home.server';
-import { codexHome, findCodexRollout } from '@/server/lib/harness/codex/transcript.server';
+import { antigravityHome } from '@kabmo-labs/kabmo-harness-local-transcript/antigravity-home';
+import { codexHome, findCodexRollout } from '@kabmo-labs/kabmo-harness-local-transcript/codex-transcript';
 import { isSinglePathSegment } from '@kabmo-labs/kabmo-paths/path-segment';
 
 /** The two facts a store check needs: which agent, and which session. */

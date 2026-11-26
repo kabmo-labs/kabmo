@@ -16,7 +16,7 @@
  * fix, so the failure is reported where it can be seen.
  */
 
-import { getDb } from '@/server/db.server';
+import { getDb } from '@kabmo-labs/kabmo-db/lifecycle';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 
 export interface HarnessSessionRecord {

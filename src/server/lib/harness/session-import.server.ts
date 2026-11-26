@@ -30,11 +30,11 @@
 import { AcpProcess } from '@kabmo-labs/kabmo-acp-client/client';
 import { listAllSessions } from '@kabmo-labs/kabmo-acp-protocol/verbs';
 import { withGatewayCompatibility } from '@kabmo-labs/kabmo-acp-client/gateway-env';
-import { loadHarnessConfig } from '@/server/lib/harness/config.server';
+import { loadHarnessConfig } from '@kabmo-labs/kabmo-harness-config-store/config.server';
 import { resolveAccountLaunch } from '@/server/lib/harness/accounts.server';
-import { ensureCustomHarnesses } from '@/server/lib/harness/custom.server';
-import { harnessSessionKnown, importHarnessSession } from '@/server/lib/harness/session-store.server';
-import { sessionsWithoutTranscript } from '@/server/lib/harness/session-transcript.server';
+import { ensureCustomHarnesses } from '@kabmo-labs/kabmo-harness-config-store/custom.server';
+import { harnessSessionKnown, importHarnessSession } from '@kabmo-labs/kabmo-harness-session/session-store.server';
+import { sessionsWithoutTranscript } from '@kabmo-labs/kabmo-harness-session/session-transcript.server';
 import { loadDeletedSessionIds } from '@/server/lib/sessions/deleted-sessions.server';
 import { canonicalPath } from '@kabmo-labs/kabmo-fs-canonical';
 import { resolveProjectRoot } from '@kabmo-labs/kabmo-omp-worktree';

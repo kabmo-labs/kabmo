@@ -12,7 +12,7 @@
  * `harness_sessions` rather than the UUID stamp an empty local row carries.
  */
 
-import { loadHarnessSession, loadHarnessSessionTitle } from '@/server/lib/harness/session-store.server';
+import { loadHarnessSession, loadHarnessSessionTitle } from '@kabmo-labs/kabmo-harness-session/session-store.server';
 
 export interface ImportedChat {
   imported: boolean;

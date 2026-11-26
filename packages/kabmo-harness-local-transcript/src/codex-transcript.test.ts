@@ -13,7 +13,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { codexMessagesFromRollout } from '@/server/lib/harness/codex/transcript.server';
+import { codexMessagesFromRollout } from './codex-transcript';
 
 const line = (type: string, payload: Record<string, unknown>, timestamp = '2026-11-17T01:17:22.537Z') =>
   JSON.stringify({ type, timestamp, payload });

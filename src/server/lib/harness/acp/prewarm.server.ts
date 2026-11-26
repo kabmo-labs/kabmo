@@ -32,7 +32,7 @@
  */
 
 import { mintAgentEnvironment } from '@/server/lib/sessions/agent-token.server';
-import { loadHarnessConfig } from '@/server/lib/harness/config.server';
+import { loadHarnessConfig } from '@kabmo-labs/kabmo-harness-config-store/config.server';
 import { resolveAccountLaunch } from '@/server/lib/harness/accounts.server';
 import { sessionLaunchCommand } from '@kabmo-labs/kabmo-harness-launch/launch';
 import { AcpProcess } from '@kabmo-labs/kabmo-acp-client/client';

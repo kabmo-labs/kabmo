@@ -19,8 +19,8 @@
 
 import { canonicalPath } from '@kabmo-labs/kabmo-fs-canonical';
 import { resolveProjectRoot } from '@kabmo-labs/kabmo-omp-worktree';
-import type { HarnessSessionRow } from '@/server/lib/harness/session-store.server';
-import { knownHarness } from '@/server/lib/harness/session-store.server';
+import type { HarnessSessionRow } from '@kabmo-labs/kabmo-harness-session/session-store.server';
+import { knownHarness } from '@kabmo-labs/kabmo-harness-session/session-store.server';
 import { HARNESS_IDS } from '@kabmo-labs/kabmo-harness-catalog';
 import { deriveSessionTitle } from '@/shared/lib/omp/session/sidebar';
 import type { SessionItemData } from '@/shared/types';

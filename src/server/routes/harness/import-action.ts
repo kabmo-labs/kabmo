@@ -30,8 +30,8 @@ import { providerFacts } from '@kabmo-labs/kabmo-harness-provider/provider-looku
 import { providerEnv, providerLevel, registryLabel } from '@kabmo-labs/kabmo-harness-provider/providers';
 import { providerIdProblem, providerSlugFrom } from '@kabmo-labs/kabmo-harness-provider-slug';
 import { withEnvValues } from '@kabmo-labs/kabmo-harness-config';
-import { loadHarnessConfig, saveHarnessConfig } from '@/server/lib/harness/config.server';
-import { forgetProbe } from '@/server/lib/harness/probe-cache.server';
+import { loadHarnessConfig, saveHarnessConfig } from '@kabmo-labs/kabmo-harness-config-store/config.server';
+import { forgetProbe } from '@kabmo-labs/kabmo-harness-config-store/probe-cache.server';
 import { probeEndpointProtocols, type EndpointProbe } from '@kabmo-labs/kabmo-harness-provider-runtime/provider-probe.server';
 import { writeProvider, type ListedProvider, type ProviderDraft } from '@kabmo-labs/kabmo-harness-provider-runtime/provider-write.server';
 import { readProviderKey, harnessesSharingRegistry } from '@kabmo-labs/kabmo-harness-provider-runtime/provider-sources.server';

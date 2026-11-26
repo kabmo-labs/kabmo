@@ -30,7 +30,7 @@ import {
   PROBE_TTL_MS,
   probes,
   rememberProbe,
-} from '@/server/lib/harness/probe-cache.server';
+} from './probe-cache.server';
 
 beforeEach(async () => {
   await isolateDb();

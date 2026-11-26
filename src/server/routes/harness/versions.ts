@@ -33,7 +33,7 @@ import type { LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { HARNESS_IDS, harnessDescriptor, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import { harnessUpdateFacts, type HarnessUpdateFacts } from '@kabmo-labs/kabmo-harness-updates';
 import type { HarnessPartRow, HarnessVersionRow } from '@/shared/types/harness-version';
-import { loadProbes } from '@/server/lib/harness/probe-cache.server';
+import { loadProbes } from '@kabmo-labs/kabmo-harness-config-store/probe-cache.server';
 import { harnessVersionState, type HarnessVersionState } from '@/server/lib/harness/update-state.server';
 import { isNewer } from '@kabmo-labs/kabmo-harness-update-job/semver';
 

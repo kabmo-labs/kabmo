@@ -20,7 +20,7 @@
 import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { EMPTY_HARNESS_CONFIG, parseHarnessConfig } from '@kabmo-labs/kabmo-harness-config';
-import { loadHarnessConfig, resolveLaunch, saveHarnessConfig } from '@/server/lib/harness/config.server';
+import { loadHarnessConfig, resolveLaunch, saveHarnessConfig } from './config.server';
 import { HARNESS_LAUNCH } from '@kabmo-labs/kabmo-harness-launch/launch-table';
 
 beforeEach(async () => {

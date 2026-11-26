@@ -26,7 +26,7 @@ import { listQueue } from '@/server/lib/queue/store.server';
 import { loadSessionSource } from '@/server/lib/chat/session-store.server';
 import { computeRealSessionTelemetry } from '@/server/lib/omp/session/telemetry';
 import { getLiveSession, harnessOfSession } from '@/server/lib/omp/rpc/session-registry';
-import { loadAcpSessions } from '@/server/lib/harness/session-store.server';
+import { loadAcpSessions } from '@kabmo-labs/kabmo-harness-session/session-store.server';
 import { acpTelemetryFor } from '@/server/lib/harness/acp/acp-telemetry.server';
 import { buildAcpTodos } from '@/server/lib/harness/acp/acp-todos.server';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';

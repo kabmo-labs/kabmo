@@ -27,7 +27,7 @@ import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 import { projectModelForCwd } from '@/server/lib/workspace/project-model.server';
 import { startAcpSession } from '@/server/lib/harness/spawn.server';
 import { getLiveSession, harnessOfSession, startNewRpcSession } from '@/server/lib/omp/rpc/session-registry';
-import { harnessProbeModels } from '@/server/lib/harness/probe-cache.server';
+import { harnessProbeModels } from '@kabmo-labs/kabmo-harness-config-store/probe-cache.server';
 import { getDb } from '@/server/db.server';
 import { harnessDescriptor, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import { WORKER_BRIEF } from '@/shared/lib/chat/orchestration/notice';

@@ -28,7 +28,7 @@
  */
 
 import { getLiveSession } from '@/server/lib/omp/rpc/session-registry';
-import { loadHarnessSession } from '@/server/lib/harness/session-store.server';
+import { loadHarnessSession } from '@kabmo-labs/kabmo-harness-session/session-store.server';
 import { createAgentSessionRemover, type AgentSessionRemover } from '@/server/lib/harness/session-delete.server';
 import { purgeSessionData } from '@/server/lib/omp/session/delete.server';
 import { dependentsDeepestFirst } from '@/server/lib/sessions/lifecycle.server';

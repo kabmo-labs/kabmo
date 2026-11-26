@@ -34,13 +34,13 @@
 import fs from 'node:fs';
 import { AcpProcess } from '@kabmo-labs/kabmo-acp-client/client';
 import { withGatewayCompatibility } from '@kabmo-labs/kabmo-acp-client/gateway-env';
-import { loadHarnessConfig } from '@/server/lib/harness/config.server';
+import { loadHarnessConfig } from '@kabmo-labs/kabmo-harness-config-store/config.server';
 import { resolveAccountLaunch } from '@/server/lib/harness/accounts.server';
-import { customHarness, ensureCustomHarnesses } from '@/server/lib/harness/custom.server';
+import { customHarness, ensureCustomHarnesses } from '@kabmo-labs/kabmo-harness-config-store/custom.server';
 import { isSinglePathSegment } from '@kabmo-labs/kabmo-paths/path-segment';
-import { dshStoreDirs } from '@/server/lib/harness/session-transcript.server';
+import { dshStoreDirs } from '@kabmo-labs/kabmo-harness-session/session-transcript.server';
 import type { HarnessLaunch } from '@kabmo-labs/kabmo-harness-launch/launch-table';
-import type { HarnessSessionRecord } from '@/server/lib/harness/session-store.server';
+import type { HarnessSessionRecord } from '@kabmo-labs/kabmo-harness-session/session-store.server';
 import type { AcpInitializeResult } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import { harnessDescriptor, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 

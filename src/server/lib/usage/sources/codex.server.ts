@@ -20,7 +20,7 @@
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
-import { codexHome } from '@/server/lib/harness/codex/transcript.server';
+import { codexHome } from '@kabmo-labs/kabmo-harness-local-transcript/codex-transcript';
 import { isRecord } from '@kabmo-labs/kabmo-guards';
 import { dayOfIso, addUsage, countOf, projectFromCwd, statOrNull } from '@/server/lib/usage/sources/helpers';
 import type { UsageRollupRow } from '@/server/lib/usage/index-parse';

@@ -21,9 +21,9 @@
  */
 
 import { readModelRoles } from '@kabmo-labs/kabmo-omp-config-doc/roles';
-import { loadHarnessSession } from '@/server/lib/harness/session-store.server';
-import { loadHarnessConfig } from '@/server/lib/harness/config.server';
-import { harnessProbeModels } from '@/server/lib/harness/probe-cache.server';
+import { loadHarnessSession } from '@kabmo-labs/kabmo-harness-session/session-store.server';
+import { loadHarnessConfig } from '@kabmo-labs/kabmo-harness-config-store/config.server';
+import { harnessProbeModels } from '@kabmo-labs/kabmo-harness-config-store/probe-cache.server';
 import { modelProvider, resolveDefaultModel } from '@kabmo-labs/kabmo-harness-config';
 import { harnessDescriptor, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import { validateCommitPrompt } from '@/shared/lib/git/commit-prompt';

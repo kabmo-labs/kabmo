@@ -25,7 +25,7 @@ import { isUnrestorableModelFailure, resolveResumableModel } from '@/server/lib/
 import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 import type { SelectedModel } from '@kabmo-labs/kabmo-model-contracts/models';
 import { claimHarness, harnessOf } from '@kabmo-labs/kabmo-harness-registry';
-import { saveHarnessSession } from '@/server/lib/harness/session-store.server';
+import { saveHarnessSession } from '@kabmo-labs/kabmo-harness-session/session-store.server';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import type { HarnessSession } from '@kabmo-labs/kabmo-harness-contract';
 

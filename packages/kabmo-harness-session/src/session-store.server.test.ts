@@ -18,7 +18,7 @@
 
 import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
-import { getDb } from '@/server/db.server';
+import { getDb } from '@kabmo-labs/kabmo-db/lifecycle';
 import {
   harnessSessionKnown,
   importHarnessSession,
@@ -30,7 +30,7 @@ import {
   saveHarnessSession,
   saveHarnessSessionTitle,
   saveHarnessSessionTitleIfEmpty,
-} from '@/server/lib/harness/session-store.server';
+} from './session-store.server';
 import { ensureHarnessSchema } from '@kabmo-labs/kabmo-harness-schema/schema.server';
 import { HARNESS_IDS } from '@kabmo-labs/kabmo-harness-catalog';
 

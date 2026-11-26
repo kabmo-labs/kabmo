@@ -20,7 +20,7 @@
 import { getLiveSession, startRpcSession } from '@/server/lib/omp/rpc/session-registry';
 import { findSessionFileById } from '@/server/lib/omp/session/locator';
 import { startAcpSession } from '@/server/lib/harness/spawn.server';
-import { repointHarnessSession } from '@/server/lib/harness/session-store.server';
+import { repointHarnessSession } from '@kabmo-labs/kabmo-harness-session/session-store.server';
 import { loadPersistedAccessMode } from '@/shared/lib/omp/config/access-mode.server';
 import { loadStreamStates } from '@/shared/lib/omp/session/stream-state.server';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';

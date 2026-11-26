@@ -13,13 +13,13 @@
  * served a command.
  */
 
-import { freshProbe } from '@/server/lib/harness/probe-cache.server';
+import { freshProbe } from '@kabmo-labs/kabmo-harness-config-store/probe-cache.server';
 import { startAcpSession, takeAcpReplayEvents } from '@/server/lib/harness/spawn.server';
 import { mintAgentEnvironment, rememberAgentToken } from '@/server/lib/sessions/agent-token.server';
 import {
   knownHarness, loadHarnessSession, loadHarnessSessionTitle, repointHarnessSession,
   type HarnessSessionRecord,
-} from '@/server/lib/harness/session-store.server';
+} from '@kabmo-labs/kabmo-harness-session/session-store.server';
 import { transcriptFromReplay } from '@/server/lib/harness/acp/replay-transcript';
 import { getDb } from '@/server/db.server';
 import { selectValues } from '@kabmo-labs/kabmo-harness-launch/launch';

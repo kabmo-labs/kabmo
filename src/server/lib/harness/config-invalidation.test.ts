@@ -25,7 +25,7 @@ import {
   loadHarnessConfig,
   probeInvalidatedBy,
   saveHarnessConfig,
-} from '@/server/lib/harness/config.server';
+} from '@kabmo-labs/kabmo-harness-config-store/config.server';
 
 beforeEach(async () => {
   await isolateDb();

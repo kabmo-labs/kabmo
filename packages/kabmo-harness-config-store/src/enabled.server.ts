@@ -17,7 +17,7 @@
  * server does not hold.
  */
 
-import { getDb } from '@/server/db.server';
+import { getDb } from '@kabmo-labs/kabmo-db/lifecycle';
 import { readSettingsJson, writeSettingsJson } from '@kabmo-labs/kabmo-settings-store';
 import { HARNESS_DISABLED_KEY,
 harnessSwitchable,

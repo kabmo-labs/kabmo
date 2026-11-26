@@ -40,7 +40,7 @@ import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { harnessDescriptor, isBuiltinHarness, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import { harnessUpdateFacts, latestSourceFor } from '@kabmo-labs/kabmo-harness-updates';
-import { loadProbes } from '@/server/lib/harness/probe-cache.server';
+import { loadProbes } from '@kabmo-labs/kabmo-harness-config-store/probe-cache.server';
 import { harnessVersionState, type HarnessVersionState } from '@/server/lib/harness/update-state.server';
 import { planHarnessUpdate, type HarnessUpdateStep } from '@kabmo-labs/kabmo-harness-update-job/update-plan';
 import { resolveOmpBin } from '@kabmo-labs/kabmo-omp-cli';

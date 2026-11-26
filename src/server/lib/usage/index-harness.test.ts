@@ -21,7 +21,7 @@ import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { removeDir } from '@/test-support/remove-dir';
 import { getDb } from '@/server/db.server';
 import { buildTokenUsagePayload } from '@/server/lib/usage/index-query.server';
-import { saveHarnessSession } from '@/server/lib/harness/session-store.server';
+import { saveHarnessSession } from '@kabmo-labs/kabmo-harness-session/session-store.server';
 
 const dirs: string[] = [];
 const saved = {

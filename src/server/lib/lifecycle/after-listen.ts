@@ -21,7 +21,7 @@
 import { getDb } from '@/server/db.server';
 import { startHarnessAutoProbe } from '@/server/lib/harness/auto-probe.server';
 import { startHarnessAutoImport } from '@/server/lib/harness/auto-import.server';
-import { ensureCustomHarnesses } from '@/server/lib/harness/custom.server';
+import { ensureCustomHarnesses } from '@kabmo-labs/kabmo-harness-config-store/custom.server';
 import { pumpUpdateQueue } from '@/server/lib/harness/update-queue.server';
 import { compactChatOverlayRows } from '@/server/lib/db/compact-chat-overlay';
 import { packageDir } from '@/server/lib/fs/package-root';

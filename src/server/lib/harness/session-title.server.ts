@@ -30,7 +30,7 @@ import { updateHarnessLeaseTitle } from '@kabmo-labs/kabmo-harness-lease/session
 import {
   saveHarnessSessionTitle,
   saveHarnessSessionTitleIfEmpty,
-} from '@/server/lib/harness/session-store.server';
+} from '@kabmo-labs/kabmo-harness-session/session-store.server';
 
 /**
  * The most of a prompt a stored title keeps.

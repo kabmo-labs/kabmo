@@ -14,10 +14,10 @@
  * each write touch only its own row.
  */
 
-import { getDb } from '@/server/db.server';
+import { getDb } from '@kabmo-labs/kabmo-db/lifecycle';
 import { readSettingsJson, writeSettingsJson } from '@kabmo-labs/kabmo-settings-store';
 import { HARNESS_LAUNCH, type HarnessLaunch } from '@kabmo-labs/kabmo-harness-launch/launch-table';
-import { customLaunch } from '@/server/lib/harness/custom.server';
+import { customLaunch } from './custom.server';
 import { harnessConfigKey,
 isHarnessConfigured,
 parseEnvLines,

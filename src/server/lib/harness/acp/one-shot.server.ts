@@ -21,7 +21,7 @@
  */
 
 import { AcpSession } from '@/server/lib/harness/acp/session';
-import { loadHarnessConfig } from '@/server/lib/harness/config.server';
+import { loadHarnessConfig } from '@kabmo-labs/kabmo-harness-config-store/config.server';
 import { resolveAccountLaunch } from '@/server/lib/harness/accounts.server';
 import { sessionLaunchCommand } from '@kabmo-labs/kabmo-harness-launch/launch';
 import { extractTextFromContent } from '@kabmo-labs/kabmo-omp-mapper';

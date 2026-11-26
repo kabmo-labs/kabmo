@@ -28,8 +28,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { getDb } from '@/server/db.server';
-import { saveHarnessConfig } from '@/server/lib/harness/config.server';
-import { saveHarnessSession } from '@/server/lib/harness/session-store.server';
+import { saveHarnessConfig } from '@kabmo-labs/kabmo-harness-config-store/config.server';
+import { saveHarnessSession } from '@kabmo-labs/kabmo-harness-session/session-store.server';
 import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { invalidateOmpSidebarData } from '@kabmo-labs/kabmo-omp-session-reader';
 import { loadSidebarStructure } from '@/server/lib/omp/session/sidebar-data.server';

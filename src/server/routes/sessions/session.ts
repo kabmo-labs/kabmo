@@ -13,7 +13,7 @@ import { isSinglePathSegment } from '@kabmo-labs/kabmo-paths/path-segment';
 import { loadPersistedModes } from '@/server/lib/omp/session/modes';
 import { liveModeSelection } from '@/server/lib/omp/mode/live-selection';
 import { getLiveSession, harnessOfSession } from '@/server/lib/omp/rpc/session-registry';
-import { knownHarness, loadHarnessSession } from '@/server/lib/harness/session-store.server';
+import { knownHarness, loadHarnessSession } from '@kabmo-labs/kabmo-harness-session/session-store.server';
 import { HARNESS_IDS } from '@kabmo-labs/kabmo-harness-catalog';
 import { loadAcpGoalState } from '@/server/lib/harness/acp/acp-goal-state.server';
 import { selectValues } from '@kabmo-labs/kabmo-harness-launch/launch';

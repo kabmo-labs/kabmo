@@ -37,16 +37,16 @@ import type { HarnessProbe } from '@kabmo-labs/kabmo-harness-launch/capabilities
 import {
   launchFromConfig,
   loadHarnessConfig,
-} from '@/server/lib/harness/config.server';
+} from '@kabmo-labs/kabmo-harness-config-store/config.server';
 import { resolveAccountLaunch } from '@/server/lib/harness/accounts.server';
 import type { HarnessConfig } from '@kabmo-labs/kabmo-harness-config';
-import { loadDisabledHarnesses } from '@/server/lib/harness/enabled.server';
+import { loadDisabledHarnesses } from '@kabmo-labs/kabmo-harness-config-store/enabled.server';
 import { blockedProbe, probeHarness } from '@kabmo-labs/kabmo-harness-launch/launch';
 import { HARNESS_LAUNCH, harnessRequirementMet, type HarnessLaunch } from '@kabmo-labs/kabmo-harness-launch/launch-table';
-import { customLaunch } from '@/server/lib/harness/custom.server';
+import { customLaunch } from '@kabmo-labs/kabmo-harness-config-store/custom.server';
 import { resolveOmpBin } from '@kabmo-labs/kabmo-omp-cli';
 import { whichOnToolchainPath } from '@kabmo-labs/kabmo-fs-toolchain';
-import { rememberProbe } from '@/server/lib/harness/probe-cache.server';
+import { rememberProbe } from '@kabmo-labs/kabmo-harness-config-store/probe-cache.server';
 import { harnessDescriptor, harnessIds, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import { harnessEnabled } from '@kabmo-labs/kabmo-harness-enabled';
 

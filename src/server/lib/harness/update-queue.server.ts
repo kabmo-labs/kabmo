@@ -29,9 +29,9 @@
 
 import { probeWithConfig } from '@/server/lib/harness/auto-probe.server';
 import { whichOnToolchainPath } from '@kabmo-labs/kabmo-fs-toolchain';
-import { forgetProbe, rememberProbe } from '@/server/lib/harness/probe-cache.server';
+import { forgetProbe, rememberProbe } from '@kabmo-labs/kabmo-harness-config-store/probe-cache.server';
 import { forgetCliVersion } from '@/server/lib/harness/update-state.server';
-import { loadHarnessConfig, saveHarnessConfig } from '@/server/lib/harness/config.server';
+import { loadHarnessConfig, saveHarnessConfig } from '@kabmo-labs/kabmo-harness-config-store/config.server';
 import { invalidateOmpCliCache } from '@kabmo-labs/kabmo-omp-cli';
 import { getHarnessUpdateStatusPath } from '@kabmo-labs/kabmo-paths/paths';
 import { readUpdateJob, settleDeadJob, writeUpdateJob } from '@kabmo-labs/kabmo-harness-lease/update-job-store';

@@ -20,7 +20,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { removeDir } from '@/test-support/remove-dir';
-import { sessionsWithoutTranscript } from '@/server/lib/harness/session-transcript.server';
+import { sessionsWithoutTranscript } from '@kabmo-labs/kabmo-harness-session/session-transcript.server';
 
 const saved = {
   xdg: Bun.env.XDG_DATA_HOME,

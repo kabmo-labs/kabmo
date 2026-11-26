@@ -16,8 +16,8 @@ import { afterAll, beforeEach, describe, expect, test } from 'bun:test';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { getDb } from '@/server/db.server';
 import { action, loader } from '@/server/routes/harness/root';
-import { loadHarnessConfig, resolveLaunch } from '@/server/lib/harness/config.server';
-import { customHarness, refreshCustomHarnesses } from '@/server/lib/harness/custom.server';
+import { loadHarnessConfig, resolveLaunch } from '@kabmo-labs/kabmo-harness-config-store/config.server';
+import { customHarness, refreshCustomHarnesses } from '@kabmo-labs/kabmo-harness-config-store/custom.server';
 import { harnessDescriptor } from '@kabmo-labs/kabmo-harness-catalog';
 
 const API = 'http://localhost/api/harness';

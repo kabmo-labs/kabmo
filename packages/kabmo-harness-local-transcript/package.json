@@ -1,0 +1,31 @@
+{
+  "name": "@kabmo-labs/kabmo-harness-local-transcript",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Antigravity and Codex transcript locations and parsing.",
+  "exports": {
+    ".": "./src/antigravity-home.ts",
+    "./antigravity-home": "./src/antigravity-home.ts",
+    "./codex-transcript": "./src/codex-transcript.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-harness-local-transcript"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  },
+  "dependencies": {
+    "@kabmo-labs/kabmo-chat-contracts": "workspace:*",
+    "@kabmo-labs/kabmo-chat-tool": "workspace:*",
+    "@kabmo-labs/kabmo-harness-config-store": "workspace:*"
+  }
+}
