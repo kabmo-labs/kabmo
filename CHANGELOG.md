@@ -4,6 +4,71 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.53.0](https://github.com/kabmo-labs/kabmo/compare/v0.52.0...v0.53.0) — 2026-11-26
+
+### Added
+
+* **packages:** publish the 31-package prefix-family layout ([46234d8](https://github.com/kabmo-labs/kabmo/commit/46234d87b9f2d700abd9a83c7afe1651f82307ea)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Changed
+
+* **acp:** drop the unused effects argument from setAcpMode ([3c8beca](https://github.com/kabmo-labs/kabmo/commit/3c8becab16c52a868b66d4675c20422808c2fc0f)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **acp:** extract ACP protocol and frame-mapping packages ([891be99](https://github.com/kabmo-labs/kabmo/commit/891be9922943778f80749bc3e7028a106f355fce)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **acp:** extract ACP session views and prompt formatting ([eafb1b4](https://github.com/kabmo-labs/kabmo/commit/eafb1b440110fca2a1fa433c7bd3fa92f6566a48)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **acp:** extract ACP turn handling into a package ([0b8429e](https://github.com/kabmo-labs/kabmo/commit/0b8429ee55fe7fe174648c346ef5bf5cddbaaba2)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **acp:** extract session config and prompt intake into a package ([cd507e7](https://github.com/kabmo-labs/kabmo/commit/cd507e75b9475f46ed71c909cec671ac56b30055)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **acp:** extract the ACP client and transport dependencies ([a3dc95b](https://github.com/kabmo-labs/kabmo/commit/a3dc95b4c2d21827b4897e3a13248deed83914a7)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **acp:** extract the command router into a control package ([804a7f2](https://github.com/kabmo-labs/kabmo/commit/804a7f2d3db4cbecad7af59b7ef261d9314ec3e1)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **acp:** extract the session core into a package ([77022fc](https://github.com/kabmo-labs/kabmo/commit/77022fc8fc885ec0f481ac024c948ace88425a07)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **acp:** move the goal, outcome, frames and telemetry into the packages ([aae9ae7](https://github.com/kabmo-labs/kabmo/commit/aae9ae75bb7b0182cd2559f11b6ee4b0e7ec7bc2)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **acp:** move the whole session cluster into the core package ([6ce08be](https://github.com/kabmo-labs/kabmo/commit/6ce08be5370e615434593dfdbfc74459585bd03c)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **chat:** package the tool rows so the ACP transcript reader can move ([4fd27e2](https://github.com/kabmo-labs/kabmo/commit/4fd27e26ed25fd2a624a5fc000f557e689c8f8ee)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **db:** split the handle from the app's bootstrap ([59e6c0c](https://github.com/kabmo-labs/kabmo/commit/59e6c0ce5e67805fe74a395cc6768587b01749a8)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **fs:** extract root resolution into a workspace package ([f0c7e89](https://github.com/kabmo-labs/kabmo/commit/f0c7e89edac88a216628242b053a2d5dddcccab7)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **fs:** package the git runner, the worktree topology, and the session relations ([c289646](https://github.com/kabmo-labs/kabmo/commit/c2896469afaacbc9fdbb7797ad9f67e28b70989c)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** extract launch plans, capabilities, and omp extension lookup ([674ddc7](https://github.com/kabmo-labs/kabmo/commit/674ddc716c83ffd462a5f64b115225b67ff037c5)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** extract leases and the update job contract ([d5ce495](https://github.com/kabmo-labs/kabmo/commit/d5ce4953b8e2c993e9fcda5508f8de3652ed7a5b)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** extract the config store, session rows, and local transcripts ([879af7e](https://github.com/kabmo-labs/kabmo/commit/879af7e2a8604d38d0b2e0586235ab0a984182a1)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** extract the harness settings schema ([56ddac6](https://github.com/kabmo-labs/kabmo/commit/56ddac6e6d92ec408d5649b95902d1b36e292fd2)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** extract the provider registry read/write runtime ([c334d23](https://github.com/kabmo-labs/kabmo/commit/c334d23ca4c68d73638693a111a8ac69372ac6b2)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** extract the session contract and live registry ([9681aa1](https://github.com/kabmo-labs/kabmo/commit/9681aa151da2f9591d3c5b725162b194e2495b47)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** package the account login, auto-probe, and session delete ([1d7a237](https://github.com/kabmo-labs/kabmo/commit/1d7a2371985a1cf6cd5dbaea797e041b65138ced)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** package the account registry and the session titles ([65c4f8f](https://github.com/kabmo-labs/kabmo/commit/65c4f8ff0d5940329f53f41be88337f41beb3900)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **harness:** package the session import and the auto import ([c820b78](https://github.com/kabmo-labs/kabmo/commit/c820b780b87d6371b37a32504976c08878d2e74e)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **layout:** move the native shells to apps/ and their inputs to assets/ ([727d3f0](https://github.com/kabmo-labs/kabmo/commit/727d3f0c945f0edb96fb1c4e6ef7624047764b82)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **lifecycle:** extract process probes and identity into a package ([1bb8f98](https://github.com/kabmo-labs/kabmo/commit/1bb8f983585bcd3acd6d52e59cd56f7b13eeb694)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **milestones:** point the tool-render audit at the messages package ([5829ffc](https://github.com/kabmo-labs/kabmo/commit/5829ffc22793f48e3d9be9f0c90a59cef33a760c)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **omp:** extract CLI lookup, install diagnostics, worktree, and runtime flags ([1f9df35](https://github.com/kabmo-labs/kabmo/commit/1f9df3535eaaf093c2f965f9a2591c3f554de3db)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **omp:** extract provider, file, and MCP config into packages ([07688f4](https://github.com/kabmo-labs/kabmo/commit/07688f4b1c40b26c2a0b66a1e733454eb36a5dbe)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **omp:** extract the session reader and refresh cadence ([528a985](https://github.com/kabmo-labs/kabmo/commit/528a985eb4c03f8ab5e414e628d369c776184ee6)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **omp:** import the spawn cwd helper from its own module ([d217d74](https://github.com/kabmo-labs/kabmo/commit/d217d74407a4c91648259691ece6a57d7cc5e48d)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **omp:** keep the session registry inside the file ceiling ([288c7ef](https://github.com/kabmo-labs/kabmo/commit/288c7ef08222c25a32c107672547d998e1ed1606)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **omp:** move the subagent history readers into the subagent package ([3e86706](https://github.com/kabmo-labs/kabmo/commit/3e8670602b93776932a4f96e0a2b674828506e0b)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **omp:** move the title slot into the session scan package ([b55dd18](https://github.com/kabmo-labs/kabmo/commit/b55dd1836ec3153f868a1d74b26afd184a42fa71)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **omp:** package the deleted-session tombstones, subagent presence, and worktree shapes ([a4a25f6](https://github.com/kabmo-labs/kabmo/commit/a4a25f6bd863f8ed13338ae84ab505a2a815a138)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **omp:** package the goal driver ([128f6f2](https://github.com/kabmo-labs/kabmo/commit/128f6f2b0bc8a35372604b5fa765a701ae38fdd8)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **omp:** package the http helper, the session locator, and the mode request ([c06fc76](https://github.com/kabmo-labs/kabmo/commit/c06fc76a05ec36d3186aa34e523bcd24fe41c8f0)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **omp:** package the rpc command layer ([e088d44](https://github.com/kabmo-labs/kabmo/commit/e088d44274989b4683b25f2675676ee18382f43c)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **omp:** package the rpc process and event layers ([c261769](https://github.com/kabmo-labs/kabmo/commit/c26176911a5575d37c4f1a8c1bf6f53d749d32e0)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **omp:** package the session runtime ([6f42ae7](https://github.com/kabmo-labs/kabmo/commit/6f42ae75e8d1b8b64d572e77bed00f29734f2400)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **omp:** package the sidebar labels and the session changes ([c5d083e](https://github.com/kabmo-labs/kabmo/commit/c5d083eae0a3feadcdecb022cf797d183718d109)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **omp:** package the sidebar payload behind a live-session port ([829bb5f](https://github.com/kabmo-labs/kabmo/commit/829bb5faad0e1e4924da3e6c50817c481623d371)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **omp:** split the rpc command contract out of the app ([138b3e9](https://github.com/kabmo-labs/kabmo/commit/138b3e9161edfd0155246755b2845c248fdbc478)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **packages:** extract 38 workspace packages from src ([aa050e7](https://github.com/kabmo-labs/kabmo/commit/aa050e7a765bbc0cb460953bab3733294b5b01e3)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **packages:** mark the pure leaf packages side-effect free ([249c79a](https://github.com/kabmo-labs/kabmo/commit/249c79a18bb2825d5ac5f1ffcdfbf3c8f992a877)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **paths:** extract Kabmo data directories and path segments ([6025c6d](https://github.com/kabmo-labs/kabmo/commit/6025c6ddeca787b1be0273fd06651516c7ccc20a)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **server:** extract the db client, settings store, and omp subagent helpers ([868a8cf](https://github.com/kabmo-labs/kabmo/commit/868a8cf2cb63736dc2b81658649fc0a516984323)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **sessions:** package the session lifecycle ([8cddbd3](https://github.com/kabmo-labs/kabmo/commit/8cddbd338aaab04311f1b6d6cb25916c6b6aacd1)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **state:** extract the realtime signal bus and the session stream state ([8254f6b](https://github.com/kabmo-labs/kabmo/commit/8254f6bf811f720d72c8a641f1527a1c7d8ee69e)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **types:** package the app contracts ([37088c8](https://github.com/kabmo-labs/kabmo/commit/37088c84c7e18f1c4209cf07abf52246f77c930a)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **build:** read the shells' shared assets from assets/ ([885f9a6](https://github.com/kabmo-labs/kabmo/commit/885f9a6c50b71b8ceb7f5e1f834bed0e3db7e5e9)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **release:** point the shell tests and gates at apps/ ([d3163e0](https://github.com/kabmo-labs/kabmo/commit/d3163e0f4b5644f8d43fc56e2c1c3c50cdacb65b)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **types:** spell the acp session core paths correctly ([273a09f](https://github.com/kabmo-labs/kabmo/commit/273a09f8dc14bedc80b2e158ba2687a0125bbb55)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **voice:** read only the run's final answer aloud ([173c5c8](https://github.com/kabmo-labs/kabmo/commit/173c5c8b8da9d28be5b2896e9d8a0ed843ff3862)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.52.0](https://github.com/kabmo-labs/kabmo/compare/v0.51.0...v0.52.0) — 2026-11-25
 
 ### Added
