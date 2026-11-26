@@ -11,7 +11,7 @@
  * display placeholder that must never be written or injected.
  */
 
-import type { McpKeyValue } from '@kabmo-labs/kabmo-settings-contracts/mcp';
+import type { McpKeyValue } from '@kabmo-labs/kabmo-settings/contracts/mcp';
 
 /** The value the server sends instead of a credential it will not disclose. */
 export const REDACTED_SENTINEL = '••••••••';

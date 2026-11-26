@@ -1,6 +1,6 @@
 import { CheckCircle2, FileText, XCircle } from 'lucide-preact';
 import type { ToolCallData } from '@/shared/types';
-import { soleInnerDetails, soleToolCommand } from '@kabmo-labs/kabmo-chat-tool/tool-commands';
+import { soleInnerDetails, soleToolCommand } from '@kabmo-labs/kabmo-chat/tool/tool-commands';
 
 /**
  * Panel untuk `resolve` dan `reject` — keputusan atas staged proposal.

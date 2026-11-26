@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Publishes the @kabmo-labs/* plugin packages to npm.
+# Publishes the @kabmo-labs/* packages in release/packages.js to npm.
 #
 # Publishing is IDEMPOTENT, and that is the whole point of this script rather
 # than a bare `bun publish` in the workflow. A run can die between the first
@@ -12,9 +12,10 @@
 # republishing would be wrong anyway. To ship a change, bump the version.
 #
 # A failure STOPS the run rather than moving to the next package. The list is in
-# catalog order, and `@kabmo-labs/ui` pins the SDK version at pack time, so
-# publishing `ui` after a failed SDK publish would put a package on npm whose
-# dependency does not exist there — worse than publishing neither.
+# catalog order; `@kabmo-labs/ui` pins the SDK at pack time and the family
+# packages pin each other in a cycle, so publishing the rest after a failure
+# would put a package on npm whose dependency does not exist there — worse than
+# publishing neither.
 #
 # usage: publish-plugin-packages.sh <package-dir>...
 #   each <package-dir> is relative to the repo root and holds a package.json

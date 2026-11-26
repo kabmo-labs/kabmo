@@ -28,7 +28,7 @@ import path from 'node:path';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { restoreEnv } from '@/test-support/env';
 import { action, loader } from '@/server/routes/harness/root';
-import { loadHarnessConfig } from '@kabmo-labs/kabmo-harness-config-store/config.server';
+import { loadHarnessConfig } from '@kabmo-labs/kabmo-harness/config-store/config.server';
 
 const ROOT = path.join(os.tmpdir(), 'kabmo-harness-import-route');
 const API = 'http://localhost/api/harness';

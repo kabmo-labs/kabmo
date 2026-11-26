@@ -13,7 +13,7 @@
  */
 
 import type { AgentImage } from '@/shared/types';
-import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
+import type { ApprovalMode } from '@kabmo-labs/kabmo-omp/access-mode';
 
 export interface ChildSpawnPicks {
   harness?: string | null;

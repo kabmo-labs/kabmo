@@ -25,32 +25,32 @@ import * as path from 'node:path';
 import { loadPersistedAccessMode } from '@/shared/lib/omp/config/access-mode.server';
 import { startRpcSession } from '@/server/lib/omp/rpc/session-registry';
 import { startAcpSession } from '@/server/lib/harness/spawn.server';
-import { freshProbe } from '@kabmo-labs/kabmo-harness-config-store/probe-cache.server';
-import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
-import { findSessionFileById } from '@kabmo-labs/kabmo-omp-session-locator';
-import { buildTruncatedBody, isRewindCutPoint } from '@kabmo-labs/kabmo-omp-session-runtime/rewind-file';
+import { freshProbe } from '@kabmo-labs/kabmo-harness/config-store/probe-cache.server';
+import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp/session-scan/files';
+import { findSessionFileById } from '@kabmo-labs/kabmo-omp/session-locator';
+import { buildTruncatedBody, isRewindCutPoint } from '@kabmo-labs/kabmo-omp/session-runtime/rewind-file';
 import {
   branchTranscript,
   completeLines,
   parseJsonObject,
   transcriptTitle,
-} from '@kabmo-labs/kabmo-omp-session-runtime/transcript-copy';
-import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
-import { airForkPoint, harnessForksAtMessage } from '@kabmo-labs/kabmo-harness-rewind/fork';
+} from '@kabmo-labs/kabmo-omp/session-runtime/transcript-copy';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness/catalog';
+import { airForkPoint, harnessForksAtMessage } from '@kabmo-labs/kabmo-harness/rewind/fork';
 import type { SelectedModel } from '@kabmo-labs/kabmo-model-contracts/models';
-import type { AgentImage } from '@kabmo-labs/kabmo-chat-contracts/agent';
-import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
+import type { AgentImage } from '@kabmo-labs/kabmo-chat/contracts/agent';
+import type { ApprovalMode } from '@kabmo-labs/kabmo-omp/access-mode';
 import {
   createSessionRelation,
   deleteSessionRelations,
   listForkRelations,
-} from '@kabmo-labs/kabmo-session-relations/relations.server';
+} from '@kabmo-labs/kabmo-session/relations/relations.server';
 import { isSessionArchived, resolveSessionRef, sessionExists } from '@/server/lib/sessions/resolve.server';
 import {
   agentEnvironment,
   createAgentToken,
   rememberAgentToken,
-} from '@kabmo-labs/kabmo-session-relations/agent-token.server';
+} from '@kabmo-labs/kabmo-session/relations/agent-token.server';
 
 export type SessionForkErrorCode =
   | 'source_not_found'

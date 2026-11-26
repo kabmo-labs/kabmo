@@ -21,7 +21,7 @@ the harness, the CLI) and
 [Wave 2](../milestones/M05-plugin-platform-wave2.md) (the participant hooks and the four
 slots that reach into the conversation).
 
-Two packages are provided by Kabmo itself:
+Two packages are the plugin-facing surface Kabmo provides:
 
 | Import | What it gives you |
 |---|---|
@@ -33,7 +33,10 @@ Two packages are provided by Kabmo itself:
 | `@kabmo-labs/kabmo-ui/components` | `Panel`, `Field`, `FieldList`, `TextAreaField`, `Button`, `Empty`, `Note`, and `Markdown` (rendered through Kabmo's own pipeline). |
 
 They are published on npm (`@kabmo-labs/kabmo-sdk`, `@kabmo-labs/kabmo-ui`), and the
-Kabmo links them into a plugin's `node_modules` before building.
+Kabmo links them into a plugin's `node_modules` before building. Kabmo also
+publishes 29 runtime packages under `packages/` (see
+[Workspace packages](workspace-packages.md)); they are the app's own modules, not
+a plugin API.
 
 The pre-rename names `@kabmo-labs/plugin-sdk` and `@kabmo-labs/ui` are still
 resolved by the runtime shim and by the package linker, so a plugin that has not
@@ -1144,9 +1147,10 @@ the palette changes.
 
 ## Publishing
 
-Maintainers only. `@kabmo-labs/kabmo-sdk` and `@kabmo-labs/kabmo-ui` are released
-independently of the app — they are a library surface with its own cadence — but
-they are cut in the SAME run as the app, and BEFORE it.
+Maintainers only. All 31 packages under `packages/` are released independently
+of the app — they are a library surface with its own cadence — but they are cut
+in the SAME run as the app, and BEFORE it. The two plugin-facing packages are the
+SDK and the UI kit.
 
 **The version is derived from your commits — do not bump it by hand.**
 `.github/workflows/release.yml` runs on every push to `main` and has four jobs:
@@ -1182,8 +1186,9 @@ release nothing. A package's release range starts at its own last tag, so a
 package that was not touched since then is left alone — and because the analyzer
 only ever sees that package's commits, an app `feat` in between cannot bump it.
 
-The release cuts a tag (`kabmo-sdk/v2.0.0`) and a GitHub Release, writes the
-package's `CHANGELOG.md`, and commits the version into its `package.json`. That
+The release cuts a tag (`kabmo-sdk/v2.0.0`, `kabmo-omp/v0.1.0`) and a GitHub
+Release, writes the package's `CHANGELOG.md`, and commits the version into its
+`package.json`. That
 push is made with `GITHUB_TOKEN`, which raises no workflow run, so the workflow
 then **dispatches** `publish-plugins.yml` for exactly the packages it released.
 The two are one pipeline split in two for the same reason the app's are: the npm
@@ -1199,9 +1204,9 @@ rather than publishing a `kabmo-ui` against an SDK that is not there.
 
 **To publish by hand** — a re-run after a failed publish, or a package cut from
 a branch — bump the version in the package's `package.json`, push a matching tag,
-and the same workflow publishes it. If the package you are bumping is depended
-on by the other (`kabmo-sdk`), run `bun install` first so `bun.lock` carries
-the new version:
+and the same workflow publishes it. If another package pins the one you are
+bumping (`kabmo-ui` pins `kabmo-sdk`; the family packages pin each other), run
+`bun install` first so `bun.lock` carries the new version:
 
 ```bash
 git tag kabmo-sdk/v1.1.0     # or kabmo-ui/v1.1.0
@@ -1210,11 +1215,11 @@ git push origin kabmo-sdk/v1.1.0
 
 A tag whose version does not match the package is refused. Publishing is
 **idempotent**: a package already at that version on npm is skipped, so a run
-that died after the first package can be re-run to finish the second rather than
-failing on the first.
+that died partway through the catalog can be re-run to publish the rest rather
+than failing on the first package.
 
 Requires the `NPM_TOKEN` environment secret — a granular token with read/write on
-both packages. A scoped package defaults to restricted, so each package's
+every `@kabmo-labs` package. A scoped package defaults to restricted, so each package's
 `publishConfig.access` is `public`; without it the SDK would be installable only
 by its owner.
 

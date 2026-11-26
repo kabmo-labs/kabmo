@@ -22,7 +22,7 @@
 
 import { homedir } from 'node:os';
 import * as path from 'node:path';
-import { getOmpConfigValue } from '@kabmo-labs/kabmo-omp-config-files/config-cli';
+import { getOmpConfigValue } from '@kabmo-labs/kabmo-omp/config-files/config-cli';
 import type { BrowserEngineState } from '@/shared/types';
 
 /** Where omp installs ABKit when `browser.webkitPath` is unset. */

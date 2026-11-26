@@ -24,7 +24,7 @@ import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { runScheduledTask, isTaskRunning } from '@/server/lib/schedule/runtime.server';
 import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 import { isValidTimeZone, serverTimeZone } from '@/shared/lib/schedule/timezone';
-import { harnessDescriptor } from '@kabmo-labs/kabmo-harness-catalog';
+import { harnessDescriptor } from '@kabmo-labs/kabmo-harness/catalog';
 import {
   createScheduledTask,
   deleteScheduledTask,

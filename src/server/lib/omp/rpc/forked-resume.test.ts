@@ -29,7 +29,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describePosix } from '@/test-support/platform';
 
-import { invalidateOmpCliCache } from '@kabmo-labs/kabmo-omp-cli';
+import { invalidateOmpCliCache } from '@kabmo-labs/kabmo-omp/cli';
 import { stopDiscoveryRootsWatch } from '@/server/lib/omp/config/roots-watch.server';
 import { getRpcSession, startRpcSession } from '@/server/lib/omp/rpc/session-registry';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';

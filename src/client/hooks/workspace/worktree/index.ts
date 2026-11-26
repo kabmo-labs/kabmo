@@ -16,7 +16,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'preact/hooks';
-import type { WorktreeFailure, WorktreeInfo, WorktreeListPayload, WorktreeValidation } from '@kabmo-labs/kabmo-worktree-types';
+import type { WorktreeFailure, WorktreeInfo, WorktreeListPayload, WorktreeValidation } from '@kabmo-labs/kabmo-worktree/types';
 
 export interface WorktreeRequestScope {
   /** The project's `project_path`, sent as `?root=`. */

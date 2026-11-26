@@ -16,7 +16,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { action, loader } from '@/server/routes/harness/root';
-import { saveAutoImportEnabled } from '@kabmo-labs/kabmo-harness-session/auto-import.server';
+import { saveAutoImportEnabled } from '@kabmo-labs/kabmo-harness/session/auto-import.server';
 
 const API = 'http://localhost/api/harness';
 

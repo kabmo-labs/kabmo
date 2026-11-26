@@ -18,13 +18,13 @@ import {
   renameHarnessAccount,
   selectHarnessAccount,
   verifyHarnessAccount,
-} from '@kabmo-labs/kabmo-harness-account-store';
+} from '@kabmo-labs/kabmo-harness/account-store';
 import {
   accountLoginStatus,
   cancelAccountLogin,
   startAccountLogin,
   submitAccountLoginInput,
-} from '@kabmo-labs/kabmo-harness-account-store/account-login.server';
+} from '@kabmo-labs/kabmo-harness/account-store/account-login.server';
 
 type AccountBody = {
   op?: unknown;

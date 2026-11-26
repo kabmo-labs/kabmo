@@ -30,7 +30,7 @@
 import fs from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { invalidateSkillCache, managedSkillRoots } from '@kabmo-labs/kabmo-omp-config-files/skills';
+import { invalidateSkillCache, managedSkillRoots } from '@kabmo-labs/kabmo-omp/config-files/skills';
 import { MAX_SKILL_DIR_BYTES } from '@/server/lib/omp/config/skills-git-repo';
 import {
   scanSkillRepository,

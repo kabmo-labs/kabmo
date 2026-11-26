@@ -29,7 +29,7 @@
  */
 
 import { isRecord } from '@kabmo-labs/kabmo-guards';
-import type { AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
+import type { AgentEvent } from '@kabmo-labs/kabmo-omp/rpc-protocol/constants';
 import { classifyCommand } from '@/server/lib/changes/classify-command';
 import { captureBashChanges, type BashCaptureHost } from '@/server/lib/changes/capture-bash.server';
 import {

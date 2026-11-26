@@ -27,7 +27,7 @@ import { expect } from 'bun:test';
 import type { Server } from 'bun';
 import net from 'node:net';
 
-import { getProcessState } from '@kabmo-labs/kabmo-process-probe/identity';
+import { getProcessState } from '@kabmo-labs/kabmo-process/probe/identity';
 import { isPortAvailable, waitForPortFree } from '@/server/lib/lifecycle/probe';
 
 /**

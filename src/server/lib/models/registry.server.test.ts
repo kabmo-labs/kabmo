@@ -26,14 +26,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { getDb } from '@/server/db.server';
-import { invalidateOmpCliCache } from '@kabmo-labs/kabmo-omp-cli';
+import { invalidateOmpCliCache } from '@kabmo-labs/kabmo-omp/cli';
 import {
   EMPTY_MODELS,
   invalidateModelsCache,
   loadModelsWithCache,
   readStoredProvidersForModels,
 } from '@/server/lib/models/registry.server';
-import { disposeUtilityRpc } from '@kabmo-labs/kabmo-omp-rpc-process/utility';
+import { disposeUtilityRpc } from '@kabmo-labs/kabmo-omp/rpc-process/utility';
 import { removeDir } from '@/test-support/remove-dir';
 
 const dirs: string[] = [];

@@ -1,0 +1,198 @@
+/**
+ * @license
+ * SPDX-License-Identifier: MIT
+ */
+
+/**
+ * The access tier decides whether a permission request ever reaches the user.
+ *
+ * ACP has no `--approval-mode` flag: the CLIENT answers
+ * `session/request_permission`. That made the composer's access control inert
+ * on this transport (measured: "Full bypass" still raised the approval dialog
+ * for a bash call), and the tiers below are omp's own contract, so one label
+ * means one thing on both transports.
+ */
+
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { isolateDb, releaseDb } from '@/test-support/isolated-db';
+import { mountSession } from './session.test-util';
+import type { AcpSession } from './session';
+import type { AgentEvent } from '@kabmo-labs/kabmo-omp/rpc-protocol/constants';
+
+// A prompt reaches the title writer, which opens the database — isolate it.
+beforeEach(async () => {
+  await isolateDb();
+});
+
+afterEach(async () => {
+  await releaseDb();
+});
+
+interface PermissionHost {
+  accessMode: string;
+  onClientRequest: (
+    id: number,
+    method: string,
+    params: Record<string, unknown>,
+  ) => Promise<unknown>;
+}
+
+const request = (kind: string): Record<string, unknown> => ({
+  sessionId: 'acp-1',
+  toolCall: { kind, title: `${kind} thing` },
+  options: [
+    { optionId: 'deny', kind: 'reject_once' },
+    { optionId: 'allow', kind: 'allow_once' },
+  ],
+});
+
+const permission = (session: AcpSession, id: number, kind: string): Promise<unknown> =>
+  (session as unknown as PermissionHost).onClientRequest(id, 'session/request_permission', request(kind));
+
+const dialogs = (events: AgentEvent[]): number =>
+  events.filter((event) => event.type === 'extension_ui_request').length;
+
+describe('ACP permission gating', () => {
+  test('`yolo` answers an exec request itself, with no dialog', async () => {
+    const { session, events } = mountSession();
+    (session as unknown as PermissionHost).accessMode = 'yolo';
+    expect(await permission(session, 7, 'execute')).toEqual({
+      answered: true,
+      result: { outcome: { outcome: 'selected', optionId: 'allow' } },
+    });
+    expect(dialogs(events)).toBe(0);
+    expect(session.isBusy()).toBe(false);
+  });
+
+  test('`always-ask` still parks an exec request as a dialog', async () => {
+    const { session, events } = mountSession();
+    expect(await permission(session, 8, 'execute')).toEqual({ answered: false, deferred: true });
+    expect(dialogs(events)).toBe(1);
+    expect(session.isBusy()).toBe(true);
+  });
+
+  test('`always-ask` auto-runs a read-tier request, as omp does', async () => {
+    const { session } = mountSession();
+    expect(await permission(session, 9, 'read')).toMatchObject({ answered: true });
+  });
+
+  test('`write` auto-runs edits and still asks for exec', async () => {
+    const { session } = mountSession();
+    (session as unknown as PermissionHost).accessMode = 'write';
+    expect(await permission(session, 10, 'edit')).toMatchObject({ answered: true });
+    expect(await permission(session, 11, 'execute')).toEqual({ answered: false, deferred: true });
+  });
+
+  test('a request with no allow option still reaches the user', async () => {
+    const { session, events } = mountSession();
+    (session as unknown as PermissionHost).accessMode = 'yolo';
+    const answer = await (session as unknown as PermissionHost).onClientRequest(12, 'session/request_permission', {
+      sessionId: 'acp-1',
+      toolCall: { kind: 'execute' },
+      options: [{ optionId: 'deny', kind: 'reject_once' }],
+    });
+    expect(answer).toEqual({ answered: false, deferred: true });
+    expect(dialogs(events)).toBe(1);
+  });
+
+  test('a prompt carrying the access pick adopts it before the turn', async () => {
+    const { session, turn } = mountSession();
+    await session.send({ type: 'prompt', message: 'hi', accessMode: 'yolo' });
+    await turn.started;
+    expect((session as unknown as PermissionHost).accessMode).toBe('yolo');
+    turn.finish({ stopReason: 'end_turn' });
+  });
+});
+
+describe('ACP approval options', () => {
+  const withOptions = (session: AcpSession, id: number, options: Array<{ optionId: string; kind: string }>, action = 'execute') =>
+    (session as unknown as PermissionHost).onClientRequest(id, 'session/request_permission', {
+      sessionId: 'acp-1',
+      toolCall: { kind: action, title: 'Run the thing', rawInput: { command: 'rm -rf build' } },
+      options,
+    });
+
+  test('dismissing a dialog with only an allow option answers cancelled, never allow', async () => {
+    const { session, permissionAnswers } = mountSession();
+    await withOptions(session, 30, [{ optionId: 'allow', kind: 'allow_once' }]);
+    session.resolvePermission('30', false);
+    expect(permissionAnswers()).toEqual([
+      { id: 30, result: { outcome: { outcome: 'cancelled' } } },
+    ]);
+  });
+
+  test('Confirm picks the allow option even when the agent lists reject first', async () => {
+    const { session, permissionAnswers } = mountSession();
+    await withOptions(session, 31, [
+      { optionId: 'deny', kind: 'reject_once' },
+      { optionId: 'allow', kind: 'allow_once' },
+    ]);
+    session.resolvePermission('31', true);
+    expect(permissionAnswers()).toEqual([
+      { id: 31, result: { outcome: { outcome: 'selected', optionId: 'allow' } } },
+    ]);
+  });
+
+  test('an "always allow" choice answers that option and silences the next identical request', async () => {
+    const { session, events, permissionAnswers } = mountSession();
+    await withOptions(session, 32, [
+      { optionId: 'once', kind: 'allow_once' },
+      { optionId: 'always', kind: 'allow_always' },
+      { optionId: 'deny', kind: 'reject_once' },
+    ]);
+    session.resolvePermission('32', false, 'always');
+    expect(permissionAnswers()).toEqual([
+      { id: 32, result: { outcome: { outcome: 'selected', optionId: 'always' } } },
+    ]);
+    const before = dialogs(events);
+    expect(await withOptions(session, 33, [
+      { optionId: 'once', kind: 'allow_once' },
+      { optionId: 'always', kind: 'allow_always' },
+    ])).toEqual({
+      answered: true,
+      result: { outcome: { outcome: 'selected', optionId: 'always' } },
+    });
+    expect(dialogs(events)).toBe(before);
+  });
+
+  test('a choice id the dialog does not hold is never substituted', async () => {
+    const { session, permissionAnswers } = mountSession();
+    await withOptions(session, 34, [
+      { optionId: 'allow', kind: 'allow_once' },
+      { optionId: 'deny', kind: 'reject_once' },
+    ]);
+    session.resolvePermission('34', true, 'not-an-option');
+    expect(permissionAnswers()).toEqual([
+      { id: 34, result: { outcome: { outcome: 'selected', optionId: 'allow' } } },
+    ]);
+  });
+});
+
+describe('ACP cancellation answers parked approvals', () => {
+  test('Stop answers every parked request with the cancelled outcome', async () => {
+    const { session, permissionAnswers } = mountSession();
+    await permission(session, 21, 'execute');
+    session.cancelTurn();
+    expect(permissionAnswers()).toEqual([
+      { id: 21, result: { outcome: { outcome: 'cancelled' } } },
+    ]);
+    expect(session.isBusy()).toBe(false);
+  });
+
+  test('$/cancel_request answers the named request and ignores an unknown id', async () => {
+    const { session, permissionAnswers } = mountSession();
+    await permission(session, 22, 'execute');
+    const cancel = (requestId: unknown): void => {
+      (session as unknown as {
+        onNotification(method: string, params: Record<string, unknown>): void;
+      }).onNotification('$/cancel_request', { requestId });
+    };
+    cancel(999);
+    expect(permissionAnswers()).toEqual([]);
+    cancel(22);
+    expect(permissionAnswers()).toEqual([
+      { id: 22, result: { outcome: { outcome: 'cancelled' } } },
+    ]);
+    expect(session.isBusy()).toBe(false);
+  });
+});

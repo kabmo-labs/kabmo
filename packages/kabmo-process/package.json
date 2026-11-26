@@ -1,0 +1,31 @@
+{
+  "name": "@kabmo-labs/kabmo-process",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "The process family: 2 previously separate modules in one package.",
+  "exports": {
+    "./kill": "./src/kill/kill-tree.ts",
+    "./probe": "./src/probe/identity.ts",
+    "./probe/identity": "./src/probe/identity.ts",
+    "./probe/proc": "./src/probe/index.ts",
+    "./probe/fd-pressure": "./src/probe/fd-pressure.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-process"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  },
+  "dependencies": {
+    "@kabmo-labs/kabmo-fs": "workspace:*"
+  }
+}

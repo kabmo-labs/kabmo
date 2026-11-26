@@ -29,7 +29,7 @@ import {
   HARNESS_BRAND_GLYPHS,
 } from '@/client/components/common/harness-glyph/brands';
 import { harnessBadgeLabel,
-harnessDescriptor, } from '@kabmo-labs/kabmo-harness-catalog';
+harnessDescriptor, } from '@kabmo-labs/kabmo-harness/catalog';
 
 interface HarnessGlyphProps {
   /** The session's harness id (`omp-rpc`, `claude`, …). An unknown id renders

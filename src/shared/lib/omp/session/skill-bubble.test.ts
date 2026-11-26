@@ -26,7 +26,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { loadSessionMessages } from '@kabmo-labs/kabmo-omp-session-messages/messages';
+import { loadSessionMessages } from '@kabmo-labs/kabmo-omp/session-messages/messages';
 
 const tempDirs: string[] = [];
 afterAll(() => {

@@ -28,8 +28,8 @@ import { jobTone,
 procOpLabel,
 procViewOf,
 type ProcAgent,
-type ProcJob, } from '@kabmo-labs/kabmo-omp-proc/proc';
-import { daemonTone, formatProcDuration, procUptime, type ProcDaemon } from '@kabmo-labs/kabmo-omp-proc/proc-daemon';
+type ProcJob, } from '@kabmo-labs/kabmo-omp/proc/proc';
+import { daemonTone, formatProcDuration, procUptime, type ProcDaemon } from '@kabmo-labs/kabmo-omp/proc/proc-daemon';
 import { FallbackOutput } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/FallbackOutput';
 import { ToolPanelHeader } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/ToolPanelHeader';
 import { jobSubject, jobProgressLine } from '@/shared/lib/omp/session/job-progress';

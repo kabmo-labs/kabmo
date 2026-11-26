@@ -1,9 +1,9 @@
 import { useState } from 'preact/hooks';
 import { Check, ChevronDown, ChevronUp, FileWarning } from 'lucide-preact';
 import { FileIcon } from '@/client/components/common/file-icon';
-import { isUnmergedCode } from '@kabmo-labs/kabmo-git-runner/git-unmerged';
+import { isUnmergedCode } from '@kabmo-labs/kabmo-git/runner/git-unmerged';
 import type { GitChange } from '@/shared/types';
-import type { ConflictMarkers } from '@kabmo-labs/kabmo-git-runner/git-unmerged';
+import type { ConflictMarkers } from '@kabmo-labs/kabmo-git/runner/git-unmerged';
 
 interface GitConflictItemProps {
   change: GitChange;

@@ -20,7 +20,7 @@
  * file has a rendered form.
  */
 
-import { getFileExtension, getImageMimeType } from '@kabmo-labs/kabmo-fs-media/mime';
+import { getFileExtension, getImageMimeType } from '@kabmo-labs/kabmo-fs/media/mime';
 
 /**
  * The surface that draws a file.

@@ -28,7 +28,7 @@ import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { updateOmpProviderEntry,
 type OmpProviderEntryPatch,
-type ProviderDiscoveryConfig, } from '@kabmo-labs/kabmo-omp-config-providers/provider-entry';
+type ProviderDiscoveryConfig, } from '@kabmo-labs/kabmo-omp/config-providers/provider-entry';
 import { isOmpProviderApi,
 isProviderAuthMode,
 isProviderDiscoveryType, } from '@kabmo-labs/kabmo-provider-contracts/dialect';

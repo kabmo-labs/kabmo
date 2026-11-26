@@ -15,8 +15,8 @@
 
 import { json, NO_STORE_HEADERS } from '@kabmo-labs/kabmo-http';
 import type { LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
-import { loadSidebarData } from '@kabmo-labs/kabmo-omp-sidebar-data/data.server';
-import { requestAutoImport } from '@kabmo-labs/kabmo-harness-session/auto-import.server';
+import { loadSidebarData } from '@kabmo-labs/kabmo-omp/sidebar-data/data.server';
+import { requestAutoImport } from '@kabmo-labs/kabmo-harness/session/auto-import.server';
 
 export async function loader(_args: LoaderFunctionArgs) {
   // Opening the sidebar is the moment a terminal chat should appear. The pass is

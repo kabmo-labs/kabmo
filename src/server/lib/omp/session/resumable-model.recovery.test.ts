@@ -29,10 +29,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describePosix } from '@/test-support/platform';
 
-import { invalidateOmpCliCache } from '@kabmo-labs/kabmo-omp-cli';
+import { invalidateOmpCliCache } from '@kabmo-labs/kabmo-omp/cli';
 import { stopDiscoveryRootsWatch } from '@/server/lib/omp/config/roots-watch.server';
 import { getRpcSession, startRpcSession } from '@/server/lib/omp/rpc/session-registry';
-import { invalidateResolvableModels } from '@kabmo-labs/kabmo-omp-session-runtime/resumable-model.server';
+import { invalidateResolvableModels } from '@kabmo-labs/kabmo-omp/session-runtime/resumable-model.server';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 
 let root: string;

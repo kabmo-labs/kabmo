@@ -17,7 +17,7 @@ import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { CardRow } from '@/client/components/workspace/chat-timeline/tool-renderers/styles/Card';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
-import type { ToolCallData } from '@kabmo-labs/kabmo-chat-contracts/chat';
+import type { ToolCallData } from '@kabmo-labs/kabmo-chat/contracts/chat';
 
 let container: HTMLElement;
 

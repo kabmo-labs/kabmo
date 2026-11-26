@@ -1,8 +1,8 @@
 import { useMemo } from 'preact/hooks';
 import { Check, Clock, Server, Shrink, Terminal } from 'lucide-preact';
 import type { ToolCallData } from '@/shared/types';
-import { bashServiceOf } from '@kabmo-labs/kabmo-omp-proc/proc';
-import { daemonTone, procUptime } from '@kabmo-labs/kabmo-omp-proc/proc-daemon';
+import { bashServiceOf } from '@kabmo-labs/kabmo-omp/proc/proc';
+import { daemonTone, procUptime } from '@kabmo-labs/kabmo-omp/proc/proc-daemon';
 import { formatToolBytes } from '@/shared/lib/chat/tool/labels';
 import { minimizedOutputOf } from '@/shared/lib/chat/tool/minimized';
 import { CopyButton } from '@/client/components/common/CopyButton';

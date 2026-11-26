@@ -27,7 +27,7 @@
 import { json } from '@kabmo-labs/kabmo-http';
 import type { ActionFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
-import { runUtilityCommand } from '@kabmo-labs/kabmo-omp-rpc-process/utility';
+import { runUtilityCommand } from '@kabmo-labs/kabmo-omp/rpc-process/utility';
 import { invalidateModelsCaches } from '@/shared/lib/models/server-cache';
 
 /** One credential omp could remove for a provider. */

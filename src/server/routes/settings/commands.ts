@@ -6,13 +6,13 @@ import { DEFAULT_COMMANDS_LIST } from '@/client/data/settings/command';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import type { CommandItem } from '@/shared/types';
 import { isRecord } from '@kabmo-labs/kabmo-guards';
-import { createSettingsListStore } from '@kabmo-labs/kabmo-settings-store';
-import { runUtilityCommand } from '@kabmo-labs/kabmo-omp-rpc-process/utility';
+import { createSettingsListStore } from '@kabmo-labs/kabmo-settings/store';
+import { runUtilityCommand } from '@kabmo-labs/kabmo-omp/rpc-process/utility';
 import { resolveDiscoveryScope, type DiscoveryScope } from '@/server/lib/omp/config/scope';
 import { deleteCommandFile,
 locateCommandFile,
 readCommandFile,
-writeCommandFile, } from '@kabmo-labs/kabmo-omp-config-files/commands';
+writeCommandFile, } from '@kabmo-labs/kabmo-omp/config-files/commands';
 import { reloadLiveSessions } from '@/server/lib/omp/session/reload.server';
 import { getLiveSession, harnessOfSession } from '@/server/lib/omp/rpc/session-registry';
 

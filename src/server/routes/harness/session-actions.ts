@@ -18,9 +18,9 @@
  */
 
 import { json } from '@kabmo-labs/kabmo-http';
-import { importHarnessSessions } from '@kabmo-labs/kabmo-harness-session/session-import.server';
-import { saveAutoImportEnabled } from '@kabmo-labs/kabmo-harness-session/auto-import.server';
-import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
+import { importHarnessSessions } from '@kabmo-labs/kabmo-harness/session/session-import.server';
+import { saveAutoImportEnabled } from '@kabmo-labs/kabmo-harness/session/auto-import.server';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness/catalog';
 
 export async function importSessionsAction(id: HarnessId): Promise<Response> {
   try {

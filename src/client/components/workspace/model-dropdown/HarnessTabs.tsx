@@ -30,7 +30,7 @@
 
 import type { ComponentChildren } from 'preact';
 import { HarnessGlyph, HARNESS_GLYPH_SIZE } from '@/client/components/common/harness-glyph';
-import { harnessBadgeLabel } from '@kabmo-labs/kabmo-harness-catalog';
+import { harnessBadgeLabel } from '@kabmo-labs/kabmo-harness/catalog';
 import type { HarnessSummary } from '@kabmo-labs/kabmo-app-contracts/harness';
 
 interface HarnessTabsProps {

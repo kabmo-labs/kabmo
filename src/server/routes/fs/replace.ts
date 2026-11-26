@@ -1,7 +1,7 @@
 import { json, type ActionFunctionArgs } from '@kabmo-labs/kabmo-http';
 import path from 'path';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
-import { getDefaultFsRoot, resolveRoot } from '@kabmo-labs/kabmo-workspace-root/root';
+import { getDefaultFsRoot, resolveRoot } from '@kabmo-labs/kabmo-workspace/root/root';
 import { scopeToRepo } from '@/server/lib/fs/repo-scope';
 
 export async function action({ request }: ActionFunctionArgs) {

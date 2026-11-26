@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'preact/hooks';
 import { Check, ChevronDown, Search } from 'lucide-preact';
-import type { PresetProviderOption } from '@kabmo-labs/kabmo-settings-contracts/provider';
+import type { PresetProviderOption } from '@kabmo-labs/kabmo-settings/contracts/provider';
 import { groupProviderPresets } from '@/shared/lib/models/provider/presets';
 import { matchesPickerQuery } from '@/shared/lib/ui/picker-filter';
 import { ProviderIconPlate } from '@/client/components/common/provider-icon/Plate';

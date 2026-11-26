@@ -15,7 +15,7 @@
 import type { Dispatch, SetStateAction } from 'preact/compat';
 import type { ChatMessageData, ExtensionUiDialogRequest, IncomingExtensionUiRequest, OmpAgentCallbacks } from '@/shared/types';
 import { triggerChatCompletionSound } from '@/client/hooks/ui/notification-sound';
-import { isNoticeRow } from '@kabmo-labs/kabmo-chat-notices/notice-row';
+import { isNoticeRow } from '@kabmo-labs/kabmo-chat/notices/notice-row';
 import { parseOrchestrationBlock } from '@kabmo-labs/kabmo-app-contracts/notice';
 import {
   bindStreamingCoalescer,
@@ -27,7 +27,7 @@ import { appendNoticeRow } from '@/shared/lib/chat/timeline/command-output';
 import { reportPromptError } from '@/shared/lib/chat/timeline/prompt-error';
 import { retryNotice } from '@/shared/lib/chat/timeline/provider-retry';
 import { handleAgentStart, handleResumeStream, handleTurnStart } from '@/shared/lib/chat/timeline/run-signals';
-import { isAnswerableUiRequest } from '@kabmo-labs/kabmo-omp-rpc-protocol/dialog-methods';
+import { isAnswerableUiRequest } from '@kabmo-labs/kabmo-omp/rpc-protocol/dialog-methods';
 
 export interface OmpAgentCallbacksDeps {
   setGenerating: (v: boolean) => void;

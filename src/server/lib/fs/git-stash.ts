@@ -18,7 +18,7 @@
  * have to be split on the first colon, and a branch name may contain one.
  */
 
-import { runGit } from '@kabmo-labs/kabmo-git-runner/git-run';
+import { runGit } from '@kabmo-labs/kabmo-git/runner/git-run';
 import { readGitState } from '@/server/lib/fs/git-state';
 
 export interface StashEntry {

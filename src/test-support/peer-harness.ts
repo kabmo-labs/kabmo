@@ -23,8 +23,8 @@ import { join } from 'node:path';
 
 import type { RealtimeConnection } from '@/server/lib/realtime/hub.server';
 import { sessionLeasePath } from '@/server/lib/omp/session/ownership.server';
-import { leaseHeldByAnother } from '@kabmo-labs/kabmo-omp-session-runtime/lease-probe.server';
-import { isProcessAlive, processParentPid } from '@kabmo-labs/kabmo-process-probe/identity';
+import { leaseHeldByAnother } from '@kabmo-labs/kabmo-omp/session-runtime/lease-probe.server';
+import { isProcessAlive, processParentPid } from '@kabmo-labs/kabmo-process/probe/identity';
 import type { RealtimeServerFrame } from '@/shared/lib/realtime/protocol';
 
 /** Spin the event loop until `condition` holds, up to `timeoutMs`. */
@@ -207,7 +207,7 @@ export async function holdLeaseInForeignProcess(sessionId: string): Promise<Fore
   const lease = sessionLeasePath(sessionId);
   writeFileSync(lease, '');
   const script = `
-    const { holdLeaseForTest } = await import('@kabmo-labs/kabmo-omp-session-runtime/lease-probe.server');
+    const { holdLeaseForTest } = await import('@kabmo-labs/kabmo-omp/session-runtime/lease-probe.server');
     holdLeaseForTest(process.argv[1]);
     await Promise.withResolvers().promise;
   `;

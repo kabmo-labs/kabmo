@@ -8,7 +8,7 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { isKabmoCommand } from '@kabmo-labs/kabmo-process-probe/identity';
+import { isKabmoCommand } from '@kabmo-labs/kabmo-process/probe/identity';
 
 describe('isKabmoCommand', () => {
   test('matches a server installed under either name', () => {

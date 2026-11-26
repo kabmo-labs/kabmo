@@ -14,11 +14,11 @@
 
 import { useEffect, useState } from 'preact/hooks';
 import { isRecord } from '@kabmo-labs/kabmo-guards';
-import { fetchSubagentHistory, historyEntryToSubagentInfo } from '@kabmo-labs/kabmo-omp-subagent/history-client';
+import { fetchSubagentHistory, historyEntryToSubagentInfo } from '@kabmo-labs/kabmo-omp/subagent/history-client';
 import { mergeSubagentRoster,
 parseSubagentLifecycle,
 parseSubagentRosterResponse,
-readSubagentProgressFrame, } from '@kabmo-labs/kabmo-omp-subagent/parse';
+readSubagentProgressFrame, } from '@kabmo-labs/kabmo-omp/subagent/parse';
 import { subscribeSubagentFrame, type SubagentFrame } from '@/shared/lib/chat/omp/subagent-frames';
 import type { SubagentInfo, SubagentProgress } from '@/shared/types';
 

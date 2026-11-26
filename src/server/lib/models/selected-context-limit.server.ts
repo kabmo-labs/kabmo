@@ -21,7 +21,7 @@
  */
 
 import { getDb } from '@/server/db.server';
-import { readSettingsJson } from '@kabmo-labs/kabmo-settings-store';
+import { readSettingsJson } from '@kabmo-labs/kabmo-settings/store';
 import { loadModelsWithCache } from '@/server/lib/models/registry.server';
 
 const SELECTED_MODEL_KEY = 'omp_selected_model';

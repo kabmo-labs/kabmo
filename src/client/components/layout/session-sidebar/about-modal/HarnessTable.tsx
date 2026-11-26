@@ -37,7 +37,7 @@ import { HarnessRow } from '@/client/components/layout/session-sidebar/about-mod
 import { harnessStatus } from '@/shared/lib/harness/status';
 import { harnessCategoryId } from '@/shared/lib/harness/menu';
 import type { HarnessSummary } from '@kabmo-labs/kabmo-app-contracts/harness';
-import type { HarnessUpdateJob } from '@kabmo-labs/kabmo-harness-update-job/types';
+import type { HarnessUpdateJob } from '@kabmo-labs/kabmo-harness/update-job/types';
 import type { HarnessVersionRow } from '@kabmo-labs/kabmo-app-contracts/harness-version';
 
 interface HarnessTableProps {

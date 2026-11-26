@@ -18,16 +18,16 @@
  */
 
 import { getLiveSession, startRpcSession } from '@/server/lib/omp/rpc/session-registry';
-import { findSessionFileById } from '@kabmo-labs/kabmo-omp-session-locator';
+import { findSessionFileById } from '@kabmo-labs/kabmo-omp/session-locator';
 import { startAcpSession } from '@/server/lib/harness/spawn.server';
-import { repointHarnessSession } from '@kabmo-labs/kabmo-harness-session/session-store.server';
+import { repointHarnessSession } from '@kabmo-labs/kabmo-harness/session/session-store.server';
 import { loadPersistedAccessMode } from '@/shared/lib/omp/config/access-mode.server';
-import { loadStreamStates } from '@kabmo-labs/kabmo-session-stream-state';
+import { loadStreamStates } from '@kabmo-labs/kabmo-session/stream-state';
 import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 import type { QueueDeliveryHost } from '@/server/lib/queue/delivery.server';
 import { resolveSessionRef } from '@/server/lib/sessions/resolve.server';
-import { mintAgentEnvironment, rememberAgentToken } from '@kabmo-labs/kabmo-session-relations/agent-token.server';
-import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
+import { mintAgentEnvironment, rememberAgentToken } from '@kabmo-labs/kabmo-session/relations/agent-token.server';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness/catalog';
 
 export interface DispatchDeps {
   findFile(sessionId: string): Promise<string | undefined>;

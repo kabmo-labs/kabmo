@@ -3,7 +3,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from '@kabmo-labs/kabmo-h
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { getDb } from '@/server/db.server';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
-import { isPlainObject, mergeSettingsJson, readAllSettingsJson, writeSettingsJson, writeSettingsRaw } from '@kabmo-labs/kabmo-settings-store';
+import { isPlainObject, mergeSettingsJson, readAllSettingsJson, writeSettingsJson, writeSettingsRaw } from '@kabmo-labs/kabmo-settings/store';
 import { packageDir } from '@/server/lib/fs/package-root';
 import { refreshTrayIcon } from '@/server/lib/tray/runtime.server';
 import { SETTINGS_BLOB_KEY } from '@/shared/lib/settings/keys';

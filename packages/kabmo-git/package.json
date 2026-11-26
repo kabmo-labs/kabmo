@@ -1,0 +1,32 @@
+{
+  "name": "@kabmo-labs/kabmo-git",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "The git family: 2 previously separate modules in one package.",
+  "exports": {
+    "./env": "./src/env/env.ts",
+    "./runner": "./src/runner/git-run.ts",
+    "./runner/git-run": "./src/runner/git-run.ts",
+    "./runner/git-unmerged": "./src/runner/git-unmerged.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  },
+  "dependencies": {
+    "@kabmo-labs/kabmo-app-contracts": "workspace:*",
+    "@kabmo-labs/kabmo-sdk": "workspace:*",
+    "@kabmo-labs/kabmo-workspace": "workspace:*"
+  }
+}

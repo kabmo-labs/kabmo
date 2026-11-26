@@ -19,20 +19,20 @@
  * lives in `terminal-settle.ts`.
  */
 
-import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
+import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp/session-scan/files';
 import {
   consumeAutoTitleOutput,
   triggerAutoSessionTitle,
 } from '@/server/lib/omp/session/auto-title.server';
-import { clearStreamStatus, markStreamStatus } from '@kabmo-labs/kabmo-session-stream-state';
-import { releasesStreamRowOnPromptResult } from '@kabmo-labs/kabmo-session-stream-state/stream-heal.server';
+import { clearStreamStatus, markStreamStatus } from '@kabmo-labs/kabmo-session/stream-state';
+import { releasesStreamRowOnPromptResult } from '@kabmo-labs/kabmo-session/stream-state/stream-heal.server';
 import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 import { publishSidebarStructure } from '@/server/lib/realtime/topics.server';
-import { NON_TERMINAL_CONTINUATION_GRACE_MS, type AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
+import { NON_TERMINAL_CONTINUATION_GRACE_MS, type AgentEvent } from '@kabmo-labs/kabmo-omp/rpc-protocol/constants';
 import { assistantFailure, settleTerminalRun } from '@/server/lib/omp/rpc/terminal-settle';
-import { noteRetryFrame } from '@kabmo-labs/kabmo-omp-rpc-util/retry-saga';
-import { parseModeMarker } from '@kabmo-labs/kabmo-omp-mode/markers';
-import { SKILL_PROMPT_CUSTOM_TYPE } from '@kabmo-labs/kabmo-omp-operator-title';
+import { noteRetryFrame } from '@kabmo-labs/kabmo-omp/rpc-util/retry-saga';
+import { parseModeMarker } from '@kabmo-labs/kabmo-omp/mode/markers';
+import { SKILL_PROMPT_CUSTOM_TYPE } from '@kabmo-labs/kabmo-omp/operator-title';
 import type { FrameFoldResult, SessionFrameHost } from '@/server/lib/omp/rpc/frame-fold-contract';
 
 /**

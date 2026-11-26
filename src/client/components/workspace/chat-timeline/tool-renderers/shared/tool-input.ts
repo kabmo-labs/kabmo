@@ -1,5 +1,5 @@
-import type { ToolCallData } from '@kabmo-labs/kabmo-chat-contracts/chat';
-import { toolInputPath } from '@kabmo-labs/kabmo-chat-tool/tool-input-path';
+import type { ToolCallData } from '@kabmo-labs/kabmo-chat/contracts/chat';
+import { toolInputPath } from '@kabmo-labs/kabmo-chat/tool/tool-input-path';
 
 /**
  * Extract the `path` a tool call's raw arguments name. The keys live in

@@ -13,7 +13,7 @@
 
 import { describe, expect, test } from 'bun:test';
 import * as extension from './protocol';
-import * as shared from '@kabmo-labs/kabmo-omp-mode/types';
+import * as shared from '@kabmo-labs/kabmo-omp/mode/types';
 
 const SHARED_KEYS = [
   'CHAMBER_GOAL_STATE_ENTRY',

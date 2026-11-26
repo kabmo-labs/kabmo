@@ -1,0 +1,33 @@
+{
+  "name": "@kabmo-labs/kabmo-worktree",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "The worktree family: 2 previously separate modules in one package.",
+  "exports": {
+    "./topology": "./src/topology/topology.ts",
+    "./topology/list": "./src/topology/list.ts",
+    "./topology/topology": "./src/topology/topology.ts",
+    "./types": "./src/types/types.ts",
+    "./types/types": "./src/types/types.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-worktree"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  },
+  "dependencies": {
+    "@kabmo-labs/kabmo-fs": "workspace:*",
+    "@kabmo-labs/kabmo-git": "workspace:*",
+    "@kabmo-labs/kabmo-omp": "workspace:*"
+  }
+}

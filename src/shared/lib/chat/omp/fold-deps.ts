@@ -15,7 +15,7 @@
 
 import type { Dispatch, RefObject, SetStateAction } from 'preact/compat';
 import type { OmpAgentCallbacks, OmpAgentState } from '@/shared/types';
-import type { ToolResultHost } from '@kabmo-labs/kabmo-chat-rows/tool-results';
+import type { ToolResultHost } from '@kabmo-labs/kabmo-chat/rows/tool-results';
 
 export interface OmpAgentFoldDeps extends ToolResultHost {
   sessionId: string;

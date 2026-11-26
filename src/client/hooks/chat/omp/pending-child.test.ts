@@ -23,7 +23,7 @@ import {
 } from '@/client/hooks/chat/omp/pending-sessions';
 import { withPendingRows } from '@/client/hooks/chat/omp/pending-rows';
 import { buildSessionTree } from '@/shared/lib/workspace/session-tree';
-import { formatNewSessionTitle } from '@kabmo-labs/kabmo-omp-session-core/default-title';
+import { formatNewSessionTitle } from '@kabmo-labs/kabmo-omp/session-core/default-title';
 import type { WorkspaceFolderData } from '@/shared/types';
 
 function folders(...ids: string[]): WorkspaceFolderData[] {

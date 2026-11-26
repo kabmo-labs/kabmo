@@ -17,10 +17,10 @@
 
 import { afterAll, beforeEach, describe, expect, test } from 'bun:test';
 
-import { testMcpServer } from '@kabmo-labs/kabmo-omp-config-mcp/mcp-test';
-import { isPathScopedEntry, pathScopedEntryValues, resolvePathScopedSlugs } from '@kabmo-labs/kabmo-omp-config-doc/path-scoped';
-import { pluginCliError } from '@kabmo-labs/kabmo-omp-config-mcp/plugin-cli';
-import { getOmpConfigValue, listOmpConfig, resetOmpConfigKey, setOmpConfigValue } from '@kabmo-labs/kabmo-omp-config-files/config-cli';
+import { testMcpServer } from '@kabmo-labs/kabmo-omp/config-mcp/mcp-test';
+import { isPathScopedEntry, pathScopedEntryValues, resolvePathScopedSlugs } from '@kabmo-labs/kabmo-omp/config-doc/path-scoped';
+import { pluginCliError } from '@kabmo-labs/kabmo-omp/config-mcp/plugin-cli';
+import { getOmpConfigValue, listOmpConfig, resetOmpConfigKey, setOmpConfigValue } from '@kabmo-labs/kabmo-omp/config-files/config-cli';
 
 const originalMock = Bun.env.MOCK;
 

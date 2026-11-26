@@ -43,14 +43,10 @@
     "bun": ">=1.4.0"
   },
   "dependencies": {
-    "@kabmo-labs/kabmo-chat-contracts": "workspace:*",
-    "@kabmo-labs/kabmo-harness-accounts": "workspace:*",
-    "@kabmo-labs/kabmo-harness-config": "workspace:*",
-    "@kabmo-labs/kabmo-harness-launch": "workspace:*",
-    "@kabmo-labs/kabmo-harness-provider": "workspace:*",
-    "@kabmo-labs/kabmo-harness-updates": "workspace:*",
+    "@kabmo-labs/kabmo-chat": "workspace:*",
+    "@kabmo-labs/kabmo-harness": "workspace:*",
     "@kabmo-labs/kabmo-sdk": "workspace:*",
-    "@kabmo-labs/kabmo-session-stream-state": "workspace:*",
-    "@kabmo-labs/kabmo-worktree-types": "workspace:*"
+    "@kabmo-labs/kabmo-session": "workspace:*",
+    "@kabmo-labs/kabmo-worktree": "workspace:*"
   }
 }

@@ -28,7 +28,7 @@ import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { ExtensionDialog } from '@/client/components/workspace/chat-timeline/tool-renderers/extension-dialog';
-import type { ExtensionUiDialogRequest } from '@kabmo-labs/kabmo-chat-contracts/agent';
+import type { ExtensionUiDialogRequest } from '@kabmo-labs/kabmo-chat/contracts/agent';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
 
 /** omp's gate for a restricted-folder read. */

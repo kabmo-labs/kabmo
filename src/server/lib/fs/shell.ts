@@ -26,7 +26,7 @@
  * has no equivalent), so the Windows branch passes the shell's own pid.
  */
 
-import { killProcessTree } from '@kabmo-labs/kabmo-process-kill';
+import { killProcessTree } from '@kabmo-labs/kabmo-process/kill';
 import { signalName } from '@kabmo-labs/kabmo-sdk';
 import { UI_PASSWORD_ENV } from '@kabmo-labs/kabmo-auth';
 

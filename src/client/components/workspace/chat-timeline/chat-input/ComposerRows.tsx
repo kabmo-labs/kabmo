@@ -18,7 +18,7 @@
 import type { ClipboardEvent, RefObject } from 'preact/compat';
 import type { ComponentChildren } from 'preact';
 import type { AIModelOption, Attachment } from '@/shared/types';
-import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
+import type { ApprovalMode } from '@kabmo-labs/kabmo-omp/access-mode';
 import type { ComposerRow } from '@/shared/lib/chat/composer/style';
 import type { ComposerModes } from '@/client/components/workspace/chat-timeline/chat-input/modes-props';
 import type { WaitingCandidate } from '@/client/components/workspace/chat-timeline/chat-input/WaitingDependencyPicker';

@@ -20,7 +20,7 @@
 
 import type { Dispatch, SetStateAction } from 'preact/compat';
 import type { ChatMessageData } from '@/shared/types';
-import { isNoticeRow } from '@kabmo-labs/kabmo-chat-notices/notice-row';
+import { isNoticeRow } from '@kabmo-labs/kabmo-chat/notices/notice-row';
 import { formatClock } from '@kabmo-labs/kabmo-format/time';
 
 export interface PromptErrorDeps {

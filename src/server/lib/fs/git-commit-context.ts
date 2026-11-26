@@ -19,7 +19,7 @@
  * generated message describes half a change and reads as complete.
  */
 
-import { runGit } from '@kabmo-labs/kabmo-git-runner/git-run';
+import { runGit } from '@kabmo-labs/kabmo-git/runner/git-run';
 
 export interface CommitContext {
   branch: string;

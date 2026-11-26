@@ -2,7 +2,7 @@ import type { ChatMessageData } from '@/shared/types';
 import { builtInToolsPart1 } from '@/client/data/samples/sample-tools/built-in-part1';
 import { builtInToolsPart2 } from '@/client/data/samples/sample-tools/built-in-part2';
 import { otherTools } from '@/client/data/samples/sample-tools/other';
-import { normalizeToolCall } from '@kabmo-labs/kabmo-chat-tool/normalize';
+import { normalizeToolCall } from '@kabmo-labs/kabmo-chat/tool/normalize';
 
 export const SAMPLE_TOOLS_SESSION_ID = '01a084a9-f134-74a6-b5b6-50b0b6816c5f';
 

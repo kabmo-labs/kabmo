@@ -9,7 +9,7 @@
 import type { ProviderModel } from '@/shared/types';
 import type { OmpProviderApi,
 ProviderAuthMode,
-ProviderDiscoveryType, } from '@kabmo-labs/kabmo-settings-contracts/provider';
+ProviderDiscoveryType, } from '@kabmo-labs/kabmo-settings/contracts/provider';
 import type { ProviderThinkingEffort } from '@kabmo-labs/kabmo-provider-contracts/dialect';
 import { notifyModelsUpdated } from '@/shared/lib/models/client';
 

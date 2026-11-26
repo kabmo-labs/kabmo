@@ -25,8 +25,8 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 
 import { AgentSessionWrapper } from '@/server/lib/omp/rpc/manager';
-import type { RpcProcess } from '@kabmo-labs/kabmo-omp-rpc-process/process';
-import { loadStreamStates, markStreamStatus } from '@kabmo-labs/kabmo-session-stream-state';
+import type { RpcProcess } from '@kabmo-labs/kabmo-omp/rpc-process/process';
+import { loadStreamStates, markStreamStatus } from '@kabmo-labs/kabmo-session/stream-state';
 
 /** A process stub that only needs to survive `dispose()`. */
 function makeProc(): RpcProcess {

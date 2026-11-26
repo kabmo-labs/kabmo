@@ -1,6 +1,6 @@
 import path from 'path';
 import type { FileDiffData } from '@kabmo-labs/kabmo-app-contracts/git';
-import { runGit } from '@kabmo-labs/kabmo-git-runner/git-run';
+import { runGit } from '@kabmo-labs/kabmo-git/runner/git-run';
 
 /**
  * Context lines requested when the reader wants the whole file rather than the

@@ -20,15 +20,15 @@
  * different model.
  */
 
-import { readModelRoles } from '@kabmo-labs/kabmo-omp-config-doc/roles';
-import { loadHarnessSession } from '@kabmo-labs/kabmo-harness-session/session-store.server';
-import { loadHarnessConfig } from '@kabmo-labs/kabmo-harness-config-store/config.server';
-import { harnessProbeModels } from '@kabmo-labs/kabmo-harness-config-store/probe-cache.server';
-import { modelProvider, resolveDefaultModel } from '@kabmo-labs/kabmo-harness-config';
-import { harnessDescriptor, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
+import { readModelRoles } from '@kabmo-labs/kabmo-omp/config-doc/roles';
+import { loadHarnessSession } from '@kabmo-labs/kabmo-harness/session/session-store.server';
+import { loadHarnessConfig } from '@kabmo-labs/kabmo-harness/config-store/config.server';
+import { harnessProbeModels } from '@kabmo-labs/kabmo-harness/config-store/probe-cache.server';
+import { modelProvider, resolveDefaultModel } from '@kabmo-labs/kabmo-harness/config';
+import { harnessDescriptor, type HarnessId } from '@kabmo-labs/kabmo-harness/catalog';
 import { validateCommitPrompt } from '@/shared/lib/git/commit-prompt';
-import { runOmpPrint, type OmpPrintOutcome } from '@kabmo-labs/kabmo-omp-install/print.server';
-import { runAcpOneShot, type AcpOneShotOutcome } from '@kabmo-labs/kabmo-acp-session-core/one-shot.server';
+import { runOmpPrint, type OmpPrintOutcome } from '@kabmo-labs/kabmo-omp/install/print.server';
+import { runAcpOneShot, type AcpOneShotOutcome } from '@kabmo-labs/kabmo-acp/session-core/one-shot.server';
 import { limitCommitContext, readCommitContext } from '@/server/lib/fs/git-commit-context';
 import { buildCommitMessagePrompt, cleanCommitMessage } from '@/server/lib/fs/git-commit-prompt';
 

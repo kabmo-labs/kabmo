@@ -14,8 +14,8 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { acpWiringFor } from '@kabmo-labs/kabmo-acp-session-core/session-wiring';
-import { deliverBackgroundNotice } from '@kabmo-labs/kabmo-acp-session-core/background-work';
+import { acpWiringFor } from '@kabmo-labs/kabmo-acp/session-core/session-wiring';
+import { deliverBackgroundNotice } from '@kabmo-labs/kabmo-acp/session-core/background-work';
 
 function session() {
   return {

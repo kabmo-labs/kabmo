@@ -14,15 +14,15 @@
  */
 
 import { useEffect, useRef } from 'preact/hooks';
-import type { KabmoModeSelection, GoalContinuation, GoalRecord } from '@kabmo-labs/kabmo-omp-mode/types';
-import type { SessionModeState } from '@kabmo-labs/kabmo-harness-session-modes';
+import type { KabmoModeSelection, GoalContinuation, GoalRecord } from '@kabmo-labs/kabmo-omp/mode/types';
+import type { SessionModeState } from '@kabmo-labs/kabmo-harness/session-modes';
 import { KABMO_MODE_SIGNAL } from '@/client/lib/omp-mode-signal';
-import { isModeMarker } from '@kabmo-labs/kabmo-omp-mode/constants';
+import { isModeMarker } from '@kabmo-labs/kabmo-omp/mode/constants';
 import { subscribeClientSignal } from '@/client/lib/signals';
 import { continuationFromMarker,
 goalEnabledFromMarker,
 goalRecordFromMarker,
-type ParsedMarker, } from '@kabmo-labs/kabmo-omp-mode/markers';
+type ParsedMarker, } from '@kabmo-labs/kabmo-omp/mode/markers';
 
 /** The persisted selection, plus the goal record the same read returns. */
 export interface ModesResponse {

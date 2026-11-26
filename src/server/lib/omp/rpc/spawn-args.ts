@@ -6,19 +6,19 @@
 /**
  * The argv Kabmo hands the omp binary, and the cwd it spawns it in.
  *
- * Split from the pure protocol constants (`@kabmo-labs/kabmo-omp-rpc-protocol`)
+ * Split from the pure protocol constants (`@kabmo-labs/kabmo-omp/rpc-protocol`)
  * because this half touches the filesystem: it asks whether a recorded cwd still
  * exists and writes the title-model overlay before naming it. The contract half
  * is importable by a package; this half belongs to the app that owns the disk.
  */
 
 import { homedir } from 'os';
-import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
-import { kabmoExtensionArgs } from '@kabmo-labs/kabmo-omp-extensions';
-import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
+import { pathExists } from '@kabmo-labs/kabmo-omp/paths';
+import { kabmoExtensionArgs } from '@kabmo-labs/kabmo-omp/extensions';
+import type { ApprovalMode } from '@kabmo-labs/kabmo-omp/access-mode';
 import type { SelectedModel } from '@kabmo-labs/kabmo-model-contracts/models';
-import type { SessionPromptArgs } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
-import { ensureTitleModelOverlay, titleModelOverlayPath } from '@kabmo-labs/kabmo-omp-session-runtime/title-model-overlay.server';
+import type { SessionPromptArgs } from '@kabmo-labs/kabmo-omp/rpc-protocol/constants';
+import { ensureTitleModelOverlay, titleModelOverlayPath } from '@kabmo-labs/kabmo-omp/session-runtime/title-model-overlay.server';
 
 export type { SessionPromptArgs };
 

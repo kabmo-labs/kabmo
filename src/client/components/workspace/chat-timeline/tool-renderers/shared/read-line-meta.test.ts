@@ -16,7 +16,7 @@
 
 import { describe, expect, test } from 'bun:test';
 import { extractLineMeta } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/read-line-meta';
-import type { ToolCallData } from '@kabmo-labs/kabmo-chat-contracts/chat';
+import type { ToolCallData } from '@kabmo-labs/kabmo-chat/contracts/chat';
 
 const tool = (overrides: Partial<ToolCallData> = {}): ToolCallData =>
   ({ id: 'c1', type: 'read', title: 'read', ...overrides }) as ToolCallData;

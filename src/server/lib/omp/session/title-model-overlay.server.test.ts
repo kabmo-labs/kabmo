@@ -47,7 +47,7 @@ afterEach(() => {
 
 /** The module resolves the agent dir at import time, so it is imported after
  *  the env is in place. `await import` keeps that ordering explicit. */
-const overlay = () => import('@kabmo-labs/kabmo-omp-session-runtime/title-model-overlay.server');
+const overlay = () => import('@kabmo-labs/kabmo-omp/session-runtime/title-model-overlay.server');
 
 describe('title-model overlay', () => {
   test('creates the file before a spawn names it, and never rewrites it', async () => {

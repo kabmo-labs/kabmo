@@ -1,5 +1,5 @@
 import { runShell, shellOk } from '@/server/lib/fs/shell';
-import { GIT_ENV } from '@kabmo-labs/kabmo-git-runner/git-run';
+import { GIT_ENV } from '@kabmo-labs/kabmo-git/runner/git-run';
 
 /**
  * Ahead/behind counts behind the git panel's Sync button.

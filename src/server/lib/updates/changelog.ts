@@ -21,7 +21,7 @@ import { fetchChangelogNotes } from '@/server/lib/updates/changelog-file';
 import { isManualMethod, manualUpdateCommand } from '@/server/lib/updates/install-method';
 import { resolveInstallContext, resolveKabmoVersion } from '@/server/lib/updates/install';
 import { releaseTagUrl } from '@/server/lib/updates/release-url';
-import { compareVersions, isNewer, normalizeVersion } from '@kabmo-labs/kabmo-harness-update-job/semver';
+import { compareVersions, isNewer, normalizeVersion } from '@kabmo-labs/kabmo-harness/update-job/semver';
 import type { ReleaseNote, UpdateChangelog, UpdateInstallInfo } from '@kabmo-labs/kabmo-app-contracts/updates';
 
 /** Most release sections the popup will render. */

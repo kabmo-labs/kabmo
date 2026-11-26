@@ -18,7 +18,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { getDb } from '@/server/db.server';
-import { readSettingsJson, writeSettingsJson } from '@kabmo-labs/kabmo-settings-store';
+import { readSettingsJson, writeSettingsJson } from '@kabmo-labs/kabmo-settings/store';
 
 /** `app_settings` key holding the config path chosen on the Connect page. */
 const CLOUDFLARE_CONFIG_KEY = 'connect.cloudflareConfigPath';

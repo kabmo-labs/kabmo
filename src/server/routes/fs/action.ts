@@ -3,7 +3,7 @@ import { errorResponse } from '@/server/lib/route-adapter';
 import fs from 'fs';
 import path from 'path';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
-import { getDefaultFsRoot, isWithinRoot, resolveRoot, resolveWithinRoot } from '@kabmo-labs/kabmo-workspace-root/root';
+import { getDefaultFsRoot, isWithinRoot, resolveRoot, resolveWithinRoot } from '@kabmo-labs/kabmo-workspace/root/root';
 import { runShell } from '@/server/lib/fs/shell';
 import { revealInFileManager } from '@/server/lib/fs/reveal';
 import { duplicateEntry, nextDuplicateName, pasteEntry, toRelPath } from '@/server/lib/fs/transfer';
@@ -14,7 +14,7 @@ import { checkWriteConflict, parseBaseMtime, stableMtime } from '@/server/lib/fs
 import { transferRefusal } from '@/shared/lib/fs/clipboard';
 import { toDiskText } from '@/shared/lib/code/line-endings';
 import { contentHash } from '@/shared/lib/fs/content-hash';
-import { DOCUMENT_MAX_FILE_BYTES } from '@kabmo-labs/kabmo-fs-media/file-kind';
+import { DOCUMENT_MAX_FILE_BYTES } from '@kabmo-labs/kabmo-fs/media/file-kind';
 
 /** The two shapes a transfer action answers with, ready for `json`. */
 function transferResponse(outcome: { path?: string; error?: string; status?: number }) {

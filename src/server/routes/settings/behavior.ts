@@ -4,8 +4,8 @@ import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { getDb } from '@/server/db.server';
 import { DEFAULT_BEHAVIOR_RULES } from '@/client/data/settings/behavior';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
-import { parseApprovalRules, writeToolsApproval } from '@kabmo-labs/kabmo-omp-config-providers/behavior';
-import { isInstructionFileKind, readInstructionFile, saveInstructionFile } from '@kabmo-labs/kabmo-omp-config-files/instructions';
+import { parseApprovalRules, writeToolsApproval } from '@kabmo-labs/kabmo-omp/config-providers/behavior';
+import { isInstructionFileKind, readInstructionFile, saveInstructionFile } from '@kabmo-labs/kabmo-omp/config-files/instructions';
 import type { InstructionFileKind } from '@/shared/types';
 
 /**

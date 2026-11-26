@@ -29,10 +29,10 @@ import fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
-import { loadSidebarActivity } from '@kabmo-labs/kabmo-omp-sidebar-data/activity.server';
-import { localRuns } from '@kabmo-labs/kabmo-omp-session-runtime/local-runs.server';
-import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
-import { SESSION_TITLE_SLOT_BYTES } from '@kabmo-labs/kabmo-omp-session-scan/files';
+import { loadSidebarActivity } from '@kabmo-labs/kabmo-omp/sidebar-data/activity.server';
+import { localRuns } from '@kabmo-labs/kabmo-omp/session-runtime/local-runs.server';
+import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp/session-scan/files';
+import { SESSION_TITLE_SLOT_BYTES } from '@kabmo-labs/kabmo-omp/session-scan/files';
 
 const tempDirs: string[] = [];
 const previousAgentDir = process.env.PI_CODING_AGENT_DIR;

@@ -22,7 +22,7 @@ import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { Proc } from '@/client/components/workspace/chat-timeline/tool-renderers/panels/Proc';
 import { toolPanelKind } from '@/client/components/workspace/chat-timeline/tool-renderers/registry';
-import { normalizeToolCall } from '@kabmo-labs/kabmo-chat-tool/normalize';
+import { normalizeToolCall } from '@kabmo-labs/kabmo-chat/tool/normalize';
 import type { ToolCallData } from '@/shared/types';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'HTMLInputElement', 'Event', 'MouseEvent', 'KeyboardEvent'] as const;

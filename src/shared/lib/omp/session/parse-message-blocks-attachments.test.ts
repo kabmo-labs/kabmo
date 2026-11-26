@@ -26,7 +26,7 @@
 import { describe, expect, test } from 'bun:test';
 import { extractInlinedTextAttachments,
 extractUserImageAttachments,
-stripInlinedTextAttachments, } from '@kabmo-labs/kabmo-omp-session-parse/parse-message-blocks';
+stripInlinedTextAttachments, } from '@kabmo-labs/kabmo-omp/session-parse/parse-message-blocks';
 
 const HASH = 'a'.repeat(64);
 

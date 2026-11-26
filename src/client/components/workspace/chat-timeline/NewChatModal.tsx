@@ -3,7 +3,7 @@ import { Maximize2, Minimize2, X } from 'lucide-preact';
 import { ChatInput } from '@/client/components/workspace/chat-timeline/chat-input/index';
 import { seedNewChatDraft } from '@/shared/lib/chat/new-chat-seed';
 import type { Attachment } from '@/shared/types';
-import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
+import type { ApprovalMode } from '@kabmo-labs/kabmo-omp/access-mode';
 
 /**
  * The composer's growth bounds, in px. The minimum matches the `min-h-[80px]`

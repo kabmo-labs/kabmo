@@ -33,8 +33,8 @@ import {
   sessionLeasePath,
   sessionOwnersDir,
 } from '@/server/lib/omp/session/ownership.server';
-import { holdLeaseForTest, leaseHeldByAnother } from '@kabmo-labs/kabmo-omp-session-runtime/lease-probe.server';
-import { fileHolderPid } from '@kabmo-labs/kabmo-omp-session-runtime/lease-holder.server';
+import { holdLeaseForTest, leaseHeldByAnother } from '@kabmo-labs/kabmo-omp/session-runtime/lease-probe.server';
+import { fileHolderPid } from '@kabmo-labs/kabmo-omp/session-runtime/lease-holder.server';
 import { getRpcSession, startRpcSession } from '@/server/lib/omp/rpc/session-registry';
 import { removeDir } from '@/test-support/remove-dir';
 
@@ -75,7 +75,7 @@ function holdLease(sessionId: string): string {
 async function holdLeaseInChild(sessionId: string): Promise<number> {
   const lease = makeLeaseFile(sessionId);
   const script = `
-    const { holdLeaseForTest } = await import('@kabmo-labs/kabmo-omp-session-runtime/lease-probe.server');
+    const { holdLeaseForTest } = await import('@kabmo-labs/kabmo-omp/session-runtime/lease-probe.server');
     holdLeaseForTest(process.argv[1]);
     await Promise.withResolvers().promise;
   `;

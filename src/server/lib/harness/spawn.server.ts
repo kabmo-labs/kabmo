@@ -20,34 +20,34 @@
  * writes, minus the boot.
  */
 
-import { AcpSession } from '@kabmo-labs/kabmo-acp-session-core/session';
-import { AcpTranscriptRecorder } from '@kabmo-labs/kabmo-acp-session-core/session-transcript.server';
-import { AcpFrameRecorder } from '@kabmo-labs/kabmo-acp-session-core/acp-frames.server';
-import { claimPrewarmedAcpSession } from '@kabmo-labs/kabmo-acp-session-core/prewarm.server';
-import { rememberAgentToken } from '@kabmo-labs/kabmo-session-relations/agent-token.server';
-import { loadHarnessConfig } from '@kabmo-labs/kabmo-harness-config-store/config.server';
-import { resolveAccountLaunch, selectedAccountId } from '@kabmo-labs/kabmo-harness-account-store';
-import { accountAdapter } from '@kabmo-labs/kabmo-harness-accounts';
-import { sessionLaunchCommand } from '@kabmo-labs/kabmo-harness-launch/launch';
-import { resolveDefaultModel, modelProvider } from '@kabmo-labs/kabmo-harness-config';
-import { harnessProbeModels } from '@kabmo-labs/kabmo-harness-config-store/probe-cache.server';
-import { claimHarness } from '@kabmo-labs/kabmo-harness-registry';
+import { AcpSession } from '@kabmo-labs/kabmo-acp/session-core/session';
+import { AcpTranscriptRecorder } from '@kabmo-labs/kabmo-acp/session-core/session-transcript.server';
+import { AcpFrameRecorder } from '@kabmo-labs/kabmo-acp/session-core/acp-frames.server';
+import { claimPrewarmedAcpSession } from '@kabmo-labs/kabmo-acp/session-core/prewarm.server';
+import { rememberAgentToken } from '@kabmo-labs/kabmo-session/relations/agent-token.server';
+import { loadHarnessConfig } from '@kabmo-labs/kabmo-harness/config-store/config.server';
+import { resolveAccountLaunch, selectedAccountId } from '@kabmo-labs/kabmo-harness/account-store';
+import { accountAdapter } from '@kabmo-labs/kabmo-harness/accounts';
+import { sessionLaunchCommand } from '@kabmo-labs/kabmo-harness/launch/launch';
+import { resolveDefaultModel, modelProvider } from '@kabmo-labs/kabmo-harness/config';
+import { harnessProbeModels } from '@kabmo-labs/kabmo-harness/config-store/probe-cache.server';
+import { claimHarness } from '@kabmo-labs/kabmo-harness/registry';
 import { registerAcpSession } from '@/server/lib/harness/register.server';
-import { loadHarnessSessionTitle, saveHarnessSession } from '@kabmo-labs/kabmo-harness-session/session-store.server';
-import { noteHarnessLease, removeHarnessLease } from '@kabmo-labs/kabmo-harness-lease/session-lease.server';
+import { loadHarnessSessionTitle, saveHarnessSession } from '@kabmo-labs/kabmo-harness/session/session-store.server';
+import { noteHarnessLease, removeHarnessLease } from '@kabmo-labs/kabmo-harness/lease/session-lease.server';
 import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
-import { harnessDescriptor, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
-import { mcpDelivery } from '@kabmo-labs/kabmo-harness-mcp-facts';
+import { harnessDescriptor, type HarnessId } from '@kabmo-labs/kabmo-harness/catalog';
+import { mcpDelivery } from '@kabmo-labs/kabmo-harness/mcp-facts';
 import { mcpServersFor, toAcpMcpServers } from '@/server/lib/mcp/registry.server';
 import { resolveMcpDefinition } from '@/server/lib/mcp/secrets.server';
 import { readSessionMcpOverrides } from '@/server/lib/mcp/session-state.server';
-import { ensureCustomHarnesses } from '@kabmo-labs/kabmo-harness-config-store/custom.server';
-import type { HarnessConfig } from '@kabmo-labs/kabmo-harness-config';
-import type { AcpProcess } from '@kabmo-labs/kabmo-acp-client/client';
-import type { HarnessSession } from '@kabmo-labs/kabmo-harness-contract';
-import type { AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
+import { ensureCustomHarnesses } from '@kabmo-labs/kabmo-harness/config-store/custom.server';
+import type { HarnessConfig } from '@kabmo-labs/kabmo-harness/config';
+import type { AcpProcess } from '@kabmo-labs/kabmo-acp/client/client';
+import type { HarnessSession } from '@kabmo-labs/kabmo-harness/contract';
+import type { AgentEvent } from '@kabmo-labs/kabmo-omp/rpc-protocol/constants';
 import type { SelectedModel } from '@kabmo-labs/kabmo-model-contracts/models';
-import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
+import type { ApprovalMode } from '@kabmo-labs/kabmo-omp/access-mode';
 
 export interface AcpSpawnRequest {
   harness: HarnessId;

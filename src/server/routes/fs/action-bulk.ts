@@ -12,7 +12,7 @@
 
 import fs from 'node:fs';
 import { json } from '@kabmo-labs/kabmo-http';
-import { resolveWithinRoot } from '@kabmo-labs/kabmo-workspace-root/root';
+import { resolveWithinRoot } from '@kabmo-labs/kabmo-workspace/root/root';
 import { toRelPath } from '@/server/lib/fs/transfer';
 import { isSinglePathSegment } from '@kabmo-labs/kabmo-paths/path-segment';
 import { compressEntries, extractArchive } from '@/server/lib/fs/archive';

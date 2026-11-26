@@ -12,7 +12,7 @@
  * accepting something the other refuses.
  */
 
-import type { AgentImage } from '@kabmo-labs/kabmo-chat-contracts/agent';
+import type { AgentImage } from '@kabmo-labs/kabmo-chat/contracts/agent';
 import type { SelectedModel } from '@kabmo-labs/kabmo-model-contracts/models';
 
 /** A trimmed non-empty string, or null — the routes' "absent" spelling. */

@@ -22,22 +22,22 @@ import {
   agentEnvironment,
   createAgentToken,
   rememberAgentToken,
-} from '@kabmo-labs/kabmo-session-relations/agent-token.server';
-import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
+} from '@kabmo-labs/kabmo-session/relations/agent-token.server';
+import type { ApprovalMode } from '@kabmo-labs/kabmo-omp/access-mode';
 import { projectModelForCwd } from '@/server/lib/workspace/project-model.server';
 import { startAcpSession } from '@/server/lib/harness/spawn.server';
 import { getLiveSession, harnessOfSession, startNewRpcSession } from '@/server/lib/omp/rpc/session-registry';
-import { harnessProbeModels } from '@kabmo-labs/kabmo-harness-config-store/probe-cache.server';
+import { harnessProbeModels } from '@kabmo-labs/kabmo-harness/config-store/probe-cache.server';
 import { getDb } from '@/server/db.server';
-import { harnessDescriptor, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
+import { harnessDescriptor, type HarnessId } from '@kabmo-labs/kabmo-harness/catalog';
 import { WORKER_BRIEF } from '@kabmo-labs/kabmo-app-contracts/notice';
 import type { SelectedModel } from '@kabmo-labs/kabmo-model-contracts/models';
-import type { AgentImage } from '@kabmo-labs/kabmo-chat-contracts/agent';
-import { MAX_SESSION_DEPTH } from '@kabmo-labs/kabmo-session-relations/relation-types';
+import type { AgentImage } from '@kabmo-labs/kabmo-chat/contracts/agent';
+import { MAX_SESSION_DEPTH } from '@kabmo-labs/kabmo-session/relations/relation-types';
 import {
   createSessionRelation,
   getSessionRelation,
-} from '@kabmo-labs/kabmo-session-relations/relations.server';
+} from '@kabmo-labs/kabmo-session/relations/relations.server';
 import {
   folderIdForCwd,
   isSessionArchived,

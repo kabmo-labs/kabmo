@@ -1,0 +1,38 @@
+{
+  "name": "@kabmo-labs/kabmo-fs",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "The fs family: 5 previously separate modules in one package.",
+  "exports": {
+    "./canonical": "./src/canonical/canonical.ts",
+    "./child-env": "./src/child-env/child-env.ts",
+    "./config": "./src/config/atomic-write.ts",
+    "./config/atomic-write": "./src/config/atomic-write.ts",
+    "./config/config-lock": "./src/config/config-lock.ts",
+    "./media": "./src/media/file-kind.ts",
+    "./media/file-kind": "./src/media/file-kind.ts",
+    "./media/mime": "./src/media/mime.ts",
+    "./media/paths": "./src/media/paths.ts",
+    "./toolchain": "./src/toolchain/toolchain-path.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-fs"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  },
+  "dependencies": {
+    "@kabmo-labs/kabmo-auth": "workspace:*",
+    "@kabmo-labs/kabmo-format": "workspace:*",
+    "@kabmo-labs/kabmo-sdk": "workspace:*"
+  }
+}

@@ -24,7 +24,7 @@
  * different question from the one the row asks.
  */
 
-import { runGit } from '@kabmo-labs/kabmo-git-runner/git-run';
+import { runGit } from '@kabmo-labs/kabmo-git/runner/git-run';
 
 export interface BranchDetail {
   name: string;

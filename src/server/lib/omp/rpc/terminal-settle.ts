@@ -43,13 +43,13 @@ import {
 } from '@/server/lib/omp/session/auto-title.server';
 import { scheduleQueueDelivery, type QueueDeliveryHost } from '@/server/lib/queue/delivery.server';
 import { requestWaitingSweep } from '@/server/lib/waiting/sweep-trigger';
-import { markStreamStatus, loadStreamStatuses } from '@kabmo-labs/kabmo-session-stream-state';
-import { driveGoalAfterTurn, lastAssistantText } from '@kabmo-labs/kabmo-omp-session-runtime/goal-driver.server';
+import { markStreamStatus, loadStreamStatuses } from '@kabmo-labs/kabmo-session/stream-state';
+import { driveGoalAfterTurn, lastAssistantText } from '@kabmo-labs/kabmo-omp/session-runtime/goal-driver.server';
 import { noteChildOutcome } from '@/server/lib/sessions/notify.server';
 import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 import { publishSidebarStructure } from '@/server/lib/realtime/topics.server';
-import { AGENT_BUSY_REFUSAL_RE } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
-import { deriveTurnError, turnStoppedAbnormally } from '@kabmo-labs/kabmo-omp-session-parse/turn-error';
+import { AGENT_BUSY_REFUSAL_RE } from '@kabmo-labs/kabmo-omp/rpc-protocol/constants';
+import { deriveTurnError, turnStoppedAbnormally } from '@kabmo-labs/kabmo-omp/session-parse/turn-error';
 import type { ChildOutcomeNotice } from '@/server/lib/sessions/notify.server';
 
 /** The wrapper surface a terminal settle touches. */

@@ -6,7 +6,7 @@ import { ChatMessageItem } from '@/client/components/workspace/chat-timeline/Mes
 import { RunFooter } from '@/client/components/workspace/chat-timeline/RunFooter';
 import { TurnRail } from '@/client/components/workspace/chat-timeline/TurnRail';
 import { useToolRenderMode } from '@/client/hooks/chat/timeline/tool-render-mode';
-import { isNoticeRow } from '@kabmo-labs/kabmo-chat-notices/notice-row';
+import { isNoticeRow } from '@kabmo-labs/kabmo-chat/notices/notice-row';
 import { previousNonNoticeIndex, resolveRunFooters, streamingRowIndex } from '@/shared/lib/chat/timeline/run-footer';
 import { bucketChangesByRun } from '@/shared/lib/chat/timeline/changed-files';
 import { runWindowMs } from '@/shared/lib/chat/duration';

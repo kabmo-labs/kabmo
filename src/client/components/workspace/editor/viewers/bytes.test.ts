@@ -22,7 +22,7 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
-import { PDF_MAX_FILE_BYTES } from '@kabmo-labs/kabmo-fs-media/file-kind';
+import { PDF_MAX_FILE_BYTES } from '@kabmo-labs/kabmo-fs/media/file-kind';
 import type { byteSourceFor as ByteSourceFor } from '@/client/components/workspace/editor/viewers/bytes';
 import type { openHandleAsTab as OpenHandleAsTab } from '@/client/lib/launch/file-handlers';
 

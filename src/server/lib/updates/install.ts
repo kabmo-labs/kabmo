@@ -26,7 +26,7 @@ import {
   type InstallMethod,
   type InstallMethodInfo,
 } from '@/server/lib/updates/install-method';
-import { isNewer } from '@kabmo-labs/kabmo-harness-update-job/semver';
+import { isNewer } from '@kabmo-labs/kabmo-harness/update-job/semver';
 import { copyAt, resolveInstalledCopy, type InstalledCopy } from '@/server/lib/updates/installed-cli';
 import { runStep, runSync, tail, type UpdateStep } from '@/server/lib/updates/install-steps';
 

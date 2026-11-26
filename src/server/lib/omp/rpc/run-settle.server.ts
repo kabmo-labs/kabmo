@@ -45,11 +45,11 @@
  * terminal frame" story.
  */
 
-import type { RpcProcess } from '@kabmo-labs/kabmo-omp-rpc-process/process';
+import type { RpcProcess } from '@kabmo-labs/kabmo-omp/rpc-process/process';
 import { noteRunEndedWithoutFrame } from '@/server/lib/omp/rpc/terminal-settle';
-import { buildWebState, type WebStateHost } from '@kabmo-labs/kabmo-omp-rpc-process/web-state';
-import { GET_STATE_TIMEOUT_MS, SUBAGENT_STALE_MS, type AgentEvent, type RpcSessionState } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
-import { markStreamStatus } from '@kabmo-labs/kabmo-session-stream-state';
+import { buildWebState, type WebStateHost } from '@kabmo-labs/kabmo-omp/rpc-process/web-state';
+import { GET_STATE_TIMEOUT_MS, SUBAGENT_STALE_MS, type AgentEvent, type RpcSessionState } from '@kabmo-labs/kabmo-omp/rpc-protocol/constants';
+import { markStreamStatus } from '@kabmo-labs/kabmo-session/stream-state';
 
 /**
  * Quiet stretch before a run that still claims to be live is probed. Every

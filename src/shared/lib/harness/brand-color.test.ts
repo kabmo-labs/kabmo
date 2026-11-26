@@ -24,7 +24,7 @@ import {
   HARNESS_SURFACE_COLORS,
   harnessColorFor,
 } from '@/shared/lib/harness/brand-color';
-import { HARNESS_CATALOG } from '@kabmo-labs/kabmo-harness-catalog';
+import { HARNESS_CATALOG } from '@kabmo-labs/kabmo-harness/catalog';
 import { BRAND_CONTRAST_FLOOR, worstSurfaceContrast } from '@/shared/lib/theme/legibility';
 
 describe('harness surfaces', () => {

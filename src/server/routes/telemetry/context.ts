@@ -7,7 +7,7 @@ import { computeRealSessionTelemetry } from '@/server/lib/omp/session/telemetry'
 import { CONTEXT_LIMIT } from '@/server/lib/omp/session/telemetry/format';
 import { resolveSelectedModelContextLimit } from '@/server/lib/models/selected-context-limit.server';
 import { resolveSessionRef } from '@/server/lib/sessions/resolve.server';
-import { acpTelemetryFor } from '@kabmo-labs/kabmo-acp-session-core/acp-telemetry.server';
+import { acpTelemetryFor } from '@kabmo-labs/kabmo-acp/session-core/acp-telemetry.server';
 import type { SessionContextTelemetry } from '@/shared/types';
 
 /**

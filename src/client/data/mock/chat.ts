@@ -1,5 +1,5 @@
 import type { ChatMessageData } from '@/shared/types';
-import { normalizeMessageTools } from '@kabmo-labs/kabmo-chat-tool/normalize';
+import { normalizeMessageTools } from '@kabmo-labs/kabmo-chat/tool/normalize';
 import { getSampleToolsSession, SAMPLE_TOOLS_SESSION_ID } from '@/client/data/samples/tools-session';
 import { getSampleDialogueSession, SAMPLE_DIALOGUE_SESSION_ID } from '@/client/data/samples/dialogue-session';
 import { getSampleDevicesSession, SAMPLE_DEVICES_SESSION_ID } from '@/client/data/samples/virtual-devices-session';

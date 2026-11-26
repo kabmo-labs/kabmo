@@ -7,7 +7,7 @@ import { describe, expect, test } from 'bun:test';
 
 import type { ChatMessageData, OmpAgentCallbacks, OmpAgentState } from '@/shared/types';
 import { foldAgentEvent, type OmpAgentFoldDeps } from '@/shared/lib/chat/omp/agent-events';
-import { toChatMessage } from '@kabmo-labs/kabmo-omp-mapper';
+import { toChatMessage } from '@kabmo-labs/kabmo-omp/mapper';
 
 /** Real shape omp writes on a user abort: empty content plus flat
  *  stopReason/errorMessage/errorId fields — there is no nested `error`. */

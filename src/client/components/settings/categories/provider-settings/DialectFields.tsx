@@ -1,7 +1,7 @@
 import type { OmpProviderApi,
 ProviderAuthMode,
 ProviderDiscoveryType,
-ProviderModelSource, } from '@kabmo-labs/kabmo-settings-contracts/provider';
+ProviderModelSource, } from '@kabmo-labs/kabmo-settings/contracts/provider';
 import { PROVIDER_APIS,
 PROVIDER_API_LABELS,
 PROVIDER_AUTH_MODES,

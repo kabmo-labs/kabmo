@@ -15,12 +15,12 @@
  * mode selection; consumed exactly once by `startNewRpcSession`.
  */
 
-import { RpcProcess } from '@kabmo-labs/kabmo-omp-rpc-process/process';
+import { RpcProcess } from '@kabmo-labs/kabmo-omp/rpc-process/process';
 import { buildSessionSpawnArgs } from '@/server/lib/omp/rpc/spawn-args';
 import { AgentSessionWrapper } from '@/server/lib/omp/rpc/manager';
 import { recordSpawnProvenance } from '@/server/lib/omp/rpc/spawn-provenance';
-import { mintAgentEnvironment, rememberAgentToken } from '@kabmo-labs/kabmo-session-relations/agent-token.server';
-import { DEFAULT_APPROVAL_MODE, type ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
+import { mintAgentEnvironment, rememberAgentToken } from '@kabmo-labs/kabmo-session/relations/agent-token.server';
+import { DEFAULT_APPROVAL_MODE, type ApprovalMode } from '@kabmo-labs/kabmo-omp/access-mode';
 
 interface PrewarmedEntry {
   cwd: string;

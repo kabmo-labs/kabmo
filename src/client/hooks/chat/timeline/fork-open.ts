@@ -14,7 +14,7 @@
 
 import { startPendingSession } from '@/client/hooks/chat/omp/pending-sessions';
 import { setHarnessPick } from '@/client/hooks/chat/timeline/session-harness';
-import { formatNewSessionTitle } from '@kabmo-labs/kabmo-omp-session-core/default-title';
+import { formatNewSessionTitle } from '@kabmo-labs/kabmo-omp/session-core/default-title';
 import type { SetSearchParams } from '@/client/lib/router/search-params';
 
 export interface OpenForkSessionArgs {

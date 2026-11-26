@@ -17,7 +17,7 @@
  * to wait, so the honest outcome is to send it now and say so.
  */
 
-import type { Attachment } from '@kabmo-labs/kabmo-chat-contracts/chat';
+import type { Attachment } from '@kabmo-labs/kabmo-chat/contracts/chat';
 import type { WorkspaceFolderData } from '@kabmo-labs/kabmo-app-contracts/workspace';
 import { prepareQueuedAttachments } from '@/shared/lib/chat/attachments';
 import { createWaitingPromptRequest } from '@/client/hooks/chat/waiting/store';

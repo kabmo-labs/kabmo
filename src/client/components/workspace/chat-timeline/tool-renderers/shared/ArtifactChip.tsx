@@ -28,7 +28,7 @@ import { useTimelineScope } from '@/client/hooks/chat/timeline/scope';
 import { artifactRefOf, artifactUrl } from '@/shared/lib/chat/tool/artifact';
 import { artifactViewKind } from '@/shared/lib/chat/tool/artifact-view';
 import { formatToolBytes } from '@/shared/lib/chat/tool/summary';
-import type { ToolCallData } from '@kabmo-labs/kabmo-chat-contracts/chat';
+import type { ToolCallData } from '@kabmo-labs/kabmo-chat/contracts/chat';
 
 interface ArtifactText {
   text: string;

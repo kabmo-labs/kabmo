@@ -21,7 +21,7 @@
 import { useCallback, useEffect, useMemo, useRef } from 'preact/hooks';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
 import { isSkippedTool } from '@/shared/lib/chat/tool-status';
-import type { ToolCallData } from '@kabmo-labs/kabmo-chat-contracts/chat';
+import type { ToolCallData } from '@kabmo-labs/kabmo-chat/contracts/chat';
 
 /** Session slot holding `{ [toolId]: open }` for the calls the reader toggled. */
 export const TOOL_OPEN_STATE_KEY = 'chat.toolOpen';

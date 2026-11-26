@@ -19,7 +19,7 @@ import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { ToolScreenshots } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/ToolScreenshots';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
-import type { ToolImageRef } from '@kabmo-labs/kabmo-chat-contracts/chat';
+import type { ToolImageRef } from '@kabmo-labs/kabmo-chat/contracts/chat';
 
 const HASH = '597f429e2085f854a121f689d0acff97f556159fbf8e47f4f728fec832867349';
 const BLOB_SRC = `/api/omp/blob?hash=${HASH}`;

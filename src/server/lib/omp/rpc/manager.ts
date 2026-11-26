@@ -12,31 +12,31 @@
  * branch/fork are omitted.
  */
 
-import { RpcProcess, type RpcFrame } from '@kabmo-labs/kabmo-omp-rpc-process/process';
-import { configureChild } from '@kabmo-labs/kabmo-omp-rpc-process/child-config';
-import { PendingUiDialogs } from '@kabmo-labs/kabmo-omp-rpc-process/pending-ui-dialogs';
+import { RpcProcess, type RpcFrame } from '@kabmo-labs/kabmo-omp/rpc-process/process';
+import { configureChild } from '@kabmo-labs/kabmo-omp/rpc-process/child-config';
+import { PendingUiDialogs } from '@kabmo-labs/kabmo-omp/rpc-process/pending-ui-dialogs';
 import { foldSessionFrame } from '@/server/lib/omp/rpc/frame-fold';
-import { dispatchSessionCommand } from '@kabmo-labs/kabmo-omp-rpc-commands/session-commands';
-import { SubagentLiveness } from '@kabmo-labs/kabmo-omp-rpc-util/subagent-liveness';
-import { ModeMirror } from '@kabmo-labs/kabmo-omp-rpc-events/mode-mirror';
+import { dispatchSessionCommand } from '@kabmo-labs/kabmo-omp/rpc-commands/session-commands';
+import { SubagentLiveness } from '@kabmo-labs/kabmo-omp/rpc-util/subagent-liveness';
+import { ModeMirror } from '@kabmo-labs/kabmo-omp/rpc-events/mode-mirror';
 import { IdleReaper } from '@kabmo-labs/kabmo-idle-reaper';
-import { AgentStartWatchdog } from '@kabmo-labs/kabmo-omp-rpc-util/agent-start-watchdog';
+import { AgentStartWatchdog } from '@kabmo-labs/kabmo-omp/rpc-util/agent-start-watchdog';
 import { RunSettle, handleChildExit } from '@/server/lib/omp/rpc/run-settle.server';
-import { EventFanout } from '@kabmo-labs/kabmo-omp-rpc-events/event-fanout';
+import { EventFanout } from '@kabmo-labs/kabmo-omp/rpc-events/event-fanout';
 import { syncRunModel as syncRunModelFor } from '@/server/lib/omp/rpc/run-model';
-import { reloadChildPlugins } from '@kabmo-labs/kabmo-omp-rpc-process/reload-plugins';
+import { reloadChildPlugins } from '@kabmo-labs/kabmo-omp/rpc-process/reload-plugins';
 import { noteRefusedPrompt } from '@/server/lib/omp/rpc/terminal-settle';
 import { noteAwaitingInput } from '@/server/lib/notifications/feed.server';
-import { clearStreamStatus, type SessionRunModel } from '@kabmo-labs/kabmo-session-stream-state';
-import { GET_STATE_TIMEOUT_MS, IDLE_REAP_MS, READY_TIMEOUT_MS, SUBAGENT_STALE_MS, type AgentEvent, type EventListener, type RpcSessionState } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
+import { clearStreamStatus, type SessionRunModel } from '@kabmo-labs/kabmo-session/stream-state';
+import { GET_STATE_TIMEOUT_MS, IDLE_REAP_MS, READY_TIMEOUT_MS, SUBAGENT_STALE_MS, type AgentEvent, type EventListener, type RpcSessionState } from '@kabmo-labs/kabmo-omp/rpc-protocol/constants';
 
 export type {
   AgentEvent,
   EventListener,
   RpcSessionState,
   WebSessionState,
-} from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
-export { WebRpcError } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
+} from '@kabmo-labs/kabmo-omp/rpc-protocol/constants';
+export { WebRpcError } from '@kabmo-labs/kabmo-omp/rpc-protocol/constants';
 
 /** Overrides for the wrapper's own timers; tests shrink the idle window. */
 export interface AgentSessionWrapperOptions {

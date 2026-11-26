@@ -6,9 +6,9 @@
 import { json, type LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { errorResponse } from '@/server/lib/route-adapter';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
-import { getDefaultFsRoot, resolveRoot, resolveWithinRoot } from '@kabmo-labs/kabmo-workspace-root/root';
-import { EDITOR_MAX_BYTES_BY_EXT, unsupportedEditorMessage } from '@kabmo-labs/kabmo-fs-media/file-kind';
-import { getFileExtension, getRawContentType } from '@kabmo-labs/kabmo-fs-media/mime';
+import { getDefaultFsRoot, resolveRoot, resolveWithinRoot } from '@kabmo-labs/kabmo-workspace/root/root';
+import { EDITOR_MAX_BYTES_BY_EXT, unsupportedEditorMessage } from '@kabmo-labs/kabmo-fs/media/file-kind';
+import { getFileExtension, getRawContentType } from '@kabmo-labs/kabmo-fs/media/mime';
 
 /**
  * GET /api/fs/raw?path=<rel>&root=<abs>&repo=<rel> — the file's bytes, verbatim.

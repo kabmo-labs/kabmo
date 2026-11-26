@@ -13,11 +13,11 @@ import { dirname, isAbsolute, join, resolve } from 'path';
 import fs from 'fs';
 import path from 'path';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
-import { getDefaultFsRoot, resolveReferencedPath, resolveRoot, resolveWithinRoot } from '@kabmo-labs/kabmo-workspace-root/root';
+import { getDefaultFsRoot, resolveReferencedPath, resolveRoot, resolveWithinRoot } from '@kabmo-labs/kabmo-workspace/root/root';
 import { BINARY_SNIFF_BYTES,
 classifyEditorFile,
 unsupportedEditorMessage,
-type EditorFileKind, } from '@kabmo-labs/kabmo-fs-media/file-kind';
+type EditorFileKind, } from '@kabmo-labs/kabmo-fs/media/file-kind';
 
 /**
  * Classify a file the way the editor will, reading only as many bytes as the

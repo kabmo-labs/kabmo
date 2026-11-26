@@ -17,7 +17,7 @@
  */
 
 import type { Attachment, ChatMessageData, PromptDispatchResult } from '@/shared/types';
-import type { ArmedGoal } from '@kabmo-labs/kabmo-omp-mode/actions';
+import type { ArmedGoal } from '@kabmo-labs/kabmo-omp/mode/actions';
 import type { ChatTimelineSendDeps } from '@/client/hooks/chat/timeline/send-props';
 import { adoptPendingSession, pendingEntryFor } from '@/client/hooks/chat/omp/pending-sessions';
 import { clearBranchParams } from '@/client/lib/router/branch-params';

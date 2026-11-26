@@ -16,120 +16,37 @@
         "@codemirror/view": "6.43.15",
         "@dskripchenko/drawio": "^0.1.0",
         "@fontsource/fira-code": "^5.3.0",
-        "@kabmo-labs/kabmo-acp-client": "workspace:*",
-        "@kabmo-labs/kabmo-acp-control": "workspace:*",
-        "@kabmo-labs/kabmo-acp-mapper": "workspace:*",
-        "@kabmo-labs/kabmo-acp-prompt": "workspace:*",
-        "@kabmo-labs/kabmo-acp-protocol": "workspace:*",
-        "@kabmo-labs/kabmo-acp-session": "workspace:*",
-        "@kabmo-labs/kabmo-acp-session-config": "workspace:*",
-        "@kabmo-labs/kabmo-acp-session-core": "workspace:*",
-        "@kabmo-labs/kabmo-acp-stdio": "workspace:*",
-        "@kabmo-labs/kabmo-acp-turn": "workspace:*",
+        "@kabmo-labs/kabmo-acp": "workspace:*",
         "@kabmo-labs/kabmo-app-contracts": "workspace:*",
         "@kabmo-labs/kabmo-auth": "workspace:*",
         "@kabmo-labs/kabmo-bytes": "workspace:*",
-        "@kabmo-labs/kabmo-chat-contracts": "workspace:*",
-        "@kabmo-labs/kabmo-chat-notices": "workspace:*",
-        "@kabmo-labs/kabmo-chat-rows": "workspace:*",
-        "@kabmo-labs/kabmo-chat-tool": "workspace:*",
+        "@kabmo-labs/kabmo-chat": "workspace:*",
         "@kabmo-labs/kabmo-db": "workspace:*",
         "@kabmo-labs/kabmo-format": "workspace:*",
-        "@kabmo-labs/kabmo-fs-canonical": "workspace:*",
-        "@kabmo-labs/kabmo-fs-child-env": "workspace:*",
-        "@kabmo-labs/kabmo-fs-config": "workspace:*",
-        "@kabmo-labs/kabmo-fs-media": "workspace:*",
-        "@kabmo-labs/kabmo-fs-toolchain": "workspace:*",
-        "@kabmo-labs/kabmo-git-env": "workspace:*",
-        "@kabmo-labs/kabmo-git-runner": "workspace:*",
+        "@kabmo-labs/kabmo-fs": "workspace:*",
+        "@kabmo-labs/kabmo-git": "workspace:*",
         "@kabmo-labs/kabmo-guards": "workspace:*",
-        "@kabmo-labs/kabmo-harness-account-store": "workspace:*",
-        "@kabmo-labs/kabmo-harness-accounts": "workspace:*",
-        "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
-        "@kabmo-labs/kabmo-harness-config": "workspace:*",
-        "@kabmo-labs/kabmo-harness-config-fields": "workspace:*",
-        "@kabmo-labs/kabmo-harness-config-store": "workspace:*",
-        "@kabmo-labs/kabmo-harness-contract": "workspace:*",
-        "@kabmo-labs/kabmo-harness-enabled": "workspace:*",
-        "@kabmo-labs/kabmo-harness-launch": "workspace:*",
-        "@kabmo-labs/kabmo-harness-lease": "workspace:*",
-        "@kabmo-labs/kabmo-harness-local-transcript": "workspace:*",
-        "@kabmo-labs/kabmo-harness-mcp-facts": "workspace:*",
-        "@kabmo-labs/kabmo-harness-provider": "workspace:*",
-        "@kabmo-labs/kabmo-harness-provider-runtime": "workspace:*",
-        "@kabmo-labs/kabmo-harness-provider-slug": "workspace:*",
-        "@kabmo-labs/kabmo-harness-registry": "workspace:*",
-        "@kabmo-labs/kabmo-harness-rewind": "workspace:*",
-        "@kabmo-labs/kabmo-harness-schema": "workspace:*",
-        "@kabmo-labs/kabmo-harness-session": "workspace:*",
-        "@kabmo-labs/kabmo-harness-session-modes": "workspace:*",
-        "@kabmo-labs/kabmo-harness-transcript": "workspace:*",
-        "@kabmo-labs/kabmo-harness-update-job": "workspace:*",
-        "@kabmo-labs/kabmo-harness-updates": "workspace:*",
+        "@kabmo-labs/kabmo-harness": "workspace:*",
         "@kabmo-labs/kabmo-http": "workspace:*",
         "@kabmo-labs/kabmo-idle-reaper": "workspace:*",
         "@kabmo-labs/kabmo-live-sessions": "workspace:*",
         "@kabmo-labs/kabmo-mcp-contracts": "workspace:*",
         "@kabmo-labs/kabmo-model-contracts": "workspace:*",
-        "@kabmo-labs/kabmo-omp-access-mode": "workspace:*",
-        "@kabmo-labs/kabmo-omp-cli": "workspace:*",
-        "@kabmo-labs/kabmo-omp-config-doc": "workspace:*",
-        "@kabmo-labs/kabmo-omp-config-files": "workspace:*",
-        "@kabmo-labs/kabmo-omp-config-mcp": "workspace:*",
-        "@kabmo-labs/kabmo-omp-config-providers": "workspace:*",
-        "@kabmo-labs/kabmo-omp-contracts": "workspace:*",
-        "@kabmo-labs/kabmo-omp-extensions": "workspace:*",
-        "@kabmo-labs/kabmo-omp-install": "workspace:*",
-        "@kabmo-labs/kabmo-omp-mapper": "workspace:*",
-        "@kabmo-labs/kabmo-omp-messages-map": "workspace:*",
-        "@kabmo-labs/kabmo-omp-mode": "workspace:*",
-        "@kabmo-labs/kabmo-omp-mode-request": "workspace:*",
-        "@kabmo-labs/kabmo-omp-models-config": "workspace:*",
-        "@kabmo-labs/kabmo-omp-operator-title": "workspace:*",
-        "@kabmo-labs/kabmo-omp-paths": "workspace:*",
-        "@kabmo-labs/kabmo-omp-proc": "workspace:*",
-        "@kabmo-labs/kabmo-omp-registry": "workspace:*",
-        "@kabmo-labs/kabmo-omp-rpc-commands": "workspace:*",
-        "@kabmo-labs/kabmo-omp-rpc-events": "workspace:*",
-        "@kabmo-labs/kabmo-omp-rpc-process": "workspace:*",
-        "@kabmo-labs/kabmo-omp-rpc-protocol": "workspace:*",
-        "@kabmo-labs/kabmo-omp-rpc-util": "workspace:*",
-        "@kabmo-labs/kabmo-omp-schema": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-changes": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-core": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-locator": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-messages": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-parse": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-reader": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-runtime": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-scan": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-sidebar": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-telemetry": "workspace:*",
-        "@kabmo-labs/kabmo-omp-sidebar-data": "workspace:*",
-        "@kabmo-labs/kabmo-omp-subagent": "workspace:*",
-        "@kabmo-labs/kabmo-omp-subagent-presence": "workspace:*",
-        "@kabmo-labs/kabmo-omp-worktree": "workspace:*",
+        "@kabmo-labs/kabmo-omp": "workspace:*",
         "@kabmo-labs/kabmo-paths": "workspace:*",
         "@kabmo-labs/kabmo-platform": "workspace:*",
-        "@kabmo-labs/kabmo-process-kill": "workspace:*",
-        "@kabmo-labs/kabmo-process-probe": "workspace:*",
+        "@kabmo-labs/kabmo-process": "workspace:*",
         "@kabmo-labs/kabmo-provider-contracts": "workspace:*",
         "@kabmo-labs/kabmo-realtime-signals": "workspace:*",
         "@kabmo-labs/kabmo-refresh-cadence": "workspace:*",
         "@kabmo-labs/kabmo-rpc-lines": "workspace:*",
         "@kabmo-labs/kabmo-runtime-flags": "workspace:*",
         "@kabmo-labs/kabmo-sdk": "workspace:*",
-        "@kabmo-labs/kabmo-session-deleted": "workspace:*",
-        "@kabmo-labs/kabmo-session-lifecycle": "workspace:*",
-        "@kabmo-labs/kabmo-session-relations": "workspace:*",
-        "@kabmo-labs/kabmo-session-stream-state": "workspace:*",
-        "@kabmo-labs/kabmo-settings-contracts": "workspace:*",
-        "@kabmo-labs/kabmo-settings-store": "workspace:*",
+        "@kabmo-labs/kabmo-session": "workspace:*",
+        "@kabmo-labs/kabmo-settings": "workspace:*",
         "@kabmo-labs/kabmo-ui": "workspace:*",
-        "@kabmo-labs/kabmo-workspace-root": "workspace:*",
-        "@kabmo-labs/kabmo-workspace-sidebar": "workspace:*",
-        "@kabmo-labs/kabmo-worktree-topology": "workspace:*",
-        "@kabmo-labs/kabmo-worktree-types": "workspace:*",
+        "@kabmo-labs/kabmo-workspace": "workspace:*",
+        "@kabmo-labs/kabmo-worktree": "workspace:*",
         "@shikijs/langs": "^4.4.3",
         "@shikijs/themes": "^4.4.3",
         "@tailwindcss/postcss": "^4.1.14",
@@ -174,163 +91,35 @@
         "typescript": "~5.8.2",
       },
     },
-    "packages/kabmo-acp-client": {
-      "name": "@kabmo-labs/kabmo-acp-client",
+    "packages/kabmo-acp": {
+      "name": "@kabmo-labs/kabmo-acp",
       "version": "0.0.1",
       "dependencies": {
-        "@kabmo-labs/kabmo-acp-mapper": "workspace:*",
-        "@kabmo-labs/kabmo-acp-protocol": "workspace:*",
-        "@kabmo-labs/kabmo-acp-stdio": "workspace:*",
-        "@kabmo-labs/kabmo-fs-canonical": "workspace:*",
-        "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
-        "@kabmo-labs/kabmo-omp-access-mode": "workspace:*",
-      },
-    },
-    "packages/kabmo-acp-control": {
-      "name": "@kabmo-labs/kabmo-acp-control",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-acp-client": "workspace:*",
-        "@kabmo-labs/kabmo-acp-mapper": "workspace:*",
-        "@kabmo-labs/kabmo-acp-prompt": "workspace:*",
-        "@kabmo-labs/kabmo-acp-protocol": "workspace:*",
-        "@kabmo-labs/kabmo-acp-session": "workspace:*",
-        "@kabmo-labs/kabmo-acp-session-config": "workspace:*",
-        "@kabmo-labs/kabmo-acp-session-core": "workspace:*",
         "@kabmo-labs/kabmo-app-contracts": "workspace:*",
-        "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
-        "@kabmo-labs/kabmo-harness-launch": "workspace:*",
-        "@kabmo-labs/kabmo-harness-session": "workspace:*",
-        "@kabmo-labs/kabmo-omp-access-mode": "workspace:*",
-        "@kabmo-labs/kabmo-omp-rpc-protocol": "workspace:*",
-        "@kabmo-labs/kabmo-realtime-signals": "workspace:*",
-      },
-    },
-    "packages/kabmo-acp-mapper": {
-      "name": "@kabmo-labs/kabmo-acp-mapper",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-acp-protocol": "workspace:*",
-        "@kabmo-labs/kabmo-chat-tool": "workspace:*",
-        "@kabmo-labs/kabmo-guards": "workspace:*",
-        "@kabmo-labs/kabmo-omp-contracts": "workspace:*",
-      },
-    },
-    "packages/kabmo-acp-prompt": {
-      "name": "@kabmo-labs/kabmo-acp-prompt",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-acp-protocol": "workspace:*",
-      },
-    },
-    "packages/kabmo-acp-protocol": {
-      "name": "@kabmo-labs/kabmo-acp-protocol",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-fs-toolchain": "workspace:*",
-      },
-    },
-    "packages/kabmo-acp-session": {
-      "name": "@kabmo-labs/kabmo-acp-session",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-acp-client": "workspace:*",
-        "@kabmo-labs/kabmo-acp-prompt": "workspace:*",
-        "@kabmo-labs/kabmo-acp-protocol": "workspace:*",
-        "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
-        "@kabmo-labs/kabmo-harness-launch": "workspace:*",
-        "@kabmo-labs/kabmo-omp-access-mode": "workspace:*",
-        "@kabmo-labs/kabmo-omp-contracts": "workspace:*",
-      },
-    },
-    "packages/kabmo-acp-session-config": {
-      "name": "@kabmo-labs/kabmo-acp-session-config",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-acp-client": "workspace:*",
-        "@kabmo-labs/kabmo-acp-prompt": "workspace:*",
-        "@kabmo-labs/kabmo-acp-protocol": "workspace:*",
-        "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
-        "@kabmo-labs/kabmo-omp-contracts": "workspace:*",
-      },
-    },
-    "packages/kabmo-acp-session-core": {
-      "name": "@kabmo-labs/kabmo-acp-session-core",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-acp-client": "workspace:*",
-        "@kabmo-labs/kabmo-acp-control": "workspace:*",
-        "@kabmo-labs/kabmo-acp-mapper": "workspace:*",
-        "@kabmo-labs/kabmo-acp-prompt": "workspace:*",
-        "@kabmo-labs/kabmo-acp-protocol": "workspace:*",
-        "@kabmo-labs/kabmo-acp-session": "workspace:*",
-        "@kabmo-labs/kabmo-acp-session-config": "workspace:*",
-        "@kabmo-labs/kabmo-acp-session-core": "workspace:*",
-        "@kabmo-labs/kabmo-acp-turn": "workspace:*",
-        "@kabmo-labs/kabmo-app-contracts": "workspace:*",
-        "@kabmo-labs/kabmo-chat-contracts": "workspace:*",
-        "@kabmo-labs/kabmo-chat-rows": "workspace:*",
-        "@kabmo-labs/kabmo-chat-tool": "workspace:*",
+        "@kabmo-labs/kabmo-chat": "workspace:*",
         "@kabmo-labs/kabmo-db": "workspace:*",
+        "@kabmo-labs/kabmo-fs": "workspace:*",
         "@kabmo-labs/kabmo-guards": "workspace:*",
-        "@kabmo-labs/kabmo-harness-account-store": "workspace:*",
-        "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
-        "@kabmo-labs/kabmo-harness-config-store": "workspace:*",
-        "@kabmo-labs/kabmo-harness-contract": "workspace:*",
-        "@kabmo-labs/kabmo-harness-launch": "workspace:*",
-        "@kabmo-labs/kabmo-harness-lease": "workspace:*",
-        "@kabmo-labs/kabmo-harness-session": "workspace:*",
+        "@kabmo-labs/kabmo-harness": "workspace:*",
         "@kabmo-labs/kabmo-idle-reaper": "workspace:*",
         "@kabmo-labs/kabmo-live-sessions": "workspace:*",
-        "@kabmo-labs/kabmo-omp-access-mode": "workspace:*",
-        "@kabmo-labs/kabmo-omp-mapper": "workspace:*",
-        "@kabmo-labs/kabmo-omp-messages-map": "workspace:*",
-        "@kabmo-labs/kabmo-omp-mode": "workspace:*",
-        "@kabmo-labs/kabmo-omp-mode-request": "workspace:*",
-        "@kabmo-labs/kabmo-omp-rpc-commands": "workspace:*",
-        "@kabmo-labs/kabmo-omp-rpc-protocol": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-core": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-locator": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-messages": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-parse": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-runtime": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-scan": "workspace:*",
+        "@kabmo-labs/kabmo-omp": "workspace:*",
+        "@kabmo-labs/kabmo-process": "workspace:*",
         "@kabmo-labs/kabmo-realtime-signals": "workspace:*",
-        "@kabmo-labs/kabmo-session-relations": "workspace:*",
-        "@kabmo-labs/kabmo-session-stream-state": "workspace:*",
-      },
-    },
-    "packages/kabmo-acp-stdio": {
-      "name": "@kabmo-labs/kabmo-acp-stdio",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-process-kill": "workspace:*",
         "@kabmo-labs/kabmo-rpc-lines": "workspace:*",
         "@kabmo-labs/kabmo-sdk": "workspace:*",
-      },
-    },
-    "packages/kabmo-acp-turn": {
-      "name": "@kabmo-labs/kabmo-acp-turn",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-acp-mapper": "workspace:*",
-        "@kabmo-labs/kabmo-omp-contracts": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-parse": "workspace:*",
+        "@kabmo-labs/kabmo-session": "workspace:*",
       },
     },
     "packages/kabmo-app-contracts": {
       "name": "@kabmo-labs/kabmo-app-contracts",
       "version": "0.0.1",
       "dependencies": {
-        "@kabmo-labs/kabmo-chat-contracts": "workspace:*",
-        "@kabmo-labs/kabmo-harness-accounts": "workspace:*",
-        "@kabmo-labs/kabmo-harness-config": "workspace:*",
-        "@kabmo-labs/kabmo-harness-launch": "workspace:*",
-        "@kabmo-labs/kabmo-harness-provider": "workspace:*",
-        "@kabmo-labs/kabmo-harness-updates": "workspace:*",
+        "@kabmo-labs/kabmo-chat": "workspace:*",
+        "@kabmo-labs/kabmo-harness": "workspace:*",
         "@kabmo-labs/kabmo-sdk": "workspace:*",
-        "@kabmo-labs/kabmo-session-stream-state": "workspace:*",
-        "@kabmo-labs/kabmo-worktree-types": "workspace:*",
+        "@kabmo-labs/kabmo-session": "workspace:*",
+        "@kabmo-labs/kabmo-worktree": "workspace:*",
       },
     },
     "packages/kabmo-auth": {
@@ -341,49 +130,22 @@
       "name": "@kabmo-labs/kabmo-bytes",
       "version": "0.0.1",
     },
-    "packages/kabmo-chat-contracts": {
-      "name": "@kabmo-labs/kabmo-chat-contracts",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-omp-access-mode": "workspace:*",
-        "@kabmo-labs/kabmo-omp-contracts": "workspace:*",
-        "preact": "^10.29.8",
-      },
-    },
-    "packages/kabmo-chat-notices": {
-      "name": "@kabmo-labs/kabmo-chat-notices",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-chat-contracts": "workspace:*",
-        "@kabmo-labs/kabmo-format": "workspace:*",
-        "@kabmo-labs/kabmo-guards": "workspace:*",
-        "@kabmo-labs/kabmo-omp-contracts": "workspace:*",
-      },
-    },
-    "packages/kabmo-chat-rows": {
-      "name": "@kabmo-labs/kabmo-chat-rows",
+    "packages/kabmo-chat": {
+      "name": "@kabmo-labs/kabmo-chat",
       "version": "0.0.1",
       "dependencies": {
         "@kabmo-labs/kabmo-app-contracts": "workspace:*",
-        "@kabmo-labs/kabmo-chat-contracts": "workspace:*",
-        "@kabmo-labs/kabmo-omp-mapper": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-parse": "workspace:*",
-      },
-    },
-    "packages/kabmo-chat-tool": {
-      "name": "@kabmo-labs/kabmo-chat-tool",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-chat-contracts": "workspace:*",
+        "@kabmo-labs/kabmo-format": "workspace:*",
         "@kabmo-labs/kabmo-guards": "workspace:*",
-        "@kabmo-labs/kabmo-omp-proc": "workspace:*",
+        "@kabmo-labs/kabmo-omp": "workspace:*",
+        "preact": "^10.29.8",
       },
     },
     "packages/kabmo-db": {
       "name": "@kabmo-labs/kabmo-db",
       "version": "0.0.1",
       "dependencies": {
-        "@kabmo-labs/kabmo-omp-paths": "workspace:*",
+        "@kabmo-labs/kabmo-omp": "workspace:*",
         "@kabmo-labs/kabmo-paths": "workspace:*",
         "@kabmo-labs/kabmo-runtime-flags": "workspace:*",
       },
@@ -392,245 +154,46 @@
       "name": "@kabmo-labs/kabmo-format",
       "version": "0.0.1",
     },
-    "packages/kabmo-fs-canonical": {
-      "name": "@kabmo-labs/kabmo-fs-canonical",
-      "version": "0.0.1",
-    },
-    "packages/kabmo-fs-child-env": {
-      "name": "@kabmo-labs/kabmo-fs-child-env",
+    "packages/kabmo-fs": {
+      "name": "@kabmo-labs/kabmo-fs",
       "version": "0.0.1",
       "dependencies": {
         "@kabmo-labs/kabmo-auth": "workspace:*",
-      },
-    },
-    "packages/kabmo-fs-config": {
-      "name": "@kabmo-labs/kabmo-fs-config",
-      "version": "0.0.1",
-    },
-    "packages/kabmo-fs-media": {
-      "name": "@kabmo-labs/kabmo-fs-media",
-      "version": "0.0.1",
-      "dependencies": {
         "@kabmo-labs/kabmo-format": "workspace:*",
-      },
-    },
-    "packages/kabmo-fs-toolchain": {
-      "name": "@kabmo-labs/kabmo-fs-toolchain",
-      "version": "0.0.1",
-      "dependencies": {
         "@kabmo-labs/kabmo-sdk": "workspace:*",
       },
     },
-    "packages/kabmo-git-env": {
-      "name": "@kabmo-labs/kabmo-git-env",
-      "version": "0.0.1",
-    },
-    "packages/kabmo-git-runner": {
-      "name": "@kabmo-labs/kabmo-git-runner",
+    "packages/kabmo-git": {
+      "name": "@kabmo-labs/kabmo-git",
       "version": "0.0.1",
       "dependencies": {
         "@kabmo-labs/kabmo-app-contracts": "workspace:*",
-        "@kabmo-labs/kabmo-git-env": "workspace:*",
         "@kabmo-labs/kabmo-sdk": "workspace:*",
-        "@kabmo-labs/kabmo-workspace-root": "workspace:*",
+        "@kabmo-labs/kabmo-workspace": "workspace:*",
       },
     },
     "packages/kabmo-guards": {
       "name": "@kabmo-labs/kabmo-guards",
       "version": "0.0.1",
     },
-    "packages/kabmo-harness-account-store": {
-      "name": "@kabmo-labs/kabmo-harness-account-store",
+    "packages/kabmo-harness": {
+      "name": "@kabmo-labs/kabmo-harness",
       "version": "0.0.1",
       "dependencies": {
-        "@kabmo-labs/kabmo-db": "workspace:*",
-        "@kabmo-labs/kabmo-harness-accounts": "workspace:*",
-        "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
-        "@kabmo-labs/kabmo-harness-config": "workspace:*",
-        "@kabmo-labs/kabmo-harness-config-store": "workspace:*",
-        "@kabmo-labs/kabmo-harness-launch": "workspace:*",
-        "@kabmo-labs/kabmo-harness-provider-runtime": "workspace:*",
-        "@kabmo-labs/kabmo-paths": "workspace:*",
-      },
-    },
-    "packages/kabmo-harness-accounts": {
-      "name": "@kabmo-labs/kabmo-harness-accounts",
-      "version": "0.0.1",
-    },
-    "packages/kabmo-harness-catalog": {
-      "name": "@kabmo-labs/kabmo-harness-catalog",
-      "version": "0.0.1",
-    },
-    "packages/kabmo-harness-config": {
-      "name": "@kabmo-labs/kabmo-harness-config",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
-      },
-    },
-    "packages/kabmo-harness-config-fields": {
-      "name": "@kabmo-labs/kabmo-harness-config-fields",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
-        "@kabmo-labs/kabmo-harness-provider": "workspace:*",
-      },
-    },
-    "packages/kabmo-harness-config-store": {
-      "name": "@kabmo-labs/kabmo-harness-config-store",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-db": "workspace:*",
-        "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
-        "@kabmo-labs/kabmo-harness-config": "workspace:*",
-        "@kabmo-labs/kabmo-harness-enabled": "workspace:*",
-        "@kabmo-labs/kabmo-harness-launch": "workspace:*",
-        "@kabmo-labs/kabmo-settings-store": "workspace:*",
-      },
-    },
-    "packages/kabmo-harness-contract": {
-      "name": "@kabmo-labs/kabmo-harness-contract",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
-        "@kabmo-labs/kabmo-omp-contracts": "workspace:*",
-      },
-    },
-    "packages/kabmo-harness-enabled": {
-      "name": "@kabmo-labs/kabmo-harness-enabled",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
-      },
-    },
-    "packages/kabmo-harness-launch": {
-      "name": "@kabmo-labs/kabmo-harness-launch",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-acp-client": "workspace:*",
-        "@kabmo-labs/kabmo-acp-protocol": "workspace:*",
-        "@kabmo-labs/kabmo-fs-toolchain": "workspace:*",
-        "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
-        "@kabmo-labs/kabmo-omp-extensions": "workspace:*",
-      },
-    },
-    "packages/kabmo-harness-lease": {
-      "name": "@kabmo-labs/kabmo-harness-lease",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
-        "@kabmo-labs/kabmo-harness-update-job": "workspace:*",
-        "@kabmo-labs/kabmo-paths": "workspace:*",
-      },
-    },
-    "packages/kabmo-harness-local-transcript": {
-      "name": "@kabmo-labs/kabmo-harness-local-transcript",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-chat-contracts": "workspace:*",
-        "@kabmo-labs/kabmo-chat-tool": "workspace:*",
-        "@kabmo-labs/kabmo-harness-config-store": "workspace:*",
-      },
-    },
-    "packages/kabmo-harness-mcp-facts": {
-      "name": "@kabmo-labs/kabmo-harness-mcp-facts",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
-      },
-    },
-    "packages/kabmo-harness-provider": {
-      "name": "@kabmo-labs/kabmo-harness-provider",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
-      },
-    },
-    "packages/kabmo-harness-provider-runtime": {
-      "name": "@kabmo-labs/kabmo-harness-provider-runtime",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-fs-config": "workspace:*",
-        "@kabmo-labs/kabmo-harness-accounts": "workspace:*",
-        "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
-        "@kabmo-labs/kabmo-harness-provider": "workspace:*",
-        "@kabmo-labs/kabmo-provider-contracts": "workspace:*",
-        "smol-toml": "^1.9.1",
-        "yaml": "^2.9.1",
-      },
-    },
-    "packages/kabmo-harness-provider-slug": {
-      "name": "@kabmo-labs/kabmo-harness-provider-slug",
-      "version": "0.0.1",
-    },
-    "packages/kabmo-harness-registry": {
-      "name": "@kabmo-labs/kabmo-harness-registry",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
-        "@kabmo-labs/kabmo-harness-contract": "workspace:*",
-      },
-    },
-    "packages/kabmo-harness-rewind": {
-      "name": "@kabmo-labs/kabmo-harness-rewind",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-harness-transcript": "workspace:*",
-      },
-    },
-    "packages/kabmo-harness-schema": {
-      "name": "@kabmo-labs/kabmo-harness-schema",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-db": "workspace:*",
-      },
-    },
-    "packages/kabmo-harness-session": {
-      "name": "@kabmo-labs/kabmo-harness-session",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-acp-client": "workspace:*",
-        "@kabmo-labs/kabmo-acp-protocol": "workspace:*",
+        "@kabmo-labs/kabmo-acp": "workspace:*",
         "@kabmo-labs/kabmo-app-contracts": "workspace:*",
+        "@kabmo-labs/kabmo-chat": "workspace:*",
         "@kabmo-labs/kabmo-db": "workspace:*",
-        "@kabmo-labs/kabmo-fs-canonical": "workspace:*",
-        "@kabmo-labs/kabmo-harness-account-store": "workspace:*",
-        "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
-        "@kabmo-labs/kabmo-harness-config-store": "workspace:*",
-        "@kabmo-labs/kabmo-harness-launch": "workspace:*",
-        "@kabmo-labs/kabmo-harness-lease": "workspace:*",
-        "@kabmo-labs/kabmo-harness-local-transcript": "workspace:*",
-        "@kabmo-labs/kabmo-harness-schema": "workspace:*",
-        "@kabmo-labs/kabmo-harness-session": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-sidebar": "workspace:*",
-        "@kabmo-labs/kabmo-omp-worktree": "workspace:*",
+        "@kabmo-labs/kabmo-fs": "workspace:*",
+        "@kabmo-labs/kabmo-omp": "workspace:*",
         "@kabmo-labs/kabmo-paths": "workspace:*",
+        "@kabmo-labs/kabmo-provider-contracts": "workspace:*",
         "@kabmo-labs/kabmo-realtime-signals": "workspace:*",
         "@kabmo-labs/kabmo-runtime-flags": "workspace:*",
-        "@kabmo-labs/kabmo-session-deleted": "workspace:*",
-        "@kabmo-labs/kabmo-settings-store": "workspace:*",
-      },
-    },
-    "packages/kabmo-harness-session-modes": {
-      "name": "@kabmo-labs/kabmo-harness-session-modes",
-      "version": "0.0.1",
-    },
-    "packages/kabmo-harness-transcript": {
-      "name": "@kabmo-labs/kabmo-harness-transcript",
-      "version": "0.0.1",
-    },
-    "packages/kabmo-harness-update-job": {
-      "name": "@kabmo-labs/kabmo-harness-update-job",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-harness-updates": "workspace:*",
-      },
-    },
-    "packages/kabmo-harness-updates": {
-      "name": "@kabmo-labs/kabmo-harness-updates",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
+        "@kabmo-labs/kabmo-session": "workspace:*",
+        "@kabmo-labs/kabmo-settings": "workspace:*",
+        "smol-toml": "^1.9.1",
+        "yaml": "^2.9.1",
       },
     },
     "packages/kabmo-http": {
@@ -649,401 +212,42 @@
       "name": "@kabmo-labs/kabmo-mcp-contracts",
       "version": "0.0.1",
       "dependencies": {
-        "@kabmo-labs/kabmo-settings-contracts": "workspace:*",
+        "@kabmo-labs/kabmo-settings": "workspace:*",
       },
     },
     "packages/kabmo-model-contracts": {
       "name": "@kabmo-labs/kabmo-model-contracts",
       "version": "0.0.1",
     },
-    "packages/kabmo-omp-access-mode": {
-      "name": "@kabmo-labs/kabmo-omp-access-mode",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-guards": "workspace:*",
-      },
-    },
-    "packages/kabmo-omp-cli": {
-      "name": "@kabmo-labs/kabmo-omp-cli",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-fs-toolchain": "workspace:*",
-      },
-    },
-    "packages/kabmo-omp-config-doc": {
-      "name": "@kabmo-labs/kabmo-omp-config-doc",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-fs-config": "workspace:*",
-        "@kabmo-labs/kabmo-guards": "workspace:*",
-        "@kabmo-labs/kabmo-omp-paths": "workspace:*",
-        "yaml": "^2.9.1",
-      },
-    },
-    "packages/kabmo-omp-config-files": {
-      "name": "@kabmo-labs/kabmo-omp-config-files",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-fs-child-env": "workspace:*",
-        "@kabmo-labs/kabmo-fs-config": "workspace:*",
-        "@kabmo-labs/kabmo-guards": "workspace:*",
-        "@kabmo-labs/kabmo-omp-cli": "workspace:*",
-        "@kabmo-labs/kabmo-omp-config-doc": "workspace:*",
-        "@kabmo-labs/kabmo-omp-paths": "workspace:*",
-        "@kabmo-labs/kabmo-runtime-flags": "workspace:*",
-        "@kabmo-labs/kabmo-settings-contracts": "workspace:*",
-      },
-    },
-    "packages/kabmo-omp-config-mcp": {
-      "name": "@kabmo-labs/kabmo-omp-config-mcp",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-fs-child-env": "workspace:*",
-        "@kabmo-labs/kabmo-fs-config": "workspace:*",
-        "@kabmo-labs/kabmo-guards": "workspace:*",
-        "@kabmo-labs/kabmo-mcp-contracts": "workspace:*",
-        "@kabmo-labs/kabmo-omp-cli": "workspace:*",
-        "@kabmo-labs/kabmo-omp-config-doc": "workspace:*",
-        "@kabmo-labs/kabmo-omp-paths": "workspace:*",
-        "@kabmo-labs/kabmo-process-kill": "workspace:*",
-        "@kabmo-labs/kabmo-rpc-lines": "workspace:*",
-        "@kabmo-labs/kabmo-runtime-flags": "workspace:*",
-        "@kabmo-labs/kabmo-sdk": "workspace:*",
-        "@kabmo-labs/kabmo-settings-contracts": "workspace:*",
-      },
-    },
-    "packages/kabmo-omp-config-providers": {
-      "name": "@kabmo-labs/kabmo-omp-config-providers",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-guards": "workspace:*",
-        "@kabmo-labs/kabmo-omp-config-doc": "workspace:*",
-        "@kabmo-labs/kabmo-omp-models-config": "workspace:*",
-        "@kabmo-labs/kabmo-provider-contracts": "workspace:*",
-        "@kabmo-labs/kabmo-settings-contracts": "workspace:*",
-        "yaml": "^2.9.1",
-      },
-    },
-    "packages/kabmo-omp-contracts": {
-      "name": "@kabmo-labs/kabmo-omp-contracts",
-      "version": "0.0.1",
-    },
-    "packages/kabmo-omp-extensions": {
-      "name": "@kabmo-labs/kabmo-omp-extensions",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-omp-mode": "workspace:*",
-      },
-    },
-    "packages/kabmo-omp-install": {
-      "name": "@kabmo-labs/kabmo-omp-install",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-fs-child-env": "workspace:*",
-        "@kabmo-labs/kabmo-omp-cli": "workspace:*",
-        "@kabmo-labs/kabmo-omp-paths": "workspace:*",
-        "@kabmo-labs/kabmo-runtime-flags": "workspace:*",
-        "@kabmo-labs/kabmo-sdk": "workspace:*",
-      },
-    },
-    "packages/kabmo-omp-mapper": {
-      "name": "@kabmo-labs/kabmo-omp-mapper",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-chat-contracts": "workspace:*",
-        "@kabmo-labs/kabmo-chat-notices": "workspace:*",
-        "@kabmo-labs/kabmo-format": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-core": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-parse": "workspace:*",
-      },
-    },
-    "packages/kabmo-omp-messages-map": {
-      "name": "@kabmo-labs/kabmo-omp-messages-map",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-chat-contracts": "workspace:*",
-        "@kabmo-labs/kabmo-chat-notices": "workspace:*",
-        "@kabmo-labs/kabmo-guards": "workspace:*",
-        "@kabmo-labs/kabmo-omp-mode": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-core": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-parse": "workspace:*",
-      },
-    },
-    "packages/kabmo-omp-mode": {
-      "name": "@kabmo-labs/kabmo-omp-mode",
-      "version": "0.0.1",
-    },
-    "packages/kabmo-omp-mode-request": {
-      "name": "@kabmo-labs/kabmo-omp-mode-request",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-guards": "workspace:*",
-        "@kabmo-labs/kabmo-omp-mode": "workspace:*",
-      },
-    },
-    "packages/kabmo-omp-models-config": {
-      "name": "@kabmo-labs/kabmo-omp-models-config",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-guards": "workspace:*",
-        "@kabmo-labs/kabmo-omp-paths": "workspace:*",
-      },
-    },
-    "packages/kabmo-omp-operator-title": {
-      "name": "@kabmo-labs/kabmo-omp-operator-title",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-guards": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-core": "workspace:*",
-      },
-    },
-    "packages/kabmo-omp-paths": {
-      "name": "@kabmo-labs/kabmo-omp-paths",
-      "version": "0.0.1",
-    },
-    "packages/kabmo-omp-proc": {
-      "name": "@kabmo-labs/kabmo-omp-proc",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-guards": "workspace:*",
-      },
-    },
-    "packages/kabmo-omp-registry": {
-      "name": "@kabmo-labs/kabmo-omp-registry",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-omp-contracts": "workspace:*",
-        "@kabmo-labs/kabmo-omp-paths": "workspace:*",
-      },
-    },
-    "packages/kabmo-omp-rpc-commands": {
-      "name": "@kabmo-labs/kabmo-omp-rpc-commands",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-omp-rpc-process": "workspace:*",
-        "@kabmo-labs/kabmo-omp-rpc-protocol": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-runtime": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-scan": "workspace:*",
-        "@kabmo-labs/kabmo-session-stream-state": "workspace:*",
-      },
-    },
-    "packages/kabmo-omp-rpc-events": {
-      "name": "@kabmo-labs/kabmo-omp-rpc-events",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-omp-mode": "workspace:*",
-        "@kabmo-labs/kabmo-omp-rpc-protocol": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-parse": "workspace:*",
-      },
-    },
-    "packages/kabmo-omp-rpc-process": {
-      "name": "@kabmo-labs/kabmo-omp-rpc-process",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-guards": "workspace:*",
-        "@kabmo-labs/kabmo-idle-reaper": "workspace:*",
-        "@kabmo-labs/kabmo-omp-cli": "workspace:*",
-        "@kabmo-labs/kabmo-omp-rpc-protocol": "workspace:*",
-        "@kabmo-labs/kabmo-omp-rpc-util": "workspace:*",
-        "@kabmo-labs/kabmo-process-kill": "workspace:*",
-        "@kabmo-labs/kabmo-process-probe": "workspace:*",
-        "@kabmo-labs/kabmo-rpc-lines": "workspace:*",
-        "@kabmo-labs/kabmo-sdk": "workspace:*",
-      },
-    },
-    "packages/kabmo-omp-rpc-protocol": {
-      "name": "@kabmo-labs/kabmo-omp-rpc-protocol",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-chat-contracts": "workspace:*",
-        "@kabmo-labs/kabmo-omp-contracts": "workspace:*",
-      },
-    },
-    "packages/kabmo-omp-rpc-util": {
-      "name": "@kabmo-labs/kabmo-omp-rpc-util",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-omp-cli": "workspace:*",
-        "@kabmo-labs/kabmo-omp-paths": "workspace:*",
-        "@kabmo-labs/kabmo-omp-subagent": "workspace:*",
-      },
-    },
-    "packages/kabmo-omp-schema": {
-      "name": "@kabmo-labs/kabmo-omp-schema",
-      "version": "0.0.1",
-    },
-    "packages/kabmo-omp-session-changes": {
-      "name": "@kabmo-labs/kabmo-omp-session-changes",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-omp-contracts": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-locator": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-scan": "workspace:*",
-        "@kabmo-labs/kabmo-omp-subagent": "workspace:*",
-      },
-    },
-    "packages/kabmo-omp-session-core": {
-      "name": "@kabmo-labs/kabmo-omp-session-core",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-guards": "workspace:*",
-      },
-    },
-    "packages/kabmo-omp-session-locator": {
-      "name": "@kabmo-labs/kabmo-omp-session-locator",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-http": "workspace:*",
-        "@kabmo-labs/kabmo-omp-paths": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-scan": "workspace:*",
-      },
-    },
-    "packages/kabmo-omp-session-messages": {
-      "name": "@kabmo-labs/kabmo-omp-session-messages",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-chat-contracts": "workspace:*",
-        "@kabmo-labs/kabmo-chat-tool": "workspace:*",
-        "@kabmo-labs/kabmo-fs-media": "workspace:*",
-        "@kabmo-labs/kabmo-guards": "workspace:*",
-        "@kabmo-labs/kabmo-omp-mapper": "workspace:*",
-        "@kabmo-labs/kabmo-omp-messages-map": "workspace:*",
-        "@kabmo-labs/kabmo-omp-operator-title": "workspace:*",
-        "@kabmo-labs/kabmo-omp-paths": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-core": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-parse": "workspace:*",
-      },
-    },
-    "packages/kabmo-omp-session-parse": {
-      "name": "@kabmo-labs/kabmo-omp-session-parse",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-chat-contracts": "workspace:*",
-        "@kabmo-labs/kabmo-chat-tool": "workspace:*",
-        "@kabmo-labs/kabmo-guards": "workspace:*",
-        "@kabmo-labs/kabmo-omp-contracts": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-core": "workspace:*",
-      },
-    },
-    "packages/kabmo-omp-session-reader": {
-      "name": "@kabmo-labs/kabmo-omp-session-reader",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-omp-contracts": "workspace:*",
-        "@kabmo-labs/kabmo-omp-paths": "workspace:*",
-        "@kabmo-labs/kabmo-omp-registry": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-scan": "workspace:*",
-        "@kabmo-labs/kabmo-omp-worktree": "workspace:*",
-        "@kabmo-labs/kabmo-refresh-cadence": "workspace:*",
-      },
-    },
-    "packages/kabmo-omp-session-runtime": {
-      "name": "@kabmo-labs/kabmo-omp-session-runtime",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-db": "workspace:*",
-        "@kabmo-labs/kabmo-fs-child-env": "workspace:*",
-        "@kabmo-labs/kabmo-fs-config": "workspace:*",
-        "@kabmo-labs/kabmo-guards": "workspace:*",
-        "@kabmo-labs/kabmo-model-contracts": "workspace:*",
-        "@kabmo-labs/kabmo-omp-cli": "workspace:*",
-        "@kabmo-labs/kabmo-omp-config-doc": "workspace:*",
-        "@kabmo-labs/kabmo-omp-install": "workspace:*",
-        "@kabmo-labs/kabmo-omp-mapper": "workspace:*",
-        "@kabmo-labs/kabmo-omp-mode": "workspace:*",
-        "@kabmo-labs/kabmo-omp-mode-request": "workspace:*",
-        "@kabmo-labs/kabmo-omp-paths": "workspace:*",
-        "@kabmo-labs/kabmo-omp-rpc-protocol": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-core": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-locator": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-messages": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-runtime": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-scan": "workspace:*",
-        "@kabmo-labs/kabmo-realtime-signals": "workspace:*",
-        "@kabmo-labs/kabmo-settings-store": "workspace:*",
-      },
-    },
-    "packages/kabmo-omp-session-scan": {
-      "name": "@kabmo-labs/kabmo-omp-session-scan",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-fs-config": "workspace:*",
-        "@kabmo-labs/kabmo-guards": "workspace:*",
-        "@kabmo-labs/kabmo-omp-operator-title": "workspace:*",
-        "@kabmo-labs/kabmo-omp-paths": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-core": "workspace:*",
-      },
-    },
-    "packages/kabmo-omp-session-sidebar": {
-      "name": "@kabmo-labs/kabmo-omp-session-sidebar",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-omp-contracts": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-core": "workspace:*",
-      },
-    },
-    "packages/kabmo-omp-session-telemetry": {
-      "name": "@kabmo-labs/kabmo-omp-session-telemetry",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-omp-contracts": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-core": "workspace:*",
-      },
-    },
-    "packages/kabmo-omp-sidebar-data": {
-      "name": "@kabmo-labs/kabmo-omp-sidebar-data",
+    "packages/kabmo-omp": {
+      "name": "@kabmo-labs/kabmo-omp",
       "version": "0.0.1",
       "dependencies": {
         "@kabmo-labs/kabmo-app-contracts": "workspace:*",
+        "@kabmo-labs/kabmo-chat": "workspace:*",
         "@kabmo-labs/kabmo-db": "workspace:*",
-        "@kabmo-labs/kabmo-fs-canonical": "workspace:*",
-        "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
-        "@kabmo-labs/kabmo-harness-session": "workspace:*",
+        "@kabmo-labs/kabmo-format": "workspace:*",
+        "@kabmo-labs/kabmo-fs": "workspace:*",
+        "@kabmo-labs/kabmo-git": "workspace:*",
+        "@kabmo-labs/kabmo-guards": "workspace:*",
+        "@kabmo-labs/kabmo-harness": "workspace:*",
+        "@kabmo-labs/kabmo-http": "workspace:*",
+        "@kabmo-labs/kabmo-idle-reaper": "workspace:*",
         "@kabmo-labs/kabmo-live-sessions": "workspace:*",
-        "@kabmo-labs/kabmo-omp-contracts": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-locator": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-reader": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-scan": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-sidebar": "workspace:*",
-        "@kabmo-labs/kabmo-omp-subagent-presence": "workspace:*",
-        "@kabmo-labs/kabmo-runtime-flags": "workspace:*",
-        "@kabmo-labs/kabmo-session-deleted": "workspace:*",
-        "@kabmo-labs/kabmo-session-relations": "workspace:*",
-        "@kabmo-labs/kabmo-session-stream-state": "workspace:*",
-        "@kabmo-labs/kabmo-workspace-sidebar": "workspace:*",
-        "@kabmo-labs/kabmo-worktree-topology": "workspace:*",
-        "@kabmo-labs/kabmo-worktree-types": "workspace:*",
-      },
-    },
-    "packages/kabmo-omp-subagent": {
-      "name": "@kabmo-labs/kabmo-omp-subagent",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-chat-contracts": "workspace:*",
-        "@kabmo-labs/kabmo-chat-tool": "workspace:*",
-        "@kabmo-labs/kabmo-guards": "workspace:*",
+        "@kabmo-labs/kabmo-mcp-contracts": "workspace:*",
         "@kabmo-labs/kabmo-model-contracts": "workspace:*",
-        "@kabmo-labs/kabmo-omp-contracts": "workspace:*",
-        "@kabmo-labs/kabmo-omp-mapper": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-parse": "workspace:*",
-      },
-    },
-    "packages/kabmo-omp-subagent-presence": {
-      "name": "@kabmo-labs/kabmo-omp-subagent-presence",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-db": "workspace:*",
-        "@kabmo-labs/kabmo-guards": "workspace:*",
-        "@kabmo-labs/kabmo-omp-session-runtime": "workspace:*",
-        "@kabmo-labs/kabmo-omp-subagent": "workspace:*",
-      },
-    },
-    "packages/kabmo-omp-worktree": {
-      "name": "@kabmo-labs/kabmo-omp-worktree",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-git-env": "workspace:*",
-        "@kabmo-labs/kabmo-omp-paths": "workspace:*",
+        "@kabmo-labs/kabmo-process": "workspace:*",
+        "@kabmo-labs/kabmo-provider-contracts": "workspace:*",
+        "@kabmo-labs/kabmo-realtime-signals": "workspace:*",
+        "@kabmo-labs/kabmo-refresh-cadence": "workspace:*",
+        "@kabmo-labs/kabmo-rpc-lines": "workspace:*",
+        "@kabmo-labs/kabmo-runtime-flags": "workspace:*",
+        "@kabmo-labs/kabmo-sdk": "workspace:*",
+        "@kabmo-labs/kabmo-session": "workspace:*",
+        "@kabmo-labs/kabmo-settings": "workspace:*",
+        "@kabmo-labs/kabmo-workspace": "workspace:*",
+        "@kabmo-labs/kabmo-worktree": "workspace:*",
+        "yaml": "^2.9.1",
       },
     },
     "packages/kabmo-paths": {
@@ -1054,22 +258,18 @@
       "name": "@kabmo-labs/kabmo-platform",
       "version": "0.0.1",
     },
-    "packages/kabmo-process-kill": {
-      "name": "@kabmo-labs/kabmo-process-kill",
+    "packages/kabmo-process": {
+      "name": "@kabmo-labs/kabmo-process",
       "version": "0.0.1",
       "dependencies": {
-        "@kabmo-labs/kabmo-fs-child-env": "workspace:*",
+        "@kabmo-labs/kabmo-fs": "workspace:*",
       },
-    },
-    "packages/kabmo-process-probe": {
-      "name": "@kabmo-labs/kabmo-process-probe",
-      "version": "0.0.1",
     },
     "packages/kabmo-provider-contracts": {
       "name": "@kabmo-labs/kabmo-provider-contracts",
       "version": "0.0.1",
       "dependencies": {
-        "@kabmo-labs/kabmo-settings-contracts": "workspace:*",
+        "@kabmo-labs/kabmo-settings": "workspace:*",
       },
     },
     "packages/kabmo-realtime-signals": {
@@ -1102,44 +302,18 @@
         "preact",
       ],
     },
-    "packages/kabmo-session-deleted": {
-      "name": "@kabmo-labs/kabmo-session-deleted",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-db": "workspace:*",
-      },
-    },
-    "packages/kabmo-session-lifecycle": {
-      "name": "@kabmo-labs/kabmo-session-lifecycle",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-db": "workspace:*",
-        "@kabmo-labs/kabmo-session-relations": "workspace:*",
-      },
-    },
-    "packages/kabmo-session-relations": {
-      "name": "@kabmo-labs/kabmo-session-relations",
+    "packages/kabmo-session": {
+      "name": "@kabmo-labs/kabmo-session",
       "version": "0.0.1",
       "dependencies": {
         "@kabmo-labs/kabmo-app-contracts": "workspace:*",
         "@kabmo-labs/kabmo-db": "workspace:*",
-      },
-    },
-    "packages/kabmo-session-stream-state": {
-      "name": "@kabmo-labs/kabmo-session-stream-state",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-db": "workspace:*",
-        "@kabmo-labs/kabmo-process-probe": "workspace:*",
+        "@kabmo-labs/kabmo-process": "workspace:*",
         "@kabmo-labs/kabmo-realtime-signals": "workspace:*",
       },
     },
-    "packages/kabmo-settings-contracts": {
-      "name": "@kabmo-labs/kabmo-settings-contracts",
-      "version": "0.0.1",
-    },
-    "packages/kabmo-settings-store": {
-      "name": "@kabmo-labs/kabmo-settings-store",
+    "packages/kabmo-settings": {
+      "name": "@kabmo-labs/kabmo-settings",
       "version": "0.0.1",
       "dependencies": {
         "@kabmo-labs/kabmo-db": "workspace:*",
@@ -1154,35 +328,24 @@
         "preact": "^10.29.8",
       },
     },
-    "packages/kabmo-workspace-root": {
-      "name": "@kabmo-labs/kabmo-workspace-root",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kabmo-labs/kabmo-db": "workspace:*",
-        "@kabmo-labs/kabmo-fs-canonical": "workspace:*",
-        "@kabmo-labs/kabmo-omp-paths": "workspace:*",
-        "@kabmo-labs/kabmo-omp-worktree": "workspace:*",
-      },
-    },
-    "packages/kabmo-workspace-sidebar": {
-      "name": "@kabmo-labs/kabmo-workspace-sidebar",
+    "packages/kabmo-workspace": {
+      "name": "@kabmo-labs/kabmo-workspace",
       "version": "0.0.1",
       "dependencies": {
         "@kabmo-labs/kabmo-app-contracts": "workspace:*",
+        "@kabmo-labs/kabmo-db": "workspace:*",
+        "@kabmo-labs/kabmo-fs": "workspace:*",
+        "@kabmo-labs/kabmo-omp": "workspace:*",
       },
     },
-    "packages/kabmo-worktree-topology": {
-      "name": "@kabmo-labs/kabmo-worktree-topology",
+    "packages/kabmo-worktree": {
+      "name": "@kabmo-labs/kabmo-worktree",
       "version": "0.0.1",
       "dependencies": {
-        "@kabmo-labs/kabmo-fs-canonical": "workspace:*",
-        "@kabmo-labs/kabmo-git-runner": "workspace:*",
-        "@kabmo-labs/kabmo-omp-worktree": "workspace:*",
+        "@kabmo-labs/kabmo-fs": "workspace:*",
+        "@kabmo-labs/kabmo-git": "workspace:*",
+        "@kabmo-labs/kabmo-omp": "workspace:*",
       },
-    },
-    "packages/kabmo-worktree-types": {
-      "name": "@kabmo-labs/kabmo-worktree-types",
-      "version": "0.0.1",
     },
   },
   "overrides": {
@@ -1259,25 +422,7 @@
 
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw=="],
 
-    "@kabmo-labs/kabmo-acp-client": ["@kabmo-labs/kabmo-acp-client@workspace:packages/kabmo-acp-client"],
-
-    "@kabmo-labs/kabmo-acp-control": ["@kabmo-labs/kabmo-acp-control@workspace:packages/kabmo-acp-control"],
-
-    "@kabmo-labs/kabmo-acp-mapper": ["@kabmo-labs/kabmo-acp-mapper@workspace:packages/kabmo-acp-mapper"],
-
-    "@kabmo-labs/kabmo-acp-prompt": ["@kabmo-labs/kabmo-acp-prompt@workspace:packages/kabmo-acp-prompt"],
-
-    "@kabmo-labs/kabmo-acp-protocol": ["@kabmo-labs/kabmo-acp-protocol@workspace:packages/kabmo-acp-protocol"],
-
-    "@kabmo-labs/kabmo-acp-session": ["@kabmo-labs/kabmo-acp-session@workspace:packages/kabmo-acp-session"],
-
-    "@kabmo-labs/kabmo-acp-session-config": ["@kabmo-labs/kabmo-acp-session-config@workspace:packages/kabmo-acp-session-config"],
-
-    "@kabmo-labs/kabmo-acp-session-core": ["@kabmo-labs/kabmo-acp-session-core@workspace:packages/kabmo-acp-session-core"],
-
-    "@kabmo-labs/kabmo-acp-stdio": ["@kabmo-labs/kabmo-acp-stdio@workspace:packages/kabmo-acp-stdio"],
-
-    "@kabmo-labs/kabmo-acp-turn": ["@kabmo-labs/kabmo-acp-turn@workspace:packages/kabmo-acp-turn"],
+    "@kabmo-labs/kabmo-acp": ["@kabmo-labs/kabmo-acp@workspace:packages/kabmo-acp"],
 
     "@kabmo-labs/kabmo-app-contracts": ["@kabmo-labs/kabmo-app-contracts@workspace:packages/kabmo-app-contracts"],
 
@@ -1285,79 +430,19 @@
 
     "@kabmo-labs/kabmo-bytes": ["@kabmo-labs/kabmo-bytes@workspace:packages/kabmo-bytes"],
 
-    "@kabmo-labs/kabmo-chat-contracts": ["@kabmo-labs/kabmo-chat-contracts@workspace:packages/kabmo-chat-contracts"],
-
-    "@kabmo-labs/kabmo-chat-notices": ["@kabmo-labs/kabmo-chat-notices@workspace:packages/kabmo-chat-notices"],
-
-    "@kabmo-labs/kabmo-chat-rows": ["@kabmo-labs/kabmo-chat-rows@workspace:packages/kabmo-chat-rows"],
-
-    "@kabmo-labs/kabmo-chat-tool": ["@kabmo-labs/kabmo-chat-tool@workspace:packages/kabmo-chat-tool"],
+    "@kabmo-labs/kabmo-chat": ["@kabmo-labs/kabmo-chat@workspace:packages/kabmo-chat"],
 
     "@kabmo-labs/kabmo-db": ["@kabmo-labs/kabmo-db@workspace:packages/kabmo-db"],
 
     "@kabmo-labs/kabmo-format": ["@kabmo-labs/kabmo-format@workspace:packages/kabmo-format"],
 
-    "@kabmo-labs/kabmo-fs-canonical": ["@kabmo-labs/kabmo-fs-canonical@workspace:packages/kabmo-fs-canonical"],
+    "@kabmo-labs/kabmo-fs": ["@kabmo-labs/kabmo-fs@workspace:packages/kabmo-fs"],
 
-    "@kabmo-labs/kabmo-fs-child-env": ["@kabmo-labs/kabmo-fs-child-env@workspace:packages/kabmo-fs-child-env"],
-
-    "@kabmo-labs/kabmo-fs-config": ["@kabmo-labs/kabmo-fs-config@workspace:packages/kabmo-fs-config"],
-
-    "@kabmo-labs/kabmo-fs-media": ["@kabmo-labs/kabmo-fs-media@workspace:packages/kabmo-fs-media"],
-
-    "@kabmo-labs/kabmo-fs-toolchain": ["@kabmo-labs/kabmo-fs-toolchain@workspace:packages/kabmo-fs-toolchain"],
-
-    "@kabmo-labs/kabmo-git-env": ["@kabmo-labs/kabmo-git-env@workspace:packages/kabmo-git-env"],
-
-    "@kabmo-labs/kabmo-git-runner": ["@kabmo-labs/kabmo-git-runner@workspace:packages/kabmo-git-runner"],
+    "@kabmo-labs/kabmo-git": ["@kabmo-labs/kabmo-git@workspace:packages/kabmo-git"],
 
     "@kabmo-labs/kabmo-guards": ["@kabmo-labs/kabmo-guards@workspace:packages/kabmo-guards"],
 
-    "@kabmo-labs/kabmo-harness-account-store": ["@kabmo-labs/kabmo-harness-account-store@workspace:packages/kabmo-harness-account-store"],
-
-    "@kabmo-labs/kabmo-harness-accounts": ["@kabmo-labs/kabmo-harness-accounts@workspace:packages/kabmo-harness-accounts"],
-
-    "@kabmo-labs/kabmo-harness-catalog": ["@kabmo-labs/kabmo-harness-catalog@workspace:packages/kabmo-harness-catalog"],
-
-    "@kabmo-labs/kabmo-harness-config": ["@kabmo-labs/kabmo-harness-config@workspace:packages/kabmo-harness-config"],
-
-    "@kabmo-labs/kabmo-harness-config-fields": ["@kabmo-labs/kabmo-harness-config-fields@workspace:packages/kabmo-harness-config-fields"],
-
-    "@kabmo-labs/kabmo-harness-config-store": ["@kabmo-labs/kabmo-harness-config-store@workspace:packages/kabmo-harness-config-store"],
-
-    "@kabmo-labs/kabmo-harness-contract": ["@kabmo-labs/kabmo-harness-contract@workspace:packages/kabmo-harness-contract"],
-
-    "@kabmo-labs/kabmo-harness-enabled": ["@kabmo-labs/kabmo-harness-enabled@workspace:packages/kabmo-harness-enabled"],
-
-    "@kabmo-labs/kabmo-harness-launch": ["@kabmo-labs/kabmo-harness-launch@workspace:packages/kabmo-harness-launch"],
-
-    "@kabmo-labs/kabmo-harness-lease": ["@kabmo-labs/kabmo-harness-lease@workspace:packages/kabmo-harness-lease"],
-
-    "@kabmo-labs/kabmo-harness-local-transcript": ["@kabmo-labs/kabmo-harness-local-transcript@workspace:packages/kabmo-harness-local-transcript"],
-
-    "@kabmo-labs/kabmo-harness-mcp-facts": ["@kabmo-labs/kabmo-harness-mcp-facts@workspace:packages/kabmo-harness-mcp-facts"],
-
-    "@kabmo-labs/kabmo-harness-provider": ["@kabmo-labs/kabmo-harness-provider@workspace:packages/kabmo-harness-provider"],
-
-    "@kabmo-labs/kabmo-harness-provider-runtime": ["@kabmo-labs/kabmo-harness-provider-runtime@workspace:packages/kabmo-harness-provider-runtime"],
-
-    "@kabmo-labs/kabmo-harness-provider-slug": ["@kabmo-labs/kabmo-harness-provider-slug@workspace:packages/kabmo-harness-provider-slug"],
-
-    "@kabmo-labs/kabmo-harness-registry": ["@kabmo-labs/kabmo-harness-registry@workspace:packages/kabmo-harness-registry"],
-
-    "@kabmo-labs/kabmo-harness-rewind": ["@kabmo-labs/kabmo-harness-rewind@workspace:packages/kabmo-harness-rewind"],
-
-    "@kabmo-labs/kabmo-harness-schema": ["@kabmo-labs/kabmo-harness-schema@workspace:packages/kabmo-harness-schema"],
-
-    "@kabmo-labs/kabmo-harness-session": ["@kabmo-labs/kabmo-harness-session@workspace:packages/kabmo-harness-session"],
-
-    "@kabmo-labs/kabmo-harness-session-modes": ["@kabmo-labs/kabmo-harness-session-modes@workspace:packages/kabmo-harness-session-modes"],
-
-    "@kabmo-labs/kabmo-harness-transcript": ["@kabmo-labs/kabmo-harness-transcript@workspace:packages/kabmo-harness-transcript"],
-
-    "@kabmo-labs/kabmo-harness-update-job": ["@kabmo-labs/kabmo-harness-update-job@workspace:packages/kabmo-harness-update-job"],
-
-    "@kabmo-labs/kabmo-harness-updates": ["@kabmo-labs/kabmo-harness-updates@workspace:packages/kabmo-harness-updates"],
+    "@kabmo-labs/kabmo-harness": ["@kabmo-labs/kabmo-harness@workspace:packages/kabmo-harness"],
 
     "@kabmo-labs/kabmo-http": ["@kabmo-labs/kabmo-http@workspace:packages/kabmo-http"],
 
@@ -1369,89 +454,13 @@
 
     "@kabmo-labs/kabmo-model-contracts": ["@kabmo-labs/kabmo-model-contracts@workspace:packages/kabmo-model-contracts"],
 
-    "@kabmo-labs/kabmo-omp-access-mode": ["@kabmo-labs/kabmo-omp-access-mode@workspace:packages/kabmo-omp-access-mode"],
-
-    "@kabmo-labs/kabmo-omp-cli": ["@kabmo-labs/kabmo-omp-cli@workspace:packages/kabmo-omp-cli"],
-
-    "@kabmo-labs/kabmo-omp-config-doc": ["@kabmo-labs/kabmo-omp-config-doc@workspace:packages/kabmo-omp-config-doc"],
-
-    "@kabmo-labs/kabmo-omp-config-files": ["@kabmo-labs/kabmo-omp-config-files@workspace:packages/kabmo-omp-config-files"],
-
-    "@kabmo-labs/kabmo-omp-config-mcp": ["@kabmo-labs/kabmo-omp-config-mcp@workspace:packages/kabmo-omp-config-mcp"],
-
-    "@kabmo-labs/kabmo-omp-config-providers": ["@kabmo-labs/kabmo-omp-config-providers@workspace:packages/kabmo-omp-config-providers"],
-
-    "@kabmo-labs/kabmo-omp-contracts": ["@kabmo-labs/kabmo-omp-contracts@workspace:packages/kabmo-omp-contracts"],
-
-    "@kabmo-labs/kabmo-omp-extensions": ["@kabmo-labs/kabmo-omp-extensions@workspace:packages/kabmo-omp-extensions"],
-
-    "@kabmo-labs/kabmo-omp-install": ["@kabmo-labs/kabmo-omp-install@workspace:packages/kabmo-omp-install"],
-
-    "@kabmo-labs/kabmo-omp-mapper": ["@kabmo-labs/kabmo-omp-mapper@workspace:packages/kabmo-omp-mapper"],
-
-    "@kabmo-labs/kabmo-omp-messages-map": ["@kabmo-labs/kabmo-omp-messages-map@workspace:packages/kabmo-omp-messages-map"],
-
-    "@kabmo-labs/kabmo-omp-mode": ["@kabmo-labs/kabmo-omp-mode@workspace:packages/kabmo-omp-mode"],
-
-    "@kabmo-labs/kabmo-omp-mode-request": ["@kabmo-labs/kabmo-omp-mode-request@workspace:packages/kabmo-omp-mode-request"],
-
-    "@kabmo-labs/kabmo-omp-models-config": ["@kabmo-labs/kabmo-omp-models-config@workspace:packages/kabmo-omp-models-config"],
-
-    "@kabmo-labs/kabmo-omp-operator-title": ["@kabmo-labs/kabmo-omp-operator-title@workspace:packages/kabmo-omp-operator-title"],
-
-    "@kabmo-labs/kabmo-omp-paths": ["@kabmo-labs/kabmo-omp-paths@workspace:packages/kabmo-omp-paths"],
-
-    "@kabmo-labs/kabmo-omp-proc": ["@kabmo-labs/kabmo-omp-proc@workspace:packages/kabmo-omp-proc"],
-
-    "@kabmo-labs/kabmo-omp-registry": ["@kabmo-labs/kabmo-omp-registry@workspace:packages/kabmo-omp-registry"],
-
-    "@kabmo-labs/kabmo-omp-rpc-commands": ["@kabmo-labs/kabmo-omp-rpc-commands@workspace:packages/kabmo-omp-rpc-commands"],
-
-    "@kabmo-labs/kabmo-omp-rpc-events": ["@kabmo-labs/kabmo-omp-rpc-events@workspace:packages/kabmo-omp-rpc-events"],
-
-    "@kabmo-labs/kabmo-omp-rpc-process": ["@kabmo-labs/kabmo-omp-rpc-process@workspace:packages/kabmo-omp-rpc-process"],
-
-    "@kabmo-labs/kabmo-omp-rpc-protocol": ["@kabmo-labs/kabmo-omp-rpc-protocol@workspace:packages/kabmo-omp-rpc-protocol"],
-
-    "@kabmo-labs/kabmo-omp-rpc-util": ["@kabmo-labs/kabmo-omp-rpc-util@workspace:packages/kabmo-omp-rpc-util"],
-
-    "@kabmo-labs/kabmo-omp-schema": ["@kabmo-labs/kabmo-omp-schema@workspace:packages/kabmo-omp-schema"],
-
-    "@kabmo-labs/kabmo-omp-session-changes": ["@kabmo-labs/kabmo-omp-session-changes@workspace:packages/kabmo-omp-session-changes"],
-
-    "@kabmo-labs/kabmo-omp-session-core": ["@kabmo-labs/kabmo-omp-session-core@workspace:packages/kabmo-omp-session-core"],
-
-    "@kabmo-labs/kabmo-omp-session-locator": ["@kabmo-labs/kabmo-omp-session-locator@workspace:packages/kabmo-omp-session-locator"],
-
-    "@kabmo-labs/kabmo-omp-session-messages": ["@kabmo-labs/kabmo-omp-session-messages@workspace:packages/kabmo-omp-session-messages"],
-
-    "@kabmo-labs/kabmo-omp-session-parse": ["@kabmo-labs/kabmo-omp-session-parse@workspace:packages/kabmo-omp-session-parse"],
-
-    "@kabmo-labs/kabmo-omp-session-reader": ["@kabmo-labs/kabmo-omp-session-reader@workspace:packages/kabmo-omp-session-reader"],
-
-    "@kabmo-labs/kabmo-omp-session-runtime": ["@kabmo-labs/kabmo-omp-session-runtime@workspace:packages/kabmo-omp-session-runtime"],
-
-    "@kabmo-labs/kabmo-omp-session-scan": ["@kabmo-labs/kabmo-omp-session-scan@workspace:packages/kabmo-omp-session-scan"],
-
-    "@kabmo-labs/kabmo-omp-session-sidebar": ["@kabmo-labs/kabmo-omp-session-sidebar@workspace:packages/kabmo-omp-session-sidebar"],
-
-    "@kabmo-labs/kabmo-omp-session-telemetry": ["@kabmo-labs/kabmo-omp-session-telemetry@workspace:packages/kabmo-omp-session-telemetry"],
-
-    "@kabmo-labs/kabmo-omp-sidebar-data": ["@kabmo-labs/kabmo-omp-sidebar-data@workspace:packages/kabmo-omp-sidebar-data"],
-
-    "@kabmo-labs/kabmo-omp-subagent": ["@kabmo-labs/kabmo-omp-subagent@workspace:packages/kabmo-omp-subagent"],
-
-    "@kabmo-labs/kabmo-omp-subagent-presence": ["@kabmo-labs/kabmo-omp-subagent-presence@workspace:packages/kabmo-omp-subagent-presence"],
-
-    "@kabmo-labs/kabmo-omp-worktree": ["@kabmo-labs/kabmo-omp-worktree@workspace:packages/kabmo-omp-worktree"],
+    "@kabmo-labs/kabmo-omp": ["@kabmo-labs/kabmo-omp@workspace:packages/kabmo-omp"],
 
     "@kabmo-labs/kabmo-paths": ["@kabmo-labs/kabmo-paths@workspace:packages/kabmo-paths"],
 
     "@kabmo-labs/kabmo-platform": ["@kabmo-labs/kabmo-platform@workspace:packages/kabmo-platform"],
 
-    "@kabmo-labs/kabmo-process-kill": ["@kabmo-labs/kabmo-process-kill@workspace:packages/kabmo-process-kill"],
-
-    "@kabmo-labs/kabmo-process-probe": ["@kabmo-labs/kabmo-process-probe@workspace:packages/kabmo-process-probe"],
+    "@kabmo-labs/kabmo-process": ["@kabmo-labs/kabmo-process@workspace:packages/kabmo-process"],
 
     "@kabmo-labs/kabmo-provider-contracts": ["@kabmo-labs/kabmo-provider-contracts@workspace:packages/kabmo-provider-contracts"],
 
@@ -1465,27 +474,15 @@
 
     "@kabmo-labs/kabmo-sdk": ["@kabmo-labs/kabmo-sdk@workspace:packages/kabmo-sdk"],
 
-    "@kabmo-labs/kabmo-session-deleted": ["@kabmo-labs/kabmo-session-deleted@workspace:packages/kabmo-session-deleted"],
+    "@kabmo-labs/kabmo-session": ["@kabmo-labs/kabmo-session@workspace:packages/kabmo-session"],
 
-    "@kabmo-labs/kabmo-session-lifecycle": ["@kabmo-labs/kabmo-session-lifecycle@workspace:packages/kabmo-session-lifecycle"],
-
-    "@kabmo-labs/kabmo-session-relations": ["@kabmo-labs/kabmo-session-relations@workspace:packages/kabmo-session-relations"],
-
-    "@kabmo-labs/kabmo-session-stream-state": ["@kabmo-labs/kabmo-session-stream-state@workspace:packages/kabmo-session-stream-state"],
-
-    "@kabmo-labs/kabmo-settings-contracts": ["@kabmo-labs/kabmo-settings-contracts@workspace:packages/kabmo-settings-contracts"],
-
-    "@kabmo-labs/kabmo-settings-store": ["@kabmo-labs/kabmo-settings-store@workspace:packages/kabmo-settings-store"],
+    "@kabmo-labs/kabmo-settings": ["@kabmo-labs/kabmo-settings@workspace:packages/kabmo-settings"],
 
     "@kabmo-labs/kabmo-ui": ["@kabmo-labs/kabmo-ui@workspace:packages/kabmo-ui"],
 
-    "@kabmo-labs/kabmo-workspace-root": ["@kabmo-labs/kabmo-workspace-root@workspace:packages/kabmo-workspace-root"],
+    "@kabmo-labs/kabmo-workspace": ["@kabmo-labs/kabmo-workspace@workspace:packages/kabmo-workspace"],
 
-    "@kabmo-labs/kabmo-workspace-sidebar": ["@kabmo-labs/kabmo-workspace-sidebar@workspace:packages/kabmo-workspace-sidebar"],
-
-    "@kabmo-labs/kabmo-worktree-topology": ["@kabmo-labs/kabmo-worktree-topology@workspace:packages/kabmo-worktree-topology"],
-
-    "@kabmo-labs/kabmo-worktree-types": ["@kabmo-labs/kabmo-worktree-types@workspace:packages/kabmo-worktree-types"],
+    "@kabmo-labs/kabmo-worktree": ["@kabmo-labs/kabmo-worktree@workspace:packages/kabmo-worktree"],
 
     "@lezer/common": ["@lezer/common@1.5.4", "", {}, "sha512-xt3Q4z64xM+xhg4M7NXqw1N//1O74bUFo5kz6fwMeC4qwxSuRdwkYSmjcqCEEKYkNw5e67f2hcNqBoNERAEU0w=="],
 

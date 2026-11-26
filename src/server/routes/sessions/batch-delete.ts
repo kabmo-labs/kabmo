@@ -21,7 +21,7 @@ import { json } from '@kabmo-labs/kabmo-http';
 import type { ActionFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { methodNotAllowed, parseJsonBody } from '@/server/lib/route-adapter';
 import { removeSessionTree } from '@/server/lib/omp/session/delete-flow.server';
-import { createAgentSessionRemover } from '@kabmo-labs/kabmo-harness-session/session-delete.server';
+import { createAgentSessionRemover } from '@kabmo-labs/kabmo-harness/session/session-delete.server';
 import { SESSION_BATCH_LIMIT } from '@/shared/lib/sessions/batch-limits';
 
 /** One request cannot carry an unbounded selection. The client splits a larger

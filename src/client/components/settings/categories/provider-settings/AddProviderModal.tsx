@@ -5,7 +5,7 @@ import type { OmpProviderApi,
 PresetProviderOption,
 ProviderAuthMode,
 ProviderDiscoveryType,
-ProviderModelSource, } from '@kabmo-labs/kabmo-settings-contracts/provider';
+ProviderModelSource, } from '@kabmo-labs/kabmo-settings/contracts/provider';
 import { fetchProviderModelsRemote } from '@/shared/lib/models/provider/models';
 import { inferProviderApi } from '@kabmo-labs/kabmo-provider-contracts/dialect';
 import { Modal } from '@/client/components/common/Modal';

@@ -21,7 +21,7 @@ import type { Dispatch, SetStateAction } from 'preact/compat';
 import { setSessionTitleHint } from '@/client/hooks/chat/omp/sidebar-overlay';
 import { redirectToOwningInstance, type SessionOwnerConflict } from '@/client/hooks/chat/omp/owner-redirect';
 import type { AgentImage, OmpAgentState, PromptDispatchResult, SpawnOptions, SpawnPromptResult } from '@/shared/types';
-import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
+import type { ApprovalMode } from '@kabmo-labs/kabmo-omp/access-mode';
 
 export interface OmpPromptSenderDeps {
   /** Live session id the prompt targets; the caller mirrors its prop into it. */

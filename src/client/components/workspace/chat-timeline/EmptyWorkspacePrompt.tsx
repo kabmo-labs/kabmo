@@ -6,7 +6,7 @@ import { PendingTranscript } from '@/client/components/workspace/chat-timeline/P
 import { ComposerDockFrame } from '@/client/components/workspace/chat-timeline/ComposerDockFrame';
 import { ColumnResizeHandle } from '@/client/components/workspace/chat-timeline/ColumnResizeHandle';
 import { GeneratingIndicator } from '@/client/components/workspace/chat-timeline/GeneratingIndicator';
-import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
+import type { ApprovalMode } from '@kabmo-labs/kabmo-omp/access-mode';
 import {
   waitingCandidates,
   type WaitingCandidate,

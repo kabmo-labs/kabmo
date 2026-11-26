@@ -14,7 +14,7 @@
  */
 
 import { formatToolBytes } from '@/shared/lib/chat/tool/labels';
-import type { SessionChangeUnavailableReason } from '@kabmo-labs/kabmo-omp-contracts/session-changes';
+import type { SessionChangeUnavailableReason } from '@kabmo-labs/kabmo-omp/contracts/session-changes';
 
 export interface JournalUnavailable {
   reason?: SessionChangeUnavailableReason;

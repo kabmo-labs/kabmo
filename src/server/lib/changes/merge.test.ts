@@ -22,7 +22,7 @@ import {
   readSessionChangeDiff,
   readSessionChangeList,
 } from '@/server/lib/changes/reader.server';
-import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
+import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp/session-scan/files';
 
 const SESSION = 'merge-1';
 const CWD = '/repo';

@@ -29,10 +29,10 @@ import { EMPTY_HARNESS_CONFIG,
 isHarnessConfigured,
 providerChoices,
 resolveDefaultModel,
-type HarnessConfig, } from '@kabmo-labs/kabmo-harness-config';
+type HarnessConfig, } from '@kabmo-labs/kabmo-harness/config';
 import type { HarnessSummary } from '@kabmo-labs/kabmo-app-contracts/harness';
 import { SearchSelect } from '@/client/components/common/search-select';
-import { configFieldPlan } from '@kabmo-labs/kabmo-harness-config-fields';
+import { configFieldPlan } from '@kabmo-labs/kabmo-harness/config-fields';
 
 interface HarnessConfigFormProps {
   summary: HarnessSummary;

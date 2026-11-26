@@ -21,9 +21,9 @@
 
 import { getDb } from '@/server/db.server';
 import { withTransaction } from '@/shared/lib/db/transaction.server';
-import { isApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
+import { isApprovalMode } from '@kabmo-labs/kabmo-omp/access-mode';
 import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
-import type { QueuedMessage, QueuedMessageModel } from '@kabmo-labs/kabmo-chat-contracts/chat';
+import type { QueuedMessage, QueuedMessageModel } from '@kabmo-labs/kabmo-chat/contracts/chat';
 
 interface QueueRow {
   id: string;

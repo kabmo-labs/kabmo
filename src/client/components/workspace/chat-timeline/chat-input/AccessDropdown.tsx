@@ -1,8 +1,8 @@
 import { useRef, useState } from 'preact/hooks';
 import { Check, ChevronDown, LockKeyhole } from 'lucide-preact';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
-import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
-import { APPROVAL_MODES } from '@kabmo-labs/kabmo-omp-access-mode';
+import type { ApprovalMode } from '@kabmo-labs/kabmo-omp/access-mode';
+import { APPROVAL_MODES } from '@kabmo-labs/kabmo-omp/access-mode';
 import { accessLevelCopy } from '@/client/components/workspace/chat-timeline/chat-input/access-levels';
 
 export interface AccessDropdownProps {

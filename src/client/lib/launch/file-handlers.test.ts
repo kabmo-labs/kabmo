@@ -29,7 +29,7 @@ import {
   openLaunchedHandle,
   writeThroughHandle,
 } from '@/client/lib/launch/file-handlers';
-import { BINARY_SNIFF_BYTES } from '@kabmo-labs/kabmo-fs-media/file-kind';
+import { BINARY_SNIFF_BYTES } from '@kabmo-labs/kabmo-fs/media/file-kind';
 import { bodyBytes } from '@kabmo-labs/kabmo-bytes';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'Event', 'CustomEvent', 'MouseEvent', 'KeyboardEvent', 'fetch'] as const;

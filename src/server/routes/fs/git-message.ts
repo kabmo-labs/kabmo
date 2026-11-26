@@ -21,7 +21,7 @@
 import path from 'path';
 import { json, type ActionFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
-import { getDefaultFsRoot, resolveRoot } from '@kabmo-labs/kabmo-workspace-root/root';
+import { getDefaultFsRoot, resolveRoot } from '@kabmo-labs/kabmo-workspace/root/root';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { generateCommitMessage } from '@/server/lib/fs/git-commit-message.server';
 import { readCommitMessageSettings } from '@/server/lib/fs/git-commit-settings.server';

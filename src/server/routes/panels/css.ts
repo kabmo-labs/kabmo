@@ -43,7 +43,7 @@ import { json, type LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { findPluginDir } from '@/server/lib/panels/registry.server';
 import { readPluginManifest } from '@/server/lib/panels/files.server';
 import { toManifest } from '@/server/lib/panels/manifest';
-import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
+import { pathExists } from '@kabmo-labs/kabmo-omp/paths';
 import { scopePluginCss } from '@/shared/lib/panels/css-scope';
 import { join } from 'path';
 

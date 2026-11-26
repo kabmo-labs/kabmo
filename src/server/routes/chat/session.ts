@@ -4,23 +4,23 @@ import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { getDb } from '@/server/db.server';
 import { getSessionData } from '@/client/data/mock/chat';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
-import { findSessionFileById } from '@kabmo-labs/kabmo-omp-session-locator';
-import { loadSessionMessages, loadSessionModel, loadSessionThinkingLevel, loadSessionTitle } from '@kabmo-labs/kabmo-omp-session-messages/messages';
-import { mergeOmpAttachments, overlayRowsForOmpSession } from '@kabmo-labs/kabmo-omp-session-runtime/merge-stored';
-import { readRawHeaderLine } from '@kabmo-labs/kabmo-omp-session-scan/files';
-import { formatNewSessionTitle } from '@kabmo-labs/kabmo-omp-session-core/default-title';
+import { findSessionFileById } from '@kabmo-labs/kabmo-omp/session-locator';
+import { loadSessionMessages, loadSessionModel, loadSessionThinkingLevel, loadSessionTitle } from '@kabmo-labs/kabmo-omp/session-messages/messages';
+import { mergeOmpAttachments, overlayRowsForOmpSession } from '@kabmo-labs/kabmo-omp/session-runtime/merge-stored';
+import { readRawHeaderLine } from '@kabmo-labs/kabmo-omp/session-scan/files';
+import { formatNewSessionTitle } from '@kabmo-labs/kabmo-omp/session-core/default-title';
 import { importedChat } from '@/server/routes/chat/imported';
-import { loadAcpTranscript } from '@kabmo-labs/kabmo-acp-session-core/session-transcript.server';
-import { getSessionRelation } from '@kabmo-labs/kabmo-session-relations/relations.server';
+import { loadAcpTranscript } from '@kabmo-labs/kabmo-acp/session-core/session-transcript.server';
+import { getSessionRelation } from '@kabmo-labs/kabmo-session/relations/relations.server';
 import { windowMessages } from '@/server/routes/chat/window';
-import { readCodexRolloutTranscript } from '@kabmo-labs/kabmo-harness-local-transcript/codex-transcript';
+import { readCodexRolloutTranscript } from '@kabmo-labs/kabmo-harness/local-transcript/codex-transcript';
 import { getLiveRunSessionIds, getLiveSession, harnessOfSession } from '@/server/lib/omp/rpc/session-registry';
-import { loadStreamStates } from '@kabmo-labs/kabmo-session-stream-state';
-import { configByCategory, selectValues } from '@kabmo-labs/kabmo-harness-launch/launch';
-import type { AcpConfigOption } from '@kabmo-labs/kabmo-acp-protocol/protocol';
+import { loadStreamStates } from '@kabmo-labs/kabmo-session/stream-state';
+import { configByCategory, selectValues } from '@kabmo-labs/kabmo-harness/launch/launch';
+import type { AcpConfigOption } from '@kabmo-labs/kabmo-acp/protocol/protocol';
 import { liveMetaFields, type LiveSessionMeta } from '@/server/routes/chat/live-meta';
-import { hasAssistantRow } from '@kabmo-labs/kabmo-chat-rows/transcript-rows';
-import { normalizeTranscriptRows } from '@kabmo-labs/kabmo-chat-tool/normalize';
+import { hasAssistantRow } from '@kabmo-labs/kabmo-chat/rows/transcript-rows';
+import { normalizeTranscriptRows } from '@kabmo-labs/kabmo-chat/tool/normalize';
 
 /** Newest-message window served by default for omp JSONL sessions; the client
  *  pages further back via `?before=` when the user scrolls to the top. Large

@@ -13,9 +13,9 @@
  */
 
 import schemaJson from '@/client/data/settings/omp-schema.json';
-import type { OmpSchema, SchemaEntry } from '@kabmo-labs/kabmo-omp-schema/schema-types';
-import type { ConfigEntry } from '@kabmo-labs/kabmo-omp-config-files/config-cli';
-import { SCHEMA_EXTRAS } from '@kabmo-labs/kabmo-omp-schema/schema-extras';
+import type { OmpSchema, SchemaEntry } from '@kabmo-labs/kabmo-omp/schema/schema-types';
+import type { ConfigEntry } from '@kabmo-labs/kabmo-omp/config-files/config-cli';
+import { SCHEMA_EXTRAS } from '@kabmo-labs/kabmo-omp/schema/schema-extras';
 
 export const OMP_SCHEMA = schemaJson as unknown as OmpSchema;
 

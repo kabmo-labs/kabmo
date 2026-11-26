@@ -21,7 +21,7 @@ import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { useChatTimelineModes } from '@/client/hooks/chat/timeline/modes';
-import type { ArmedGoal } from '@kabmo-labs/kabmo-omp-mode/actions';
+import type { ArmedGoal } from '@kabmo-labs/kabmo-omp/mode/actions';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'Event', 'CustomEvent'] as const;
 const nativeGlobals: Partial<Record<(typeof DOM_GLOBALS)[number], unknown>> = {};

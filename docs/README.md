@@ -70,6 +70,7 @@ declined in M04 and re-declined in M05/W6) and the editor's **format-on-save** (
 |---|---|
 | [Plugin SDK](reference/plugin-sdk.md) | the contract a panel plugin is written against: `definePluginApp`, the slots, the kit hooks, the server half, the build and the test harness |
 | [Built-in panels](reference/builtin-panels.md) | every right-panel view travels one path — a registration, one merged catalog, one enablement store — and a built-in is a plugin that arrived installed |
+| [Workspace packages](reference/workspace-packages.md) | the 31 packages under `packages/`, the one-prefix-one-package rule, the former-name-to-subpath map and the publish shape |
 
 ## Naming
 

@@ -28,16 +28,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { EMPTY_MODE_SELECTION,
 type KabmoModeSelection,
 type GoalContinuation,
-type GoalRecord, } from '@kabmo-labs/kabmo-omp-mode/types';
+type GoalRecord, } from '@kabmo-labs/kabmo-omp/mode/types';
 import { goalMarkerPatch, useModeMarkers, type ModesResponse } from '@/client/hooks/chat/timeline/mode-markers';
 import { createGoalAction, type GoalActionResult } from '@/client/hooks/chat/timeline/goal-command';
 import { postModeCommand, postSessionMode } from '@/client/hooks/chat/timeline/mode-post';
 import { subscribeClientSignal } from '@/client/lib/signals';
-import type { SessionModeState } from '@kabmo-labs/kabmo-harness-session-modes';
-import { isGoalOpen } from '@kabmo-labs/kabmo-omp-mode/status';
-import { isPendingSessionId } from '@kabmo-labs/kabmo-omp-session-core/default-title';
-import { isModeMarker } from '@kabmo-labs/kabmo-omp-mode/constants';
-import type { ArmedGoal, GoalAction } from '@kabmo-labs/kabmo-omp-mode/actions';
+import type { SessionModeState } from '@kabmo-labs/kabmo-harness/session-modes';
+import { isGoalOpen } from '@kabmo-labs/kabmo-omp/mode/status';
+import { isPendingSessionId } from '@kabmo-labs/kabmo-omp/session-core/default-title';
+import { isModeMarker } from '@kabmo-labs/kabmo-omp/mode/constants';
+import type { ArmedGoal, GoalAction } from '@kabmo-labs/kabmo-omp/mode/actions';
 import { modeAvailability, type ModeCapabilities } from '@/client/hooks/chat/timeline/mode-availability';
 import { usePendingSessionMode } from '@/client/hooks/chat/timeline/pending-session-mode';
 import { useSessionModesHydration } from '@/client/hooks/chat/timeline/modes-hydrate';

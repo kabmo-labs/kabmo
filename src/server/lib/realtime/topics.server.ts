@@ -28,10 +28,10 @@ import {
 } from '@/shared/lib/realtime/protocol';
 import { getRealtimeHub, registerTopics, type TopicDescriptor } from '@/server/lib/realtime/hub.server';
 import { onRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
-import { invalidateOmpSidebarData } from '@kabmo-labs/kabmo-omp-session-reader';
-import { loadSidebarStructure } from '@kabmo-labs/kabmo-omp-sidebar-data/data.server';
-import { loadSidebarStatus } from '@kabmo-labs/kabmo-omp-sidebar-data/status.server';
-import { loadSidebarActivity } from '@kabmo-labs/kabmo-omp-sidebar-data/activity.server';
+import { invalidateOmpSidebarData } from '@kabmo-labs/kabmo-omp/session-reader';
+import { loadSidebarStructure } from '@kabmo-labs/kabmo-omp/sidebar-data/data.server';
+import { loadSidebarStatus } from '@kabmo-labs/kabmo-omp/sidebar-data/status.server';
+import { loadSidebarActivity } from '@kabmo-labs/kabmo-omp/sidebar-data/activity.server';
 import { EXACT_TOPICS, descriptorFor, isKnownTopicName } from '@/server/lib/realtime/topics/catalog.server';
 
 declare global {

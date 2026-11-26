@@ -15,7 +15,7 @@
  * blocked for two minutes read exactly like one that returned instantly.
  */
 
-import type { ToolCallData } from '@kabmo-labs/kabmo-chat-contracts/chat';
+import type { ToolCallData } from '@kabmo-labs/kabmo-chat/contracts/chat';
 import { waitCounts, waitJobSpanMs, waitViewOf } from '@/shared/lib/omp/session/wait';
 import { waitIdleLabel, waitIdleOf } from '@/shared/lib/omp/session/wait-idle';
 import { countPhrase, formatToolMs } from '@/shared/lib/chat/tool/labels';

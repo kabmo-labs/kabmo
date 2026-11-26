@@ -16,7 +16,7 @@
  */
 
 import { responseRunDurationMs } from '@/shared/lib/chat/duration';
-import { isNoticeRow, messageAnswerText } from '@kabmo-labs/kabmo-chat-notices/notice-row';
+import { isNoticeRow, messageAnswerText } from '@kabmo-labs/kabmo-chat/notices/notice-row';
 import type { ChatMessageData } from '@/shared/types';
 
 export interface RunFooterSlot {

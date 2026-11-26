@@ -34,7 +34,7 @@
 import { readdir } from 'fs/promises';
 import type { Dirent } from 'fs';
 import { join, relative, sep } from 'path';
-import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
+import { pathExists } from '@kabmo-labs/kabmo-omp/paths';
 import { APP_SOURCE_CANDIDATES, SERVER_SOURCE_CANDIDATES, findSource } from '@/server/lib/panels/build-targets.server';
 
 /** Directories a plugin's own tooling writes, and the clone metadata. */

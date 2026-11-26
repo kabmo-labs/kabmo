@@ -16,7 +16,7 @@
 
 import { json, NO_STORE_HEADERS, type LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
-import { resolveRoot } from '@kabmo-labs/kabmo-workspace-root/root';
+import { resolveRoot } from '@kabmo-labs/kabmo-workspace/root/root';
 import { scopeToRepo } from '@/server/lib/fs/repo-scope';
 import { gitRun } from '@/server/lib/wiki/git';
 import { ensureWikiMirror, readWikiPage } from '@/server/lib/wiki/mirror.server';

@@ -20,9 +20,9 @@ import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { getDb } from '@/server/db.server';
 import { loader } from '@/server/routes/chat/session';
 import { registerAcpSession } from '@/server/lib/harness/register.server';
-import { claimHarness } from '@kabmo-labs/kabmo-harness-registry';
-import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
-import type { HarnessSession } from '@kabmo-labs/kabmo-harness-contract';
+import { claimHarness } from '@kabmo-labs/kabmo-harness/registry';
+import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp/session-scan/files';
+import type { HarnessSession } from '@kabmo-labs/kabmo-harness/contract';
 
 /** The temp agent dir an on-disk transcript needs, since `findSessionFileById`
  *  resolves through the real sessions root. */

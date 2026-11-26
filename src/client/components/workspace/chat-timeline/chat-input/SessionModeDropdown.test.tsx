@@ -13,7 +13,7 @@ import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { SessionModeDropdown } from '@/client/components/workspace/chat-timeline/chat-input/SessionModeDropdown';
-import type { SessionModeState } from '@kabmo-labs/kabmo-harness-session-modes';
+import type { SessionModeState } from '@kabmo-labs/kabmo-harness/session-modes';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'Event', 'CustomEvent'] as const;
 const nativeGlobals: Partial<Record<(typeof DOM_GLOBALS)[number], unknown>> = {};

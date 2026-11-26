@@ -19,7 +19,7 @@ import {
   KABMO_OWNED_SLASH_COMMANDS,
   TUI_ONLY_SLASH_COMMANDS,
   isTuiOnlySlashCommand,
-} from '@kabmo-labs/kabmo-omp-rpc-commands/tui-only';
+} from '@kabmo-labs/kabmo-omp/rpc-commands/tui-only';
 import { KABMO_COMMANDS } from '@/shared/lib/chat/composer/trigger';
 
 describe('chamber-owned slash commands', () => {

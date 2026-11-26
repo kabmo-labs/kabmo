@@ -21,7 +21,7 @@ import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 
-import { pendingSessionMode } from '@kabmo-labs/kabmo-harness-session-modes';
+import { pendingSessionMode } from '@kabmo-labs/kabmo-harness/session-modes';
 import { useChatTimelineModes } from '@/client/hooks/chat/timeline/modes';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
 import type { ChatTimelineModes } from '@/client/hooks/chat/timeline/modes-contract';

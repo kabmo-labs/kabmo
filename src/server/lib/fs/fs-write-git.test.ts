@@ -45,8 +45,8 @@ import {
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { writeFileAtomic } from '@kabmo-labs/kabmo-fs-config/atomic-write';
-import { withConfigLock } from '@kabmo-labs/kabmo-fs-config/config-lock';
+import { writeFileAtomic } from '@kabmo-labs/kabmo-fs/config/atomic-write';
+import { withConfigLock } from '@kabmo-labs/kabmo-fs/config/config-lock';
 import { discoveredRepos, rescanRepos, startRepoScan } from '@/server/lib/fs/git-repos';
 import { collectIgnoredPaths } from '@/server/lib/fs/git-ignore';
 import { testPosix } from '@/test-support/platform';

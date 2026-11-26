@@ -13,10 +13,10 @@
  * own body to be visible.
  */
 
-import type { KabmoModeSelection, GoalContinuation, GoalRecord } from '@kabmo-labs/kabmo-omp-mode/types';
+import type { KabmoModeSelection, GoalContinuation, GoalRecord } from '@kabmo-labs/kabmo-omp/mode/types';
 import type { GoalActionResult } from '@/client/hooks/chat/timeline/goal-command';
-import type { ArmedGoal, GoalAction } from '@kabmo-labs/kabmo-omp-mode/actions';
-import type { SessionModeState } from '@kabmo-labs/kabmo-harness-session-modes';
+import type { ArmedGoal, GoalAction } from '@kabmo-labs/kabmo-omp/mode/actions';
+import type { SessionModeState } from '@kabmo-labs/kabmo-harness/session-modes';
 
 export interface ChatTimelineModes {
   plan: boolean;

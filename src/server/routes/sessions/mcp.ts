@@ -34,14 +34,14 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from '@kabmo-labs/kabmo-h
 import { methodNotAllowedResponse } from '@/server/lib/route-adapter';
 import { resolveSessionRef } from '@/server/lib/sessions/resolve.server';
 import { asOmpSession, getLiveSession, harnessOfSession } from '@/server/lib/omp/rpc/session-registry';
-import { reloadChildMcp } from '@kabmo-labs/kabmo-omp-rpc-process/reload-mcp';
+import { reloadChildMcp } from '@kabmo-labs/kabmo-omp/rpc-process/reload-mcp';
 import { mcpServerEntriesFor, type McpServerEntry, type McpServerSource } from '@/server/lib/mcp/registry.server';
 import { agentMcpEntriesFor } from '@/server/lib/mcp/agent-config.server';
 import { readSessionMcpOverrides, writeSessionMcpOverrides } from '@/server/lib/mcp/session-state.server';
 import { ensureSessionMcpOverlay } from '@/server/lib/mcp/session-overlay.server';
 import { cachedMcpProbe, probeMcpServer } from '@/server/lib/mcp/probe.server';
-import { loadProbes, probes } from '@kabmo-labs/kabmo-harness-config-store/probe-cache.server';
-import { mcpDelivery } from '@kabmo-labs/kabmo-harness-mcp-facts';
+import { loadProbes, probes } from '@kabmo-labs/kabmo-harness/config-store/probe-cache.server';
+import { mcpDelivery } from '@kabmo-labs/kabmo-harness/mcp-facts';
 import { isRecord } from '@kabmo-labs/kabmo-guards';
 import type { McpTransport } from '@/shared/types';
 

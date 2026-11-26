@@ -16,7 +16,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { AcpFrameMapper } from '@kabmo-labs/kabmo-acp-mapper/frames';
+import { AcpFrameMapper } from '@kabmo-labs/kabmo-acp/mapper/frames';
 
 const anonymousChunk = (text: string) => ({
   sessionUpdate: 'agent_message_chunk',

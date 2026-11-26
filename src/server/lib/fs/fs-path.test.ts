@@ -29,7 +29,7 @@ import { existsSync, mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 
 import { tmpdir } from 'node:os';
 import { join, resolve, sep } from 'node:path';
 import { getDb } from '@/server/db.server';
-import { getDefaultFsRoot, isWithinRoot, resolveReferencedPath, resolveRoot, resolveWithinRoot } from '@kabmo-labs/kabmo-workspace-root/root';
+import { getDefaultFsRoot, isWithinRoot, resolveReferencedPath, resolveRoot, resolveWithinRoot } from '@kabmo-labs/kabmo-workspace/root/root';
 import { scopeToRepo } from '@/server/lib/fs/repo-scope';
 import { revealInFileManager } from '@/server/lib/fs/reveal';
 import { runShell, shellOk } from '@/server/lib/fs/shell';

@@ -29,7 +29,7 @@
  * the same id and kind.
  */
 
-import type { ToolCallData } from '@kabmo-labs/kabmo-chat-contracts/chat';
+import type { ToolCallData } from '@kabmo-labs/kabmo-chat/contracts/chat';
 
 export interface ArtifactRef {
   /** Numeric id omp assigned the spill file. */

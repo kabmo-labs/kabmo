@@ -16,8 +16,8 @@
 import { describe, expect, test } from 'bun:test';
 import type { ChatMessageData, OmpAgentCallbacks, OmpAgentState } from '@/shared/types';
 import { foldAgentEvent, type OmpAgentFoldDeps } from '@/shared/lib/chat/omp/agent-events';
-import { AcpSubagents, subagentCardStatus } from '@kabmo-labs/kabmo-acp-mapper/subagents';
-import { subagentFrames } from '@kabmo-labs/kabmo-acp-mapper/subagent-frames';
+import { AcpSubagents, subagentCardStatus } from '@kabmo-labs/kabmo-acp/mapper/subagents';
+import { subagentFrames } from '@kabmo-labs/kabmo-acp/mapper/subagent-frames';
 
 function makeDeps() {
   const ended: ChatMessageData[] = [];

@@ -1,6 +1,6 @@
 import { getDb } from '@/server/db.server';
 import { fetchOmpRegistrySnapshot } from '@/server/lib/models/provider-registry.server';
-import { readNativeProviders } from '@kabmo-labs/kabmo-omp-models-config/models-config';
+import { readNativeProviders } from '@kabmo-labs/kabmo-omp/models-config/models-config';
 import { listAgentDbCredentialSlugs, listModelsYmlCredentialSlugs, readOmpProviderApiKey } from '@/server/lib/omp/core/auth-credentials';
 import { isKenariProvider } from '@/shared/lib/models/provider/cleanup';
 import { isRecord } from '@kabmo-labs/kabmo-guards';

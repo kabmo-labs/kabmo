@@ -24,11 +24,11 @@ import type { LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { getDb } from '@/server/db.server';
 import { getSessionData } from '@/client/data/mock/chat';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
-import { findSessionFileById } from '@kabmo-labs/kabmo-omp-session-locator';
-import { loadSessionMessages } from '@kabmo-labs/kabmo-omp-session-messages/messages';
-import { mergeOmpAttachments } from '@kabmo-labs/kabmo-omp-session-runtime/merge-stored';
+import { findSessionFileById } from '@kabmo-labs/kabmo-omp/session-locator';
+import { loadSessionMessages } from '@kabmo-labs/kabmo-omp/session-messages/messages';
+import { mergeOmpAttachments } from '@kabmo-labs/kabmo-omp/session-runtime/merge-stored';
 import { TURN_PREVIEW_CHARS } from '@/shared/lib/chat/timeline/turns';
-import type { UserTurnRef } from '@kabmo-labs/kabmo-chat-contracts/chat';
+import type { UserTurnRef } from '@kabmo-labs/kabmo-chat/contracts/chat';
 
 /** One rail entry per user row: its id (the DOM jump target), its position in
  *  the full list (the paging cursor), and enough text for the tooltip. */

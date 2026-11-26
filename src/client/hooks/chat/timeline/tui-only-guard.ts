@@ -23,7 +23,7 @@
 
 import type { Dispatch, SetStateAction } from 'preact/compat';
 import type { ChatMessageData } from '@/shared/types';
-import { isTuiOnlySlashCommand, tuiOnlyCommandNotice } from '@kabmo-labs/kabmo-omp-rpc-commands/tui-only';
+import { isTuiOnlySlashCommand, tuiOnlyCommandNotice } from '@kabmo-labs/kabmo-omp/rpc-commands/tui-only';
 
 /**
  * Append the refusal as a notice row, the same shape `onCommandOutput` builds.

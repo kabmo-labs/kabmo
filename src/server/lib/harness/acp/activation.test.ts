@@ -14,7 +14,7 @@
 
 import { describe, expect, test } from 'bun:test';
 import { newSessionAfterActivation,
-pluginActivationPending, } from '@kabmo-labs/kabmo-acp-client/activation';
+pluginActivationPending, } from '@kabmo-labs/kabmo-acp/client/activation';
 
 const pending = () => new Error(
   'Internal error: Internal service failure: {"errorName":"ServiceUnavailableError"}',

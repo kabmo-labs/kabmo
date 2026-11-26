@@ -32,7 +32,7 @@
  */
 
 import type { HarnessImportOutcome, HarnessProviderSupport } from '@kabmo-labs/kabmo-app-contracts/harness';
-import { PROTOCOL_LABELS } from '@kabmo-labs/kabmo-harness-provider/dialects';
+import { PROTOCOL_LABELS } from '@kabmo-labs/kabmo-harness/provider/dialects';
 import { EnvProviderForm } from '@/client/components/settings/categories/harness-settings/EnvProviderForm';
 import {
   ConfiguredList, ImportSection, ReadOnlyRows,

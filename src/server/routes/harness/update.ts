@@ -38,17 +38,17 @@
 import { json, NO_STORE_HEADERS } from '@kabmo-labs/kabmo-http';
 import type { ActionFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
-import { harnessDescriptor, isBuiltinHarness, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
-import { harnessUpdateFacts, latestSourceFor } from '@kabmo-labs/kabmo-harness-updates';
-import { loadProbes } from '@kabmo-labs/kabmo-harness-config-store/probe-cache.server';
+import { harnessDescriptor, isBuiltinHarness, type HarnessId } from '@kabmo-labs/kabmo-harness/catalog';
+import { harnessUpdateFacts, latestSourceFor } from '@kabmo-labs/kabmo-harness/updates';
+import { loadProbes } from '@kabmo-labs/kabmo-harness/config-store/probe-cache.server';
 import { harnessVersionState, type HarnessVersionState } from '@/server/lib/harness/update-state.server';
-import { planHarnessUpdate, type HarnessUpdateStep } from '@kabmo-labs/kabmo-harness-update-job/update-plan';
-import { resolveOmpBin } from '@kabmo-labs/kabmo-omp-cli';
+import { planHarnessUpdate, type HarnessUpdateStep } from '@kabmo-labs/kabmo-harness/update-job/update-plan';
+import { resolveOmpBin } from '@kabmo-labs/kabmo-omp/cli';
 import {
   startHarnessUpdateJob,
   unfinishedUpdateJob,
 } from '@/server/lib/harness/update-job.server';
-import { jobQueued } from '@kabmo-labs/kabmo-harness-update-job/update-job';
+import { jobQueued } from '@kabmo-labs/kabmo-harness/update-job/update-job';
 
 /** The answer to a press that has nothing to move, still plain JSON. */
 interface HarnessUpdateOutcome {

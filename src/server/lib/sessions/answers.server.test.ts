@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { getDb } from '@/server/db.server';
 import { ensureSessionRelationsSchema } from '@/server/lib/sessions/schema.server';
-import { loadSessionAnswer, saveSessionAnswer } from '@kabmo-labs/kabmo-session-relations/answers.server';
+import { loadSessionAnswer, saveSessionAnswer } from '@kabmo-labs/kabmo-session/relations/answers.server';
 
 beforeEach(async () => {
   await isolateDb();

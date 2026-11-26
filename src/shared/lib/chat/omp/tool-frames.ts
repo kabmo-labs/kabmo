@@ -14,9 +14,9 @@
  * snapshot (output AND details), `tool_execution_end` closes both.
  */
 
-import type { ChatMessageData, ToolCallData } from '@kabmo-labs/kabmo-chat-contracts/chat';
-import { toolResultText } from '@kabmo-labs/kabmo-omp-mapper';
-import { extractToolImages } from '@kabmo-labs/kabmo-omp-session-parse/tool-images';
+import type { ChatMessageData, ToolCallData } from '@kabmo-labs/kabmo-chat/contracts/chat';
+import { toolResultText } from '@kabmo-labs/kabmo-omp/mapper';
+import { extractToolImages } from '@kabmo-labs/kabmo-omp/session-parse/tool-images';
 import { describeToolActivity } from '@/shared/lib/chat/timeline/tool-verbs';
 import { PHASE_VERBS } from '@/shared/lib/chat/timeline/tool-phrases';
 import { setActivity, toolHost, type OmpAgentFoldDeps } from '@/shared/lib/chat/omp/fold-deps';
@@ -25,7 +25,7 @@ import {
   refreshToolMessage,
   resultDetails,
   toolMessageFor,
-} from '@kabmo-labs/kabmo-chat-rows/tool-results';
+} from '@kabmo-labs/kabmo-chat/rows/tool-results';
 
 /** `tool_execution_start`: name the activity and open the call's clock. */
 export function foldToolStart(data: Record<string, unknown>, deps: OmpAgentFoldDeps): void {

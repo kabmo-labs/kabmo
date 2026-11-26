@@ -31,7 +31,7 @@
 import { useMemo, useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
 import { CornerDownLeft } from 'lucide-preact';
-import type { ExtensionAskQuestion, ExtensionUiDialogRequest } from '@kabmo-labs/kabmo-chat-contracts/agent';
+import type { ExtensionAskQuestion, ExtensionUiDialogRequest } from '@kabmo-labs/kabmo-chat/contracts/agent';
 import type { AskAnswer } from '@/shared/lib/chat/ask-form/types';
 import { AnswerList, QuestionCard } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/QuestionCard';
 import { OptionRow } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/OptionRow';

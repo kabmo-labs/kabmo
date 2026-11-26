@@ -1,0 +1,335 @@
+/**
+ * @license
+ * SPDX-License-Identifier: MIT
+ */
+
+/**
+ * A sidebar row names the agent that ACTUALLY ran the chat.
+ *
+ * The bug this pins: every row reported `omp-rpc`, because the sidebar filled
+ * `harness` from `DEFAULT_HARNESS_ID` and nothing ever wrote a record. The mark
+ * beside a session name was therefore decorative — it said `omp` for a chat that
+ * ran on `opencode2`, and a chat spawned over ACP did not appear in the list AT
+ * ALL (its agent writes no session file, so omp's JSONL discovery cannot see it).
+ *
+ * Three properties are load-bearing:
+ *
+ *  - an ACP chat is listed from the persisted record, not from omp's scan;
+ *  - it is filed under the folder that owns its cwd, resolved the same way the
+ *    scan resolves a discovered session's;
+ *  - the list is ordered as ONE sequence. Appending the ACP rows after omp's
+ *    already-sorted bucket put a just-spawned chat below 240 older ones, behind
+ *    "Show more".
+ */
+
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, setDefaultTimeout, test } from 'bun:test';
+import { Database } from 'bun:sqlite';
+import fs from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+import { getDb } from '@kabmo-labs/kabmo-db/lifecycle';
+import { loadSidebarStructure } from './data.server';
+import { invalidateOmpSidebarData } from '@kabmo-labs/kabmo-omp/session-reader';
+import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp/session-scan/files';
+import { importHarnessSession, saveHarnessSession } from '@kabmo-labs/kabmo-harness/session/session-store.server';
+import { noteAgentTitle, notePromptTitle } from '@kabmo-labs/kabmo-harness/session/session-title.server';
+import { isolateDb, releaseDb } from '@/test-support/isolated-db';
+import { removeDir } from '@/test-support/remove-dir';
+
+/** The same budget the canonical suite states: `loadSidebarStructure` spawns
+ *  `git worktree list` for any folder that has a session. */
+setDefaultTimeout(30_000);
+
+const saved = {
+  agentDir: Bun.env.PI_CODING_AGENT_DIR,
+  xdg: Bun.env.XDG_DATA_HOME,
+  mock: Bun.env.MOCK,
+  sync: Bun.env.SYNC_WORKSPACE,
+};
+
+let root = '';
+let sessionsRoot = '';
+let project = '';
+
+beforeAll(async () => {
+  root = await fs.promises.mkdtemp(join(tmpdir(), 'omc-sidebar-harness-'));
+  const agent = join(root, 'agent');
+  sessionsRoot = join(agent, 'sessions');
+  await fs.promises.mkdir(sessionsRoot, { recursive: true });
+  project = join(root, 'project');
+  await fs.promises.mkdir(project, { recursive: true });
+
+  Bun.env.PI_CODING_AGENT_DIR = agent;
+  delete Bun.env.XDG_DATA_HOME;
+  Bun.env.MOCK = 'false';
+  Bun.env.SYNC_WORKSPACE = 'false';
+});
+
+afterAll(() => {
+  if (saved.agentDir === undefined) delete Bun.env.PI_CODING_AGENT_DIR;
+  else Bun.env.PI_CODING_AGENT_DIR = saved.agentDir;
+  if (saved.xdg === undefined) delete Bun.env.XDG_DATA_HOME;
+  else Bun.env.XDG_DATA_HOME = saved.xdg;
+  if (saved.mock === undefined) delete Bun.env.MOCK;
+  else Bun.env.MOCK = saved.mock;
+  if (saved.sync === undefined) delete Bun.env.SYNC_WORKSPACE;
+  else Bun.env.SYNC_WORKSPACE = saved.sync;
+  removeDir(root);
+});
+
+beforeEach(async () => {
+  await isolateDb();
+  await fs.promises.rm(join(sessionsRoot, 'project'), { recursive: true, force: true });
+  invalidateOmpSidebarData();
+  clearSessionFileCaches();
+});
+
+afterEach(async () => {
+  await releaseDb();
+});
+
+/** One omp session file, timestamped so ordering between cases is explicit. */
+async function writeOmpSession(id: string, timestamp: string): Promise<void> {
+  const dir = join(sessionsRoot, 'project');
+  await fs.promises.mkdir(dir, { recursive: true });
+  const lines = [
+    JSON.stringify({ type: 'session', id, cwd: project, timestamp }),
+    JSON.stringify({
+      type: 'message', id: `${id}-m1`, parentId: null, timestamp,
+      message: { role: 'user', content: `prompt for ${id}` },
+    }),
+  ];
+  await Bun.write(join(dir, `${id}.jsonl`), `${lines.join('\n')}\n`);
+}
+
+/** One omp session file with a header and no message — the empty-session shape. */
+async function writeEmptyOmpSession(id: string, timestamp: string): Promise<void> {
+  const dir = join(sessionsRoot, 'project');
+  await fs.promises.mkdir(dir, { recursive: true });
+  const header = JSON.stringify({ type: 'session', id, cwd: project, timestamp });
+  await Bun.write(join(dir, `${id}.jsonl`), `${header}\n`);
+}
+
+/** Run git in `cwd`, failing the test with git's own sentence. */
+function git(cwd: string, ...args: string[]): void {
+  const result = Bun.spawnSync(['git', ...args], { cwd, stdout: 'ignore', stderr: 'pipe' });
+  if (result.exitCode !== 0) {
+    throw new Error(`git ${args.join(' ')} failed: ${result.stderr.toString().trim()}`);
+  }
+}
+
+/** A repository with one commit and one linked worktree, for the chip cases. */
+async function makeWorktreeRepo(name: string, branch: string): Promise<{ repo: string; worktree: string }> {
+  const repo = join(root, name);
+  const worktree = join(root, `${name}-wt`);
+  await fs.promises.mkdir(repo, { recursive: true });
+  git(repo, 'init');
+  git(repo, '-c', 'user.email=e2e@kabmo.test', '-c', 'user.name=Kabmo', 'commit', '--allow-empty', '-m', 'init');
+  git(repo, 'worktree', 'add', '-b', branch, worktree);
+  return { repo, worktree };
+}
+
+async function registerFolder(projectPath: string): Promise<number> {
+  const db = await getDb();
+  await db.run('INSERT INTO workspace_folders (name, project_path) VALUES (?, ?)', ['ws', projectPath]);
+  const row = await db.get<{ id: number }>('SELECT id FROM workspace_folders ORDER BY id DESC LIMIT 1');
+  return Number(row?.id);
+}
+
+/** The folder row and its sessions, by folder id. */
+async function folderSessions(folderId: number) {
+  const structure = await loadSidebarStructure();
+  const folder = structure.folders.find((entry) => Number(entry.id) === folderId);
+  return folder?.sessions ?? [];
+}
+
+describe('a sidebar row names its harness', () => {
+  test('an ACP chat is listed, with its own harness', async () => {
+    const folderId = await registerFolder(project);
+    await saveHarnessSession({
+      sessionId: 'ses_acp', harness: 'opencode', agentSessionId: 'ses_acp', cwd: project,
+    });
+
+    const sessions = await folderSessions(folderId);
+    const row = sessions.find((entry) => String(entry.id) === 'ses_acp');
+    expect(row).toBeDefined();
+    // The mark's own key: `opencode2` draws opencode's art, and the label names
+    // which of the two it is.
+    expect(row?.harness).toBe('opencode');
+  });
+
+  test('a recorded chat in a worktree carries the chip the scan cannot supply', async () => {
+    const { repo, worktree } = await makeWorktreeRepo('wt-recorded', 'wt/chip');
+    const folderId = await registerFolder(repo);
+    // An ACP agent writes no session file, so this record is the ONLY row the
+    // chat gets. The chip is derived from the row's own cwd, and it used to be
+    // attached only to scanned rows — a worktree chat on an ACP harness drew no
+    // badge at all.
+    await saveHarnessSession({
+      sessionId: 'ses_worktree', harness: 'opencode', agentSessionId: 'ses_worktree', cwd: worktree,
+    });
+
+    const row = (await folderSessions(folderId)).find((entry) => String(entry.id) === 'ses_worktree');
+    expect(row?.worktree?.branch).toBe('wt/chip');
+    expect(row?.worktree?.status).toBe('ready');
+  });
+
+  test('a recorded chat is named by its first prompt, not left Untitled', async () => {
+    const folderId = await registerFolder(project);
+    await saveHarnessSession({
+      sessionId: 'ses_named', harness: 'claude', agentSessionId: 'ses_named', cwd: project,
+    });
+    // The agent writes no session file, so this stored name is the ONLY thing
+    // that can name the row — before it, every recorded chat read `Untitled`
+    // for its whole life (measured an hour after a claude chat's first prompt).
+    await notePromptTitle('ses_named', 'explain the release process');
+
+    const row = (await folderSessions(folderId)).find((entry) => String(entry.id) === 'ses_named');
+    expect(row?.title).toBe('Explain the release process');
+  });
+
+  test('the agent’s own title outranks the stored prompt', async () => {
+    const folderId = await registerFolder(project);
+    await saveHarnessSession({
+      sessionId: 'ses_agent_named', harness: 'claude', agentSessionId: 'ses_agent_named', cwd: project,
+    });
+    await notePromptTitle('ses_agent_named', 'a raw first prompt');
+    await noteAgentTitle('ses_agent_named', 'release planning');
+
+    const row = (await folderSessions(folderId)).find((entry) => String(entry.id) === 'ses_agent_named');
+    expect(row?.title).toBe('Release planning');
+  });
+
+  test('a recorded chat with no name at all falls back to its creation stamp', async () => {
+    const folderId = await registerFolder(project);
+    await saveHarnessSession({
+      sessionId: 'ses_nameless', harness: 'claude', agentSessionId: 'ses_nameless', cwd: project,
+    });
+
+    const row = (await folderSessions(folderId)).find((entry) => String(entry.id) === 'ses_nameless');
+    // The same default an omp session with no name gets — and it is derived from
+    // the row's `created_at`, never from `new Date()`, so a revalidation does not
+    // re-stamp the title (`pendingSessionTitle`'s documented reason).
+    expect(row?.title.startsWith('New Session - ')).toBe(true);
+  });
+
+  test('an omp session keeps the omp default, and does not appear twice', async () => {
+    const folderId = await registerFolder(project);
+    await writeOmpSession('omp-1', '2026-11-06T00:00:00.000Z');
+    // omp rows are persisted too (their resume id lives there), so the ACP
+    // listing must exclude them or one chat would draw two rows.
+    await saveHarnessSession({
+      sessionId: 'omp-1', harness: 'omp-rpc', agentSessionId: '', cwd: project,
+    });
+
+    const sessions = await folderSessions(folderId);
+    const matches = sessions.filter((entry) => String(entry.id) === 'omp-1');
+    expect(matches).toHaveLength(1);
+    expect(matches[0].harness).toBe('omp-rpc');
+  });
+
+  test('an omp (ACP) chat is listed ONCE, though the record and the scan both know it', async () => {
+    const folderId = await registerFolder(project);
+    // `omp-acp` launches `omp acp`: the same agent, so it writes a `.jsonl` file
+    // the scan finds AND a `harness_sessions` row the ACP listing reads. Both
+    // producers answering for one chat drew TWO sidebar rows under one id
+    // (reported: `01a1af9c-…` listed twice after a send on `omp (ACP)`).
+    await writeOmpSession('omp-acp-1', '2026-11-06T00:00:00.000Z');
+    await saveHarnessSession({
+      sessionId: 'omp-acp-1', harness: 'omp-acp', agentSessionId: 'omp-acp-1', cwd: project,
+    });
+
+    const sessions = await folderSessions(folderId);
+    const matches = sessions.filter((entry) => String(entry.id) === 'omp-acp-1');
+    expect(matches).toHaveLength(1);
+    // The SCAN's row wins: it carries the title the transcript gave it, and the
+    // record's row only holds what Kabmo stored (the first prompt or the agent's
+    // own title — see `session-title.server.ts`).
+    expect(matches[0].title).not.toBe('Untitled');
+    expect(matches[0].harness).toBe('omp-acp');
+  });
+
+  test('the ACP row is interleaved by time, not appended to the end', async () => {
+    const folderId = await registerFolder(project);
+    await writeOmpSession('old-1', '2026-01-01T00:00:00.000Z');
+    await writeOmpSession('old-2', '2026-01-02T00:00:00.000Z');
+    // Newer than both omp files: it belongs at the TOP, which is what "Show
+    // more" hid when the ACP rows were concatenated after the sorted bucket.
+    await saveHarnessSession({
+      sessionId: 'ses_new', harness: 'claude', agentSessionId: 'ses_new', cwd: project,
+    });
+
+    const sessions = await folderSessions(folderId);
+    expect(String(sessions[0]?.id)).toBe('ses_new');
+    expect(sessions).toHaveLength(3);
+  });
+
+  test('a chat whose cwd is outside every folder is filed under none', async () => {
+    const folderId = await registerFolder(project);
+    await saveHarnessSession({
+      sessionId: 'ses_elsewhere', harness: 'pi', agentSessionId: 'ses_elsewhere',
+      cwd: join(root, 'somewhere-else'),
+    });
+
+    const sessions = await folderSessions(folderId);
+    expect(sessions.map((entry) => String(entry.id))).not.toContain('ses_elsewhere');
+  });
+
+  test('a harness this build no longer knows keeps its id, and draws no mark', async () => {
+    const folderId = await registerFolder(project);
+    await saveHarnessSession({
+      sessionId: 'ses_gone', harness: 'some-future-agent', agentSessionId: 'ses_gone', cwd: project,
+    });
+
+    const sessions = await folderSessions(folderId);
+    const row = sessions.find((entry) => String(entry.id) === 'ses_gone');
+    expect(row).toBeDefined();
+    // The ID is kept: a user-added harness has no static descriptor, and a
+    // removed one never will — dropping it would rewrite the chat to `omp-rpc`
+    // and resume it against the wrong agent. The MARK is what stays absent:
+    // `HarnessGlyph` renders nothing when no descriptor exists.
+    expect(row?.harness).toBe('some-future-agent');
+  });
+});
+
+describe('a row without a transcript is not listed', () => {
+  test('an omp session file with a header and no message is skipped', async () => {
+    const folderId = await registerFolder(project);
+    await writeOmpSession('omp-used', '2026-11-06T00:00:00.000Z');
+    await writeEmptyOmpSession('omp-empty', '2026-11-06T00:00:01.000Z');
+
+    const ids = (await folderSessions(folderId)).map((entry) => String(entry.id));
+    expect(ids).toContain('omp-used');
+    expect(ids).not.toContain('omp-empty');
+  });
+
+  test('an imported session the agent store proves empty is skipped', async () => {
+    const folderId = await registerFolder(project);
+    const xdg = join(root, 'xdg');
+    const savedXdg = Bun.env.XDG_DATA_HOME;
+    Bun.env.XDG_DATA_HOME = xdg;
+    try {
+      const dir = join(xdg, 'opencode');
+      await fs.promises.mkdir(dir, { recursive: true });
+      const db = new Database(join(dir, 'opencode.db'), { create: true });
+      db.exec('CREATE TABLE message (id TEXT PRIMARY KEY, session_id TEXT NOT NULL)');
+      db.run('INSERT INTO message (id, session_id) VALUES (?, ?)', ['m1', 'ses_used']);
+      db.close();
+
+      for (const id of ['ses_used', 'ses_empty']) {
+        await importHarnessSession({
+          sessionId: id, harness: 'opencode', agentSessionId: '', cwd: project,
+          title: '', createdAt: Date.now(), updatedAt: Date.now(),
+        });
+      }
+
+      const ids = (await folderSessions(folderId)).map((entry) => String(entry.id));
+      expect(ids).toContain('ses_used');
+      expect(ids).not.toContain('ses_empty');
+    } finally {
+      if (savedXdg === undefined) delete Bun.env.XDG_DATA_HOME;
+      else Bun.env.XDG_DATA_HOME = savedXdg;
+    }
+  });
+});

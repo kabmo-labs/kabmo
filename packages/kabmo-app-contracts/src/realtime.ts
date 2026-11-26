@@ -8,7 +8,7 @@
  * consumer cannot disagree about what a topic carries.
  */
 
-import type { SessionRunModel } from '@kabmo-labs/kabmo-session-stream-state';
+import type { SessionRunModel } from '@kabmo-labs/kabmo-session/stream-state';
 import type { WorkspaceFolderData } from './workspace';
 
 /** `sidebar` — folder structure and session identity, without volatile fields. */

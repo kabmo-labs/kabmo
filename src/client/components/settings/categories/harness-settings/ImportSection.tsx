@@ -19,7 +19,7 @@
 import { useState } from 'preact/hooks';
 import { Download, Loader2 } from 'lucide-preact';
 import type { HarnessImportOutcome, HarnessProviderSupport } from '@kabmo-labs/kabmo-app-contracts/harness';
-import { PROTOCOL_LABELS } from '@kabmo-labs/kabmo-harness-provider/dialects';
+import { PROTOCOL_LABELS } from '@kabmo-labs/kabmo-harness/provider/dialects';
 
 export type ImportRow = HarnessProviderSupport['importable'][number];
 

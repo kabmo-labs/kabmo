@@ -1,7 +1,8 @@
-name: Publish Plugin Packages
+name: Publish Workspace Packages
 
-# Publishes `@kabmo-labs/kabmo-sdk` and `@kabmo-labs/kabmo-ui` — the packages a panel
-# plugin imports — to npm.
+# Publishes the `@kabmo-labs/*` packages in `release/packages.js` to npm. Two of
+# them (`kabmo-sdk`, `kabmo-ui`) are the plugin-facing surface; the rest are the
+# app's runtime packages.
 #
 # This file is a TRIGGER, not the implementation. The steps live in
 # `publish-packages.yml`, which is called from here and from `release.yml` after
@@ -14,10 +15,10 @@ name: Publish Plugin Packages
 # a plugin author depends on. Folding them together would republish a library on
 # every app release for no reason, and a library fix would have to wait for one.
 #
-# Triggered by pushing a tag `kabmo-sdk/v1.2.3` or `kabmo-ui/v1.2.3`, which must match
-# the version in that package's package.json — the check inside the called
-# workflow refuses the tag otherwise, so a tag can never publish a version nobody
-# wrote down. This path stays because it is the documented manual release: bump
+# Triggered by pushing any package tag (`kabmo-sdk/v1.2.3`, `kabmo-omp/v0.1.0`),
+# which must match the version in that package's package.json — the check inside
+# the called workflow refuses the tag otherwise, so a tag can never publish a
+# version nobody wrote down. This path stays because it is the documented manual release: bump
 # the version in the package's package.json, push the tag, and it ships — with no
 # app release involved.
 #
@@ -38,8 +39,7 @@ name: Publish Plugin Packages
 on:
   push:
     tags:
-      - 'kabmo-sdk/v*'
-      - 'kabmo-ui/v*'
+      - 'kabmo-*/v*'
   workflow_dispatch:
     inputs:
       packages:
@@ -51,19 +51,14 @@ on:
         required: false
         type: string
       package:
-        description: 'Which package to publish (used when neither of the above is given)'
+        description: 'One package directory name, e.g. kabmo-omp (empty publishes the whole catalog)'
         required: false
-        default: both
-        type: choice
-        options:
-          - both
-          - kabmo-sdk
-          - kabmo-ui
+        type: string
 
 concurrency:
-  # One publish per package at a time. Grouped by the package rather than by the
-  # ref so a `kabmo-ui` publish cannot start while a `kabmo-sdk` one is still running —
-  # `kabmo-ui` depends on `kabmo-sdk`, so their order matters.
+  # One publish at a time. The family packages pin each other in a cycle, so the
+  # group is the whole catalog rather than a single package; a second run waits
+  # instead of racing the first.
   group: publish-plugins
   cancel-in-progress: false
 
@@ -72,7 +67,7 @@ permissions:
 
 jobs:
   publish:
-    name: Publish the plugin packages
+    name: Publish the workspace packages
     # A tag push names the package by its tag; a dispatch names it by
     # `packages`, `tag` or `package`. Resolved inside the callee, in that order.
     uses: ./.github/workflows/publish-packages.yml

@@ -20,7 +20,7 @@
 import { describe, expect, test } from 'bun:test';
 import { groupTraceRows, hasTraceContent } from '@/shared/lib/chat/timeline/trace-groups';
 import { traceInset } from '@/shared/lib/chat/timeline/block-chrome';
-import type { ChatMessageData } from '@kabmo-labs/kabmo-chat-contracts/chat';
+import type { ChatMessageData } from '@kabmo-labs/kabmo-chat/contracts/chat';
 
 const tool = { id: 'c1', type: 'bash', name: 'bash', title: 'Bash', status: 'success' };
 

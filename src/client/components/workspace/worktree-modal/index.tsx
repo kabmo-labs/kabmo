@@ -30,7 +30,7 @@ import { Modal } from '@/client/components/common/Modal';
 import { createWorktree, validateWorktree } from '@/client/hooks/workspace/worktree/index';
 import { WorktreeRequestError } from '@/client/hooks/workspace/worktree/index';
 import { defaultWorktreeBranch, folderNameForBranch } from '@/shared/lib/workspace/worktree/branch-name';
-import type { WorktreeFailure } from '@kabmo-labs/kabmo-worktree-types';
+import type { WorktreeFailure } from '@kabmo-labs/kabmo-worktree/types';
 
 export interface NewWorktreeModalProps {
   isOpen: boolean;

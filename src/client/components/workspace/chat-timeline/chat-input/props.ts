@@ -11,7 +11,7 @@
 
 import type { SetStateAction } from 'preact/compat';
 import type { Attachment } from '@/shared/types';
-import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
+import type { ApprovalMode } from '@kabmo-labs/kabmo-omp/access-mode';
 import type { ComposerModes } from '@/client/components/workspace/chat-timeline/chat-input/modes-props';
 import type { WaitingCandidate } from '@/client/components/workspace/chat-timeline/chat-input/WaitingDependencyPicker';
 

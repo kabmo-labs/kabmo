@@ -20,7 +20,7 @@
 
 import { readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
-import { childEnv } from '@kabmo-labs/kabmo-fs-child-env';
+import { childEnv } from '@kabmo-labs/kabmo-fs/child-env';
 import { isBuildPath, isExcludedTempPath } from '@/server/lib/changes/temp-path';
 
 const SCAN_BUDGET_FILES = 200;

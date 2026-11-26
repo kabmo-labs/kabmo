@@ -21,7 +21,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
 import { foldSessionFrame } from '@/server/lib/omp/rpc/frame-fold';
 import type { SessionFrameHost } from '@/server/lib/omp/rpc/frame-fold-contract';
-import type { AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
+import type { AgentEvent } from '@kabmo-labs/kabmo-omp/rpc-protocol/constants';
 import { makeHost } from '@/server/lib/omp/rpc/frame-fold-host.test-util';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 

@@ -27,7 +27,7 @@
  */
 
 import { join } from 'path';
-import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
+import { pathExists } from '@kabmo-labs/kabmo-omp/paths';
 import { getDb } from '@/server/db.server';
 import { findPluginDir, discoverPanelPlugins } from '@/server/lib/panels/registry.server';
 import { readPluginManifest } from '@/server/lib/panels/files.server';

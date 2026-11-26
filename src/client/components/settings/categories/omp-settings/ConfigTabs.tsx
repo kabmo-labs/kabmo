@@ -21,8 +21,8 @@
 
 import { useMemo } from 'preact/hooks';
 import { Check, RotateCcw, Search, X } from 'lucide-preact';
-import type { ConfigEntry } from '@kabmo-labs/kabmo-omp-config-files/config-cli';
-import type { SchemaTab } from '@kabmo-labs/kabmo-omp-schema/schema-types';
+import type { ConfigEntry } from '@kabmo-labs/kabmo-omp/config-files/config-cli';
+import type { SchemaTab } from '@kabmo-labs/kabmo-omp/schema/schema-types';
 import { ALL_SCHEMA_ENTRIES, entriesForTab, isConditionMet, matchesSearch } from '@/shared/lib/omp/config/schema';
 import { RowEditor } from '@/client/components/settings/categories/omp-settings/RowEditor';
 

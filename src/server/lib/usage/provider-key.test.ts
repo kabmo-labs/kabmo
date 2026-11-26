@@ -30,8 +30,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { getDb } from '@/server/db.server';
-import { invalidateOmpCliCache } from '@kabmo-labs/kabmo-omp-cli';
-import { disposeUtilityRpc } from '@kabmo-labs/kabmo-omp-rpc-process/utility';
+import { invalidateOmpCliCache } from '@kabmo-labs/kabmo-omp/cli';
+import { disposeUtilityRpc } from '@kabmo-labs/kabmo-omp/rpc-process/utility';
 import { kenariProviderSlugs, listCredentialedProviders, loadProviderEntries, resolveDeepSeekApiKey, resolveKenariApiKey } from '@/server/lib/usage/provider-key';
 import { removeDir } from '@/test-support/remove-dir';
 

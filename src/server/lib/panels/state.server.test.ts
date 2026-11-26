@@ -25,7 +25,7 @@ import {
   setPluginEnabled,
 } from '@/server/lib/panels/state.server';
 import { getDb } from '@/server/db.server';
-import { readSettingsJson, writeSettingsJson } from '@kabmo-labs/kabmo-settings-store';
+import { readSettingsJson, writeSettingsJson } from '@kabmo-labs/kabmo-settings/store';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 
 async function writeHiddenPanels(ids: unknown): Promise<void> {

@@ -19,8 +19,8 @@
 import { json } from '@kabmo-labs/kabmo-http';
 import type { LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
-import { loadSessionAnswer } from '@kabmo-labs/kabmo-session-relations/answers.server';
-import { loadStreamStates } from '@kabmo-labs/kabmo-session-stream-state';
+import { loadSessionAnswer } from '@kabmo-labs/kabmo-session/relations/answers.server';
+import { loadStreamStates } from '@kabmo-labs/kabmo-session/stream-state';
 
 export async function getSessionAnswer({ request, params }: LoaderFunctionArgs) {
   if (request.method !== 'GET') return methodNotAllowed({ request, params });

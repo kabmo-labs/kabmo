@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import type { RefObject } from 'preact/compat';
 import type { AgentImage, ChatMessageData, OmpAgentCallbacks, OmpAgentHandle, OmpAgentState, PromptDispatchResult } from '@/shared/types';
-import type { ExtensionDialogResponse, ExtensionUiDialogRequest } from '@kabmo-labs/kabmo-chat-contracts/agent';
+import type { ExtensionDialogResponse, ExtensionUiDialogRequest } from '@kabmo-labs/kabmo-chat/contracts/agent';
 import { type ToolResultRecord, useOmpAgentStream } from '@/client/hooks/chat/omp/stream';
 import { useOmpPromptSender } from '@/client/hooks/chat/omp/prompt-send';
 import { stopAgentSession } from '@/shared/lib/chat/omp/abort';
@@ -25,8 +25,8 @@ const STEER_REQUEST_TIMEOUT_MS = 25_000;
  * message" replaced per message_update, finalized on message_end / agent_end.
  */
 
-export type { ExtensionUiDialogMethod, ExtensionUiDialogRequest, IncomingExtensionUiRequest } from '@kabmo-labs/kabmo-chat-contracts/agent';
-export type { OmpAgentCallbacks, OmpAgentEvent, OmpAgentState } from '@kabmo-labs/kabmo-chat-contracts/agent';
+export type { ExtensionUiDialogMethod, ExtensionUiDialogRequest, IncomingExtensionUiRequest } from '@kabmo-labs/kabmo-chat/contracts/agent';
+export type { OmpAgentCallbacks, OmpAgentEvent, OmpAgentState } from '@kabmo-labs/kabmo-chat/contracts/agent';
 
 /**
  * `activityRef` is the caller's mirror of the phrase the indicator shows, and

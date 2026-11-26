@@ -11,23 +11,23 @@
  * a function, never at module init.
  */
 
-import { RpcProcess } from '@kabmo-labs/kabmo-omp-rpc-process/process';
+import { RpcProcess } from '@kabmo-labs/kabmo-omp/rpc-process/process';
 import { buildSessionSpawnArgs, type SessionPromptArgs } from '@/server/lib/omp/rpc/spawn-args';
 import { AgentSessionWrapper } from '@/server/lib/omp/rpc/manager';
 import { syncDiscoveryRootsWatch } from '@/server/lib/omp/config/roots-watch.server';
 import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
-import { localRuns } from '@kabmo-labs/kabmo-omp-session-runtime/local-runs.server';
+import { localRuns } from '@kabmo-labs/kabmo-omp/session-runtime/local-runs.server';
 import { recordSpawnProvenance } from '@/server/lib/omp/rpc/spawn-provenance';
 import { registerSpawnedSession } from '@/server/lib/omp/rpc/session-registration';
 import { resolveSessionOwnership, SessionOwnedElsewhereError } from '@/server/lib/omp/session/ownership.server';
 import { sessionMcpSpawn } from '@/server/lib/omp/rpc/spawn-mcp';
-import { isUnrestorableModelFailure, resolveResumableModel } from '@kabmo-labs/kabmo-omp-session-runtime/resumable-model.server';
-import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
+import { isUnrestorableModelFailure, resolveResumableModel } from '@kabmo-labs/kabmo-omp/session-runtime/resumable-model.server';
+import type { ApprovalMode } from '@kabmo-labs/kabmo-omp/access-mode';
 import type { SelectedModel } from '@kabmo-labs/kabmo-model-contracts/models';
-import { claimHarness, harnessOf } from '@kabmo-labs/kabmo-harness-registry';
-import { saveHarnessSession } from '@kabmo-labs/kabmo-harness-session/session-store.server';
-import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
-import type { HarnessSession } from '@kabmo-labs/kabmo-harness-contract';
+import { claimHarness, harnessOf } from '@kabmo-labs/kabmo-harness/registry';
+import { saveHarnessSession } from '@kabmo-labs/kabmo-harness/session/session-store.server';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness/catalog';
+import type { HarnessSession } from '@kabmo-labs/kabmo-harness/contract';
 import { registerLiveSessionReads, registerLiveSessionReconcile } from '@kabmo-labs/kabmo-live-sessions';
 
 /**

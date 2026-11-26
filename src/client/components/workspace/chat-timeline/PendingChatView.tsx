@@ -15,7 +15,7 @@
  */
 
 import type { Attachment, ChatMessageData, WorkspaceFolderData } from '@/shared/types';
-import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
+import type { ApprovalMode } from '@kabmo-labs/kabmo-omp/access-mode';
 import type { ForkPreview } from '@/client/hooks/chat/timeline/fork-preview';
 import type { ComposerModes } from '@/client/components/workspace/chat-timeline/chat-input/modes-props';
 import type { WaitingCandidate } from '@/client/components/workspace/chat-timeline/chat-input/WaitingDependencyPicker';

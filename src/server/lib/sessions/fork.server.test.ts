@@ -18,11 +18,11 @@ import { join } from 'node:path';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { getDb } from '@/server/db.server';
 import { ensureSessionRelationsSchema } from '@/server/lib/sessions/schema.server';
-import { saveHarnessSession } from '@kabmo-labs/kabmo-harness-session/session-store.server';
-import { getSessionRelation } from '@kabmo-labs/kabmo-session-relations/relations.server';
+import { saveHarnessSession } from '@kabmo-labs/kabmo-harness/session/session-store.server';
+import { getSessionRelation } from '@kabmo-labs/kabmo-session/relations/relations.server';
 import { forkSession, type ForkSessionDeps, type ForkedSession } from '@/server/lib/sessions/fork.server';
-import { buildTitleLine } from '@kabmo-labs/kabmo-omp-session-runtime/transcript-copy';
-import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
+import { buildTitleLine } from '@kabmo-labs/kabmo-omp/session-runtime/transcript-copy';
+import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp/session-scan/files';
 
 let sessionsRoot = '';
 let projectDir = '';

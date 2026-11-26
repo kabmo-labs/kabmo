@@ -18,9 +18,9 @@
 
 import path from 'node:path';
 import { readBlob } from '@/server/lib/changes/blobs.server';
-import { readSessionChangeIndex } from '@kabmo-labs/kabmo-omp-session-changes/changes';
-import { findSessionFileById } from '@kabmo-labs/kabmo-omp-session-locator';
-import { siblingDirForSession } from '@kabmo-labs/kabmo-omp-subagent/history-paths';
+import { readSessionChangeIndex } from '@kabmo-labs/kabmo-omp/session-changes/changes';
+import { findSessionFileById } from '@kabmo-labs/kabmo-omp/session-locator';
+import { siblingDirForSession } from '@kabmo-labs/kabmo-omp/subagent/history-paths';
 
 /** How far the omp record's write time may sit from the call's start frame. */
 const MATCH_WINDOW_MS = 10_000;

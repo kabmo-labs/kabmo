@@ -16,9 +16,9 @@
  * screen, so it is never stored.
  */
 
-import type { SkillCatalogSource } from '@kabmo-labs/kabmo-settings-contracts/skill';
+import type { SkillCatalogSource } from '@kabmo-labs/kabmo-settings/contracts/skill';
 import { DEFAULT_CATALOG_SOURCES } from '@/client/data/settings/skill';
-import { readSettingsJson, writeSettingsJson } from '@kabmo-labs/kabmo-settings-store';
+import { readSettingsJson, writeSettingsJson } from '@kabmo-labs/kabmo-settings/store';
 import type { DbClient } from '@kabmo-labs/kabmo-db/client';
 
 export const SOURCES_KEY = 'omp_catalog_sources';

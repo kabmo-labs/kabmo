@@ -22,8 +22,8 @@
  * settings panel reads it on open and on Refresh.
  */
 
-import { childEnv } from '@kabmo-labs/kabmo-fs-child-env';
-import { resolveOmpBin } from '@kabmo-labs/kabmo-omp-cli';
+import { childEnv } from '@kabmo-labs/kabmo-fs/child-env';
+import { resolveOmpBin } from '@kabmo-labs/kabmo-omp/cli';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { mockRoleCandidates } from '@/server/lib/model-roles/mock.server';
 import type { ModelRoleCandidate } from '@kabmo-labs/kabmo-app-contracts/model-roles';

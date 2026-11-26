@@ -16,7 +16,7 @@
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
 import { isRecord } from '@kabmo-labs/kabmo-guards';
-import type { AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
+import type { AgentEvent } from '@kabmo-labs/kabmo-omp/rpc-protocol/constants';
 import type { ShellTrace } from '@/server/lib/changes/capture-types';
 
 /** A tool whose name promises a write; only these earn an `unknown-tool` note. */

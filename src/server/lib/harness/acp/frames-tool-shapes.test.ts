@@ -19,9 +19,9 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { AcpFrameMapper } from '@kabmo-labs/kabmo-acp-mapper/frames';
+import { AcpFrameMapper } from '@kabmo-labs/kabmo-acp/mapper/frames';
 import { normalizeAgentEvent } from '@/server/lib/chat/normalize-tools.server';
-import { parseMessageBlocks, toToolCallData } from '@kabmo-labs/kabmo-omp-session-parse/parse-message-blocks';
+import { parseMessageBlocks, toToolCallData } from '@kabmo-labs/kabmo-omp/session-parse/parse-message-blocks';
 import { toolPanelKind } from '@/client/components/workspace/chat-timeline/tool-renderers/registry';
 
 /**

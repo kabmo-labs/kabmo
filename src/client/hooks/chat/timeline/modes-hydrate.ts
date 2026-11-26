@@ -18,10 +18,10 @@
  */
 
 import { useEffect } from 'preact/hooks';
-import { isPendingSessionId } from '@kabmo-labs/kabmo-omp-session-core/default-title';
+import { isPendingSessionId } from '@kabmo-labs/kabmo-omp/session-core/default-title';
 import type { ModesResponse } from '@/client/hooks/chat/timeline/mode-markers';
-import type { SessionModeState } from '@kabmo-labs/kabmo-harness-session-modes';
-import type { GoalContinuation, GoalRecord, KabmoModeSelection } from '@kabmo-labs/kabmo-omp-mode/types';
+import type { SessionModeState } from '@kabmo-labs/kabmo-harness/session-modes';
+import type { GoalContinuation, GoalRecord, KabmoModeSelection } from '@kabmo-labs/kabmo-omp/mode/types';
 
 export interface ModesHydrationTarget {
   sessionId: string | null;

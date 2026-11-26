@@ -17,7 +17,7 @@
 
 import { readdir, realpath } from 'fs/promises';
 import * as path from 'path';
-import { getConfigRoot } from '@kabmo-labs/kabmo-omp-paths';
+import { getConfigRoot } from '@kabmo-labs/kabmo-omp/paths';
 
 /** Candidate daemon names, in the order the viewer prefers them. */
 const DAEMON_NAMES = ['omp.browser.headless', 'omp.browser.headed'] as const;

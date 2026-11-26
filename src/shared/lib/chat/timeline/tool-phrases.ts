@@ -14,7 +14,7 @@
  */
 
 import { isRecord } from '@kabmo-labs/kabmo-guards';
-import { hashlineTargetPath } from '@kabmo-labs/kabmo-omp-session-core/hashline-patch';
+import { hashlineTargetPath } from '@kabmo-labs/kabmo-omp/session-core/hashline-patch';
 
 /** Longest subject kept in the indicator; the tail is elided. */
 export const MAX_SUBJECT = 72;

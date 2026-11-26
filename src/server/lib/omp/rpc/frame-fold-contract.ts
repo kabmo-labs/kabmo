@@ -10,9 +10,9 @@
 
 import type { AutoTitleHost } from '@/server/lib/omp/session/auto-title.server';
 import type { QueueDeliveryHost } from '@/server/lib/queue/delivery.server';
-import type { AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
-import type { ModeMirror } from '@kabmo-labs/kabmo-omp-rpc-events/mode-mirror';
-import type { SessionRunModel } from '@kabmo-labs/kabmo-session-stream-state';
+import type { AgentEvent } from '@kabmo-labs/kabmo-omp/rpc-protocol/constants';
+import type { ModeMirror } from '@kabmo-labs/kabmo-omp/rpc-events/mode-mirror';
+import type { SessionRunModel } from '@kabmo-labs/kabmo-session/stream-state';
 
 /**
  * Wrapper surface the fold reads and writes. Every field is owned by the

@@ -14,7 +14,7 @@
 import type { ProviderItem } from '@/shared/types';
 import type { OmpProviderApi,
 ProviderAuthMode,
-ProviderDiscoveryType, } from '@kabmo-labs/kabmo-settings-contracts/provider';
+ProviderDiscoveryType, } from '@kabmo-labs/kabmo-settings/contracts/provider';
 import { notifyModelsUpdated } from '@/shared/lib/models/client';
 
 const PROVIDERS_ENDPOINT = '/api/settings/providers';

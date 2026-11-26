@@ -14,8 +14,8 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { readPersistedModes } from '@kabmo-labs/kabmo-omp-session-runtime/modes';
-import { kabmoModeEnv } from '@kabmo-labs/kabmo-omp-extensions';
+import { readPersistedModes } from '@kabmo-labs/kabmo-omp/session-runtime/modes';
+import { kabmoModeEnv } from '@kabmo-labs/kabmo-omp/extensions';
 
 const line = (customType: string, data: unknown) => JSON.stringify({ type: 'custom', customType, data });
 

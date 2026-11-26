@@ -27,7 +27,7 @@ import {
   sendTitleRequest,
   waitForTitleOutcome,
   type TitleRequestHost,
-} from '@kabmo-labs/kabmo-omp-session-runtime/title-request.server';
+} from '@kabmo-labs/kabmo-omp/session-runtime/title-request.server';
 
 interface FakeProc {
   commands: Array<Record<string, unknown>>;

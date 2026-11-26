@@ -1,18 +1,18 @@
 import { json } from '@kabmo-labs/kabmo-http';
 import type { ActionFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { prewarmRpcSession } from '@/server/lib/omp/rpc/prewarm-pool';
-import { prewarmAcpSession } from '@kabmo-labs/kabmo-acp-session-core/prewarm.server';
-import { commandAvailable } from '@kabmo-labs/kabmo-harness-config-store/auto-probe.server';
-import { loadHarnessConfig } from '@kabmo-labs/kabmo-harness-config-store/config.server';
-import { selectedAccountId } from '@kabmo-labs/kabmo-harness-account-store';
-import { accountAdapter } from '@kabmo-labs/kabmo-harness-accounts';
-import { kabmoModeEnv } from '@kabmo-labs/kabmo-omp-extensions';
-import { parseModeSelection } from '@kabmo-labs/kabmo-omp-mode-request';
-import { isApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
+import { prewarmAcpSession } from '@kabmo-labs/kabmo-acp/session-core/prewarm.server';
+import { commandAvailable } from '@kabmo-labs/kabmo-harness/config-store/auto-probe.server';
+import { loadHarnessConfig } from '@kabmo-labs/kabmo-harness/config-store/config.server';
+import { selectedAccountId } from '@kabmo-labs/kabmo-harness/account-store';
+import { accountAdapter } from '@kabmo-labs/kabmo-harness/accounts';
+import { kabmoModeEnv } from '@kabmo-labs/kabmo-omp/extensions';
+import { parseModeSelection } from '@kabmo-labs/kabmo-omp/mode-request';
+import { isApprovalMode } from '@kabmo-labs/kabmo-omp/access-mode';
 import { loadPersistedAccessMode } from '@/shared/lib/omp/config/access-mode.server';
 import { rpcErrorResponse } from '@/server/lib/omp/rpc/errors';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
-import { harnessDescriptor, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
+import { harnessDescriptor, type HarnessId } from '@kabmo-labs/kabmo-harness/catalog';
 
 /** A JSON object, or `{}` for anything else — same read as the spawn route. */
 function asRecord(value: unknown): Record<string, unknown> {

@@ -23,11 +23,11 @@ import { join } from 'node:path';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { removeDir } from '@/test-support/remove-dir';
 import { registerAcpSession } from '@/server/lib/harness/register.server';
-import { claimHarness } from '@kabmo-labs/kabmo-harness-registry';
-import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
+import { claimHarness } from '@kabmo-labs/kabmo-harness/registry';
+import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp/session-scan/files';
 import { action } from '@/server/routes/chat/rewind';
-import type { HarnessSession } from '@kabmo-labs/kabmo-harness-contract';
-import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
+import type { HarnessSession } from '@kabmo-labs/kabmo-harness/contract';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness/catalog';
 
 const SESSION_ID = '01a1b49f-0000-7000-8000-000000000001';
 

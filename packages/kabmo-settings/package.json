@@ -1,0 +1,39 @@
+{
+  "name": "@kabmo-labs/kabmo-settings",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "The settings family: 2 previously separate modules in one package.",
+  "exports": {
+    "./contracts": "./src/contracts/provider.ts",
+    "./contracts/agent": "./src/contracts/agent.ts",
+    "./contracts/command": "./src/contracts/command.ts",
+    "./contracts/mcp": "./src/contracts/mcp.ts",
+    "./contracts/plugin": "./src/contracts/plugin.ts",
+    "./contracts/project": "./src/contracts/project.ts",
+    "./contracts/provider": "./src/contracts/provider.ts",
+    "./contracts/skill": "./src/contracts/skill.ts",
+    "./contracts/usage": "./src/contracts/usage.ts",
+    "./contracts/write": "./src/contracts/write.ts",
+    "./store": "./src/store/settings-store.ts",
+    "./store/settings-store": "./src/store/settings-store.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-settings"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  },
+  "dependencies": {
+    "@kabmo-labs/kabmo-db": "workspace:*",
+    "@kabmo-labs/kabmo-runtime-flags": "workspace:*"
+  }
+}

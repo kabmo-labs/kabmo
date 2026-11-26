@@ -17,8 +17,8 @@
 
 import { describe, expect, test } from 'bun:test';
 import { toolPanelKind, resolveToolKey } from '@/client/components/workspace/chat-timeline/tool-renderers/registry';
-import { normalizeToolCall } from '@kabmo-labs/kabmo-chat-tool/normalize';
-import type { ToolCallData } from '@kabmo-labs/kabmo-chat-contracts/chat';
+import { normalizeToolCall } from '@kabmo-labs/kabmo-chat/tool/normalize';
+import type { ToolCallData } from '@kabmo-labs/kabmo-chat/contracts/chat';
 
 function tool(partial: Partial<ToolCallData> & Pick<ToolCallData, 'type'>): ToolCallData {
   return { id: 'c1', name: partial.type, title: partial.type, ...partial } as ToolCallData;

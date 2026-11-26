@@ -31,7 +31,7 @@ import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { useTimelineScope } from '@/client/hooks/chat/timeline/scope';
 import { useSessionTitle } from '@/client/hooks/chat/timeline/session-title';
-import { formatNewSessionTitle } from '@kabmo-labs/kabmo-omp-session-core/default-title';
+import { formatNewSessionTitle } from '@kabmo-labs/kabmo-omp/session-core/default-title';
 import { publishClientSignal } from '@/client/lib/signals';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'Event', 'CustomEvent'] as const;

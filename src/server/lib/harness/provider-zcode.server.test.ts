@@ -22,8 +22,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import { readZcodeProviderKey, readZcodeProviders, writeZcodeProvider } from '@kabmo-labs/kabmo-harness-provider-runtime/provider-zcode.server';
-import { ProviderWriteError } from '@kabmo-labs/kabmo-harness-provider-runtime/provider-write-error';
+import { readZcodeProviderKey, readZcodeProviders, writeZcodeProvider } from '@kabmo-labs/kabmo-harness/provider-runtime/provider-zcode.server';
+import { ProviderWriteError } from '@kabmo-labs/kabmo-harness/provider-runtime/provider-write-error';
 import { isWindows } from '@/test-support/platform';
 
 function tempFile(content?: string): string {

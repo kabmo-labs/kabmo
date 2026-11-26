@@ -15,7 +15,7 @@
  * must never be the reason a commit message cannot be generated.
  */
 
-import { readSettingsJson } from '@kabmo-labs/kabmo-settings-store';
+import { readSettingsJson } from '@kabmo-labs/kabmo-settings/store';
 import { getDb } from '@/server/db.server';
 import { SETTINGS_BLOB_KEY } from '@/shared/lib/settings/keys';
 import type { CommitMessageMode, CommitMessageSettings } from '@/server/lib/fs/git-commit-message.server';

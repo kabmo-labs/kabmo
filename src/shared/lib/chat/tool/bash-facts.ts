@@ -17,7 +17,7 @@
  * screen — the shell minimizer's rewrite (omp 18.16.0) and a background job.
  */
 
-import type { ToolCallData } from '@kabmo-labs/kabmo-chat-contracts/chat';
+import type { ToolCallData } from '@kabmo-labs/kabmo-chat/contracts/chat';
 import type { ToolFact } from '@/shared/lib/chat/tool/summary';
 import { bashServiceFacts } from '@/shared/lib/chat/tool/proc-facts';
 import { formatToolMs } from '@/shared/lib/chat/tool/labels';

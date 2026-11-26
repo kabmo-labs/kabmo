@@ -30,7 +30,7 @@
 
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { antigravityHome } from '@kabmo-labs/kabmo-harness-local-transcript/antigravity-home';
+import { antigravityHome } from '@kabmo-labs/kabmo-harness/local-transcript/antigravity-home';
 import {
   antigravityWindows,
   decodeKeyringSecret,

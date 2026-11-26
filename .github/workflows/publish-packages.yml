@@ -1,11 +1,11 @@
-name: Publish the plugin packages
+name: Publish the workspace packages
 
-# The publish BODY for `@kabmo-labs/kabmo-sdk` and `@kabmo-labs/kabmo-ui`, as a
-# REUSABLE workflow — the same two callers `publish-app.yml` serves:
+# The publish BODY for the `@kabmo-labs/*` packages in `release/packages.js`, as
+# a REUSABLE workflow — the same two callers `publish-app.yml` serves:
 #
-#   - `publish-plugins.yml` is the TRIGGER: a `kabmo-sdk/v*` or `kabmo-ui/v*` tag
-#     push, or a manual dispatch. The documented manual path (bump the version,
-#     push the tag) has to stand on its own.
+#   - `publish-plugins.yml` is the TRIGGER: any `kabmo-*/v*` tag push, or a
+#     manual dispatch. The documented manual path (bump the version, push the
+#     tag) has to stand on its own.
 #   - `release.yml` CALLS this file after the `packages` job, which is what
 #     makes the packages publish part of the release run instead of a separate
 #     run dispatched off to the side.
@@ -144,7 +144,7 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           test -n "$NPM_TOKEN" || {
-            echo "::error::NPM_TOKEN is not set. Add a granular npm access token with read/write on @kabmo-labs/kabmo-sdk and @kabmo-labs/kabmo-ui (Settings -> Secrets and variables -> Actions), or on the 'npm' environment."
+            echo "::error::NPM_TOKEN is not set. Add a granular npm access token with read/write on every @kabmo-labs package (Settings -> Secrets and variables -> Actions), or on the 'npm' environment."
             exit 1
           }
 
@@ -172,12 +172,13 @@ jobs:
               test -d "$dir" || { echo "::error::$dir is not a directory"; exit 1; }
               dirs="$dirs $dir"
             done
+          elif [ -n "$IN_PACKAGE" ]; then
+            test -d "packages/$IN_PACKAGE" || { echo "::error::packages/$IN_PACKAGE is not a directory"; exit 1; }
+            dirs="packages/$IN_PACKAGE"
           else
-            case "$IN_PACKAGE" in
-              kabmo-sdk) dirs="packages/kabmo-sdk" ;;
-              kabmo-ui)  dirs="packages/kabmo-ui" ;;
-              *)         dirs="packages/kabmo-sdk packages/kabmo-ui" ;;
-            esac
+            # No input: publish the whole catalog. Read from the one catalog so a
+            # package added there cannot be silently missed by a manual run.
+            dirs=$(bun -e "import('./release/packages.js').then((m) => console.log(m.RELEASE_PACKAGES.map((p) => p.dir).join(' ')))")
           fi
           dirs="${dirs# }"
           test -n "$dirs" || { echo "::error::No package resolved from the inputs"; exit 1; }
@@ -256,7 +257,7 @@ jobs:
           DIRS: ${{ steps.target.outputs.dirs }}
         run: |
           {
-            echo "### Published plugin packages"
+            echo "### Published workspace packages"
             echo
             echo "| package | version |"
             echo "|---|---|"

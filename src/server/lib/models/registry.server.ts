@@ -14,9 +14,9 @@
 
 import { getDb } from '@/server/db.server';
 import { PROVIDERS_SETTINGS_KEY } from '@/server/lib/models/provider-registry.server';
-import { readSettingsJson } from '@kabmo-labs/kabmo-settings-store';
-import { readDisabledProviders } from '@kabmo-labs/kabmo-omp-config-providers/disabled-providers';
-import { runUtilityCommand, type OmpModel } from '@kabmo-labs/kabmo-omp-rpc-process/utility';
+import { readSettingsJson } from '@kabmo-labs/kabmo-settings/store';
+import { readDisabledProviders } from '@kabmo-labs/kabmo-omp/config-providers/disabled-providers';
+import { runUtilityCommand, type OmpModel } from '@kabmo-labs/kabmo-omp/rpc-process/utility';
 import { readProviderIconUrls } from '@/server/lib/models/provider-icon.server';
 import { invalidateModelsCaches } from '@/shared/lib/models/server-cache';
 import type { ModelsData, ProviderItem } from '@/shared/types';

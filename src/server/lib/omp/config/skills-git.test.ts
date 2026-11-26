@@ -30,7 +30,7 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { scanSkillRepository, toSkillRepoRef, inspectSkillRepo } from '@/server/lib/omp/config/skills-git-repo';
 import { installSkillCopies } from '@/server/lib/omp/config/skills-git-install';
-import { invalidateSkillCache } from '@kabmo-labs/kabmo-omp-config-files/skills';
+import { invalidateSkillCache } from '@kabmo-labs/kabmo-omp/config-files/skills';
 import { removeDir } from '@/test-support/remove-dir';
 
 const ROOT = join(tmpdir(), 'kabmo-skills-git-test');

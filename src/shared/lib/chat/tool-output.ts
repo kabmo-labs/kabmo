@@ -22,7 +22,7 @@
  */
 
 import { detectOutputFormat, type OutputFormat } from '@/shared/lib/chat/detect-format';
-import { takeTrailingNotice, unwrapXmlEnvelopes, type XmlEnvelope } from '@kabmo-labs/kabmo-chat-notices/xml-envelope';
+import { takeTrailingNotice, unwrapXmlEnvelopes, type XmlEnvelope } from '@kabmo-labs/kabmo-chat/notices/xml-envelope';
 
 export interface ToolOutputText {
   /** What the user reads: the XML envelopes peeled off, if there were any. */

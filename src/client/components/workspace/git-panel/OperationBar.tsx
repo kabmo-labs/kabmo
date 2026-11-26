@@ -1,6 +1,6 @@
 import { AlertTriangle, GitMerge, Undo2 } from 'lucide-preact';
 import type { GitOperation } from '@kabmo-labs/kabmo-app-contracts/git';
-import { OPERATION_LABELS } from '@kabmo-labs/kabmo-git-runner/git-unmerged';
+import { OPERATION_LABELS } from '@kabmo-labs/kabmo-git/runner/git-unmerged';
 
 interface GitOperationBarProps {
   operation: GitOperation;

@@ -15,8 +15,8 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import type { ActionFunctionArgs } from '@kabmo-labs/kabmo-http';
-import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
-import { invalidateOmpSidebarData } from '@kabmo-labs/kabmo-omp-session-reader';
+import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp/session-scan/files';
+import { invalidateOmpSidebarData } from '@kabmo-labs/kabmo-omp/session-reader';
 import { removeDir } from '@/test-support/remove-dir';
 import {
   addQueueItem,
@@ -27,7 +27,7 @@ import {
   reorderQueueItems,
 } from '@/server/routes/sessions/queue';
 import { registerAcpSession } from '@/server/lib/harness/register.server';
-import type { HarnessSession } from '@kabmo-labs/kabmo-harness-contract';
+import type { HarnessSession } from '@kabmo-labs/kabmo-harness/contract';
 
 // `tmpdir()`, not `/tmp`: there is no `/tmp` on Windows, so the literal
 // resolved against the current drive and the tree was never where the suite

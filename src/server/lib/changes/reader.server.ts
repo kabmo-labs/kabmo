@@ -31,8 +31,8 @@
 import { unifiedDiff } from '@/shared/lib/fs/unified-diff';
 import { patchSides } from '@/shared/lib/fs/patch-sides';
 import { MAX_BLOB_BYTES } from '@/server/lib/changes/blobs.server';
-import { OMP_MAX_BLOB_BYTES } from '@kabmo-labs/kabmo-omp-session-changes/changes';
-import { readPatchSides } from '@kabmo-labs/kabmo-omp-session-changes/changes-patch';
+import { OMP_MAX_BLOB_BYTES } from '@kabmo-labs/kabmo-omp/session-changes/changes';
+import { readPatchSides } from '@kabmo-labs/kabmo-omp/session-changes/changes-patch';
 import {
   pathExists,
   pathIsDirectory,
@@ -46,7 +46,7 @@ import type {
   SessionChangeCounts,
   SessionChangeDiff,
   SessionChangeRecord,
-} from '@kabmo-labs/kabmo-omp-contracts/session-changes';
+} from '@kabmo-labs/kabmo-omp/contracts/session-changes';
 
 /** The last record for one path, for the scan's same-content dedupe. */
 export async function readSessionChangeLast(

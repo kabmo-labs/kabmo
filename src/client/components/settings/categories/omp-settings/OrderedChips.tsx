@@ -15,7 +15,7 @@
 
 import { useState } from 'preact/hooks';
 import { Plus, X } from 'lucide-preact';
-import type { SchemaOption } from '@kabmo-labs/kabmo-omp-schema/schema-types';
+import type { SchemaOption } from '@kabmo-labs/kabmo-omp/schema/schema-types';
 
 interface OrderedChipsProps {
   options: SchemaOption[];

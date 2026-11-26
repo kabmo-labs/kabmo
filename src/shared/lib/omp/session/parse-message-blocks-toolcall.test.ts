@@ -23,7 +23,7 @@
 import { describe, expect, test } from 'bun:test';
 import { isBlobImageRef,
 toToolCallData,
-type ParsedToolCall, } from '@kabmo-labs/kabmo-omp-session-parse/parse-message-blocks';
+type ParsedToolCall, } from '@kabmo-labs/kabmo-omp/session-parse/parse-message-blocks';
 
 describe('toToolCallData', () => {
   const parsed: ParsedToolCall = {

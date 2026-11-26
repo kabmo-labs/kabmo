@@ -17,10 +17,10 @@
  * names the action, and the URL is transport.
  */
 
-import type { ToolCallData } from '@kabmo-labs/kabmo-chat-contracts/chat';
+import type { ToolCallData } from '@kabmo-labs/kabmo-chat/contracts/chat';
 import { toTitleCase } from '@/shared/lib/chat/title-case';
 import { parseAskQuestions } from '@/shared/lib/chat/ask-questions';
-import { procOpLabel, procPathOf, procViewOf } from '@kabmo-labs/kabmo-omp-proc/proc';
+import { procOpLabel, procPathOf, procViewOf } from '@kabmo-labs/kabmo-omp/proc/proc';
 import { waitViewOf } from '@/shared/lib/omp/session/wait';
 import { jobSubject } from '@/shared/lib/omp/session/job-progress';
 import { isXdDocRead, xdDocPath } from '@/client/components/workspace/chat-timeline/tool-renderers/registry';

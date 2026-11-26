@@ -18,7 +18,7 @@
  */
 
 import { runShell } from '@/server/lib/fs/shell';
-import { GIT_ENV, parsePorcelainZ } from '@kabmo-labs/kabmo-git-runner/git-run';
+import { GIT_ENV, parsePorcelainZ } from '@kabmo-labs/kabmo-git/runner/git-run';
 import { gitSyncCount, refreshRemoteRefs } from '@/server/lib/fs/git-sync';
 import { readGitState } from '@/server/lib/fs/git-state';
 import type { GitChange, GitState } from '@/shared/types';

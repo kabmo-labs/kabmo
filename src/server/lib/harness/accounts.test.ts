@@ -11,8 +11,8 @@ import {
   selectHarnessAccount,
   selectedAccountId,
   verifyHarnessAccount,
-} from '@kabmo-labs/kabmo-harness-account-store';
-import { EMPTY_HARNESS_CONFIG } from '@kabmo-labs/kabmo-harness-config';
+} from '@kabmo-labs/kabmo-harness/account-store';
+import { EMPTY_HARNESS_CONFIG } from '@kabmo-labs/kabmo-harness/config';
 
 const roots: string[] = [];
 const savedDataDir = Bun.env.KABMO_DATA_DIR;

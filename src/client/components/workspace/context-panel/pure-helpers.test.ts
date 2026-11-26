@@ -44,7 +44,7 @@ import {
 } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/truncate';
 import { extractLineMeta } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/read-line-meta';
 import type { PluginItem } from '@/shared/types';
-import type { ToolCallData } from '@kabmo-labs/kabmo-chat-contracts/chat';
+import type { ToolCallData } from '@kabmo-labs/kabmo-chat/contracts/chat';
 
 describe('VIEWPORT_CLASSES', () => {
   test('every preset mode maps to a non-empty class string', () => {

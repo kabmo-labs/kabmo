@@ -21,9 +21,9 @@
  *    object.
  */
 
-import { getImageMimeType } from '@kabmo-labs/kabmo-fs-media/mime';
+import { getImageMimeType } from '@kabmo-labs/kabmo-fs/media/mime';
 import { BINARY_VIEWERS, viewerKindFor, type ViewerKind } from '@/shared/lib/fs/document-kind';
-import { buildFsRawUrl } from '@kabmo-labs/kabmo-fs-media/paths';
+import { buildFsRawUrl } from '@kabmo-labs/kabmo-fs/media/paths';
 import { byteSourceFor, type ByteSource } from '@/client/components/workspace/editor/viewers/bytes';
 
 /** The minimal target shape this needs — `useFileEditor`'s own target satisfies it. */

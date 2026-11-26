@@ -24,7 +24,7 @@
  * nothing at all.
  */
 
-import { GIT_ENV } from '@kabmo-labs/kabmo-git-runner/git-run';
+import { GIT_ENV } from '@kabmo-labs/kabmo-git/runner/git-run';
 
 const CACHE_TTL_MS = 5_000;
 /** Bound on remembered paths; the oldest answer is evicted past this. */

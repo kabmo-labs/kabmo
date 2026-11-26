@@ -16,7 +16,7 @@
 import { afterAll, beforeEach, describe, expect, test } from 'bun:test';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { getDb } from '@/server/db.server';
-import { saveHarnessSession } from '@kabmo-labs/kabmo-harness-session/session-store.server';
+import { saveHarnessSession } from '@kabmo-labs/kabmo-harness/session/session-store.server';
 import { loader as rawLoader } from '@/server/routes/telemetry/raw-messages';
 import { loader as contextLoader } from '@/server/routes/telemetry/context';
 import type { LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';

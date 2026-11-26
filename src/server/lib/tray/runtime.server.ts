@@ -30,7 +30,7 @@ import { getDataDir } from '@kabmo-labs/kabmo-paths/paths';
 import { resolveBunBin } from '@/server/lib/lifecycle/bun';
 import { packageDir } from '@/server/lib/fs/package-root';
 import { getDb } from '@/server/db.server';
-import { readAllSettingsJson } from '@kabmo-labs/kabmo-settings-store';
+import { readAllSettingsJson } from '@kabmo-labs/kabmo-settings/store';
 import { readSettingsBlob } from '@/shared/lib/settings/keys';
 import { resolveTheme } from '@/shared/lib/theme/catalog';
 import {
@@ -47,7 +47,7 @@ import {
   type TrayConfig,
 } from '@/server/lib/tray/config';
 import { installHostScript, resolveHostScript } from '@/server/lib/tray/hosts';
-import { childEnv } from '@kabmo-labs/kabmo-fs-child-env';
+import { childEnv } from '@kabmo-labs/kabmo-fs/child-env';
 
 /** A live tray host: the child process and the config it was started with. */
 interface TrayRuntime {

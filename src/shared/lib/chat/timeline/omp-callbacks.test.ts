@@ -24,7 +24,7 @@ import { foldAgentEvent, type OmpAgentFoldDeps } from '@/shared/lib/chat/omp/age
 import { bindStreamingCoalescer, disposeStreamingCoalescer } from '@/shared/lib/chat/timeline/stream-coalescer';
 import type { SetStateAction } from 'preact/compat';
 import type { ChatMessageData, OmpAgentCallbacks, OmpAgentState } from '@/shared/types';
-import type { IncomingExtensionUiRequest } from '@kabmo-labs/kabmo-chat-contracts/agent';
+import type { IncomingExtensionUiRequest } from '@kabmo-labs/kabmo-chat/contracts/agent';
 
 /** omp's own shape for a completed assistant turn, before the mapper runs. */
 const OMP_ASSISTANT_TURN = {
@@ -304,7 +304,7 @@ describe('createOmpAgentCallbacks optimistic user reconciliation', () => {
 /**
  * Every method omp PARKS on must reach the client's dialog queue.
  *
- * The list is shared with the server (`@kabmo-labs/kabmo-omp-rpc-protocol/dialog-methods`) and
+ * The list is shared with the server (`@kabmo-labs/kabmo-omp/rpc-protocol/dialog-methods`) and
  * the grouped `ask` frame — the shape `configureChild` opts into with
  * `set_ask_dialog` — was missing from this gate's local copy. The frame was
  * dropped silently, so the ask card had no dialog to render and drew every

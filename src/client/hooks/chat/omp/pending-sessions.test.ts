@@ -31,7 +31,7 @@ import {
 } from '@/client/hooks/chat/omp/pending-sessions';
 import { consumeAdoption, isSpawnAdoption } from '@/client/hooks/chat/omp/pending-adoption';
 import { pendingHostFolderIds, withPendingRows } from '@/client/hooks/chat/omp/pending-rows';
-import { formatNewSessionTitle } from '@kabmo-labs/kabmo-omp-session-core/default-title';
+import { formatNewSessionTitle } from '@kabmo-labs/kabmo-omp/session-core/default-title';
 import { forgetSession, getSessionValue, setSessionKey } from '@/shared/lib/workspace/session-state/store';
 import { CHAT_DRAFT_KEY } from '@/shared/lib/chat/composer/draft';
 import type { WorkspaceFolderData } from '@/shared/types';

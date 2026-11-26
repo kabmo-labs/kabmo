@@ -23,7 +23,7 @@
  *   stranger.
  */
 
-import { getImageMimeFromBytes, looksLikeSvg } from '@kabmo-labs/kabmo-fs-media/file-kind';
+import { getImageMimeFromBytes, looksLikeSvg } from '@kabmo-labs/kabmo-fs/media/file-kind';
 import { pickIconHrefs, providerIconOrigins } from '@/server/lib/models/provider-icon-parse';
 import { drawableSvg } from '@/server/lib/models/provider-icon-svg';
 

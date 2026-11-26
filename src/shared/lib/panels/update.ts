@@ -25,7 +25,7 @@
  */
 
 import type { PanelGitStatus, PanelPluginStatus } from '@/shared/types';
-import { isNewer } from '@kabmo-labs/kabmo-harness-update-job/semver';
+import { isNewer } from '@kabmo-labs/kabmo-harness/update-job/semver';
 
 /** Where the update would come from, when one is pending. */
 export interface PluginUpdate {

@@ -21,7 +21,7 @@ import { CopyButton } from '@/client/components/common/CopyButton';
 import { AccountLoginPanel } from '@/client/components/settings/categories/harness-settings/AccountLoginPanel';
 import { AddAccountForm } from '@/client/components/settings/categories/harness-settings/AddAccountForm';
 import type { AccountMutationResult } from '@/client/hooks/models/harness-accounts';
-import type { HarnessAccountView } from '@kabmo-labs/kabmo-harness-accounts';
+import type { HarnessAccountView } from '@kabmo-labs/kabmo-harness/accounts';
 
 export interface AccountsPanelProps {
   harness: string;

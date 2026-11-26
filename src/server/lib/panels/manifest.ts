@@ -27,7 +27,7 @@ import type {
 import { PANEL_SLOT_NAMES } from '@/shared/types';
 import type { PluginSettingDefinition } from '@kabmo-labs/kabmo-sdk';
 import { isRecord } from '@kabmo-labs/kabmo-guards';
-import { isValidRange } from '@kabmo-labs/kabmo-harness-update-job/semver';
+import { isValidRange } from '@kabmo-labs/kabmo-harness/update-job/semver';
 import { resolveInsideRoot } from '@/shared/lib/panels/resolve-asset';
 
 /** An id segment: what a plugin id may look like. */

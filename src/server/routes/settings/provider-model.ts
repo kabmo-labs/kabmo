@@ -2,9 +2,9 @@ import { json } from '@kabmo-labs/kabmo-http';
 import type { ActionFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
-import { upsertOmpProviderModels } from '@kabmo-labs/kabmo-omp-config-providers/providers';
-import { manualModelSeed } from '@kabmo-labs/kabmo-omp-config-providers/provider-seeds';
-import { readNativeProviders } from '@kabmo-labs/kabmo-omp-models-config/models-config';
+import { upsertOmpProviderModels } from '@kabmo-labs/kabmo-omp/config-providers/providers';
+import { manualModelSeed } from '@kabmo-labs/kabmo-omp/config-providers/provider-seeds';
+import { readNativeProviders } from '@kabmo-labs/kabmo-omp/models-config/models-config';
 import { isProviderAuthMode, isProviderThinkingEffort, modelKindOf } from '@kabmo-labs/kabmo-provider-contracts/dialect';
 import { refreshModelRegistryAfterWrite } from '@/server/lib/models/registry-refresh.server';
 

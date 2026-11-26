@@ -1,7 +1,7 @@
 import { json } from '@kabmo-labs/kabmo-http';
 import type { ActionFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
-import { upsertOmpProviderModels } from '@kabmo-labs/kabmo-omp-config-providers/providers';
+import { upsertOmpProviderModels } from '@kabmo-labs/kabmo-omp/config-providers/providers';
 import { readOmpProviderApiKey } from '@/server/lib/omp/core/auth-credentials';
 import { refreshModelRegistryAfterWrite } from '@/server/lib/models/registry-refresh.server';
 import {

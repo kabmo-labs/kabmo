@@ -24,7 +24,7 @@
 
 import { mkdir, rename, rm, cp } from 'fs/promises';
 import { join } from 'path';
-import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
+import { pathExists } from '@kabmo-labs/kabmo-omp/paths';
 import { gitRun, firstLine } from '@/server/lib/wiki/git';
 import { isGitUrl, repoSlug } from '@/shared/lib/git/url';
 import { pluginRepoNameError } from '@/shared/lib/panels/plugin-repo';

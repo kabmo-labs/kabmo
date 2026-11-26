@@ -1,5 +1,5 @@
-import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
-import { isOmpHarness } from '@kabmo-labs/kabmo-omp-access-mode';
+import type { ApprovalMode } from '@kabmo-labs/kabmo-omp/access-mode';
+import { isOmpHarness } from '@kabmo-labs/kabmo-omp/access-mode';
 
 /**
  * Composer labels for the tool-approval tiers (see ApprovalMode).

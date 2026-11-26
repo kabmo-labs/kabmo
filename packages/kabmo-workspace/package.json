@@ -1,0 +1,34 @@
+{
+  "name": "@kabmo-labs/kabmo-workspace",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "The workspace family: 2 previously separate modules in one package.",
+  "exports": {
+    "./root": "./src/root/root.ts",
+    "./root/root": "./src/root/root.ts",
+    "./root/external-roots": "./src/root/external-roots.ts",
+    "./sidebar": "./src/sidebar/sidebar-sort.ts",
+    "./sidebar/sidebar-sort": "./src/sidebar/sidebar-sort.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-workspace"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  },
+  "dependencies": {
+    "@kabmo-labs/kabmo-app-contracts": "workspace:*",
+    "@kabmo-labs/kabmo-db": "workspace:*",
+    "@kabmo-labs/kabmo-fs": "workspace:*",
+    "@kabmo-labs/kabmo-omp": "workspace:*"
+  }
+}

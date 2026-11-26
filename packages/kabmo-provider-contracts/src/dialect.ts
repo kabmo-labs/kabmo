@@ -22,7 +22,7 @@
  * disagree about what omp accepts.
  */
 
-import type { OmpProviderApi, ProviderAuthMode, ProviderDiscoveryType, ProviderModelSource } from '@kabmo-labs/kabmo-settings-contracts/provider';
+import type { OmpProviderApi, ProviderAuthMode, ProviderDiscoveryType, ProviderModelSource } from '@kabmo-labs/kabmo-settings/contracts/provider';
 
 /** Every `api` omp accepts, in omp's own `ApiSchema` order. */
 export const PROVIDER_APIS: readonly OmpProviderApi[] = [

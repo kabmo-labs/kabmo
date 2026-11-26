@@ -14,8 +14,8 @@
  * bug as adopting a child with the wrong approval mode.
  */
 
-import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
-import { DEFAULT_APPROVAL_MODE } from '@kabmo-labs/kabmo-omp-access-mode';
+import type { ApprovalMode } from '@kabmo-labs/kabmo-omp/access-mode';
+import { DEFAULT_APPROVAL_MODE } from '@kabmo-labs/kabmo-omp/access-mode';
 import type { AgentSessionWrapper } from '@/server/lib/omp/rpc/manager';
 import type { SessionPromptArgs } from '@/server/lib/omp/rpc/spawn-args';
 import { claimPrewarmedSession } from '@/server/lib/omp/rpc/prewarm-pool';
@@ -23,7 +23,7 @@ import { ompSessionRegistry, startRpcSession } from '@/server/lib/omp/rpc/sessio
 import { registerSpawnedSession } from '@/server/lib/omp/rpc/session-registration';
 import { syncDiscoveryRootsWatch } from '@/server/lib/omp/config/roots-watch.server';
 import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
-import { mintAgentEnvironment, rememberAgentToken } from '@kabmo-labs/kabmo-session-relations/agent-token.server';
+import { mintAgentEnvironment, rememberAgentToken } from '@kabmo-labs/kabmo-session/relations/agent-token.server';
 
 /** Consume the prewarmed process for `cwd` when its approval mode matches, or
  *  spawn a fresh session. The returned wrapper is already registered under its

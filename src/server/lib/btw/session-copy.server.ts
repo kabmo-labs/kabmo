@@ -34,13 +34,13 @@
 import fs from 'fs';
 import * as path from 'path';
 import { getDatabasePath } from '@/server/db.server';
-import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
+import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp/session-scan/files';
 import {
   buildTitleLine,
   completeLines,
   lastEntryId,
   parseJsonObject,
-} from '@kabmo-labs/kabmo-omp-session-runtime/transcript-copy';
+} from '@kabmo-labs/kabmo-omp/session-runtime/transcript-copy';
 import { isRecord } from '@kabmo-labs/kabmo-guards';
 
 /** Root holding every topic workspace, beside Kabmo database. */

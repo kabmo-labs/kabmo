@@ -16,7 +16,7 @@
 
 import { useEffect, useState } from 'preact/hooks';
 import { Check, CornerDownLeft } from 'lucide-preact';
-import type { ExtensionUiDialogRequest } from '@kabmo-labs/kabmo-chat-contracts/agent';
+import type { ExtensionUiDialogRequest } from '@kabmo-labs/kabmo-chat/contracts/agent';
 import { isOtherOption } from '@/shared/lib/chat/ask-questions';
 import { OptionRow } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/OptionRow';
 import type { ExtensionDialogResponse } from '@/client/components/workspace/chat-timeline/tool-renderers/extension-dialog/Lazy';

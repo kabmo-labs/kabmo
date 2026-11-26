@@ -21,7 +21,7 @@ import {
 } from '@/shared/lib/models/provider/presets';
 import { PROVIDER_APIS, providerEmptyReason, providerFetchBlockReason } from '@kabmo-labs/kabmo-provider-contracts/dialect';
 import { PRESET_NEW_PROVIDERS } from '@/client/data/settings/provider';
-import type { PresetProviderOption, ProviderItem } from '@kabmo-labs/kabmo-settings-contracts/provider';
+import type { PresetProviderOption, ProviderItem } from '@kabmo-labs/kabmo-settings/contracts/provider';
 
 function provider(overrides: Partial<ProviderItem> & { slug: string }): ProviderItem {
   return {

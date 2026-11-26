@@ -18,8 +18,8 @@ import { Bot, Square } from 'lucide-preact';
 import { useSearchParams } from '@/client/lib/router/search-params';
 import { SubagentStatusIcon } from '@/client/components/common/SubagentStatusIcon';
 import type { BranchRowStyle } from '@/client/components/common/session-branch/style';
-import { subagentRowLabel } from '@kabmo-labs/kabmo-omp-subagent/label';
-import { cancelSubagent } from '@kabmo-labs/kabmo-omp-subagent/control';
+import { subagentRowLabel } from '@kabmo-labs/kabmo-omp/subagent/label';
+import { cancelSubagent } from '@kabmo-labs/kabmo-omp/subagent/control';
 import type { SubagentInfo } from '@/shared/types';
 
 export interface SubagentRowProps {

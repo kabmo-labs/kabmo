@@ -3,7 +3,7 @@
  * JSONL discovery and use the omp session UUID (string) as id — hence the
  * union with string ids. Mock/demo mode keeps numeric SQLite ids.
  */
-import type { SessionWorktreeInfo } from '@kabmo-labs/kabmo-worktree-types';
+import type { SessionWorktreeInfo } from '@kabmo-labs/kabmo-worktree/types';
 
 export interface SessionItemData {
   id: number | string;

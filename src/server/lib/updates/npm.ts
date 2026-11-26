@@ -73,7 +73,7 @@ export async function resolveUpdatePackage(
 }
 
 /** oh-my-pi's package name: what `omp update` itself resolves against. */
-export { OMP_PACKAGE } from '@kabmo-labs/kabmo-omp-install/package-name';
+export { OMP_PACKAGE } from '@kabmo-labs/kabmo-omp/install/package-name';
 
 /** A hung registry must not hold the check open; this is one small GET. */
 const TIMEOUT_MS = 10_000;

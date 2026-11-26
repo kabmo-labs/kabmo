@@ -12,8 +12,8 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { AcpFrameMapper } from '@kabmo-labs/kabmo-acp-mapper/frames';
-import { toChatMessage } from '@kabmo-labs/kabmo-omp-mapper';
+import { AcpFrameMapper } from '@kabmo-labs/kabmo-acp/mapper/frames';
+import { toChatMessage } from '@kabmo-labs/kabmo-omp/mapper';
 
 const textChunk = (text: string, messageId = 'm1') => ({
   sessionUpdate: 'agent_message_chunk',

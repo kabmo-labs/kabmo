@@ -22,11 +22,11 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { parseMessageBlocks } from '@kabmo-labs/kabmo-omp-session-parse/parse-message-blocks';
-import { parseAssistantContent } from '@kabmo-labs/kabmo-omp-session-parse/messages-parse';
-import { toChatMessage as reloadToChatMessage } from '@kabmo-labs/kabmo-omp-messages-map';
-import { toChatMessage as liveToChatMessage } from '@kabmo-labs/kabmo-omp-mapper';
-import type { OmpMessageEntry } from '@kabmo-labs/kabmo-omp-session-parse/messages-parse';
+import { parseMessageBlocks } from '@kabmo-labs/kabmo-omp/session-parse/parse-message-blocks';
+import { parseAssistantContent } from '@kabmo-labs/kabmo-omp/session-parse/messages-parse';
+import { toChatMessage as reloadToChatMessage } from '@kabmo-labs/kabmo-omp/messages-map';
+import { toChatMessage as liveToChatMessage } from '@kabmo-labs/kabmo-omp/mapper';
+import type { OmpMessageEntry } from '@kabmo-labs/kabmo-omp/session-parse/messages-parse';
 
 describe('parseMessageBlocks — narration', () => {
   test('a narration block becomes answer text, not reasoning', () => {

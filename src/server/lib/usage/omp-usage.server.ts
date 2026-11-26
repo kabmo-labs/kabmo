@@ -19,10 +19,10 @@
  * provider's endpoint, so it is far too expensive to run per panel read.
  */
 
-import { resolveOmpBin } from '@kabmo-labs/kabmo-omp-cli';
+import { resolveOmpBin } from '@kabmo-labs/kabmo-omp/cli';
 import { isRecord } from '@kabmo-labs/kabmo-guards';
 import type { UsageLimitWindow, UsageUnit, UsageWindowStatus } from '@/shared/types';
-import { childEnv } from '@kabmo-labs/kabmo-fs-child-env';
+import { childEnv } from '@kabmo-labs/kabmo-fs/child-env';
 
 const TIMEOUT_MS = 30_000;
 const CACHE_TTL_MS = 60_000;

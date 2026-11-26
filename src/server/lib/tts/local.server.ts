@@ -19,7 +19,7 @@
 import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
-import { resolveOmpBin } from '@kabmo-labs/kabmo-omp-cli';
+import { resolveOmpBin } from '@kabmo-labs/kabmo-omp/cli';
 import { TtsEngineError, type TtsAudio } from '@/server/lib/tts/engines/adapter';
 import type { TtsLocalCapability } from '@/shared/lib/tts/capability';
 

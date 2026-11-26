@@ -28,7 +28,7 @@ import os from 'os';
 import path from 'path';
 
 import { RESTART_GRACE_MS, scheduleSelfRestart, selfRestartMessage, skipRestartNote, withRestartPlan } from '@/server/lib/lifecycle/restart';
-import { invalidateOmpCliCache } from '@kabmo-labs/kabmo-omp-cli';
+import { invalidateOmpCliCache } from '@kabmo-labs/kabmo-omp/cli';
 import { clearListener, listenerFetchOptions, listenerUrl, setListener } from '@/server/lib/lifecycle/listener';
 import { resolveBunBin } from '@/server/lib/lifecycle/bun';
 import { SHELL_ROUTE } from '@/server/lib/lifecycle/shell-route';

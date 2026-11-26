@@ -2,7 +2,7 @@ import { json } from '@kabmo-labs/kabmo-http';
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
-import { getOmpConfigValue, listOmpConfig, resetOmpConfigKey, setOmpConfigValue } from '@kabmo-labs/kabmo-omp-config-files/config-cli';
+import { getOmpConfigValue, listOmpConfig, resetOmpConfigKey, setOmpConfigValue } from '@kabmo-labs/kabmo-omp/config-files/config-cli';
 import { onOmpConfigWritten } from '@/server/lib/dictation/language.server';
 
 export async function loader({ request }: LoaderFunctionArgs) {

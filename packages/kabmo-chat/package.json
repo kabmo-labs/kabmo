@@ -1,0 +1,49 @@
+{
+  "name": "@kabmo-labs/kabmo-chat",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "The chat family: 4 previously separate modules in one package.",
+  "exports": {
+    "./contracts": "./src/contracts/chat.ts",
+    "./contracts/agent": "./src/contracts/agent.ts",
+    "./contracts/chat": "./src/contracts/chat.ts",
+    "./contracts/tool-render": "./src/contracts/tool-render.ts",
+    "./notices": "./src/notices/notice-row.ts",
+    "./notices/irc-notice": "./src/notices/irc-notice.ts",
+    "./notices/notice-row": "./src/notices/notice-row.ts",
+    "./notices/notice-text": "./src/notices/notice-text.ts",
+    "./notices/xml-envelope": "./src/notices/xml-envelope.ts",
+    "./notices/xml-tag": "./src/notices/xml-tag.ts",
+    "./rows": "./src/rows/tool-results.ts",
+    "./rows/tool-results": "./src/rows/tool-results.ts",
+    "./rows/transcript-rows": "./src/rows/transcript-rows.ts",
+    "./tool": "./src/tool/normalize.ts",
+    "./tool/normalize": "./src/tool/normalize.ts",
+    "./tool/render-key": "./src/tool/render-key.ts",
+    "./tool/tool-aliases": "./src/tool/tool-aliases.ts",
+    "./tool/tool-commands": "./src/tool/tool-commands.ts",
+    "./tool/tool-input-path": "./src/tool/tool-input-path.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-chat"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  },
+  "dependencies": {
+    "@kabmo-labs/kabmo-app-contracts": "workspace:*",
+    "@kabmo-labs/kabmo-format": "workspace:*",
+    "@kabmo-labs/kabmo-guards": "workspace:*",
+    "@kabmo-labs/kabmo-omp": "workspace:*",
+    "preact": "^10.29.8"
+  }
+}

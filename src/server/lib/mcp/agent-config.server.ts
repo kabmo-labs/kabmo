@@ -22,8 +22,8 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { parse as parseToml } from 'smol-toml';
 import { transportOf, type McpServerEntry } from '@/server/lib/mcp/registry.server';
-import type { McpServer } from '@kabmo-labs/kabmo-omp-config-mcp/mcp-shared';
-import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
+import type { McpServer } from '@kabmo-labs/kabmo-omp/config-mcp/mcp-shared';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness/catalog';
 
 type AgentMcpShape = 'native' | 'opencode' | 'codex';
 

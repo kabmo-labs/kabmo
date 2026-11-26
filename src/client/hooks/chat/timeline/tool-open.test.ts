@@ -25,7 +25,7 @@ import { act } from 'preact/test-utils';
 import { useToolOpenState, TOOL_OPEN_STATE_KEY, type ToolOpenState } from '@/client/hooks/chat/timeline/tool-open';
 import { SessionStateProvider } from '@/client/components/common/session-state-provider';
 import { clearSessionKey, setSessionKey } from '@/shared/lib/workspace/session-state/store';
-import type { ToolCallData } from '@kabmo-labs/kabmo-chat-contracts/chat';
+import type { ToolCallData } from '@kabmo-labs/kabmo-chat/contracts/chat';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'HTMLInputElement', 'Event', 'MouseEvent', 'KeyboardEvent'] as const;
 const nativeGlobals: Partial<Record<(typeof DOM_GLOBALS)[number], unknown>> = {};

@@ -45,7 +45,7 @@
 import { mkdir, rm, stat } from 'fs/promises';
 import { join, relative } from 'path';
 import type { PanelPluginManifest } from '@/shared/types';
-import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
+import { pathExists } from '@kabmo-labs/kabmo-omp/paths';
 import { resolveBunBin } from '@/server/lib/lifecycle/bun';
 import { runShell } from '@/server/lib/fs/shell';
 import { linkKabmoPackages } from '@/server/lib/panels/link.server';

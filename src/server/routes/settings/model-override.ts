@@ -2,7 +2,7 @@ import { json } from '@kabmo-labs/kabmo-http';
 import type { ActionFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
-import { writeModelOverride, type ReasoningEffort } from '@kabmo-labs/kabmo-omp-config-providers/model-overrides';
+import { writeModelOverride, type ReasoningEffort } from '@kabmo-labs/kabmo-omp/config-providers/model-overrides';
 import { refreshModelRegistryAfterWrite } from '@/server/lib/models/registry-refresh.server';
 
 /**

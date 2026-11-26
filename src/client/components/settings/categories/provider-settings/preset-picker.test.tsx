@@ -20,7 +20,7 @@ import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { PresetPicker } from '@/client/components/settings/categories/provider-settings/PresetPicker';
-import type { PresetProviderOption } from '@kabmo-labs/kabmo-settings-contracts/provider';
+import type { PresetProviderOption } from '@kabmo-labs/kabmo-settings/contracts/provider';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
 
 let container: HTMLElement;

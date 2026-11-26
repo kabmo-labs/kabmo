@@ -34,7 +34,7 @@ import { useRepoDetails } from '@/client/hooks/workspace/repo-details';
 import { copyToClipboard } from '@/client/hooks/ui/clipboard';
 import { groupRepos, repoNameWithinGroup } from '@/shared/lib/fs/repo-groups';
 import { repoLabel } from '@/shared/lib/fs/repo-label';
-import { toAbsolutePath } from '@kabmo-labs/kabmo-fs-media/paths';
+import { toAbsolutePath } from '@kabmo-labs/kabmo-fs/media/paths';
 
 interface RepoModalProps {
   isOpen: boolean;

@@ -30,7 +30,7 @@ import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { getDb } from '@/server/db.server';
 import { refreshModelCatalog } from '@/server/lib/models/catalog.server';
 import { mergeProviders, PROVIDERS_SETTINGS_KEY } from '@/server/lib/models/provider-registry.server';
-import { readSettingsJson } from '@kabmo-labs/kabmo-settings-store';
+import { readSettingsJson } from '@kabmo-labs/kabmo-settings/store';
 import { refreshModelRegistryAfterWrite } from '@/server/lib/models/registry-refresh.server';
 import type { ProviderItem } from '@/shared/types';
 

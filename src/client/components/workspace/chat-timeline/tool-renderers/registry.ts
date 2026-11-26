@@ -22,11 +22,11 @@
  * panels read the same URL grammar, and a second copy of it would drift.
  */
 
-import type { ToolCallData } from '@kabmo-labs/kabmo-chat-contracts/chat';
-import type { ToolRenderKey } from '@kabmo-labs/kabmo-chat-contracts/tool-render';
-import { soleToolCommand } from '@kabmo-labs/kabmo-chat-tool/tool-commands';
+import type { ToolCallData } from '@kabmo-labs/kabmo-chat/contracts/chat';
+import type { ToolRenderKey } from '@kabmo-labs/kabmo-chat/contracts/tool-render';
+import { soleToolCommand } from '@kabmo-labs/kabmo-chat/tool/tool-commands';
 
-export { xdDevice, xdDocPath, isXdDocRead } from '@kabmo-labs/kabmo-chat-tool/render-key';
+export { xdDevice, xdDocPath, isXdDocRead } from '@kabmo-labs/kabmo-chat/tool/render-key';
 
 /** Every family that has a panel component. `custom` is the JSON fallback. */
 export type ToolPanelKind = Exclude<ToolRenderKey, 'custom'>;

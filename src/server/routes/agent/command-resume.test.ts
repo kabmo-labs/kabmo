@@ -5,9 +5,9 @@
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { sendCommand } from '@/server/routes/agent/command';
-import { saveHarnessConfig } from '@kabmo-labs/kabmo-harness-config-store/config.server';
-import { saveHarnessSession } from '@kabmo-labs/kabmo-harness-session/session-store.server';
-import { EMPTY_HARNESS_CONFIG } from '@kabmo-labs/kabmo-harness-config';
+import { saveHarnessConfig } from '@kabmo-labs/kabmo-harness/config-store/config.server';
+import { saveHarnessSession } from '@kabmo-labs/kabmo-harness/session/session-store.server';
+import { EMPTY_HARNESS_CONFIG } from '@kabmo-labs/kabmo-harness/config';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 
 function post(sessionId: string, body: Record<string, unknown>): Promise<Response> {

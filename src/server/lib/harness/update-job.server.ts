@@ -26,13 +26,13 @@
  */
 
 import { getHarnessUpdateStatusPath } from '@kabmo-labs/kabmo-paths/paths';
-import { readUpdateJob, settleDeadJob, writeUpdateJob } from '@kabmo-labs/kabmo-harness-lease/update-job-store';
+import { readUpdateJob, settleDeadJob, writeUpdateJob } from '@kabmo-labs/kabmo-harness/lease/update-job-store';
 import { pumpUpdateQueue, readAllUpdateJobs, serializeUpdateWork } from '@/server/lib/harness/update-queue.server';
 import { spawnUpdateWorker } from '@/server/lib/harness/update-spawn.server';
-import { jobRunning, jobUnfinished } from '@kabmo-labs/kabmo-harness-update-job/update-job';
-import type { HarnessUpdateStep } from '@kabmo-labs/kabmo-harness-update-job/update-plan';
-import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
-import type { HarnessUpdateJob } from '@kabmo-labs/kabmo-harness-update-job/types';
+import { jobRunning, jobUnfinished } from '@kabmo-labs/kabmo-harness/update-job/update-job';
+import type { HarnessUpdateStep } from '@kabmo-labs/kabmo-harness/update-job/update-plan';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness/catalog';
+import type { HarnessUpdateJob } from '@kabmo-labs/kabmo-harness/update-job/types';
 
 /**
  * This harness's unfinished record — installing, or waiting its turn — or null.

@@ -14,13 +14,13 @@
  */
 
 import { getLiveSession, harnessOfSession } from '@/server/lib/omp/rpc/session-registry';
-import { findSessionFileById } from '@kabmo-labs/kabmo-omp-session-locator';
-import { readRawHeaderLine } from '@kabmo-labs/kabmo-omp-session-scan/files';
-import { knownHarness, loadHarnessSession } from '@kabmo-labs/kabmo-harness-session/session-store.server';
-import { canonicalPath } from '@kabmo-labs/kabmo-fs-canonical';
-import { resolveProjectRoot } from '@kabmo-labs/kabmo-omp-worktree';
+import { findSessionFileById } from '@kabmo-labs/kabmo-omp/session-locator';
+import { readRawHeaderLine } from '@kabmo-labs/kabmo-omp/session-scan/files';
+import { knownHarness, loadHarnessSession } from '@kabmo-labs/kabmo-harness/session/session-store.server';
+import { canonicalPath } from '@kabmo-labs/kabmo-fs/canonical';
+import { resolveProjectRoot } from '@kabmo-labs/kabmo-omp/worktree';
 import { getDb } from '@/server/db.server';
-import { HARNESS_IDS, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
+import { HARNESS_IDS, type HarnessId } from '@kabmo-labs/kabmo-harness/catalog';
 
 export interface SessionRef {
   sessionId: string;

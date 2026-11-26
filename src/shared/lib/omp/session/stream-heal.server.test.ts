@@ -16,7 +16,7 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { isOrphanStreamRow, isStaleStreamRow } from '@kabmo-labs/kabmo-session-stream-state/stream-heal.server';
+import { isOrphanStreamRow, isStaleStreamRow } from '@kabmo-labs/kabmo-session/stream-state/stream-heal.server';
 
 const OWNER = 4242;
 const otherInstance = 9999;

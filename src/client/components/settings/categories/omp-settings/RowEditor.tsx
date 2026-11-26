@@ -24,8 +24,8 @@
 
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { Check, Eye, EyeOff, X } from 'lucide-preact';
-import type { SchemaEntry } from '@kabmo-labs/kabmo-omp-schema/schema-types';
-import { parseDraft, valueToText } from '@kabmo-labs/kabmo-omp-schema/row-value';
+import type { SchemaEntry } from '@kabmo-labs/kabmo-omp/schema/schema-types';
+import { parseDraft, valueToText } from '@kabmo-labs/kabmo-omp/schema/row-value';
 import { OrderedChips } from '@/client/components/settings/categories/omp-settings/OrderedChips';
 import { SearchSelect } from '@/client/components/common/search-select';
 

@@ -44,7 +44,7 @@
  */
 
 import { listRpcSessions } from '@/server/lib/omp/rpc/session-registry';
-import { reloadUtilityProcesses } from '@kabmo-labs/kabmo-omp-rpc-process/utility';
+import { reloadUtilityProcesses } from '@kabmo-labs/kabmo-omp/rpc-process/utility';
 
 /** The part of a live session a reload needs. */
 export interface ReloadableSession {

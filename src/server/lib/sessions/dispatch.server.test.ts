@@ -17,8 +17,8 @@ import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { ensureSessionRelationsSchema } from '@/server/lib/sessions/schema.server';
 import { getDb } from '@/server/db.server';
 import { ensureSessionLive, type DispatchDeps } from '@/server/lib/sessions/dispatch.server';
-import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
-import { saveHarnessSession } from '@kabmo-labs/kabmo-harness-session/session-store.server';
+import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp/session-scan/files';
+import { saveHarnessSession } from '@kabmo-labs/kabmo-harness/session/session-store.server';
 import type { QueueDeliveryHost } from '@/server/lib/queue/delivery.server';
 
 let agentRoot = '';

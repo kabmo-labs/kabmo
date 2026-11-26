@@ -1,0 +1,241 @@
+/**
+ * @license
+ * SPDX-License-Identifier: MIT
+ */
+
+/**
+ * The ACP session stubs the session suites drive.
+ *
+ * Extracted because the per-concern suites (`session.test.ts`,
+ * `session-permissions.test.ts`, `session-observers.test.ts`) each need the same
+ * turn harness, and a second copy is exactly how two files drift into asserting
+ * different behaviour of one seam.
+ *
+ * The session is built on `AcpSession.prototype` rather than through the
+ * constructor: the constructor spawns a real agent process, and every rule below
+ * is about what the session does with frames and commands, not about ACP
+ * transport. The seams a case may stub are the ones the class exposes for it
+ * (`markStream`, `onNotification`, `onClientRequest`, `proc`).
+ */
+
+import { AcpReplay } from '@kabmo-labs/kabmo-acp/session-core/replay';
+import { AcpSession } from './session';
+import { AcpUsageMeter } from '@kabmo-labs/kabmo-acp/session/session-usage';
+import { AcpFrameMapper } from '@kabmo-labs/kabmo-acp/mapper/frames';
+import { AcpTurns } from '@kabmo-labs/kabmo-acp/turn/turn';
+import { SessionListeners } from '@kabmo-labs/kabmo-acp/session/session-listeners';
+import { RawNotificationSink } from '@kabmo-labs/kabmo-acp/protocol/raw-listeners';
+import { PendingPermissions } from '@kabmo-labs/kabmo-acp/client/permissions';
+import { AcpSubagents } from '@kabmo-labs/kabmo-acp/mapper/subagents';
+import { acpConfigView } from '@kabmo-labs/kabmo-acp/session/session-config-view';
+import { stampMessageModel } from '@kabmo-labs/kabmo-acp/session-config/session-config';
+import type { AgentEvent } from '@kabmo-labs/kabmo-omp/rpc-protocol/constants';
+
+export interface Turn {
+  /** Resolves once `session/prompt` has actually been sent. The dispatch is
+   *  chained behind the previous turn's request, so it is one tick later than
+   *  the ACK and every assertion has to wait for it. */
+  started: Promise<void>;
+  /** How many `session/prompt` requests have been sent. */
+  calls: () => number;
+  /** Settle the pending `session/prompt` call. */
+  finish: (result: { stopReason?: string }) => void;
+  fail: (error: unknown) => void;
+}
+
+export interface MountedSession {
+  session: AcpSession;
+  events: AgentEvent[];
+  turn: Turn;
+  /** How many times the turn-end seam fired (the queue's arming hook). */
+  turnEnds: () => number;
+  /** The durable run markers written for this session, in order. */
+  streamMarks: () => string[];
+  /** The `failure` argument written with each marker, in the same order. */
+  streamMarkFailures: () => Array<string | null>;
+  /** Results the session answered an agent→client request with. */
+  permissionAnswers: () => { id: unknown; result: unknown }[];
+  /** Session ids the session asked the agent to delete. */
+  deletedSessions: () => string[];
+  /** How many times a command or frame deferred the idle reclaim. */
+  idleResets: () => number;
+  /** Whether a destroy stopped the reclaim clock. */
+  idleStopped: () => boolean;
+  /** Swap the background probe the session drives with one a case controls. */
+  setBackground: (probe: BackgroundProbeStub) => void;
+}
+
+/** The slice of `AcpBackgroundProbe` a session calls. */
+export interface BackgroundProbeStub {
+  start: (baseline: string) => void;
+  stop: () => void;
+  consume: (method: string, params: Record<string, unknown>) => boolean;
+}
+
+/** Drain the microtask queue.
+ *
+ *  `session/prompt` is chained: a settle resolves the stub, then the busy-retry
+ *  wrapper, the turn's `settle`, `finish`, the end seams and the queue each take
+ *  a hop. Four ticks stopped being enough the moment that wrapper existed; this
+ *  is a fixed count of hops, not a wall-clock wait. */
+export async function flushTicks(count = 24): Promise<void> {
+  for (let i = 0; i < count; i += 1) await Promise.resolve();
+}
+
+/** One in-flight `session/prompt` the stub can settle. */
+interface PendingPrompt {
+  promise: Promise<unknown>;
+  resolve: (value: unknown) => void;
+  reject: (reason?: unknown) => void;
+}
+
+export function mountSession(options: { busyWaitMs?: number } = {}): MountedSession {
+  const events: AgentEvent[] = [];
+  const dispatched = Promise.withResolvers<void>();
+  const calls: PendingPrompt[] = [];
+  const turn: Turn = {
+    started: dispatched.promise,
+    calls: () => calls.length,
+    finish: (result) => calls.at(-1)?.resolve(result),
+    fail: (error) => calls.at(-1)?.reject(error),
+  };
+
+  const session = Object.create(AcpSession.prototype) as AcpSession;
+  const mapper = new AcpFrameMapper();
+  let turnEndCount = 0;
+  let idleResets = 0;
+  let idleStopped = false;
+  const idle = {
+    timeoutMs: 0,
+    reset: () => {
+      idleResets += 1;
+    },
+    stop: () => {
+      idleStopped = true;
+    },
+  };
+  const proc = {
+    prompt: async (_message: string, _images: unknown) => {
+      const pending = Promise.withResolvers<unknown>();
+      calls.push(pending);
+      dispatched.resolve();
+      return pending.promise;
+    },
+    cancel: () => {},
+    abandonPrompt: () => calls.at(-1)?.resolve({ stopReason: 'cancelled' }),
+    // A config write; the default reply omits the list, which is the shape a
+    // harness that ignores the protocol's "complete list" rule returns.
+    setConfigOption: async (_sessionId: string, _configId: string, _value: string | boolean) => ({}),
+    setMode: async (_sessionId: string, _modeId: string) => ({}),
+    setModel: async (_sessionId: string, _modelId: string) => ({}),
+    deleteSession: async (sessionId: string) => {
+      deletes.push(sessionId);
+      return {};
+    },
+    respond: (id: string | number, result: unknown) => answers.push({ id, result }),
+    dispose: async () => {},
+    isAlive: true,
+  };
+  const turns = new AcpTurns({
+    emit: (event) => (session as unknown as { emit: (e: AgentEvent) => void }).emit(event),
+    prompt: (message, images) => proc.prompt(message, images) as Promise<{ stopReason?: string } | undefined>,
+    cancelAgent: () => proc.cancel(),
+    abandonPrompt: () => proc.abandonPrompt(),
+    resetMapper: () => mapper.reset(),
+    closeMessage: () => mapper.closeMessage().map((event) => stampMessageModel(event, session.runModel)),
+    turnMessage: () => mapper.turnMessage(),
+    openCalls: () => mapper.openCalls(),
+    onTurnEnd: (info) => {
+      (session as unknown as { onTurnEnded: (info: { stopReason?: string; closedMessage: boolean }) => void })
+        .onTurnEnded(info);
+      turnEndCount += 1;
+    },
+  }, options);
+  const marks: string[] = [];
+  const markFailures: Array<string | null> = [];
+  const answers: { id: unknown; result: unknown }[] = [];
+  const deletes: string[] = [];
+  const eventSink = new SessionListeners();
+  eventSink.add((event) => events.push(event));
+  let background: BackgroundProbeStub = {
+    start: () => {},
+    stop: () => {},
+    consume: () => false,
+  };
+  Object.assign(session as unknown as Record<string, unknown>, {
+    markStream: (status: string, failure?: string | null) => {
+      marks.push(status);
+      markFailures.push(failure ?? null);
+    },
+    harness: 'opencode',
+    cwd: '/tmp',
+    sessionId: 'acp-1',
+    turns,
+    mapper,
+    permissions: new PendingPermissions(),
+    subagents: new AcpSubagents(),
+    // The config view is a constructor field; a prototype mount has none, and
+    // `set_model` writes through it.
+    config: acpConfigView(
+      {
+        get harness() { return 'opencode'; },
+        get sessionId() { return 'acp-1'; },
+        get configOptions() { return session.configOptions; },
+        set configOptions(options) { session.configOptions = options; },
+        get runModel() { return session.runModel; },
+        set runModel(model) { session.runModel = model; },
+        get modes() { return session.modes; },
+        set modes(modes) { session.modes = modes; },
+        get models() { return session.models; },
+        set models(models) { session.models = models; },
+        get isStreaming() { return session.isStreaming; },
+        emit: (event) => session.emit(event),
+      },
+      proc,
+    ),
+    accessMode: 'always-ask',
+    capabilities: {},
+    configOptions: [],
+    agentCommands: [],
+    planEntries: [],
+    messageCount: 0,
+    promptCount: 0,
+    assistantCount: 0,
+    usage: new AcpUsageMeter(),
+    runModel: null,
+    events: eventSink,
+    rawSink: new RawNotificationSink(),
+    proc,
+    idle,
+    destroyed: false,
+    background,
+    replay: new AcpReplay(),
+  });
+  return {
+    session,
+    events,
+    turn,
+    turnEnds: () => turnEndCount,
+    streamMarks: () => marks,
+    streamMarkFailures: () => markFailures,
+    permissionAnswers: () => answers,
+    deletedSessions: () => deletes,
+    idleResets: () => idleResets,
+    idleStopped: () => idleStopped,
+    setBackground: (probe) => {
+      background = probe;
+      Object.assign(session as unknown as Record<string, unknown>, { background: probe });
+    },
+  };
+}
+
+/** Push one `session/update` at the session, as the process would. `sessionId`
+ *  is the ADDRESS the frame carried; omitting it models an adapter that does not
+ *  tag its frames. */
+export function notify(session: AcpSession, update: Record<string, unknown>, sessionId?: string): void {
+  (session as unknown as { onNotification: (method: string, params: unknown) => void }).onNotification.call(
+    session,
+    'session/update',
+    sessionId ? { sessionId, update } : { update },
+  );
+}

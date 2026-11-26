@@ -85,16 +85,16 @@
  * rejection is a property of the opening message, not of when it is asked).
  */
 
-import { readSettingsJson } from '@kabmo-labs/kabmo-settings-store';
+import { readSettingsJson } from '@kabmo-labs/kabmo-settings/store';
 import { getDb } from '@/server/db.server';
-import { GET_STATE_TIMEOUT_MS, type RpcSessionState } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
+import { GET_STATE_TIMEOUT_MS, type RpcSessionState } from '@kabmo-labs/kabmo-omp/rpc-protocol/constants';
 import {
   GENERATE_TITLE_COMMAND,
   sendTitleRequest,
   waitForTitleOutcome,
   type TitleRequestHost,
-} from '@kabmo-labs/kabmo-omp-session-runtime/title-request.server';
-import { withTitleModelOverride } from '@kabmo-labs/kabmo-omp-session-runtime/title-model-overlay.server';
+} from '@kabmo-labs/kabmo-omp/session-runtime/title-request.server';
+import { withTitleModelOverride } from '@kabmo-labs/kabmo-omp/session-runtime/title-model-overlay.server';
 
 export {
   GENERATE_TITLE_COMMAND,
@@ -104,8 +104,8 @@ export {
   releaseTitleClaim,
   sendTitleRequest,
   waitForTitleOutcome,
-} from '@kabmo-labs/kabmo-omp-session-runtime/title-request.server';
-export type { TitleRequestHost } from '@kabmo-labs/kabmo-omp-session-runtime/title-request.server';
+} from '@kabmo-labs/kabmo-omp/session-runtime/title-request.server';
+export type { TitleRequestHost } from '@kabmo-labs/kabmo-omp/session-runtime/title-request.server';
 
 /** Settings blob key; mirrors the other blob keys (see `shared/lib/settings/keys`). */
 const SETTINGS_BLOB_KEY = 'kabmo_settings';

@@ -19,7 +19,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { executableStub } from '@/test-support/executable-stub';
-import { invalidateOmpCliCache } from '@kabmo-labs/kabmo-omp-cli';
+import { invalidateOmpCliCache } from '@kabmo-labs/kabmo-omp/cli';
 import { buildActiveReleaseNotes, selectActiveNote } from '@/server/lib/updates/active-notes';
 import { readInstalledVersion } from '@/server/lib/updates/install';
 import { ompReleaseTagUrl, releaseTagUrl } from '@/server/lib/updates/release-url';

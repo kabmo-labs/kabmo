@@ -31,7 +31,7 @@ import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import type { DiscoveryScope } from '@/server/lib/omp/config/scope';
 import type { SkillCatalogSource } from '@/shared/types';
 import { DEFAULT_CATALOG_SKILLS } from '@/client/data/settings/skill';
-import { searchSkillCatalog, toCatalogSkills } from '@kabmo-labs/kabmo-omp-config-files/skills-catalog';
+import { searchSkillCatalog, toCatalogSkills } from '@kabmo-labs/kabmo-omp/config-files/skills-catalog';
 import { inspectSkillRepo, toSkillRepoRef } from '@/server/lib/omp/config/skills-git-repo';
 import { installSkillCopies } from '@/server/lib/omp/config/skills-git-install';
 import { readCatalogSources, writeCatalogSources } from '@/server/lib/omp/config/skill-sources';

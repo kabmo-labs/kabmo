@@ -19,7 +19,7 @@ import { afterEach, expect, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { AcpProcess } from '@kabmo-labs/kabmo-acp-client/client';
+import { AcpProcess } from '@kabmo-labs/kabmo-acp/client/client';
 import { describePosix } from '@/test-support/platform';
 
 const launched: AcpProcess[] = [];

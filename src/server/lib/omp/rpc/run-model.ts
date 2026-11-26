@@ -12,9 +12,9 @@
  * because the frame fold's host contract names that method.
  */
 
-import type { RpcProcess } from '@kabmo-labs/kabmo-omp-rpc-process/process';
-import { GET_STATE_TIMEOUT_MS, type RpcSessionState } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
-import { markStreamModel, type SessionRunModel } from '@kabmo-labs/kabmo-session-stream-state';
+import type { RpcProcess } from '@kabmo-labs/kabmo-omp/rpc-process/process';
+import { GET_STATE_TIMEOUT_MS, type RpcSessionState } from '@kabmo-labs/kabmo-omp/rpc-protocol/constants';
+import { markStreamModel, type SessionRunModel } from '@kabmo-labs/kabmo-session/stream-state';
 
 /** Wrapper fields this probe reads and rewrites. */
 export interface RunModelHost {

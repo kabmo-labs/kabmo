@@ -22,7 +22,7 @@ import { json } from '@kabmo-labs/kabmo-http';
 import type { ActionFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { methodNotAllowed, parseJsonBody } from '@/server/lib/route-adapter';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
-import { setOmpConfigValue } from '@kabmo-labs/kabmo-omp-config-files/config-cli';
+import { setOmpConfigValue } from '@kabmo-labs/kabmo-omp/config-files/config-cli';
 import { readBrowserEngineState } from '@/server/lib/browser/engine';
 
 export async function loader() {

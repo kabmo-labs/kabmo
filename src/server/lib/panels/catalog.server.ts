@@ -29,7 +29,7 @@ import {
   samePluginRepo,
 } from '@/shared/lib/panels/plugin-repo';
 import { resolveInsideRoot } from '@/shared/lib/panels/resolve-asset';
-import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
+import { pathExists } from '@kabmo-labs/kabmo-omp/paths';
 import {
   getMarketplaceCatalogPath,
   getMarketplaceDir,

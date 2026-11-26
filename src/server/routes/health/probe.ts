@@ -1,7 +1,7 @@
 import { json, NO_STORE_HEADERS } from '@kabmo-labs/kabmo-http';
 import pkg from '@/../package.json';
 import { isAuthEnabled } from '@/server/lib/auth/guard';
-import { cachedOpenFileDescriptors } from '@kabmo-labs/kabmo-process-probe/fd-pressure';
+import { cachedOpenFileDescriptors } from '@kabmo-labs/kabmo-process/probe/fd-pressure';
 import { snapshot as memorySnapshot } from '@/server/lib/lifecycle/memory';
 import { resolveLaunchMode } from '@/server/lib/lifecycle/launch-mode';
 import { isTrayEnabledByArgv } from '@/server/lib/lifecycle/argv-flags';

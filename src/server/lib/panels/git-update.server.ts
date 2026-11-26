@@ -32,7 +32,7 @@
 
 import { join } from 'path';
 import { gitRun, firstLine } from '@/server/lib/wiki/git';
-import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
+import { pathExists } from '@kabmo-labs/kabmo-omp/paths';
 import { getMarketplacePluginsDir, invalidatePanelScan } from '@/server/lib/panels/registry.server';
 import { readGitOrigin } from '@/server/lib/panels/git-clone.server';
 import { readPluginManifest } from '@/server/lib/panels/files.server';

@@ -13,7 +13,7 @@
  */
 
 import { DEFAULT_MCP_SERVERS } from '@/client/data/settings/mcp';
-import { createSettingsListStore } from '@kabmo-labs/kabmo-settings-store';
+import { createSettingsListStore } from '@kabmo-labs/kabmo-settings/store';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { normalizeMcpItem } from '@/shared/lib/mcp/item';
 import type { DbClient } from '@kabmo-labs/kabmo-db/client';

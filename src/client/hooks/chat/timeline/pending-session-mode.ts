@@ -19,8 +19,8 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
-import { isPendingSessionId } from '@kabmo-labs/kabmo-omp-session-core/default-title';
-import { pendingSessionMode, type SessionModeState } from '@kabmo-labs/kabmo-harness-session-modes';
+import { isPendingSessionId } from '@kabmo-labs/kabmo-omp/session-core/default-title';
+import { pendingSessionMode, type SessionModeState } from '@kabmo-labs/kabmo-harness/session-modes';
 import type { ModeCapabilities } from '@/client/hooks/chat/timeline/mode-availability';
 
 export interface PendingSessionMode {

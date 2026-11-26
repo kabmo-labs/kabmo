@@ -25,7 +25,7 @@ import {
 } from '@/server/lib/panels/baseline.server';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { getDb } from '@/server/db.server';
-import { writeSettingsJson } from '@kabmo-labs/kabmo-settings-store';
+import { writeSettingsJson } from '@kabmo-labs/kabmo-settings/store';
 
 beforeEach(async () => {
   await isolateDb();

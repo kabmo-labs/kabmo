@@ -39,8 +39,8 @@
  */
 
 import type { DbClient } from '@kabmo-labs/kabmo-db/client';
-import { findSessionFileById } from '@kabmo-labs/kabmo-omp-session-locator';
-import { overlayRowsForOmpSession } from '@kabmo-labs/kabmo-omp-session-runtime/merge-stored';
+import { findSessionFileById } from '@kabmo-labs/kabmo-omp/session-locator';
+import { overlayRowsForOmpSession } from '@kabmo-labs/kabmo-omp/session-runtime/merge-stored';
 
 /**
  * Rewrite every over-full `chat_sessions` row whose transcript omp owns.

@@ -63,6 +63,10 @@ Plus, before declaring anything done:
   folder, and a move updates every importer in the same change.
 - **Reuse the existing pattern** for the thing you are adding. A second convention for the same job
   is the defect, even when it works.
+- **A workspace package is a prefix family, not a file.** `packages/` holds 31 manifests; a module
+  that shares a prefix is a subpath of that family (`@kabmo-labs/kabmo-omp/session-reader`), never a
+  new `kabmo-omp-*` manifest. The map, the explicit `exports` rule and the publish shape are in
+  [`docs/reference/workspace-packages.md`](docs/reference/workspace-packages.md).
 
 ## 4. Boundaries and module shapes
 

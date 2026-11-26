@@ -32,7 +32,7 @@
 import { createSseStream } from '@/server/lib/sse';
 import type { LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { getDb } from '@/server/db.server';
-import { readAllSettingsJson } from '@kabmo-labs/kabmo-settings-store';
+import { readAllSettingsJson } from '@kabmo-labs/kabmo-settings/store';
 import { NOTIFICATION_PLATFORM_KEYS, type NotificationPlatform } from '@/shared/lib/notifications/settings';
 import { readSettingsBlob } from '@/shared/lib/settings/keys';
 import { onNotificationEvent } from '@/server/lib/notifications/feed.server';

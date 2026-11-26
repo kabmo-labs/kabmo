@@ -31,7 +31,7 @@
  * start-time environment, so a warm child without it can never serve the chat.
  */
 
-import { ACCESS_MODE_SETTING_KEY, isApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
+import { ACCESS_MODE_SETTING_KEY, isApprovalMode } from '@kabmo-labs/kabmo-omp/access-mode';
 import { readKabmoSetting } from '@/shared/lib/settings/client';
 
 export interface PrewarmOptions {

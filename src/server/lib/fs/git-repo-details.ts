@@ -27,9 +27,9 @@
  */
 
 import path from 'path';
-import { runGit } from '@kabmo-labs/kabmo-git-runner/git-run';
+import { runGit } from '@kabmo-labs/kabmo-git/runner/git-run';
 import { parsePorcelainV2 } from '@/server/lib/fs/git-porcelain-v2';
-import { isWithinRoot } from '@kabmo-labs/kabmo-workspace-root/root';
+import { isWithinRoot } from '@kabmo-labs/kabmo-workspace/root/root';
 import { OPERATION_PATHS } from '@/server/lib/fs/git-state';
 import { existsSync } from 'node:fs';
 import type { GitRepoDetail } from '@/shared/types';

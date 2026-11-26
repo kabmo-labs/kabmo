@@ -25,7 +25,7 @@
 import { useState } from 'preact/hooks';
 import { HelpCircle, XCircle } from 'lucide-preact';
 import type { ToolCallData } from '@/shared/types';
-import type { ExtensionUiDialogRequest } from '@kabmo-labs/kabmo-chat-contracts/agent';
+import type { ExtensionUiDialogRequest } from '@kabmo-labs/kabmo-chat/contracts/agent';
 import { isAskSettled, parseAskQuestions } from '@/shared/lib/chat/ask-questions';
 import type { AskQuestion } from '@/shared/lib/chat/ask-form/types';
 import { parseAskResult } from '@/shared/lib/chat/ask-results';

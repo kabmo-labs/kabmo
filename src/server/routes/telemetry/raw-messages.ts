@@ -5,10 +5,10 @@ import { loadSessionSource } from '@/server/lib/chat/session-store.server';
 import { computeSessionContextTelemetry } from '@/client/data/context-data';
 import { computeRawMessagesPage, type RawMessageRole } from '@/server/lib/omp/session/telemetry-raw';
 import { resolveSessionRef } from '@/server/lib/sessions/resolve.server';
-import { buildAcpRawMessages } from '@kabmo-labs/kabmo-acp-session-core/acp-raw-messages.server';
-import { loadAcpFramesPage } from '@kabmo-labs/kabmo-acp-session-core/acp-frames.server';
-import { loadAcpUsage } from '@kabmo-labs/kabmo-acp-session-core/acp-telemetry.server';
-import type { ChatMessageData } from '@kabmo-labs/kabmo-chat-contracts/chat';
+import { buildAcpRawMessages } from '@kabmo-labs/kabmo-acp/session-core/acp-raw-messages.server';
+import { loadAcpFramesPage } from '@kabmo-labs/kabmo-acp/session-core/acp-frames.server';
+import { loadAcpUsage } from '@kabmo-labs/kabmo-acp/session-core/acp-telemetry.server';
+import type { ChatMessageData } from '@kabmo-labs/kabmo-chat/contracts/chat';
 import type { RawMessageItem } from '@/shared/types';
 
 const MAX_PAGE_SIZE = 100;

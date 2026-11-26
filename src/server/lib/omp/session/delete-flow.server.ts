@@ -28,10 +28,10 @@
  */
 
 import { getLiveSession } from '@/server/lib/omp/rpc/session-registry';
-import { loadHarnessSession } from '@kabmo-labs/kabmo-harness-session/session-store.server';
-import { createAgentSessionRemover, type AgentSessionRemover } from '@kabmo-labs/kabmo-harness-session/session-delete.server';
+import { loadHarnessSession } from '@kabmo-labs/kabmo-harness/session/session-store.server';
+import { createAgentSessionRemover, type AgentSessionRemover } from '@kabmo-labs/kabmo-harness/session/session-delete.server';
 import { purgeSessionData } from '@/server/lib/omp/session/delete.server';
-import { dependentsDeepestFirst } from '@kabmo-labs/kabmo-session-lifecycle/lifecycle.server';
+import { dependentsDeepestFirst } from '@kabmo-labs/kabmo-session/lifecycle/lifecycle.server';
 import { purgeBtwForSession } from '@/server/lib/btw/purge.server';
 import { isSinglePathSegment } from '@kabmo-labs/kabmo-paths/path-segment';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';

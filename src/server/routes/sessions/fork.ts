@@ -15,7 +15,7 @@ import type { ActionFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { methodNotAllowed, parseJsonBody } from '@/server/lib/route-adapter';
 import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 import { readImages, readModel, readString } from '@/server/routes/sessions/body-readers';
-import { isApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
+import { isApprovalMode } from '@kabmo-labs/kabmo-omp/access-mode';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import {
   SessionForkError,

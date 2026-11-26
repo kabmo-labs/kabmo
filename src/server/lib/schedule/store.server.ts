@@ -23,7 +23,7 @@ import { getDb } from '@/server/db.server';
 import { withTransaction } from '@/shared/lib/db/transaction.server';
 import { nextRunAfter, validateSchedule } from '@/shared/lib/schedule/parse';
 import { isValidTimeZone, serverTimeZone } from '@/shared/lib/schedule/timezone';
-import { harnessDescriptor } from '@kabmo-labs/kabmo-harness-catalog';
+import { harnessDescriptor } from '@kabmo-labs/kabmo-harness/catalog';
 import { rowToRun, rowToScheduledTask, type RunRow, type TaskRow } from '@/server/lib/schedule/rows.server';
 import type {
   ScheduleKind,

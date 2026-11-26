@@ -17,7 +17,7 @@
  * is the cache and it always wins.
  */
 
-import { runGit } from '@kabmo-labs/kabmo-git-runner/git-run';
+import { runGit } from '@kabmo-labs/kabmo-git/runner/git-run';
 
 /** `rev-list --max-parents=0 --all`, sorted, first. `null` for an unborn branch. */
 export async function deriveProjectId(primaryRoot: string): Promise<string | null> {

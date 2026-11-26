@@ -27,7 +27,7 @@ import { act } from 'preact/test-utils';
 import { CardRow } from '@/client/components/workspace/chat-timeline/tool-renderers/styles/Card';
 import { registerListSlot, resetListSlots } from '@/client/lib/plugins/list-slots';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
-import { normalizeToolCall } from '@kabmo-labs/kabmo-chat-tool/normalize';
+import { normalizeToolCall } from '@kabmo-labs/kabmo-chat/tool/normalize';
 import type { ToolCallData } from '@/shared/types';
 
 let container: HTMLElement;

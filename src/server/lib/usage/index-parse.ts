@@ -23,8 +23,8 @@
 
 import { canonicalProviderSlug } from '@/shared/lib/models/provider/label';
 import { dayKeyOfTimestamp } from '@/shared/lib/usage/range';
-import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
-import type { OmpMessageEntry, OmpUsage } from '@kabmo-labs/kabmo-omp-contracts/session';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness/catalog';
+import type { OmpMessageEntry, OmpUsage } from '@kabmo-labs/kabmo-omp/contracts/session';
 
 /** One rollup contribution: a file's share of one (day, harness, provider, model). */
 export interface UsageRollupRow {

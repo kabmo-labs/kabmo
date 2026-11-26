@@ -1,0 +1,64 @@
+/**
+ * @license
+ * SPDX-License-Identifier: MIT
+ */
+
+/**
+ * The `extension_ui_request` methods that BLOCK the agent until the matching
+ * `extension_ui_response` arrives.
+ *
+ * ONE list, because both halves of the bridge need the same answer and each
+ * half had written its own copy: the server's `PendingUiDialogs` (what a
+ * reattaching client is offered, what `isBusy`/`refuseWhenBlockedOnDialog`
+ * read) and the client's dialog queue. The two copies had drifted — neither
+ * carried `'ask'` — so omp's grouped ask frame (the shape `configureChild`
+ * opts into with `set_ask_dialog`) was dropped by BOTH: the server forgot the
+ * request, and the client never enqueued it. The card then had no dialog to
+ * render, so every question fell through to "Waiting for the previous answer…"
+ * with nothing to answer — while omp sat blocked on it.
+ *
+ * `cancel`, `notify`, `open_url`, `setWidget`, `setStatus`, ... are
+ * fire-and-forget and must never be listed here: remembering one would offer a
+ * later client a modal nothing is waiting on.
+ *
+ * `'ask'` belongs here because a grouped ask dialog parks the agent until an
+ * answer arrives: omp's own `ask` tool took that path before 18.18.3, and
+ * extensions and the ratchet still open it. The tool's current form-driven walk
+ * parks on an ordinary `select`/`input`/`editor`, which is listed too.
+ */
+
+import type { ExtensionUiDialogMethod, ExtensionUiDialogRequest } from '@kabmo-labs/kabmo-chat/contracts/agent';
+
+export const ANSWERABLE_UI_METHODS: Record<string, true> = {
+  select: true,
+  confirm: true,
+  input: true,
+  editor: true,
+  ask: true,
+  // omp 19.1.0 gave the RPC host a real `formDialog`, so the `ask` tool sends
+  // its whole HTML form as ONE `method:"form"` frame and parks on the reply.
+  // Without this entry neither half remembers the request: the server forgets
+  // what a reattaching client must answer, and the client never queues it, so
+  // the agent stays blocked with nothing on screen.
+  form: true,
+};
+
+/** True for a request method the agent is parked on. */
+export function isAnswerableUiMethod(method: unknown): method is ExtensionUiDialogMethod {
+  return typeof method === 'string' && ANSWERABLE_UI_METHODS[method] === true;
+}
+
+/**
+ * The request-level form of the same test, narrowing omp's union to the dialog
+ * variant so a caller can hand it straight to the queue.
+ *
+ * Narrowing on `request.method` alone does not exclude the `cancel` variant for
+ * a caller holding `IncomingExtensionUiRequest` (its members are inline object
+ * types, not a discriminated union TS will follow through a property guard), so
+ * the exclusion is done here, once, for both the server and the client.
+ */
+export function isAnswerableUiRequest(
+  request: { method?: unknown },
+): request is ExtensionUiDialogRequest {
+  return isAnswerableUiMethod(request.method);
+}

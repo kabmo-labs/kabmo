@@ -3,11 +3,26 @@
   "version": "0.0.1",
   "type": "module",
   "description": "MCP config key/value helpers.",
-  "exports": { ".": "./src/key-value.ts", "./key-value": "./src/key-value.ts" },
-  "files": ["src"],
+  "exports": {
+    ".": "./src/key-value.ts",
+    "./key-value": "./src/key-value.ts"
+  },
+  "files": [
+    "src"
+  ],
   "license": "MIT",
-  "repository": { "type": "git", "url": "git+https://github.com/kabmo-labs/kabmo.git", "directory": "packages/kabmo-mcp-contracts" },
-  "publishConfig": { "access": "public" },
-  "engines": { "bun": ">=1.4.0" },
-  "dependencies": { "@kabmo-labs/kabmo-settings-contracts": "workspace:*" }
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-mcp-contracts"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  },
+  "dependencies": {
+    "@kabmo-labs/kabmo-settings": "workspace:*"
+  }
 }

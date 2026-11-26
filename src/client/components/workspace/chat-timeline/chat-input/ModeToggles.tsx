@@ -36,9 +36,9 @@
  */
 
 import { ClipboardList, Target } from 'lucide-preact';
-import type { GoalRecord } from '@kabmo-labs/kabmo-omp-mode/types';
-import type { ArmedGoal } from '@kabmo-labs/kabmo-omp-mode/actions';
-import type { SessionModeState } from '@kabmo-labs/kabmo-harness-session-modes';
+import type { GoalRecord } from '@kabmo-labs/kabmo-omp/mode/types';
+import type { ArmedGoal } from '@kabmo-labs/kabmo-omp/mode/actions';
+import type { SessionModeState } from '@kabmo-labs/kabmo-harness/session-modes';
 import { SessionModeDropdown } from '@/client/components/workspace/chat-timeline/chat-input/SessionModeDropdown';
 
 export interface ModeTogglesProps {

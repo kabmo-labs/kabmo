@@ -22,7 +22,7 @@
 
 import { afterAll, expect, test } from 'bun:test';
 
-import { processProbe } from '@kabmo-labs/kabmo-process-probe/proc';
+import { processProbe } from '@kabmo-labs/kabmo-process/probe/proc';
 import { shellLaunch } from '@/server/lib/terminal/shell';
 import { detectBusyShells, type ShellProcess } from '@/server/lib/terminal/foreground';
 import { describePosix } from '@/test-support/platform';

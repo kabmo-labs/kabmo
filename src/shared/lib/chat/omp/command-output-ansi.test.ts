@@ -13,7 +13,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import { foldAgentEvent, type OmpAgentFoldDeps } from '@/shared/lib/chat/omp/agent-events';
-import { noticeFromCustomMessage } from '@kabmo-labs/kabmo-omp-messages-map';
+import { noticeFromCustomMessage } from '@kabmo-labs/kabmo-omp/messages-map';
 
 /** The real shape omp emits for `/context`: SGR runs around half-block bars. */
 const CONTEXT_OUTPUT = 'Context window: 1000000 tokens (1% used)\n'

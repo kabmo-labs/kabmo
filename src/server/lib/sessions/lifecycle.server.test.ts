@@ -7,12 +7,12 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { getDb } from '@kabmo-labs/kabmo-db/lifecycle';
 import { ensureSessionRelationsSchema } from '@/server/lib/sessions/schema.server';
-import { createSessionRelation } from '@kabmo-labs/kabmo-session-relations/relations.server';
+import { createSessionRelation } from '@kabmo-labs/kabmo-session/relations/relations.server';
 import {
   archiveDependents,
   collectDependents,
   dependentsDeepestFirst,
-} from '@kabmo-labs/kabmo-session-lifecycle/lifecycle.server';
+} from '@kabmo-labs/kabmo-session/lifecycle/lifecycle.server';
 
 beforeEach(async () => {
   await isolateDb();

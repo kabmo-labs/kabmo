@@ -18,7 +18,7 @@
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
-import { dispatchSessionCommand } from '@kabmo-labs/kabmo-omp-rpc-commands/session-commands';
+import { dispatchSessionCommand } from '@kabmo-labs/kabmo-omp/rpc-commands/session-commands';
 import { cancelQueuedDelivery } from '@/server/lib/queue/delivery.server';
 import { makeHarness, rejectionOf } from '@/server/lib/omp/rpc/session-commands-harness';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';

@@ -20,7 +20,7 @@ import { buildOptimisticRows, collectImages, assemblePrompt, streamMockFallback 
 import { markPendingSessionSent } from '@/client/hooks/chat/omp/pending-sessions';
 import { dispatchPendingChat } from '@/client/hooks/chat/timeline/pending-dispatch';
 import { postModeCommand } from '@/client/hooks/chat/timeline/mode-post';
-import type { ArmedGoal } from '@kabmo-labs/kabmo-omp-mode/actions';
+import type { ArmedGoal } from '@kabmo-labs/kabmo-omp/mode/actions';
 import { blockTuiOnlySend } from '@/client/hooks/chat/timeline/tui-only-guard';
 import { PHASE_VERBS } from '@/shared/lib/chat/timeline/tool-phrases';
 import { formatClock } from '@kabmo-labs/kabmo-format/time';

@@ -11,10 +11,10 @@ discoverSkills,
 readSkillFile,
 setSkillModelInvocation,
 writeSkillFile,
-type DiscoveredSkill, } from '@kabmo-labs/kabmo-omp-config-files/skills';
+type DiscoveredSkill, } from '@kabmo-labs/kabmo-omp/config-files/skills';
 import { installCatalogSkill,
 toCatalogSkills,
-uninstallCatalogSkill, } from '@kabmo-labs/kabmo-omp-config-files/skills-catalog';
+uninstallCatalogSkill, } from '@kabmo-labs/kabmo-omp/config-files/skills-catalog';
 import { runCatalogAction } from '@/server/routes/settings/skills-catalog-actions';
 import { resolveDiscoveryScope, type DiscoveryScope } from '@/server/lib/omp/config/scope';
 import { reloadLiveSessions } from '@/server/lib/omp/session/reload.server';

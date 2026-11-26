@@ -243,7 +243,7 @@ src/
 ├─ server/    Bun-only — Elysia routes, SQLite, omp RPC and ACP bridges, fs/git/terminal
 ├─ shared/    Imported by both — types, chat timeline folding, pure helpers
 └─ cli/       kabmo command (plain ESM, runs under Bun)
-packages/     kabmo-sdk (plugin contract) · kabmo-ui (Preact kit) · macos · windows · linux · android · ios
+packages/     31 workspace packages — kabmo-sdk + kabmo-ui for plugins, 29 runtime packages by prefix (see docs/reference/workspace-packages.md)
 marketplace/  command-runner · stats · session-info · git-forge
 ```
 

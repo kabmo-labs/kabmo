@@ -1,5 +1,5 @@
 import type { ChatMessageData } from '@/shared/types';
-import type { SubagentHistoryEntry } from '@kabmo-labs/kabmo-omp-contracts/subagent';
+import type { SubagentHistoryEntry } from '@kabmo-labs/kabmo-omp/contracts/subagent';
 import { SAMPLE_SCOUT_SUBAGENT_ID, rawScoutSubagentEvents } from '@/client/data/samples/sample-subagents/scout-raw';
 import { SAMPLE_SLEEPER_SUBAGENT_ID, rawSleeperSubagentEvents } from '@/client/data/samples/sample-subagents/sleeper-raw';
 

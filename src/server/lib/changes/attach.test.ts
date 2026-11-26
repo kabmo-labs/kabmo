@@ -18,7 +18,7 @@ import * as path from 'node:path';
 import { attachChangeJournal } from '@/server/lib/changes/attach.server';
 import { journalPath } from '@/server/lib/changes/paths.server';
 import { parseJournalLine, type JournalRecord } from '@/server/lib/changes/records';
-import type { AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
+import type { AgentEvent } from '@kabmo-labs/kabmo-omp/rpc-protocol/constants';
 
 let dataDir = '';
 let cwd = '';

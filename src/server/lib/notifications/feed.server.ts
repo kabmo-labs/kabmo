@@ -25,19 +25,19 @@
  */
 
 import { getDb } from '@kabmo-labs/kabmo-db/lifecycle';
-import { readAllSettingsJson } from '@kabmo-labs/kabmo-settings-store';
+import { readAllSettingsJson } from '@kabmo-labs/kabmo-settings/store';
 import { getRealtimeHub } from '@/server/lib/realtime/hub.server';
 import { TOPIC_NOTIFICATIONS } from '@/shared/lib/realtime/protocol';
-import { registerRunSettledReporter } from '@kabmo-labs/kabmo-session-stream-state';
+import { registerRunSettledReporter } from '@kabmo-labs/kabmo-session/stream-state';
 import { registerAwaitingInputReporter } from '@kabmo-labs/kabmo-live-sessions';
 import {
   NOTIFICATION_SETTING_KEYS,
   type NotificationEvent as NotificationEventKey,
 } from '@/shared/lib/notifications/settings';
 import { readSettingsBlob } from '@/shared/lib/settings/keys';
-import { sessionTitleFor } from '@kabmo-labs/kabmo-omp-session-sidebar';
-import { loadOmpSidebarData } from '@kabmo-labs/kabmo-omp-session-reader';
-import { loadHarnessSessionTitle } from '@kabmo-labs/kabmo-harness-session/session-store.server';
+import { sessionTitleFor } from '@kabmo-labs/kabmo-omp/session-sidebar';
+import { loadOmpSidebarData } from '@kabmo-labs/kabmo-omp/session-reader';
+import { loadHarnessSessionTitle } from '@kabmo-labs/kabmo-harness/session/session-store.server';
 import { appendNotificationEvent } from '@/server/lib/notifications/store.server';
 import { notificationText, type NotificationEvent, type NotificationKind } from '@/shared/lib/notifications/events';
 

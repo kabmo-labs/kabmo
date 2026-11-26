@@ -24,7 +24,7 @@
  * rather than guess a question and print the wrong one as open.
  */
 
-import type { ExtensionUiDialogRequest } from '@kabmo-labs/kabmo-chat-contracts/agent';
+import type { ExtensionUiDialogRequest } from '@kabmo-labs/kabmo-chat/contracts/agent';
 import type { AskQuestion } from '@/shared/lib/chat/ask-form/types';
 import { groupAskFrames } from '@/shared/lib/chat/ask-questions';
 

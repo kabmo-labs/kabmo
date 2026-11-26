@@ -31,7 +31,7 @@
 import { json, type ActionFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { errorResponse, methodNotAllowedResponse } from '@/server/lib/route-adapter';
 import { isSameOriginRequest } from '@/server/lib/http/same-origin';
-import { grantExternalRoot } from '@kabmo-labs/kabmo-workspace-root/external-roots';
+import { grantExternalRoot } from '@kabmo-labs/kabmo-workspace/root/external-roots';
 import { pathFromReference, describeFileReference } from '@/server/routes/fs/scope';
 import fs from 'fs';
 import path from 'path';

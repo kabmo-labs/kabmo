@@ -27,7 +27,7 @@
 
 import { mkdir } from 'fs/promises';
 import { join } from 'path';
-import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
+import { pathExists } from '@kabmo-labs/kabmo-omp/paths';
 import { getBundledMarketplaceDir, getMarketplaceCatalogPath, getMarketplacePluginsDir } from '@/server/lib/panels/registry.server';
 
 export interface SeedResult {

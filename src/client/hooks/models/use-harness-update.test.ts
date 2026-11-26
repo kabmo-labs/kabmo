@@ -25,7 +25,7 @@ import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { useHarnessUpdate } from '@/client/hooks/models/use-harness-update';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
-import type { HarnessUpdateJob } from '@kabmo-labs/kabmo-harness-update-job/types';
+import type { HarnessUpdateJob } from '@kabmo-labs/kabmo-harness/update-job/types';
 
 const realFetch = Bun.fetch;
 const TEST_POLL_MS = 1;

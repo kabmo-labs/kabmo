@@ -13,7 +13,7 @@
  * to say.
  */
 
-import type { WorktreeInfo } from '@kabmo-labs/kabmo-worktree-types';
+import type { WorktreeInfo } from '@kabmo-labs/kabmo-worktree/types';
 
 /** What a row says under its branch. */
 export function worktreeRowDetail(worktree: WorktreeInfo): string {

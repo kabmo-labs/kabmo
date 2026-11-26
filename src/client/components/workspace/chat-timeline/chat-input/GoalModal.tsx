@@ -25,7 +25,7 @@ import { CHECKBOX_CLASS } from '@/client/components/common/checkbox/style';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { createPortal } from 'preact/compat';
 import { Target, X } from 'lucide-preact';
-import type { GoalAction } from '@kabmo-labs/kabmo-omp-mode/actions';
+import type { GoalAction } from '@kabmo-labs/kabmo-omp/mode/actions';
 import {
   ActionButton,
   Stat,

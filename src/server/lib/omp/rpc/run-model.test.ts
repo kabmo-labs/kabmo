@@ -14,11 +14,11 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
 import { syncRunModel, type RunModelHost } from '@/server/lib/omp/rpc/run-model';
-import type { RpcProcess } from '@kabmo-labs/kabmo-omp-rpc-process/process';
-import type { RpcSessionState } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
+import type { RpcProcess } from '@kabmo-labs/kabmo-omp/rpc-process/process';
+import type { RpcSessionState } from '@kabmo-labs/kabmo-omp/rpc-protocol/constants';
 import { onRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
-import { loadStreamStates, markStreamStatus } from '@kabmo-labs/kabmo-session-stream-state';
+import { loadStreamStates, markStreamStatus } from '@kabmo-labs/kabmo-session/stream-state';
 
 /** A host whose probe answers with the given state, or rejects. */
 function makeHost(

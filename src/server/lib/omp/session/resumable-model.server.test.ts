@@ -26,7 +26,7 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { isUnrestorableModelFailure } from '@kabmo-labs/kabmo-omp-session-runtime/resumable-model.server';
+import { isUnrestorableModelFailure } from '@kabmo-labs/kabmo-omp/session-runtime/resumable-model.server';
 import { buildSessionSpawnArgs } from '@/server/lib/omp/rpc/spawn-args';
 
 describe('the unrestorable-model failure', () => {

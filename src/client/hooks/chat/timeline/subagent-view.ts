@@ -17,7 +17,7 @@
 
 import { useCallback, useEffect, useState } from 'preact/hooks';
 import { isRecord } from '@kabmo-labs/kabmo-guards';
-import { historyEntryToSubagentInfo } from '@kabmo-labs/kabmo-omp-subagent/history-client';
+import { historyEntryToSubagentInfo } from '@kabmo-labs/kabmo-omp/subagent/history-client';
 import type { SubagentHistoryEntry, SubagentInfo } from '@/shared/types';
 
 export interface SubagentViewState {

@@ -35,10 +35,10 @@
  */
 
 import { restartPrewarmedSessions } from '@/server/lib/omp/rpc/prewarm-pool';
-import { restartPrewarmedAcpSessions } from '@kabmo-labs/kabmo-acp-session-core/prewarm.server';
-import { restartUtilityProcesses } from '@kabmo-labs/kabmo-omp-rpc-process/utility';
-import { invalidateSkillCache } from '@kabmo-labs/kabmo-omp-config-files/skills';
-import { invalidateOmpCliCache } from '@kabmo-labs/kabmo-omp-cli';
+import { restartPrewarmedAcpSessions } from '@kabmo-labs/kabmo-acp/session-core/prewarm.server';
+import { restartUtilityProcesses } from '@kabmo-labs/kabmo-omp/rpc-process/utility';
+import { invalidateSkillCache } from '@kabmo-labs/kabmo-omp/config-files/skills';
+import { invalidateOmpCliCache } from '@kabmo-labs/kabmo-omp/cli';
 import { invalidateModelsCaches } from '@/shared/lib/models/server-cache';
 import { invalidateUsageCache } from '@/server/lib/usage/omp-usage.server';
 

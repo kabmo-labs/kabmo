@@ -10,8 +10,8 @@
  */
 
 import { json } from '@kabmo-labs/kabmo-http';
-import { WebRpcError } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
-import { RpcCommandError, RpcCommandTimeoutError } from '@kabmo-labs/kabmo-omp-rpc-process/process';
+import { WebRpcError } from '@kabmo-labs/kabmo-omp/rpc-protocol/constants';
+import { RpcCommandError, RpcCommandTimeoutError } from '@kabmo-labs/kabmo-omp/rpc-process/process';
 import { SessionOwnedElsewhereError } from '@/server/lib/omp/session/ownership.server';
 
 export function rpcErrorResponse(error: unknown): Response {

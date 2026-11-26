@@ -22,12 +22,12 @@
  * `forgetCliVersion` and `forgetProbe` so the next read states what is on disk.
  */
 
-import { commandAvailable } from '@kabmo-labs/kabmo-harness-config-store/auto-probe.server';
-import { whichOnToolchainPath } from '@kabmo-labs/kabmo-fs-toolchain';
-import { loadHarnessConfig } from '@kabmo-labs/kabmo-harness-config-store/config.server';
+import { commandAvailable } from '@kabmo-labs/kabmo-harness/config-store/auto-probe.server';
+import { whichOnToolchainPath } from '@kabmo-labs/kabmo-fs/toolchain';
+import { loadHarnessConfig } from '@kabmo-labs/kabmo-harness/config-store/config.server';
 import { fetchNpmLatest } from '@/server/lib/updates/npm';
-import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
-import { harnessUpdateFacts, latestSourceFor } from '@kabmo-labs/kabmo-harness-updates';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness/catalog';
+import { harnessUpdateFacts, latestSourceFor } from '@kabmo-labs/kabmo-harness/updates';
 
 /** How long a registry answer is reused when the caller did not force a read. */
 const LATEST_TTL_MS = 10 * 60_000;

@@ -11,7 +11,7 @@
  */
 
 import { useMemo } from 'preact/hooks';
-import type { HashlineSection, HashlineVerb } from '@kabmo-labs/kabmo-omp-session-core/hashline-patch';
+import type { HashlineSection, HashlineVerb } from '@kabmo-labs/kabmo-omp/session-core/hashline-patch';
 import { getLanguageFromPath } from '@/shared/lib/code/language';
 import { useDeferredHighlightLines } from '@/client/hooks/code/deferred-highlight';
 

@@ -22,7 +22,7 @@
  */
 
 import path from 'path';
-import { childEnv } from '@kabmo-labs/kabmo-fs-child-env';
+import { childEnv } from '@kabmo-labs/kabmo-fs/child-env';
 
 /** How long the opener gets before it is treated as hung. */
 const REVEAL_TIMEOUT_MS = 5000;

@@ -11,7 +11,7 @@
  * let the panel and the next spawn disagree about which home is active.
  */
 
-import type { HarnessAccountView } from '@kabmo-labs/kabmo-harness-accounts';
+import type { HarnessAccountView } from '@kabmo-labs/kabmo-harness/accounts';
 import { emit, store } from '@/client/hooks/models/harness-catalog';
 
 export interface AccountMutationResult {

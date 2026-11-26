@@ -5,7 +5,7 @@ import { getDb } from '@/server/db.server';
 import { DEFAULT_MCP_SERVERS } from '@/client/data/settings/mcp';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { mcpStore, readCustomMcpServers, writeCustomMcpServers } from '@/server/lib/mcp/store.server';
-import { resolveRoot } from '@kabmo-labs/kabmo-workspace-root/root';
+import { resolveRoot } from '@kabmo-labs/kabmo-workspace/root/root';
 import type { McpServerItem } from '@/shared/types';
 import { isRecord } from '@kabmo-labs/kabmo-guards';
 import { rowsToRecord, REDACTED_SENTINEL } from '@kabmo-labs/kabmo-mcp-contracts/key-value';
@@ -14,11 +14,11 @@ isServerEnabled,
 nativeToServerItem,
 readProjectMcpConfig,
 readUserMcpConfig,
-redactServerItem, } from '@kabmo-labs/kabmo-omp-config-mcp/mcp';
+redactServerItem, } from '@kabmo-labs/kabmo-omp/config-mcp/mcp';
 import { deleteProjectMcpServer,
 deleteUserMcpServer,
 writeProjectMcpServer,
-writeUserMcpServer, } from '@kabmo-labs/kabmo-omp-config-mcp/mcp-write';
+writeUserMcpServer, } from '@kabmo-labs/kabmo-omp/config-mcp/mcp-write';
 
 const NATIVE_USER_PREFIX = 'omp-user-';
 const NATIVE_PROJECT_PREFIX = 'omp-project-';

@@ -25,8 +25,8 @@
  *     wrapper for the same session file.
  */
 
-import { findSessionFileById } from '@kabmo-labs/kabmo-omp-session-locator';
-import { parseJsonlLenient } from '@kabmo-labs/kabmo-omp-session-core/jsonl';
+import { findSessionFileById } from '@kabmo-labs/kabmo-omp/session-locator';
+import { parseJsonlLenient } from '@kabmo-labs/kabmo-omp/session-core/jsonl';
 import { latestTodoSnapshot, todoProgress } from '@kabmo-labs/kabmo-app-contracts/todo-snapshot';
 import type { SessionTodoState } from '@kabmo-labs/kabmo-app-contracts/todo';
 

@@ -16,8 +16,8 @@ import { join } from 'node:path';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { getDb } from '@/server/db.server';
 import { ensureSessionRelationsSchema } from '@/server/lib/sessions/schema.server';
-import { saveHarnessSession } from '@kabmo-labs/kabmo-harness-session/session-store.server';
-import { createSessionRelation, getSessionRelation } from '@kabmo-labs/kabmo-session-relations/relations.server';
+import { saveHarnessSession } from '@kabmo-labs/kabmo-harness/session/session-store.server';
+import { createSessionRelation, getSessionRelation } from '@kabmo-labs/kabmo-session/relations/relations.server';
 import {
   SessionSpawnError,
   spawnChildSession,

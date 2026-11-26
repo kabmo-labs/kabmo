@@ -1,10 +1,10 @@
 import { json } from '@kabmo-labs/kabmo-http';
 import type { LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
-import { findSessionFileById } from '@kabmo-labs/kabmo-omp-session-locator';
-import { extractSubagentHistory } from '@kabmo-labs/kabmo-omp-subagent/history-index';
-import { SUBAGENT_ID_MAX_LENGTH, SUBAGENT_ID_RE } from '@kabmo-labs/kabmo-omp-subagent/history-paths';
-import { readSubagentTranscriptPage } from '@kabmo-labs/kabmo-omp-subagent/history-transcript';
+import { findSessionFileById } from '@kabmo-labs/kabmo-omp/session-locator';
+import { extractSubagentHistory } from '@kabmo-labs/kabmo-omp/subagent/history-index';
+import { SUBAGENT_ID_MAX_LENGTH, SUBAGENT_ID_RE } from '@kabmo-labs/kabmo-omp/subagent/history-paths';
+import { readSubagentTranscriptPage } from '@kabmo-labs/kabmo-omp/subagent/history-transcript';
 
 /**
  * GET /api/sessions/:sessionId/subagents — on-disk subagent roster recovered

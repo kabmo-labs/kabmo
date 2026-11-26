@@ -18,7 +18,7 @@ import { describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 
 import { resolveDiscoveryScope } from '@/server/lib/omp/config/scope';
-import { getAgentDir } from '@kabmo-labs/kabmo-omp-paths';
+import { getAgentDir } from '@kabmo-labs/kabmo-omp/paths';
 
 const APP_ROOT = process.cwd();
 

@@ -24,8 +24,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { getDb } from '@/server/db.server';
-import { invalidateOmpCliCache } from '@kabmo-labs/kabmo-omp-cli';
-import { disposeUtilityRpc } from '@kabmo-labs/kabmo-omp-rpc-process/utility';
+import { invalidateOmpCliCache } from '@kabmo-labs/kabmo-omp/cli';
+import { disposeUtilityRpc } from '@kabmo-labs/kabmo-omp/rpc-process/utility';
 import { invalidateUsageCache } from '@/server/lib/usage/omp-usage.server';
 import { buildUsageProviders } from '@/server/lib/usage/providers.server';
 import { removeDir } from '@/test-support/remove-dir';

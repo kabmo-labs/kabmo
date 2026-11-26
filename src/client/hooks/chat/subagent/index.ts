@@ -2,9 +2,9 @@
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import type { ChatMessageData, SubagentInfo } from '@/shared/types';
 import { isRecord } from '@kabmo-labs/kabmo-guards';
-import { parseSubagentLifecycle, readSubagentProgressFrame } from '@kabmo-labs/kabmo-omp-subagent/parse';
+import { parseSubagentLifecycle, readSubagentProgressFrame } from '@kabmo-labs/kabmo-omp/subagent/parse';
 import { subscribeSubagentFrame, type SubagentFrame } from '@/shared/lib/chat/omp/subagent-frames';
-import { convertMessages, mergeMessages, requestHistoryPage, requestSubagentPage } from '@kabmo-labs/kabmo-omp-subagent/transcript-client';
+import { convertMessages, mergeMessages, requestHistoryPage, requestSubagentPage } from '@kabmo-labs/kabmo-omp/subagent/transcript-client';
 
 /**
  * Transcript viewer state for one subagent of an omp session.

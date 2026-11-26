@@ -17,7 +17,7 @@
  * known agent name.
  */
 
-import { harnessDescriptor, harnessIdForName, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
+import { harnessDescriptor, harnessIdForName, type HarnessId } from '@kabmo-labs/kabmo-harness/catalog';
 import { ORCHESTRATION_CONTRACT } from '@kabmo-labs/kabmo-app-contracts/notice';
 
 export interface HarnessDelegation {

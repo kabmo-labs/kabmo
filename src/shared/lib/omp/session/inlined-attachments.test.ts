@@ -20,7 +20,7 @@
 
 import { describe, expect, test } from 'bun:test';
 import { extractInlinedTextAttachments,
-stripInlinedTextAttachments, } from '@kabmo-labs/kabmo-omp-session-parse/parse-message-blocks';
+stripInlinedTextAttachments, } from '@kabmo-labs/kabmo-omp/session-parse/parse-message-blocks';
 
 describe('extractInlinedTextAttachments', () => {
   test('recovers a file the composer appended to a prompt', () => {

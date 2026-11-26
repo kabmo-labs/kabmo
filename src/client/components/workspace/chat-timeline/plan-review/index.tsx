@@ -25,7 +25,7 @@
 import { useMemo, useState } from 'preact/hooks';
 import { Check, FileText, X } from 'lucide-preact';
 import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
-import { PLAN_REVIEW_CHOICES, type PlanProposal } from '@kabmo-labs/kabmo-omp-mode/types';
+import { PLAN_REVIEW_CHOICES, type PlanProposal } from '@kabmo-labs/kabmo-omp/mode/types';
 
 export interface PlanReviewPanelProps {
   proposal: PlanProposal;

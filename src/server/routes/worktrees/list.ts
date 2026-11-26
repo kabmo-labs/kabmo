@@ -20,13 +20,13 @@ import path from 'node:path';
 import { json } from '@kabmo-labs/kabmo-http';
 import type { LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { getDataDir } from '@kabmo-labs/kabmo-paths/paths';
-import { resolveProjectRoot } from '@kabmo-labs/kabmo-omp-worktree';
-import { listSessionFiles } from '@kabmo-labs/kabmo-omp-session-scan/files';
-import { scanSessionInfoCached } from '@kabmo-labs/kabmo-omp-session-scan/files';
-import { canonicalPath } from '@kabmo-labs/kabmo-fs-canonical';
+import { resolveProjectRoot } from '@kabmo-labs/kabmo-omp/worktree';
+import { listSessionFiles } from '@kabmo-labs/kabmo-omp/session-scan/files';
+import { scanSessionInfoCached } from '@kabmo-labs/kabmo-omp/session-scan/files';
+import { canonicalPath } from '@kabmo-labs/kabmo-fs/canonical';
 import { worktreeIdentityFor, listWorktreeRows } from '@kabmo-labs/kabmo-db/worktree-registry';
 import { dirtyCount, commitsAheadOf } from '@/server/lib/fs/worktree/remove';
-import { listWorktrees, isWorkTree } from '@kabmo-labs/kabmo-worktree-topology/list';
+import { listWorktrees, isWorkTree } from '@kabmo-labs/kabmo-worktree/topology/list';
 import {
   defaultWorktreeRoot,
   resolveConfiguredWorktreeRoot,
@@ -36,7 +36,7 @@ import { resolveProjectId } from '@/server/lib/fs/worktree/project-id';
 import { getDb } from '@/server/db.server';
 import { isMock } from '@/server/routes/worktrees/shared';
 import { mockRefusal, resolveWorktreeProject, worktreeFailureResponse } from '@/server/routes/worktrees/shared';
-import type { WorktreeInfo, WorktreeListPayload } from '@kabmo-labs/kabmo-worktree-types';
+import type { WorktreeInfo, WorktreeListPayload } from '@kabmo-labs/kabmo-worktree/types';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   if (isMock()) return mockRefusal();

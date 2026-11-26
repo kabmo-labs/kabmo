@@ -23,7 +23,7 @@ import { join } from 'node:path';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { getDb } from '@/server/db.server';
 import { loader } from '@/server/routes/chat/session';
-import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
+import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp/session-scan/files';
 
 const previousAgentDir = Bun.env.PI_CODING_AGENT_DIR;
 const previousXdg = Bun.env.XDG_DATA_HOME;

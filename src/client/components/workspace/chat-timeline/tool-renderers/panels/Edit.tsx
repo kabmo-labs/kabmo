@@ -13,7 +13,7 @@ import { getLanguageFromPath } from '@/shared/lib/code/language';
 import { useDeferredHighlight, useDeferredHighlightLines } from '@/client/hooks/code/deferred-highlight';
 import { MAX_OUTPUT_LINES, truncateTailLines } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/truncate';
 import { outputMarkdown, readToolOutput } from '@/shared/lib/chat/tool-output';
-import { hashlinePatchFromArgs } from '@kabmo-labs/kabmo-omp-session-core/hashline-patch';
+import { hashlinePatchFromArgs } from '@kabmo-labs/kabmo-omp/session-core/hashline-patch';
 import { getToolInputPath } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/tool-input';
 import { formatBytes } from '@kabmo-labs/kabmo-format/number';
 

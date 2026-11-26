@@ -19,12 +19,12 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
-import type { PlanProposal } from '@kabmo-labs/kabmo-omp-mode/types';
+import type { PlanProposal } from '@kabmo-labs/kabmo-omp/mode/types';
 import { KABMO_MODE_SIGNAL } from '@/client/lib/omp-mode-signal';
 import { subscribeClientSignal } from '@/client/lib/signals';
-import type { ParsedMarker } from '@kabmo-labs/kabmo-omp-mode/markers';
-import { isPendingSessionId } from '@kabmo-labs/kabmo-omp-session-core/default-title';
-import { isModeMarker } from '@kabmo-labs/kabmo-omp-mode/constants';
+import type { ParsedMarker } from '@kabmo-labs/kabmo-omp/mode/markers';
+import { isPendingSessionId } from '@kabmo-labs/kabmo-omp/session-core/default-title';
+import { isModeMarker } from '@kabmo-labs/kabmo-omp/mode/constants';
 
 export interface PlanReviewState {
   proposal: PlanProposal | null;

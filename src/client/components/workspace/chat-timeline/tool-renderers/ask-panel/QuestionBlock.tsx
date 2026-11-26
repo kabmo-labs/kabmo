@@ -17,7 +17,7 @@
 
 import { Ban, CheckCircle2, Clock } from 'lucide-preact';
 import type { ComponentChildren } from 'preact';
-import type { ExtensionUiDialogRequest } from '@kabmo-labs/kabmo-chat-contracts/agent';
+import type { ExtensionUiDialogRequest } from '@kabmo-labs/kabmo-chat/contracts/agent';
 import type { AskAnswer, AskQuestion } from '@/shared/lib/chat/ask-form/types';
 import { FrameControl } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/FrameControl';
 import { AnswerList, QuestionCard } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/QuestionCard';

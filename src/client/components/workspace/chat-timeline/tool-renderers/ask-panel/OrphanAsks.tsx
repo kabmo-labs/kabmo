@@ -28,7 +28,7 @@
  */
 
 import { HelpCircle } from 'lucide-preact';
-import type { ExtensionUiDialogRequest } from '@kabmo-labs/kabmo-chat-contracts/agent';
+import type { ExtensionUiDialogRequest } from '@kabmo-labs/kabmo-chat/contracts/agent';
 import { useAskFrames } from '@/client/hooks/chat/timeline/ask-frames-context';
 import { GroupedAsk } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/GroupedAsk';
 import { LooseFieldAsk } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/LooseFieldAsk';

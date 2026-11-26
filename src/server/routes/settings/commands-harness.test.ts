@@ -15,8 +15,8 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { loader } from '@/server/routes/settings/commands';
 import { registerAcpSession } from '@/server/lib/harness/register.server';
-import { claimHarness } from '@kabmo-labs/kabmo-harness-registry';
-import type { HarnessSession } from '@kabmo-labs/kabmo-harness-contract';
+import { claimHarness } from '@kabmo-labs/kabmo-harness/registry';
+import type { HarnessSession } from '@kabmo-labs/kabmo-harness/contract';
 
 type Command = { name: string; description?: string };
 

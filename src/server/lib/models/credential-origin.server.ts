@@ -22,9 +22,9 @@
 
 import { join } from 'path';
 import { Database } from 'bun:sqlite';
-import { getAgentDir } from '@kabmo-labs/kabmo-omp-paths';
-import { readNativeProviders } from '@kabmo-labs/kabmo-omp-models-config/models-config';
-import type { ProviderCredentialOrigin } from '@kabmo-labs/kabmo-settings-contracts/provider';
+import { getAgentDir } from '@kabmo-labs/kabmo-omp/paths';
+import { readNativeProviders } from '@kabmo-labs/kabmo-omp/models-config/models-config';
+import type { ProviderCredentialOrigin } from '@kabmo-labs/kabmo-settings/contracts/provider';
 
 const AUTH_CREDENTIALS_TABLE = 'auth_credentials';
 const API_KEY_CREDENTIAL_TYPE = 'api_key';

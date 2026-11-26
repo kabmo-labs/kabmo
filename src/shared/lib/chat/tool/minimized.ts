@@ -24,7 +24,7 @@
  * Pure and shared: no mounting, no DOM.
  */
 
-import type { ToolCallData } from '@kabmo-labs/kabmo-chat-contracts/chat';
+import type { ToolCallData } from '@kabmo-labs/kabmo-chat/contracts/chat';
 import { formatToolBytes } from '@/shared/lib/chat/tool/labels';
 
 export interface MinimizedOutput {

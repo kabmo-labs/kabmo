@@ -1,12 +1,12 @@
-import { formatNewSessionTitle } from '@kabmo-labs/kabmo-omp-session-core/default-title';
-import { contentProfile } from '@kabmo-labs/kabmo-omp-session-parse/telemetry-blocks';
-import { toEpochMs } from '@kabmo-labs/kabmo-omp-session-core/timestamps';
+import { formatNewSessionTitle } from '@kabmo-labs/kabmo-omp/session-core/default-title';
+import { contentProfile } from '@kabmo-labs/kabmo-omp/session-parse/telemetry-blocks';
+import { toEpochMs } from '@kabmo-labs/kabmo-omp/session-core/timestamps';
 import { isRecord } from '@kabmo-labs/kabmo-guards';
 import type { RawMessageItem, SessionContextTelemetry } from '@kabmo-labs/kabmo-app-contracts/context';
-import type { OmpMessageEntry, OmpUsage } from '@kabmo-labs/kabmo-omp-contracts/session';
+import type { OmpMessageEntry, OmpUsage } from '@kabmo-labs/kabmo-omp/contracts/session';
 import { CONTEXT_LIMIT, buildInfo, contextAnchorTokens, emptyTelemetry, formatCost, formatTs, textOf, tokensOf } from '@/server/lib/omp/session/telemetry/format';
 import { loadModelsWithCache } from '@/server/lib/models/registry.server';
-import { scanSessionEntries } from '@kabmo-labs/kabmo-omp-session-telemetry/scan';
+import { scanSessionEntries } from '@kabmo-labs/kabmo-omp/session-telemetry/scan';
 
 /**
  * Below this a request's tokens/second is noise: a cached or instant response

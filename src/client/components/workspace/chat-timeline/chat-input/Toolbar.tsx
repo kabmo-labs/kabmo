@@ -6,7 +6,7 @@ import { AccessDropdown } from '@/client/components/workspace/chat-timeline/chat
 import { ModeToggles } from '@/client/components/workspace/chat-timeline/chat-input/ModeToggles';
 import { PluginComposerActions } from '@/client/components/workspace/chat-timeline/chat-input/PluginComposerSlots';
 import type { ComposerModes } from '@/client/components/workspace/chat-timeline/chat-input/modes-props';
-import { DEFAULT_APPROVAL_MODE, type ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
+import { DEFAULT_APPROVAL_MODE, type ApprovalMode } from '@kabmo-labs/kabmo-omp/access-mode';
 
 export interface ComposerToolbarProps {
   isMobile: boolean;

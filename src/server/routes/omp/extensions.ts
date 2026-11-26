@@ -2,7 +2,7 @@ import { json } from '@kabmo-labs/kabmo-http';
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
-import { discoverExtensions, setExtensionDisabled } from '@kabmo-labs/kabmo-omp-config-mcp/extensions';
+import { discoverExtensions, setExtensionDisabled } from '@kabmo-labs/kabmo-omp/config-mcp/extensions';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const mock = isMockMode();

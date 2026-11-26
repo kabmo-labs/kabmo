@@ -20,7 +20,7 @@
 import fs from 'node:fs';
 import { join } from 'node:path';
 
-import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness/catalog';
 import { isRecord } from '@kabmo-labs/kabmo-guards';
 import type { UsageRollupRow } from '@/server/lib/usage/index-parse';
 import {

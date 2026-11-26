@@ -23,11 +23,11 @@
  * none of which this side could reconstruct).
  */
 
-import { resolveOmpBin } from '@kabmo-labs/kabmo-omp-cli';
+import { resolveOmpBin } from '@kabmo-labs/kabmo-omp/cli';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { isRecord } from '@kabmo-labs/kabmo-guards';
 import type { UsageResetAccount, UsageResetCredit, UsageResetList, UsageResetSpendResult } from '@/shared/types';
-import { childEnv } from '@kabmo-labs/kabmo-fs-child-env';
+import { childEnv } from '@kabmo-labs/kabmo-fs/child-env';
 
 const LIST_TIMEOUT_MS = 30_000;
 const SPEND_TIMEOUT_MS = 30_000;

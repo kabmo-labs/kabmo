@@ -20,9 +20,9 @@
 
 import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
-import { probes } from '@kabmo-labs/kabmo-harness-config-store/probe-cache.server';
+import { probes } from '@kabmo-labs/kabmo-harness/config-store/probe-cache.server';
 import { harnessVersionRows } from '@/server/routes/harness/versions';
-import { isNewer } from '@kabmo-labs/kabmo-harness-update-job/semver';
+import { isNewer } from '@kabmo-labs/kabmo-harness/update-job/semver';
 
 beforeEach(async () => {
   await isolateDb();

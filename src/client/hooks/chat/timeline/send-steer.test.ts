@@ -12,7 +12,7 @@ import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import type { ChatMessageData, OmpAgentHandle } from '@/shared/types';
-import type { ArmedGoal } from '@kabmo-labs/kabmo-omp-mode/actions';
+import type { ArmedGoal } from '@kabmo-labs/kabmo-omp/mode/actions';
 import {
   useChatTimelineSend,
   type ChatTimelineSendDeps,

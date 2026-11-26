@@ -26,10 +26,10 @@
 import path from 'path';
 import { mkdir } from 'fs/promises';
 import { getDataDir } from '@kabmo-labs/kabmo-paths/paths';
-import { runGit } from '@kabmo-labs/kabmo-git-runner/git-run';
-import { canonicalPath } from '@kabmo-labs/kabmo-fs-canonical';
-import { resolveProjectRoot } from '@kabmo-labs/kabmo-omp-worktree';
-import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
+import { runGit } from '@kabmo-labs/kabmo-git/runner/git-run';
+import { canonicalPath } from '@kabmo-labs/kabmo-fs/canonical';
+import { resolveProjectRoot } from '@kabmo-labs/kabmo-omp/worktree';
+import { pathExists } from '@kabmo-labs/kabmo-omp/paths';
 import {
   folderNameForBranch,
   isPlausibleBranchName,
@@ -37,7 +37,7 @@ import {
   slugWorktreeName,
   WORKTREE_BRANCH_PREFIX,
 } from '@/shared/lib/workspace/worktree/branch-name';
-import type { WorktreeInfo } from '@kabmo-labs/kabmo-worktree-types';
+import type { WorktreeInfo } from '@kabmo-labs/kabmo-worktree/types';
 import { carryIgnoredInto, type CarryResult } from '@/server/lib/fs/worktree/carry';
 import { WorktreeError } from '@/server/lib/fs/worktree/errors';
 import {
@@ -45,7 +45,7 @@ import {
   resolveConfiguredWorktreeRoot,
   resolveTargetDirectory,
 } from '@/server/lib/fs/worktree/location';
-import { findBranchInUse, isWorkTree, refExists } from '@kabmo-labs/kabmo-worktree-topology/list';
+import { findBranchInUse, isWorkTree, refExists } from '@kabmo-labs/kabmo-worktree/topology/list';
 import { resolveProjectId } from '@/server/lib/fs/worktree/project-id';
 
 /**

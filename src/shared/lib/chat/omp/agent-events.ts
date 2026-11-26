@@ -14,12 +14,12 @@
  */
 
 import type { IncomingExtensionUiRequest, OmpAgentEvent } from '@/shared/types';
-import { extractTextFromContent, toChatMessage } from '@kabmo-labs/kabmo-omp-mapper';
-import { normalizeNoticeText } from '@kabmo-labs/kabmo-chat-notices/notice-text';
-import { parseModeMarker } from '@kabmo-labs/kabmo-omp-mode/markers';
+import { extractTextFromContent, toChatMessage } from '@kabmo-labs/kabmo-omp/mapper';
+import { normalizeNoticeText } from '@kabmo-labs/kabmo-chat/notices/notice-text';
+import { parseModeMarker } from '@kabmo-labs/kabmo-omp/mode/markers';
 import { emitKabmoModeSignal } from '@/client/lib/omp-mode-signal';
 import { emitSessionModesChanged } from '@/client/lib/harness-mode-signal';
-import { KABMO_GOAL_EVALUATING_MARKER } from '@kabmo-labs/kabmo-omp-mode/types';
+import { KABMO_GOAL_EVALUATING_MARKER } from '@kabmo-labs/kabmo-omp/mode/types';
 import { materializeTerminalMessages } from '@/shared/lib/chat/omp/terminal-messages';
 import { invalidateComposerCache } from '@/shared/lib/chat/composer/client';
 import { setActivity, toolHost, type OmpAgentFoldDeps } from '@/shared/lib/chat/omp/fold-deps';
@@ -33,12 +33,12 @@ import {
   pairToolOutputs,
   recordToolResult,
   refreshToolMessage,
-} from '@kabmo-labs/kabmo-chat-rows/tool-results';
+} from '@kabmo-labs/kabmo-chat/rows/tool-results';
 import { foldToolEnd, foldToolStart, foldToolUpdate } from '@/shared/lib/chat/omp/tool-frames';
 
 // Re-exported so stream.ts and the timeline hook keep their existing import
 // site; the implementation lives in tool-results.ts.
-export type { ToolResultRecord } from '@kabmo-labs/kabmo-chat-rows/tool-results';
+export type { ToolResultRecord } from '@kabmo-labs/kabmo-chat/rows/tool-results';
 export type { OmpAgentFoldDeps } from '@/shared/lib/chat/omp/fold-deps';
 
 export function foldAgentEvent(data: OmpAgentEvent, deps: OmpAgentFoldDeps): void {

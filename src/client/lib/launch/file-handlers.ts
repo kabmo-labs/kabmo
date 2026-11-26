@@ -32,7 +32,7 @@
  *    because there is no route to answer that question for a handle.
  */
 
-import { BINARY_SNIFF_BYTES, classifyEditorFile, unsupportedEditorMessage } from '@kabmo-labs/kabmo-fs-media/file-kind';
+import { BINARY_SNIFF_BYTES, classifyEditorFile, unsupportedEditorMessage } from '@kabmo-labs/kabmo-fs/media/file-kind';
 import { openFileInEditor } from '@/client/hooks/ui/open-file';
 import type { LaunchParams } from '@/client/lib/launch/types';
 

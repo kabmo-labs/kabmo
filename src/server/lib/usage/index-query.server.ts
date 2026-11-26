@@ -30,7 +30,7 @@ import type {
   UsageTotals,
 } from '@/shared/types';
 import { providerDisplayName } from '@/shared/lib/models/provider/label';
-import { harnessDescriptor } from '@kabmo-labs/kabmo-harness-catalog';
+import { harnessDescriptor } from '@kabmo-labs/kabmo-harness/catalog';
 
 /** Columns every rollup aggregation sums, under the names SQL returns. */
 const SUM_COLUMNS = `

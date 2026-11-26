@@ -22,8 +22,8 @@ import { createInterface } from 'node:readline/promises';
 
 import { color, log, warn } from '@/cli/lib/output.js';
 import { resolveBunBin } from '@/cli/lib/runtime.js';
-import { invalidateOmpCliCache, resolveOmpBin } from '@kabmo-labs/kabmo-omp-cli';
-import { ompInstallCommands } from '@kabmo-labs/kabmo-omp-install/install-hint';
+import { invalidateOmpCliCache, resolveOmpBin } from '@kabmo-labs/kabmo-omp/cli';
+import { ompInstallCommands } from '@kabmo-labs/kabmo-omp/install/install-hint';
 
 /** Whether this process may ask the question at all. */
 export function canOfferOmpInstall({ isTTY, json, quiet }) {

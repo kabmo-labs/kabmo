@@ -1,7 +1,7 @@
 import type { Attachment, ChangedFile, ChatMessageData } from '@/shared/types';
 import { AiMessageFooter } from '@/client/components/workspace/chat-timeline/AiMessageFooter';
 import { ChangedFilesSummary } from '@/client/components/workspace/chat-timeline/ChangedFilesSummary';
-import { messageAnswerText } from '@kabmo-labs/kabmo-chat-notices/notice-row';
+import { messageAnswerText } from '@kabmo-labs/kabmo-chat/notices/notice-row';
 import { formatMessageStamp } from '@kabmo-labs/kabmo-format/time';
 import type { ForkAnchorRole } from '@/shared/lib/chat/timeline/fork-anchor';
 

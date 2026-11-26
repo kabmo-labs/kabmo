@@ -13,7 +13,7 @@ import { saveProviderEntry, type ProviderEntryPatch } from '@/shared/lib/models/
 import { PROVIDER_APIS,
 PROVIDER_API_LABELS,
 PROVIDER_AUTH_MODES, } from '@kabmo-labs/kabmo-provider-contracts/dialect';
-import type { OmpProviderApi, ProviderAuthMode } from '@kabmo-labs/kabmo-settings-contracts/provider';
+import type { OmpProviderApi, ProviderAuthMode } from '@kabmo-labs/kabmo-settings/contracts/provider';
 
 interface ProviderEntryModalProps {
   isOpen: boolean;

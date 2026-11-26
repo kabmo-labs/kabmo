@@ -19,7 +19,7 @@ import { join } from 'node:path';
 
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { getDb } from '@/server/db.server';
-import { invalidateOmpSidebarData } from '@kabmo-labs/kabmo-omp-session-reader';
+import { invalidateOmpSidebarData } from '@kabmo-labs/kabmo-omp/session-reader';
 import { resetRealtimeHub } from '@/server/lib/realtime/hub.server';
 import {
   noteAwaitingInput,

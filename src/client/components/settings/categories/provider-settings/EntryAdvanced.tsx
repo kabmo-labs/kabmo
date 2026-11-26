@@ -2,7 +2,7 @@ import { SearchSelect } from '@/client/components/common/search-select';
 import { CHECKBOX_CLASS } from '@/client/components/common/checkbox/style';
 import { Plus, X } from 'lucide-preact';
 import { PROVIDER_DISCOVERY_TYPES } from '@kabmo-labs/kabmo-provider-contracts/dialect';
-import type { ProviderDiscoveryType } from '@kabmo-labs/kabmo-settings-contracts/provider';
+import type { ProviderDiscoveryType } from '@kabmo-labs/kabmo-settings/contracts/provider';
 
 const fieldClass = 'w-full text-xs py-2 px-3 rounded-lg border border-ink/20 hover:border-ink/40 '
   + 'bg-paper focus:outline-none focus:border-ink text-ink transition-colors';

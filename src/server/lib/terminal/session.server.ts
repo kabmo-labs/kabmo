@@ -39,11 +39,11 @@
  * ordering rule that comes with it is stated at `attachTerminal`.
  */
 
-import { resolveRoot } from '@kabmo-labs/kabmo-workspace-root/root';
+import { resolveRoot } from '@kabmo-labs/kabmo-workspace/root/root';
 import { signalName } from '@kabmo-labs/kabmo-sdk';
 import { scopeToRepo } from '@/server/lib/fs/repo-scope';
-import { describeSpawnFailure } from '@kabmo-labs/kabmo-process-probe/fd-pressure';
-import { killProcessTree } from '@kabmo-labs/kabmo-process-kill';
+import { describeSpawnFailure } from '@kabmo-labs/kabmo-process/probe/fd-pressure';
+import { killProcessTree } from '@kabmo-labs/kabmo-process/kill';
 import { createTerminalHistory, type TerminalHistory } from '@/server/lib/terminal/history';
 import { createTerminalOutputQueue, type TerminalOutputQueue } from '@/server/lib/terminal/output';
 import { resolveShellExecutable, shellCandidates, shellLaunch, terminalEnv } from '@/server/lib/terminal/shell';

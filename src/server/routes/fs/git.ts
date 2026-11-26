@@ -17,14 +17,14 @@
 import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import path from 'path';
 import { COMMIT_PAGE_SIZE } from '@/shared/lib/fs/commit-page';
-import { getDefaultFsRoot, resolveRoot } from '@kabmo-labs/kabmo-workspace-root/root';
+import { getDefaultFsRoot, resolveRoot } from '@kabmo-labs/kabmo-workspace/root/root';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { discoveredRepos, rescanRepos, startRepoScan } from '@/server/lib/fs/git-repos';
 import { readRepoDetails } from '@/server/lib/fs/git-repo-details';
 import { fetchGitCommits, readHeadCommitMessage } from '@/server/lib/fs/git-log';
 import { fetchWorkingFileDiff } from '@/server/lib/fs/git-diff';
-import { repoRelative, resolveRepoPath } from '@kabmo-labs/kabmo-git-runner/git-run';
-import { parseConflictMarkers } from '@kabmo-labs/kabmo-git-runner/git-unmerged';
+import { repoRelative, resolveRepoPath } from '@kabmo-labs/kabmo-git/runner/git-run';
+import { parseConflictMarkers } from '@kabmo-labs/kabmo-git/runner/git-unmerged';
 import { readGitStatus } from '@/server/lib/fs/git-status-read';
 import { readBlame, readBlameHistory } from '@/server/lib/fs/git-blame';
 import { listBranchDetails } from '@/server/lib/fs/git-branch';

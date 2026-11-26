@@ -26,7 +26,7 @@ import { sessionTopic } from '@/shared/lib/realtime/protocol';
 import { getRealtimeHub } from '@/server/lib/realtime/hub.server';
 import { peerRealtimeSocketUrl } from '@/server/lib/omp/rpc/peer-proxy.server';
 import { normalizeAgentEvent } from '@/server/lib/chat/normalize-tools.server';
-import type { AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
+import type { AgentEvent } from '@kabmo-labs/kabmo-omp/rpc-protocol/constants';
 import { isRecord } from '@kabmo-labs/kabmo-guards';
 
 /** One frame off the owner's socket, narrowed to the fields a relay reads. */

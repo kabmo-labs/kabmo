@@ -25,12 +25,12 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 
 import { rpcErrorResponse } from '@/server/lib/omp/rpc/errors';
-import { EventFanout } from '@kabmo-labs/kabmo-omp-rpc-events/event-fanout';
-import { PendingUiDialogs } from '@kabmo-labs/kabmo-omp-rpc-process/pending-ui-dialogs';
-import { WebRpcError, type AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
+import { EventFanout } from '@kabmo-labs/kabmo-omp/rpc-events/event-fanout';
+import { PendingUiDialogs } from '@kabmo-labs/kabmo-omp/rpc-process/pending-ui-dialogs';
+import { WebRpcError, type AgentEvent } from '@kabmo-labs/kabmo-omp/rpc-protocol/constants';
 import { RpcCommandError,
 RpcCommandTimeoutError,
-STDERR_TAIL_LIMIT, } from '@kabmo-labs/kabmo-omp-rpc-util/process-helpers';
+STDERR_TAIL_LIMIT, } from '@kabmo-labs/kabmo-omp/rpc-util/process-helpers';
 import { stripKabmoHostEnv } from '@kabmo-labs/kabmo-sdk';
 import {
   getSpawnApprovalMode,

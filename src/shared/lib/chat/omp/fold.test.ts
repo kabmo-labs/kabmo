@@ -27,7 +27,7 @@ import {
   recordToolResult,
   refreshToolMessage,
   type ToolResultRecord,
-} from '@kabmo-labs/kabmo-chat-rows/tool-results';
+} from '@kabmo-labs/kabmo-chat/rows/tool-results';
 
 /** Full deps record with every ref fresh, so tests never share state. */
 function makeDeps(): OmpAgentFoldDeps {

@@ -24,17 +24,17 @@
  */
 
 import { json } from '@kabmo-labs/kabmo-http';
-import { isBuiltinHarness, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
-import { adaptBaseUrl, planProtocol, supportedProtocols, type CanonicalProtocol } from '@kabmo-labs/kabmo-harness-provider/dialects';
-import { providerFacts } from '@kabmo-labs/kabmo-harness-provider/provider-lookup';
-import { providerEnv, providerLevel, registryLabel } from '@kabmo-labs/kabmo-harness-provider/providers';
-import { providerIdProblem, providerSlugFrom } from '@kabmo-labs/kabmo-harness-provider-slug';
-import { withEnvValues } from '@kabmo-labs/kabmo-harness-config';
-import { loadHarnessConfig, saveHarnessConfig } from '@kabmo-labs/kabmo-harness-config-store/config.server';
-import { forgetProbe } from '@kabmo-labs/kabmo-harness-config-store/probe-cache.server';
-import { probeEndpointProtocols, type EndpointProbe } from '@kabmo-labs/kabmo-harness-provider-runtime/provider-probe.server';
-import { writeProvider, type ListedProvider, type ProviderDraft } from '@kabmo-labs/kabmo-harness-provider-runtime/provider-write.server';
-import { readProviderKey, harnessesSharingRegistry } from '@kabmo-labs/kabmo-harness-provider-runtime/provider-sources.server';
+import { isBuiltinHarness, type HarnessId } from '@kabmo-labs/kabmo-harness/catalog';
+import { adaptBaseUrl, planProtocol, supportedProtocols, type CanonicalProtocol } from '@kabmo-labs/kabmo-harness/provider/dialects';
+import { providerFacts } from '@kabmo-labs/kabmo-harness/provider/provider-lookup';
+import { providerEnv, providerLevel, registryLabel } from '@kabmo-labs/kabmo-harness/provider/providers';
+import { providerIdProblem, providerSlugFrom } from '@kabmo-labs/kabmo-harness/provider-slug';
+import { withEnvValues } from '@kabmo-labs/kabmo-harness/config';
+import { loadHarnessConfig, saveHarnessConfig } from '@kabmo-labs/kabmo-harness/config-store/config.server';
+import { forgetProbe } from '@kabmo-labs/kabmo-harness/config-store/probe-cache.server';
+import { probeEndpointProtocols, type EndpointProbe } from '@kabmo-labs/kabmo-harness/provider-runtime/provider-probe.server';
+import { writeProvider, type ListedProvider, type ProviderDraft } from '@kabmo-labs/kabmo-harness/provider-runtime/provider-write.server';
+import { readProviderKey, harnessesSharingRegistry } from '@kabmo-labs/kabmo-harness/provider-runtime/provider-sources.server';
 import { refreshModelRegistryAfterWrite } from '@/server/lib/models/registry-refresh.server';
 
 /** A provider about to be written, from any source. */

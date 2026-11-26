@@ -20,9 +20,9 @@
  * `['--file', tempPath]` so it never touches the developer's real config.
  */
 
-import { readSettingsJson } from '@kabmo-labs/kabmo-settings-store';
+import { readSettingsJson } from '@kabmo-labs/kabmo-settings/store';
 import { getDb } from '@/server/db.server';
-import { runGit } from '@kabmo-labs/kabmo-git-runner/git-run';
+import { runGit } from '@kabmo-labs/kabmo-git/runner/git-run';
 import { SETTINGS_BLOB_KEY } from '@/shared/lib/settings/keys';
 import {
   normalizeGitIdentities,

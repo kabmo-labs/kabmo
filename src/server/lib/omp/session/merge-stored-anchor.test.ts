@@ -17,7 +17,7 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { mergeOmpAttachments, overlayRowsForOmpSession, type StoredMessage } from '@kabmo-labs/kabmo-omp-session-runtime/merge-stored';
+import { mergeOmpAttachments, overlayRowsForOmpSession, type StoredMessage } from '@kabmo-labs/kabmo-omp/session-runtime/merge-stored';
 
 /** Arbitrary epoch ms, one second per step, so the order is exact. */
 const at = (second: number) => 1_790_000_000_000 + second * 1000;

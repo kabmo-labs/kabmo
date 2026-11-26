@@ -21,10 +21,10 @@
 
 import type { ToolCallData } from '@/shared/types';
 import { isRecord } from '@kabmo-labs/kabmo-guards';
-import { isSoleInvocation } from '@kabmo-labs/kabmo-chat-tool/tool-commands';
-import { parseProcUrl, procRequestOp } from '@kabmo-labs/kabmo-omp-proc/proc';
+import { isSoleInvocation } from '@kabmo-labs/kabmo-chat/tool/tool-commands';
+import { parseProcUrl, procRequestOp } from '@kabmo-labs/kabmo-omp/proc/proc';
 import { DEVICE_VERBS, PHASE_VERBS, TOOL_ALIASES, TOOL_VERBS, asString, pick, subjectFor, truncate } from '@/shared/lib/chat/timeline/tool-phrases';
-import { canonicalAgentToolName } from '@kabmo-labs/kabmo-chat-tool/tool-aliases';
+import { canonicalAgentToolName } from '@kabmo-labs/kabmo-chat/tool/tool-aliases';
 
 export interface ToolActivity {
   /** Canonical omp tool name; legacy Kabmo aliases are normalized. */

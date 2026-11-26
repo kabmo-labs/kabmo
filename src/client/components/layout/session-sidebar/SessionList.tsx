@@ -1,5 +1,5 @@
 import { Category } from '@/client/components/layout/session-sidebar/CategoryItem';
-import { harnessBadgeLabel } from '@kabmo-labs/kabmo-harness-catalog';
+import { harnessBadgeLabel } from '@kabmo-labs/kabmo-harness/catalog';
 import type { BatchBinding } from '@/client/components/common/batch-selection/types';
 import type { WorkspaceFolderData } from '@/shared/types';
 import type { ToastTone } from '@/shared/lib/ui/toast-duration';

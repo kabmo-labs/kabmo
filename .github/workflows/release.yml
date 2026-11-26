@@ -71,7 +71,7 @@ name: Release
 #
 # `publish.yml` and `publish-plugins.yml` are now the TRIGGERS for those two
 # bodies: `release: published` plus `workflow_dispatch` for the app, a
-# `kabmo-sdk/v*` / `kabmo-ui/v*` tag push plus `workflow_dispatch` for the packages.
+# `kabmo-*/v*` tag push plus `workflow_dispatch` for the packages.
 # Both of them ALSO call the two gate workflows inside the body they call, so a
 # publish cannot start on a commit whose gates or specs are red — whichever path
 # asked for it.
@@ -152,7 +152,7 @@ jobs:
   # 1. The published packages. Runs first because the app is pinned to them.
   # ---------------------------------------------------------------------------
   packages:
-    name: Release the plugin packages
+    name: Release the workspace packages
     needs: [gates, e2e]
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -276,10 +276,10 @@ jobs:
   # 1b. The bundled marketplace plugins. Between `packages` and the shell bump,
   # and that position is the whole design.
   #
-  # Named `marketplace`, NOT `plugins`: `publish-plugins.yml` already means the
-  # npm packages `@kabmo-labs/kabmo-sdk` and `@kabmo-labs/kabmo-ui`, and a job called
-  # `plugins` beside a workflow called "Publish Plugin Packages" reads as the
-  # same thing. It is not — nothing here is published.
+  # Named `marketplace`, NOT `plugins`: `publish-plugins.yml` already means every
+  # npm package in `release/packages.js`, and a job called `plugins` beside a
+  # workflow called "Publish Workspace Packages" reads as the same thing. It is
+  # not — nothing here is published.
   # ---------------------------------------------------------------------------
   #
   # A bundled plugin is NOT published anywhere: all three are `private: true`

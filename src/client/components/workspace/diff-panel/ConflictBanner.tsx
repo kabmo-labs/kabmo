@@ -1,5 +1,5 @@
 import { AlertTriangle } from 'lucide-preact';
-import type { ConflictMarkers } from '@kabmo-labs/kabmo-git-runner/git-unmerged';
+import type { ConflictMarkers } from '@kabmo-labs/kabmo-git/runner/git-unmerged';
 
 interface ConflictBannerProps {
   /** The side labels read from the file's own markers. */

@@ -23,14 +23,14 @@
  */
 
 import { getDb } from '@/server/db.server';
-import { registerChildOutcomeReporter } from '@kabmo-labs/kabmo-session-relations/child-outcome';
+import { registerChildOutcomeReporter } from '@kabmo-labs/kabmo-session/relations/child-outcome';
 import { appendQueueItem } from '@/server/lib/queue/store.server';
 import { deliverQueueNow } from '@/server/lib/queue/delivery.server';
-import { getSessionRelation } from '@kabmo-labs/kabmo-session-relations/relations.server';
+import { getSessionRelation } from '@kabmo-labs/kabmo-session/relations/relations.server';
 import { isSessionArchived } from '@/server/lib/sessions/resolve.server';
 import { ensureSessionLive } from '@/server/lib/sessions/dispatch.server';
-import { findSessionFileById } from '@kabmo-labs/kabmo-omp-session-locator';
-import { loadSessionTitle } from '@kabmo-labs/kabmo-omp-session-messages/messages';
+import { findSessionFileById } from '@kabmo-labs/kabmo-omp/session-locator';
+import { loadSessionTitle } from '@kabmo-labs/kabmo-omp/session-messages/messages';
 import {
   renderChildOutcomeNotice,
   type ChildOutcomeEntry,

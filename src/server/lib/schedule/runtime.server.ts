@@ -27,13 +27,13 @@
 
 import { startNewRpcSession, startRpcSession } from '@/server/lib/omp/rpc/session-registry';
 import { resolveSpawnCwd } from '@/server/lib/omp/rpc/spawn-args';
-import { resolveSessionPathOr404 } from '@kabmo-labs/kabmo-omp-session-locator';
+import { resolveSessionPathOr404 } from '@kabmo-labs/kabmo-omp/session-locator';
 import { startAcpSession, type AcpSpawnRequest } from '@/server/lib/harness/spawn.server';
-import { loadHarnessSession } from '@kabmo-labs/kabmo-harness-session/session-store.server';
+import { loadHarnessSession } from '@kabmo-labs/kabmo-harness/session/session-store.server';
 import { loadPersistedAccessMode } from '@/shared/lib/omp/config/access-mode.server';
 import { claimDueTasks, finishScheduledRun, startScheduledRun } from '@/server/lib/schedule/store.server';
-import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
-import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
+import type { ApprovalMode } from '@kabmo-labs/kabmo-omp/access-mode';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness/catalog';
 import type { ScheduledTask } from '@kabmo-labs/kabmo-app-contracts/schedule';
 
 /**

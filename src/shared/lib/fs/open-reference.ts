@@ -20,7 +20,7 @@
  * Pure: the caller fetches the index, this decides.
  */
 
-import { lastPathSegment } from '@kabmo-labs/kabmo-fs-media/paths';
+import { lastPathSegment } from '@kabmo-labs/kabmo-fs/media/paths';
 
 /** One file reference, as the inline-code detector produced it. */
 export interface InlineFileTarget {

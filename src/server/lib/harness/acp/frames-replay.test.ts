@@ -14,7 +14,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { AcpFrameMapper } from '@kabmo-labs/kabmo-acp-mapper/frames';
+import { AcpFrameMapper } from '@kabmo-labs/kabmo-acp/mapper/frames';
 
 const chunk = (text: string, messageId = 'u1') => ({
   sessionUpdate: 'user_message_chunk',

@@ -24,8 +24,8 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
-import { probes } from '@kabmo-labs/kabmo-harness-config-store/probe-cache.server';
-import { loadDisabledHarnesses } from '@kabmo-labs/kabmo-harness-config-store/enabled.server';
+import { probes } from '@kabmo-labs/kabmo-harness/config-store/probe-cache.server';
+import { loadDisabledHarnesses } from '@kabmo-labs/kabmo-harness/config-store/enabled.server';
 import { action } from '@/server/routes/harness/root';
 
 type Handler = (args: never) => unknown;

@@ -7,9 +7,19 @@
     ".": "./src/response.ts",
     "./response": "./src/response.ts"
   },
-  "files": ["src"],
+  "files": [
+    "src"
+  ],
   "license": "MIT",
-  "repository": { "type": "git", "url": "git+https://github.com/kabmo-labs/kabmo.git", "directory": "packages/kabmo-http" },
-  "publishConfig": { "access": "public" },
-  "engines": { "bun": ">=1.4.0" }
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-http"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  }
 }

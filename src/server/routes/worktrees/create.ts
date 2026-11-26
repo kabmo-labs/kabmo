@@ -24,9 +24,9 @@ import { getDataDir } from '@kabmo-labs/kabmo-paths/paths';
 import { putWorktreeRow, worktreeIdentityFor } from '@kabmo-labs/kabmo-db/worktree-registry';
 import { asWorktreeFailure } from '@/server/lib/fs/worktree/errors';
 import { createWorktree, planWorktree } from '@/server/lib/fs/worktree/create';
-import { invalidateWorktreeTopology } from '@kabmo-labs/kabmo-worktree-topology/topology';
+import { invalidateWorktreeTopology } from '@kabmo-labs/kabmo-worktree/topology/topology';
 import { readWorktreeSettings } from '@/server/lib/fs/worktree/settings.server';
-import type { WorktreeValidation } from '@kabmo-labs/kabmo-worktree-types';
+import type { WorktreeValidation } from '@kabmo-labs/kabmo-worktree/types';
 import { isMock, mockRefusal, resolveWorktreeProject, worktreeFailureResponse } from '@/server/routes/worktrees/shared';
 
 interface CreateBody {

@@ -10,7 +10,7 @@
  */
 
 import { isRecord } from '@kabmo-labs/kabmo-guards';
-import { turnStoppedAbnormally } from '@kabmo-labs/kabmo-omp-session-parse/turn-error';
+import { turnStoppedAbnormally } from '@kabmo-labs/kabmo-omp/session-parse/turn-error';
 import type { BtwTurnStatus } from '@/shared/types';
 
 /** A turn stopped by the user is 'cancelled'; a provider error is a failure —

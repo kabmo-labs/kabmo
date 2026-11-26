@@ -29,7 +29,7 @@
 import fs from 'fs';
 
 import { flockAvailable, tryFlock } from '@/server/lib/lifecycle/flock';
-import { getProcessState } from '@kabmo-labs/kabmo-process-probe/identity';
+import { getProcessState } from '@kabmo-labs/kabmo-process/probe/identity';
 import { describeOccupant, findOccupant } from '@/server/lib/lifecycle/occupant';
 import { getLockPath } from '@kabmo-labs/kabmo-paths/paths';
 import { probeAddresses, unavailableAddresses } from '@/server/lib/lifecycle/probe';

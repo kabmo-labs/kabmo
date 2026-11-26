@@ -21,7 +21,7 @@ import os from 'os';
 import fs from 'fs';
 import type { DbClient } from './client';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
-import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
+import { pathExists } from '@kabmo-labs/kabmo-omp/paths';
 import { getDataDir } from '@kabmo-labs/kabmo-paths/paths';
 
 /** Open and bootstrap one handle. Registered by the app at import time. */

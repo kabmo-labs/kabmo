@@ -1,0 +1,60 @@
+/**
+ * @license
+ * SPDX-License-Identifier: MIT
+ */
+
+/**
+ * How one ACP session is spawned.
+ *
+ * Its own module because the type is the transport's spawn contract, read by
+ * `AcpSession` and handed to it by both callers (`spawn.server.ts` for a chat,
+ * `acp-audit.server.ts` for a disposable reader); keeping it in `session.ts`
+ * made that file carry a second responsibility past its size ceiling.
+ */
+
+import type { ApprovalMode } from '@kabmo-labs/kabmo-omp/access-mode';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness/catalog';
+import type { AcpProcess } from '@kabmo-labs/kabmo-acp/client/client';
+import type { AcpMcpServer } from '@kabmo-labs/kabmo-acp/protocol/protocol';
+
+export interface AcpSessionOptions {
+  harness: HarnessId;
+  command: string[];
+  env?: Record<string, string>;
+  /** Ambient names removed before `env` is merged; see `AgentStdioOptions`. */
+  envDrop?: readonly string[];
+  /**
+   * A process that has already been spawned and `initialize`d — a prewarmed
+   * agent. The session adopts it, so the handshake it runs costs only
+   * `session/new` and the config writes; the frame sinks are re-bound here.
+   */
+  process?: AcpProcess;
+  /** Provider/model this session starts on, applied with
+   *  `session/set_config_option` right after `session/new`. */
+  model?: { provider: string; modelId: string } | null;
+  thinkingLevel?: string | null;
+  mode?: string | null;
+  /** The composer's access pick. ACP has no spawn flag for it, so the session
+   *  answers `session/request_permission` itself according to this tier. */
+  accessMode?: ApprovalMode | null;
+  /** Quiet window before the child is reclaimed; defaults to the omp window so
+   *  both transports release an idle agent after the same time. */
+  idleDestroyMs?: number;
+  /**
+   * MCP servers every `session/new|load|resume|fork` carries.
+   *
+   * ACP is the delivery for every harness but omp's RPC mode, so this is where
+   * the settings list reaches an agent. Empty means "none configured", which is
+   * also what an audit reader passes.
+   */
+  mcpServers?: AcpMcpServer[];
+  /**
+   * Restore the retained history as frames while the session attaches.
+   *
+   * v2's `session/resume` replays nothing unless `replayFrom` asks, and a chat
+   * Kabmo never spawned has no local transcript to draw. This is the only path
+   * that can show one, so the flag is opt-in: a chat that already has Kabmo's
+   * stored transcript must not replay and duplicate it.
+   */
+  replay?: boolean;
+}

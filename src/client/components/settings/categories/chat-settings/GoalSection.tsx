@@ -18,7 +18,7 @@ import type { AIModelOption, SettingsState } from '@/shared/types';
 import { fetchModelsData } from '@/shared/lib/models/client';
 import { providerLabel } from '@/shared/lib/models/provider/label';
 import { useProviderNames } from '@/client/hooks/models/use-provider-names';
-import { normalizeGoalBudget } from '@kabmo-labs/kabmo-omp-mode/budget';
+import { normalizeGoalBudget } from '@kabmo-labs/kabmo-omp/mode/budget';
 import { SearchSelect } from '@/client/components/common/search-select';
 
 interface ChatGoalSectionProps {

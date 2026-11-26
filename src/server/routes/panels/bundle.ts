@@ -26,7 +26,7 @@
 
 import { json, type LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { findPluginDir } from '@/server/lib/panels/registry.server';
-import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
+import { pathExists } from '@kabmo-labs/kabmo-omp/paths';
 import { join } from 'path';
 
 /** Strip a `.js` suffix the route adds for a readable URL. */

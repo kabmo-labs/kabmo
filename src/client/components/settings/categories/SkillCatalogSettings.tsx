@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { Loader2, RefreshCw, Search, X } from 'lucide-preact';
 import type { CatalogSkillItem } from '@/shared/types';
 import { invalidateComposerCache } from '@/shared/lib/chat/composer/client';
-import { skillsharePackage } from '@kabmo-labs/kabmo-omp-session-core/skill-source';
+import { skillsharePackage } from '@kabmo-labs/kabmo-omp/session-core/skill-source';
 import { useToasts } from '@/client/hooks/ui/toasts';
 import { useSkillCatalog } from '@/client/hooks/settings/skill-catalog';
 import { useSkillGitImport } from '@/client/hooks/settings/skill-git-import';

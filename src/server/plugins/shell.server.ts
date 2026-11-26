@@ -26,7 +26,7 @@
 import { resolve } from 'path';
 
 import { describeShellBuildFailure } from '@/server/lib/bundler/build-errors.server';
-import { countOpenFileDescriptors, describeFdPressure, hasDescriptorHeadroom, type FdPressure } from '@kabmo-labs/kabmo-process-probe/fd-pressure';
+import { countOpenFileDescriptors, describeFdPressure, hasDescriptorHeadroom, type FdPressure } from '@kabmo-labs/kabmo-process/probe/fd-pressure';
 import { DEV_ASSETS_ENABLED } from '@/server/lib/assets/dev-assets.server';
 import { packageDir } from '@/server/lib/fs/package-root';
 import { SHELL_ROUTE } from '@/server/lib/lifecycle/shell-route';

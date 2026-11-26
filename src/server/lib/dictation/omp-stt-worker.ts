@@ -36,7 +36,7 @@
  * `aud.subarray is not a function`.
  */
 
-import { resolveOmpBin } from '@kabmo-labs/kabmo-omp-cli';
+import { resolveOmpBin } from '@kabmo-labs/kabmo-omp/cli';
 import { DEFAULT_STT_MODEL, isSttModelKey, type SttProgressEvent } from '@/shared/lib/dictation/models';
 import { startSttWorkerProcess, type SttWorkerProcess } from '@/server/lib/dictation/worker-process';
 import type { SpeechFrame } from '@/server/lib/dictation/speech-frames';

@@ -13,7 +13,7 @@
  * possible without a second conversation per day.
  */
 
-import type { QueuedMessageModel } from '@kabmo-labs/kabmo-chat-contracts/chat';
+import type { QueuedMessageModel } from '@kabmo-labs/kabmo-chat/contracts/chat';
 
 /** How `spec` is interpreted. */
 export type ScheduleKind = 'once' | 'every' | 'cron';

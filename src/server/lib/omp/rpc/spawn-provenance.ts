@@ -24,7 +24,7 @@
  */
 
 import type { AgentSessionWrapper } from '@/server/lib/omp/rpc/manager';
-import { DEFAULT_APPROVAL_MODE, type ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
+import { DEFAULT_APPROVAL_MODE, type ApprovalMode } from '@kabmo-labs/kabmo-omp/access-mode';
 
 declare global {
   // eslint-disable-next-line no-var

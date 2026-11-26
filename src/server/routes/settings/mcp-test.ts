@@ -1,7 +1,7 @@
 import { json } from '@kabmo-labs/kabmo-http';
 import type { ActionFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
-import { testMcpServer } from '@kabmo-labs/kabmo-omp-config-mcp/mcp-test';
+import { testMcpServer } from '@kabmo-labs/kabmo-omp/config-mcp/mcp-test';
 import type { McpServerItem } from '@/shared/types';
 
 /**

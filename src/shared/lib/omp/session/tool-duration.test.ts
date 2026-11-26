@@ -17,7 +17,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { collectToolOutputs } from '@kabmo-labs/kabmo-omp-messages-map';
+import { collectToolOutputs } from '@kabmo-labs/kabmo-omp/messages-map';
 
 describe('collectToolOutputs — the span a call took', () => {
   test('times a call from its tool_execution_start entry to its result entry', () => {

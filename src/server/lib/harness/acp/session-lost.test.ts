@@ -14,7 +14,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { isLostSession, LOST_SESSION_NOTICE } from '@kabmo-labs/kabmo-acp-session/session-lost';
+import { isLostSession, LOST_SESSION_NOTICE } from '@kabmo-labs/kabmo-acp/session/session-lost';
 
 describe('isLostSession', () => {
   test('recognises the spellings adapters use', () => {

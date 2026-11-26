@@ -34,17 +34,17 @@ import fs from 'fs';
 import path from 'path';
 import { getDb } from '@/server/db.server';
 import type { DbClient } from '@kabmo-labs/kabmo-db/client';
-import { findSessionFileById } from '@kabmo-labs/kabmo-omp-session-locator';
-import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
-import { invalidateOmpSidebarData } from '@kabmo-labs/kabmo-omp-session-reader';
+import { findSessionFileById } from '@kabmo-labs/kabmo-omp/session-locator';
+import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp/session-scan/files';
+import { invalidateOmpSidebarData } from '@kabmo-labs/kabmo-omp/session-reader';
 import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 import { failWaitingOn } from '@/server/lib/waiting/store.server';
-import { siblingDirForSession } from '@kabmo-labs/kabmo-omp-subagent/history-paths';
+import { siblingDirForSession } from '@kabmo-labs/kabmo-omp/subagent/history-paths';
 import { isSinglePathSegment } from '@kabmo-labs/kabmo-paths/path-segment';
-import { deleteSessionRelations } from '@kabmo-labs/kabmo-session-relations/relations.server';
+import { deleteSessionRelations } from '@kabmo-labs/kabmo-session/relations/relations.server';
 import { removeSessionMcpOverlay } from '@/server/lib/mcp/session-overlay.server';
 import { purgeChangeJournal } from '@/server/lib/changes/purge.server';
-import { markSessionDeleted } from '@kabmo-labs/kabmo-session-deleted';
+import { markSessionDeleted } from '@kabmo-labs/kabmo-session/deleted';
 
 export interface SessionPurgeResult {
   /** Something keyed to this id existed — a transcript, a mock session row, or

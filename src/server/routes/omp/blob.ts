@@ -22,7 +22,7 @@
 
 import { json, type LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { errorResponse } from '@/server/lib/route-adapter';
-import { readBlobImage } from '@kabmo-labs/kabmo-omp-session-messages/blobs.server';
+import { readBlobImage } from '@kabmo-labs/kabmo-omp/session-messages/blobs.server';
 import { bodyBytes } from '@kabmo-labs/kabmo-bytes';
 
 export async function loader({ request }: LoaderFunctionArgs) {

@@ -29,7 +29,7 @@
 import type { Dispatch, SetStateAction } from 'preact/compat';
 import type { Attachment, ChatMessageData, OmpAgentHandle, PromptDispatchResult } from '@/shared/types';
 import { toAttachmentList } from '@/shared/lib/chat/attachments';
-import { harnessSupportsRewind } from '@kabmo-labs/kabmo-harness-rewind/rewind';
+import { harnessSupportsRewind } from '@kabmo-labs/kabmo-harness/rewind/rewind';
 import { requestRewind } from '@/client/hooks/chat/timeline/rewind';
 
 export interface RewindActionsDeps {

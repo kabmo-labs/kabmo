@@ -88,7 +88,7 @@ const EMPTY_RELEASE: ShellRelease = { url: null, latest: null, releaseUrl: null,
  * NOT `/releases/latest`, which answers the newest release of ANY kind. This
  * repository publishes several artifacts from one push, and the packages are
  * released FIRST (`packages → marketplace → android → … → app` in
- * `release.yml`), so their `kabmo-sdk/v*` / `kabmo-ui/v*` releases are newer
+ * `release.yml`), so their `kabmo-<package>/v*` releases are newer
  * than the app release that carries the shells. `@semantic-release/github` runs
  * in both pipelines, so those are real releases — measured against a stub that
  * answered a package release: `/releases/latest` produced `{url: null, …}` and

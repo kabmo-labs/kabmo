@@ -20,13 +20,13 @@ import type { ActionFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { methodNotAllowed, parseJsonBody } from '@/server/lib/route-adapter';
 import { emitRealtimeSignal } from '@kabmo-labs/kabmo-realtime-signals';
 import { readImages, readModel, readString } from '@/server/routes/sessions/body-readers';
-import { isApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
+import { isApprovalMode } from '@kabmo-labs/kabmo-omp/access-mode';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import {
   SessionSpawnError,
   spawnChildSession,
 } from '@/server/lib/sessions/spawn.server';
-import { bearerToken, verifyAgentToken } from '@kabmo-labs/kabmo-session-relations/agent-token.server';
+import { bearerToken, verifyAgentToken } from '@kabmo-labs/kabmo-session/relations/agent-token.server';
 
 type Visibility = 'visible' | 'hidden';
 type ParentNotifications = 'auto' | 'stuck' | 'off';

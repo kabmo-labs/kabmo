@@ -21,8 +21,8 @@ import { readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { changesRoot } from '@/server/lib/changes/paths.server';
 import { parseJournalLine } from '@/server/lib/changes/records';
-import { readRawHeaderLine } from '@kabmo-labs/kabmo-omp-session-scan/files';
-import { findSessionFileById } from '@kabmo-labs/kabmo-omp-session-locator';
+import { readRawHeaderLine } from '@kabmo-labs/kabmo-omp/session-scan/files';
+import { findSessionFileById } from '@kabmo-labs/kabmo-omp/session-locator';
 
 interface CwdCache {
   root: string;

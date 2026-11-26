@@ -22,13 +22,13 @@ import { ensureProviderIconSchema, repairProviderIconSvgs } from '@/server/lib/m
 import { ensureUsageIndexSchema } from '@/server/lib/usage/index-schema.server';
 import { ensureWorktreeSchema } from '@kabmo-labs/kabmo-db/worktree-registry';
 import { ensureReviewSchema } from '@/server/lib/review/schema.server';
-import { ensureHarnessSchema } from '@kabmo-labs/kabmo-harness-schema/schema.server';
+import { ensureHarnessSchema } from '@kabmo-labs/kabmo-harness/schema/schema.server';
 import { ensureSessionRelationsSchema } from '@/server/lib/sessions/schema.server';
 import { ensurePromptHistorySchema } from '@/server/lib/chat/schema.server';
 import { ensureSessionMcpSchema } from '@/server/lib/mcp/schema.server';
 import { ensureNotificationSchema } from '@/server/lib/notifications/schema.server';
 import { ensureConnectSchema } from '@/server/lib/connect/devices.server';
-import { ensureAcpGrantSchema } from '@kabmo-labs/kabmo-acp-session-core/grants.server';
+import { ensureAcpGrantSchema } from '@kabmo-labs/kabmo-acp/session-core/grants.server';
 import { migrateWorkspaceFolderColumns } from '@/shared/lib/workspace/schema-migrations';
 import { migrateSessionStreamStateColumns } from '@/shared/lib/omp/session/schema-migrations';
 

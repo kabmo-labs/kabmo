@@ -33,8 +33,8 @@ import {
   jobMoving,
   jobUnfinished,
   updateJobsFrom,
-} from '@kabmo-labs/kabmo-harness-update-job/update-job';
-import type { HarnessUpdateJob } from '@kabmo-labs/kabmo-harness-update-job/types';
+} from '@kabmo-labs/kabmo-harness/update-job/update-job';
+import type { HarnessUpdateJob } from '@kabmo-labs/kabmo-harness/update-job/types';
 
 /** One poll per second: the worker flushes at 400ms, and this is a dialog. */
 export const HARNESS_UPDATE_POLL_MS = 1_000;

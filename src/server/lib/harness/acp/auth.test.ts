@@ -13,7 +13,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { authMethodsOf, describeSignIn, headlessAuthMethod, isAuthRequiredError } from '@kabmo-labs/kabmo-acp-client/auth';
+import { authMethodsOf, describeSignIn, headlessAuthMethod, isAuthRequiredError } from '@kabmo-labs/kabmo-acp/client/auth';
 
 describe('headlessAuthMethod', () => {
   test('prefers the machine credential', () => {

@@ -19,7 +19,7 @@
  */
 
 import { join } from 'path';
-import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
+import { pathExists } from '@kabmo-labs/kabmo-omp/paths';
 import { isRecord } from '@kabmo-labs/kabmo-guards';
 
 /**

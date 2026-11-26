@@ -1,0 +1,42 @@
+{
+  "name": "@kabmo-labs/kabmo-session",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "The session family: 4 previously separate modules in one package.",
+  "exports": {
+    "./deleted": "./src/deleted/deleted-sessions.server.ts",
+    "./deleted/deleted-sessions.server": "./src/deleted/deleted-sessions.server.ts",
+    "./lifecycle": "./src/lifecycle/lifecycle.server.ts",
+    "./lifecycle/lifecycle.server": "./src/lifecycle/lifecycle.server.ts",
+    "./relations": "./src/relations/relations.server.ts",
+    "./relations/relations.server": "./src/relations/relations.server.ts",
+    "./relations/agent-token.server": "./src/relations/agent-token.server.ts",
+    "./relations/relation-types": "./src/relations/relation-types.ts",
+    "./relations/sidebar-relations.server": "./src/relations/sidebar-relations.server.ts",
+    "./relations/answers.server": "./src/relations/answers.server.ts",
+    "./relations/child-outcome": "./src/relations/child-outcome.ts",
+    "./stream-state": "./src/stream-state/stream-state.ts",
+    "./stream-state/stream-heal.server": "./src/stream-state/stream-heal.server.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-session"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  },
+  "dependencies": {
+    "@kabmo-labs/kabmo-app-contracts": "workspace:*",
+    "@kabmo-labs/kabmo-db": "workspace:*",
+    "@kabmo-labs/kabmo-process": "workspace:*",
+    "@kabmo-labs/kabmo-realtime-signals": "workspace:*"
+  }
+}

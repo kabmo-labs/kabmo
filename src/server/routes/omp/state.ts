@@ -1,7 +1,7 @@
 import { json } from '@kabmo-labs/kabmo-http';
 import type { LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
-import { runUtilityCommand } from '@kabmo-labs/kabmo-omp-rpc-process/utility';
+import { runUtilityCommand } from '@kabmo-labs/kabmo-omp/rpc-process/utility';
 
 /**
  * Live agent snapshot from the shared omp utility RPC process (get_state):

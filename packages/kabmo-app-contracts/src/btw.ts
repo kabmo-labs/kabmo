@@ -20,7 +20,7 @@
  * the TUI's.
  */
 
-import type { ChatMessageData } from '@kabmo-labs/kabmo-chat-contracts/chat';
+import type { ChatMessageData } from '@kabmo-labs/kabmo-chat/contracts/chat';
 
 /** Lifecycle of one question/answer pair inside a topic. */
 export type BtwTurnStatus = 'running' | 'complete' | 'cancelled' | 'error' | 'interrupted';

@@ -19,7 +19,7 @@ import { Database } from 'bun:sqlite';
 import fs from 'node:fs';
 import { join } from 'node:path';
 
-import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness/catalog';
 import type { UsageRollupRow } from '@/server/lib/usage/index-parse';
 import {
   addUsage,

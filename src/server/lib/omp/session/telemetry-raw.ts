@@ -15,7 +15,7 @@
 
 import type { RawMessageItem } from '@kabmo-labs/kabmo-app-contracts/context';
 import { buildInfo, formatTs, scanSessionEntries, textOf, tokensOf, type OmpMessage, type OmpMessageEntry } from '@/server/lib/omp/session/telemetry';
-import { contentProfile } from '@kabmo-labs/kabmo-omp-session-parse/telemetry-blocks';
+import { contentProfile } from '@kabmo-labs/kabmo-omp/session-parse/telemetry-blocks';
 
 export type RawMessageRole = 'all' | 'assistant' | 'user';
 

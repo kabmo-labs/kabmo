@@ -14,7 +14,7 @@
  * shape) or separated with `--` before it reaches argv.
  */
 
-import { repoRelative, resolveRepoPath, runGit } from '@kabmo-labs/kabmo-git-runner/git-run';
+import { repoRelative, resolveRepoPath, runGit } from '@kabmo-labs/kabmo-git/runner/git-run';
 import { readGitState } from '@/server/lib/fs/git-state';
 import type { GitOperation } from '@/shared/types';
 

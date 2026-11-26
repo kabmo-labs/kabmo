@@ -34,7 +34,7 @@ import path from 'node:path';
 
 import { stopInstance } from '@/cli/lib/stop-instance.js';
 import { readInstanceRecord, writeInstanceRecord } from '@/server/lib/lifecycle/instance';
-import { win32Probe } from '@kabmo-labs/kabmo-process-probe/proc';
+import { win32Probe } from '@kabmo-labs/kabmo-process/probe/proc';
 
 let workRoot = '';
 let originalDataDir;

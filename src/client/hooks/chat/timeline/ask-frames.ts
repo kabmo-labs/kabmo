@@ -44,7 +44,7 @@
  */
 
 import type { ChatMessageData } from '@/shared/types';
-import type { ExtensionUiDialogRequest } from '@kabmo-labs/kabmo-chat-contracts/agent';
+import type { ExtensionUiDialogRequest } from '@kabmo-labs/kabmo-chat/contracts/agent';
 import { askQuestionForFrame, askQuestionForOptions, askQuestionForTitle, askQuestionSharesText, normalizeAskText } from '@/shared/lib/chat/ask-questions';
 import { bucketAskFrames } from '@/client/hooks/chat/timeline/ask-frame-buckets';
 import type { AskFramesSplit } from '@/client/hooks/chat/timeline/ask-frames-context';

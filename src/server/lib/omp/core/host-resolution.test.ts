@@ -23,10 +23,10 @@ import fs from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 
-import { invalidateOmpCliCache, resolveOmpBin } from '@kabmo-labs/kabmo-omp-cli';
-import { resolveProjectRoot } from '@kabmo-labs/kabmo-omp-worktree';
-import { buildWebState, type WebStateHost } from '@kabmo-labs/kabmo-omp-rpc-process/web-state';
-import type { RpcSessionState } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
+import { invalidateOmpCliCache, resolveOmpBin } from '@kabmo-labs/kabmo-omp/cli';
+import { resolveProjectRoot } from '@kabmo-labs/kabmo-omp/worktree';
+import { buildWebState, type WebStateHost } from '@kabmo-labs/kabmo-omp/rpc-process/web-state';
+import type { RpcSessionState } from '@kabmo-labs/kabmo-omp/rpc-protocol/constants';
 
 const tempDirs: string[] = [];
 const realEnv = {

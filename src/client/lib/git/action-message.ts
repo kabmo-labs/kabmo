@@ -35,7 +35,7 @@
  * outcome git did not produce.
  */
 
-import { OPERATION_LABELS } from '@kabmo-labs/kabmo-git-runner/git-unmerged';
+import { OPERATION_LABELS } from '@kabmo-labs/kabmo-git/runner/git-unmerged';
 
 export interface GitActionMessageInput {
   actionType: string;

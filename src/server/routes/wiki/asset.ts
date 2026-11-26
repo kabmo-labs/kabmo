@@ -20,9 +20,9 @@
  */
 
 import { json, type LoaderFunctionArgs } from '@kabmo-labs/kabmo-http';
-import { resolveRoot } from '@kabmo-labs/kabmo-workspace-root/root';
+import { resolveRoot } from '@kabmo-labs/kabmo-workspace/root/root';
 import { scopeToRepo } from '@/server/lib/fs/repo-scope';
-import { getImageMimeType } from '@kabmo-labs/kabmo-fs-media/mime';
+import { getImageMimeType } from '@kabmo-labs/kabmo-fs/media/mime';
 import { gitRun } from '@/server/lib/wiki/git';
 import { ensureWikiMirror, readWikiAsset } from '@/server/lib/wiki/mirror.server';
 import { parseWikiRemote } from '@/server/lib/wiki/remote';

@@ -20,7 +20,7 @@
 import { ExternalLink, FolderInput, GitBranch, Package, Store } from 'lucide-preact';
 import type { ComponentChildren } from 'preact';
 import type { PanelPluginAuthor, PanelPluginOrigin } from '@/shared/types';
-import { isNewer } from '@kabmo-labs/kabmo-harness-update-job/semver';
+import { isNewer } from '@kabmo-labs/kabmo-harness/update-job/semver';
 import type { PluginContribution } from '@/client/hooks/workspace/plugin-contributions';
 
 /**

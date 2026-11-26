@@ -16,9 +16,9 @@
 
 import { getDb } from '@/server/db.server';
 import { normalizeModel } from '@/server/lib/queue/store.server';
-import { readSettingsJson } from '@kabmo-labs/kabmo-settings-store';
+import { readSettingsJson } from '@kabmo-labs/kabmo-settings/store';
 import { loadPersistedAccessMode } from '@/shared/lib/omp/config/access-mode.server';
-import { harnessDescriptor } from '@kabmo-labs/kabmo-harness-catalog';
+import { harnessDescriptor } from '@kabmo-labs/kabmo-harness/catalog';
 import { isValidTimeZone, serverTimeZone } from '@/shared/lib/schedule/timezone';
 import { isRecord } from '@kabmo-labs/kabmo-guards';
 import type { ScheduleKind, ScheduledTaskModel } from '@kabmo-labs/kabmo-app-contracts/schedule';

@@ -27,7 +27,7 @@ import { SidebarActionRow } from '@/client/components/layout/session-sidebar/mod
 import { WorkspaceSection } from '@/client/components/layout/session-sidebar/modern/WorkspaceSection';
 import { ModernSidebarSkeleton } from '@/client/components/layout/session-sidebar/modern/Skeleton';
 import { SessionListNotice } from '@/client/components/layout/session-sidebar/SessionListNotice';
-import { harnessBadgeLabel } from '@kabmo-labs/kabmo-harness-catalog';
+import { harnessBadgeLabel } from '@kabmo-labs/kabmo-harness/catalog';
 import {
   focusFolders,
   runningSessionCount,

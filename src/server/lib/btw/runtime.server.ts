@@ -29,9 +29,9 @@
  * is worth live in `lifecycle.server.ts`.
  */
 
-import { RpcProcess, type RpcFrame } from '@kabmo-labs/kabmo-omp-rpc-process/process';
-import { GET_STATE_TIMEOUT_MS, READY_TIMEOUT_MS, type RpcSessionState } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
-import { resolveOmpBin } from '@kabmo-labs/kabmo-omp-cli';
+import { RpcProcess, type RpcFrame } from '@kabmo-labs/kabmo-omp/rpc-process/process';
+import { GET_STATE_TIMEOUT_MS, READY_TIMEOUT_MS, type RpcSessionState } from '@kabmo-labs/kabmo-omp/rpc-protocol/constants';
+import { resolveOmpBin } from '@kabmo-labs/kabmo-omp/cli';
 import { buildBtwSpawnArgs, type BtwSpawnSettings } from '@/server/lib/btw/child.server';
 import {
   abortSideTurn,
