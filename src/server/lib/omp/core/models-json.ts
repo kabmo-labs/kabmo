@@ -16,7 +16,7 @@
  * both are dropped by the same `invalidateModelsCaches` signal.
  */
 
-import { childEnv } from '@/server/lib/fs/child-env';
+import { childEnv } from '@kabmo-labs/kabmo-fs-child-env';
 import { resolveOmpBin } from '@/server/lib/omp/core/cli';
 
 const LIST_TIMEOUT_MS = 30_000;

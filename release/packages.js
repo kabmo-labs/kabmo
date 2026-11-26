@@ -41,6 +41,34 @@ export const RELEASE_PACKAGES = [
     name: '@kabmo-labs/kabmo-acp-mapper',
   },
   {
+    dir: 'packages/kabmo-auth',
+    name: '@kabmo-labs/kabmo-auth',
+  },
+  {
+    dir: 'packages/kabmo-fs-child-env',
+    name: '@kabmo-labs/kabmo-fs-child-env',
+  },
+  {
+    dir: 'packages/kabmo-fs-canonical',
+    name: '@kabmo-labs/kabmo-fs-canonical',
+  },
+  {
+    dir: 'packages/kabmo-process-kill',
+    name: '@kabmo-labs/kabmo-process-kill',
+  },
+  {
+    dir: 'packages/kabmo-rpc-lines',
+    name: '@kabmo-labs/kabmo-rpc-lines',
+  },
+  {
+    dir: 'packages/kabmo-acp-stdio',
+    name: '@kabmo-labs/kabmo-acp-stdio',
+  },
+  {
+    dir: 'packages/kabmo-acp-client',
+    name: '@kabmo-labs/kabmo-acp-client',
+  },
+  {
     /** Directory under `packages/`, which is also the tag's prefix. */
     dir: 'packages/kabmo-guards',
     name: '@kabmo-labs/kabmo-guards',

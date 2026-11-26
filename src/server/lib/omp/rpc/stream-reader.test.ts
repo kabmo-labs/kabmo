@@ -21,8 +21,8 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { readLines } from '@/server/lib/omp/rpc/lines';
-import { killProcessTree } from '@/server/lib/lifecycle/kill-tree';
+import { readLines } from '@kabmo-labs/kabmo-rpc-lines';
+import { killProcessTree } from '@kabmo-labs/kabmo-process-kill';
 
 function streamOf(...chunks: string[]): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();

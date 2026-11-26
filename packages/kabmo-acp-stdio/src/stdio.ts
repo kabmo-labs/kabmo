@@ -18,8 +18,8 @@
  */
 
 import type { Subprocess } from 'bun';
-import { readLines } from '@/server/lib/omp/rpc/lines';
-import { killProcessTree } from '@/server/lib/lifecycle/kill-tree';
+import { readLines } from '@kabmo-labs/kabmo-rpc-lines';
+import { killProcessTree } from '@kabmo-labs/kabmo-process-kill';
 import { stripKabmoHostEnv, withToolchainPath } from '@kabmo-labs/kabmo-sdk';
 
 const STDERR_TAIL_LIMIT = 8_000;

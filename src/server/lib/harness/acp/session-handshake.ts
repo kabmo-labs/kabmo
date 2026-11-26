@@ -24,11 +24,11 @@
  *    string as the model id — which is what the generating indicator names.
  */
 
-import { newSessionAfterActivation } from '@/server/lib/harness/acp/activation';
+import { newSessionAfterActivation } from '@kabmo-labs/kabmo-acp-client/activation';
 import { applyLaunchSelections, configOption, modelFromOption, modelsAsSelector } from '@/server/lib/harness/acp/prompt';
 import { toAcpV2McpServers } from '@kabmo-labs/kabmo-acp-protocol/v2';
 import type { SessionDirs } from '@kabmo-labs/kabmo-acp-protocol/verbs';
-import { authMethodsOf, describeSignIn, headlessAuthMethod, isAuthRequiredError } from '@/server/lib/harness/acp/auth';
+import { authMethodsOf, describeSignIn, headlessAuthMethod, isAuthRequiredError } from '@kabmo-labs/kabmo-acp-client/auth';
 import { additionalDirectoriesFor, sessionRoots } from '@/server/lib/harness/acp/session-roots.server';
 import { capabilitiesFrom } from '@/server/lib/harness/launch';
 import type { AcpAgentCommand,

@@ -25,7 +25,7 @@
  */
 
 import path from 'node:path';
-import { pathHolds } from '@/server/lib/fs/canonical';
+import { pathHolds } from '@kabmo-labs/kabmo-fs-canonical';
 import { ACP_ERROR } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 
 /** The slice of a session an fs call reads. */

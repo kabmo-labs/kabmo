@@ -15,7 +15,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { withGatewayCompatibility } from '@/server/lib/harness/acp/gateway-env';
+import { withGatewayCompatibility } from '@kabmo-labs/kabmo-acp-client/gateway-env';
 
 describe('withGatewayCompatibility', () => {
   test('a custom Claude base URL gets an empty metadata object', () => {

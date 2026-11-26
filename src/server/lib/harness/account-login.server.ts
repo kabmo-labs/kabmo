@@ -18,7 +18,7 @@
 
 import { accountAdapter, type AccountHarness } from '@kabmo-labs/kabmo-harness-accounts';
 import { harnessAccountTarget } from '@/server/lib/harness/accounts.server';
-import { killProcessTree } from '@/server/lib/lifecycle/kill-tree';
+import { killProcessTree } from '@kabmo-labs/kabmo-process-kill';
 
 export type AccountLoginPhase = 'running' | 'done' | 'error' | 'cancelled';
 

@@ -31,11 +31,9 @@
  * (`normalizeInitializeResult`); the negotiated major is kept on it.
  */
 
-import {
-  ACP_PROTOCOL_VERSION,
-  KABMO_CLIENT_CAPABILITIES,
-  assertProtocolVersion,
-} from '@/server/lib/harness/acp/client-capabilities';
+import { ACP_PROTOCOL_VERSION,
+KABMO_CLIENT_CAPABILITIES,
+assertProtocolVersion, } from './client-capabilities';
 import { AcpRequestError } from '@kabmo-labs/kabmo-acp-mapper/calls';
 import { asRecord, normalizeInitializeResult } from '@kabmo-labs/kabmo-acp-protocol/v2';
 import type { AcpInitializeResult } from '@kabmo-labs/kabmo-acp-protocol/protocol';

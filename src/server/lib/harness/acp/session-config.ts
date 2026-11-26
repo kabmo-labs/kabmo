@@ -30,10 +30,10 @@
  */
 
 import { configOption, modelFromOption } from '@/server/lib/harness/acp/prompt';
-import { isDurableGrantKey, permissionGrantKey } from '@/server/lib/harness/acp/grants';
+import { isDurableGrantKey, permissionGrantKey } from '@kabmo-labs/kabmo-acp-client/grants';
 import { saveAcpGrant } from '@/server/lib/harness/acp/grants.server';
 import type { AcpConfigOption, AcpSessionModeState, AcpSessionModels } from '@kabmo-labs/kabmo-acp-protocol/protocol';
-import type { PendingPermissions } from '@/server/lib/harness/acp/permissions';
+import type { PendingPermissions } from '@kabmo-labs/kabmo-acp-client/permissions';
 import { markStreamModel } from '@/shared/lib/omp/session/stream-state.server';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';

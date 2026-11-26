@@ -73,6 +73,57 @@
       "@kabmo-labs/kabmo-acp-mapper/tool-shape": [
         "./packages/kabmo-acp-mapper/src/tool-shape.ts"
       ],
+      "@kabmo-labs/kabmo-acp-stdio": [
+        "./packages/kabmo-acp-stdio/src/stdio.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-client": [
+        "./packages/kabmo-acp-client/src/client.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-client/activation": [
+        "./packages/kabmo-acp-client/src/activation.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-client/auth": [
+        "./packages/kabmo-acp-client/src/auth.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-client/client": [
+        "./packages/kabmo-acp-client/src/client.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-client/client-capabilities": [
+        "./packages/kabmo-acp-client/src/client-capabilities.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-client/client-fs": [
+        "./packages/kabmo-acp-client/src/client-fs.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-client/client-initialize": [
+        "./packages/kabmo-acp-client/src/client-initialize.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-client/client-requests": [
+        "./packages/kabmo-acp-client/src/client-requests.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-client/gateway-env": [
+        "./packages/kabmo-acp-client/src/gateway-env.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-client/grants": [
+        "./packages/kabmo-acp-client/src/grants.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-client/permissions": [
+        "./packages/kabmo-acp-client/src/permissions.ts"
+      ],
+      "@kabmo-labs/kabmo-auth": [
+        "./packages/kabmo-auth/src/password.ts"
+      ],
+      "@kabmo-labs/kabmo-fs-canonical": [
+        "./packages/kabmo-fs-canonical/src/canonical.ts"
+      ],
+      "@kabmo-labs/kabmo-fs-child-env": [
+        "./packages/kabmo-fs-child-env/src/child-env.ts"
+      ],
+      "@kabmo-labs/kabmo-process-kill": [
+        "./packages/kabmo-process-kill/src/kill-tree.ts"
+      ],
+      "@kabmo-labs/kabmo-rpc-lines": [
+        "./packages/kabmo-rpc-lines/src/lines.ts"
+      ],
       "@kabmo-labs/kabmo-bytes": [
         "./packages/kabmo-bytes/src/bytes.ts"
       ],

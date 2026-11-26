@@ -24,7 +24,7 @@
  * module exists to remove.
  */
 
-import { LEGACY_UI_PASSWORD_ENV, UI_PASSWORD_ENV } from '@/shared/lib/auth/password';
+import { LEGACY_UI_PASSWORD_ENV, UI_PASSWORD_ENV } from '@kabmo-labs/kabmo-auth';
 
 /** argv flag carrying a password directly to the server (bypassing the CLI). */
 export const UI_PASSWORD_FLAG = '--ui-password';

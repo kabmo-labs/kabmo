@@ -15,7 +15,7 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { mkdtemp, rm, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { handleAcpFsRequest, isAcpFsMethod, type AcpFsHost } from '@/server/lib/harness/acp/client-fs';
+import { handleAcpFsRequest, isAcpFsMethod, type AcpFsHost } from './client-fs';
 import { testPosix } from '@/test-support/platform';
 import { ACP_ERROR } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 

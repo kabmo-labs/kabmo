@@ -23,7 +23,7 @@ import { afterAll, describe, expect, test } from 'bun:test';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { canonicalPath } from '@/server/lib/fs/canonical';
+import { canonicalPath } from '@kabmo-labs/kabmo-fs-canonical';
 import { createWorktree, planWorktree, type CreateWorktreeDeps } from '@/server/lib/fs/worktree/create';
 import { WorktreeError } from '@/server/lib/fs/worktree/errors';
 import { listWorktrees } from '@/server/lib/fs/worktree/list';

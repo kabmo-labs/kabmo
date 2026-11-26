@@ -32,8 +32,8 @@
  */
 
 import fs from 'node:fs';
-import { AcpProcess } from '@/server/lib/harness/acp/client';
-import { withGatewayCompatibility } from '@/server/lib/harness/acp/gateway-env';
+import { AcpProcess } from '@kabmo-labs/kabmo-acp-client/client';
+import { withGatewayCompatibility } from '@kabmo-labs/kabmo-acp-client/gateway-env';
 import { loadHarnessConfig } from '@/server/lib/harness/config.server';
 import { resolveAccountLaunch } from '@/server/lib/harness/accounts.server';
 import { customHarness, ensureCustomHarnesses } from '@/server/lib/harness/custom.server';

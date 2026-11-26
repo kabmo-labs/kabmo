@@ -16,13 +16,18 @@
         "@codemirror/view": "6.43.15",
         "@dskripchenko/drawio": "^0.1.0",
         "@fontsource/fira-code": "^5.3.0",
+        "@kabmo-labs/kabmo-acp-client": "workspace:*",
         "@kabmo-labs/kabmo-acp-mapper": "workspace:*",
         "@kabmo-labs/kabmo-acp-protocol": "workspace:*",
+        "@kabmo-labs/kabmo-acp-stdio": "workspace:*",
+        "@kabmo-labs/kabmo-auth": "workspace:*",
         "@kabmo-labs/kabmo-bytes": "workspace:*",
         "@kabmo-labs/kabmo-chat-contracts": "workspace:*",
         "@kabmo-labs/kabmo-chat-notices": "workspace:*",
         "@kabmo-labs/kabmo-chat-tool": "workspace:*",
         "@kabmo-labs/kabmo-format": "workspace:*",
+        "@kabmo-labs/kabmo-fs-canonical": "workspace:*",
+        "@kabmo-labs/kabmo-fs-child-env": "workspace:*",
         "@kabmo-labs/kabmo-fs-config": "workspace:*",
         "@kabmo-labs/kabmo-fs-media": "workspace:*",
         "@kabmo-labs/kabmo-fs-toolchain": "workspace:*",
@@ -59,6 +64,8 @@
         "@kabmo-labs/kabmo-omp-session-parse": "workspace:*",
         "@kabmo-labs/kabmo-omp-session-scan": "workspace:*",
         "@kabmo-labs/kabmo-platform": "workspace:*",
+        "@kabmo-labs/kabmo-process-kill": "workspace:*",
+        "@kabmo-labs/kabmo-rpc-lines": "workspace:*",
         "@kabmo-labs/kabmo-sdk": "workspace:*",
         "@kabmo-labs/kabmo-ui": "workspace:*",
         "@shikijs/langs": "^4.4.3",
@@ -105,6 +112,18 @@
         "typescript": "~5.8.2",
       },
     },
+    "packages/kabmo-acp-client": {
+      "name": "@kabmo-labs/kabmo-acp-client",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kabmo-labs/kabmo-acp-mapper": "workspace:*",
+        "@kabmo-labs/kabmo-acp-protocol": "workspace:*",
+        "@kabmo-labs/kabmo-acp-stdio": "workspace:*",
+        "@kabmo-labs/kabmo-fs-canonical": "workspace:*",
+        "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
+        "@kabmo-labs/kabmo-omp-access-mode": "workspace:*",
+      },
+    },
     "packages/kabmo-acp-mapper": {
       "name": "@kabmo-labs/kabmo-acp-mapper",
       "version": "0.0.1",
@@ -121,6 +140,19 @@
       "dependencies": {
         "@kabmo-labs/kabmo-fs-toolchain": "workspace:*",
       },
+    },
+    "packages/kabmo-acp-stdio": {
+      "name": "@kabmo-labs/kabmo-acp-stdio",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kabmo-labs/kabmo-process-kill": "workspace:*",
+        "@kabmo-labs/kabmo-rpc-lines": "workspace:*",
+        "@kabmo-labs/kabmo-sdk": "workspace:*",
+      },
+    },
+    "packages/kabmo-auth": {
+      "name": "@kabmo-labs/kabmo-auth",
+      "version": "0.0.1",
     },
     "packages/kabmo-bytes": {
       "name": "@kabmo-labs/kabmo-bytes",
@@ -157,6 +189,17 @@
     "packages/kabmo-format": {
       "name": "@kabmo-labs/kabmo-format",
       "version": "0.0.1",
+    },
+    "packages/kabmo-fs-canonical": {
+      "name": "@kabmo-labs/kabmo-fs-canonical",
+      "version": "0.0.1",
+    },
+    "packages/kabmo-fs-child-env": {
+      "name": "@kabmo-labs/kabmo-fs-child-env",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kabmo-labs/kabmo-auth": "workspace:*",
+      },
     },
     "packages/kabmo-fs-config": {
       "name": "@kabmo-labs/kabmo-fs-config",
@@ -405,6 +448,17 @@
       "name": "@kabmo-labs/kabmo-platform",
       "version": "0.0.1",
     },
+    "packages/kabmo-process-kill": {
+      "name": "@kabmo-labs/kabmo-process-kill",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kabmo-labs/kabmo-fs-child-env": "workspace:*",
+      },
+    },
+    "packages/kabmo-rpc-lines": {
+      "name": "@kabmo-labs/kabmo-rpc-lines",
+      "version": "0.0.1",
+    },
     "packages/kabmo-sdk": {
       "name": "@kabmo-labs/kabmo-sdk",
       "version": "0.5.0",
@@ -502,9 +556,15 @@
 
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw=="],
 
+    "@kabmo-labs/kabmo-acp-client": ["@kabmo-labs/kabmo-acp-client@workspace:packages/kabmo-acp-client"],
+
     "@kabmo-labs/kabmo-acp-mapper": ["@kabmo-labs/kabmo-acp-mapper@workspace:packages/kabmo-acp-mapper"],
 
     "@kabmo-labs/kabmo-acp-protocol": ["@kabmo-labs/kabmo-acp-protocol@workspace:packages/kabmo-acp-protocol"],
+
+    "@kabmo-labs/kabmo-acp-stdio": ["@kabmo-labs/kabmo-acp-stdio@workspace:packages/kabmo-acp-stdio"],
+
+    "@kabmo-labs/kabmo-auth": ["@kabmo-labs/kabmo-auth@workspace:packages/kabmo-auth"],
 
     "@kabmo-labs/kabmo-bytes": ["@kabmo-labs/kabmo-bytes@workspace:packages/kabmo-bytes"],
 
@@ -515,6 +575,10 @@
     "@kabmo-labs/kabmo-chat-tool": ["@kabmo-labs/kabmo-chat-tool@workspace:packages/kabmo-chat-tool"],
 
     "@kabmo-labs/kabmo-format": ["@kabmo-labs/kabmo-format@workspace:packages/kabmo-format"],
+
+    "@kabmo-labs/kabmo-fs-canonical": ["@kabmo-labs/kabmo-fs-canonical@workspace:packages/kabmo-fs-canonical"],
+
+    "@kabmo-labs/kabmo-fs-child-env": ["@kabmo-labs/kabmo-fs-child-env@workspace:packages/kabmo-fs-child-env"],
 
     "@kabmo-labs/kabmo-fs-config": ["@kabmo-labs/kabmo-fs-config@workspace:packages/kabmo-fs-config"],
 
@@ -587,6 +651,10 @@
     "@kabmo-labs/kabmo-omp-session-scan": ["@kabmo-labs/kabmo-omp-session-scan@workspace:packages/kabmo-omp-session-scan"],
 
     "@kabmo-labs/kabmo-platform": ["@kabmo-labs/kabmo-platform@workspace:packages/kabmo-platform"],
+
+    "@kabmo-labs/kabmo-process-kill": ["@kabmo-labs/kabmo-process-kill@workspace:packages/kabmo-process-kill"],
+
+    "@kabmo-labs/kabmo-rpc-lines": ["@kabmo-labs/kabmo-rpc-lines@workspace:packages/kabmo-rpc-lines"],
 
     "@kabmo-labs/kabmo-sdk": ["@kabmo-labs/kabmo-sdk@workspace:packages/kabmo-sdk"],
 

@@ -14,8 +14,8 @@
  * indistinguishable from a cold spawn, and its cached `initialize` is reused.
  */
 
-import { AcpProcess, type AcpClientOptions } from '@/server/lib/harness/acp/client';
-import { withGatewayCompatibility } from '@/server/lib/harness/acp/gateway-env';
+import { AcpProcess, type AcpClientOptions } from '@kabmo-labs/kabmo-acp-client/client';
+import { withGatewayCompatibility } from '@kabmo-labs/kabmo-acp-client/gateway-env';
 import type { AcpSessionOptions } from '@/server/lib/harness/acp/session-options';
 
 /** The frame sinks a session supplies; `AcpProcess` re-binds them on adoption. */

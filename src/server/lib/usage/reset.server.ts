@@ -27,7 +27,7 @@ import { resolveOmpBin } from '@/server/lib/omp/core/cli';
 import { isMockMode } from '@/server/mock.server';
 import { isRecord } from '@kabmo-labs/kabmo-guards';
 import type { UsageResetAccount, UsageResetCredit, UsageResetList, UsageResetSpendResult } from '@/shared/types';
-import { childEnv } from '@/server/lib/fs/child-env';
+import { childEnv } from '@kabmo-labs/kabmo-fs-child-env';
 
 const LIST_TIMEOUT_MS = 30_000;
 const SPEND_TIMEOUT_MS = 30_000;

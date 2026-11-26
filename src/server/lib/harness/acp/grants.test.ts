@@ -11,7 +11,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { permissionGrantKey, PermissionGrants } from '@/server/lib/harness/acp/grants';
+import { permissionGrantKey, PermissionGrants } from '@kabmo-labs/kabmo-acp-client/grants';
 import { ensureAcpGrantSchema, loadAcpGrants, saveAcpGrant } from '@/server/lib/harness/acp/grants.server';
 import { getDb } from '@/server/db.server';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';

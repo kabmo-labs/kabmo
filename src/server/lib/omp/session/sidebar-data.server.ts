@@ -31,7 +31,7 @@ import { knownHarness, loadAcpSessions, loadHarnessBySession } from '@/server/li
 import { sessionsWithoutTranscript } from '@/server/lib/harness/session-transcript.server';
 import { loadDeletedSessionIds } from '@/server/lib/sessions/deleted-sessions.server';
 import { loadSidebarStatus } from '@/server/lib/omp/session/sidebar-status.server';
-import { canonicalPath } from '@/server/lib/fs/canonical';
+import { canonicalPath } from '@kabmo-labs/kabmo-fs-canonical';
 import { acpRowsFor } from '@/server/lib/omp/session/acp-rows.server';
 import { decorateSidebarSessions } from '@/server/lib/sessions/sidebar-relations.server';
 import type { SessionWorktreeInfo } from '@/shared/lib/workspace/worktree/types';

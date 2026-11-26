@@ -19,7 +19,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { removeDir } from '@/test-support/remove-dir';
 
-import { GENERATED_PASSWORD_LENGTH, PASSWORD_ALPHABET, UI_PASSWORD_ENV, generatePassword } from '@/shared/lib/auth/password';
+import { GENERATED_PASSWORD_LENGTH, PASSWORD_ALPHABET, UI_PASSWORD_ENV, generatePassword } from '@kabmo-labs/kabmo-auth';
 import { withTransaction } from '@/shared/lib/db/transaction.server';
 import { loadPersistedAccessMode } from '@/shared/lib/omp/config/access-mode.server';
 import { ACCESS_MODE_SETTING_KEY, DEFAULT_APPROVAL_MODE } from '@kabmo-labs/kabmo-omp-access-mode';

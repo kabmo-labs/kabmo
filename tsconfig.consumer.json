@@ -37,6 +37,7 @@
     "packages/kabmo-sdk/src",
     "packages/kabmo-ui/src",
     "packages/kabmo-chat-contracts/src",
+    "packages/kabmo-auth/src",
     "packages/kabmo-chat-tool/src",
     "packages/kabmo-chat-notices/src",
     "packages/kabmo-model-contracts/src",

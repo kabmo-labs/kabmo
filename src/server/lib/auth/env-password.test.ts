@@ -18,7 +18,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { resolveRunPassword, UI_PASSWORD_FLAG } from '@/server/lib/auth/env-password';
 import { stripKabmoHostEnv } from '@kabmo-labs/kabmo-sdk';
 import { terminalEnv } from '@/server/lib/terminal/shell';
-import { UI_PASSWORD_ENV } from '@/shared/lib/auth/password';
+import { UI_PASSWORD_ENV } from '@kabmo-labs/kabmo-auth';
 
 const PASSWORD = 'hunter2-do-not-leak';
 

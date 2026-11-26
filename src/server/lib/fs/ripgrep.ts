@@ -23,7 +23,7 @@
 
 import { join } from 'path';
 import { ripgrep } from 'ripgrep';
-import { childEnv } from '@/server/lib/fs/child-env';
+import { childEnv } from '@kabmo-labs/kabmo-fs-child-env';
 
 /** Bytes that open a script rather than an executable (`#!`). */
 const SHEBANG_MAGIC = [0x23, 0x21] as const;

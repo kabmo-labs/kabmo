@@ -23,7 +23,7 @@ import { getDataDir } from '@/server/lib/lifecycle/paths';
 import { resolveProjectRoot } from '@/server/lib/omp/core/worktree';
 import { listSessionFiles } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { scanSessionInfoCached } from '@kabmo-labs/kabmo-omp-session-scan/files';
-import { canonicalPath } from '@/server/lib/fs/canonical';
+import { canonicalPath } from '@kabmo-labs/kabmo-fs-canonical';
 import { worktreeIdentityFor, listWorktreeRows } from '@/server/lib/db/worktree-registry.server';
 import { dirtyCount, commitsAheadOf } from '@/server/lib/fs/worktree/remove';
 import { listWorktrees, isWorkTree } from '@/server/lib/fs/worktree/list';

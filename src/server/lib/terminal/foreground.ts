@@ -41,7 +41,7 @@
  */
 
 import { processProbe } from '@/server/lib/lifecycle/proc';
-import { childEnv } from '@/server/lib/fs/child-env';
+import { childEnv } from '@kabmo-labs/kabmo-fs-child-env';
 
 const PS_TIMEOUT_MS = 1500;
 

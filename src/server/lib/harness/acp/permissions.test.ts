@@ -16,7 +16,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { allowOption, autoApproval } from '@/server/lib/harness/acp/permissions';
+import { allowOption, autoApproval } from '@kabmo-labs/kabmo-acp-client/permissions';
 
 describe('autoApproval', () => {
   test('yolo answers every tier', () => {

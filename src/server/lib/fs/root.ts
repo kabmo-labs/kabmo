@@ -14,7 +14,7 @@
 import path from 'path';
 import { getDb } from '@/server/db.server';
 import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
-import { canonicalPath } from '@/server/lib/fs/canonical';
+import { canonicalPath } from '@kabmo-labs/kabmo-fs-canonical';
 import { externalRoots, isExternalRoot } from '@/server/lib/fs/external-roots';
 import { resolveProjectRoot } from '@/server/lib/omp/core/worktree';
 

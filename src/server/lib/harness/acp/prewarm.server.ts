@@ -35,9 +35,9 @@ import { mintAgentEnvironment } from '@/server/lib/sessions/agent-token.server';
 import { loadHarnessConfig } from '@/server/lib/harness/config.server';
 import { resolveAccountLaunch } from '@/server/lib/harness/accounts.server';
 import { sessionLaunchCommand } from '@/server/lib/harness/launch';
-import { AcpProcess } from '@/server/lib/harness/acp/client';
+import { AcpProcess } from '@kabmo-labs/kabmo-acp-client/client';
 import { IDLE_REAP_MS } from '@/server/lib/omp/rpc/constants';
-import { withGatewayCompatibility } from '@/server/lib/harness/acp/gateway-env';
+import { withGatewayCompatibility } from '@kabmo-labs/kabmo-acp-client/gateway-env';
 import { noteHarnessLease, removeHarnessLease } from '@/server/lib/harness/session-lease.server';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 

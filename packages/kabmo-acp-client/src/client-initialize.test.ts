@@ -13,7 +13,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { initializeAcpAgent, type AcpInitializeInvoke } from '@/server/lib/harness/acp/client-initialize';
+import { initializeAcpAgent, type AcpInitializeInvoke } from './client-initialize';
 import { AcpRequestError } from '@kabmo-labs/kabmo-acp-mapper/calls';
 
 /**

@@ -14,7 +14,7 @@
  */
 
 import type { AcpId } from '@kabmo-labs/kabmo-acp-protocol/protocol';
-import type { AcpClientRequestHandler } from '@/server/lib/harness/acp/client';
+import type { AcpClientRequestHandler } from './client';
 
 /** The transport seams one answer needs. */
 export interface AgentRequestResponder {

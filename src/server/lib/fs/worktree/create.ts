@@ -27,7 +27,7 @@ import path from 'path';
 import { mkdir } from 'fs/promises';
 import { getDataDir } from '@/server/lib/lifecycle/paths';
 import { runGit } from '@/server/lib/fs/git-run';
-import { canonicalPath } from '@/server/lib/fs/canonical';
+import { canonicalPath } from '@kabmo-labs/kabmo-fs-canonical';
 import { resolveProjectRoot } from '@/server/lib/omp/core/worktree';
 import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
 import {

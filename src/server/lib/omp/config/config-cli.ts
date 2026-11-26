@@ -27,7 +27,7 @@
 
 import { isMockMode } from '@/server/mock.server';
 import { resolveOmpBin } from '@/server/lib/omp/core/cli';
-import { childEnv } from '@/server/lib/fs/child-env';
+import { childEnv } from '@kabmo-labs/kabmo-fs-child-env';
 
 export interface ConfigEntry {
   value?: unknown;

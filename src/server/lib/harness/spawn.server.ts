@@ -43,7 +43,7 @@ import { resolveMcpDefinition } from '@/server/lib/mcp/secrets.server';
 import { readSessionMcpOverrides } from '@/server/lib/mcp/session-state.server';
 import { ensureCustomHarnesses } from '@/server/lib/harness/custom.server';
 import type { HarnessConfig } from '@kabmo-labs/kabmo-harness-config';
-import type { AcpProcess } from '@/server/lib/harness/acp/client';
+import type { AcpProcess } from '@kabmo-labs/kabmo-acp-client/client';
 import type { HarnessSession } from '@kabmo-labs/kabmo-harness-contract';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
 import type { SelectedModel } from '@kabmo-labs/kabmo-model-contracts/models';

@@ -12,8 +12,7 @@
 
 import fs from 'node:fs';
 
-import { generatePassword } from '@/shared/lib/auth/password';
-import { UI_PASSWORD_ENV } from '@/shared/lib/auth/password';
+import { generatePassword, UI_PASSWORD_ENV } from '@kabmo-labs/kabmo-auth';
 import { PASSWORD_HANDOVER_ENV, PASSWORD_HANDOVER_STDIN, serializeHandover } from '@/shared/lib/auth/handover';
 import { isLoopbackHost } from '@/server/lib/lifecycle/probe';
 import { log, warn } from '@/cli/lib/output.js';

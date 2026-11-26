@@ -17,7 +17,7 @@
  * inflating the first folder.
  */
 
-import { canonicalPath } from '@/server/lib/fs/canonical';
+import { canonicalPath } from '@kabmo-labs/kabmo-fs-canonical';
 import { resolveProjectRoot } from '@/server/lib/omp/core/worktree';
 import type { HarnessSessionRow } from '@/server/lib/harness/session-store.server';
 import { knownHarness } from '@/server/lib/harness/session-store.server';

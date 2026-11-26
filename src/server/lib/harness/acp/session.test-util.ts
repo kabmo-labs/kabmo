@@ -25,7 +25,7 @@ import { AcpFrameMapper } from '@kabmo-labs/kabmo-acp-mapper/frames';
 import { AcpTurns } from '@/server/lib/harness/acp/turn';
 import { SessionListeners } from '@/server/lib/harness/acp/session-listeners';
 import { RawNotificationSink } from '@kabmo-labs/kabmo-acp-protocol/raw-listeners';
-import { PendingPermissions } from '@/server/lib/harness/acp/permissions';
+import { PendingPermissions } from '@kabmo-labs/kabmo-acp-client/permissions';
 import { AcpSubagents } from '@kabmo-labs/kabmo-acp-mapper/subagents';
 import { acpConfigView } from '@/server/lib/harness/acp/session-config-view';
 import { stampMessageModel } from '@/server/lib/harness/acp/session-config';

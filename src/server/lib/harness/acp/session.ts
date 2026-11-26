@@ -14,7 +14,7 @@
  * `routes/agent/command.ts` needs no second dispatch table.
  */
 
-import { AcpProcess } from '@/server/lib/harness/acp/client';
+import { AcpProcess } from '@kabmo-labs/kabmo-acp-client/client';
 import { openSessionProcess } from '@/server/lib/harness/acp/session-process';
 import { AcpTurns, type AcpTurnEndInfo } from '@/server/lib/harness/acp/turn';
 import { acpBackgroundProbe, acpTurns, acpWiringFor } from '@/server/lib/harness/acp/session-wiring';
@@ -35,7 +35,7 @@ import * as verbs from '@kabmo-labs/kabmo-acp-protocol/verbs';
 import { acpPendingDialogs, answerAcpDialog } from '@/server/lib/harness/acp/session-approvals';
 import { beginAcpTurn } from '@/server/lib/harness/acp/session-turns';
 import { capabilitiesFrom } from '@/server/lib/harness/launch';
-import { PendingPermissions } from '@/server/lib/harness/acp/permissions';
+import { PendingPermissions } from '@kabmo-labs/kabmo-acp-client/permissions';
 import { handleAcpNotification } from '@/server/lib/harness/acp/session-notify';
 import { RawNotificationSink, type RawNotificationListener } from '@kabmo-labs/kabmo-acp-protocol/raw-listeners';
 import { AcpUsageMeter, type AcpContextUsage } from '@/server/lib/harness/acp/session-usage';

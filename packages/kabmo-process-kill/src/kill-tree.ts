@@ -29,7 +29,7 @@
  */
 
 /** What the Windows branch needs from the outside, so a test can drive it. */
-import { childEnv } from '@/server/lib/fs/child-env';
+import { childEnv } from '@kabmo-labs/kabmo-fs-child-env';
 
 export interface KillTreeDeps {
   platform?: NodeJS.Platform;

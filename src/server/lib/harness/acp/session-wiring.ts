@@ -23,7 +23,7 @@ import {
   deliverBackgroundNotice,
   type BackgroundNoticeHost,
 } from '@/server/lib/harness/acp/background-work';
-import type { AcpProcess } from '@/server/lib/harness/acp/client';
+import type { AcpProcess } from '@kabmo-labs/kabmo-acp-client/client';
 import type { AcpFrameMapper } from '@kabmo-labs/kabmo-acp-mapper/frames';
 import { promptBlocks } from '@/server/lib/harness/acp/prompt';
 import { promptFileLinks } from '@/server/lib/harness/acp/prompt-files';

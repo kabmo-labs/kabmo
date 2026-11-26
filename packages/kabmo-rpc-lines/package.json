@@ -1,0 +1,24 @@
+{
+  "name": "@kabmo-labs/kabmo-rpc-lines",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Read newline-delimited child output.",
+  "exports": {
+    ".": "./src/lines.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-rpc-lines"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  }
+}

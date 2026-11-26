@@ -19,7 +19,7 @@
  * environment rather than merging into it, which is what makes the removal real.
  */
 
-import { UI_PASSWORD_ENV } from '@/shared/lib/auth/password';
+import { UI_PASSWORD_ENV } from '@kabmo-labs/kabmo-auth';
 
 /**
  * Names that must never reach a child, whatever the parent's environ holds,

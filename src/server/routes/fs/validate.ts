@@ -10,7 +10,7 @@
  */
 
 import { json } from '@/server/lib/remix-compat';
-import { childEnv } from '@/server/lib/fs/child-env';
+import { childEnv } from '@kabmo-labs/kabmo-fs-child-env';
 import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { join, resolve } from 'path';

@@ -43,7 +43,7 @@ import { resolveRoot } from '@/server/lib/fs/root';
 import { signalName } from '@kabmo-labs/kabmo-sdk';
 import { scopeToRepo } from '@/server/lib/fs/repo-scope';
 import { describeSpawnFailure } from '@/server/lib/lifecycle/fd-pressure';
-import { killProcessTree } from '@/server/lib/lifecycle/kill-tree';
+import { killProcessTree } from '@kabmo-labs/kabmo-process-kill';
 import { createTerminalHistory, type TerminalHistory } from '@/server/lib/terminal/history';
 import { createTerminalOutputQueue, type TerminalOutputQueue } from '@/server/lib/terminal/output';
 import { resolveShellExecutable, shellCandidates, shellLaunch, terminalEnv } from '@/server/lib/terminal/shell';

@@ -47,7 +47,7 @@ import {
   type TrayConfig,
 } from '@/server/lib/tray/config';
 import { installHostScript, resolveHostScript } from '@/server/lib/tray/hosts';
-import { childEnv } from '@/server/lib/fs/child-env';
+import { childEnv } from '@kabmo-labs/kabmo-fs-child-env';
 
 /** A live tray host: the child process and the config it was started with. */
 interface TrayRuntime {

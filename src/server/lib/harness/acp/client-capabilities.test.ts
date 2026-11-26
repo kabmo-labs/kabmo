@@ -12,11 +12,9 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import {
-  ACP_PROTOCOL_VERSION,
-  KABMO_CLIENT_CAPABILITIES,
-  assertProtocolVersion,
-} from '@/server/lib/harness/acp/client-capabilities';
+import { ACP_PROTOCOL_VERSION,
+KABMO_CLIENT_CAPABILITIES,
+assertProtocolVersion, } from '@kabmo-labs/kabmo-acp-client/client-capabilities';
 
 describe('client capabilities', () => {
   test('advertises the fs methods the client actually implements', () => {

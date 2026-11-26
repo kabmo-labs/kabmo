@@ -28,7 +28,7 @@ import { log, ok, warn, fail, printJson, isJson, isQuiet } from '@/cli/lib/outpu
 import { wireChildProcessLifecycle } from '@/cli/lib/process-lifecycle.js';
 import { reportUiAuth, resolveUiPassword, uiPasswordHandover } from '@/cli/lib/ui-password.js';
 import { PASSWORD_HANDOVER_ENV, PASSWORD_HANDOVER_STDIN } from '@/shared/lib/auth/handover';
-import { UI_PASSWORD_ENV } from '@/shared/lib/auth/password';
+import { UI_PASSWORD_ENV } from '@kabmo-labs/kabmo-auth';
 import { getLogFilePath } from '@/cli/lib/paths.js';
 import { resolveServeMode } from '@/cli/lib/serve-mode.js';
 import { ompStartupError } from '@/server/lib/omp/core/startup';

@@ -15,8 +15,8 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { childEnv } from '@/server/lib/fs/child-env';
-import { UI_PASSWORD_ENV } from '@/shared/lib/auth/password';
+import { childEnv } from './child-env';
+import { UI_PASSWORD_ENV } from '@kabmo-labs/kabmo-auth';
 
 describe('childEnv', () => {
   /**

@@ -14,8 +14,8 @@
 
 import type { Subprocess } from 'bun';
 import { stripKabmoHostEnv } from '@kabmo-labs/kabmo-sdk';
-import { killProcessTree } from '@/server/lib/lifecycle/kill-tree';
-import { readLines } from '@/server/lib/omp/rpc/lines';
+import { killProcessTree } from '@kabmo-labs/kabmo-process-kill';
+import { readLines } from '@kabmo-labs/kabmo-rpc-lines';
 import { isMockMode } from '@/server/mock.server';
 import type { McpServerItem } from '@/shared/types';
 import { isRecord } from '@kabmo-labs/kabmo-guards';

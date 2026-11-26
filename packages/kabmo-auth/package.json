@@ -1,0 +1,24 @@
+{
+  "name": "@kabmo-labs/kabmo-auth",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Generated UI password and its environment names.",
+  "exports": {
+    ".": "./src/password.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-auth"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  }
+}

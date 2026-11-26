@@ -14,7 +14,7 @@
  * and the rules live next to `replay.ts`.
  */
 
-import type { AcpProcess } from '@/server/lib/harness/acp/client';
+import type { AcpProcess } from '@kabmo-labs/kabmo-acp-client/client';
 import type { AcpFrameMapper } from '@kabmo-labs/kabmo-acp-mapper/frames';
 import type { AcpReplay } from '@/server/lib/harness/acp/replay';
 import type {

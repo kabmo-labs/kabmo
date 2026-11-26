@@ -21,9 +21,9 @@
  * and the session argv, both under the file ceiling.
  */
 
-import { AcpProcess } from '@/server/lib/harness/acp/client';
-import { withGatewayCompatibility } from '@/server/lib/harness/acp/gateway-env';
-import { newSessionAfterActivation } from '@/server/lib/harness/acp/activation';
+import { AcpProcess } from '@kabmo-labs/kabmo-acp-client/client';
+import { withGatewayCompatibility } from '@kabmo-labs/kabmo-acp-client/gateway-env';
+import { newSessionAfterActivation } from '@kabmo-labs/kabmo-acp-client/activation';
 import type { AcpConfigOption, AcpInitializeResult, AcpSessionModeState } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import { acpOptionValues } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import { UNPROBED_CAPABILITIES, type HarnessCapabilities, type HarnessProbe } from '@/server/lib/harness/capabilities';

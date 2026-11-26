@@ -16,10 +16,10 @@
 
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
 import type { AcpId } from '@kabmo-labs/kabmo-acp-protocol/protocol';
-import type { PendingPermissions } from '@/server/lib/harness/acp/permissions';
+import type { PendingPermissions } from '@kabmo-labs/kabmo-acp-client/permissions';
 import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
-import { allowOption, autoApproval, type PermissionOption } from '@/server/lib/harness/acp/permissions';
-import { permissionGrantKey } from '@/server/lib/harness/acp/grants';
+import { allowOption, autoApproval, type PermissionOption } from '@kabmo-labs/kabmo-acp-client/permissions';
+import { permissionGrantKey } from '@kabmo-labs/kabmo-acp-client/grants';
 import { noteAwaitingInput } from '@/server/lib/notifications/feed.server';
 import { isRecord } from '@kabmo-labs/kabmo-guards';
 import type { AcpSubagents } from '@kabmo-labs/kabmo-acp-mapper/subagents';

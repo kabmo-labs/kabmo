@@ -20,7 +20,7 @@
  */
 
 import { existsSync } from 'fs';
-import { canonicalPath } from '@/server/lib/fs/canonical';
+import { canonicalPath } from '@kabmo-labs/kabmo-fs-canonical';
 import { runGit } from '@/server/lib/fs/git-run';
 import { resolveProjectRoot } from '@/server/lib/omp/core/worktree';
 

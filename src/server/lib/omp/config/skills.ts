@@ -34,7 +34,7 @@ import { getAgentDir, pathExists } from '@kabmo-labs/kabmo-omp-paths';
 import { resolveOmpBin } from '@/server/lib/omp/core/cli';
 import { writeFileAtomic } from '@kabmo-labs/kabmo-fs-config/atomic-write';
 import { parseFrontmatter } from '@kabmo-labs/kabmo-omp-config-doc/yaml';
-import { childEnv } from '@/server/lib/fs/child-env';
+import { childEnv } from '@kabmo-labs/kabmo-fs-child-env';
 
 const MAX_SKILL_MD_BYTES = 512 * 1024;
 const SKILL_LIST_TIMEOUT_MS = 30_000;

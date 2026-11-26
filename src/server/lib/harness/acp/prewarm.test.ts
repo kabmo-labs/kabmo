@@ -28,7 +28,7 @@ import {
   type AcpPrewarmDeps,
   type PrewarmedAcp,
 } from '@/server/lib/harness/acp/prewarm.server';
-import type { AcpProcess } from '@/server/lib/harness/acp/client';
+import type { AcpProcess } from '@kabmo-labs/kabmo-acp-client/client';
 
 interface Fake {
   warm: PrewarmedAcp;

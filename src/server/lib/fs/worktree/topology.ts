@@ -17,7 +17,7 @@
  * appears without waiting the TTL out.
  */
 
-import { canonicalPath, pathHolds } from '@/server/lib/fs/canonical';
+import { canonicalPath, pathHolds } from '@kabmo-labs/kabmo-fs-canonical';
 import { listWorktrees, type WorktreeEntry } from '@/server/lib/fs/worktree/list';
 import type { SessionWorktreeInfo } from '@/shared/lib/workspace/worktree/types';
 

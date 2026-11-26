@@ -22,7 +22,7 @@ import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { getDataDir } from '@/server/lib/lifecycle/paths';
 import { getDb } from '@/server/db.server';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
-import { pathHolds } from '@/server/lib/fs/canonical';
+import { pathHolds } from '@kabmo-labs/kabmo-fs-canonical';
 import { removeWorktreeRow, worktreeRowFor } from '@/server/lib/db/worktree-registry.server';
 import { removeWorktree } from '@/server/lib/fs/worktree/remove';
 import { invalidateWorktreeTopology } from '@/server/lib/fs/worktree/topology';

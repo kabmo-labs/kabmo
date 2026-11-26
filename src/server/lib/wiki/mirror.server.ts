@@ -41,7 +41,7 @@ import path from 'path';
 import { getDataDir } from '@/server/lib/lifecycle/paths';
 import { firstLine, gitRun, type GitRun } from '@/server/lib/wiki/git';
 import type { WikiUnavailableReason } from '@/shared/types/wiki';
-import { childEnv } from '@/server/lib/fs/child-env';
+import { childEnv } from '@kabmo-labs/kabmo-fs-child-env';
 
 /** How long a mirror is trusted before a read re-fetches it. */
 const MIRROR_TTL_MS = 60_000;

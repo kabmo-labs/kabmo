@@ -16,7 +16,7 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { PendingPermissions } from '@/server/lib/harness/acp/permissions';
+import { PendingPermissions } from '@kabmo-labs/kabmo-acp-client/permissions';
 import { handleAcpClientRequest, type AcpClientRequestHost } from '@/server/lib/harness/acp/session-requests';
 import { ACP_ERROR } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';

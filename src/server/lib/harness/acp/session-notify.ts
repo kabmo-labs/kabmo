@@ -16,6 +16,7 @@
 import { handleAcpCancelRequest } from '@/server/lib/harness/acp/session-requests';
 import { handleSessionNotification, type AcpNotificationHost } from '@/server/lib/harness/acp/session-notifications';
 import type { RawNotificationSink } from '@kabmo-labs/kabmo-acp-protocol/raw-listeners';
+import type { PendingPermissions } from '@kabmo-labs/kabmo-acp-client/permissions';
 
 /** What one routed notification reads. */
 export interface AcpNotifyHost extends AcpNotificationHost {
@@ -25,7 +26,7 @@ export interface AcpNotifyHost extends AcpNotificationHost {
   readonly idle: { reset(): void };
   /** The approval queue, for a withdrawn `$/cancel_request`. */
   respond(id: string | number, result: unknown): void;
-  readonly permissions: import('@/server/lib/harness/acp/permissions').PendingPermissions;
+  readonly permissions: PendingPermissions;
 }
 
 export function handleAcpNotification(

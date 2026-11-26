@@ -23,7 +23,7 @@ import { afterAll, describe, expect, test } from 'bun:test';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { canonicalPath, pathHolds } from '@/server/lib/fs/canonical';
+import { canonicalPath, pathHolds } from '@kabmo-labs/kabmo-fs-canonical';
 import { findBranchInUse, listWorktrees, parseWorktreePorcelain } from '@/server/lib/fs/worktree/list';
 import { invalidateWorktreeTopology, readProjectWorktrees, worktreeForCwd } from '@/server/lib/fs/worktree/topology';
 import { removeDir } from '@/test-support/remove-dir';

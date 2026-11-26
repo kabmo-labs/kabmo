@@ -21,8 +21,8 @@ import { describeSpawnFailure } from '@/server/lib/lifecycle/fd-pressure';
 import { resolveOmpBin } from '@/server/lib/omp/core/cli';
 import { RpcFrameDecoder, encodeRpcFrameLine, type RpcFrameRecord, type RpcProtocolVersion } from '@/shared/lib/omp/rpc/frame';
 import { isRecord } from '@kabmo-labs/kabmo-guards';
-import { killProcessTree } from '@/server/lib/lifecycle/kill-tree';
-import { readLines } from '@/server/lib/omp/rpc/lines';
+import { killProcessTree } from '@kabmo-labs/kabmo-process-kill';
+import { readLines } from '@kabmo-labs/kabmo-rpc-lines';
 import { MAX_PROTOCOL_ERROR_NOTICES, RpcCommandError, RpcCommandTimeoutError, STDERR_TAIL_LIMIT, type PendingCommand, type RpcFrame, type RpcProcessOptions, type RpcResponseFrame } from '@/server/lib/omp/rpc/process-helpers';
 
 export { RpcCommandError, RpcCommandTimeoutError } from '@/server/lib/omp/rpc/process-helpers';

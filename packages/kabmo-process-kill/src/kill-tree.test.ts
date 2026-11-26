@@ -29,7 +29,7 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { killProcessTree, type KillTreeDeps } from '@/server/lib/lifecycle/kill-tree';
+import { killProcessTree, type KillTreeDeps } from './kill-tree';
 
 /** What the Windows branch asked for, plus the promise its fallback rides on. */
 interface Harness {

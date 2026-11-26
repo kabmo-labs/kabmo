@@ -14,7 +14,7 @@
 
 import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
-import type { AcpProcess } from '@/server/lib/harness/acp/client';
+import type { AcpProcess } from '@kabmo-labs/kabmo-acp-client/client';
 import type { AcpMcpServer } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 
 export interface AcpSessionOptions {

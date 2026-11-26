@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { tmpdir } from 'node:os';
-import { AgentStdio } from '@/server/lib/harness/acp/stdio';
+import { AgentStdio } from './stdio';
 
 // The child is this same Bun binary, not `/bin/sh`: Windows has no `/bin/sh`
 // (the suite died there with `uv_spawn '/bin/sh'` ENOENT) and the assertion is

@@ -27,16 +27,16 @@
  *    on `session_id` alone imported a second row for one conversation.
  */
 
-import { AcpProcess } from '@/server/lib/harness/acp/client';
+import { AcpProcess } from '@kabmo-labs/kabmo-acp-client/client';
 import { listAllSessions } from '@kabmo-labs/kabmo-acp-protocol/verbs';
-import { withGatewayCompatibility } from '@/server/lib/harness/acp/gateway-env';
+import { withGatewayCompatibility } from '@kabmo-labs/kabmo-acp-client/gateway-env';
 import { loadHarnessConfig } from '@/server/lib/harness/config.server';
 import { resolveAccountLaunch } from '@/server/lib/harness/accounts.server';
 import { ensureCustomHarnesses } from '@/server/lib/harness/custom.server';
 import { harnessSessionKnown, importHarnessSession } from '@/server/lib/harness/session-store.server';
 import { sessionsWithoutTranscript } from '@/server/lib/harness/session-transcript.server';
 import { loadDeletedSessionIds } from '@/server/lib/sessions/deleted-sessions.server';
-import { canonicalPath } from '@/server/lib/fs/canonical';
+import { canonicalPath } from '@kabmo-labs/kabmo-fs-canonical';
 import { resolveProjectRoot } from '@/server/lib/omp/core/worktree';
 import { getDb } from '@/server/db.server';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';

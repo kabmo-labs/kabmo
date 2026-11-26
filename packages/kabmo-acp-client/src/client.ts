@@ -25,10 +25,10 @@
  */
 
 import { PendingCalls } from '@kabmo-labs/kabmo-acp-mapper/calls';
-import { AgentStdio } from '@/server/lib/harness/acp/stdio';
+import { AgentStdio } from '@kabmo-labs/kabmo-acp-stdio';
 import * as verbs from '@kabmo-labs/kabmo-acp-protocol/verbs';
-import { initializeAcpAgent } from '@/server/lib/harness/acp/client-initialize';
-import { answerAgentRequest } from '@/server/lib/harness/acp/client-requests';
+import { initializeAcpAgent } from './client-initialize';
+import { answerAgentRequest } from './client-requests';
 import { ACP_ERROR } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import type { AcpId,
 AcpInitializeResult,
