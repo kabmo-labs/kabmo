@@ -19,8 +19,8 @@
  */
 
 import { join } from 'path';
-import { pathExists } from '@/server/lib/omp/core/paths';
-import { isRecord } from '@/shared/lib/util/guards';
+import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 
 /**
  * The README a plugin ships, or undefined.

@@ -25,7 +25,7 @@ import {
   type HarnessUpdateStep,
   type UpdatePlanState,
 } from '@/shared/lib/harness/update-plan';
-import { harnessUpdateFacts } from '@/shared/lib/harness/updates';
+import { harnessUpdateFacts } from '@kabmo-labs/kabmo-harness-updates';
 
 const CLAUDE = harnessUpdateFacts('claude');
 

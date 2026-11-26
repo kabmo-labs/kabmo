@@ -34,14 +34,14 @@
 import fs from 'fs';
 import * as path from 'path';
 import { getDatabasePath } from '@/server/db.server';
-import { clearSessionFileCaches } from '@/server/lib/omp/session/files';
+import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import {
   buildTitleLine,
   completeLines,
   lastEntryId,
   parseJsonObject,
 } from '@/server/lib/omp/session/transcript-copy';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 
 /** Root holding every topic workspace, beside Kabmo database. */
 export async function getBtwRoot(): Promise<string> {

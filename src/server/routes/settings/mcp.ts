@@ -7,7 +7,7 @@ import { isMockMode } from '@/server/mock.server';
 import { mcpStore, readCustomMcpServers, writeCustomMcpServers } from '@/server/lib/mcp/store.server';
 import { resolveRoot } from '@/server/lib/fs/root';
 import type { McpServerItem } from '@/shared/types';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 import { rowsToRecord, REDACTED_SENTINEL } from '@/shared/lib/mcp/key-value';
 import {
   isProjectMcpConfigEnabled,

@@ -14,7 +14,7 @@ import type { BranchControl } from '@/client/components/common/session-branch';
 import { buildSessionTree } from '@/shared/lib/workspace/session-tree';
 import { useExpandedSessions } from '@/client/hooks/workspace/expanded-sessions';
 import { formatFullDate, relativeTimeAgo } from '@/shared/lib/workspace/relative-time';
-import { isPendingSessionId } from '@/shared/lib/omp/session/default-title';
+import { isPendingSessionId } from '@kabmo-labs/kabmo-omp-session-core/default-title';
 import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
 import type { BatchBinding } from '@/client/components/common/batch-selection/types';
 import { folderBatchState } from '@/client/components/common/batch-selection/folder-state';

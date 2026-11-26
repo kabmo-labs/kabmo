@@ -15,7 +15,7 @@ import { useCallback, useMemo } from 'preact/hooks';
 import type { Dispatch, SetStateAction } from 'preact/compat';
 import type { Attachment, ChatMessageData, OmpAgentHandle, PromptDispatchResult, QueuedMessageModel, WorkspaceFolderData } from '@/shared/types';
 import type { QueuedMessage } from '@/client/components/workspace/chat-timeline/QueueList';
-import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
+import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 import type { SetSearchParams } from '@/client/lib/router/search-params';
 import { applyComposerPick, consumeComposerPick, stashComposerPick, type DeferredModelStore } from '@/client/hooks/chat/timeline/deferred-model';
 import { useNewChatSubmit } from '@/client/hooks/chat/timeline/new-chat';

@@ -18,8 +18,8 @@
  * timeline (which is heavy enough to disturb the runner's file loading).
  */
 
-import type { ChatMessageData } from '@/shared/types/chat';
-import { isNoticeRow } from '@/shared/lib/chat/notice-row';
+import type { ChatMessageData } from '@kabmo-labs/kabmo-chat-contracts/chat';
+import { isNoticeRow } from '@kabmo-labs/kabmo-chat-notices/notice-row';
 
 export interface TraceGroup {
   /**

@@ -1,6 +1,6 @@
 import type { DbClient } from '@/server/lib/db/client';
 import type { ProjectConfigItem } from '@/shared/types';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 
 export interface WorkspaceFolderRow {
   id: number;

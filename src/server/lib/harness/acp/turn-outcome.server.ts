@@ -25,11 +25,11 @@
  * record, and a session can be tens of megabytes.
  */
 
-import type { HarnessId } from '@/shared/lib/harness/catalog';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import { findSessionFileById } from '@/server/lib/omp/session/locator';
-import { readJsonlTail } from '@/server/lib/omp/session/jsonl-tail';
-import { parseJsonlLenient } from '@/shared/lib/omp/session/jsonl';
-import { deriveTurnError } from '@/shared/lib/omp/session/turn-error';
+import { readJsonlTail } from '@kabmo-labs/kabmo-omp-session-messages/jsonl-tail';
+import { parseJsonlLenient } from '@kabmo-labs/kabmo-omp-session-core/jsonl';
+import { deriveTurnError } from '@kabmo-labs/kabmo-omp-session-parse/turn-error';
 
 /** Enough for the last turn of any real session; a miss falls back to nothing. */
 const TAIL_BYTES = 64 * 1024;

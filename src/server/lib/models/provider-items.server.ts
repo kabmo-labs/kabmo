@@ -27,7 +27,7 @@ import {
 } from '@/shared/lib/models/provider/dialect';
 import { removeLegacyKenariModels } from '@/shared/lib/models/provider/cleanup';
 import { formatContextWindow } from '@/shared/lib/code/format';
-import type { NativeProviderInfo, NativeModelInfo } from '@/server/lib/omp/config/models-config';
+import type { NativeProviderInfo, NativeModelInfo } from '@kabmo-labs/kabmo-omp-models-config/models-config';
 import type { CatalogModel } from '@/server/lib/models/catalog.server';
 import type { OmpLoginProvider } from '@/server/lib/omp/rpc/utility';
 import type { ProviderCredentialOrigin, ProviderItem, ProviderModel } from '@/shared/types';

@@ -23,7 +23,7 @@ import type { FsNode } from '@/shared/types';
 import { COMMIT_PAGE_SIZE } from '@/shared/lib/fs/commit-page';
 import { normalizeCommits } from '@/shared/lib/fs/commit-row';
 import { rehydrateTree } from '@/shared/lib/fs/file-tree';
-import { buildFsRawUrl, toAbsolutePath } from '@/shared/lib/fs/paths';
+import { buildFsRawUrl, toAbsolutePath } from '@kabmo-labs/kabmo-fs-media/paths';
 
 const file = (path: string): FsNode => ({ name: path.split('/').pop() ?? path, path, type: 'file' });
 const folder = (path: string, children: FsNode[]): FsNode => ({

@@ -18,7 +18,7 @@
  * is the "raw" half of the panel, and it must show the data Kabmo stored.
  */
 
-import type { ChatMessageData } from '@/shared/types/chat';
+import type { ChatMessageData } from '@kabmo-labs/kabmo-chat-contracts/chat';
 import type { RawMessageItem } from '@/shared/types/context';
 
 const ZERO_TOKENS = {

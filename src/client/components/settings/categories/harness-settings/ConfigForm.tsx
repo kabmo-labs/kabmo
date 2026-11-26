@@ -25,16 +25,14 @@
 import type { ComponentChildren } from 'preact';
 import { useState } from 'preact/hooks';
 import { Loader2, RotateCcw, Save } from 'lucide-preact';
-import {
-  EMPTY_HARNESS_CONFIG,
-  isHarnessConfigured,
-  providerChoices,
-  resolveDefaultModel,
-  type HarnessConfig,
-} from '@/shared/lib/harness/config';
+import { EMPTY_HARNESS_CONFIG,
+isHarnessConfigured,
+providerChoices,
+resolveDefaultModel,
+type HarnessConfig, } from '@kabmo-labs/kabmo-harness-config';
 import type { HarnessSummary } from '@/shared/types/harness';
 import { SearchSelect } from '@/client/components/common/search-select';
-import { configFieldPlan } from '@/shared/lib/harness/config-fields';
+import { configFieldPlan } from '@kabmo-labs/kabmo-harness-config-fields';
 
 interface HarnessConfigFormProps {
   summary: HarnessSummary;

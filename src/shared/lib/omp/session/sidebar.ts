@@ -15,8 +15,8 @@
  * the folder whose project_path equals its resolved project root.
  */
 
-import type { OmpProject, OmpSession, OmpSidebarData } from '@/shared/types/omp/session';
-import { formatNewSessionTitle } from '@/shared/lib/omp/session/default-title';
+import type { OmpProject, OmpSession, OmpSidebarData } from '@kabmo-labs/kabmo-omp-contracts/session';
+import { formatNewSessionTitle } from '@kabmo-labs/kabmo-omp-session-core/default-title';
 
 /**
  * Display title of a chat, from the two things that can name it.

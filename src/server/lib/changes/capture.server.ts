@@ -28,7 +28,7 @@
  * from the frame right after the raw listeners return.
  */
 
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
 import { classifyCommand } from '@/server/lib/changes/classify-command';
 import { captureBashChanges, type BashCaptureHost } from '@/server/lib/changes/capture-bash.server';

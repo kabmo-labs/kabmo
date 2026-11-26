@@ -16,7 +16,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'preact/hooks';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 import { historyEntryToSubagentInfo } from '@/shared/lib/omp/subagent/history/client';
 import type { SubagentHistoryEntry, SubagentInfo } from '@/shared/types';
 

@@ -28,7 +28,7 @@ import { AttachmentChips } from '@/client/components/workspace/chat-timeline/Att
 import { CopyButton } from '@/client/components/common/CopyButton';
 import { PluginMessageActions } from '@/client/components/workspace/chat-timeline/PluginMessageActions';
 import { OrchestrationNotice } from '@/client/components/workspace/chat-timeline/OrchestrationNotice';
-import { formatMessageStamp } from '@/shared/lib/format/time';
+import { formatMessageStamp } from '@kabmo-labs/kabmo-format/time';
 import { transcriptBlockPadding, transcriptGutter } from '@/shared/lib/chat/timeline/gutter';
 import { parseOrchestrationBlock } from '@/shared/lib/chat/orchestration/notice';
 

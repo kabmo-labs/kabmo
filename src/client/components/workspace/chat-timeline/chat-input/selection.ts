@@ -11,7 +11,7 @@
  */
 
 import type { AIModelOption } from '@/shared/types';
-import { selectableThinkingLevels } from '@/shared/lib/models/thinking-levels';
+import { selectableThinkingLevels } from '@kabmo-labs/kabmo-model-contracts/thinking-levels';
 
 /**
  * Level reported while none is known. A catalog ladder's first entry is NOT a

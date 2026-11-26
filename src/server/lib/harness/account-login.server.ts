@@ -16,7 +16,7 @@
  * a normal exit keeps the final state for the UI to read.
  */
 
-import { accountAdapter, type AccountHarness } from '@/shared/lib/harness/accounts';
+import { accountAdapter, type AccountHarness } from '@kabmo-labs/kabmo-harness-accounts';
 import { harnessAccountTarget } from '@/server/lib/harness/accounts.server';
 import { killProcessTree } from '@/server/lib/lifecycle/kill-tree';
 

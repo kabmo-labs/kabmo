@@ -30,7 +30,7 @@ import {
   writeAgentDefinition,
   type DiscoveredAgent,
 } from '@/server/lib/omp/config/agents';
-import { agentFileBaseName } from '@/shared/lib/omp/config/agent-file';
+import { agentFileBaseName } from '@kabmo-labs/kabmo-omp-schema/agent-file';
 import { resolveRoot } from '@/server/lib/fs/root';
 import type { AgentItem } from '@/shared/types';
 

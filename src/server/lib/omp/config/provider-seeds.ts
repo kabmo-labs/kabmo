@@ -13,9 +13,9 @@
  */
 
 import type { Document, YAMLMap } from 'yaml';
-import { sanitizeModelEntry } from '@/server/lib/omp/config/models-validation';
-import { plainOf } from '@/server/lib/omp/config/document';
-import { isRecord } from '@/shared/lib/util/guards';
+import { sanitizeModelEntry } from '@kabmo-labs/kabmo-omp-models-config/models-validation';
+import { plainOf } from '@kabmo-labs/kabmo-omp-config-doc/document';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 import type { ProviderThinkingEffort } from '@/shared/lib/models/provider/dialect';
 
 /** One model entry destined for models.yml (cost numbers are USD per 1M tokens). */

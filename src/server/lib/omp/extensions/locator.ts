@@ -39,7 +39,7 @@ import { dirname, join, parse, resolve } from 'node:path';
 /** Absolute path of the extension entry, or null when the directory is absent
  *  (a pruned install). A null makes the spawn path skip `-e` entirely rather
  *  than pass a path omp would fail to load. */
-import { CHAMBER_MODES_ENV, KABMO_MODES_ENV } from '@/shared/lib/omp/mode/types';
+import { CHAMBER_MODES_ENV, KABMO_MODES_ENV } from '@kabmo-labs/kabmo-omp-mode/types';
 
 export function kabmoExtensionEntry(): string | null {
   // `kabmo-modes` is the folder this build ships; `chamber-modes` is the

@@ -1,7 +1,7 @@
 import { json } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
-import { readModelRoles, writeModelRoles } from '@/server/lib/omp/config/roles';
+import { readModelRoles, writeModelRoles } from '@kabmo-labs/kabmo-omp-config-doc/roles';
 import { readModelRoleCandidates } from '@/server/lib/model-roles/catalog.server';
 import {
   deleteModelRolePreset,

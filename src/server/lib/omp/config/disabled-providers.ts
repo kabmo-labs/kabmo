@@ -19,9 +19,9 @@
 
 import { homedir } from 'os';
 import { isMap, isScalar, type Document } from 'yaml';
-import { getOmpConfigPath } from '@/server/lib/omp/config/yaml';
-import { seqAt, valueAt, withOmpYamlDocument } from '@/server/lib/omp/config/document';
-import { VALUE_KEYS, isPathScopedEntry, pathScopedEntryValues, resolvePathScopedSlugs } from '@/server/lib/omp/config/path-scoped';
+import { getOmpConfigPath } from '@kabmo-labs/kabmo-omp-config-doc/yaml';
+import { seqAt, valueAt, withOmpYamlDocument } from '@kabmo-labs/kabmo-omp-config-doc/document';
+import { VALUE_KEYS, isPathScopedEntry, pathScopedEntryValues, resolvePathScopedSlugs } from '@kabmo-labs/kabmo-omp-config-doc/path-scoped';
 
 /** The string members of a value key, without assuming it is an array. */
 function stringsIn(value: unknown): string[] {

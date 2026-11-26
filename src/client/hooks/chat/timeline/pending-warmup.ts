@@ -20,7 +20,7 @@
  */
 
 import { useEffect } from 'preact/hooks';
-import { isPendingSessionId } from '@/shared/lib/omp/session/default-title';
+import { isPendingSessionId } from '@kabmo-labs/kabmo-omp-session-core/default-title';
 import { triggerSessionPrewarm } from '@/shared/lib/omp/session/prewarm';
 import type { WorkspaceFolderData } from '@/shared/types';
 

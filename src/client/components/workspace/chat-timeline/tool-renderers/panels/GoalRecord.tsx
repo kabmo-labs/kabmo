@@ -13,14 +13,14 @@
  * to it before falling back to its own list view.
  *
  * The record is the SAME shape the composer's Goal toggle mirrors, which is why
- * the fields are read from `@/shared/lib/omp/mode/types` rather than re-declared.
+ * the fields are read from `@kabmo-labs/kabmo-omp-mode/types` rather than re-declared.
  */
 
 import { CheckCircle2, CircleDot, Pause, Target } from 'lucide-preact';
-import type { GoalRecord, GoalStatus } from '@/shared/lib/omp/mode/types';
-import { formatGoalDuration } from '@/shared/lib/omp/mode/format';
+import type { GoalRecord, GoalStatus } from '@kabmo-labs/kabmo-omp-mode/types';
+import { formatGoalDuration } from '@kabmo-labs/kabmo-omp-mode/format';
 import type { ToolCallData } from '@/shared/types';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
 
 const STATUS_STYLE: Record<GoalStatus, { label: string; className: string }> = {

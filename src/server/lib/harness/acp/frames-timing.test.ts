@@ -13,7 +13,7 @@
 
 import { describe, expect, test } from 'bun:test';
 import { AcpFrameMapper } from '@/server/lib/harness/acp/frames';
-import { toChatMessage } from '@/shared/lib/omp/session/mapper';
+import { toChatMessage } from '@kabmo-labs/kabmo-omp-mapper';
 
 const textChunk = (text: string, messageId = 'm1') => ({
   sessionUpdate: 'agent_message_chunk',

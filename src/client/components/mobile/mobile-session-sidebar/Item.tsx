@@ -14,7 +14,7 @@ import { useSessionDelete } from '@/client/hooks/workspace/session-delete';
 import { SessionDeleteModal } from '@/client/components/common/session-delete-modal';
 import { getProjectIcon } from '@/shared/lib/workspace/project-icon';
 import { formatFullDate, relativeTimeAgo } from '@/shared/lib/workspace/relative-time';
-import { isPendingSessionId } from '@/shared/lib/omp/session/default-title';
+import { isPendingSessionId } from '@kabmo-labs/kabmo-omp-session-core/default-title';
 import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
 import type { SessionItemData, WorkspaceFolderData } from '@/shared/types';
 import type { BatchBinding } from '@/client/components/common/batch-selection/types';

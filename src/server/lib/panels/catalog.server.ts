@@ -20,7 +20,7 @@
  * touches a plugin directory — deleting files is `removePanelPlugin`'s job.
  */
 
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 import {
   KABMO_PLUGIN_REPO_PREFIX,
   parseGithubPluginRepo,
@@ -29,7 +29,7 @@ import {
   samePluginRepo,
 } from '@/shared/lib/panels/plugin-repo';
 import { resolveInsideRoot } from '@/shared/lib/panels/resolve-asset';
-import { pathExists } from '@/server/lib/omp/core/paths';
+import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
 import {
   getMarketplaceCatalogPath,
   getMarketplaceDir,

@@ -34,7 +34,7 @@
 
 import { getDb } from '@/server/db.server';
 import type { HarnessProbe } from '@/server/lib/harness/capabilities';
-import type { HarnessId } from '@/shared/lib/harness/catalog';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 
 declare global {
   // eslint-disable-next-line no-var

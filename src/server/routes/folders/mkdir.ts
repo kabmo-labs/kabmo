@@ -40,7 +40,7 @@ import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { join } from 'path';
 import fs from 'fs';
 import { isSinglePathSegment } from '@/server/lib/fs/path-segment';
-import { pathExists } from '@/server/lib/omp/core/paths';
+import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
 import { expandHome } from '@/server/routes/folders/create';
 import { isMockMode } from '@/server/mock.server';
 

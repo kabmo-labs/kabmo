@@ -16,9 +16,9 @@ import fs from 'node:fs';
 import { join } from 'node:path';
 
 import { getDb } from '@/server/db.server';
-import { getSessionsDir } from '@/server/lib/omp/core/paths';
+import { getSessionsDir } from '@kabmo-labs/kabmo-omp-paths';
 import { completeLineOffset, foldUsageText, type UsageRollupRow } from '@/server/lib/usage/index-parse';
-import type { HarnessId } from '@/shared/lib/harness/catalog';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import { statOrNull, readdirOrEmpty } from '@/server/lib/usage/sources/helpers';
 import type { UsageSource, UsageSourceFile, UsageSourceRead } from '@/server/lib/usage/sources/types';
 

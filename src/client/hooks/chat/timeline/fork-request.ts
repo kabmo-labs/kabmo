@@ -12,7 +12,7 @@
  */
 
 import type { AgentImage } from '@/shared/types';
-import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
+import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 
 export interface ForkComposerPicks {
   prompt?: string | null;

@@ -17,7 +17,7 @@
  * pair, which is what made "the adapter is current" read as "everything is".
  */
 
-import type { HarnessUpdateKind } from '@/shared/lib/harness/updates';
+import type { HarnessUpdateKind } from '@kabmo-labs/kabmo-harness-updates';
 
 /** One part's installed and latest version, and whether it can move. */
 export interface HarnessPartRow {

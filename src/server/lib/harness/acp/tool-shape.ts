@@ -20,7 +20,7 @@
  *  - `KIND_TOOL_NAME` — codex-acp's file change arrives with no name at all.
  */
 
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 import type { AcpToolKind } from '@/server/lib/harness/acp/protocol';
 
 /** The message block a tool card renders from. */

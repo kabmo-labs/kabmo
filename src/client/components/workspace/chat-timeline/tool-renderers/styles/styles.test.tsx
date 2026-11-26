@@ -31,7 +31,7 @@ import { SessionStateProvider } from '@/client/components/common/session-state-p
 import { primeKabmoSettings } from '@/shared/lib/settings/client';
 import { applyToolRenderMode } from '@/client/hooks/chat/timeline/tool-render-mode';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
-import type { ToolCallData } from '@/shared/types/chat';
+import type { ToolCallData } from '@kabmo-labs/kabmo-chat-contracts/chat';
 
 let container: HTMLElement;
 

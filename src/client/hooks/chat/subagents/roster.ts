@@ -13,7 +13,7 @@
  */
 
 import { useEffect, useState } from 'preact/hooks';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 import { fetchSubagentHistory, historyEntryToSubagentInfo } from '@/shared/lib/omp/subagent/history/client';
 import {
   mergeSubagentRoster,

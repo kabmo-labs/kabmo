@@ -18,8 +18,8 @@
 
 import fs from 'fs';
 import { join } from 'path';
-import { getAgentDir } from '@/server/lib/omp/core/paths';
-import { writeFileAtomic } from '@/server/lib/fs/atomic-write';
+import { getAgentDir } from '@kabmo-labs/kabmo-omp-paths';
+import { writeFileAtomic } from '@kabmo-labs/kabmo-fs-config/atomic-write';
 import type { InstructionFileKind } from '@/shared/types';
 
 /** Basenames omp recognises; the provider reads these exact names. */

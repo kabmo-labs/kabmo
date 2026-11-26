@@ -12,7 +12,7 @@
 
 import { describe, expect, test } from 'bun:test';
 import { canForkAt, forkAnchorFor } from '@/shared/lib/chat/timeline/fork-anchor';
-import { canForkChat, forkCapability } from '@/shared/lib/harness/fork';
+import { canForkChat, forkCapability } from '@kabmo-labs/kabmo-harness-rewind/fork';
 
 describe('forkCapability', () => {
   test('omp and the AIR adapters fork at a message', () => {

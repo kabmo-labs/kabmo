@@ -27,8 +27,8 @@
 
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { Camera, ChevronLeft, ChevronRight } from 'lucide-preact';
-import type { ToolImageRef } from '@/shared/types/chat';
-import { toolImageSrc } from '@/shared/lib/omp/session/tool-images';
+import type { ToolImageRef } from '@kabmo-labs/kabmo-chat-contracts/chat';
+import { toolImageSrc } from '@kabmo-labs/kabmo-omp-session-parse/tool-images';
 import { ImageFullscreen } from '@/client/components/common/image-viewer/fullscreen';
 
 interface ToolScreenshotsProps {

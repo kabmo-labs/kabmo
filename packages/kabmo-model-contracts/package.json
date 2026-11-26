@@ -1,0 +1,26 @@
+{
+  "name": "@kabmo-labs/kabmo-model-contracts",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Model metadata and thinking-level contracts.",
+  "exports": {
+    ".": "./src/models.ts",
+    "./models": "./src/models.ts",
+    "./thinking-levels": "./src/thinking-levels.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-model-contracts"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  }
+}

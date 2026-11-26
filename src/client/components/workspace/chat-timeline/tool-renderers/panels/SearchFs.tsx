@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'preact/hooks';
 import { File, Folder, FolderSearch } from 'lucide-preact';
 import type { ToolCallData } from '@/shared/types';
-import { formatBytes } from '@/shared/lib/format/number';
+import { formatBytes } from '@kabmo-labs/kabmo-format/number';
 import { CopyButton } from '@/client/components/common/CopyButton';
 
 interface FsItem {

@@ -44,7 +44,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { recordAdoption } from '@/client/hooks/chat/omp/pending-adoption';
 import type { PendingSessionEntry } from '@/client/hooks/chat/omp/pending-entry';
-import { pendingSessionCreatedAt, sessionIdEpochMs } from '@/shared/lib/omp/session/default-title';
+import { pendingSessionCreatedAt, sessionIdEpochMs } from '@kabmo-labs/kabmo-omp-session-core/default-title';
 import { getSessionState } from '@/shared/lib/workspace/session-state/store';
 import { hasComposerDraft } from '@/shared/lib/chat/composer/draft';
 

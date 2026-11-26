@@ -13,7 +13,7 @@
 
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { AccountHarness, HarnessAccountIdentity } from '@/shared/lib/harness/accounts';
+import type { AccountHarness, HarnessAccountIdentity } from '@kabmo-labs/kabmo-harness-accounts';
 
 export interface AccountIdentityResult {
   identity: HarnessAccountIdentity;

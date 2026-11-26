@@ -48,8 +48,8 @@ import { getDb } from '@/server/db.server';
 import { readSettingsJson } from '@/server/lib/db/settings-store';
 import { childEnv } from '@/server/lib/fs/child-env';
 import { resolveOmpBin } from '@/server/lib/omp/core/cli';
-import { readModelRoles } from '@/server/lib/omp/config/roles';
-import type { SelectedModel } from '@/shared/types/models';
+import { readModelRoles } from '@kabmo-labs/kabmo-omp-config-doc/roles';
+import type { SelectedModel } from '@kabmo-labs/kabmo-model-contracts/models';
 
 /** How long the CLI listing stays usable. */
 const CATALOG_TTL_MS = 60_000;

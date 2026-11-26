@@ -1,6 +1,6 @@
 // node:zlib stays for brotli only — Bun has no brotli API (Bun.brotliCompressSync is undefined).
 import { brotliCompressSync, constants } from 'node:zlib';
-import { bodyBytes } from '@/shared/lib/util/bytes';
+import { bodyBytes } from '@kabmo-labs/kabmo-bytes';
 
 /**
  * Compresses a response body, except `text/event-stream`.

@@ -1,0 +1,24 @@
+{
+  "name": "@kabmo-labs/kabmo-platform",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Platform checks shared by client and server.",
+  "exports": {
+    ".": "./src/platform.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-platform"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  }
+}

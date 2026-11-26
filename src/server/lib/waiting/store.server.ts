@@ -19,9 +19,9 @@
  */
 
 import { getDb } from '@/server/db.server';
-import { isApprovalMode } from '@/shared/lib/omp/config/access-mode';
+import { isApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 import { normalizeModel } from '@/server/lib/queue/store.server';
-import type { Attachment, QueuedMessageModel } from '@/shared/types/chat';
+import type { Attachment, QueuedMessageModel } from '@kabmo-labs/kabmo-chat-contracts/chat';
 import type { WaitingPrompt, WaitingPromptModes, WaitingPromptStatus } from '@/shared/types/waiting';
 
 /** How long a finished (dispatched/cancelled/error) row stays readable. */

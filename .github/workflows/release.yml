@@ -29,14 +29,14 @@ name: Release
 # so the suite is called here.
 #
 # The order is the point, not a preference. The app does NOT ship `packages/`
-# (see the `files` list in package.json) — at runtime it resolves
-# `@kabmo-labs/kabmo-sdk` and `@kabmo-labs/kabmo-ui` out of its own `node_modules`,
-# which is the version `bun.lock` records for those workspace packages. A
-# `workspace:` spec is substituted from the LOCK, not from the manifest, so the
-# app's published dependency pins are whatever the lock said when the app was
-# released. Releasing the app before the packages therefore publishes stale
-# pins — measured: `kabmo@4.1.1` on npm declares both packages at `1.0.0`
-# while they are at `2.0.0`, and `@kabmo-labs/ui@2.0.0` declared
+# (see the `files` list in package.json) — at runtime it resolves every
+# `@kabmo-labs/*` dependency out of its own `node_modules`, which is the version
+# `bun.lock` records for those workspace packages. A `workspace:` spec is
+# substituted from the LOCK, not from the manifest, so the app's published
+# dependency pins are whatever the lock said when the app was released.
+# Releasing the app before the packages therefore publishes stale pins —
+# measured: `kabmo@4.1.1` on npm declares both then-published packages at
+# `1.0.0` while they are at `2.0.0`, and `@kabmo-labs/ui@2.0.0` declared
 # `"@kabmo-labs/kabmo-sdk": "1.0.0"` while the SDK was `2.0.0`.
 #
 # Chaining closes it: the `packages` job bumps the versions and commits the

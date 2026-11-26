@@ -19,7 +19,7 @@
 import { BUILTIN_COMMANDS } from '@/shared/lib/commands/catalog';
 import { parseChord } from '@/shared/lib/commands/chord';
 import type { CommandMeta, KeybindingRule, UserKeybindings } from '@/shared/lib/commands/types';
-import { isMacPlatform, isWindowsPlatform } from '@/shared/lib/util/platform';
+import { isMacPlatform, isWindowsPlatform } from '@kabmo-labs/kabmo-platform';
 
 interface KeymapState {
   pluginCommands: readonly CommandMeta[];

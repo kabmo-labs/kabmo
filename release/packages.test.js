@@ -152,7 +152,7 @@ describe('package release pipeline', () => {
   });
 
   test('the config only DECIDES: it narrows the range and carries no git side effects', () => {
-    const entry = RELEASE_PACKAGES[0];
+    const entry = RELEASE_PACKAGES.find((candidate) => candidate.dir === 'packages/kabmo-sdk');
     const config = packageReleaseConfig(entry);
 
     expect(config.tagFormat).toBe('kabmo-sdk/v${version}');
@@ -187,7 +187,48 @@ describe('package catalog', () => {
   });
 
   test('derives the tag prefix the workflow publishes on', () => {
-    expect(RELEASE_PACKAGES.map(tagPrefix)).toEqual(['kabmo-sdk', 'kabmo-ui']);
+    expect(RELEASE_PACKAGES.map(tagPrefix)).toEqual([
+      'kabmo-guards',
+      'kabmo-bytes',
+      'kabmo-platform',
+      'kabmo-fs-config',
+      'kabmo-fs-media',
+      'kabmo-model-contracts',
+      'kabmo-format',
+      'kabmo-harness-catalog',
+      'kabmo-harness-accounts',
+      'kabmo-harness-session-modes',
+      'kabmo-harness-transcript',
+      'kabmo-harness-provider-slug',
+      'kabmo-omp-paths',
+      'kabmo-omp-contracts',
+      'kabmo-omp-registry',
+      'kabmo-omp-proc',
+      'kabmo-omp-mode',
+      'kabmo-omp-schema',
+      'kabmo-omp-session-core',
+      'kabmo-omp-models-config',
+      'kabmo-omp-operator-title',
+      'kabmo-omp-session-scan',
+      'kabmo-omp-access-mode',
+      'kabmo-omp-config-doc',
+      'kabmo-chat-contracts',
+      'kabmo-chat-tool',
+      'kabmo-chat-notices',
+      'kabmo-omp-session-parse',
+      'kabmo-omp-mapper',
+      'kabmo-omp-messages-map',
+      'kabmo-omp-session-messages',
+      'kabmo-harness-provider',
+      'kabmo-harness-config',
+      'kabmo-harness-enabled',
+      'kabmo-harness-updates',
+      'kabmo-harness-config-fields',
+      'kabmo-harness-mcp-facts',
+      'kabmo-harness-rewind',
+      'kabmo-sdk',
+      'kabmo-ui',
+    ]);
   });
 });
 

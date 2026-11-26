@@ -17,8 +17,8 @@
  * re-attached the stream.
  */
 
-import type { GoalContinuation, GoalRecord } from '@/shared/lib/omp/mode/types';
-import type { GoalAction } from '@/shared/lib/omp/mode/actions';
+import type { GoalContinuation, GoalRecord } from '@kabmo-labs/kabmo-omp-mode/types';
+import type { GoalAction } from '@kabmo-labs/kabmo-omp-mode/actions';
 import type { ModeCommandResult } from '@/client/hooks/chat/timeline/mode-post';
 
 /** What one goal command produced. The modal closes on `ok` and keeps the form

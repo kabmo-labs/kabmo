@@ -23,7 +23,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import type { AccentColorOption, ProjectConfigItem } from '@/shared/types';
 import { useModelsCatalog } from '@/client/hooks/models/use-models-catalog';
 import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 
 export interface ProjectModelChoice {
   provider: string;

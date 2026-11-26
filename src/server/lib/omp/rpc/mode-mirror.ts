@@ -31,14 +31,12 @@
  */
 
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
-import {
-  type GoalContinuation,
-  type GoalRecord,
-} from '@/shared/lib/omp/mode/types';
-import { isModeMarker } from '@/shared/lib/omp/mode/constants';
-import { continuationFromMarker, goalEnabledFromMarker, goalRecordFromMarker, type ParsedMarker } from '@/shared/lib/omp/mode/markers';
-import { isGoalStatus } from '@/shared/lib/omp/mode/status';
-import type { GoalStatus } from '@/shared/lib/omp/mode/types';
+import { type GoalContinuation,
+type GoalRecord, } from '@kabmo-labs/kabmo-omp-mode/types';
+import { isModeMarker } from '@kabmo-labs/kabmo-omp-mode/constants';
+import { continuationFromMarker, goalEnabledFromMarker, goalRecordFromMarker, type ParsedMarker } from '@kabmo-labs/kabmo-omp-mode/markers';
+import { isGoalStatus } from '@kabmo-labs/kabmo-omp-mode/status';
+import type { GoalStatus } from '@kabmo-labs/kabmo-omp-mode/types';
 
 /** Statuses that mean the goal is still being pursued. `budget-limited` counts:
  *  it is a resumable state omp returns to `active` when the budget is raised. */

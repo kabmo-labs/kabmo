@@ -14,9 +14,9 @@
  *    carried over from the previous entry instead of being erased.
  */
 
-import { isRecord } from '@/shared/lib/util/guards';
-import { writeFileAtomic } from '@/server/lib/fs/atomic-write';
-import { withConfigLock } from '@/server/lib/fs/config-lock';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
+import { writeFileAtomic } from '@kabmo-labs/kabmo-fs-config/atomic-write';
+import { withConfigLock } from '@kabmo-labs/kabmo-fs-config/config-lock';
 import { resolveProjectMcpConfig } from '@/server/lib/omp/config/mcp';
 import {
   SERVER_NAME,

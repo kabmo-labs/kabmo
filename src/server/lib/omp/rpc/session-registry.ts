@@ -22,11 +22,11 @@ import { registerSpawnedSession } from '@/server/lib/omp/rpc/session-registratio
 import { resolveSessionOwnership, SessionOwnedElsewhereError } from '@/server/lib/omp/session/ownership.server';
 import { sessionMcpSpawn } from '@/server/lib/omp/rpc/spawn-mcp';
 import { isUnrestorableModelFailure, resolveResumableModel } from '@/server/lib/omp/session/resumable-model.server';
-import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
-import type { SelectedModel } from '@/shared/types/models';
+import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
+import type { SelectedModel } from '@kabmo-labs/kabmo-model-contracts/models';
 import { claimHarness, harnessOf } from '@/server/lib/harness/registry';
 import { saveHarnessSession } from '@/server/lib/harness/session-store.server';
-import type { HarnessId } from '@/shared/lib/harness/catalog';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import type { HarnessSession } from '@/server/lib/harness/session';
 
 /**

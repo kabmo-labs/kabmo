@@ -19,13 +19,11 @@
 
 import { getDb } from '@/server/db.server';
 import { readSettingsJson, writeSettingsJson } from '@/server/lib/db/settings-store';
-import {
-  HARNESS_DISABLED_KEY,
-  harnessSwitchable,
-  parseDisabledHarnesses,
-  withHarnessEnabled,
-} from '@/shared/lib/harness/enabled';
-import { harnessDescriptor, type HarnessId } from '@/shared/lib/harness/catalog';
+import { HARNESS_DISABLED_KEY,
+harnessSwitchable,
+parseDisabledHarnesses,
+withHarnessEnabled, } from '@kabmo-labs/kabmo-harness-enabled';
+import { harnessDescriptor, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 
 /** Every harness id the user has switched OFF. */
 export async function loadDisabledHarnesses(): Promise<string[]> {

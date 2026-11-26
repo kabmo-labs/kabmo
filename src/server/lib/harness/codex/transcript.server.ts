@@ -24,8 +24,8 @@
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { loadHarnessConfig } from '@/server/lib/harness/config.server';
-import type { ChatMessageData, ToolCallData } from '@/shared/types/chat';
-import { normalizeToolCall } from '@/shared/lib/chat/tool/normalize';
+import type { ChatMessageData, ToolCallData } from '@kabmo-labs/kabmo-chat-contracts/chat';
+import { normalizeToolCall } from '@kabmo-labs/kabmo-chat-tool/normalize';
 
 /** The Codex data root, from the harness config's `CODEX_HOME` or `~/.codex`. */
 export async function codexHome(): Promise<string> {

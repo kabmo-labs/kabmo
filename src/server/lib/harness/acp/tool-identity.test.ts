@@ -23,7 +23,7 @@ import { describe, expect, test } from 'bun:test';
 import { delegationLabel, normalizeKind, resolveToolIdentity } from '@/server/lib/harness/acp/tool-identity';
 import { acpDelegationRow } from '@/client/components/workspace/chat-timeline/tool-renderers/panels/task-rows';
 import { normalizeAgentEvent } from '@/server/lib/chat/normalize-tools.server';
-import { parseMessageBlocks, toToolCallData } from '@/shared/lib/omp/session/parse-message-blocks';
+import { parseMessageBlocks, toToolCallData } from '@kabmo-labs/kabmo-omp-session-parse/parse-message-blocks';
 import { toolPanelKind } from '@/client/components/workspace/chat-timeline/tool-renderers/registry';
 
 /** The panel the pipeline gives a frame's first call: mapper → server

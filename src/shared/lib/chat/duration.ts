@@ -9,7 +9,7 @@
  * user timestamp exists — until the last AI message of that run).
  */
 
-import { parseTodayLabel } from '@/shared/lib/format/time';
+import { parseTodayLabel } from '@kabmo-labs/kabmo-format/time';
 
 type TimedMessage = {
   date?: string;

@@ -24,7 +24,7 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
 import { AlertTriangle, Check, CornerDownLeft, HelpCircle } from 'lucide-preact';
-import type { ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
+import type { ExtensionUiDialogRequest } from '@kabmo-labs/kabmo-chat-contracts/agent';
 import type { AskQuestion } from '@/shared/lib/chat/ask-form/types';
 import { buildFormData, type FormPick } from '@/shared/lib/chat/ask-form/data';
 import { isOtherOption } from '@/shared/lib/chat/ask-questions';

@@ -14,7 +14,7 @@ import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { useChatTimelineModes } from '@/client/hooks/chat/timeline/modes';
 import { GoalBanner } from '@/client/components/workspace/chat-timeline/chat-input/GoalBanner';
-import { KABMO_MODE_SIGNAL } from '@/shared/lib/omp/mode/client-signal';
+import { KABMO_MODE_SIGNAL } from '@/client/lib/omp-mode-signal';
 import { publishClientSignal } from '@/client/lib/signals';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'Event', 'CustomEvent'] as const;

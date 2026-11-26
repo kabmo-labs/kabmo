@@ -3,7 +3,7 @@ import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { HarnessAccountsPanel, type AccountsPanelProps } from '@/client/components/settings/categories/harness-settings/AccountsPanel';
-import type { HarnessAccountView } from '@/shared/lib/harness/accounts';
+import type { HarnessAccountView } from '@kabmo-labs/kabmo-harness-accounts';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
 
 let container: HTMLElement;

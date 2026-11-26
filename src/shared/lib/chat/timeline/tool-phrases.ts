@@ -13,8 +13,8 @@
  * (`@oh-my-pi/pi-coding-agent` tools/builtin-names.ts).
  */
 
-import { isRecord } from '@/shared/lib/util/guards';
-import { hashlineTargetPath } from '@/shared/lib/omp/session/hashline-patch';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
+import { hashlineTargetPath } from '@kabmo-labs/kabmo-omp-session-core/hashline-patch';
 
 /** Longest subject kept in the indicator; the tail is elided. */
 export const MAX_SUBJECT = 72;

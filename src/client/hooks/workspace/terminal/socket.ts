@@ -31,7 +31,7 @@ import {
   type TerminalReadyFrame,
   type TerminalServerFrame,
 } from '@/shared/lib/workspace/terminal/protocol';
-import { bodyBytes } from '@/shared/lib/util/bytes';
+import { bodyBytes } from '@kabmo-labs/kabmo-bytes';
 
 const RECONNECT_BASE_MS = 500;
 const RECONNECT_MAX_MS = 8000;

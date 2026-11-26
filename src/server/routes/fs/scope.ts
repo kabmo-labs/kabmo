@@ -30,7 +30,7 @@
 
 import { json, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { resolveScopeForAbsolutePath } from '@/server/lib/fs/root';
-import { BINARY_SNIFF_BYTES, classifyEditorFile, unsupportedEditorMessage } from '@/shared/lib/fs/file-kind';
+import { BINARY_SNIFF_BYTES, classifyEditorFile, unsupportedEditorMessage } from '@kabmo-labs/kabmo-fs-media/file-kind';
 import { pathFromFileUrl } from '@/shared/lib/fs/file-url';
 import fs from 'fs';
 import path from 'path';

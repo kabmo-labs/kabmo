@@ -31,8 +31,8 @@ import * as path from 'path';
 
 import { loadSidebarActivity } from '@/server/lib/omp/session/sidebar-activity.server';
 import { localRuns } from '@/server/lib/omp/session/local-runs.server';
-import { clearSessionFileCaches } from '@/server/lib/omp/session/files';
-import { SESSION_TITLE_SLOT_BYTES } from '@/server/lib/omp/session/files';
+import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
+import { SESSION_TITLE_SLOT_BYTES } from '@kabmo-labs/kabmo-omp-session-scan/files';
 
 const tempDirs: string[] = [];
 const previousAgentDir = process.env.PI_CODING_AGENT_DIR;

@@ -1,0 +1,35 @@
+{
+  "name": "@kabmo-labs/kabmo-chat-notices",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "XML envelope parsing and notice rows for chat messages.",
+  "exports": {
+    ".": "./src/notice-row.ts",
+    "./irc-notice": "./src/irc-notice.ts",
+    "./notice-row": "./src/notice-row.ts",
+    "./notice-text": "./src/notice-text.ts",
+    "./xml-envelope": "./src/xml-envelope.ts",
+    "./xml-tag": "./src/xml-tag.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-chat-notices"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  },
+  "dependencies": {
+    "@kabmo-labs/kabmo-chat-contracts": "workspace:*",
+    "@kabmo-labs/kabmo-format": "workspace:*",
+    "@kabmo-labs/kabmo-guards": "workspace:*",
+    "@kabmo-labs/kabmo-omp-contracts": "workspace:*"
+  }
+}

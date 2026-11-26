@@ -30,10 +30,10 @@
 
 import fs from 'fs';
 import { join, resolve } from 'path';
-import { getAgentDir, pathExists } from '@/server/lib/omp/core/paths';
+import { getAgentDir, pathExists } from '@kabmo-labs/kabmo-omp-paths';
 import { resolveOmpBin } from '@/server/lib/omp/core/cli';
-import { writeFileAtomic } from '@/server/lib/fs/atomic-write';
-import { parseFrontmatter } from '@/server/lib/omp/config/yaml';
+import { writeFileAtomic } from '@kabmo-labs/kabmo-fs-config/atomic-write';
+import { parseFrontmatter } from '@kabmo-labs/kabmo-omp-config-doc/yaml';
 import { childEnv } from '@/server/lib/fs/child-env';
 
 const MAX_SKILL_MD_BYTES = 512 * 1024;

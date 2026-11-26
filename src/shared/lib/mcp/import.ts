@@ -18,7 +18,7 @@
  */
 
 import type { McpAuthConfig, McpKeyValue, McpOAuthConfig, McpServerItem, McpTransport } from '@/shared/types';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 
 function rows(value: unknown, prefix: string): McpKeyValue[] {
   if (!isRecord(value)) return [];

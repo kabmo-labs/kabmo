@@ -41,7 +41,7 @@ import { lastAssistantText } from '@/server/lib/omp/session/goal-driver.server';
 import { noteChildOutcome } from '@/server/lib/sessions/notify.server';
 import { saveSessionAnswer } from '@/server/lib/sessions/answers.server';
 import { transcriptFailure } from '@/server/lib/harness/acp/turn-outcome.server';
-import type { HarnessId } from '@/shared/lib/harness/catalog';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import type { AcpTurns, AcpTurnEndInfo } from '@/server/lib/harness/acp/turn';
 import { driveAcpGoalAfterTurn } from '@/server/lib/harness/acp/acp-goal-driver.server';
 import type { AcpGoalHost } from '@/server/lib/harness/acp/acp-goal.server';

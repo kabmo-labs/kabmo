@@ -18,7 +18,7 @@ import * as fsp from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { patchExistence, readPatchSides } from '@/server/lib/omp/session/changes-patch';
-import { clearSessionFileCaches } from '@/server/lib/omp/session/files';
+import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
 
 const SESSION_ID = '01a20b52-7000-7000-8000-000000000001';
 let agentDir = '';

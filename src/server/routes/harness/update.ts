@@ -38,8 +38,8 @@
 import { json, NO_STORE_HEADERS } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
-import { harnessDescriptor, isBuiltinHarness, type HarnessId } from '@/shared/lib/harness/catalog';
-import { harnessUpdateFacts, latestSourceFor } from '@/shared/lib/harness/updates';
+import { harnessDescriptor, isBuiltinHarness, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
+import { harnessUpdateFacts, latestSourceFor } from '@kabmo-labs/kabmo-harness-updates';
 import { loadProbes } from '@/server/lib/harness/probe-cache.server';
 import { harnessVersionState, type HarnessVersionState } from '@/server/lib/harness/update-state.server';
 import { planHarnessUpdate, type HarnessUpdateStep } from '@/shared/lib/harness/update-plan';

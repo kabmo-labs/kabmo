@@ -1,5 +1,5 @@
 import { AlertCircle, Bell, Boxes } from 'lucide-preact';
-import { isReminderTag, type XmlEnvelope } from '@/shared/lib/chat/xml-envelope';
+import { isReminderTag, type XmlEnvelope } from '@kabmo-labs/kabmo-chat-notices/xml-envelope';
 import { toTitleCase } from '@/shared/lib/chat/title-case';
 
 /** Badge tone per wrapper family: a system reminder is advisory (warning), an

@@ -21,7 +21,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'preact/hooks';
-import type { ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
+import type { ExtensionUiDialogRequest } from '@kabmo-labs/kabmo-chat-contracts/agent';
 
 export interface ExtensionDialogQueue {
   /** Still-blocking requests, in omp's arrival order. */

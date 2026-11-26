@@ -24,7 +24,7 @@ import {
   readSessionChangeList,
   readSessionChangeStats,
 } from '@/server/lib/changes/reader.server';
-import { clearSessionFileCaches } from '@/server/lib/omp/session/files';
+import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
 
 const SESSION = 'sess-read';
 /** A session whose only journal is omp 19's, so the merge has no Kabmo half. */

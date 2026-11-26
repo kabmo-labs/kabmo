@@ -31,8 +31,8 @@ import { startAcpSession, type AcpSpawnRequest } from '@/server/lib/harness/spaw
 import { loadHarnessSession } from '@/server/lib/harness/session-store.server';
 import { loadPersistedAccessMode } from '@/shared/lib/omp/config/access-mode.server';
 import { claimDueTasks, finishScheduledRun, startScheduledRun } from '@/server/lib/schedule/store.server';
-import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
-import type { HarnessId } from '@/shared/lib/harness/catalog';
+import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import type { ScheduledTask } from '@/shared/types/schedule';
 
 /**

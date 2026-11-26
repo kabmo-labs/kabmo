@@ -23,9 +23,9 @@ import fs from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 
-import { asMapping, getOmpConfigPath, parseFrontmatter } from '@/server/lib/omp/config/yaml';
-import { getModelsConfigPath, readNativeProviders } from '@/server/lib/omp/config/models-config';
-import { readModelRoles, writeModelRoles } from '@/server/lib/omp/config/roles';
+import { asMapping, getOmpConfigPath, parseFrontmatter } from '@kabmo-labs/kabmo-omp-config-doc/yaml';
+import { getModelsConfigPath, readNativeProviders } from '@kabmo-labs/kabmo-omp-models-config/models-config';
+import { readModelRoles, writeModelRoles } from '@kabmo-labs/kabmo-omp-config-doc/roles';
 import { discoverExtensions, readDisabledExtensions, setExtensionDisabled } from '@/server/lib/omp/config/extensions';
 import { parseApprovalRules, writeToolsApproval } from '@/server/lib/omp/config/behavior';
 

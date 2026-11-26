@@ -17,7 +17,7 @@
  * arrived yet.
  */
 
-import type { SessionModeChoice } from '@/shared/lib/harness/session-modes';
+import type { SessionModeChoice } from '@kabmo-labs/kabmo-harness-session-modes';
 
 export interface ModeCapabilities {
   /** The harness that owns this chat, when the tab knows it. */

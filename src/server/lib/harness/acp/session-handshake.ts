@@ -44,7 +44,7 @@ import type {
 } from '@/server/lib/harness/acp/protocol';
 import type { HarnessCapabilities } from '@/server/lib/harness/capabilities';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
-import type { HarnessId } from '@/shared/lib/harness/catalog';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 
 /** The process slice a handshake drives; `AcpProcess` satisfies it as-is. */
 export interface AcpHandshakeProcess {

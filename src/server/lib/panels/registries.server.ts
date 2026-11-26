@@ -22,7 +22,7 @@
  */
 
 import type { PanelCatalogEntry, PanelMarketplaceRegistryEntry, PanelPluginSource } from '@/shared/types';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 import { pluginNameFromRepo, pluginRepoKey } from '@/shared/lib/panels/plugin-repo';
 import { readJsonBody } from '@/server/lib/panels/files.server';
 import { toMarketplaceRegistries } from '@/server/lib/panels/marketplace-catalog.server';

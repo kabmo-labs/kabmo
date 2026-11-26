@@ -23,7 +23,7 @@ import { openEmptyWorkspace } from '@/client/lib/router/open-session';
 import { UPDATE_CHECK_EVENT } from '@/shared/lib/updates/popup-state';
 import type { EditorCommand } from '@/shared/lib/code/editor/keymap';
 import { readUserKeybindings } from '@/shared/lib/commands/user-keybindings';
-import { isMacPlatform, isWindowsPlatform } from '@/shared/lib/util/platform';
+import { isMacPlatform, isWindowsPlatform } from '@kabmo-labs/kabmo-platform';
 
 export function useCommandRuntime(): void {
   useEffect(() => installCommandDispatcher(), []);

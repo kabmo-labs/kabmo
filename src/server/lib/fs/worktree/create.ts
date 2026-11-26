@@ -29,7 +29,7 @@ import { getDataDir } from '@/server/lib/lifecycle/paths';
 import { runGit } from '@/server/lib/fs/git-run';
 import { canonicalPath } from '@/server/lib/fs/canonical';
 import { resolveProjectRoot } from '@/server/lib/omp/core/worktree';
-import { pathExists } from '@/server/lib/omp/core/paths';
+import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
 import {
   folderNameForBranch,
   isPlausibleBranchName,

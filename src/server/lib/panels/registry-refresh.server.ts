@@ -29,7 +29,7 @@
  */
 
 import type { PanelPluginAuthor } from '@/shared/types';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 import { isRemoteGitUrl } from '@/shared/lib/git/url';
 import {
   parseGithubPluginRepo,

@@ -27,7 +27,7 @@ import {
   harnessMenuEntries,
   isHarnessCategory,
 } from '@/shared/lib/harness/menu';
-import { HARNESS_IDS, harnessDescriptor, registerHarnessDescriptors } from '@/shared/lib/harness/catalog';
+import { HARNESS_IDS, harnessDescriptor, registerHarnessDescriptors } from '@kabmo-labs/kabmo-harness-catalog';
 import { SETTINGS_CATEGORIES } from '@/client/components/settings/Sidebar';
 
 describe('harness menu ids', () => {

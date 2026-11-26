@@ -1,4 +1,4 @@
-import type { ToolCallData } from '@/shared/types/chat';
+import type { ToolCallData } from '@kabmo-labs/kabmo-chat-contracts/chat';
 
 export interface LineMeta {
   startLine?: number;

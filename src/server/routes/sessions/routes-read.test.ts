@@ -14,7 +14,7 @@ import os from 'os';
 import path from 'path';
 import { getDb } from '@/server/db.server';
 import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
-import { clearSessionFileCaches } from '@/server/lib/omp/session/files';
+import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { invalidateOmpSidebarData } from '@/server/lib/omp/session/reader';
 import { listSubagents, readSubagentTranscript } from '@/server/routes/sessions/subagents';
 import { loader as folderSessions } from '@/server/routes/sessions/folder';

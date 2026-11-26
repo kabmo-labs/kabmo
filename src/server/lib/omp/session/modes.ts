@@ -18,17 +18,15 @@
  * one is the state the session was left in.
  */
 
-import { parseJsonlLenient } from '@/shared/lib/omp/session/jsonl';
-import { isGoalOpen } from '@/shared/lib/omp/mode/status';
-import {
-  CHAMBER_GOAL_STATE_ENTRY,
-  CHAMBER_PLAN_STATE_ENTRY,
-  GOAL_CONTINUATION_STOPS,
-  KABMO_GOAL_STATE_ENTRY,
-  KABMO_PLAN_STATE_ENTRY,
-  type GoalContinuation,
-  type GoalRecord,
-} from '@/shared/lib/omp/mode/types';
+import { parseJsonlLenient } from '@kabmo-labs/kabmo-omp-session-core/jsonl';
+import { isGoalOpen } from '@kabmo-labs/kabmo-omp-mode/status';
+import { CHAMBER_GOAL_STATE_ENTRY,
+CHAMBER_PLAN_STATE_ENTRY,
+GOAL_CONTINUATION_STOPS,
+KABMO_GOAL_STATE_ENTRY,
+KABMO_PLAN_STATE_ENTRY,
+type GoalContinuation,
+type GoalRecord, } from '@kabmo-labs/kabmo-omp-mode/types';
 
 export interface PersistedModes {
   plan: boolean;

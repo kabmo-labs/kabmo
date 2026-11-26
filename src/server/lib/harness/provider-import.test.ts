@@ -27,8 +27,8 @@ import { join } from 'node:path';
 import { customProviderIds, isVendorProviderId } from '@/shared/lib/models/provider/vendors';
 import { restoreEnv } from '@/test-support/env';
 import { importableProvidersFor, readRegistryProviders } from '@/server/lib/harness/provider-sources.server';
-import { providerEnv } from '@/shared/lib/harness/providers';
-import { EMPTY_HARNESS_CONFIG, parseEnvLines, withEnvValues } from '@/shared/lib/harness/config';
+import { providerEnv } from '@kabmo-labs/kabmo-harness-provider/providers';
+import { EMPTY_HARNESS_CONFIG, parseEnvLines, withEnvValues } from '@kabmo-labs/kabmo-harness-config';
 import { probeEndpointProtocols } from '@/server/lib/harness/provider-probe.server';
 import { writeProvider } from '@/server/lib/harness/provider-write.server';
 

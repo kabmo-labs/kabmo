@@ -23,9 +23,9 @@
  */
 
 import { isMap, type Document, type YAMLMap } from 'yaml';
-import { getModelsConfigPath } from '@/server/lib/omp/config/models-config';
-import { withOmpYamlDocument, OmpConfigError } from '@/server/lib/omp/config/document';
-import { validateModelsDocument } from '@/server/lib/omp/config/models-validation';
+import { getModelsConfigPath } from '@kabmo-labs/kabmo-omp-models-config/models-config';
+import { withOmpYamlDocument, OmpConfigError } from '@kabmo-labs/kabmo-omp-config-doc/document';
+import { validateModelsDocument } from '@kabmo-labs/kabmo-omp-models-config/models-validation';
 import { isMaskedApiKey } from '@/shared/lib/models/provider/dialect';
 import type {
   OmpProviderApi,

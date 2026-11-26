@@ -19,7 +19,7 @@
  */
 
 import { getDb } from '@/server/db.server';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 
 export type SessionMcpOverrides = Record<string, boolean>;
 

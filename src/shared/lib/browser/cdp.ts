@@ -12,7 +12,7 @@
  */
 
 import { readString } from '@/shared/lib/browser/util';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 

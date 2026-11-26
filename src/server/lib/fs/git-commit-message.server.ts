@@ -20,12 +20,12 @@
  * different model.
  */
 
-import { readModelRoles } from '@/server/lib/omp/config/roles';
+import { readModelRoles } from '@kabmo-labs/kabmo-omp-config-doc/roles';
 import { loadHarnessSession } from '@/server/lib/harness/session-store.server';
 import { loadHarnessConfig } from '@/server/lib/harness/config.server';
 import { harnessProbeModels } from '@/server/lib/harness/probe-cache.server';
-import { modelProvider, resolveDefaultModel } from '@/shared/lib/harness/config';
-import { harnessDescriptor, type HarnessId } from '@/shared/lib/harness/catalog';
+import { modelProvider, resolveDefaultModel } from '@kabmo-labs/kabmo-harness-config';
+import { harnessDescriptor, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import { validateCommitPrompt } from '@/shared/lib/git/commit-prompt';
 import { runOmpPrint, type OmpPrintOutcome } from '@/server/lib/omp/core/print.server';
 import { runAcpOneShot, type AcpOneShotOutcome } from '@/server/lib/harness/acp/one-shot.server';

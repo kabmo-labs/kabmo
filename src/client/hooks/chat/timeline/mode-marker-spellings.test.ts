@@ -16,8 +16,8 @@
 
 import { describe, expect, test } from 'bun:test';
 import { goalMarkerPatch } from '@/client/hooks/chat/timeline/mode-markers';
-import { isModeMarker } from '@/shared/lib/omp/mode/constants';
-import { parseModeMarker } from '@/shared/lib/omp/mode/markers';
+import { isModeMarker } from '@kabmo-labs/kabmo-omp-mode/constants';
+import { parseModeMarker } from '@kabmo-labs/kabmo-omp-mode/markers';
 
 function parsed(marker: string, payload = '{"enabled":true}') {
   const value = parseModeMarker(`${marker}${payload}`);

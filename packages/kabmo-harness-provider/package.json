@@ -1,0 +1,32 @@
+{
+  "name": "@kabmo-labs/kabmo-harness-provider",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Provider contracts, dialects, facts, and lookup tables for harnesses.",
+  "exports": {
+    ".": "./src/providers.ts",
+    "./dialects": "./src/dialects.ts",
+    "./provider-contracts": "./src/provider-contracts.ts",
+    "./provider-facts": "./src/provider-facts.ts",
+    "./provider-lookup": "./src/provider-lookup.ts",
+    "./providers": "./src/providers.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-harness-provider"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  },
+  "dependencies": {
+    "@kabmo-labs/kabmo-harness-catalog": "workspace:*"
+  }
+}

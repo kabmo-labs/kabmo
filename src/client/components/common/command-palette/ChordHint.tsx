@@ -14,7 +14,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { formatChord } from '@/shared/lib/commands/chord';
 import type { Chord } from '@/shared/lib/commands/types';
-import { isMacPlatform } from '@/shared/lib/util/platform';
+import { isMacPlatform } from '@kabmo-labs/kabmo-platform';
 import { subscribePendingChord } from '@/client/lib/commands/dispatcher';
 
 export function ChordHint() {

@@ -52,7 +52,7 @@ import fs from 'fs';
 import path from 'path';
 import { tmpdir } from 'os';
 
-import { getAgentDir } from '@/server/lib/omp/core/paths';
+import { getAgentDir } from '@kabmo-labs/kabmo-omp-paths';
 
 /** Entries a child must never see from the overlay: the whole point, plus a
  *  session tree these `--no-session` children have no business mounting. */

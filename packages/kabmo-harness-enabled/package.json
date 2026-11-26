@@ -1,0 +1,27 @@
+{
+  "name": "@kabmo-labs/kabmo-harness-enabled",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Which harnesses a build can switch on or off.",
+  "exports": {
+    ".": "./src/enabled.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-harness-enabled"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  },
+  "dependencies": {
+    "@kabmo-labs/kabmo-harness-catalog": "workspace:*"
+  }
+}

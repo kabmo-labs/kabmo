@@ -19,7 +19,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
-import type { ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
+import type { ExtensionUiDialogRequest } from '@kabmo-labs/kabmo-chat-contracts/agent';
 import type { AskAnswer, AskQuestion } from '@/shared/lib/chat/ask-form/types';
 import type { ExtensionDialogResponse } from '@/client/components/workspace/chat-timeline/tool-renderers/extension-dialog/Lazy';
 

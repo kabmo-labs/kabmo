@@ -1,0 +1,24 @@
+{
+  "name": "@kabmo-labs/kabmo-bytes",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Byte-size formatting and parsing.",
+  "exports": {
+    ".": "./src/bytes.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-bytes"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  }
+}

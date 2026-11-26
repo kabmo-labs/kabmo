@@ -32,8 +32,8 @@
  *     "not reported" instead of showing a fabricated number.
  */
 
-import { isRecord } from '@/shared/lib/util/guards';
-import { toolInputPath } from '@/shared/lib/chat/tool/tool-input-path';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
+import { toolInputPath } from '@kabmo-labs/kabmo-chat-tool/tool-input-path';
 
 /**
  * The text of one ACP content entry, narrowed field by field.

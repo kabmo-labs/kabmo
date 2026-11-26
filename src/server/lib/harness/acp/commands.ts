@@ -23,10 +23,10 @@
 import { configOption, promptBlocks } from '@/server/lib/harness/acp/prompt';
 import { acpOptionValues } from '@/server/lib/harness/acp/protocol';
 import { notePromptTitle } from '@/server/lib/harness/session-title.server';
-import { isApprovalMode, type ApprovalMode } from '@/shared/lib/omp/config/access-mode';
+import { isApprovalMode, type ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 import type { AcpConfigOption, AcpSessionModeState } from '@/server/lib/harness/acp/protocol';
 import type { HarnessCapabilities } from '@/server/lib/harness/capabilities';
-import type { HarnessId } from '@/shared/lib/harness/catalog';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 
 /** The slice of `AcpSession` this table drives. Narrow on purpose: the dispatch
  *  rules are testable against a stub, with no process and no protocol. */

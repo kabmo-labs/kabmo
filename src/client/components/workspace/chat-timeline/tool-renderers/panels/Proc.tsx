@@ -23,15 +23,13 @@ import { useMemo } from 'preact/hooks';
 import type { ReactNode } from 'preact/compat';
 import { Activity, CheckCircle2, CircleSlash, Loader2, Radio, Server, Terminal } from 'lucide-preact';
 import type { ToolCallData } from '@/shared/types';
-import { stripAnsiCodes } from '@/shared/lib/code/ansi';
-import {
-  jobTone,
-  procOpLabel,
-  procViewOf,
-  type ProcAgent,
-  type ProcJob,
-} from '@/shared/lib/omp/session/proc';
-import { daemonTone, formatProcDuration, procUptime, type ProcDaemon } from '@/shared/lib/omp/session/proc-daemon';
+import { stripAnsiCodes } from '@kabmo-labs/kabmo-format/ansi';
+import { jobTone,
+procOpLabel,
+procViewOf,
+type ProcAgent,
+type ProcJob, } from '@kabmo-labs/kabmo-omp-proc/proc';
+import { daemonTone, formatProcDuration, procUptime, type ProcDaemon } from '@kabmo-labs/kabmo-omp-proc/proc-daemon';
 import { FallbackOutput } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/FallbackOutput';
 import { ToolPanelHeader } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/ToolPanelHeader';
 import { jobSubject, jobProgressLine } from '@/shared/lib/omp/session/job-progress';

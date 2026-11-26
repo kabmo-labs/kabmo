@@ -27,7 +27,7 @@
  */
 
 import type { DbClient } from '@/server/lib/db/client';
-import { projectPathKey } from '@/server/lib/omp/core/paths';
+import { projectPathKey } from '@kabmo-labs/kabmo-omp-paths';
 import { syncDiscoveryRootsWatch } from '@/server/lib/omp/config/roots-watch.server';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
 

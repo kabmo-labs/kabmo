@@ -13,7 +13,7 @@
  */
 
 import { getDb } from '@/server/db.server';
-import type { GoalContinuation, GoalRecord } from '@/shared/lib/omp/mode/types';
+import type { GoalContinuation, GoalRecord } from '@kabmo-labs/kabmo-omp-mode/types';
 
 /** The row, as the composer and the driver read it. */
 export interface AcpGoalState {

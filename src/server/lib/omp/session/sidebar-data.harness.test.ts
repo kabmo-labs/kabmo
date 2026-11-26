@@ -31,7 +31,7 @@ import { join } from 'node:path';
 import { getDb } from '@/server/db.server';
 import { loadSidebarStructure } from '@/server/lib/omp/session/sidebar-data.server';
 import { invalidateOmpSidebarData } from '@/server/lib/omp/session/reader';
-import { clearSessionFileCaches } from '@/server/lib/omp/session/files';
+import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { importHarnessSession, saveHarnessSession } from '@/server/lib/harness/session-store.server';
 import { noteAgentTitle, notePromptTitle } from '@/server/lib/harness/session-title.server';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';

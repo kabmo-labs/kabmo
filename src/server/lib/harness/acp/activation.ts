@@ -21,7 +21,7 @@
  */
 
 import type { AcpSessionNewResult } from '@/server/lib/harness/acp/protocol';
-import type { HarnessId } from '@/shared/lib/harness/catalog';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 
 /** Enough headroom over the measured 80 s, not an open-ended probe. */
 export const ACTIVATION_TIMEOUT_MS = 150_000;

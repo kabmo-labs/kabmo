@@ -19,7 +19,7 @@
  *     contradicting itself.
  */
 
-import type { Attachment } from '@/shared/types/chat';
+import type { Attachment } from '@kabmo-labs/kabmo-chat-contracts/chat';
 import { dispatchBtwCommand } from '@/client/hooks/chat/btw/intercept';
 import { dispatchPluginCommand } from '@/client/hooks/chat/timeline/plugin-commands';
 

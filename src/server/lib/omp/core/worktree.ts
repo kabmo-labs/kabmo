@@ -16,7 +16,7 @@
 
 import { promises as fsp } from 'fs';
 import { dirname, join } from 'path';
-import { pathExists } from '@/server/lib/omp/core/paths';
+import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
 import { GIT_ENV } from '@/server/lib/fs/git-run';
 
 declare global {

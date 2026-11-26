@@ -11,11 +11,11 @@
  */
 
 import type { ChatMessageData, SubagentMessagesPage } from '@/shared/types';
-import { toChatMessage } from '@/shared/lib/omp/session/mapper';
-import { normalizeMessageTools } from '@/shared/lib/chat/tool/normalize';
-import { extractText } from '@/shared/lib/omp/session/parse-message-blocks';
-import { normalizeThinkingLevel } from '@/shared/lib/models/thinking-levels';
-import { isRecord } from '@/shared/lib/util/guards';
+import { toChatMessage } from '@kabmo-labs/kabmo-omp-mapper';
+import { normalizeMessageTools } from '@kabmo-labs/kabmo-chat-tool/normalize';
+import { extractText } from '@kabmo-labs/kabmo-omp-session-parse/parse-message-blocks';
+import { normalizeThinkingLevel } from '@kabmo-labs/kabmo-model-contracts/thinking-levels';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 
 /** Normalize one wire message: the RPC may hand back bare omp AgentMessages
  *  or JSONL entries wrapping them as `{ message: {...} }`. */

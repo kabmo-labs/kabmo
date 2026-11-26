@@ -8,7 +8,7 @@ import { RunMark } from '@/client/components/workspace/chat-timeline/RunMark';
 import { PluginMessageActions } from '@/client/components/workspace/chat-timeline/PluginMessageActions';
 import { formatDuration } from '@/shared/lib/chat/duration';
 import { providerLabel } from '@/shared/lib/models/provider/label';
-import { formatCompactTokens } from '@/shared/lib/format/number';
+import { formatCompactTokens } from '@kabmo-labs/kabmo-format/number';
 import { canForkAt, type ForkAnchorRole } from '@/shared/lib/chat/timeline/fork-anchor';
 
 interface AiMessageFooterProps {

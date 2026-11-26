@@ -20,7 +20,7 @@
  * shortcuts are copied from.
  */
 
-import { isMacPlatform, isWindowsPlatform } from '@/shared/lib/util/platform';
+import { isMacPlatform, isWindowsPlatform } from '@kabmo-labs/kabmo-platform';
 
 export interface KeyStroke {
   /** `KeyboardEvent.code`, e.g. `KeyC`, `ArrowUp`, `Slash`, `Digit1`. */

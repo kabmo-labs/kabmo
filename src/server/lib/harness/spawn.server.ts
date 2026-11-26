@@ -27,27 +27,27 @@ import { claimPrewarmedAcpSession } from '@/server/lib/harness/acp/prewarm.serve
 import { rememberAgentToken } from '@/server/lib/sessions/agent-token.server';
 import { loadHarnessConfig } from '@/server/lib/harness/config.server';
 import { resolveAccountLaunch, selectedAccountId } from '@/server/lib/harness/accounts.server';
-import { accountAdapter } from '@/shared/lib/harness/accounts';
+import { accountAdapter } from '@kabmo-labs/kabmo-harness-accounts';
 import { sessionLaunchCommand } from '@/server/lib/harness/launch';
-import { resolveDefaultModel, modelProvider } from '@/shared/lib/harness/config';
+import { resolveDefaultModel, modelProvider } from '@kabmo-labs/kabmo-harness-config';
 import { harnessProbeModels } from '@/server/lib/harness/probe-cache.server';
 import { claimHarness } from '@/server/lib/harness/registry';
 import { registerAcpSession } from '@/server/lib/harness/register.server';
 import { loadHarnessSessionTitle, saveHarnessSession } from '@/server/lib/harness/session-store.server';
 import { noteHarnessLease, removeHarnessLease } from '@/server/lib/harness/session-lease.server';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
-import { harnessDescriptor, type HarnessId } from '@/shared/lib/harness/catalog';
-import { mcpDelivery } from '@/shared/lib/harness/mcp-facts';
+import { harnessDescriptor, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
+import { mcpDelivery } from '@kabmo-labs/kabmo-harness-mcp-facts';
 import { mcpServersFor, toAcpMcpServers } from '@/server/lib/mcp/registry.server';
 import { resolveMcpDefinition } from '@/server/lib/mcp/secrets.server';
 import { readSessionMcpOverrides } from '@/server/lib/mcp/session-state.server';
 import { ensureCustomHarnesses } from '@/server/lib/harness/custom.server';
-import type { HarnessConfig } from '@/shared/lib/harness/config';
+import type { HarnessConfig } from '@kabmo-labs/kabmo-harness-config';
 import type { AcpProcess } from '@/server/lib/harness/acp/client';
 import type { HarnessSession } from '@/server/lib/harness/session';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
-import type { SelectedModel } from '@/shared/types/models';
-import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
+import type { SelectedModel } from '@kabmo-labs/kabmo-model-contracts/models';
+import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 
 export interface AcpSpawnRequest {
   harness: HarnessId;

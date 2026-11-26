@@ -26,7 +26,7 @@
 import { useCallback, useEffect, useRef } from 'preact/hooks';
 import type { Dispatch, RefObject, SetStateAction } from 'preact/compat';
 import type { ChatMessageData, OmpAgentCallbacks, OmpAgentEvent, OmpAgentState } from '@/shared/types';
-import type { ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
+import type { ExtensionUiDialogRequest } from '@kabmo-labs/kabmo-chat-contracts/agent';
 import { foldAgentEvent, type ToolResultRecord } from '@/shared/lib/chat/omp/agent-events';
 import { realtimeClient, type RealtimeFrame } from '@/shared/lib/realtime/client';
 import { sessionTopic } from '@/shared/lib/realtime/protocol';

@@ -44,7 +44,7 @@ import fs from 'fs';
 import path from 'path';
 import { tmpdir } from 'os';
 
-import { getAgentDir } from '@/server/lib/omp/core/paths';
+import { getAgentDir } from '@kabmo-labs/kabmo-omp-paths';
 import { mcpServerEntriesFor } from '@/server/lib/mcp/registry.server';
 import type { SessionMcpOverrides } from '@/server/lib/mcp/session-state.server';
 

@@ -35,7 +35,7 @@ import {
 } from '@/server/lib/omp/rpc/session-registry';
 import { stopDiscoveryRootsWatch } from '@/server/lib/omp/config/roots-watch.server';
 import type { AgentSessionWrapper } from '@/server/lib/omp/rpc/manager';
-import { DEFAULT_APPROVAL_MODE } from '@/shared/lib/omp/config/access-mode';
+import { DEFAULT_APPROVAL_MODE } from '@kabmo-labs/kabmo-omp-access-mode';
 
 interface FakeSession {
   session: AgentSessionWrapper;

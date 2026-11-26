@@ -1,0 +1,32 @@
+{
+  "name": "@kabmo-labs/kabmo-omp-mode",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "omp mode markers, goal records, and formatting.",
+  "exports": {
+    ".": "./src/types.ts",
+    "./actions": "./src/actions.ts",
+    "./budget": "./src/budget.ts",
+    "./constants": "./src/constants.ts",
+    "./format": "./src/format.ts",
+    "./markers": "./src/markers.ts",
+    "./notice": "./src/notice.ts",
+    "./status": "./src/status.ts",
+    "./types": "./src/types.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-omp-mode"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  }
+}

@@ -36,7 +36,7 @@
  * Server-only: it performs outbound HTTP the settings page must not.
  */
 
-import { CANONICAL_PROTOCOLS, type CanonicalProtocol } from '@/shared/lib/harness/dialects';
+import { CANONICAL_PROTOCOLS, type CanonicalProtocol } from '@kabmo-labs/kabmo-harness-provider/dialects';
 
 /** Bounded because the caller is a settings card and the host is a stranger. */
 const PROBE_TIMEOUT_MS = 6_000;

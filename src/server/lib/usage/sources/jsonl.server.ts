@@ -15,7 +15,7 @@
 import fs from 'node:fs';
 import { join } from 'node:path';
 
-import type { HarnessId } from '@/shared/lib/harness/catalog';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import { completeLineOffset, foldUsageText, type UsageRollupRow } from '@/server/lib/usage/index-parse';
 import { readdirOrEmpty, statOrNull } from '@/server/lib/usage/sources/helpers';
 import type { UsageFileState, UsageSource, UsageSourceFile, UsageSourceRead } from '@/server/lib/usage/sources/types';

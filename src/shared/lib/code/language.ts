@@ -14,7 +14,7 @@
  * have to pull one in.
  */
 
-import { stripReadSelector } from '@/shared/lib/fs/paths';
+import { stripReadSelector } from '@kabmo-labs/kabmo-fs-media/paths';
 
 /**
  * Map a path to a Shiki language id.

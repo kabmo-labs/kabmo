@@ -27,7 +27,7 @@ import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
 import type { QueueDeliveryHost } from '@/server/lib/queue/delivery.server';
 import { resolveSessionRef } from '@/server/lib/sessions/resolve.server';
 import { mintAgentEnvironment, rememberAgentToken } from '@/server/lib/sessions/agent-token.server';
-import type { HarnessId } from '@/shared/lib/harness/catalog';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 
 export interface DispatchDeps {
   findFile(sessionId: string): Promise<string | undefined>;

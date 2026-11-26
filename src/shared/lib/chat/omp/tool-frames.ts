@@ -15,8 +15,8 @@
  */
 
 import type { ToolCallData } from '@/shared/types';
-import { toolResultText } from '@/shared/lib/omp/session/mapper';
-import { extractToolImages } from '@/shared/lib/omp/session/tool-images';
+import { toolResultText } from '@kabmo-labs/kabmo-omp-mapper';
+import { extractToolImages } from '@kabmo-labs/kabmo-omp-session-parse/tool-images';
 import { describeToolActivity } from '@/shared/lib/chat/timeline/tool-verbs';
 import { PHASE_VERBS } from '@/shared/lib/chat/timeline/tool-phrases';
 import { setActivity, toolHost, type OmpAgentFoldDeps } from '@/shared/lib/chat/omp/fold-deps';

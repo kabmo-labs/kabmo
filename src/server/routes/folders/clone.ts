@@ -40,7 +40,7 @@ import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { join } from 'path';
 import fs from 'fs';
 import { getDb } from '@/server/db.server';
-import { pathExists } from '@/server/lib/omp/core/paths';
+import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
 import { runGit } from '@/server/lib/fs/git-run';
 import { expandHome } from '@/server/routes/folders/create';
 import { defaultFolderName, registerWorkspaceFolder } from '@/server/lib/workspace/register-folder.server';

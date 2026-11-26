@@ -26,9 +26,9 @@ import { dirname, join } from 'path';
 import { tmpdir } from 'node:os';
 
 import { findSessionFileById, resolveSessionFileOr404, resolveSessionPathOr404, sessionNotFoundResponse } from '@/server/lib/omp/session/locator';
-import { scanSessionInfo } from '@/server/lib/omp/session/scan';
+import { scanSessionInfo } from '@kabmo-labs/kabmo-omp-session-scan/scan';
 import { sessionHasSubagents } from '@/server/lib/omp/session/subagent-presence';
-import { clearSessionFileCaches } from '@/server/lib/omp/session/files';
+import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
 
 const tempDirs: string[] = [];
 

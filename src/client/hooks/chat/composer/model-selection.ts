@@ -27,7 +27,7 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { AIModelOption } from '@/shared/types';
 import { fetchModelsData, subscribeModelsUpdated } from '@/shared/lib/models/client';
-import { selectableThinkingLevels } from '@/shared/lib/models/thinking-levels';
+import { selectableThinkingLevels } from '@kabmo-labs/kabmo-model-contracts/thinking-levels';
 import { resolveThinkingLevel, selectionFor } from '@/client/components/workspace/chat-timeline/chat-input/selection';
 
 

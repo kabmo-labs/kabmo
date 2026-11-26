@@ -9,7 +9,7 @@
  */
 
 import { getDb } from '@/server/db.server';
-import { ACCESS_MODE_SETTING_KEY, DEFAULT_APPROVAL_MODE, isApprovalMode, type ApprovalMode } from '@/shared/lib/omp/config/access-mode';
+import { ACCESS_MODE_SETTING_KEY, DEFAULT_APPROVAL_MODE, isApprovalMode, type ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 
 /** Read the persisted access mode, defaulting on a missing row or any error.
  *  The generic settings writer stores non-object values with String(value), so

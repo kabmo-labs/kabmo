@@ -22,7 +22,7 @@
  * `\u0000`, so it survives the wire unchanged.
  */
 
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 
 /** Joins a scoped topic's parts. Never appears in a path, so no escaping. */
 export const TOPIC_SCOPE_SEPARATOR = '\u0000';

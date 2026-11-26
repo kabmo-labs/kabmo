@@ -1,7 +1,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import type { ChatMessageData, SubagentInfo } from '@/shared/types';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 import { parseSubagentLifecycle, readSubagentProgressFrame } from '@/shared/lib/omp/subagent/parse';
 import { subscribeSubagentFrame, type SubagentFrame } from '@/shared/lib/chat/omp/subagent-frames';
 import { convertMessages, mergeMessages, requestHistoryPage, requestSubagentPage } from '@/shared/lib/omp/subagent/transcript-client';

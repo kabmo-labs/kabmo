@@ -26,7 +26,7 @@
 
 import { Bot } from 'lucide-preact';
 import { HarnessGlyph } from '@/client/components/common/harness-glyph';
-import { harnessDescriptor } from '@/shared/lib/harness/catalog';
+import { harnessDescriptor } from '@kabmo-labs/kabmo-harness-catalog';
 
 interface RunMarkProps {
   /** The run's harness id (`omp-rpc`, `opencode`, `claude`, …). */

@@ -33,7 +33,7 @@ import { isMockMode } from '@/server/mock.server';
 import { getDefaultFsRoot, resolveRoot, resolveWithinRoot } from '@/server/lib/fs/root';
 import { stableMtime } from '@/server/lib/fs/write-conflict';
 import { contentHash } from '@/shared/lib/fs/content-hash';
-import { EDITOR_MAX_FILE_BYTES } from '@/shared/lib/fs/file-kind';
+import { EDITOR_MAX_FILE_BYTES } from '@kabmo-labs/kabmo-fs-media/file-kind';
 
 interface CachedDigest {
   /** The RAW stat mtime the hash was built from; never the rounded value. */

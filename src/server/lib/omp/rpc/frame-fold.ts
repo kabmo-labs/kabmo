@@ -19,7 +19,7 @@
  * lives in `terminal-settle.ts`.
  */
 
-import { clearSessionFileCaches } from '@/server/lib/omp/session/files';
+import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import {
   consumeAutoTitleOutput,
   triggerAutoSessionTitle,
@@ -31,8 +31,8 @@ import { publishSidebarStructure } from '@/server/lib/realtime/topics.server';
 import { NON_TERMINAL_CONTINUATION_GRACE_MS, type AgentEvent } from '@/server/lib/omp/rpc/constants';
 import { assistantFailure, settleTerminalRun } from '@/server/lib/omp/rpc/terminal-settle';
 import { noteRetryFrame } from '@/server/lib/omp/rpc/retry-saga';
-import { parseModeMarker } from '@/shared/lib/omp/mode/markers';
-import { SKILL_PROMPT_CUSTOM_TYPE } from '@/shared/lib/omp/session/operator-title';
+import { parseModeMarker } from '@kabmo-labs/kabmo-omp-mode/markers';
+import { SKILL_PROMPT_CUSTOM_TYPE } from '@kabmo-labs/kabmo-omp-operator-title';
 import type { FrameFoldResult, SessionFrameHost } from '@/server/lib/omp/rpc/frame-fold-contract';
 
 /**

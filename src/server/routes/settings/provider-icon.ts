@@ -32,7 +32,7 @@ import { isMockMode } from '@/server/mock.server';
 import { deleteProviderIcon } from '@/server/lib/models/provider-icon-store.server';
 import { ensureProviderIcon, providerIconUrl, readProviderIconBytes } from '@/server/lib/models/provider-icon.server';
 import { invalidateModelsCaches } from '@/shared/lib/models/server-cache';
-import { bodyBytes } from '@/shared/lib/util/bytes';
+import { bodyBytes } from '@kabmo-labs/kabmo-bytes';
 
 const ICON_HEADERS = {
   'x-content-type-options': 'nosniff',

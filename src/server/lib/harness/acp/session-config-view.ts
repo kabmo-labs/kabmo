@@ -16,7 +16,7 @@
 
 import type { AcpConfigOption, AcpSessionModeState, AcpSessionModels } from '@/server/lib/harness/acp/protocol';
 import type { AcpConfigWriter } from '@/server/lib/harness/acp/session-config';
-import type { HarnessId } from '@/shared/lib/harness/catalog';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 
 /** What the view reads and moves on the session. */
 export interface AcpConfigState {

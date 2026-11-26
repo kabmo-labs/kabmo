@@ -37,7 +37,7 @@
  * the only place a refusal can be read.
  */
 
-import { BINARY_SNIFF_BYTES, classifyEditorFile, unsupportedEditorMessage } from '@/shared/lib/fs/file-kind';
+import { BINARY_SNIFF_BYTES, classifyEditorFile, unsupportedEditorMessage } from '@kabmo-labs/kabmo-fs-media/file-kind';
 import { openFileInEditor } from '@/client/hooks/ui/open-file';
 
 /** What a shell announces before it sends any bytes. */

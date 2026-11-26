@@ -33,7 +33,7 @@
 import { stat } from 'node:fs/promises';
 import type { Stats } from 'node:fs';
 import path from 'node:path';
-import { readRawHeaderLine } from '@/server/lib/omp/session/files';
+import { readRawHeaderLine } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { findSessionFileById } from '@/server/lib/omp/session/locator';
 import { siblingDirForSession } from '@/server/lib/omp/subagent/history/paths';
 import { patchExistence, type OmpPatch } from '@/server/lib/omp/session/changes-patch';

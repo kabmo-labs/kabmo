@@ -7,16 +7,16 @@
  * The fact chips for a `proc://` call and for a `bash` service launch.
  *
  * Split out of `summary.ts` because both read the same snapshot through
- * `@/shared/lib/omp/session/proc` and the parent file is at its size ceiling.
+ * `@kabmo-labs/kabmo-omp-proc/proc` and the parent file is at its size ceiling.
  * The facts are the PROCESS's, never the transport's: the call rides `read`/
  * `write`, so a `write`'s own chip would report the stdin payload as a file's
  * line count and a `read`'s the service log as a file size.
  */
 
-import { bashServiceOf, jobTone, procOpLabel, procViewOf } from '@/shared/lib/omp/session/proc';
-import { daemonTone, formatProcDuration, procUptime } from '@/shared/lib/omp/session/proc-daemon';
+import { bashServiceOf, jobTone, procOpLabel, procViewOf } from '@kabmo-labs/kabmo-omp-proc/proc';
+import { daemonTone, formatProcDuration, procUptime } from '@kabmo-labs/kabmo-omp-proc/proc-daemon';
 import { countPhrase } from '@/shared/lib/chat/tool/labels';
-import type { ToolCallData } from '@/shared/types/chat';
+import type { ToolCallData } from '@kabmo-labs/kabmo-chat-contracts/chat';
 import type { ToolFact } from '@/shared/lib/chat/tool/summary';
 
 /** Facts for a `proc://` call (or the legacy `hub` tool, same `details`). */

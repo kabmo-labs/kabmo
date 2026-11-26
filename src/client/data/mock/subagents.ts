@@ -1,4 +1,4 @@
-import type { SubagentHistoryEntry, SubagentMessagesPage } from '@/shared/types/omp/subagent';
+import type { SubagentHistoryEntry, SubagentMessagesPage } from '@kabmo-labs/kabmo-omp-contracts/subagent';
 import { SAMPLE_SCOUT_SUBAGENT_ID, SAMPLE_SLEEPER_SUBAGENT_ID, SAMPLE_SUBAGENT_SESSION_ID, rawScoutSubagentEvents, rawSleeperSubagentEvents, scoutSubagentHistoryEntry, sleeperSubagentHistoryEntry } from '@/client/data/samples/subagent-session';
 
 export const MOCK_SUBAGENTS_MAP: Record<string, SubagentHistoryEntry[]> = {

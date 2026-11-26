@@ -18,9 +18,9 @@ import { getDb } from '@/server/db.server';
 import { normalizeModel } from '@/server/lib/queue/store.server';
 import { readSettingsJson } from '@/server/lib/db/settings-store';
 import { loadPersistedAccessMode } from '@/shared/lib/omp/config/access-mode.server';
-import { harnessDescriptor } from '@/shared/lib/harness/catalog';
+import { harnessDescriptor } from '@kabmo-labs/kabmo-harness-catalog';
 import { isValidTimeZone, serverTimeZone } from '@/shared/lib/schedule/timezone';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 import type { ScheduleKind, ScheduledTaskModel } from '@/shared/types/schedule';
 
 export const SCHEDULE_KINDS: readonly ScheduleKind[] = ['once', 'every', 'cron'];

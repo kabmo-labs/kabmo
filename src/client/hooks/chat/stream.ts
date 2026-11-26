@@ -1,6 +1,6 @@
 import type { ChatMessageData, ThinkingData, ToolCallData } from '@/shared/types';
 import { readSseStream } from '@/shared/lib/chat/read-sse';
-import { formatClock } from '@/shared/lib/format/time';
+import { formatClock } from '@kabmo-labs/kabmo-format/time';
 
 export interface StreamChunkCallbacks {
   onInit?: (data: { id: string; role: 'ai' | 'assistant'; date?: string; timestamp?: string; model?: string }) => void;

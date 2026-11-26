@@ -34,10 +34,10 @@
  */
 
 import { AlertTriangle, CheckCircle2, CircleDot, Loader2, Pause, Play, SlidersHorizontal, Target } from 'lucide-preact';
-import type { GoalContinuation, GoalContinuationStop, GoalRecord } from '@/shared/lib/omp/mode/types';
-import { formatGoalDuration, formatGoalTokens } from '@/shared/lib/omp/mode/format';
-import { isGoalOpen } from '@/shared/lib/omp/mode/status';
-import type { GoalAction } from '@/shared/lib/omp/mode/actions';
+import type { GoalContinuation, GoalContinuationStop, GoalRecord } from '@kabmo-labs/kabmo-omp-mode/types';
+import { formatGoalDuration, formatGoalTokens } from '@kabmo-labs/kabmo-omp-mode/format';
+import { isGoalOpen } from '@kabmo-labs/kabmo-omp-mode/status';
+import type { GoalAction } from '@kabmo-labs/kabmo-omp-mode/actions';
 
 /** How each stand-down reason reads, and what the row offers for it. Data, not
  *  a chain of `if`s: the reasons come from two places (the child's ceilings and

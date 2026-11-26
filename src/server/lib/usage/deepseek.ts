@@ -1,6 +1,6 @@
 import { resolveDeepSeekApiKey } from '@/server/lib/usage/provider-key';
 import type { DeepSeekBalance, DeepSeekBalanceEntry, DeepSeekUsageReport } from '@/shared/types';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 
 const FETCH_TIMEOUT_MS = 10_000;
 const BALANCE_URL = 'https://api.deepseek.com/user/balance';

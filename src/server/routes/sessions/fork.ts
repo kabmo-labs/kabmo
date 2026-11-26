@@ -15,7 +15,7 @@ import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed, parseJsonBody } from '@/server/lib/route-adapter';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
 import { readImages, readModel, readString } from '@/server/routes/sessions/body-readers';
-import { isApprovalMode } from '@/shared/lib/omp/config/access-mode';
+import { isApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 import { isMockMode } from '@/server/mock.server';
 import {
   SessionForkError,

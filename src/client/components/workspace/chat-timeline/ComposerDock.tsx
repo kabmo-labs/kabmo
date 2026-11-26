@@ -6,7 +6,7 @@ import { ComposerDockFrame } from '@/client/components/workspace/chat-timeline/C
 import { GeneratingIndicator } from '@/client/components/workspace/chat-timeline/GeneratingIndicator';
 import { QueueList } from '@/client/components/workspace/chat-timeline/QueueList';
 import type { Attachment, QueuedMessage } from '@/shared/types';
-import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
+import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 import type { ComposerModes } from '@/client/components/workspace/chat-timeline/chat-input/modes-props';
 import type { WaitingCandidate } from '@/client/components/workspace/chat-timeline/chat-input/WaitingDependencyPicker';
 import { PluginComposerBanners } from '@/client/components/workspace/chat-timeline/chat-input/PluginComposerSlots';

@@ -1,6 +1,6 @@
 import { resolveKenariApiKey } from '@/server/lib/usage/provider-key';
 import type { KenariBalance, KenariCoupon, KenariQuota, KenariQuotaWindow, KenariUsage, KenariUsageReport, KenariUsageRow } from '@/shared/types';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 
 const FETCH_TIMEOUT_MS = 10_000;
 const QUOTA_URL = 'https://kenari.id/v1/account/quota';

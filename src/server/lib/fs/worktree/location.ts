@@ -21,7 +21,7 @@
 
 import path from 'path';
 import { homedir } from 'os';
-import { pathExists } from '@/server/lib/omp/core/paths';
+import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
 import {
   generateBranchSlug,
   slugWorktreeName,

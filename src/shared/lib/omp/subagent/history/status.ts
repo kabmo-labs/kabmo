@@ -12,7 +12,7 @@
  * that stops a stale progress snapshot from regressing a settled agent.
  */
 
-import type { SubagentHistoryEntry } from '@/shared/types/omp/subagent';
+import type { SubagentHistoryEntry } from '@kabmo-labs/kabmo-omp-contracts/subagent';
 
 export function progressStatusToHistory(status: string | undefined): SubagentHistoryEntry['status'] {
   if (status === 'completed') return 'completed';

@@ -15,7 +15,7 @@
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { whichOnToolchainPath } from '@/server/lib/fs/toolchain-path';
-import type { HarnessId } from '@/shared/lib/harness/catalog';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 
 /** One harness's launch configuration. */
 export interface HarnessLaunch {

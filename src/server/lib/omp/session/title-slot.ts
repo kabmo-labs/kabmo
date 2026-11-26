@@ -18,8 +18,8 @@
  */
 
 import fs from 'fs';
-import { writeFileAtomic } from '@/server/lib/fs/atomic-write';
-import { SESSION_TITLE_SLOT_BYTES } from '@/server/lib/omp/session/files';
+import { writeFileAtomic } from '@kabmo-labs/kabmo-fs-config/atomic-write';
+import { SESSION_TITLE_SLOT_BYTES } from '@kabmo-labs/kabmo-omp-session-scan/files';
 
 /**
  * Ceiling for the legacy full-file rewrite path. A slot-less file larger than

@@ -39,7 +39,7 @@ import { Read } from '@/client/components/workspace/chat-timeline/tool-renderers
 import { Edit } from '@/client/components/workspace/chat-timeline/tool-renderers/panels/Edit';
 import { Mcp } from '@/client/components/workspace/chat-timeline/tool-renderers/panels/Mcp';
 import { Wait } from '@/client/components/workspace/chat-timeline/tool-renderers/panels/Wait';
-import { hashlineTargetPath } from '@/shared/lib/omp/session/hashline-patch';
+import { hashlineTargetPath } from '@kabmo-labs/kabmo-omp-session-core/hashline-patch';
 import { getToolInputPath } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/tool-input';
 import { toolPanelKind, type ToolPanelKind } from '@/client/components/workspace/chat-timeline/tool-renderers/registry';
 

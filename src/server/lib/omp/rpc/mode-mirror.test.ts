@@ -15,7 +15,7 @@
 
 import { describe, expect, test } from 'bun:test';
 import { ModeMirror } from '@/server/lib/omp/rpc/mode-mirror';
-import type { GoalStatus } from '@/shared/lib/omp/mode/types';
+import type { GoalStatus } from '@kabmo-labs/kabmo-omp-mode/types';
 
 function frame(status: GoalStatus, enabled = true) {
   return { type: 'goal_updated', goal: { id: 'g1', objective: 'x', status }, state: { enabled, goal: { id: 'g1', objective: 'x', status } } };

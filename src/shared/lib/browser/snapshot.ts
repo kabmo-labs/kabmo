@@ -27,7 +27,7 @@
 import type { CdpConnection } from '@/shared/lib/browser/cdp';
 import { FRAME_QUALITY, frameScale } from '@/shared/lib/browser/frame-params';
 import { readNumber, readString } from '@/shared/lib/browser/util';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 import type { BrowserViewFrame } from '@/shared/types';
 
 /** CSS viewport size of the attached page, or null when the page will not say. */

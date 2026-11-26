@@ -13,7 +13,7 @@
  */
 
 import { afterAll, afterEach, beforeAll, describe, expect, jest, mock, test } from 'bun:test';
-import type { QueuedMessage } from '@/shared/types/chat';
+import type { QueuedMessage } from '@kabmo-labs/kabmo-chat-contracts/chat';
 import type { QueueDeliveryHost } from '@/server/lib/queue/delivery.server';
 import {
   MODEL,

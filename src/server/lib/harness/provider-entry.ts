@@ -28,9 +28,9 @@
  *    value has to be injected into `env` or all imported models answer 401.
  */
 
-import type { ProviderRegistryKind } from '@/shared/lib/harness/provider-contracts';
-import type { CanonicalProtocol } from '@/shared/lib/harness/dialects';
-import { dialectFor, wireApiFor } from '@/shared/lib/harness/dialects';
+import type { ProviderRegistryKind } from '@kabmo-labs/kabmo-harness-provider/provider-contracts';
+import type { CanonicalProtocol } from '@kabmo-labs/kabmo-harness-provider/dialects';
+import { dialectFor, wireApiFor } from '@kabmo-labs/kabmo-harness-provider/dialects';
 import { ProviderWriteError } from '@/server/lib/harness/provider-write-error';
 
 /** What an import brings into a target registry. */

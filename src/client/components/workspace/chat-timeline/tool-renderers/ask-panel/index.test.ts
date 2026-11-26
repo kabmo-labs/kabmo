@@ -8,7 +8,7 @@ import { AskFramesContext, type AskFramesHandle } from '@/client/hooks/chat/time
 import { createOmpAgentCallbacks, type OmpAgentCallbacksDeps } from '@/shared/lib/chat/timeline/omp-callbacks';
 import { resetListSlots } from '@/client/lib/plugins/list-slots';
 import type { ChatMessageData, ToolCallData } from '@/shared/types';
-import type { ExtensionUiDialogRequest, IncomingExtensionUiRequest } from '@/shared/types/omp/agent';
+import type { ExtensionUiDialogRequest, IncomingExtensionUiRequest } from '@kabmo-labs/kabmo-chat-contracts/agent';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
 
 const QUESTIONS = [

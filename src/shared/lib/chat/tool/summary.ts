@@ -24,8 +24,8 @@
  * the code), so a missing code degrades to no chip rather than a fabricated 0.
  */
 
-import type { ToolCallData } from '@/shared/types/chat';
-import { procPathOf } from '@/shared/lib/omp/session/proc';
+import type { ToolCallData } from '@kabmo-labs/kabmo-chat-contracts/chat';
+import { procPathOf } from '@kabmo-labs/kabmo-omp-proc/proc';
 import { isExcerptFurniture } from '@/shared/lib/chat/excerpt';
 import { bashFacts } from '@/shared/lib/chat/tool/bash-facts';
 import { procFacts } from '@/shared/lib/chat/tool/proc-facts';

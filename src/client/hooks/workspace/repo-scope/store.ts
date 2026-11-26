@@ -25,7 +25,7 @@
 
 import { realtimeClient } from '@/shared/lib/realtime/client';
 import { reposTopic } from '@/shared/lib/realtime/protocol';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 
 export interface RepoListSnapshot {
   repos: string[];

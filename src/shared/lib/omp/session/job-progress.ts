@@ -24,7 +24,7 @@
  * disagreed with the ring beside it would look like a second measurement.
  */
 
-import { formatCompactTokens } from '@/shared/lib/format/number';
+import { formatCompactTokens } from '@kabmo-labs/kabmo-format/number';
 
 /** The progress fields omp reports on a task job. */
 export interface JobProgressFields {

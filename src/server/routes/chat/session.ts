@@ -5,10 +5,10 @@ import { getDb } from '@/server/db.server';
 import { getSessionData } from '@/client/data/mock/chat';
 import { isMockMode } from '@/server/mock.server';
 import { findSessionFileById } from '@/server/lib/omp/session/locator';
-import { loadSessionMessages, loadSessionModel, loadSessionThinkingLevel, loadSessionTitle } from '@/server/lib/omp/session/messages';
+import { loadSessionMessages, loadSessionModel, loadSessionThinkingLevel, loadSessionTitle } from '@kabmo-labs/kabmo-omp-session-messages/messages';
 import { mergeOmpAttachments, overlayRowsForOmpSession } from '@/server/lib/omp/session/merge-stored';
-import { readRawHeaderLine } from '@/server/lib/omp/session/files';
-import { formatNewSessionTitle } from '@/shared/lib/omp/session/default-title';
+import { readRawHeaderLine } from '@kabmo-labs/kabmo-omp-session-scan/files';
+import { formatNewSessionTitle } from '@kabmo-labs/kabmo-omp-session-core/default-title';
 import { importedChat } from '@/server/routes/chat/imported';
 import { loadAcpTranscript } from '@/server/lib/harness/acp/session-transcript.server';
 import { getSessionRelation } from '@/server/lib/sessions/relations.server';
@@ -20,7 +20,7 @@ import { configByCategory, selectValues } from '@/server/lib/harness/launch';
 import type { AcpConfigOption } from '@/server/lib/harness/acp/protocol';
 import { liveMetaFields, type LiveSessionMeta } from '@/server/routes/chat/live-meta';
 import { hasAssistantRow } from '@/shared/lib/chat/transcript-rows';
-import { normalizeTranscriptRows } from '@/shared/lib/chat/tool/normalize';
+import { normalizeTranscriptRows } from '@kabmo-labs/kabmo-chat-tool/normalize';
 
 /** Newest-message window served by default for omp JSONL sessions; the client
  *  pages further back via `?before=` when the user scrolls to the top. Large

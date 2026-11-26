@@ -10,8 +10,8 @@
  */
 
 import { json } from '@/server/lib/remix-compat';
-import { getSessionsDir } from '@/server/lib/omp/core/paths';
-import { clearSessionFileCaches, readRawHeaderLine, sessionIdIndex } from '@/server/lib/omp/session/files';
+import { getSessionsDir } from '@kabmo-labs/kabmo-omp-paths';
+import { clearSessionFileCaches, readRawHeaderLine, sessionIdIndex } from '@kabmo-labs/kabmo-omp-session-scan/files';
 
 /**
  * Locate an oh-my-pi session file by its session UUID.

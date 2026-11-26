@@ -14,7 +14,7 @@
  * reporting a refusal as success.
  */
 
-import { MODE_COMMAND_TYPE } from '@/shared/lib/omp/mode/types';
+import { MODE_COMMAND_TYPE } from '@kabmo-labs/kabmo-omp-mode/types';
 
 export interface ModeCommandResult {
   ok: boolean;

@@ -7,8 +7,8 @@ import { json, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { errorResponse } from '@/server/lib/route-adapter';
 import { isMockMode } from '@/server/mock.server';
 import { getDefaultFsRoot, resolveRoot, resolveWithinRoot } from '@/server/lib/fs/root';
-import { EDITOR_MAX_BYTES_BY_EXT, unsupportedEditorMessage } from '@/shared/lib/fs/file-kind';
-import { getFileExtension, getRawContentType } from '@/shared/lib/fs/mime';
+import { EDITOR_MAX_BYTES_BY_EXT, unsupportedEditorMessage } from '@kabmo-labs/kabmo-fs-media/file-kind';
+import { getFileExtension, getRawContentType } from '@kabmo-labs/kabmo-fs-media/mime';
 
 /**
  * GET /api/fs/raw?path=<rel>&root=<abs>&repo=<rel> — the file's bytes, verbatim.

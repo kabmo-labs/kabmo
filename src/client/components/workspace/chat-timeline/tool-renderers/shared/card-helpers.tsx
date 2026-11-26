@@ -36,7 +36,7 @@ import {
   Terminal,
   Wrench,
 } from 'lucide-preact';
-import type { ToolCallData } from '@/shared/types/chat';
+import type { ToolCallData } from '@kabmo-labs/kabmo-chat-contracts/chat';
 import { languageBrandIcon } from '@/client/components/common/file-icon';
 import { tryParseJson } from '@/shared/lib/code/syntax-highlight';
 

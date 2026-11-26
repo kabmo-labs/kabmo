@@ -21,7 +21,7 @@
  * transport the row itself refuses to draw. It stays reachable through `All`.
  */
 
-import { harnessBadgeLabel } from '@/shared/lib/harness/catalog';
+import { harnessBadgeLabel } from '@kabmo-labs/kabmo-harness-catalog';
 import type { WorkspaceFolderData } from '@/shared/types';
 
 /** A harness id, or `null` for every harness. */

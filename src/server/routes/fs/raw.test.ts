@@ -23,7 +23,7 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import fs from 'fs';
 import path from 'path';
 import { serveRawFile } from '@/server/routes/fs/raw';
-import { DOCUMENT_MAX_FILE_BYTES, PDF_MAX_FILE_BYTES } from '@/shared/lib/fs/file-kind';
+import { DOCUMENT_MAX_FILE_BYTES, PDF_MAX_FILE_BYTES } from '@kabmo-labs/kabmo-fs-media/file-kind';
 
 const DIR = path.join(process.cwd(), 'tmp-raw-ceiling');
 

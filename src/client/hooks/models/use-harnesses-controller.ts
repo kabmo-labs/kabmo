@@ -13,7 +13,7 @@
 import type {
   HarnessConfig, HarnessImportOutcome, HarnessProviderSupport, HarnessSessionImport, HarnessSummary, LiveHarnessModels,
 } from '@/shared/types/harness';
-import type { HarnessAccountView } from '@/shared/lib/harness/accounts';
+import type { HarnessAccountView } from '@kabmo-labs/kabmo-harness-accounts';
 import type { AccountMutationResult } from '@/client/hooks/models/harness-accounts';
 import type { AddProviderInput } from '@/client/components/settings/categories/harness-settings/AddProviderForm';
 

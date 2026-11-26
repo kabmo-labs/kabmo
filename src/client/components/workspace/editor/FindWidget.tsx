@@ -21,7 +21,7 @@ import {
 
 import { EDITOR_KEY_BINDINGS, type EditorCommand } from '@/shared/lib/code/editor/keymap';
 import { describeBinding } from '@/shared/lib/ui/key-binding';
-import { isMacPlatform } from '@/shared/lib/util/platform';
+import { isMacPlatform } from '@kabmo-labs/kabmo-platform';
 import type { EditorFindState } from '@/client/hooks/editor/use-editor-find';
 import type { FindOptions } from '@/shared/lib/code/editor/find-scan';
 

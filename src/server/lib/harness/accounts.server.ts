@@ -23,16 +23,14 @@ import { forgetProbe } from '@/server/lib/harness/probe-cache.server';
 import { readAccountIdentity } from '@/server/lib/harness/account-identity.server';
 import { resolveLaunch } from '@/server/lib/harness/config.server';
 import type { HarnessLaunch } from '@/server/lib/harness/launch-table';
-import type { HarnessId } from '@/shared/lib/harness/catalog';
-import type { HarnessConfig } from '@/shared/lib/harness/config';
-import {
-  accountAdapter,
-  accountLoginCommand,
-  type AccountHarness,
-  type HarnessAccountIdentity,
-  type HarnessAccountsState,
-  type HarnessAccountView,
-} from '@/shared/lib/harness/accounts';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
+import type { HarnessConfig } from '@kabmo-labs/kabmo-harness-config';
+import { accountAdapter,
+accountLoginCommand,
+type AccountHarness,
+type HarnessAccountIdentity,
+type HarnessAccountsState,
+type HarnessAccountView, } from '@kabmo-labs/kabmo-harness-accounts';
 
 interface AccountRow {
   id: string;

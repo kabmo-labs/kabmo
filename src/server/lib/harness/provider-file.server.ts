@@ -20,7 +20,7 @@
 import YAML from 'yaml';
 import { parse as parseToml, stringify as stringifyToml } from 'smol-toml';
 
-import type { ProviderRegistryKind } from '@/shared/lib/harness/provider-contracts';
+import type { ProviderRegistryKind } from '@kabmo-labs/kabmo-harness-provider/provider-contracts';
 import { asRecord } from '@/server/lib/harness/provider-entry';
 import { ProviderWriteError } from '@/server/lib/harness/provider-write-error';
 

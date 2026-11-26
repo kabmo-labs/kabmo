@@ -45,7 +45,7 @@
 import { existsSync } from 'fs';
 import { dirname, join, resolve } from 'path';
 import { homedir } from 'os';
-import { getAgentDir } from '@/server/lib/omp/core/paths';
+import { getAgentDir } from '@kabmo-labs/kabmo-omp-paths';
 
 /** How far up from a cwd the ancestor scan looks. omp's own walk stops at the
  *  enclosing git repo (or the filesystem root), which is what bounds this in

@@ -23,7 +23,7 @@
 import { claimHeadQueueItem, hasQueuedItem, requeueHeadQueueItem } from '@/server/lib/queue/store.server';
 import { applyModelSnapshot, promptCommand } from '@/server/lib/queue/payload';
 import { requestWaitingSweep } from '@/server/lib/waiting/sweep-trigger';
-import type { QueuedMessage } from '@/shared/types/chat';
+import type { QueuedMessage } from '@kabmo-labs/kabmo-chat-contracts/chat';
 
 /** Settling time between agent_end and the next prompt dispatch. Small on
  *  purpose: omp's own turn-end bookkeeping (JSONL flush, title slot) runs on

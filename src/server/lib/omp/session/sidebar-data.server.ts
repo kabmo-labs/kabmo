@@ -26,7 +26,7 @@ import { loadOmpSidebarData } from '@/server/lib/omp/session/reader';
 import { sessionHasSubagents } from '@/server/lib/omp/session/subagent-presence';
 import type { SessionItemData, SessionSortOption, WorkspaceFolderData } from '@/shared/types';
 import { sessionWorktreeMap } from '@/server/lib/fs/worktree/topology';
-import { DEFAULT_HARNESS_ID, HARNESS_IDS } from '@/shared/lib/harness/catalog';
+import { DEFAULT_HARNESS_ID, HARNESS_IDS } from '@kabmo-labs/kabmo-harness-catalog';
 import { knownHarness, loadAcpSessions, loadHarnessBySession } from '@/server/lib/harness/session-store.server';
 import { sessionsWithoutTranscript } from '@/server/lib/harness/session-transcript.server';
 import { loadDeletedSessionIds } from '@/server/lib/sessions/deleted-sessions.server';
@@ -35,7 +35,7 @@ import { canonicalPath } from '@/server/lib/fs/canonical';
 import { acpRowsFor } from '@/server/lib/omp/session/acp-rows.server';
 import { decorateSidebarSessions } from '@/server/lib/sessions/sidebar-relations.server';
 import type { SessionWorktreeInfo } from '@/shared/lib/workspace/worktree/types';
-import type { OmpSession } from '@/shared/types/omp/session';
+import type { OmpSession } from '@kabmo-labs/kabmo-omp-contracts/session';
 
 /** What `GET /api/sessions/list` returns and sidebars consume. */
 export interface SessionListPayload {

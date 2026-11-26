@@ -2,7 +2,7 @@ import { useEffect, useState } from 'preact/hooks';
 import type { FormEvent, FunctionComponent } from 'preact/compat';
 import { AlertCircle, Check, Copy, Info, Loader2, Save, Trash2 } from 'lucide-preact';
 import type { AgentItem, WriteOutcome } from '@/shared/types';
-import { agentFileNameError } from '@/shared/lib/omp/config/agent-file';
+import { agentFileNameError } from '@kabmo-labs/kabmo-omp-schema/agent-file';
 import { useWriteFeedback } from '@/client/hooks/settings/write-feedback';
 import { SearchSelect } from '@/client/components/common/search-select';
 import { AgentModelPicker } from '@/client/components/settings/categories/agent-settings/ModelPicker';

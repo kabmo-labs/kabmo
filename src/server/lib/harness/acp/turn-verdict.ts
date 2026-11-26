@@ -13,7 +13,7 @@
  * message at all.
  */
 
-import { deriveTurnError } from '@/shared/lib/omp/session/turn-error';
+import { deriveTurnError } from '@kabmo-labs/kabmo-omp-session-parse/turn-error';
 
 /**
  * The reason the CLOSED message names, when it named one.

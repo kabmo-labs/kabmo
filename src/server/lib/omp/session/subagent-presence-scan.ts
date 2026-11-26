@@ -32,7 +32,7 @@
  */
 
 import { join } from 'path';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 import { parseSubagentProgress } from '@/shared/lib/omp/subagent/parse';
 import { SUBAGENT_ID_RE } from '@/server/lib/omp/subagent/history/paths';
 

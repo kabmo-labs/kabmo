@@ -1,0 +1,27 @@
+{
+  "name": "@kabmo-labs/kabmo-harness-mcp-facts",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "How each harness delivers MCP configuration.",
+  "exports": {
+    ".": "./src/mcp-facts.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-harness-mcp-facts"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  },
+  "dependencies": {
+    "@kabmo-labs/kabmo-harness-catalog": "workspace:*"
+  }
+}

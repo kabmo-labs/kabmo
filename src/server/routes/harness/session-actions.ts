@@ -20,7 +20,7 @@
 import { json } from '@/server/lib/remix-compat';
 import { importHarnessSessions } from '@/server/lib/harness/session-import.server';
 import { saveAutoImportEnabled } from '@/server/lib/harness/auto-import.server';
-import type { HarnessId } from '@/shared/lib/harness/catalog';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 
 export async function importSessionsAction(id: HarnessId): Promise<Response> {
   try {

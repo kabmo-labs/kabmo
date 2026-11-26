@@ -25,10 +25,10 @@ import { getDb } from '@/server/db.server';
 import { getSessionData } from '@/client/data/mock/chat';
 import { isMockMode } from '@/server/mock.server';
 import { findSessionFileById } from '@/server/lib/omp/session/locator';
-import { loadSessionMessages } from '@/server/lib/omp/session/messages';
+import { loadSessionMessages } from '@kabmo-labs/kabmo-omp-session-messages/messages';
 import { mergeOmpAttachments } from '@/server/lib/omp/session/merge-stored';
 import { TURN_PREVIEW_CHARS } from '@/shared/lib/chat/timeline/turns';
-import type { UserTurnRef } from '@/shared/types/chat';
+import type { UserTurnRef } from '@kabmo-labs/kabmo-chat-contracts/chat';
 
 /** One rail entry per user row: its id (the DOM jump target), its position in
  *  the full list (the paging cursor), and enough text for the tooltip. */

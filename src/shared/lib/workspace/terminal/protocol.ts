@@ -22,7 +22,7 @@
  * empty); everything after it is live output.
  */
 
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 
 /** Grid bounds both ends clamp to, so a bogus size can never reach the PTY. */
 export const TERMINAL_MIN_COLS = 2;

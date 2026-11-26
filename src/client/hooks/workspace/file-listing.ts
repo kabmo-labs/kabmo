@@ -26,7 +26,7 @@
 import { useRef, useState } from 'preact/hooks';
 import type { FsNode } from '@/shared/types';
 import { placeEntry, rehydrateTree, takeEntry, rekeyCache } from '@/shared/lib/fs/file-tree';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 
 /**
  * Read one `/api/fs/dir` payload.

@@ -19,7 +19,7 @@
 import { useRef, useState } from 'preact/hooks';
 import { Check, ChevronDown, Layers } from 'lucide-preact';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
-import type { SessionModeState } from '@/shared/lib/harness/session-modes';
+import type { SessionModeState } from '@kabmo-labs/kabmo-harness-session-modes';
 
 export interface SessionModeDropdownProps {
   mode: SessionModeState | null;

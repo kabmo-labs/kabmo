@@ -26,7 +26,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { transcriptFailure } from '@/server/lib/harness/acp/turn-outcome.server';
-import { clearSessionFileCaches } from '@/server/lib/omp/session/files';
+import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { removeDir } from '@/test-support/remove-dir';
 
 const ROOT = mkdtempSync(join(tmpdir(), 'kabmo-turn-outcome-'));

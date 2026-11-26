@@ -12,10 +12,10 @@
  * dropped by an intermediate component.
  */
 
-import type { GoalContinuation, GoalRecord } from '@/shared/lib/omp/mode/types';
-import type { ArmedGoal, GoalAction } from '@/shared/lib/omp/mode/actions';
+import type { GoalContinuation, GoalRecord } from '@kabmo-labs/kabmo-omp-mode/types';
+import type { ArmedGoal, GoalAction } from '@kabmo-labs/kabmo-omp-mode/actions';
 import type { GoalActionResult } from '@/client/hooks/chat/timeline/goal-command';
-import type { SessionModeState } from '@/shared/lib/harness/session-modes';
+import type { SessionModeState } from '@kabmo-labs/kabmo-harness-session-modes';
 
 export interface ComposerModes {
   plan: boolean;

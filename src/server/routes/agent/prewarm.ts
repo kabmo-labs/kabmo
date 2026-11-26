@@ -5,14 +5,14 @@ import { prewarmAcpSession } from '@/server/lib/harness/acp/prewarm.server';
 import { commandAvailable } from '@/server/lib/harness/auto-probe.server';
 import { loadHarnessConfig } from '@/server/lib/harness/config.server';
 import { selectedAccountId } from '@/server/lib/harness/accounts.server';
-import { accountAdapter } from '@/shared/lib/harness/accounts';
+import { accountAdapter } from '@kabmo-labs/kabmo-harness-accounts';
 import { kabmoModeEnv } from '@/server/lib/omp/extensions/locator';
 import { parseModeSelection } from '@/server/lib/omp/mode/request';
-import { isApprovalMode } from '@/shared/lib/omp/config/access-mode';
+import { isApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 import { loadPersistedAccessMode } from '@/shared/lib/omp/config/access-mode.server';
 import { rpcErrorResponse } from '@/server/lib/omp/rpc/errors';
 import { isMockMode } from '@/server/mock.server';
-import { harnessDescriptor, type HarnessId } from '@/shared/lib/harness/catalog';
+import { harnessDescriptor, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 
 /** A JSON object, or `{}` for anything else — same read as the spawn route. */
 function asRecord(value: unknown): Record<string, unknown> {

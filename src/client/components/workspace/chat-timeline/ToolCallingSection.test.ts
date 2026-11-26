@@ -29,7 +29,7 @@ import { act } from 'preact/test-utils';
 import { ToolCallingSection } from '@/client/components/workspace/chat-timeline/ToolCallingSection';
 import { SessionStateProvider } from '@/client/components/common/session-state-provider';
 import { primeKabmoSettings } from '@/shared/lib/settings/client';
-import type { ToolCallData } from '@/shared/types/chat';
+import type { ToolCallData } from '@kabmo-labs/kabmo-chat-contracts/chat';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'HTMLInputElement', 'Event', 'MouseEvent', 'KeyboardEvent'] as const;
 const nativeGlobals: Partial<Record<(typeof DOM_GLOBALS)[number], unknown>> = {};

@@ -17,7 +17,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import { backfillableIds, manualModelSeed, toModelEntry } from '@/server/lib/omp/config/provider-seeds';
-import { validateModelsDocument, sanitizeModelEntry } from '@/server/lib/omp/config/models-validation';
+import { validateModelsDocument, sanitizeModelEntry } from '@kabmo-labs/kabmo-omp-models-config/models-validation';
 
 describe('manualModelSeed', () => {
   test('keeps the metadata the user entered', () => {

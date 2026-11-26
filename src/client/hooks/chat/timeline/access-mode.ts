@@ -20,14 +20,12 @@
  */
 
 import { useCallback, useRef, useState } from 'preact/hooks';
-import {
-  ACCESS_MODE_SETTING_KEY,
-  HARNESS_ACCESS_MODES_SETTING_KEY,
-  accessModeForHarness,
-  isOmpHarness,
-  readAccessModePicks,
-} from '@/shared/lib/omp/config/access-mode';
-import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
+import { ACCESS_MODE_SETTING_KEY,
+HARNESS_ACCESS_MODES_SETTING_KEY,
+accessModeForHarness,
+isOmpHarness,
+readAccessModePicks, } from '@kabmo-labs/kabmo-omp-access-mode';
+import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 import { writeSetting } from '@/shared/lib/settings/client';
 
 export interface ChatTimelineAccessMode {

@@ -14,7 +14,7 @@
  */
 
 import type { SessionItemData, WorkspaceFolderData } from '@/shared/types';
-import { pendingSessionTitle } from '@/shared/lib/omp/session/default-title';
+import { pendingSessionTitle } from '@kabmo-labs/kabmo-omp-session-core/default-title';
 import type { PendingSessionEntry } from '@/client/hooks/chat/omp/pending-entry';
 
 export interface PendingRowOptions {

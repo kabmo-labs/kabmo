@@ -20,8 +20,8 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import fs from 'fs';
 import path from 'path';
 import { readFile } from '@/server/routes/fs/read';
-import { EDITOR_MAX_FILE_BYTES, PDF_MAX_FILE_BYTES } from '@/shared/lib/fs/file-kind';
-import { formatBytes } from '@/shared/lib/format/number';
+import { EDITOR_MAX_FILE_BYTES, PDF_MAX_FILE_BYTES } from '@kabmo-labs/kabmo-fs-media/file-kind';
+import { formatBytes } from '@kabmo-labs/kabmo-format/number';
 
 const DIR = path.join(process.cwd(), 'tmp-read-gate');
 

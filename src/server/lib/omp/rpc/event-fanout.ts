@@ -25,7 +25,7 @@
  */
 
 import type { AgentEvent, EventListener } from '@/server/lib/omp/rpc/constants';
-import { stripShellTrace } from '@/shared/lib/omp/session/shell-trace';
+import { stripShellTrace } from '@kabmo-labs/kabmo-omp-session-parse/shell-trace';
 
 export class EventFanout {
   readonly #listeners: EventListener[] = [];

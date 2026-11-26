@@ -20,7 +20,7 @@
 import { useEffect, useRef } from 'preact/hooks';
 import { BROWSER_INCLUDE_PAGE_EVENT, appendPageContext } from '@/shared/lib/browser/page-context';
 import { readAnnotatePanel, readAnnotationShapes } from '@/shared/lib/browser/annotate';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 import { readString } from '@/shared/lib/browser/util';
 import type { BrowserPageContext } from '@/shared/types';
 

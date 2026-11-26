@@ -3,7 +3,7 @@ import { Code } from 'lucide-preact';
 import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
 import { CopyButton } from '@/client/components/common/CopyButton';
 import { EnvelopeHeader } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/EnvelopeHeader';
-import { stripAnsiCodes } from '@/shared/lib/code/ansi';
+import { stripAnsiCodes } from '@kabmo-labs/kabmo-format/ansi';
 import { outputMarkdown, readToolOutput } from '@/shared/lib/chat/tool-output';
 import { MAX_OUTPUT_LINES, truncateTailLines } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/truncate';
 

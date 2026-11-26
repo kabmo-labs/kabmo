@@ -19,8 +19,8 @@
  * no fork point there and stays a whole-chat fork.
  */
 
-import { harnessHasLocalTranscript } from '@/shared/lib/harness/transcript';
-import { forkCapability } from '@/shared/lib/harness/fork';
+import { harnessHasLocalTranscript } from '@kabmo-labs/kabmo-harness-transcript';
+import { forkCapability } from '@kabmo-labs/kabmo-harness-rewind/fork';
 
 /** The two rows that offer Fork: a user turn and an assistant run footer. */
 export type ForkAnchorRole = 'user' | 'assistant';

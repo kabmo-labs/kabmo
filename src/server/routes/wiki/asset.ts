@@ -22,11 +22,11 @@
 import { json, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { resolveRoot } from '@/server/lib/fs/root';
 import { scopeToRepo } from '@/server/lib/fs/repo-scope';
-import { getImageMimeType } from '@/shared/lib/fs/mime';
+import { getImageMimeType } from '@kabmo-labs/kabmo-fs-media/mime';
 import { gitRun } from '@/server/lib/wiki/git';
 import { ensureWikiMirror, readWikiAsset } from '@/server/lib/wiki/mirror.server';
 import { parseWikiRemote } from '@/server/lib/wiki/remote';
-import { bodyBytes } from '@/shared/lib/util/bytes';
+import { bodyBytes } from '@kabmo-labs/kabmo-bytes';
 
 /**
  * `getImageMimeType` deliberately excludes SVG (it is editable text in the

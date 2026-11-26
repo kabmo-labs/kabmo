@@ -32,7 +32,7 @@ import { json, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { isWithinRoot, resolveScopeForAbsolutePath } from '@/server/lib/fs/root';
 import { loadHarnessSession } from '@/server/lib/harness/session-store.server';
 import { resolveSessionPathOr404 } from '@/server/lib/omp/session/locator';
-import { getRawContentType } from '@/shared/lib/fs/mime';
+import { getRawContentType } from '@kabmo-labs/kabmo-fs-media/mime';
 import { pathFromFileUrl } from '@/shared/lib/fs/file-url';
 
 /** A generated picture is a preview, not a download; the cap keeps a mistaken

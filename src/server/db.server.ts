@@ -20,7 +20,7 @@ import { initSchema } from '@/server/lib/db/schema';
 import { seedMockData } from '@/server/lib/db/seed';
 import { syncWorkspaceFoldersFromDiscovery } from '@/server/lib/db/workspace-sync';
 import { isMockMode } from '@/server/mock.server';
-import { pathExists } from '@/server/lib/omp/core/paths';
+import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
 import { migrateLegacyProjectSettings } from '@/shared/lib/workspace/project-settings-migration';
 import { getDataDir } from '@/server/lib/lifecycle/paths';
 

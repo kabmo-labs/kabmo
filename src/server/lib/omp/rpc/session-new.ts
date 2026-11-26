@@ -14,8 +14,8 @@
  * bug as adopting a child with the wrong approval mode.
  */
 
-import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
-import { DEFAULT_APPROVAL_MODE } from '@/shared/lib/omp/config/access-mode';
+import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
+import { DEFAULT_APPROVAL_MODE } from '@kabmo-labs/kabmo-omp-access-mode';
 import type { AgentSessionWrapper } from '@/server/lib/omp/rpc/manager';
 import type { SessionPromptArgs } from '@/server/lib/omp/rpc/constants';
 import { claimPrewarmedSession } from '@/server/lib/omp/rpc/prewarm-pool';

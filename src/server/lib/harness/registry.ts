@@ -22,7 +22,7 @@
  */
 
 import type { AgentSessionWrapper } from '@/server/lib/omp/rpc/manager';
-import type { HarnessId } from '@/shared/lib/harness/catalog';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import type { HarnessSession } from '@/server/lib/harness/session';
 
 type AnySession = AgentSessionWrapper | HarnessSession;

@@ -14,7 +14,7 @@
  */
 
 import type { McpKeyValue, McpScope, McpServerItem, McpTransport } from '@/shared/types';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 
 function rows(value: unknown): McpKeyValue[] {
   if (!Array.isArray(value)) return [];

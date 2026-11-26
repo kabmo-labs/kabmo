@@ -22,7 +22,7 @@
  *     delivers as a filename mention instead of the file.
  */
 
-import type { Attachment, QueuedMessageModel } from '@/shared/types/chat';
+import type { Attachment, QueuedMessageModel } from '@kabmo-labs/kabmo-chat-contracts/chat';
 import { composeMessageWithTextAttachments } from '@/shared/lib/chat/attachments';
 
 export interface StoredPrompt {

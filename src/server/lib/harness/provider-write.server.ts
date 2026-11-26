@@ -26,24 +26,22 @@
  *    where the agent actually reads it.
  */
 
-import { writeFileAtomic } from '@/server/lib/fs/atomic-write';
+import { writeFileAtomic } from '@kabmo-labs/kabmo-fs-config/atomic-write';
 import { parseDocument, providerMap, serialise } from '@/server/lib/harness/provider-file.server';
-import { withConfigLock } from '@/server/lib/fs/config-lock';
-import type { ProviderRegistryKind } from '@/shared/lib/harness/provider-contracts';
-import { providerFacts } from '@/shared/lib/harness/provider-lookup';
-import {
-  adaptBaseUrl,
-  dialectFor,
-  planProtocol,
-  supportedProtocols,
-  type CanonicalProtocol,
-} from '@/shared/lib/harness/dialects';
+import { withConfigLock } from '@kabmo-labs/kabmo-fs-config/config-lock';
+import type { ProviderRegistryKind } from '@kabmo-labs/kabmo-harness-provider/provider-contracts';
+import { providerFacts } from '@kabmo-labs/kabmo-harness-provider/provider-lookup';
+import { adaptBaseUrl,
+dialectFor,
+planProtocol,
+supportedProtocols,
+type CanonicalProtocol, } from '@kabmo-labs/kabmo-harness-provider/dialects';
 import { isVendorProviderId } from '@/shared/lib/models/provider/vendors';
 import { registryFilePath, readProviderKey, readRegistryProviders } from '@/server/lib/harness/provider-sources.server';
 import { asRecord, modelRowsFor, pickExisting, providerEntryFor, type ProviderDraft } from '@/server/lib/harness/provider-entry';
 import { ProviderWriteError } from '@/server/lib/harness/provider-write-error';
 import { writeZcodeProvider } from '@/server/lib/harness/provider-zcode.server';
-import type { HarnessId } from '@/shared/lib/harness/catalog';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 
 /** What a successful write changed, so the card can report it rather than guess. */
 export interface ProviderWriteResult {

@@ -11,8 +11,8 @@
  * through the same mapper the panel does.
  */
 
-import { isApprovalMode } from '@/shared/lib/omp/config/access-mode';
-import { harnessDescriptor } from '@/shared/lib/harness/catalog';
+import { isApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
+import { harnessDescriptor } from '@kabmo-labs/kabmo-harness-catalog';
 import { isValidTimeZone, serverTimeZone } from '@/shared/lib/schedule/timezone';
 import type {
   ScheduleKind,

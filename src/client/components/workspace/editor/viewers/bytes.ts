@@ -31,7 +31,7 @@
 
 import { deviceFileFor } from '@/client/lib/launch/device-files';
 import { fileHandleFor } from '@/client/lib/launch/file-handlers';
-import { getRawContentType } from '@/shared/lib/fs/mime';
+import { getRawContentType } from '@kabmo-labs/kabmo-fs-media/mime';
 
 export interface ByteSource {
   /** Stable identity of the file these bytes come from. */

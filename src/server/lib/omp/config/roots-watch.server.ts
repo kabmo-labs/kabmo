@@ -51,7 +51,7 @@
 import { watch, type FSWatcher } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { getDb } from '@/server/db.server';
-import { pathExists } from '@/server/lib/omp/core/paths';
+import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
 import { commandRoots, skillRoots } from '@/server/lib/omp/config/discovery-roots';
 import { listRpcSessions } from '@/server/lib/omp/rpc/session-registry';
 import { reloadLiveSessions } from '@/server/lib/omp/session/reload.server';

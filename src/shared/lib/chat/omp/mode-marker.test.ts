@@ -16,9 +16,9 @@
 
 import { describe, expect, test } from 'bun:test';
 import { foldAgentEvent, type OmpAgentFoldDeps } from '@/shared/lib/chat/omp/agent-events';
-import { KABMO_MODE_SIGNAL } from '@/shared/lib/omp/mode/client-signal';
+import { KABMO_MODE_SIGNAL } from '@/client/lib/omp-mode-signal';
 import { subscribeClientSignal } from '@/client/lib/signals';
-import type { OmpAgentEvent } from '@/shared/types/omp/agent';
+import type { OmpAgentEvent } from '@kabmo-labs/kabmo-chat-contracts/agent';
 
 function makeDeps(sessionId: string, events: unknown[]): OmpAgentFoldDeps {
   const state = { isGenerating: false, error: null } as Record<string, unknown>;

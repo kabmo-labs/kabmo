@@ -18,7 +18,7 @@
 
 import { CdpConnection } from '@/shared/lib/browser/cdp';
 import { readString } from '@/shared/lib/browser/util';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 import type { BrowserActionKind } from '@/shared/types';
 import type { BrowserActionDraft } from '@/shared/lib/browser/activity';
 

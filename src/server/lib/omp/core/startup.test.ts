@@ -23,7 +23,7 @@ import { homedir, tmpdir } from 'os';
 import { join } from 'path';
 
 import { invalidateOmpCliCache } from '@/server/lib/omp/core/cli';
-import { getAgentDir, getConfigRoot } from '@/server/lib/omp/core/paths';
+import { getAgentDir, getConfigRoot } from '@kabmo-labs/kabmo-omp-paths';
 import { ompStartupError, ompStartupLogLines } from '@/server/lib/omp/core/startup';
 
 const tempDirs: string[] = [];

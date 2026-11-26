@@ -20,7 +20,7 @@
 
 import { resolveOmpBin } from '@/server/lib/omp/core/cli';
 import { ompInstallHintLines } from '@/server/lib/omp/core/install-hint';
-import { getAgentDir, getConfigRoot } from '@/server/lib/omp/core/paths';
+import { getAgentDir, getConfigRoot } from '@kabmo-labs/kabmo-omp-paths';
 import { isMockMode } from '@/server/mock.server';
 
 /** Null when the app may start; otherwise the message to print before exiting. */

@@ -1,9 +1,9 @@
-import { formatNewSessionTitle } from '@/shared/lib/omp/session/default-title';
-import { contentProfile } from '@/shared/lib/omp/session/telemetry-blocks';
-import { toEpochMs } from '@/shared/lib/omp/session/timestamps';
-import { isRecord } from '@/shared/lib/util/guards';
+import { formatNewSessionTitle } from '@kabmo-labs/kabmo-omp-session-core/default-title';
+import { contentProfile } from '@kabmo-labs/kabmo-omp-session-parse/telemetry-blocks';
+import { toEpochMs } from '@kabmo-labs/kabmo-omp-session-core/timestamps';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 import type { RawMessageItem, SessionContextTelemetry } from '@/shared/types/context';
-import type { OmpMessageEntry, OmpUsage } from '@/shared/types/omp/session';
+import type { OmpMessageEntry, OmpUsage } from '@kabmo-labs/kabmo-omp-contracts/session';
 import { CONTEXT_LIMIT, buildInfo, contextAnchorTokens, emptyTelemetry, formatCost, formatTs, textOf, tokensOf } from '@/server/lib/omp/session/telemetry/format';
 import { loadModelsWithCache } from '@/server/lib/models/registry.server';
 import { scanSessionEntries } from '@/server/lib/omp/session/telemetry/scan';

@@ -29,7 +29,7 @@ import { ownedPages, parsePageTargets, pickTargetId, readTargetInfoPatch, type P
 import { SCREENCAST_PARAMS } from '@/shared/lib/browser/frame-params';
 import { createFramePipeline, type FramePipeline } from '@/shared/lib/browser/frame-pipeline';
 import { readNumber, readString } from '@/shared/lib/browser/util';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 import { BROWSER_POLL_MS } from '@/shared/lib/workspace/refresh-cadence';
 
 interface ScreencastOptions {

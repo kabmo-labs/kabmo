@@ -13,9 +13,9 @@
 
 import { join } from 'path';
 import { Database } from 'bun:sqlite';
-import { getAgentDir } from '@/server/lib/omp/core/paths';
-import { getModelsConfigPath } from '@/server/lib/omp/config/models-config';
-import { isRecord } from '@/shared/lib/util/guards';
+import { getAgentDir } from '@kabmo-labs/kabmo-omp-paths';
+import { getModelsConfigPath } from '@kabmo-labs/kabmo-omp-models-config/models-config';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 
 const AUTH_CREDENTIALS_TABLE = 'auth_credentials';
 const API_KEY_CREDENTIAL_TYPE = 'api_key';

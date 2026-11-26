@@ -15,7 +15,7 @@
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 
-import { ACCESS_MODE_SETTING_KEY } from '@/shared/lib/omp/config/access-mode';
+import { ACCESS_MODE_SETTING_KEY } from '@kabmo-labs/kabmo-omp-access-mode';
 import { spawnCwdForNewSession, triggerSessionPrewarm } from '@/shared/lib/omp/session/prewarm';
 import { primeKabmoSettings, writeSetting } from '@/shared/lib/settings/client';
 

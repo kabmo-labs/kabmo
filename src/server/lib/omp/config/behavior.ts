@@ -19,9 +19,9 @@
  * composer's access control), not here.
  */
 
-import { withOmpYamlDocument } from '@/server/lib/omp/config/document';
-import { getOmpConfigPath } from '@/server/lib/omp/config/yaml';
-import { isRecord } from '@/shared/lib/util/guards';
+import { withOmpYamlDocument } from '@kabmo-labs/kabmo-omp-config-doc/document';
+import { getOmpConfigPath } from '@kabmo-labs/kabmo-omp-config-doc/yaml';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 
 export type ApprovalValue = 'allow' | 'deny' | 'prompt';
 

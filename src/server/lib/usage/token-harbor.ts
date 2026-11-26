@@ -35,7 +35,7 @@ import type {
   UsageLimitWindow,
   UsageWindowStatus,
 } from '@/shared/types';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 
 const ORIGIN = 'https://tokenharbor.ai';
 

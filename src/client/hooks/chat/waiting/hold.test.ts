@@ -26,7 +26,7 @@ import {
 } from '@/client/hooks/chat/omp/pending-sessions';
 import { pendingSessionWait } from '@/client/hooks/chat/omp/pending-waiting';
 import type { WaitingCandidate } from '@/client/components/workspace/chat-timeline/chat-input/WaitingDependencyPicker';
-import type { Attachment } from '@/shared/types/chat';
+import type { Attachment } from '@kabmo-labs/kabmo-chat-contracts/chat';
 
 const DEPENDENCY: WaitingCandidate = { id: 'sess-a', title: 'Refactor parser', folderName: 'alpha' };
 

@@ -21,8 +21,8 @@
 import { useMemo } from 'preact/hooks';
 import type { ReactNode } from 'preact/compat';
 import type { ToolCallData } from '@/shared/types';
-import { stripAnsiCodes } from '@/shared/lib/code/ansi';
-import { isReminderTag, unwrapXmlEnvelopes } from '@/shared/lib/chat/xml-envelope';
+import { stripAnsiCodes } from '@kabmo-labs/kabmo-format/ansi';
+import { isReminderTag, unwrapXmlEnvelopes } from '@kabmo-labs/kabmo-chat-notices/xml-envelope';
 import { toolSummary, type ToolSummary } from '@/shared/lib/chat/tool/summary';
 import { tryParseJson, type JsonDetectionResult } from '@/shared/lib/code/syntax-highlight';
 import { resolveToolKey } from '@/client/components/workspace/chat-timeline/tool-renderers';

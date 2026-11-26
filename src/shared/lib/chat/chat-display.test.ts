@@ -30,7 +30,7 @@ import { formatDuration, responseRunDurationMs } from '@/shared/lib/chat/duratio
 import { parseEditOutput } from '@/shared/lib/chat/excerpt';
 import { capitalizeFirstLetter } from '@/shared/lib/chat/capitalize';
 import { isSkippedTool } from '@/shared/lib/chat/tool-status';
-import { normalizeNoticeText } from '@/shared/lib/chat/notice-text';
+import { normalizeNoticeText } from '@kabmo-labs/kabmo-chat-notices/notice-text';
 import { detectOutputFormat } from '@/shared/lib/chat/detect-format';
 import type { ToolCallData } from '@/shared/types';
 

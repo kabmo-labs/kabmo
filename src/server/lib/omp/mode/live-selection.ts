@@ -33,7 +33,7 @@
 import { getRpcSession, getSpawnModeEnv } from '@/server/lib/omp/rpc/manager';
 import { selectionFromModeEnvValue } from '@/server/lib/omp/mode/request';
 import type { PersistedModes } from '@/server/lib/omp/session/modes';
-import { isGoalOpen, isGoalStatus } from '@/shared/lib/omp/mode/status';
+import { isGoalOpen, isGoalStatus } from '@kabmo-labs/kabmo-omp-mode/status';
 
 export interface LiveModeSelection {
   modes: PersistedModes;

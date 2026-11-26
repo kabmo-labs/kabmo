@@ -39,7 +39,7 @@ import { AcpProcess } from '@/server/lib/harness/acp/client';
 import { IDLE_REAP_MS } from '@/server/lib/omp/rpc/constants';
 import { withGatewayCompatibility } from '@/server/lib/harness/acp/gateway-env';
 import { noteHarnessLease, removeHarnessLease } from '@/server/lib/harness/session-lease.server';
-import type { HarnessId } from '@/shared/lib/harness/catalog';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 
 /** How long an unclaimed warm agent is kept. Long enough to write a prompt,
  *  short enough that a pick the user abandoned costs one process, not a day. */

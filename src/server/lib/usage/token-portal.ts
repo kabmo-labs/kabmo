@@ -25,7 +25,7 @@ import { readOmpProviderApiKey } from '@/server/lib/omp/core/auth-credentials';
 import { resolveProviderEndpoint, resolveStoredKey } from '@/server/lib/usage/provider-key';
 import { fetchProviderJson } from '@/server/lib/usage/vendor-http';
 import { num } from '@/server/lib/usage/window';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 import type {
   TokenPortalBalance,
   TokenPortalUsageReport,

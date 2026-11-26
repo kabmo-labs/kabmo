@@ -41,7 +41,7 @@ import { AnchoredMenu } from '@/client/components/common/anchored-menu';
 import { PickerSearch } from '@/client/components/common/picker-search';
 import { matchesPickerQuery } from '@/shared/lib/ui/picker-filter';
 import { HarnessGlyph, HARNESS_GLYPH_SIZE } from '@/client/components/common/harness-glyph';
-import { harnessBadgeLabel } from '@/shared/lib/harness/catalog';
+import { harnessBadgeLabel } from '@kabmo-labs/kabmo-harness-catalog';
 import { anchorRectOf, type AnchorRect } from '@/shared/lib/ui/menu-anchor';
 import type { HarnessFilterOption } from '@/shared/lib/workspace/harness-filter';
 

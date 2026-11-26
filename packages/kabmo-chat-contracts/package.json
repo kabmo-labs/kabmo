@@ -1,0 +1,32 @@
+{
+  "name": "@kabmo-labs/kabmo-chat-contracts",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Chat message, tool-render, and omp agent wire types.",
+  "exports": {
+    ".": "./src/chat.ts",
+    "./agent": "./src/agent.ts",
+    "./chat": "./src/chat.ts",
+    "./tool-render": "./src/tool-render.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-chat-contracts"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  },
+  "dependencies": {
+    "@kabmo-labs/kabmo-omp-access-mode": "workspace:*",
+    "@kabmo-labs/kabmo-omp-contracts": "workspace:*",
+    "preact": "^10.29.8"
+  }
+}

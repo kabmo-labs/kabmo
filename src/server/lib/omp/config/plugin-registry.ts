@@ -25,12 +25,10 @@
  */
 
 import { join } from 'path';
-import {
-  getMarketplacesRegistryPath,
-  getPluginsDir,
-  getProjectPluginsDir,
-  pathExists,
-} from '@/server/lib/omp/core/paths';
+import { getMarketplacesRegistryPath,
+getPluginsDir,
+getProjectPluginsDir,
+pathExists, } from '@kabmo-labs/kabmo-omp-paths';
 import type {
   PluginCatalogItem,
   PluginFeatureSpec,

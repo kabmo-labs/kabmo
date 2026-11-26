@@ -16,7 +16,7 @@
 
 import { acquireConnection, releaseConnection } from '@/shared/lib/browser/connection';
 import { readString } from '@/shared/lib/browser/util';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 
 export interface TargetWatcherHandle {
   close: () => void;

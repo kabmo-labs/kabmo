@@ -13,12 +13,12 @@
  * stays "started" forever.
  */
 
-import { extractText } from '@/shared/lib/omp/session/parse-message-blocks';
-import { isRecord } from '@/shared/lib/util/guards';
+import { extractText } from '@kabmo-labs/kabmo-omp-session-parse/parse-message-blocks';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 import { resultStatus } from '@/shared/lib/omp/subagent/history/status';
 import { asNumber, asString } from '@/shared/lib/omp/subagent/result-details';
-import type { OmpMessageEntry } from '@/shared/lib/omp/session/messages-parse';
-import type { SubagentHistoryEntry } from '@/shared/types/omp/subagent';
+import type { OmpMessageEntry } from '@kabmo-labs/kabmo-omp-session-parse/messages-parse';
+import type { SubagentHistoryEntry } from '@kabmo-labs/kabmo-omp-contracts/subagent';
 
 /** Settled state reported by a detached async spawn. The parent's task
  *  toolResult persists only the launch snapshot (`async.state = "running"`);

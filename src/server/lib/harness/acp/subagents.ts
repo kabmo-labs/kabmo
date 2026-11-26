@@ -22,7 +22,7 @@
  */
 
 import { acpContentText } from '@/server/lib/harness/acp/mapper';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 import type { AcpSubagentUpdate } from '@/server/lib/harness/acp/protocol';
 
 /** One child session, as the parent has described it so far. */

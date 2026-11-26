@@ -24,9 +24,9 @@
  * the pre-write answer for another 60s.
  */
 
-import type { HarnessId } from '@/shared/lib/harness/catalog';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import { restartUtilityProcesses } from '@/server/lib/omp/rpc/utility';
-import { getModelsConfigPath } from '@/server/lib/omp/config/models-config';
+import { getModelsConfigPath } from '@kabmo-labs/kabmo-omp-models-config/models-config';
 import { forgetProbe } from '@/server/lib/harness/probe-cache.server';
 import { runAutoProbe } from '@/server/lib/harness/auto-probe.server';
 import { harnessesSharingRegistry } from '@/server/lib/harness/provider-sources.server';

@@ -9,8 +9,8 @@
  * mapping, and the compact row formatters.
  */
 
-import { isRecord } from '@/shared/lib/util/guards';
-import type { SubagentHistoryEntry, SubagentInfo, SubagentProgress } from '@/shared/types/omp/subagent';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
+import type { SubagentHistoryEntry, SubagentInfo, SubagentProgress } from '@kabmo-labs/kabmo-omp-contracts/subagent';
 
 /** Minimal wire guard — a malformed element must not become a roster row. */
 function isHistoryEntry(value: unknown): value is SubagentHistoryEntry {

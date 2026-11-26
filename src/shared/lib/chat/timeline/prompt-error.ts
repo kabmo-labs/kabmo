@@ -20,8 +20,8 @@
 
 import type { Dispatch, SetStateAction } from 'preact/compat';
 import type { ChatMessageData } from '@/shared/types';
-import { isNoticeRow } from '@/shared/lib/chat/notice-row';
-import { formatClock } from '@/shared/lib/format/time';
+import { isNoticeRow } from '@kabmo-labs/kabmo-chat-notices/notice-row';
+import { formatClock } from '@kabmo-labs/kabmo-format/time';
 
 export interface PromptErrorDeps {
   setLocalMessages: Dispatch<SetStateAction<ChatMessageData[]>>;

@@ -25,8 +25,8 @@ import {
   formatSubagentMeta,
   historyEntryToSubagentInfo,
 } from '@/shared/lib/omp/subagent/history/client';
-import type { OmpMessageEntry } from '@/shared/lib/omp/session/messages-parse';
-import type { SubagentHistoryEntry } from '@/shared/types/omp/subagent';
+import type { OmpMessageEntry } from '@kabmo-labs/kabmo-omp-session-parse/messages-parse';
+import type { SubagentHistoryEntry } from '@kabmo-labs/kabmo-omp-contracts/subagent';
 
 /** A launched-but-unsettled roster row, the state every settlement folds onto. */
 function seeded(overrides: Partial<SubagentHistoryEntry> = {}): SubagentHistoryEntry {

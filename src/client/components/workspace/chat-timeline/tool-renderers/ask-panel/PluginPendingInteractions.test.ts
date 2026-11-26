@@ -36,7 +36,7 @@ import type { ExtensionDialogResponse } from '@/client/components/workspace/chat
 import { AskFramesContext, type AskFramesHandle } from '@/client/hooks/chat/timeline/ask-frames-context';
 import { registerListSlot, resetListSlots } from '@/client/lib/plugins/list-slots';
 import type { ToolCallData } from '@/shared/types';
-import type { ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
+import type { ExtensionUiDialogRequest } from '@kabmo-labs/kabmo-chat-contracts/agent';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
 
 const QUESTIONS = [

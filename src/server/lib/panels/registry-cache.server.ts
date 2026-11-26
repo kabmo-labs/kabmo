@@ -22,7 +22,7 @@
 
 import { join } from 'path';
 import type { PanelPluginAuthor } from '@/shared/types';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 import { parseGithubPluginRepo } from '@/shared/lib/panels/plugin-repo';
 import { readJsonBody } from '@/server/lib/panels/files.server';
 import { getMarketplaceDir } from '@/server/lib/panels/registry.server';

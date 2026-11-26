@@ -9,8 +9,8 @@
  * only concern of that module (and under the file-size ceiling).
  */
 
-import { isRecord } from '@/shared/lib/util/guards';
-import type { SubagentAgentSource, SubagentHistoryResult } from '@/shared/types/omp/subagent';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
+import type { SubagentAgentSource, SubagentHistoryResult } from '@kabmo-labs/kabmo-omp-contracts/subagent';
 
 export function asString(value: unknown): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined;

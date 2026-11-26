@@ -25,7 +25,7 @@ import {
   readGoalAuditAnswers,
   type GoalAuditAnswers,
 } from '@/server/lib/omp/session/goal-auditor.server';
-import type { HarnessId } from '@/shared/lib/harness/catalog';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 
 export interface AcpGoalAuditRequest {
   harness: HarnessId;

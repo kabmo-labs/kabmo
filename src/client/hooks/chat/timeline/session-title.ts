@@ -10,7 +10,7 @@
  */
 
 import { useEffect, useState } from 'preact/hooks';
-import { isPendingSessionId, pendingSessionTitle } from '@/shared/lib/omp/session/default-title';
+import { isPendingSessionId, pendingSessionTitle } from '@kabmo-labs/kabmo-omp-session-core/default-title';
 import { subscribeClientSignal } from '@/client/lib/signals';
 
 /** Navbar session title: timestamped default while a "new-…" session is pending;

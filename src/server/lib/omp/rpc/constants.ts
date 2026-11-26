@@ -10,11 +10,11 @@
  */
 
 import { homedir } from 'os';
-import { pathExists } from '@/server/lib/omp/core/paths';
+import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
 import { kabmoExtensionArgs } from '@/server/lib/omp/extensions/locator';
 import { ensureTitleModelOverlay, titleModelOverlayPath } from '@/server/lib/omp/session/title-model-overlay.server';
-import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
-import type { SelectedModel } from '@/shared/types/models';
+import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
+import type { SelectedModel } from '@kabmo-labs/kabmo-model-contracts/models';
 
 export interface AgentEvent {
   type: string;

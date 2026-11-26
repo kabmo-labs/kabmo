@@ -26,7 +26,7 @@ import type { LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { isMockMode } from '@/server/mock.server';
 import { extractEvalActions } from '@/shared/lib/browser/activity';
 
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 import { getRpcSession } from '@/server/lib/omp/rpc/session-registry';
 import { findProjectRuntimeDir, readOwnedTargetIds } from '@/server/lib/browser/runtime';
 import { openScreencast, type ScreencastHandle } from '@/shared/lib/browser/viewer';

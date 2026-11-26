@@ -20,7 +20,7 @@
 
 import { useMemo } from 'preact/hooks';
 import type { ReactNode } from 'preact/compat';
-import type { ToolCallData } from '@/shared/types/chat';
+import type { ToolCallData } from '@kabmo-labs/kabmo-chat-contracts/chat';
 import { tryParseJson } from '@/shared/lib/code/syntax-highlight';
 import { JsonCodeBlock } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/JsonCodeBlock';
 import { CopyButton } from '@/client/components/common/CopyButton';

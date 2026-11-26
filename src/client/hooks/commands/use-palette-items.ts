@@ -18,7 +18,7 @@ import { buildPaletteEntries } from '@/shared/lib/code/editor/palette';
 import { evaluateWhen } from '@/shared/lib/commands/when';
 import { scoreCommand } from '@/shared/lib/commands/score';
 import type { CommandContext, CommandMeta } from '@/shared/lib/commands/types';
-import { isMacPlatform } from '@/shared/lib/util/platform';
+import { isMacPlatform } from '@kabmo-labs/kabmo-platform';
 import { hasCommand, runCommand } from '@/client/lib/commands/registry';
 import { useCommandCatalog } from '@/client/hooks/commands/use-command-catalog';
 import { pluginContext } from '@/client/lib/plugins/context';

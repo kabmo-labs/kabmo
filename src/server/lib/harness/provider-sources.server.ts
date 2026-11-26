@@ -37,12 +37,12 @@ import { join } from 'path';
 import YAML from 'yaml';
 import { parse as parseToml } from 'smol-toml';
 
-import type { ProviderRegistryKind } from '@/shared/lib/harness/provider-contracts';
-import { providerFacts } from '@/shared/lib/harness/provider-lookup';
-import { protocolOfSourceDialect, type CanonicalProtocol } from '@/shared/lib/harness/dialects';
+import type { ProviderRegistryKind } from '@kabmo-labs/kabmo-harness-provider/provider-contracts';
+import { providerFacts } from '@kabmo-labs/kabmo-harness-provider/provider-lookup';
+import { protocolOfSourceDialect, type CanonicalProtocol } from '@kabmo-labs/kabmo-harness-provider/dialects';
 import { isVendorProviderId } from '@/shared/lib/models/provider/vendors';
-import { HARNESS_IDS, type HarnessId } from '@/shared/lib/harness/catalog';
-import { canonicalize } from '@/server/lib/omp/core/paths';
+import { HARNESS_IDS, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
+import { canonicalize } from '@kabmo-labs/kabmo-omp-paths';
 import { readZcodeProviderKey, readZcodeProviders } from '@/server/lib/harness/provider-zcode.server';
 
 /** One provider as a source registry holds it, minus its credential. */

@@ -18,7 +18,7 @@
  */
 
 import type { AcpId } from '@/server/lib/harness/acp/protocol';
-import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
+import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 import { PermissionGrants } from '@/server/lib/harness/acp/grants';
 
 export interface PermissionOption {

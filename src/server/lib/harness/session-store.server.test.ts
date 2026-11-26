@@ -32,7 +32,7 @@ import {
   saveHarnessSessionTitleIfEmpty,
 } from '@/server/lib/harness/session-store.server';
 import { ensureHarnessSchema } from '@/server/lib/harness/schema.server';
-import { HARNESS_IDS } from '@/shared/lib/harness/catalog';
+import { HARNESS_IDS } from '@kabmo-labs/kabmo-harness-catalog';
 
 beforeEach(async () => {
   await isolateDb();

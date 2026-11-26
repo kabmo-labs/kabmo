@@ -40,7 +40,7 @@ import { canonicalPath } from '@/server/lib/fs/canonical';
 import { resolveProjectRoot } from '@/server/lib/omp/core/worktree';
 import { getDb } from '@/server/db.server';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
-import { harnessDescriptor, type HarnessId } from '@/shared/lib/harness/catalog';
+import { harnessDescriptor, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import type { AcpSessionInfo } from '@/server/lib/harness/acp/protocol';
 import type { HarnessSessionImport } from '@/shared/types/harness';
 

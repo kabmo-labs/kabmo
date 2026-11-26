@@ -20,8 +20,8 @@
 import { describe, expect, test } from 'bun:test';
 import { toolCardHeader, toolCardSubtitle } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/card-header';
 import { resolveToolKey } from '@/client/components/workspace/chat-timeline/tool-renderers';
-import { normalizeToolCall } from '@/shared/lib/chat/tool/normalize';
-import type { ToolCallData } from '@/shared/types/chat';
+import { normalizeToolCall } from '@kabmo-labs/kabmo-chat-tool/normalize';
+import type { ToolCallData } from '@kabmo-labs/kabmo-chat-contracts/chat';
 
 function tool(partial: Partial<ToolCallData> & Pick<ToolCallData, 'type'>): ToolCallData {
   return { id: 'c1', name: partial.type, title: partial.type, ...partial } as ToolCallData;

@@ -16,8 +16,8 @@
  */
 
 import { isMap, type Document } from 'yaml';
-import { getModelsConfigPath } from '@/server/lib/omp/config/models-config';
-import { plainOf, withOmpYamlDocument, OmpConfigError } from '@/server/lib/omp/config/document';
+import { getModelsConfigPath } from '@kabmo-labs/kabmo-omp-models-config/models-config';
+import { plainOf, withOmpYamlDocument, OmpConfigError } from '@kabmo-labs/kabmo-omp-config-doc/document';
 
 /** Effort levels omp's `ThinkingConfig.efforts` accepts. */
 export type ReasoningEffort = 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';

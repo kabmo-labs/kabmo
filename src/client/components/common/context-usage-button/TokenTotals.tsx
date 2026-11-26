@@ -18,7 +18,7 @@
  */
 
 import type { ContextTokenTotals } from '@/shared/types';
-import { formatCompactTokens } from '@/shared/lib/format/number';
+import { formatCompactTokens } from '@kabmo-labs/kabmo-format/number';
 
 interface TokenTotalsProps {
   totals: ContextTokenTotals;

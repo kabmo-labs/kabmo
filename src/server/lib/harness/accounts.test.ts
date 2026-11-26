@@ -12,7 +12,7 @@ import {
   selectedAccountId,
   verifyHarnessAccount,
 } from '@/server/lib/harness/accounts.server';
-import { EMPTY_HARNESS_CONFIG } from '@/shared/lib/harness/config';
+import { EMPTY_HARNESS_CONFIG } from '@kabmo-labs/kabmo-harness-config';
 
 const roots: string[] = [];
 const savedDataDir = Bun.env.KABMO_DATA_DIR;

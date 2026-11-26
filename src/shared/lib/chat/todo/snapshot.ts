@@ -26,7 +26,7 @@
  *     Errored results are skipped for the same reason.
  */
 
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 import type {
   TodoItem,
   TodoOperation,

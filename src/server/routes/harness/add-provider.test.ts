@@ -27,7 +27,7 @@ import path from 'node:path';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { restoreEnv } from '@/test-support/env';
 import { action, loader } from '@/server/routes/harness/root';
-import { providerIdProblem, providerSlugFrom } from '@/shared/lib/harness/provider-slug';
+import { providerIdProblem, providerSlugFrom } from '@kabmo-labs/kabmo-harness-provider-slug';
 import { isVendorProviderId } from '@/shared/lib/models/provider/vendors';
 
 const ROOT = path.join(os.tmpdir(), 'kabmo-harness-add');

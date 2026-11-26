@@ -14,7 +14,7 @@ import { DropOverlay } from '@/client/components/workspace/chat-timeline/chat-in
 import { GoalSurfaces } from '@/client/components/workspace/chat-timeline/chat-input/GoalSurfaces';
 import { ComposerFrame } from '@/client/components/workspace/chat-timeline/chat-input/styles/index';
 import { composerRows } from '@/client/components/workspace/chat-timeline/chat-input/ComposerRows';
-import { normalizeGoalBudget } from '@/shared/lib/omp/mode/budget';
+import { normalizeGoalBudget } from '@kabmo-labs/kabmo-omp-mode/budget';
 import { readKabmoSetting } from '@/shared/lib/settings/client';
 import { useKeyboardInset } from '@/client/hooks/ui/keyboard-inset';
 import { composerExpansion } from '@/client/components/workspace/chat-timeline/chat-input/expansion';

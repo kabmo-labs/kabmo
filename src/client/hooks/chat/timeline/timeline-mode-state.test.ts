@@ -37,10 +37,10 @@ import { act } from 'preact/test-utils';
 import { goalMarkerPatch, useModeMarkers } from '@/client/hooks/chat/timeline/mode-markers';
 import { useChatTimelineAccessMode } from '@/client/hooks/chat/timeline/access-mode';
 import { useComposerModes } from '@/client/hooks/chat/timeline/composer-modes';
-import { type GoalRecord } from '@/shared/lib/omp/mode/types';
-import { KABMO_MODE_SIGNAL } from '@/shared/lib/omp/mode/client-signal';
+import { type GoalRecord } from '@kabmo-labs/kabmo-omp-mode/types';
+import { KABMO_MODE_SIGNAL } from '@/client/lib/omp-mode-signal';
 import { publishClientSignal } from '@/client/lib/signals';
-import type { ParsedMarker } from '@/shared/lib/omp/mode/markers';
+import type { ParsedMarker } from '@kabmo-labs/kabmo-omp-mode/markers';
 import { primeKabmoSettings } from '@/shared/lib/settings/client';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'Event', 'CustomEvent'] as const;

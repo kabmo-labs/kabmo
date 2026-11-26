@@ -42,7 +42,7 @@ import { dshStoreDirs } from '@/server/lib/harness/session-transcript.server';
 import type { HarnessLaunch } from '@/server/lib/harness/launch-table';
 import type { HarnessSessionRecord } from '@/server/lib/harness/session-store.server';
 import type { AcpInitializeResult } from '@/server/lib/harness/acp/protocol';
-import { harnessDescriptor, type HarnessId } from '@/shared/lib/harness/catalog';
+import { harnessDescriptor, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 
 export interface AgentSessionRemoval {
   /** True when the agent's own copy is gone (or the agent keeps none here). */

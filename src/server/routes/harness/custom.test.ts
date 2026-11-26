@@ -18,7 +18,7 @@ import { getDb } from '@/server/db.server';
 import { action, loader } from '@/server/routes/harness/root';
 import { loadHarnessConfig, resolveLaunch } from '@/server/lib/harness/config.server';
 import { customHarness, refreshCustomHarnesses } from '@/server/lib/harness/custom.server';
-import { harnessDescriptor } from '@/shared/lib/harness/catalog';
+import { harnessDescriptor } from '@kabmo-labs/kabmo-harness-catalog';
 
 const API = 'http://localhost/api/harness';
 

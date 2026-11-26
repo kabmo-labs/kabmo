@@ -29,7 +29,7 @@ import { getSessionRelation } from '@/server/lib/sessions/relations.server';
 import { isSessionArchived } from '@/server/lib/sessions/resolve.server';
 import { ensureSessionLive } from '@/server/lib/sessions/dispatch.server';
 import { findSessionFileById } from '@/server/lib/omp/session/locator';
-import { loadSessionTitle } from '@/server/lib/omp/session/messages';
+import { loadSessionTitle } from '@kabmo-labs/kabmo-omp-session-messages/messages';
 import {
   renderChildOutcomeNotice,
   type ChildOutcomeEntry,

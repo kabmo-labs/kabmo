@@ -35,7 +35,7 @@ import { saveAcpGrant } from '@/server/lib/harness/acp/grants.server';
 import type { AcpConfigOption, AcpSessionModeState, AcpSessionModels } from '@/server/lib/harness/acp/protocol';
 import type { PendingPermissions } from '@/server/lib/harness/acp/permissions';
 import { markStreamModel } from '@/shared/lib/omp/session/stream-state.server';
-import type { HarnessId } from '@/shared/lib/harness/catalog';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
 
 /** The fields a config answer rewrites. */

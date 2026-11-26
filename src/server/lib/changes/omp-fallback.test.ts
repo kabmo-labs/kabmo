@@ -17,7 +17,7 @@ import * as fsp from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { readOmpBefore } from '@/server/lib/changes/omp-fallback.server';
-import { clearSessionFileCaches } from '@/server/lib/omp/session/files';
+import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
 
 const SESSION = 'omp-fallback-1';
 let agentDir = '';

@@ -27,7 +27,7 @@
  * parks on an ordinary `select`/`input`/`editor`, which is listed too.
  */
 
-import type { ExtensionUiDialogMethod, ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
+import type { ExtensionUiDialogMethod, ExtensionUiDialogRequest } from '@kabmo-labs/kabmo-chat-contracts/agent';
 
 export const ANSWERABLE_UI_METHODS: Record<string, true> = {
   select: true,

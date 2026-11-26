@@ -12,7 +12,7 @@
  * questions or reading different answers.
  */
 
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 import type { McpTransport } from '@/shared/types';
 
 export const PROTOCOL_VERSION = '2025-06-18';

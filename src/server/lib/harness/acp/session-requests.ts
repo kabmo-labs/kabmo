@@ -19,7 +19,7 @@ import type { AcpId, AcpProtocolVersion } from '@/server/lib/harness/acp/protoco
 import type { PendingPermissions } from '@/server/lib/harness/acp/permissions';
 import type { AcpSubagents } from '@/server/lib/harness/acp/subagents';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
-import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
+import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 
 export interface AcpClientRequestHost {
   readonly sessionId: string;

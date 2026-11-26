@@ -20,10 +20,10 @@
  */
 
 import { dirname, join, resolve } from 'path';
-import { pathExists } from '@/server/lib/omp/core/paths';
-import { getOmpConfigPath } from '@/server/lib/omp/config/yaml';
+import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
+import { getOmpConfigPath } from '@kabmo-labs/kabmo-omp-config-doc/yaml';
 import type { McpAuthConfig, McpOAuthConfig, McpServerItem, McpTransport } from '@/shared/types';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 import { REDACTED_SENTINEL, recordToRows } from '@/shared/lib/mcp/key-value';
 import { MAX_MCP_CONFIG_BYTES, stringsIn, userMcpConfigPath, type McpFile, type McpServer } from '@/server/lib/omp/config/mcp-shared';
 

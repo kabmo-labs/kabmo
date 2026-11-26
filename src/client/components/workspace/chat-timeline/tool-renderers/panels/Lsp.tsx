@@ -1,7 +1,7 @@
 import { useMemo } from 'preact/hooks';
 import { AlertCircle, AlertTriangle, CheckCircle2, Cpu, Info, Server } from 'lucide-preact';
 import type { ToolCallData } from '@/shared/types';
-import { soleToolCommand } from '@/shared/lib/chat/tool/tool-commands';
+import { soleToolCommand } from '@kabmo-labs/kabmo-chat-tool/tool-commands';
 import { FallbackOutput } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/FallbackOutput';
 import { getToolInputAction } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/tool-input';
 

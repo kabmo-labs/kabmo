@@ -19,7 +19,7 @@
  */
 
 import type { SettingsCategoryId } from '@/shared/types/settings/state';
-import { HARNESS_IDS, harnessDescriptor } from '@/shared/lib/harness/catalog';
+import { HARNESS_IDS, harnessDescriptor } from '@kabmo-labs/kabmo-harness-catalog';
 
 /** The prefix that makes a category a harness page. */
 export const HARNESS_CATEGORY_PREFIX = 'harness:';

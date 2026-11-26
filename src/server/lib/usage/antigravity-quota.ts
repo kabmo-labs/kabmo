@@ -27,7 +27,7 @@
  */
 
 import { num } from '@/server/lib/usage/window';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 import type { UsageLimitWindow, UsageWindowStatus } from '@/shared/types';
 
 /** The provider row a local sign-in belongs to when omp has no row of its own. */

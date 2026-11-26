@@ -28,7 +28,7 @@
 import { isMockMode } from '@/server/mock.server';
 import { getLiveRunSessionIds } from '@/server/lib/omp/rpc/session-registry';
 import { findSessionFileById } from '@/server/lib/omp/session/locator';
-import { scanSessionInfoCached } from '@/server/lib/omp/session/files';
+import { scanSessionInfoCached } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { sessionHasSubagents } from '@/server/lib/omp/session/subagent-presence';
 import type { SidebarActivityPayload } from '@/shared/types/realtime';
 

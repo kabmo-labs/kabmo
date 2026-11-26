@@ -44,8 +44,8 @@ import {
   sendTitleRequest,
 } from '@/server/lib/omp/session/title-request.server';
 import { resolveSessionOwnership, SessionOwnedElsewhereError } from '@/server/lib/omp/session/ownership.server';
-import { clearSessionFileCaches } from '@/server/lib/omp/session/files';
-import { loadSessionModel } from '@/server/lib/omp/session/messages';
+import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
+import { loadSessionModel } from '@kabmo-labs/kabmo-omp-session-messages/messages';
 import { withTitleModelOverride } from '@/server/lib/omp/session/title-model-overlay.server';
 import { loadPersistedAccessMode } from '@/shared/lib/omp/config/access-mode.server';
 import { isMockMode } from '@/server/mock.server';

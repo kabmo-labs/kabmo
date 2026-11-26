@@ -15,12 +15,12 @@
 
 import { getLiveSession, harnessOfSession } from '@/server/lib/omp/rpc/session-registry';
 import { findSessionFileById } from '@/server/lib/omp/session/locator';
-import { readRawHeaderLine } from '@/server/lib/omp/session/files';
+import { readRawHeaderLine } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { knownHarness, loadHarnessSession } from '@/server/lib/harness/session-store.server';
 import { canonicalPath } from '@/server/lib/fs/canonical';
 import { resolveProjectRoot } from '@/server/lib/omp/core/worktree';
 import { getDb } from '@/server/db.server';
-import { HARNESS_IDS, type HarnessId } from '@/shared/lib/harness/catalog';
+import { HARNESS_IDS, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 
 export interface SessionRef {
   sessionId: string;

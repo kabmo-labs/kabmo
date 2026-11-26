@@ -20,7 +20,7 @@
 import { extname } from 'path';
 import { json, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { findPluginDir } from '@/server/lib/panels/registry.server';
-import { pathExists } from '@/server/lib/omp/core/paths';
+import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
 import { resolveInsideRoot } from '@/shared/lib/panels/resolve-asset';
 
 const CONTENT_TYPES: Record<string, string> = {

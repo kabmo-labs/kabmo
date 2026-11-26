@@ -31,7 +31,7 @@ import { pumpUpdateQueue, readAllUpdateJobs, serializeUpdateWork } from '@/serve
 import { spawnUpdateWorker } from '@/server/lib/harness/update-spawn.server';
 import { jobRunning, jobUnfinished } from '@/shared/lib/harness/update-job';
 import type { HarnessUpdateStep } from '@/shared/lib/harness/update-plan';
-import type { HarnessId } from '@/shared/lib/harness/catalog';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import type { HarnessUpdateJob } from '@/shared/types/harness-update';
 
 /**

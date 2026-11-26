@@ -13,7 +13,7 @@
  * finished can pick up a queued follow-up a moment later.
  */
 
-import type { Attachment, QueuedMessageModel } from '@/shared/types/chat';
+import type { Attachment, QueuedMessageModel } from '@kabmo-labs/kabmo-chat-contracts/chat';
 
 export type WaitingPromptStatus = 'waiting' | 'dispatched' | 'cancelled' | 'error';
 

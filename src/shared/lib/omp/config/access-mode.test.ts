@@ -13,12 +13,10 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import {
-  HARNESS_ACCESS_MODES_SETTING_KEY,
-  accessModeForHarness,
-  isOmpHarness,
-  readAccessModePicks,
-} from '@/shared/lib/omp/config/access-mode';
+import { HARNESS_ACCESS_MODES_SETTING_KEY,
+accessModeForHarness,
+isOmpHarness,
+readAccessModePicks, } from '@kabmo-labs/kabmo-omp-access-mode';
 
 describe('isOmpHarness', () => {
   test('both omp transports, and an unresolved harness, are omp', () => {

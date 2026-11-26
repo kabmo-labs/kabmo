@@ -5,7 +5,7 @@ import { getDb } from '@/server/db.server';
 import { DEFAULT_COMMANDS_LIST } from '@/client/data/settings/command';
 import { isMockMode } from '@/server/mock.server';
 import type { CommandItem } from '@/shared/types';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 import { createSettingsListStore } from '@/server/lib/db/settings-store';
 import { runUtilityCommand } from '@/server/lib/omp/rpc/utility';
 import { resolveDiscoveryScope, type DiscoveryScope } from '@/server/lib/omp/config/scope';

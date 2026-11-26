@@ -18,7 +18,7 @@ import { findConflicts } from '@/shared/lib/commands/conflicts';
 import { formatChord } from '@/shared/lib/commands/chord';
 import { writeUserKeybindings } from '@/shared/lib/commands/user-keybindings';
 import type { UserKeybindings } from '@/shared/lib/commands/types';
-import { isMacPlatform } from '@/shared/lib/util/platform';
+import { isMacPlatform } from '@kabmo-labs/kabmo-platform';
 import { setUserKeybindings, userKeybindings } from '@/client/lib/commands/keymap';
 import { useCommandCatalog } from '@/client/hooks/commands/use-command-catalog';
 import { KeyRecorder } from '@/client/components/settings/categories/keyboard-settings/KeyRecorder';

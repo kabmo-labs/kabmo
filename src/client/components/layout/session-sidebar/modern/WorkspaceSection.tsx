@@ -44,7 +44,7 @@ import { WorkspaceHeader } from '@/client/components/layout/session-sidebar/mode
 import { WorkspaceRevealRow } from '@/client/components/layout/session-sidebar/modern/RevealRow';
 import { folderBatchState } from '@/client/components/common/batch-selection/folder-state';
 import { formatFullDate, relativeTimeAgo } from '@/shared/lib/workspace/relative-time';
-import { isPendingSessionId } from '@/shared/lib/omp/session/default-title';
+import { isPendingSessionId } from '@kabmo-labs/kabmo-omp-session-core/default-title';
 import type { BatchBinding } from '@/client/components/common/batch-selection/types';
 import type { SessionStatusMap } from '@/client/components/layout/session-sidebar/variant-props';
 import type { SessionItemData, WorkspaceFolderData } from '@/shared/types';

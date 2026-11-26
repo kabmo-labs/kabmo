@@ -1,0 +1,24 @@
+{
+  "name": "@kabmo-labs/kabmo-harness-catalog",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "The harness catalog: ids, descriptors, and launch facts.",
+  "exports": {
+    ".": "./src/catalog.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-harness-catalog"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  }
+}

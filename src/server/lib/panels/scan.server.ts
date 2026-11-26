@@ -23,7 +23,7 @@ import type {
   PanelPluginStatus,
   PanelRegistryEntry,
 } from '@/shared/types';
-import { pathExists } from '@/server/lib/omp/core/paths';
+import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
 import { pluginEnablementKey } from '@/shared/lib/workspace/panel-ids';
 import { readPluginManifest, subdirectories } from '@/server/lib/panels/files.server';
 import { toManifest } from '@/server/lib/panels/manifest';

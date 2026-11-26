@@ -26,8 +26,8 @@ import { commandAvailable } from '@/server/lib/harness/auto-probe.server';
 import { whichOnToolchainPath } from '@/server/lib/fs/toolchain-path';
 import { loadHarnessConfig } from '@/server/lib/harness/config.server';
 import { fetchNpmLatest } from '@/server/lib/updates/npm';
-import type { HarnessId } from '@/shared/lib/harness/catalog';
-import { harnessUpdateFacts, latestSourceFor } from '@/shared/lib/harness/updates';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
+import { harnessUpdateFacts, latestSourceFor } from '@kabmo-labs/kabmo-harness-updates';
 
 /** How long a registry answer is reused when the caller did not force a read. */
 const LATEST_TTL_MS = 10 * 60_000;

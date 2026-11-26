@@ -24,7 +24,7 @@
  */
 
 import type { ToolCallData } from '@/shared/types';
-import type { ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
+import type { ExtensionUiDialogRequest } from '@kabmo-labs/kabmo-chat-contracts/agent';
 import { parseAskForm } from '@/shared/lib/chat/ask-form';
 import type { AskOption, AskQuestion } from '@/shared/lib/chat/ask-form/types';
 

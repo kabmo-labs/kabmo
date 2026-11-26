@@ -13,7 +13,7 @@
 
 import path from 'path';
 import { getDb } from '@/server/db.server';
-import { pathExists } from '@/server/lib/omp/core/paths';
+import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
 import { canonicalPath } from '@/server/lib/fs/canonical';
 import { externalRoots, isExternalRoot } from '@/server/lib/fs/external-roots';
 import { resolveProjectRoot } from '@/server/lib/omp/core/worktree';

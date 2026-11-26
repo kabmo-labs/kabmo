@@ -1,6 +1,6 @@
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 import type { RawMessageInfo, SessionContextTelemetry } from '@/shared/types/context';
-import type { OmpMessage, OmpMessageEntry, OmpUsage } from '@/shared/types/omp/session';
+import type { OmpMessage, OmpMessageEntry, OmpUsage } from '@kabmo-labs/kabmo-omp-contracts/session';
 
 /** Model context window assumed when a session records none. */
 export const CONTEXT_LIMIT = 1_000_000;

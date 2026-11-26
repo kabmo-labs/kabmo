@@ -7,7 +7,7 @@ import { AskPanel } from '@/client/components/workspace/chat-timeline/tool-rende
 import { AskFramesContext, type AskFramesHandle } from '@/client/hooks/chat/timeline/ask-frames-context';
 import { resetListSlots } from '@/client/lib/plugins/list-slots';
 import type { ToolCallData } from '@/shared/types';
-import type { ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
+import type { ExtensionUiDialogRequest } from '@kabmo-labs/kabmo-chat-contracts/agent';
 import type { ExtensionDialogResponse } from '@/client/components/workspace/chat-timeline/tool-renderers/extension-dialog/Lazy';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
 

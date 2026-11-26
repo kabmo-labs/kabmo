@@ -21,7 +21,7 @@ import { getDb } from '@/server/db.server';
 import { loader } from '@/server/routes/chat/session';
 import { registerAcpSession } from '@/server/lib/harness/register.server';
 import { claimHarness } from '@/server/lib/harness/registry';
-import { clearSessionFileCaches } from '@/server/lib/omp/session/files';
+import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import type { HarnessSession } from '@/server/lib/harness/session';
 
 /** The temp agent dir an on-disk transcript needs, since `findSessionFileById`

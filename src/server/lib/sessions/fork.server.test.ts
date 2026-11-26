@@ -22,7 +22,7 @@ import { saveHarnessSession } from '@/server/lib/harness/session-store.server';
 import { getSessionRelation } from '@/server/lib/sessions/relations.server';
 import { forkSession, type ForkSessionDeps, type ForkedSession } from '@/server/lib/sessions/fork.server';
 import { buildTitleLine } from '@/server/lib/omp/session/transcript-copy';
-import { clearSessionFileCaches } from '@/server/lib/omp/session/files';
+import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
 
 let sessionsRoot = '';
 let projectDir = '';

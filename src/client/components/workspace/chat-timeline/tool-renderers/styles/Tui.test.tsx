@@ -33,7 +33,7 @@ import { ToolCallingSection } from '@/client/components/workspace/chat-timeline/
 import { SessionStateProvider } from '@/client/components/common/session-state-provider';
 import { primeKabmoSettings } from '@/shared/lib/settings/client';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
-import type { ToolCallData } from '@/shared/types/chat';
+import type { ToolCallData } from '@kabmo-labs/kabmo-chat-contracts/chat';
 
 let container: HTMLElement;
 

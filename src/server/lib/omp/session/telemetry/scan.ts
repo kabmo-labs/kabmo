@@ -17,8 +17,8 @@
  * session-scan cache miss on every call (see files.ts).
  */
 
-import { parseJsonlLenient } from '@/shared/lib/omp/session/jsonl';
-import type { OmpMessageEntry } from '@/shared/types/omp/session';
+import { parseJsonlLenient } from '@kabmo-labs/kabmo-omp-session-core/jsonl';
+import type { OmpMessageEntry } from '@kabmo-labs/kabmo-omp-contracts/session';
 
 /** Sessions larger than this are not cached; a transcript past it is pathological. */
 const MAX_CACHED_SESSION_BYTES = 64 * 1024 * 1024;

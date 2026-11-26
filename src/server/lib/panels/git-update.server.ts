@@ -32,12 +32,12 @@
 
 import { join } from 'path';
 import { gitRun, firstLine } from '@/server/lib/wiki/git';
-import { pathExists } from '@/server/lib/omp/core/paths';
+import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
 import { getMarketplacePluginsDir, invalidatePanelScan } from '@/server/lib/panels/registry.server';
 import { readGitOrigin } from '@/server/lib/panels/git-clone.server';
 import { readPluginManifest } from '@/server/lib/panels/files.server';
 import { toManifest } from '@/server/lib/panels/manifest';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 import { buildPanelPlugin } from '@/server/lib/panels/build.server';
 import type { PanelGitStatus } from '@/shared/types';
 

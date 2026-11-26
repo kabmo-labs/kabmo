@@ -22,8 +22,8 @@
 
 import { join } from 'path';
 import { Database } from 'bun:sqlite';
-import { getAgentDir } from '@/server/lib/omp/core/paths';
-import { readNativeProviders } from '@/server/lib/omp/config/models-config';
+import { getAgentDir } from '@kabmo-labs/kabmo-omp-paths';
+import { readNativeProviders } from '@kabmo-labs/kabmo-omp-models-config/models-config';
 import type { ProviderCredentialOrigin } from '@/shared/types/settings/provider';
 
 const AUTH_CREDENTIALS_TABLE = 'auth_credentials';

@@ -6,7 +6,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import type { ToolCallData } from '@/shared/types';
-import type { ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
+import type { ExtensionUiDialogRequest } from '@kabmo-labs/kabmo-chat-contracts/agent';
 import {
   groupAskFrames,
   parseAskQuestions,

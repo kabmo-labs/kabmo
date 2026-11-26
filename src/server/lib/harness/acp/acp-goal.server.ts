@@ -18,14 +18,12 @@
  * available on another agent, so the driver sends a visible prompt.
  */
 
-import {
-  KABMO_GOAL_CONTINUATION_MARKER,
-  KABMO_GOAL_STATE_MARKER,
-  KABMO_MODE_ERROR_MARKER,
-  type GoalContinuation,
-  type GoalContinuationStop,
-  type GoalRecord,
-} from '@/shared/lib/omp/mode/types';
+import { KABMO_GOAL_CONTINUATION_MARKER,
+KABMO_GOAL_STATE_MARKER,
+KABMO_MODE_ERROR_MARKER,
+type GoalContinuation,
+type GoalContinuationStop,
+type GoalRecord, } from '@kabmo-labs/kabmo-omp-mode/types';
 import type { ModeRequest } from '@/server/lib/omp/mode/request';
 import {
   DEFAULT_GOAL_MAX_TURNS,
@@ -34,7 +32,7 @@ import {
   type AcpGoalState,
 } from '@/server/lib/harness/acp/acp-goal-state.server';
 import { notePromptTitle } from '@/server/lib/harness/session-title.server';
-import type { HarnessId } from '@/shared/lib/harness/catalog';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 
 /** The process surface these actions drive. `AcpSession` satisfies it. */
 export interface AcpGoalHost {

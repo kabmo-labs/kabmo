@@ -19,8 +19,8 @@
  */
 
 import { Target, X } from 'lucide-preact';
-import { formatGoalTokens } from '@/shared/lib/omp/mode/format';
-import type { ArmedGoal } from '@/shared/lib/omp/mode/actions';
+import { formatGoalTokens } from '@kabmo-labs/kabmo-omp-mode/format';
+import type { ArmedGoal } from '@kabmo-labs/kabmo-omp-mode/actions';
 
 export interface ArmedGoalStripProps {
   goal: ArmedGoal;

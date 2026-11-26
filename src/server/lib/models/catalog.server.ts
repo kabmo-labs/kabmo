@@ -23,7 +23,7 @@ import { readOmpModelsJson, type OmpModelsRow } from '@/server/lib/omp/core/mode
 import { isMockMode } from '@/server/mock.server';
 import { formatContextWindow } from '@/shared/lib/code/format';
 import { modelKindOf } from '@/shared/lib/models/provider/dialect';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 
 const CATALOG_TTL_MS = 60_000;
 

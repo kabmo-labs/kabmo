@@ -22,10 +22,10 @@ import { AlertCircle, Check, CircleDashed, Loader2, PackageX, X } from 'lucide-p
 import { HarnessGlyph } from '@/client/components/common/harness-glyph';
 import { harnessStatus, type HarnessState } from '@/shared/lib/harness/status';
 import { HarnessConfigForm } from '@/client/components/settings/categories/harness-settings/ConfigForm';
-import { EMPTY_HARNESS_CONFIG, type HarnessConfig } from '@/shared/lib/harness/config';
+import { EMPTY_HARNESS_CONFIG, type HarnessConfig } from '@kabmo-labs/kabmo-harness-config';
 import { HarnessProviderPanel } from '@/client/components/settings/categories/harness-settings/ProviderPanel';
 import { HarnessAccountsPanel } from '@/client/components/settings/categories/harness-settings/AccountsPanel';
-import { accountAdapter, type HarnessAccountView } from '@/shared/lib/harness/accounts';
+import { accountAdapter, type HarnessAccountView } from '@kabmo-labs/kabmo-harness-accounts';
 import type { AccountMutationResult } from '@/client/hooks/models/harness-accounts';
 import type { HarnessImportOutcome, HarnessProviderSupport, HarnessSessionImport, HarnessSummary } from '@/shared/types/harness';
 import { HarnessImportControls } from '@/client/components/settings/categories/harness-settings/HarnessImportControls';

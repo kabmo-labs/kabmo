@@ -18,13 +18,13 @@
 import { json } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
-import { harnessDescriptor, harnessIds, isBuiltinHarness, type HarnessId } from '@/shared/lib/harness/catalog';
+import { harnessDescriptor, harnessIds, isBuiltinHarness, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import { customLaunch, ensureCustomHarnesses, removeCustomHarness, saveCustomHarness, type CustomHarnessInput } from '@/server/lib/harness/custom.server';
 import { HARNESS_LAUNCH } from '@/server/lib/harness/launch-table';
 import type { HarnessProbe } from '@/server/lib/harness/capabilities';
 import { forgetProbe, loadProbes, rememberProbe } from '@/server/lib/harness/probe-cache.server';
 import { loadDisabledHarnesses, saveHarnessEnabled } from '@/server/lib/harness/enabled.server';
-import { harnessEnabled } from '@/shared/lib/harness/enabled';
+import { harnessEnabled } from '@kabmo-labs/kabmo-harness-enabled';
 import { commandAvailable, probeWithConfig } from '@/server/lib/harness/auto-probe.server';
 import { autoImportEnabled, loadAutoImportDisabled } from '@/server/lib/harness/auto-import.server';
 import { autoImportAction, importSessionsAction } from '@/server/routes/harness/session-actions';
@@ -33,15 +33,13 @@ import { listHarnessAccounts } from '@/server/lib/harness/accounts.server';
 import { harnessAccountAction } from '@/server/routes/harness/accounts';
 import { importableProvidersFor, readRegistryProviders } from '@/server/lib/harness/provider-sources.server';
 import { addProviderAction, importProviderAction, importSourceOf, isImportBody } from '@/server/routes/harness/import-action';
-import { supportedProtocols } from '@/shared/lib/harness/dialects';
-import {
-  credentialFieldLabel,
-  providerLevel,
-  registryLabel,
-} from '@/shared/lib/harness/providers';
-import { providerFacts } from '@/shared/lib/harness/provider-lookup';
+import { supportedProtocols } from '@kabmo-labs/kabmo-harness-provider/dialects';
+import { credentialFieldLabel,
+providerLevel,
+registryLabel, } from '@kabmo-labs/kabmo-harness-provider/providers';
+import { providerFacts } from '@kabmo-labs/kabmo-harness-provider/provider-lookup';
 import type { HarnessProviderSupport } from '@/shared/types/harness';
-import { parseHarnessConfig, type HarnessConfig } from '@/shared/lib/harness/config';
+import { parseHarnessConfig, type HarnessConfig } from '@kabmo-labs/kabmo-harness-config';
 
 /**
  * The probe cache lives in `probe-cache.server.ts`: the SPAWN reads it too, to

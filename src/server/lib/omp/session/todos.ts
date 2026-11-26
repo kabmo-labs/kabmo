@@ -26,7 +26,7 @@
  */
 
 import { findSessionFileById } from '@/server/lib/omp/session/locator';
-import { parseJsonlLenient } from '@/shared/lib/omp/session/jsonl';
+import { parseJsonlLenient } from '@kabmo-labs/kabmo-omp-session-core/jsonl';
 import { latestTodoSnapshot, todoProgress } from '@/shared/lib/chat/todo/snapshot';
 import type { SessionTodoState } from '@/shared/types/todo';
 

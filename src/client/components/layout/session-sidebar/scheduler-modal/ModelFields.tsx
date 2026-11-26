@@ -24,8 +24,8 @@ import {
   harnessModels,
   pickerHarnesses,
 } from '@/shared/lib/harness/models';
-import { APPROVAL_MODES, type ApprovalMode } from '@/shared/lib/omp/config/access-mode';
-import { selectableThinkingLevels } from '@/shared/lib/models/thinking-levels';
+import { APPROVAL_MODES, type ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
+import { selectableThinkingLevels } from '@kabmo-labs/kabmo-model-contracts/thinking-levels';
 import type { AIModelOption } from '@/shared/types';
 import type { ScheduledTaskModel } from '@/shared/types/schedule';
 

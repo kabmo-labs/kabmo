@@ -3,7 +3,7 @@ import type { ComponentChildren } from 'preact';
 import { useState } from 'preact/hooks';
 import { AlertCircle, Check, Eye, EyeOff, Loader2, Lock, RefreshCw, Save, Sparkles, Trash2 } from 'lucide-preact';
 import type { SkillItem } from '@/shared/types';
-import { skillsharePackage } from '@/shared/lib/omp/skill-source';
+import { skillsharePackage } from '@kabmo-labs/kabmo-omp-session-core/skill-source';
 import { scopeLabel, sourceBadge } from '@/client/components/settings/categories/skill-settings/row-meta';
 
 interface SkillDetailHeaderProps {

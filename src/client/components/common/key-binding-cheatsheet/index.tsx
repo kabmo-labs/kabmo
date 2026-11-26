@@ -16,7 +16,7 @@ import { useMemo, useState } from 'preact/hooks';
 import { Search } from 'lucide-preact';
 import { Modal } from '@/client/components/common/Modal';
 import { buildPaletteEntries } from '@/shared/lib/code/editor/palette';
-import { isMacPlatform } from '@/shared/lib/util/platform';
+import { isMacPlatform } from '@kabmo-labs/kabmo-platform';
 import { useCommandCatalog } from '@/client/hooks/commands/use-command-catalog';
 
 interface ShortcutRow {

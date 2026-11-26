@@ -15,7 +15,7 @@
  */
 
 import { MessageSquare } from 'lucide-preact';
-import type { IrcMessageData } from '@/shared/types/omp/session';
+import type { IrcMessageData } from '@kabmo-labs/kabmo-omp-contracts/session';
 import { transcriptGutter } from '@/shared/lib/chat/timeline/gutter';
 import { blockChrome } from '@/shared/lib/chat/timeline/block-chrome';
 import { useToolRenderMode } from '@/client/hooks/chat/timeline/tool-render-mode';

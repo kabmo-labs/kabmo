@@ -15,7 +15,7 @@
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { formatChord } from '@/shared/lib/commands/chord';
 import type { CommandMeta, KeybindingRule, UserKeybindings } from '@/shared/lib/commands/types';
-import { isMacPlatform } from '@/shared/lib/util/platform';
+import { isMacPlatform } from '@kabmo-labs/kabmo-platform';
 import { allCommands, effectiveRules, subscribeKeymap, userKeybindings } from '@/client/lib/commands/keymap';
 import { subscribeCommands } from '@/client/lib/commands/registry';
 

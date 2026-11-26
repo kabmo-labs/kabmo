@@ -26,7 +26,7 @@ import {
 import { decideGoalProgress, type GoalAuditAnswers } from '@/server/lib/omp/session/goal-auditor.server';
 import { readGoalSettings } from '@/server/lib/omp/session/goal-settings.server';
 import { runAcpGoalAudit, type AcpGoalAuditRequest } from '@/server/lib/harness/acp/acp-audit.server';
-import type { GoalContinuationStop } from '@/shared/lib/omp/mode/types';
+import type { GoalContinuationStop } from '@kabmo-labs/kabmo-omp-mode/types';
 import {
   continueAcpGoal,
   finishAcpGoal,

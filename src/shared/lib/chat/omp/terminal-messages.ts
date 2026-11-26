@@ -17,10 +17,10 @@
  * is the one part of the fold that does not depend on the switch.
  */
 
-import { toChatMessage } from '@/shared/lib/omp/session/mapper';
+import { toChatMessage } from '@kabmo-labs/kabmo-omp-mapper';
 import { pairToolOutputs } from '@/shared/lib/chat/omp/tool-results';
 import type { OmpAgentFoldDeps } from '@/shared/lib/chat/omp/fold-deps';
-import type { OmpAgentCallbacks, OmpAgentEvent } from '@/shared/types/omp/agent';
+import type { OmpAgentCallbacks, OmpAgentEvent } from '@kabmo-labs/kabmo-chat-contracts/agent';
 
 export function materializeTerminalMessages(
   data: OmpAgentEvent,

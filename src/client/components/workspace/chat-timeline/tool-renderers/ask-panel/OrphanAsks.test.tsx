@@ -21,7 +21,7 @@ import { act } from 'preact/test-utils';
 import { splitAskFrames } from '@/client/hooks/chat/timeline/ask-frames';
 import { AskFramesContext, type AskFramesHandle } from '@/client/hooks/chat/timeline/ask-frames-context';
 import { OrphanAsks } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/OrphanAsks';
-import type { ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
+import type { ExtensionUiDialogRequest } from '@kabmo-labs/kabmo-chat-contracts/agent';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
 
 const QUESTIONS = [

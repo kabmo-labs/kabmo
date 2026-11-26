@@ -19,7 +19,7 @@
  *   banner      →  `id (agent:modelRole)`
  */
 
-import type { SubagentInfo } from '@/shared/types/omp/subagent';
+import type { SubagentInfo } from '@kabmo-labs/kabmo-omp-contracts/subagent';
 
 /** Any markdown heading — the boundary between prompt sections. */
 const HEADING_RE = /^#{1,6}\s+\S/;

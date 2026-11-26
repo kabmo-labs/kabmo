@@ -37,7 +37,7 @@
 
 import { cp, rm } from 'fs/promises';
 import { join } from 'path';
-import { pathExists } from '@/server/lib/omp/core/paths';
+import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
 import { isNewer } from '@/shared/lib/updates/semver';
 import { getBundledMarketplaceDir, getMarketplacePluginsDir, invalidatePanelScan } from '@/server/lib/panels/registry.server';
 import { readPluginManifest, subdirectories } from '@/server/lib/panels/files.server';

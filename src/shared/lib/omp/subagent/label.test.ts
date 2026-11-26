@@ -15,7 +15,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import { assignmentTarget, subagentHeaderTitle, subagentRowLabel } from '@/shared/lib/omp/subagent/label';
-import type { SubagentInfo } from '@/shared/types/omp/subagent';
+import type { SubagentInfo } from '@kabmo-labs/kabmo-omp-contracts/subagent';
 
 /** Minimal roster entry — only the fields the label helpers read. */
 function makeSubagent(overrides: Partial<SubagentInfo> = {}): SubagentInfo {

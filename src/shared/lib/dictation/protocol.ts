@@ -21,7 +21,7 @@
 
 import { isDictationEngine, type DictationEngine } from '@/shared/lib/dictation/engines';
 import { isDictationLanguage, type DictationLanguage } from '@/shared/lib/dictation/languages';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 
 export const DICTATION_SAMPLE_RATE = 16000;
 export const DICTATION_BITS = 16;

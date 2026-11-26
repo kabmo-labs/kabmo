@@ -17,7 +17,7 @@
 
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { formatChord, chordToText, strokeOfEvent } from '@/shared/lib/commands/chord';
-import { isMacPlatform } from '@/shared/lib/util/platform';
+import { isMacPlatform } from '@kabmo-labs/kabmo-platform';
 import type { KeyStroke } from '@/shared/lib/ui/key-binding';
 import { isModifierKey } from '@/shared/lib/commands/record';
 

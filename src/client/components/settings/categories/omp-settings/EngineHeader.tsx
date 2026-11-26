@@ -18,7 +18,7 @@
 import type { ComponentChildren } from 'preact';
 import { Loader2, RefreshCw, Search, X } from 'lucide-preact';
 import { CONTEXT_BAND_TONES, clampContextPercent, contextUsageBand } from '@/shared/lib/chat/context/usage';
-import { formatCompactTokens } from '@/shared/lib/format/number';
+import { formatCompactTokens } from '@kabmo-labs/kabmo-format/number';
 import type { EngineState } from '@/client/components/settings/categories/omp-settings/types';
 
 interface EngineHeaderProps {

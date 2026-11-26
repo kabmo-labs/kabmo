@@ -26,7 +26,7 @@ import type {
 } from '@/shared/types';
 import { PANEL_SLOT_NAMES } from '@/shared/types';
 import type { PluginSettingDefinition } from '@kabmo-labs/kabmo-sdk';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 import { isValidRange } from '@/shared/lib/updates/semver';
 import { resolveInsideRoot } from '@/shared/lib/panels/resolve-asset';
 

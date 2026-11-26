@@ -30,7 +30,7 @@ import { createAgentSessionRemover } from '@/server/lib/harness/session-delete.s
 import { fakeAcpDeleteAgent } from '@/test-support/fake-acp-delete';
 import type { HarnessLaunch } from '@/server/lib/harness/launch-table';
 import type { HarnessSessionRecord } from '@/server/lib/harness/session-store.server';
-import type { HarnessId } from '@/shared/lib/harness/catalog';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 
 const scratch: string[] = [];
 const saved = { dshHome: Bun.env.DSH_HOME, log: Bun.env.FAKE_ACP_DELETE_LOG };

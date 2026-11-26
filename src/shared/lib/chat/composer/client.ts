@@ -1,4 +1,4 @@
-import { HARNESS_CATALOG } from '@/shared/lib/harness/catalog';
+import { HARNESS_CATALOG } from '@kabmo-labs/kabmo-harness-catalog';
 import type { AgentItem, CommandItem, ComposerPickItem, ComposerPickKind, FsFileEntry, SkillItem } from '@/shared/types';
 import { KABMO_COMMANDS } from '@/shared/lib/chat/composer/trigger';
 

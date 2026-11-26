@@ -3,10 +3,10 @@ import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { getDb } from '@/server/db.server';
 import { resolveSessionFileOr404 } from '@/server/lib/omp/session/locator';
 import { getLiveSession, harnessOfSession } from '@/server/lib/omp/rpc/session-registry';
-import { clearSessionFileCaches } from '@/server/lib/omp/session/files';
+import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { pruneStoredAfterCut, survivingUserTexts, truncateSessionBody } from '@/server/lib/omp/session/rewind-file';
 import { userTurnsRelate } from '@/shared/lib/chat/timeline/turns';
-import { harnessSupportsRewind } from '@/shared/lib/harness/rewind';
+import { harnessSupportsRewind } from '@kabmo-labs/kabmo-harness-rewind/rewind';
 
 /**
  * In-place rewind (undo) for an omp session: truncate the session JSONL back

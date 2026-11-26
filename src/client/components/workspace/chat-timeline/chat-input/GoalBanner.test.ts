@@ -21,8 +21,8 @@ import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:tes
 import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { GoalBanner, type GoalBannerProps } from '@/client/components/workspace/chat-timeline/chat-input/GoalBanner';
-import type { GoalAction } from '@/shared/lib/omp/mode/actions';
-import type { GoalRecord } from '@/shared/lib/omp/mode/types';
+import type { GoalAction } from '@kabmo-labs/kabmo-omp-mode/actions';
+import type { GoalRecord } from '@kabmo-labs/kabmo-omp-mode/types';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
 
 let container: HTMLElement;

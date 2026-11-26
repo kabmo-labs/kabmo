@@ -31,7 +31,7 @@ import { useMemo } from 'preact/hooks';
 import type { PendingInteractionQuestion, PendingInteractionRegistration } from '@kabmo-labs/kabmo-sdk';
 import { PluginIdProvider } from '@kabmo-labs/kabmo-ui';
 import { PluginRenderBoundary } from '@/client/components/common/plugin-render-boundary';
-import type { ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
+import type { ExtensionUiDialogRequest } from '@kabmo-labs/kabmo-chat-contracts/agent';
 import { useListSlotRows } from '@/client/hooks/workspace/list-slots';
 import type { ExtensionDialogResponse } from '@/client/components/workspace/chat-timeline/tool-renderers/extension-dialog/Lazy';
 

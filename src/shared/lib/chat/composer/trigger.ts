@@ -1,4 +1,4 @@
-import { harnessIdForName } from '@/shared/lib/harness/catalog';
+import { harnessIdForName } from '@kabmo-labs/kabmo-harness-catalog';
 import type { CommandItem, ComposerMatchItem, ComposerPickItem, ComposerTrigger } from '@/shared/types';
 
 /** Chars that may legally precede an `@` agent trigger (besides string start). */

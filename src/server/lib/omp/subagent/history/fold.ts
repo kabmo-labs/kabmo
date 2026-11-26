@@ -13,13 +13,13 @@
  * the authoritative call order and walks the session entries in order.
  */
 
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 import { SUBAGENT_ID_RE } from '@/server/lib/omp/subagent/history/paths';
 import { progressStatusToHistory, progressUpsertBlocked, resultStatus } from '@/shared/lib/omp/subagent/history/status';
 import { parseSubagentProgress } from '@/shared/lib/omp/subagent/parse';
 import { asAgentSource, asNumber, asString, taskResultStructuredOutput, taskResultUsageCost } from '@/shared/lib/omp/subagent/result-details';
-import type { OmpMessageEntry } from '@/shared/lib/omp/session/messages-parse';
-import type { SubagentHistoryEntry, SubagentHistoryResult } from '@/shared/types/omp/subagent';
+import type { OmpMessageEntry } from '@kabmo-labs/kabmo-omp-session-parse/messages-parse';
+import type { SubagentHistoryEntry, SubagentHistoryResult } from '@kabmo-labs/kabmo-omp-contracts/subagent';
 
 /**
  * Mutable roster fold seeded from parent `task` toolResults. `callOrder` is the

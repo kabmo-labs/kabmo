@@ -9,8 +9,8 @@
  * fabricate a live roster entry. Wire shapes live in `@/types/omp/subagent`.
  */
 
-import { isRecord } from '@/shared/lib/util/guards';
-import type { SubagentActivityEvent, SubagentAgentSource, SubagentInfo, SubagentProgress, SubagentSnapshotLike } from '@/shared/types/omp/subagent';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
+import type { SubagentActivityEvent, SubagentAgentSource, SubagentInfo, SubagentProgress, SubagentSnapshotLike } from '@kabmo-labs/kabmo-omp-contracts/subagent';
 
 function asString(value: unknown): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined;

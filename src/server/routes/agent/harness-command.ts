@@ -25,13 +25,13 @@ import { getDb } from '@/server/db.server';
 import { selectValues } from '@/server/lib/harness/launch';
 import { harnessOfSession } from '@/server/lib/omp/rpc/session-registry';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
-import { HARNESS_IDS, harnessDescriptor } from '@/shared/lib/harness/catalog';
+import { HARNESS_IDS, harnessDescriptor } from '@kabmo-labs/kabmo-harness-catalog';
 import type { AcpConfigOption } from '@/server/lib/harness/acp/protocol';
 import { applyAcpGoalAction, type AcpGoalHost } from '@/server/lib/harness/acp/acp-goal.server';
 import { saveAcpPlanState } from '@/server/lib/harness/acp/acp-goal-state.server';
 import type { HarnessSession } from '@/server/lib/harness/session';
 import type { ModeRequest } from '@/server/lib/omp/mode/request';
-import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
+import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 import { hasAssistantRow } from '@/shared/lib/chat/transcript-rows';
 
 /**

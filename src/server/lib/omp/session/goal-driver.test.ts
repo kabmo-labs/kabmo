@@ -24,7 +24,7 @@ import {
   type GoalDriverDeps,
 } from '@/server/lib/omp/session/goal-driver.server';
 import type { GoalAuditAnswers } from '@/server/lib/omp/session/goal-auditor.server';
-import type { GoalRecord } from '@/shared/lib/omp/mode/types';
+import type { GoalRecord } from '@kabmo-labs/kabmo-omp-mode/types';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 
 beforeEach(isolateDb);

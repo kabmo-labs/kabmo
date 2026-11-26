@@ -22,7 +22,7 @@ import { CornerDownLeft, Search } from 'lucide-preact';
 import { closePalette, type PaletteMode } from '@/client/lib/commands/overlays';
 import { chordForCommand } from '@/client/lib/commands/keymap';
 import { formatChord } from '@/shared/lib/commands/chord';
-import { isMacPlatform } from '@/shared/lib/util/platform';
+import { isMacPlatform } from '@kabmo-labs/kabmo-platform';
 import { useOverlays } from '@/client/hooks/commands/use-overlays';
 import { usePaletteItems, type PaletteItem } from '@/client/hooks/commands/use-palette-items';
 import { openFileInEditor } from '@/client/hooks/ui/open-file';

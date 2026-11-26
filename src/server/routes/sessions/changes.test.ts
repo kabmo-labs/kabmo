@@ -15,7 +15,7 @@ import * as fsp from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import type { LoaderFunctionArgs } from '@/server/lib/remix-compat';
-import { clearSessionFileCaches } from '@/server/lib/omp/session/files';
+import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { getSessionChangeDiff, getSessionChanges } from '@/server/routes/sessions/changes';
 
 const SESSION_ID = '01a0cc50-fd62-7417-899c-e24ff8c8608c';

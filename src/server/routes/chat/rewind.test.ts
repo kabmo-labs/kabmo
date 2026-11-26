@@ -24,10 +24,10 @@ import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { removeDir } from '@/test-support/remove-dir';
 import { registerAcpSession } from '@/server/lib/harness/register.server';
 import { claimHarness } from '@/server/lib/harness/registry';
-import { clearSessionFileCaches } from '@/server/lib/omp/session/files';
+import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { action } from '@/server/routes/chat/rewind';
 import type { HarnessSession } from '@/server/lib/harness/session';
-import type { HarnessId } from '@/shared/lib/harness/catalog';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 
 const SESSION_ID = '01a1b49f-0000-7000-8000-000000000001';
 

@@ -39,7 +39,7 @@ import {
   type AntigravityCredential,
   type LocalAntigravityReport,
 } from '@/server/lib/usage/antigravity-quota';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 import type { UsageLimitWindow } from '@/shared/types';
 
 /** Hosts tried in order. Measured: the daily host answers BOTH model groups. */

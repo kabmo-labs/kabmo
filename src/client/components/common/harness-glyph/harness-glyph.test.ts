@@ -24,7 +24,7 @@ import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 
 import { HarnessGlyph, HARNESS_GLYPH_SIZE } from '@/client/components/common/harness-glyph';
-import { HARNESS_CATALOG, HARNESS_IDS, harnessBadgeLabel, harnessDescriptor } from '@/shared/lib/harness/catalog';
+import { HARNESS_CATALOG, HARNESS_IDS, harnessBadgeLabel, harnessDescriptor } from '@kabmo-labs/kabmo-harness-catalog';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'Event', 'MouseEvent', 'KeyboardEvent'] as const;
 const nativeGlobals: Partial<Record<(typeof DOM_GLOBALS)[number], unknown>> = {};

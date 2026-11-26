@@ -26,7 +26,7 @@ import { loadPersistedAccessMode } from '@/shared/lib/omp/config/access-mode.ser
 import { startRpcSession } from '@/server/lib/omp/rpc/session-registry';
 import { startAcpSession } from '@/server/lib/harness/spawn.server';
 import { freshProbe } from '@/server/lib/harness/probe-cache.server';
-import { clearSessionFileCaches } from '@/server/lib/omp/session/files';
+import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { findSessionFileById } from '@/server/lib/omp/session/locator';
 import { buildTruncatedBody, isRewindCutPoint } from '@/server/lib/omp/session/rewind-file';
 import {
@@ -35,11 +35,11 @@ import {
   parseJsonObject,
   transcriptTitle,
 } from '@/server/lib/omp/session/transcript-copy';
-import type { HarnessId } from '@/shared/lib/harness/catalog';
-import { airForkPoint, harnessForksAtMessage } from '@/shared/lib/harness/fork';
-import type { SelectedModel } from '@/shared/types/models';
-import type { AgentImage } from '@/shared/types/omp/agent';
-import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
+import { airForkPoint, harnessForksAtMessage } from '@kabmo-labs/kabmo-harness-rewind/fork';
+import type { SelectedModel } from '@kabmo-labs/kabmo-model-contracts/models';
+import type { AgentImage } from '@kabmo-labs/kabmo-chat-contracts/agent';
+import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 import {
   createSessionRelation,
   deleteSessionRelations,

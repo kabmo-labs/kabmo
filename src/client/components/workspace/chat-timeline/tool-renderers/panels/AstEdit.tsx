@@ -1,7 +1,7 @@
 import { useMemo } from 'preact/hooks';
 import { ArrowRight, CheckCircle2, Clock, Wand2 } from 'lucide-preact';
 import type { ToolCallData } from '@/shared/types';
-import { soleInnerDetails, soleToolCommand } from '@/shared/lib/chat/tool/tool-commands';
+import { soleInnerDetails, soleToolCommand } from '@kabmo-labs/kabmo-chat-tool/tool-commands';
 import { getLanguageFromPath } from '@/shared/lib/code/language';
 import { useDeferredHighlightLines } from '@/client/hooks/code/deferred-highlight';
 

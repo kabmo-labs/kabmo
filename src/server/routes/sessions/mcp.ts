@@ -41,8 +41,8 @@ import { readSessionMcpOverrides, writeSessionMcpOverrides } from '@/server/lib/
 import { ensureSessionMcpOverlay } from '@/server/lib/mcp/session-overlay.server';
 import { cachedMcpProbe, probeMcpServer } from '@/server/lib/mcp/probe.server';
 import { loadProbes, probes } from '@/server/lib/harness/probe-cache.server';
-import { mcpDelivery } from '@/shared/lib/harness/mcp-facts';
-import { isRecord } from '@/shared/lib/util/guards';
+import { mcpDelivery } from '@kabmo-labs/kabmo-harness-mcp-facts';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 import type { McpTransport } from '@/shared/types';
 
 /** The sources omp's RPC mode can actually read: its own `mcp.json` files. */

@@ -50,14 +50,14 @@ import { acpWebState } from '@/server/lib/harness/acp/session-web-state';
 import { acpIdleReaper } from '@/server/lib/harness/acp/session-idle';
 import { AcpSubagents, type AcpSubagentRecord } from '@/server/lib/harness/acp/subagents';
 import { AcpInbound } from '@/server/lib/harness/acp/session-inbound';
-import { DEFAULT_APPROVAL_MODE, isApprovalMode, type ApprovalMode } from '@/shared/lib/omp/config/access-mode';
+import { DEFAULT_APPROVAL_MODE, isApprovalMode, type ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 import { dispatchCommand, type AcpCommandHost } from '@/server/lib/harness/acp/commands';
 import { markStreamStatus } from '@/shared/lib/omp/session/stream-state.server';
 import type { AcpSessionOptions } from '@/server/lib/harness/acp/session-options';
 import type { AcpMcpServer } from '@/server/lib/harness/acp/protocol';
 import type { HarnessCapabilities } from '@/server/lib/harness/capabilities';
 import type { HarnessSession } from '@/server/lib/harness/session';
-import type { HarnessId } from '@/shared/lib/harness/catalog';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
 import type { IdleReaper } from '@/server/lib/omp/rpc/idle-reaper';
 

@@ -7,7 +7,7 @@
  * Types, entry names and notice markers Kabmo's mode extension shares
  * with the console.
  *
- * Deliberately a SECOND copy of `src/shared/lib/omp/mode/types.ts` rather than
+ * Deliberately a SECOND copy of `packages/kabmo-omp-mode/src/types.ts` rather than
  * an import of it. This directory is loaded by the omp CHILD process with `-e`,
  * outside Kabmo's module graph: `@/` is Kabmo's tsconfig alias and
  * resolving it from an extension would couple the child's module loader to the

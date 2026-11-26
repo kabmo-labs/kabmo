@@ -1,12 +1,12 @@
 import { useMemo } from 'preact/hooks';
 import { Check, Clock, Server, Shrink, Terminal } from 'lucide-preact';
 import type { ToolCallData } from '@/shared/types';
-import { bashServiceOf } from '@/shared/lib/omp/session/proc';
-import { daemonTone, procUptime } from '@/shared/lib/omp/session/proc-daemon';
+import { bashServiceOf } from '@kabmo-labs/kabmo-omp-proc/proc';
+import { daemonTone, procUptime } from '@kabmo-labs/kabmo-omp-proc/proc-daemon';
 import { formatToolBytes } from '@/shared/lib/chat/tool/labels';
 import { minimizedOutputOf } from '@/shared/lib/chat/tool/minimized';
 import { CopyButton } from '@/client/components/common/CopyButton';
-import { stripAnsiCodes } from '@/shared/lib/code/ansi';
+import { stripAnsiCodes } from '@kabmo-labs/kabmo-format/ansi';
 import { isCodeLike } from '@/shared/lib/code/language';
 import { tryParseJson } from '@/shared/lib/code/syntax-highlight';
 import { useDeferredHighlight } from '@/client/hooks/code/deferred-highlight';

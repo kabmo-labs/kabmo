@@ -14,16 +14,16 @@
  */
 
 import type { IncomingExtensionUiRequest, OmpAgentEvent } from '@/shared/types';
-import { extractTextFromContent, toChatMessage } from '@/shared/lib/omp/session/mapper';
-import { normalizeNoticeText } from '@/shared/lib/chat/notice-text';
-import { parseModeMarker } from '@/shared/lib/omp/mode/markers';
-import { emitKabmoModeSignal } from '@/shared/lib/omp/mode/client-signal';
-import { emitSessionModesChanged } from '@/shared/lib/harness/mode-signal';
-import { KABMO_GOAL_EVALUATING_MARKER } from '@/shared/lib/omp/mode/types';
+import { extractTextFromContent, toChatMessage } from '@kabmo-labs/kabmo-omp-mapper';
+import { normalizeNoticeText } from '@kabmo-labs/kabmo-chat-notices/notice-text';
+import { parseModeMarker } from '@kabmo-labs/kabmo-omp-mode/markers';
+import { emitKabmoModeSignal } from '@/client/lib/omp-mode-signal';
+import { emitSessionModesChanged } from '@/client/lib/harness-mode-signal';
+import { KABMO_GOAL_EVALUATING_MARKER } from '@kabmo-labs/kabmo-omp-mode/types';
 import { materializeTerminalMessages } from '@/shared/lib/chat/omp/terminal-messages';
 import { invalidateComposerCache } from '@/shared/lib/chat/composer/client';
 import { setActivity, toolHost, type OmpAgentFoldDeps } from '@/shared/lib/chat/omp/fold-deps';
-import { normalizeThinkingLevel } from '@/shared/lib/models/thinking-levels';
+import { normalizeThinkingLevel } from '@kabmo-labs/kabmo-model-contracts/thinking-levels';
 import { endRetrySaga, foldAutoRetry } from '@/shared/lib/chat/timeline/provider-retry';
 import { foldTransportFrame } from '@/shared/lib/chat/omp/transport-frames';
 import { PHASE_VERBS } from '@/shared/lib/chat/timeline/tool-phrases';

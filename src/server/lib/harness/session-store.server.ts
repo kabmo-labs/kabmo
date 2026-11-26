@@ -17,7 +17,7 @@
  */
 
 import { getDb } from '@/server/db.server';
-import type { HarnessId } from '@/shared/lib/harness/catalog';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 
 export interface HarnessSessionRecord {
   sessionId: string;

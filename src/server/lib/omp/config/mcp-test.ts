@@ -18,7 +18,7 @@ import { killProcessTree } from '@/server/lib/lifecycle/kill-tree';
 import { readLines } from '@/server/lib/omp/rpc/lines';
 import { isMockMode } from '@/server/mock.server';
 import type { McpServerItem } from '@/shared/types';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 import { REDACTED_SENTINEL, rowsToRecord } from '@/shared/lib/mcp/key-value';
 import { runLinkTest, runSseTest } from '@/server/lib/omp/config/mcp-test-remote';
 import {

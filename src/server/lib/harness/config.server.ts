@@ -18,15 +18,13 @@ import { getDb } from '@/server/db.server';
 import { readSettingsJson, writeSettingsJson } from '@/server/lib/db/settings-store';
 import { HARNESS_LAUNCH, type HarnessLaunch } from '@/server/lib/harness/launch-table';
 import { customLaunch } from '@/server/lib/harness/custom.server';
-import {
-  harnessConfigKey,
-  isHarnessConfigured,
-  parseEnvLines,
-  parseHarnessConfig,
-  splitCommand,
-  type HarnessConfig,
-} from '@/shared/lib/harness/config';
-import { harnessDescriptor, type HarnessId } from '@/shared/lib/harness/catalog';
+import { harnessConfigKey,
+isHarnessConfigured,
+parseEnvLines,
+parseHarnessConfig,
+splitCommand,
+type HarnessConfig, } from '@kabmo-labs/kabmo-harness-config';
+import { harnessDescriptor, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 
 /** Read one harness's config, always fully populated. */
 export async function loadHarnessConfig(id: HarnessId): Promise<HarnessConfig> {

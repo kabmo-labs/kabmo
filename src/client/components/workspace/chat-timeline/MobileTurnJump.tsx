@@ -1,7 +1,7 @@
 import { useState } from 'preact/hooks';
 import { ListOrdered } from 'lucide-preact';
 import { Modal } from '@/client/components/common/Modal';
-import { formatMessageStamp } from '@/shared/lib/format/time';
+import { formatMessageStamp } from '@kabmo-labs/kabmo-format/time';
 import type { UserTurnRef } from '@/shared/types';
 
 interface MobileTurnJumpProps {

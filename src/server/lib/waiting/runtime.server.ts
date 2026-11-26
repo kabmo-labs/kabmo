@@ -39,7 +39,7 @@ import { hasPendingDelivery } from '@/server/lib/queue/delivery.server';
 import { applyModelSnapshot, promptCommand } from '@/server/lib/queue/payload';
 import { loadStreamStates } from '@/shared/lib/omp/session/stream-state.server';
 import { streamRowWrittenAt } from '@/server/lib/waiting/row-clock.server';
-import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
+import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 import { loadPersistedAccessMode } from '@/shared/lib/omp/config/access-mode.server';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
 import { publishSidebarStructure } from '@/server/lib/realtime/topics.server';

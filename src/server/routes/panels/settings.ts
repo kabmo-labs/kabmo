@@ -34,7 +34,7 @@ import {
 import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowedResponse, parseJsonBody, requireParam } from '@/server/lib/route-adapter';
 import { PLUGIN_SECRET_MASK } from '@/shared/lib/plugins/settings';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 
 const NO_STORE = { 'cache-control': 'no-store' } as const;
 

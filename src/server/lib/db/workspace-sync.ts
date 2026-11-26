@@ -31,7 +31,7 @@
  */
 
 import type { DbClient } from '@/server/lib/db/client';
-import { projectPathKey } from '@/server/lib/omp/core/paths';
+import { projectPathKey } from '@kabmo-labs/kabmo-omp-paths';
 import { loadOmpSidebarData } from '@/server/lib/omp/session/reader';
 import { orderedOmpProjects, projectDisplayName } from '@/shared/lib/omp/session/sidebar';
 

@@ -37,7 +37,7 @@ import type {
   PanelMarketplacePluginEntry,
   PanelMarketplaceRegistryEntry,
 } from '@/shared/types';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 import { isRemoteGitUrl } from '@/shared/lib/git/url';
 import {
   normalisePluginSpec,

@@ -1,0 +1,27 @@
+{
+  "name": "@kabmo-labs/kabmo-omp-contracts",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "omp session, instruction, and subagent wire types.",
+  "exports": {
+    ".": "./src/session.ts",
+    "./instructions": "./src/instructions.ts",
+    "./session": "./src/session.ts",
+    "./subagent": "./src/subagent.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-omp-contracts"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  }
+}

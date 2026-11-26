@@ -29,7 +29,7 @@
 
 import { getDb } from '@/server/db.server';
 import type { DbClient } from '@/server/lib/db/client';
-import { projectPathKey } from '@/server/lib/omp/core/paths';
+import { projectPathKey } from '@kabmo-labs/kabmo-omp-paths';
 import { expandHome } from '@/server/routes/folders/create';
 import { normalizeHexAccent } from '@/shared/lib/workspace/project-accent';
 import { parseFolderSettingsPatch, type FolderSettingsPatch } from '@/shared/lib/workspace/project-settings';

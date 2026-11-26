@@ -32,7 +32,7 @@
  */
 
 import { isNewer } from '@/shared/lib/updates/semver';
-import type { HarnessUpdateFacts } from '@/shared/lib/harness/updates';
+import type { HarnessUpdateFacts } from '@kabmo-labs/kabmo-harness-updates';
 
 /** One part's installed and latest version. */
 export interface UpdatePartVersions {

@@ -25,7 +25,7 @@ import {
   projectDisplayName,
   sessionTitleFor,
 } from '@/shared/lib/omp/session/sidebar';
-import type { OmpProject, OmpSession, OmpSidebarData } from '@/shared/types/omp/session';
+import type { OmpProject, OmpSession, OmpSidebarData } from '@kabmo-labs/kabmo-omp-contracts/session';
 
 const session = (overrides: Partial<OmpSession>): OmpSession => ({
   path: '/sessions/s.jsonl',

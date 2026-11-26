@@ -12,7 +12,7 @@
  */
 
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
-import type { HarnessId } from '@/shared/lib/harness/catalog';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import { noteChildOutcome } from '@/server/lib/sessions/notify.server';
 
 export interface AcpExitInfo {

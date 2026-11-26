@@ -14,10 +14,10 @@
 
 import type { Dispatch, SetStateAction } from 'preact/compat';
 import type { Attachment, ChatMessageData, OmpAgentHandle, PromptDispatchResult, QueuedMessageModel } from '@/shared/types';
-import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
+import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 import type { SessionSeed } from '@/client/hooks/chat/timeline/session-shapes';
 import type { DeferredModelStore } from '@/client/hooks/chat/timeline/deferred-model';
-import type { ArmedGoal } from '@/shared/lib/omp/mode/actions';
+import type { ArmedGoal } from '@kabmo-labs/kabmo-omp-mode/actions';
 
 export interface ChatTimelineSendDeps {
   folders: any[];

@@ -25,14 +25,12 @@
 import { getDb } from '@/server/db.server';
 import { forgetProbe } from '@/server/lib/harness/probe-cache.server';
 import { readSettingsJson, writeSettingsJson } from '@/server/lib/db/settings-store';
-import { HARNESS_DISABLED_KEY } from '@/shared/lib/harness/enabled';
-import { harnessConfigKey, parseEnvLines, splitCommand } from '@/shared/lib/harness/config';
-import {
-  HARNESS_CATALOG,
-  isBuiltinHarness,
-  registerHarnessDescriptors,
-  type HarnessDescriptor,
-} from '@/shared/lib/harness/catalog';
+import { HARNESS_DISABLED_KEY } from '@kabmo-labs/kabmo-harness-enabled';
+import { harnessConfigKey, parseEnvLines, splitCommand } from '@kabmo-labs/kabmo-harness-config';
+import { HARNESS_CATALOG,
+isBuiltinHarness,
+registerHarnessDescriptors,
+type HarnessDescriptor, } from '@kabmo-labs/kabmo-harness-catalog';
 import type { HarnessLaunch } from '@/server/lib/harness/launch-table';
 
 /** One user-added harness, as stored. */

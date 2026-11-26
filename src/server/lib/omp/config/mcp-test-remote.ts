@@ -21,7 +21,7 @@ import {
   initializeRequest,
   type HandshakeOutcome,
 } from '@/server/lib/omp/config/mcp-test-protocol';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 
 const LINK_TIMEOUT_MS = 10_000;
 

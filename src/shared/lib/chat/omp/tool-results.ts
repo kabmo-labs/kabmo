@@ -18,9 +18,9 @@
 
 import type { RefObject } from 'preact/compat';
 import type { ChatMessageData, ToolCallData } from '@/shared/types';
-import type { ToolImageRef } from '@/shared/types/chat';
-import { extractTextFromContent } from '@/shared/lib/omp/session/mapper';
-import { extractToolImages } from '@/shared/lib/omp/session/tool-images';
+import type { ToolImageRef } from '@kabmo-labs/kabmo-chat-contracts/chat';
+import { extractTextFromContent } from '@kabmo-labs/kabmo-omp-mapper';
+import { extractToolImages } from '@kabmo-labs/kabmo-omp-session-parse/tool-images';
 
 /** Tool output accumulated between a `toolCall` block and its result frame. */
 export interface ToolResultRecord {

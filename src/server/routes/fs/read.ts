@@ -14,12 +14,10 @@ import fs from 'fs';
 import path from 'path';
 import { isMockMode } from '@/server/mock.server';
 import { getDefaultFsRoot, resolveReferencedPath, resolveRoot, resolveWithinRoot } from '@/server/lib/fs/root';
-import {
-  BINARY_SNIFF_BYTES,
-  classifyEditorFile,
-  unsupportedEditorMessage,
-  type EditorFileKind,
-} from '@/shared/lib/fs/file-kind';
+import { BINARY_SNIFF_BYTES,
+classifyEditorFile,
+unsupportedEditorMessage,
+type EditorFileKind, } from '@kabmo-labs/kabmo-fs-media/file-kind';
 
 /**
  * Classify a file the way the editor will, reading only as many bytes as the

@@ -12,18 +12,170 @@
  * `packages.test.js` is what holds them together. Reading the manifest here
  * would make the agreement untestable.
  *
- * **Order is load-bearing.** `@kabmo-labs/kabmo-ui` declares
- * `"@kabmo-labs/kabmo-sdk": "workspace:*"`, which Bun rewrites to an exact
- * version at publish time from the version `bun.lock` records for the workspace
- * package — not from the manifest on disk. So a `ui` release pins whatever SDK
- * version the lock says, which is why the version plugin refreshes the lock and
- * why `release-packages.mjs` releases in this order and stops on the first
- * failure: a `ui` release must never follow a failed SDK release, or it
- * publishes a package whose dependency is not the one it was built against.
+ * **Order is load-bearing.** Every entry is released in this array's order, and
+ * a dependent package must follow the package it pins. `@kabmo-labs/kabmo-ui`
+ * declares `"@kabmo-labs/kabmo-sdk": "workspace:*"`, and the extracted
+ * `@kabmo-labs/kabmo-*` packages declare their own workspace dependencies; Bun
+ * rewrites each to an exact version at publish time from the version `bun.lock`
+ * records. So a dependent release must never follow a failed dependency
+ * release, which is why the version plugin refreshes the lock and
+ * `release-packages.mjs` stops on the first failure.
  */
 export const RELEASE_PACKAGES = [
   {
     /** Directory under `packages/`, which is also the tag's prefix. */
+    dir: 'packages/kabmo-guards',
+    name: '@kabmo-labs/kabmo-guards',
+  },
+  {
+    dir: 'packages/kabmo-bytes',
+    name: '@kabmo-labs/kabmo-bytes',
+  },
+  {
+    dir: 'packages/kabmo-platform',
+    name: '@kabmo-labs/kabmo-platform',
+  },
+  {
+    dir: 'packages/kabmo-fs-config',
+    name: '@kabmo-labs/kabmo-fs-config',
+  },
+  {
+    dir: 'packages/kabmo-fs-media',
+    name: '@kabmo-labs/kabmo-fs-media',
+  },
+  {
+    dir: 'packages/kabmo-model-contracts',
+    name: '@kabmo-labs/kabmo-model-contracts',
+  },
+  {
+    dir: 'packages/kabmo-format',
+    name: '@kabmo-labs/kabmo-format',
+  },
+  {
+    dir: 'packages/kabmo-harness-catalog',
+    name: '@kabmo-labs/kabmo-harness-catalog',
+  },
+  {
+    dir: 'packages/kabmo-harness-accounts',
+    name: '@kabmo-labs/kabmo-harness-accounts',
+  },
+  {
+    dir: 'packages/kabmo-harness-session-modes',
+    name: '@kabmo-labs/kabmo-harness-session-modes',
+  },
+  {
+    dir: 'packages/kabmo-harness-transcript',
+    name: '@kabmo-labs/kabmo-harness-transcript',
+  },
+  {
+    dir: 'packages/kabmo-harness-provider-slug',
+    name: '@kabmo-labs/kabmo-harness-provider-slug',
+  },
+  {
+    dir: 'packages/kabmo-omp-paths',
+    name: '@kabmo-labs/kabmo-omp-paths',
+  },
+  {
+    dir: 'packages/kabmo-omp-contracts',
+    name: '@kabmo-labs/kabmo-omp-contracts',
+  },
+  {
+    dir: 'packages/kabmo-omp-registry',
+    name: '@kabmo-labs/kabmo-omp-registry',
+  },
+  {
+    dir: 'packages/kabmo-omp-proc',
+    name: '@kabmo-labs/kabmo-omp-proc',
+  },
+  {
+    dir: 'packages/kabmo-omp-mode',
+    name: '@kabmo-labs/kabmo-omp-mode',
+  },
+  {
+    dir: 'packages/kabmo-omp-schema',
+    name: '@kabmo-labs/kabmo-omp-schema',
+  },
+  {
+    dir: 'packages/kabmo-omp-session-core',
+    name: '@kabmo-labs/kabmo-omp-session-core',
+  },
+  {
+    dir: 'packages/kabmo-omp-models-config',
+    name: '@kabmo-labs/kabmo-omp-models-config',
+  },
+  {
+    dir: 'packages/kabmo-omp-operator-title',
+    name: '@kabmo-labs/kabmo-omp-operator-title',
+  },
+  {
+    dir: 'packages/kabmo-omp-session-scan',
+    name: '@kabmo-labs/kabmo-omp-session-scan',
+  },
+  {
+    dir: 'packages/kabmo-omp-access-mode',
+    name: '@kabmo-labs/kabmo-omp-access-mode',
+  },
+  {
+    dir: 'packages/kabmo-omp-config-doc',
+    name: '@kabmo-labs/kabmo-omp-config-doc',
+  },
+  {
+    dir: 'packages/kabmo-chat-contracts',
+    name: '@kabmo-labs/kabmo-chat-contracts',
+  },
+  {
+    dir: 'packages/kabmo-chat-tool',
+    name: '@kabmo-labs/kabmo-chat-tool',
+  },
+  {
+    dir: 'packages/kabmo-chat-notices',
+    name: '@kabmo-labs/kabmo-chat-notices',
+  },
+  {
+    dir: 'packages/kabmo-omp-session-parse',
+    name: '@kabmo-labs/kabmo-omp-session-parse',
+  },
+  {
+    dir: 'packages/kabmo-omp-mapper',
+    name: '@kabmo-labs/kabmo-omp-mapper',
+  },
+  {
+    dir: 'packages/kabmo-omp-messages-map',
+    name: '@kabmo-labs/kabmo-omp-messages-map',
+  },
+  {
+    dir: 'packages/kabmo-omp-session-messages',
+    name: '@kabmo-labs/kabmo-omp-session-messages',
+  },
+  {
+    dir: 'packages/kabmo-harness-provider',
+    name: '@kabmo-labs/kabmo-harness-provider',
+  },
+  {
+    dir: 'packages/kabmo-harness-config',
+    name: '@kabmo-labs/kabmo-harness-config',
+  },
+  {
+    dir: 'packages/kabmo-harness-enabled',
+    name: '@kabmo-labs/kabmo-harness-enabled',
+  },
+  {
+    dir: 'packages/kabmo-harness-updates',
+    name: '@kabmo-labs/kabmo-harness-updates',
+  },
+  {
+    dir: 'packages/kabmo-harness-config-fields',
+    name: '@kabmo-labs/kabmo-harness-config-fields',
+  },
+  {
+    dir: 'packages/kabmo-harness-mcp-facts',
+    name: '@kabmo-labs/kabmo-harness-mcp-facts',
+  },
+  {
+    dir: 'packages/kabmo-harness-rewind',
+    name: '@kabmo-labs/kabmo-harness-rewind',
+  },
+  {
     dir: 'packages/kabmo-sdk',
     name: '@kabmo-labs/kabmo-sdk',
   },

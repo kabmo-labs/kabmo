@@ -21,7 +21,7 @@ import { existsSync, statSync } from 'fs';
 import { copyFile, mkdir } from 'fs/promises';
 import path from 'path';
 import { runGit } from '@/server/lib/fs/git-run';
-import { pathExists } from '@/server/lib/omp/core/paths';
+import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
 
 /** Folders worth asking git about. A name here that git does not ignore is skipped. */
 export const CARRY_CANDIDATES = [

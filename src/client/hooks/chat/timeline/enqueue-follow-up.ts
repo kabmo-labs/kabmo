@@ -13,7 +13,7 @@
  * while the handle still exists.
  */
 
-import type { Attachment, QueuedMessage, QueuedMessageModel } from '@/shared/types/chat';
+import type { Attachment, QueuedMessage, QueuedMessageModel } from '@kabmo-labs/kabmo-chat-contracts/chat';
 import { prepareQueuedAttachments } from '@/shared/lib/chat/attachments';
 
 export interface FollowUpSnapshotDeps {

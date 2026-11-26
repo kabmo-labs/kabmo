@@ -12,7 +12,7 @@
  * a row can be updated in place and a tail read would miss it.
  */
 
-import type { HarnessId } from '@/shared/lib/harness/catalog';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import type { UsageRollupRow } from '@/server/lib/usage/index-parse';
 
 /** One transcript/source file, as listed by a source. */

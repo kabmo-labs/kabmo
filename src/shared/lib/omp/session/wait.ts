@@ -31,7 +31,7 @@
  * chips and the panel all read the call through this one function.
  */
 
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 
 /** The operations that report through `CoordinationDetails`. */
 export type WaitOp = 'wait' | 'send' | 'cancel' | 'jobs';

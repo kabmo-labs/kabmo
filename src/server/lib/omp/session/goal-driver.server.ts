@@ -27,13 +27,13 @@
 
 import { findSessionFileById } from '@/server/lib/omp/session/locator';
 import { loadPersistedModes } from '@/server/lib/omp/session/modes';
-import { loadSessionModel } from '@/server/lib/omp/session/messages';
+import { loadSessionModel } from '@kabmo-labs/kabmo-omp-session-messages/messages';
 import { modeCommandPrompt } from '@/server/lib/omp/mode/request';
-import { extractTextFromContent } from '@/shared/lib/omp/session/mapper';
+import { extractTextFromContent } from '@kabmo-labs/kabmo-omp-mapper';
 import { decideGoalProgress, runGoalAudit, type GoalAuditAnswers, type GoalAuditRequest } from '@/server/lib/omp/session/goal-auditor.server';
 import { readGoalSettings, type GoalSettings } from '@/server/lib/omp/session/goal-settings.server';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
-import type { GoalContinuationStop, GoalRecord } from '@/shared/lib/omp/mode/types';
+import type { GoalContinuationStop, GoalRecord } from '@kabmo-labs/kabmo-omp-mode/types';
 
 /** What the driver needs from the session wrapper it was invoked on.
  *

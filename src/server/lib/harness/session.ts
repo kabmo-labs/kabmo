@@ -17,7 +17,7 @@
  */
 
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
-import type { HarnessId } from '@/shared/lib/harness/catalog';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 
 export interface HarnessEventSource {
   onEvent(listener: (event: AgentEvent) => void): () => void;

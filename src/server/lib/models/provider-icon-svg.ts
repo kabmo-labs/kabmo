@@ -23,7 +23,7 @@
  * the shared module for the cheap byte check the client also needs.
  */
 
-import { looksLikeSvg } from '@/shared/lib/fs/file-kind';
+import { looksLikeSvg } from '@kabmo-labs/kabmo-fs-media/file-kind';
 
 /** XML comments, well-formed or not — `--` inside one is what breaks decoding. */
 const XML_COMMENT_RE = /<!--[\s\S]*?-->/g;

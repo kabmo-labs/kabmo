@@ -25,7 +25,7 @@
  * second half is what resurrected an undone turn on the next reload.
  */
 
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 
 /** omp's custom record for an expanded `/skill:<name>` invocation. */
 const SKILL_PROMPT_CUSTOM_TYPE = 'skill-prompt';

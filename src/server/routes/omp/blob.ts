@@ -22,8 +22,8 @@
 
 import { json, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { errorResponse } from '@/server/lib/route-adapter';
-import { readBlobImage } from '@/server/lib/omp/session/blobs.server';
-import { bodyBytes } from '@/shared/lib/util/bytes';
+import { readBlobImage } from '@kabmo-labs/kabmo-omp-session-messages/blobs.server';
+import { bodyBytes } from '@kabmo-labs/kabmo-bytes';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const hash = new URL(request.url).searchParams.get('hash');

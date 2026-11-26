@@ -19,12 +19,12 @@
  * file), cached by file mtime, and never mutate the agent's files.
  */
 
-import { listAllSessionInfos, type OmpSessionInfo } from '@/server/lib/omp/session/files';
-import { loadProjectRegistry, mergeProjects } from '@/server/lib/omp/core/registry';
+import { listAllSessionInfos, type OmpSessionInfo } from '@kabmo-labs/kabmo-omp-session-scan/files';
+import { loadProjectRegistry, mergeProjects } from '@kabmo-labs/kabmo-omp-registry';
 import { resolveProjectRoot } from '@/server/lib/omp/core/worktree';
-import { getAgentDir, getSessionsDir, pathExists } from '@/server/lib/omp/core/paths';
+import { getAgentDir, getSessionsDir, pathExists } from '@kabmo-labs/kabmo-omp-paths';
 import { SIDEBAR_DATA_TTL_MS } from '@/shared/lib/workspace/refresh-cadence';
-import type { OmpProject, OmpSession, OmpSidebarData } from '@/shared/types/omp/session';
+import type { OmpProject, OmpSession, OmpSidebarData } from '@kabmo-labs/kabmo-omp-contracts/session';
 
 const CONCURRENCY = 6;
 

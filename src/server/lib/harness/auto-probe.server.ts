@@ -39,7 +39,7 @@ import {
   loadHarnessConfig,
 } from '@/server/lib/harness/config.server';
 import { resolveAccountLaunch } from '@/server/lib/harness/accounts.server';
-import type { HarnessConfig } from '@/shared/lib/harness/config';
+import type { HarnessConfig } from '@kabmo-labs/kabmo-harness-config';
 import { loadDisabledHarnesses } from '@/server/lib/harness/enabled.server';
 import { blockedProbe, probeHarness } from '@/server/lib/harness/launch';
 import { HARNESS_LAUNCH, harnessRequirementMet, type HarnessLaunch } from '@/server/lib/harness/launch-table';
@@ -47,8 +47,8 @@ import { customLaunch } from '@/server/lib/harness/custom.server';
 import { resolveOmpBin } from '@/server/lib/omp/core/cli';
 import { whichOnToolchainPath } from '@/server/lib/fs/toolchain-path';
 import { rememberProbe } from '@/server/lib/harness/probe-cache.server';
-import { harnessDescriptor, harnessIds, type HarnessId } from '@/shared/lib/harness/catalog';
-import { harnessEnabled } from '@/shared/lib/harness/enabled';
+import { harnessDescriptor, harnessIds, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
+import { harnessEnabled } from '@kabmo-labs/kabmo-harness-enabled';
 
 declare global {
   // eslint-disable-next-line no-var

@@ -10,10 +10,10 @@
  */
 
 import { join } from 'path';
-import { getAgentDir, pathExists } from '@/server/lib/omp/core/paths';
-import { getOmpConfigPath } from '@/server/lib/omp/config/yaml';
-import { seqAt, valueAt, withOmpYamlDocument } from '@/server/lib/omp/config/document';
-import { isRecord } from '@/shared/lib/util/guards';
+import { getAgentDir, pathExists } from '@kabmo-labs/kabmo-omp-paths';
+import { getOmpConfigPath } from '@kabmo-labs/kabmo-omp-config-doc/yaml';
+import { seqAt, valueAt, withOmpYamlDocument } from '@kabmo-labs/kabmo-omp-config-doc/document';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 
 export interface DiscoveredExtension {
   id: string;

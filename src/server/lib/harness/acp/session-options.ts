@@ -12,8 +12,8 @@
  * made that file carry a second responsibility past its size ceiling.
  */
 
-import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
-import type { HarnessId } from '@/shared/lib/harness/catalog';
+import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import type { AcpProcess } from '@/server/lib/harness/acp/client';
 import type { AcpMcpServer } from '@/server/lib/harness/acp/protocol';
 

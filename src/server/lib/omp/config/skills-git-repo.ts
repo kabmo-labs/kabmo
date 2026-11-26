@@ -36,7 +36,7 @@ import fs from 'fs';
 import { tmpdir } from 'os';
 import { dirname, join, relative, resolve, sep } from 'path';
 import { gitRun, firstLine } from '@/server/lib/wiki/git';
-import { parseFrontmatter } from '@/server/lib/omp/config/yaml';
+import { parseFrontmatter } from '@kabmo-labs/kabmo-omp-config-doc/yaml';
 import { repoSlug } from '@/shared/lib/git/url';
 import type { GitSkillEntry } from '@/shared/types';
 

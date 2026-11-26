@@ -32,9 +32,9 @@ import {
   type ToolResultHost,
   type ToolResultRecord,
 } from '@/shared/lib/chat/omp/tool-results';
-import { toolResultText } from '@/shared/lib/omp/session/mapper';
-import { extractToolImages } from '@/shared/lib/omp/session/tool-images';
-import type { ChatMessageData } from '@/shared/types/chat';
+import { toolResultText } from '@kabmo-labs/kabmo-omp-mapper';
+import { extractToolImages } from '@kabmo-labs/kabmo-omp-session-parse/tool-images';
+import type { ChatMessageData } from '@kabmo-labs/kabmo-chat-contracts/chat';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
 
 /** One write per burst. A turn emits a frame per chunk; the row is the unit. */

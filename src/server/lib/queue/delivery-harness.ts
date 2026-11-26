@@ -20,7 +20,7 @@
  */
 
 import { jest, mock } from 'bun:test';
-import type { QueuedMessage } from '@/shared/types/chat';
+import type { QueuedMessage } from '@kabmo-labs/kabmo-chat-contracts/chat';
 import type { ClaimedQueueItem } from '@/server/lib/queue/store.server';
 import type { QueueDeliveryHost } from '@/server/lib/queue/delivery.server';
 

@@ -23,8 +23,8 @@
 
 import { isMockMode } from '@/server/mock.server';
 import { findSessionFileById } from '@/server/lib/omp/session/locator';
-import { readRawHeaderLine } from '@/server/lib/omp/session/files';
-import { loadSessionModel, loadSessionThinkingSelector } from '@/server/lib/omp/session/messages';
+import { readRawHeaderLine } from '@kabmo-labs/kabmo-omp-session-scan/files';
+import { loadSessionModel, loadSessionThinkingSelector } from '@kabmo-labs/kabmo-omp-session-messages/messages';
 import { getRpcSession, resolveSpawnCwd } from '@/server/lib/omp/rpc/manager';
 import { composeMessageWithTextAttachments, type AttachedTextFileData } from '@/shared/lib/chat/attachments';
 import {

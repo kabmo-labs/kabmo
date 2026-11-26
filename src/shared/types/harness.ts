@@ -7,16 +7,16 @@
  * The harness catalog as the CLIENT sees it: identities from the shared
  * catalog, capabilities from `/api/harness`.
  *
- * Split from `@/shared/lib/harness/catalog` because it is the wire shape, not
+ * Split from `@kabmo-labs/kabmo-harness-catalog` because it is the wire shape, not
  * the identity: a panel reads `capabilities.hasUsage` to decide whether to draw
  * a number or say "not reported", and nothing in the client may invent one.
  */
 
 import type { HarnessCapabilities } from '@/server/lib/harness/capabilities';
-import type { HarnessConfig } from '@/shared/lib/harness/config';
-import type { HarnessAccountView } from '@/shared/lib/harness/accounts';
-import type { CanonicalProtocol } from '@/shared/lib/harness/dialects';
-import type { EnvProviderContract } from '@/shared/lib/harness/provider-contracts';
+import type { HarnessConfig } from '@kabmo-labs/kabmo-harness-config';
+import type { HarnessAccountView } from '@kabmo-labs/kabmo-harness-accounts';
+import type { CanonicalProtocol } from '@kabmo-labs/kabmo-harness-provider/dialects';
+import type { EnvProviderContract } from '@kabmo-labs/kabmo-harness-provider/provider-contracts';
 
 export type { HarnessConfig };
 

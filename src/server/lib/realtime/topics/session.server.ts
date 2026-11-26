@@ -33,7 +33,7 @@ import {
 } from '@/server/lib/omp/rpc/peer-proxy.server';
 import { getLiveSession } from '@/server/lib/omp/rpc/session-registry';
 import { attachPeerSession } from '@/server/lib/realtime/topics/peer-relay.server';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 
 /**
  * How long to keep looking for the owning instance after a subscribe found none.

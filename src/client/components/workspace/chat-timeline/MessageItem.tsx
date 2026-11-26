@@ -10,7 +10,7 @@ import { IrcNotice } from '@/client/components/workspace/chat-timeline/IrcNotice
 import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
 import { UserTurn } from '@/client/components/workspace/chat-timeline/UserTurn';
 import { capitalizeFirstLetter } from '@/shared/lib/chat/capitalize';
-import { isNoticeRow, messageAnswerText } from '@/shared/lib/chat/notice-row';
+import { isNoticeRow, messageAnswerText } from '@kabmo-labs/kabmo-chat-notices/notice-row';
 import { transcriptGutter } from '@/shared/lib/chat/timeline/gutter';
 import { traceInset } from '@/shared/lib/chat/timeline/block-chrome';
 import { useToolRenderMode } from '@/client/hooks/chat/timeline/tool-render-mode';

@@ -45,7 +45,7 @@
 import fs from 'fs';
 import path from 'path';
 import { isProcessAlive } from '@/server/lib/lifecycle/identity';
-import { getConfigRoot } from '@/server/lib/omp/core/paths';
+import { getConfigRoot } from '@kabmo-labs/kabmo-omp-paths';
 import { listInstanceRecords, type InstanceRecord } from '@/server/lib/lifecycle/instance';
 import { leaseHeldByAnother } from '@/server/lib/omp/session/lease-probe.server';
 import { fileHolderPid } from '@/server/lib/omp/session/lease-holder.server';

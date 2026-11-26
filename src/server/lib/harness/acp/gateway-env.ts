@@ -27,7 +27,7 @@
  * rather than overwritten.
  */
 
-import type { HarnessId } from '@/shared/lib/harness/catalog';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 
 /** Anthropic's own host. Everything else under `ANTHROPIC_BASE_URL` is a gateway. */
 const ANTHROPIC_HOST = 'api.anthropic.com';

@@ -20,7 +20,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { FormEvent, RefObject } from 'preact/compat';
 import { useFetcher } from '@/client/lib/router/fetcher';
-import { toAbsolutePath } from '@/shared/lib/fs/paths';
+import { toAbsolutePath } from '@kabmo-labs/kabmo-fs-media/paths';
 import { copyToClipboard } from '@/client/hooks/ui/clipboard';
 import { useFileCreate, type CreatedEntry } from '@/client/hooks/workspace/file-create';
 import type { FileClipboard, ClipboardTarget } from '@/client/hooks/workspace/file-clipboard';

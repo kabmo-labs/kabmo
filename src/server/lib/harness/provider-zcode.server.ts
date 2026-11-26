@@ -35,11 +35,11 @@
  * this module owns.
  */
 
-import { withConfigLock } from '@/server/lib/fs/config-lock';
-import { writeFileAtomic } from '@/server/lib/fs/atomic-write';
+import { withConfigLock } from '@kabmo-labs/kabmo-fs-config/config-lock';
+import { writeFileAtomic } from '@kabmo-labs/kabmo-fs-config/atomic-write';
 import { asRecord, type ProviderDraft } from '@/server/lib/harness/provider-entry';
 import { ProviderWriteError } from '@/server/lib/harness/provider-write-error';
-import { protocolOfSourceDialect } from '@/shared/lib/harness/dialects';
+import { protocolOfSourceDialect } from '@kabmo-labs/kabmo-harness-provider/dialects';
 import type { ImportableProvider } from '@/server/lib/harness/provider-sources.server';
 import type { ProviderWriteResult } from '@/server/lib/harness/provider-write.server';
 

@@ -10,7 +10,7 @@
  */
 
 import { useState } from 'preact/hooks';
-import type { ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
+import type { ExtensionUiDialogRequest } from '@kabmo-labs/kabmo-chat-contracts/agent';
 import { FrameControl } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/FrameControl';
 import { QuestionCard } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/QuestionCard';
 import type { ExtensionDialogResponse } from '@/client/components/workspace/chat-timeline/tool-renderers/extension-dialog/Lazy';

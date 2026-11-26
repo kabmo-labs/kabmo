@@ -11,7 +11,7 @@
  */
 
 import { join } from 'path';
-import { getAgentDir } from '@/server/lib/omp/core/paths';
+import { getAgentDir } from '@kabmo-labs/kabmo-omp-paths';
 
 export const MAX_MCP_CONFIG_BYTES = 512 * 1024;
 

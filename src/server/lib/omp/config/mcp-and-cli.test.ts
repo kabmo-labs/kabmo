@@ -18,7 +18,7 @@
 import { afterAll, beforeEach, describe, expect, test } from 'bun:test';
 
 import { testMcpServer } from '@/server/lib/omp/config/mcp-test';
-import { isPathScopedEntry, pathScopedEntryValues, resolvePathScopedSlugs } from '@/server/lib/omp/config/path-scoped';
+import { isPathScopedEntry, pathScopedEntryValues, resolvePathScopedSlugs } from '@kabmo-labs/kabmo-omp-config-doc/path-scoped';
 import { pluginCliError } from '@/server/lib/omp/config/plugin-cli';
 import { getOmpConfigValue, listOmpConfig, resetOmpConfigKey, setOmpConfigValue } from '@/server/lib/omp/config/config-cli';
 

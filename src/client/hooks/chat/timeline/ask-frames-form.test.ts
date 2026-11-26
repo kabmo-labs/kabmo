@@ -27,7 +27,7 @@ import { buildFormData, formAnswers, isArrayQuestion } from '@/shared/lib/chat/a
 import { parseAskForm } from '@/shared/lib/chat/ask-form';
 import type { AskQuestion } from '@/shared/lib/chat/ask-form/types';
 import type { ChatMessageData } from '@/shared/types';
-import type { ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
+import type { ExtensionUiDialogRequest } from '@kabmo-labs/kabmo-chat-contracts/agent';
 
 const HTML = `<form>
   <fieldset>

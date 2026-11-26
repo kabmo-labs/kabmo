@@ -21,7 +21,7 @@
  * `#anchor` is the document's own business and is left exactly as written.
  */
 
-import { buildFsRawUrl } from '@/shared/lib/fs/paths';
+import { buildFsRawUrl } from '@kabmo-labs/kabmo-fs-media/paths';
 
 /**
  * Where the document lives. `path` is relative to the picked scope exactly the

@@ -14,6 +14,10 @@
   //
   // `types: []` also rules out a Bun global (`Bun.spawn`, `Bun.env`) reaching the
   // browser half of a plugin, whose bundler has no such global either.
+  //
+  // `kabmo-omp-paths` is deliberately absent: it is server-only and imports
+  // `fs`/`os`/`path`, so it has no browser-safe surface to check here. The root
+  // program covers it.
   "compilerOptions": {
     "target": "ES2022",
     "module": "ESNext",
@@ -29,7 +33,41 @@
     "noEmit": true,
     "types": []
   },
-  "include": ["packages/kabmo-sdk/src", "packages/kabmo-ui/src"],
+  "include": [
+    "packages/kabmo-sdk/src",
+    "packages/kabmo-ui/src",
+    "packages/kabmo-chat-contracts/src",
+    "packages/kabmo-chat-tool/src",
+    "packages/kabmo-chat-notices/src",
+    "packages/kabmo-model-contracts/src",
+    "packages/kabmo-format/src",
+    "packages/kabmo-fs-media/src",
+    "packages/kabmo-omp-proc/src",
+    "packages/kabmo-guards/src",
+    "packages/kabmo-bytes/src",
+    "packages/kabmo-platform/src",
+    "packages/kabmo-harness-catalog/src",
+    "packages/kabmo-harness-accounts/src",
+    "packages/kabmo-harness-session-modes/src",
+    "packages/kabmo-harness-transcript/src",
+    "packages/kabmo-harness-provider-slug/src",
+    "packages/kabmo-harness-provider/src",
+    "packages/kabmo-harness-config/src",
+    "packages/kabmo-harness-enabled/src",
+    "packages/kabmo-harness-updates/src",
+    "packages/kabmo-harness-config-fields/src",
+    "packages/kabmo-harness-mcp-facts/src",
+    "packages/kabmo-harness-rewind/src",
+    "packages/kabmo-omp-mode/src",
+    "packages/kabmo-omp-schema/src",
+    "packages/kabmo-omp-session-core/src",
+    "packages/kabmo-omp-session-parse/src",
+    "packages/kabmo-omp-mapper/src",
+    "packages/kabmo-omp-messages-map/src",
+    "packages/kabmo-omp-contracts/src",
+    "packages/kabmo-omp-operator-title/src",
+    "packages/kabmo-omp-access-mode/src"
+  ],
   // Tests may name `bun:test` and the host's own globals; they are not shipped.
   "exclude": ["**/*.test.ts", "**/*.test.tsx"]
 }

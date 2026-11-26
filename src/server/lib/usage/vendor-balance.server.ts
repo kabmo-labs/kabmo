@@ -26,7 +26,7 @@ import { readOmpProviderApiKey } from '@/server/lib/omp/core/auth-credentials';
 import { loadProviderEntries } from '@/server/lib/usage/provider-key';
 import { fetchProviderJson } from '@/server/lib/usage/vendor-http';
 import { num, usdWindow } from '@/server/lib/usage/window';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 import type { UsageLimitWindow } from '@/shared/types';
 
 const MASKED_KEY_PATTERN = /•{3,}/;

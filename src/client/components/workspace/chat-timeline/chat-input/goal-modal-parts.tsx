@@ -12,8 +12,8 @@
  */
 
 import type { ComponentChildren } from 'preact';
-import type { GoalRecord } from '@/shared/lib/omp/mode/types';
-import type { GoalAction } from '@/shared/lib/omp/mode/actions';
+import type { GoalRecord } from '@kabmo-labs/kabmo-omp-mode/types';
+import type { GoalAction } from '@kabmo-labs/kabmo-omp-mode/actions';
 import type { GoalActionResult } from '@/client/hooks/chat/timeline/goal-command';
 
 export interface GoalModalProps {

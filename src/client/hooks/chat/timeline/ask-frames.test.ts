@@ -19,7 +19,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import type { ChatMessageData } from '@/shared/types';
-import type { ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
+import type { ExtensionUiDialogRequest } from '@kabmo-labs/kabmo-chat-contracts/agent';
 import { splitAskFrames } from '@/client/hooks/chat/timeline/ask-frames';
 
 /** An assistant turn whose `ask` tool call asked `questions`, as the JSONL and

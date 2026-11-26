@@ -25,8 +25,8 @@
  */
 
 import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
-import { formatGoalDuration, formatGoalTokens } from '@/shared/lib/omp/mode/format';
-import type { GoalNoticeData } from '@/shared/lib/omp/mode/notice';
+import { formatGoalDuration, formatGoalTokens } from '@kabmo-labs/kabmo-omp-mode/format';
+import type { GoalNoticeData } from '@kabmo-labs/kabmo-omp-mode/notice';
 
 export function GoalNotice({ data }: { data: GoalNoticeData }) {
   const figures: string[] = [];

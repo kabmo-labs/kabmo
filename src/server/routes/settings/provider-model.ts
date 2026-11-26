@@ -4,7 +4,7 @@ import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { isMockMode } from '@/server/mock.server';
 import { upsertOmpProviderModels } from '@/server/lib/omp/config/providers';
 import { manualModelSeed } from '@/server/lib/omp/config/provider-seeds';
-import { readNativeProviders } from '@/server/lib/omp/config/models-config';
+import { readNativeProviders } from '@kabmo-labs/kabmo-omp-models-config/models-config';
 import { isProviderAuthMode, isProviderThinkingEffort, modelKindOf } from '@/shared/lib/models/provider/dialect';
 import { refreshModelRegistryAfterWrite } from '@/server/lib/models/registry-refresh.server';
 

@@ -16,7 +16,7 @@ import { color, formatTable, isJson, log, printJson } from '@/cli/lib/output.js'
 import { listLiveInstances, resolveBunBin } from '@/cli/lib/runtime.js';
 import { resolveOmpBin } from '@/server/lib/omp/core/cli';
 import { ompInstallCommands } from '@/server/lib/omp/core/install-hint';
-import { getAgentDir, getConfigRoot } from '@/server/lib/omp/core/paths';
+import { getAgentDir, getConfigRoot } from '@kabmo-labs/kabmo-omp-paths';
 import { isMockMode } from '@/server/mock.server';
 import { getDataDir } from '@/server/lib/lifecycle/paths';
 import { checkOmpUpdate } from '@/server/lib/updates/omp';

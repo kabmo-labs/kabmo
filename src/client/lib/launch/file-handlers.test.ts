@@ -29,8 +29,8 @@ import {
   openLaunchedHandle,
   writeThroughHandle,
 } from '@/client/lib/launch/file-handlers';
-import { BINARY_SNIFF_BYTES } from '@/shared/lib/fs/file-kind';
-import { bodyBytes } from '@/shared/lib/util/bytes';
+import { BINARY_SNIFF_BYTES } from '@kabmo-labs/kabmo-fs-media/file-kind';
+import { bodyBytes } from '@kabmo-labs/kabmo-bytes';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'Event', 'CustomEvent', 'MouseEvent', 'KeyboardEvent', 'fetch'] as const;
 const nativeGlobals: Partial<Record<(typeof DOM_GLOBALS)[number], unknown>> = {};

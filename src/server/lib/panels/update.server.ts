@@ -22,7 +22,7 @@
  */
 
 import { join } from 'path';
-import { pathExists } from '@/server/lib/omp/core/paths';
+import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
 import {
   discoverPanelPlugins,
   getBundledMarketplaceDir,

@@ -23,7 +23,7 @@ import path from 'path';
 import { batchDeleteSessions } from '@/server/routes/sessions/batch-delete';
 import { batchDeleteFolders } from '@/server/routes/folders/batch-delete';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
-import { clearSessionFileCaches } from '@/server/lib/omp/session/files';
+import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
 
 const AGENT_DIR = path.join(os.tmpdir(), `omc-batch-delete-${process.pid}`, 'agent');
 let priorAgentDir: string | undefined;

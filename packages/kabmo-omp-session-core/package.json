@@ -1,0 +1,32 @@
+{
+  "name": "@kabmo-labs/kabmo-omp-session-core",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "omp session ids, titles, JSONL parsing, and patches.",
+  "exports": {
+    ".": "./src/default-title.ts",
+    "./default-title": "./src/default-title.ts",
+    "./hashline-patch": "./src/hashline-patch.ts",
+    "./jsonl": "./src/jsonl.ts",
+    "./skill-source": "./src/skill-source.ts",
+    "./timestamps": "./src/timestamps.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-omp-session-core"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  },
+  "dependencies": {
+    "@kabmo-labs/kabmo-guards": "workspace:*"
+  }
+}

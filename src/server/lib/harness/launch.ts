@@ -29,7 +29,7 @@ import { acpOptionValues } from '@/server/lib/harness/acp/protocol';
 import { UNPROBED_CAPABILITIES, type HarnessCapabilities, type HarnessProbe } from '@/server/lib/harness/capabilities';
 import { HARNESS_LAUNCH, type HarnessLaunch } from '@/server/lib/harness/launch-table';
 import { kabmoExtensionArgs } from '@/server/lib/omp/extensions/locator';
-import type { HarnessId } from '@/shared/lib/harness/catalog';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 
 /**
  * The argv a SESSION spawns with, as opposed to the one a probe runs.

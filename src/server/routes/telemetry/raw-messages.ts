@@ -8,7 +8,7 @@ import { resolveSessionRef } from '@/server/lib/sessions/resolve.server';
 import { buildAcpRawMessages } from '@/server/lib/harness/acp/acp-raw-messages.server';
 import { loadAcpFramesPage } from '@/server/lib/harness/acp/acp-frames.server';
 import { loadAcpUsage } from '@/server/lib/harness/acp/acp-telemetry.server';
-import type { ChatMessageData } from '@/shared/types/chat';
+import type { ChatMessageData } from '@kabmo-labs/kabmo-chat-contracts/chat';
 import type { RawMessageItem } from '@/shared/types';
 
 const MAX_PAGE_SIZE = 100;

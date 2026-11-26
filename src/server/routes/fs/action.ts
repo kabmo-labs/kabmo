@@ -14,7 +14,7 @@ import { checkWriteConflict, parseBaseMtime, stableMtime } from '@/server/lib/fs
 import { transferRefusal } from '@/shared/lib/fs/clipboard';
 import { toDiskText } from '@/shared/lib/code/line-endings';
 import { contentHash } from '@/shared/lib/fs/content-hash';
-import { DOCUMENT_MAX_FILE_BYTES } from '@/shared/lib/fs/file-kind';
+import { DOCUMENT_MAX_FILE_BYTES } from '@kabmo-labs/kabmo-fs-media/file-kind';
 
 /** The two shapes a transfer action answers with, ready for `json`. */
 function transferResponse(outcome: { path?: string; error?: string; status?: number }) {

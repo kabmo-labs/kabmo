@@ -15,8 +15,8 @@
  */
 
 import type { Attachment } from '@/shared/types';
-import type { ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
-import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
+import type { ExtensionUiDialogRequest } from '@kabmo-labs/kabmo-chat-contracts/agent';
+import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 import { ExtensionDialog } from '@/client/components/workspace/chat-timeline/tool-renderers/extension-dialog/Lazy';
 import { NewChatModal } from '@/client/components/workspace/chat-timeline/NewChatModal';
 import { UndoConfirmModal } from '@/client/components/workspace/chat-timeline/UndoConfirmModal';

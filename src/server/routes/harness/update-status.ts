@@ -36,7 +36,7 @@ import { methodNotAllowed, parseJsonBody } from '@/server/lib/route-adapter';
 import { getHarnessUpdateStatusPath } from '@/server/lib/lifecycle/paths';
 import { pumpUpdateQueue, serializeUpdateWork } from '@/server/lib/harness/update-queue.server';
 import { readUpdateJob, removeUpdateJob } from '@/server/lib/harness/update-job-store';
-import { isBuiltinHarness } from '@/shared/lib/harness/catalog';
+import { isBuiltinHarness } from '@kabmo-labs/kabmo-harness-catalog';
 import { jobUnfinished } from '@/shared/lib/harness/update-job';
 
 export async function loader() {

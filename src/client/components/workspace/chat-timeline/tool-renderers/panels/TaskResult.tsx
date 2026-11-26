@@ -4,7 +4,7 @@ import type { ToolCallData } from '@/shared/types';
 import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
 import { tryParseJson } from '@/shared/lib/code/syntax-highlight';
 import { JsonCodeBlock } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/JsonCodeBlock';
-import { formatCompactTokens, formatCost } from '@/shared/lib/format/number';
+import { formatCompactTokens, formatCost } from '@kabmo-labs/kabmo-format/number';
 import { acpDelegationRow } from '@/client/components/workspace/chat-timeline/tool-renderers/panels/task-rows';
 
 interface TaskRow {

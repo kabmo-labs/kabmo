@@ -52,8 +52,8 @@
 
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
-import { getAgentDir } from '@/server/lib/omp/core/paths';
-import { writeFileAtomic } from '@/server/lib/fs/atomic-write';
+import { getAgentDir } from '@kabmo-labs/kabmo-omp-paths';
+import { writeFileAtomic } from '@kabmo-labs/kabmo-fs-config/atomic-write';
 
 /** Overlay file name, under the agent dir. A STABLE name is load-bearing: a
  *  fresh path per request would leave the previous one watched and dead, and

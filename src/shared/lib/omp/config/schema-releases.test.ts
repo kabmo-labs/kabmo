@@ -15,7 +15,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import { OMP_SCHEMA } from '@/shared/lib/omp/config/schema';
-import type { SchemaEntry } from '@/shared/lib/omp/config/schema-types';
+import type { SchemaEntry } from '@kabmo-labs/kabmo-omp-schema/schema-types';
 
 describe('OMP_SCHEMA release rows', () => {
   test('the settings that upstream added after the panel was written are present', () => {

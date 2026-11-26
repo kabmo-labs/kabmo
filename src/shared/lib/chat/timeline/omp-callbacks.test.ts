@@ -24,7 +24,7 @@ import { foldAgentEvent, type OmpAgentFoldDeps } from '@/shared/lib/chat/omp/age
 import { bindStreamingCoalescer, disposeStreamingCoalescer } from '@/shared/lib/chat/timeline/stream-coalescer';
 import type { SetStateAction } from 'preact/compat';
 import type { ChatMessageData, OmpAgentCallbacks, OmpAgentState } from '@/shared/types';
-import type { IncomingExtensionUiRequest } from '@/shared/types/omp/agent';
+import type { IncomingExtensionUiRequest } from '@kabmo-labs/kabmo-chat-contracts/agent';
 
 /** omp's own shape for a completed assistant turn, before the mapper runs. */
 const OMP_ASSISTANT_TURN = {

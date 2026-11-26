@@ -30,7 +30,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { createDb, type DbClient } from '@/server/lib/db/client';
 import { syncWorkspaceFoldersFromDiscovery } from '@/server/lib/db/workspace-sync';
-import { clearSessionFileCaches } from '@/server/lib/omp/session/files';
+import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { invalidateOmpSidebarData } from '@/server/lib/omp/session/reader';
 
 const SCHEMA = `

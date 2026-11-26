@@ -32,7 +32,7 @@
 
 import { stampMessageModel } from '@/server/lib/harness/acp/session-config';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
-import { extractTextFromContent } from '@/shared/lib/omp/session/mapper';
+import { extractTextFromContent } from '@kabmo-labs/kabmo-omp-mapper';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
 
 /** Tool names that hand work to a process the turn does not await.

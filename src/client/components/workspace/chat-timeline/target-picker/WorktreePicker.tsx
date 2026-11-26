@@ -32,7 +32,7 @@ import { createWorktree, useWorktrees } from '@/client/hooks/workspace/worktree/
 import { NewWorktreeModal } from '@/client/components/workspace/worktree-modal/index';
 import type { SpawnTarget } from '@/client/hooks/chat/timeline/spawn-target';
 import type { WorktreeInfo } from '@/shared/lib/workspace/worktree/types';
-import { lastPathSegment } from '@/shared/lib/fs/paths';
+import { lastPathSegment } from '@kabmo-labs/kabmo-fs-media/paths';
 import type { WorkspaceFolderData } from '@/shared/types';
 import type { ToastTone } from '@/shared/lib/ui/toast-duration';
 

@@ -12,8 +12,8 @@
  * accepting something the other refuses.
  */
 
-import type { AgentImage } from '@/shared/types/omp/agent';
-import type { SelectedModel } from '@/shared/types/models';
+import type { AgentImage } from '@kabmo-labs/kabmo-chat-contracts/agent';
+import type { SelectedModel } from '@kabmo-labs/kabmo-model-contracts/models';
 
 /** A trimmed non-empty string, or null — the routes' "absent" spelling. */
 export function readString(value: unknown): string | null {

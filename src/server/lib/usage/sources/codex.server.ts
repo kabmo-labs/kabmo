@@ -21,11 +21,11 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 
 import { codexHome } from '@/server/lib/harness/codex/transcript.server';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 import { dayOfIso, addUsage, countOf, projectFromCwd, statOrNull } from '@/server/lib/usage/sources/helpers';
 import type { UsageRollupRow } from '@/server/lib/usage/index-parse';
 import type { UsageSource, UsageSourceFile, UsageSourceRead } from '@/server/lib/usage/sources/types';
-import type { HarnessId } from '@/shared/lib/harness/catalog';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 
 const HARNESS: HarnessId = 'codex';
 

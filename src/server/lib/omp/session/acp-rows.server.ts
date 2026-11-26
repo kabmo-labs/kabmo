@@ -21,7 +21,7 @@ import { canonicalPath } from '@/server/lib/fs/canonical';
 import { resolveProjectRoot } from '@/server/lib/omp/core/worktree';
 import type { HarnessSessionRow } from '@/server/lib/harness/session-store.server';
 import { knownHarness } from '@/server/lib/harness/session-store.server';
-import { HARNESS_IDS } from '@/shared/lib/harness/catalog';
+import { HARNESS_IDS } from '@kabmo-labs/kabmo-harness-catalog';
 import { deriveSessionTitle } from '@/shared/lib/omp/session/sidebar';
 import type { SessionItemData } from '@/shared/types';
 

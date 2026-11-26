@@ -11,7 +11,7 @@
 
 import { RpcCommandError, RpcCommandTimeoutError } from '@/server/lib/omp/rpc/process';
 import { AGENT_BUSY_MESSAGE, AGENT_BUSY_REFUSAL_RE, AWAITING_AGENT_START_TIMEOUT_MS, GET_STATE_TIMEOUT_MS, IMAGE_BEARING_COMMANDS, PASSTHROUGH_COMMANDS, RESTARTING_MESSAGE, STEER_ACK_TIMEOUT_MS, WebRpcError, promptAckTimeoutMs, toImageContents, type RpcSessionState, validateAgentImages } from '@/server/lib/omp/rpc/constants';
-import { clearSessionFileCaches } from '@/server/lib/omp/session/files';
+import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { awaitTitleDispatch } from '@/server/lib/omp/session/title-request.server';
 import { scheduleQueueDelivery } from '@/server/lib/queue/delivery.server';
 import { clearStreamStatus, markStreamStatus } from '@/shared/lib/omp/session/stream-state.server';

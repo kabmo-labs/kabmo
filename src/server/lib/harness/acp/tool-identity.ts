@@ -36,7 +36,7 @@
  * to `read`, which is how a delegation drew a file-read panel.
  */
 
-import { canonicalAgentToolName } from '@/shared/lib/chat/tool/tool-aliases';
+import { canonicalAgentToolName } from '@kabmo-labs/kabmo-chat-tool/tool-aliases';
 import type { AcpToolKind } from '@/server/lib/harness/acp/protocol';
 
 const KNOWN_KINDS: Readonly<Record<AcpToolKind, true>> = {

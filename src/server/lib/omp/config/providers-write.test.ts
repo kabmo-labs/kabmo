@@ -27,7 +27,7 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 
 import { upsertOmpProviderModels, removeOmpProvider } from '@/server/lib/omp/config/providers';
-import { OmpConfigError } from '@/server/lib/omp/config/document';
+import { OmpConfigError } from '@kabmo-labs/kabmo-omp-config-doc/document';
 
 const originalAgentDir = Bun.env.PI_CODING_AGENT_DIR;
 const roots: string[] = [];

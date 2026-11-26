@@ -25,7 +25,7 @@
 
 import { resolveOmpBin } from '@/server/lib/omp/core/cli';
 import { isMockMode } from '@/server/mock.server';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 import type { UsageResetAccount, UsageResetCredit, UsageResetList, UsageResetSpendResult } from '@/shared/types';
 import { childEnv } from '@/server/lib/fs/child-env';
 

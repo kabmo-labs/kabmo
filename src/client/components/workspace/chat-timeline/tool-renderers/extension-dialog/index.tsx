@@ -1,7 +1,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { CheckCircle2 } from 'lucide-preact';
-import type { ExtensionDialogResponse, ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
+import type { ExtensionDialogResponse, ExtensionUiDialogRequest } from '@kabmo-labs/kabmo-chat-contracts/agent';
 import { ExtensionDialogHeader } from '@/client/components/workspace/chat-timeline/tool-renderers/extension-dialog/Header';
 import { ExtensionDialogSelectBody } from '@/client/components/workspace/chat-timeline/tool-renderers/extension-dialog/SelectBody';
 import { ExtensionDialogFooter } from '@/client/components/workspace/chat-timeline/tool-renderers/extension-dialog/Footer';
@@ -10,7 +10,7 @@ import { dialogMethodMeta, useDialogShortcuts } from '@/client/components/worksp
 import { isApprovalGateFrame } from '@/shared/lib/chat/omp/approval-gate';
 import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
 
-export type { ExtensionDialogResponse } from '@/shared/types/omp/agent';
+export type { ExtensionDialogResponse } from '@kabmo-labs/kabmo-chat-contracts/agent';
 
 interface ExtensionDialogProps {
   request: ExtensionUiDialogRequest;

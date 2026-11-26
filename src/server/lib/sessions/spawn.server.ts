@@ -23,16 +23,16 @@ import {
   createAgentToken,
   rememberAgentToken,
 } from '@/server/lib/sessions/agent-token.server';
-import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
+import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 import { projectModelForCwd } from '@/server/lib/workspace/project-model.server';
 import { startAcpSession } from '@/server/lib/harness/spawn.server';
 import { getLiveSession, harnessOfSession, startNewRpcSession } from '@/server/lib/omp/rpc/session-registry';
 import { harnessProbeModels } from '@/server/lib/harness/probe-cache.server';
 import { getDb } from '@/server/db.server';
-import { harnessDescriptor, type HarnessId } from '@/shared/lib/harness/catalog';
+import { harnessDescriptor, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import { WORKER_BRIEF } from '@/shared/lib/chat/orchestration/notice';
-import type { SelectedModel } from '@/shared/types/models';
-import type { AgentImage } from '@/shared/types/omp/agent';
+import type { SelectedModel } from '@kabmo-labs/kabmo-model-contracts/models';
+import type { AgentImage } from '@kabmo-labs/kabmo-chat-contracts/agent';
 import { MAX_SESSION_DEPTH } from '@/server/lib/sessions/relation-types';
 import {
   createSessionRelation,

@@ -20,7 +20,7 @@
  */
 
 import { resolveOmpBin } from '@/server/lib/omp/core/cli';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 import type { UsageLimitWindow, UsageUnit, UsageWindowStatus } from '@/shared/types';
 import { childEnv } from '@/server/lib/fs/child-env';
 

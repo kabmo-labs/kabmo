@@ -32,7 +32,7 @@
 import { readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { findSessionFileById } from '@/server/lib/omp/session/locator';
-import { parseJsonlLenient } from '@/shared/lib/omp/session/jsonl';
+import { parseJsonlLenient } from '@kabmo-labs/kabmo-omp-session-core/jsonl';
 import type { SessionPlanState, SessionPlanFile } from '@/shared/types/plan';
 
 /** Suffix omp gives every plan artifact (`<slug>-plan.md`). */

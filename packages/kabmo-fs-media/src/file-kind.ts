@@ -1,0 +1,253 @@
+/**
+ * @license
+ * SPDX-License-Identifier: MIT
+ */
+
+import { formatBytes } from '@kabmo-labs/kabmo-format/number';
+import { getDocumentMimeType, getFileExtension, getImageMimeType, SVG_MIME } from './mime';
+
+/**
+ * What the editor can DO with a file, decided from the path, its size and its
+ * leading bytes — the ONE classification the read route, the editor surface and
+ * the drop target all branch on.
+ *
+ * The MIME tables this reads live in `mime.ts`, which is the module the icon,
+ * the viewer and `/api/fs/raw` also read, so "which files are pictures" has one
+ * answer.
+ */
+
+/** Leading bytes → MIME, longest signature first so `webp`'s `RIFF`/`WEBP`
+ *  pair is checked before a bare container match could accept it. */
+const IMAGE_MAGIC: { bytes: number[]; mime: string; offset?: number }[] = [
+  { bytes: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], mime: 'image/png' },
+  { bytes: [0xff, 0xd8, 0xff], mime: 'image/jpeg' },
+  { bytes: [0x47, 0x49, 0x46, 0x38], mime: 'image/gif' },
+  // RIFF????WEBP — the tag sits at offset 8, after the 4-byte size field.
+  { bytes: [0x57, 0x45, 0x42, 0x50], mime: 'image/webp', offset: 8 },
+  { bytes: [0x66, 0x74, 0x79, 0x70, 0x61, 0x76, 0x69, 0x66], mime: 'image/avif', offset: 4 },
+  { bytes: [0x42, 0x4d], mime: 'image/bmp' },
+  { bytes: [0x49, 0x49, 0x2a, 0x00], mime: 'image/tiff' },
+  { bytes: [0x4d, 0x4d, 0x00, 0x2a], mime: 'image/tiff' },
+  { bytes: [0x00, 0x00, 0x01, 0x00], mime: 'image/x-icon' },
+];
+
+/**
+ * True when the bytes are an SVG document.
+ *
+ * An SVG has no magic signature — it is XML, and an `<svg>` root can sit behind
+ * a prolog, a comment, a doctype and a long `<style>` — so the head is read as
+ * text. Only the first 2 KiB are decoded: past that there is no prolog left.
+ *
+ * Lives here rather than in one caller because two paths need the same answer:
+ * the blob store has to label a `.svg` blob `image/svg+xml` or the browser
+ * downloads it, and a provider's favicon is the same question about different
+ * bytes.
+ */
+export function looksLikeSvg(bytes: Uint8Array): boolean {
+  const head = new TextDecoder().decode(bytes.subarray(0, 2048)).trimStart();
+  return head.startsWith('<svg') || (head.startsWith('<?xml') && head.includes('<svg'));
+}
+
+/**
+ * MIME type for a raster image read from its own bytes, or null when no
+ * signature matches.
+ *
+ * The extension is not always available: omp's blob store names a file by its
+ * content hash and writes the extension onto a hardlink beside it, so a store
+ * pruned of those links — or a ref whose `mimeType` field the caller lost —
+ * leaves the bytes as the only evidence. A wrong `content-type` is not
+ * cosmetic here: `image/*` is what makes the browser paint rather than download.
+ *
+ * SVG is the last entry because it matches no bytes table: a tool can return an
+ * SVG image block (and omp's blob store will hold it), and without this the blob
+ * route answered `application/octet-stream`, which paints nothing.
+ */
+export function getImageMimeFromBytes(bytes: Uint8Array): string | null {
+  for (const { bytes: magic, mime, offset = 0 } of IMAGE_MAGIC) {
+    if (bytes.length < offset + magic.length) continue;
+    let matched = true;
+    for (let i = 0; i < magic.length; i += 1) {
+      if (bytes[offset + i] !== magic[i]) {
+        matched = false;
+        break;
+      }
+    }
+    if (matched) return mime;
+  }
+  return looksLikeSvg(bytes) ? SVG_MIME : null;
+}
+
+/**
+ * The largest text file the editor will open when its bytes reach the page
+ * WHOLE.
+ *
+ * Not a policy knob: the editor holds the whole file in one string, CodeMirror
+ * holds a second representation of it, and the whole thing is posted back on
+ * every save — so a ceiling has to exist.
+ *
+ * **32 MiB, measured.** The number used to be 5 MiB, and its justification died
+ * with the `<textarea>`: that limit existed because a textarea stops responding,
+ * and the surface is CodeMirror 6 now. Re-measured on the assembled app (a
+ * generated source file, Files panel open, Chromium):
+ *
+ * | File | Open | Keystroke | Save | JS heap |
+ * |---|---|---|---|---|
+ * | 5 MB | 99 ms | 17 ms | 289 ms | 73 MB |
+ * | 10 MB | 147 ms | 32 ms | 494 ms | 73 MB |
+ * | 20 MB | 212 ms | 34 ms | 969 ms | 73 MB |
+ * | 30 MB | 323 ms | 39 ms | 2 292 ms | — |
+ * | 40 MB | 283 ms | 45 ms | 1 793 ms | — |
+ * | 50 MB | 372 ms | 72 ms | 2 228 ms | **1 078 MB** |
+ * | 64 MB | never finished loading | — | — | — |
+ *
+ * The curve is flat through 40 MB and breaks at 50: the heap goes from a few
+ * hundred megabytes to over a gigabyte for ONE tab, and a 64 MB file does not
+ * open at all. 32 MiB is the last size with a comfortable margin below that
+ * knee — ten times any source file, and the point past which a tab is a risk to
+ * every other tab in the browser rather than a convenience.
+ *
+ * Two costs had to be removed before this number was reachable, and both were
+ * linear-in-file-size work paid per keystroke: the outline's scan-and-render of
+ * every declaration (`outline/rows.ts`), and a full `doc.toString()` on every
+ * render (`code-surface/index.tsx`).
+ *
+ * A DOCX and an XLSX are parsed in the page too, but they get their own number —
+ * see `DOCUMENT_MAX_FILE_BYTES`.
+ */
+export const EDITOR_MAX_FILE_BYTES = 32 * 1024 * 1024;
+
+/**
+ * The largest Word document or workbook the editor opens.
+ *
+ * `mammoth` and SheetJS parse the fetched `ArrayBuffer` in the page,
+ * so the file does sit in memory — but it is unzipped and converted once and
+ * then released, where a text buffer is held for as long as the tab is open and
+ * re-posted on every save. That is why these get a ceiling of their own rather
+ * than the text one: the reason the text limit exists (a buffer that must stay
+ * editable, and a save that re-posts it) does not apply to a read-only
+ * conversion.
+ *
+ * Measured on a 15 MB workbook: the fetch, the unzip and the grid render all
+ * complete, and the panel stays responsive.
+ */
+export const DOCUMENT_MAX_FILE_BYTES = 20 * 1024 * 1024;
+
+/**
+ * The largest PDF the editor opens.
+ *
+ * Its own number rather than the text ceiling, because a PDF is the one document
+ * the page never holds — and the only one whose limit is not about a buffer at
+ * all (see below). It is no longer the largest of the three: the TEXT ceiling
+ * moved past it, which is fine because the two numbers answer different
+ * questions rather than ranking a shared budget.
+ *
+ * `PdfView` points an `<iframe>` at `/api/fs/raw`, so the bytes go straight to
+ * Chrome's own viewer, which fetches them with range requests (verified: a
+ * `Range: bytes=0-1023` request answers `206` with `content-range` and
+ * `accept-ranges`, and the plugin issues its own ranges as the reader scrolls).
+ * Nothing in Kabmo buffers the file, so the text ceiling has no reason to
+ * apply to it — and applying it was the bug: a 6 MB PDF dragged from Finder was
+ * refused as "larger than the 5.00 MB the editor opens" before the document
+ * branch was ever reached, because the size test runs first. The 30 MB here is
+ * Chrome's own plugin's comfort zone, not Kabmo's memory.
+ */
+export const PDF_MAX_FILE_BYTES = 30 * 1024 * 1024;
+
+/**
+ * Extensions whose ceiling differs from `EDITOR_MAX_FILE_BYTES`.
+ *
+ * One table, read by the size test, by the refusal sentence AND by
+ * `/api/fs/raw`, because the sentence names the number to the user and the raw
+ * route is the one place every viewer's bytes come through: two copies of the
+ * rule would let a file be refused against one limit, explained against another
+ * and streamed past a third.
+ *
+ * An extension absent from this table falls back to the text ceiling — except
+ * an image, which is exempt from the size test entirely because `/api/fs/raw`
+ * streams it to an `<img>` and nothing is ever buffered.
+ */
+export const EDITOR_MAX_BYTES_BY_EXT: Record<string, number> = {
+  pdf: PDF_MAX_FILE_BYTES,
+  docx: DOCUMENT_MAX_FILE_BYTES,
+  xls: DOCUMENT_MAX_FILE_BYTES,
+  xlsx: DOCUMENT_MAX_FILE_BYTES,
+  xlsm: DOCUMENT_MAX_FILE_BYTES,
+};
+
+/** How many leading bytes are inspected for binary content. */
+export const BINARY_SNIFF_BYTES = 8192;
+
+/**
+ * What the editor can do with a file, decided from the path, its size and its
+ * leading bytes — the ONE classification the read route, the editor surface and
+ * the drop target all branch on.
+ *
+ * `text`, `image` and `document` are openable; `binary` and `too-large` are not,
+ * and each says why so the refusal can name the actual reason instead of "could
+ * not read".
+ */
+export type EditorFileKind = 'image' | 'document' | 'text' | 'binary' | 'too-large';
+
+/**
+ * Classify a file for the editor.
+ *
+ * An image is checked FIRST and stays openable whatever its size: `/api/fs/raw`
+ * streams it and the browser paints it, so a large picture costs no buffer.
+ *
+ * A PDF is the same answer for the same reason, up to a higher ceiling: its
+ * viewer is an `<iframe>` on `/api/fs/raw`, so the bytes are streamed to
+ * Chrome's own plugin and never held in the page.
+ *
+ * A DOCX and a workbook are the middle case: `mammoth` and SheetJS parse
+ * the fetched `ArrayBuffer` in the page, so the file IS held — but only for the
+ * conversion, not for the life of the tab, which is what buys them
+ * `DOCUMENT_MAX_FILE_BYTES` (20 MiB) instead of the text ceiling.
+ *
+ * The binary test is a NUL byte in the leading bytes — git's own test, and the
+ * boring one: no encoding a source file uses puts a NUL inside a character,
+ * while every container format (zip, PNG, wasm, sqlite, a compiled object) has
+ * one early. A document is exempt from that sniff, because every one of them IS
+ * a container: a DOCX and an XLSX are zips and a PDF carries binary streams, so
+ * the sniff would refuse exactly the files the viewer exists for. Sniffing only
+ * the head keeps the check off the read path's critical section.
+ *
+ * `head` may be omitted when the caller has already refused on size or kind —
+ * a missing head is treated as text, which is the answer that opens the file.
+ */
+export function classifyEditorFile(options: {
+  path?: string | null;
+  size: number;
+  head?: Uint8Array;
+}): EditorFileKind {
+  if (getImageMimeType(options.path)) return 'image';
+  if (options.size > (EDITOR_MAX_BYTES_BY_EXT[getFileExtension(options.path)] ?? EDITOR_MAX_FILE_BYTES)) {
+    return 'too-large';
+  }
+  if (getDocumentMimeType(options.path)) return 'document';
+  if (options.head?.includes(0)) return 'binary';
+  return 'text';
+}
+
+/**
+ * The sentence shown where the document would have been.
+ *
+ * Shared so the drop target, the editor surface and the read route's refusal
+ * cannot word the same refusal three ways.
+ *
+ * The limit is derived from `path`, so the number in the sentence is the number
+ * the classifier actually applied: a 31 MB PDF is refused against 30 MB, never
+ * against the 5 MB a text file would get.
+ */
+export function unsupportedEditorMessage(
+  kind: 'binary' | 'too-large',
+  size?: number,
+  path?: string | null,
+): string {
+  if (kind === 'too-large') {
+    const limit = formatBytes(EDITOR_MAX_BYTES_BY_EXT[getFileExtension(path)] ?? EDITOR_MAX_FILE_BYTES);
+    return size === undefined
+      ? `This file is larger than the ${limit} the editor opens.`
+      : `This file is ${formatBytes(size)} — larger than the ${limit} the editor opens.`;
+  }
+  return 'This file is not text, so it cannot be shown in the editor.';
+}

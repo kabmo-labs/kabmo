@@ -19,7 +19,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:tes
 import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { ModeToggles, type ModeTogglesProps } from '@/client/components/workspace/chat-timeline/chat-input/ModeToggles';
-import type { GoalRecord } from '@/shared/lib/omp/mode/types';
+import type { GoalRecord } from '@kabmo-labs/kabmo-omp-mode/types';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
 
 let container: HTMLElement;

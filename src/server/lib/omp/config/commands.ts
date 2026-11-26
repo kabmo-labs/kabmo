@@ -31,10 +31,10 @@
 
 import fs from 'fs';
 import { join, resolve } from 'path';
-import { getAgentDir, pathExists } from '@/server/lib/omp/core/paths';
+import { getAgentDir, pathExists } from '@kabmo-labs/kabmo-omp-paths';
 import { commandRoots, PROJECT_COMMAND_ROOTS } from '@/server/lib/omp/config/discovery-roots';
-import { writeFileAtomic } from '@/server/lib/fs/atomic-write';
-import { parseFrontmatter } from '@/server/lib/omp/config/yaml';
+import { writeFileAtomic } from '@kabmo-labs/kabmo-fs-config/atomic-write';
+import { parseFrontmatter } from '@kabmo-labs/kabmo-omp-config-doc/yaml';
 
 const MAX_COMMAND_MD_BYTES = 512 * 1024;
 

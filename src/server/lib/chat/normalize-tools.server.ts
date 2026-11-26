@@ -25,9 +25,9 @@
  */
 
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
-import type { ToolRender } from '@/shared/types/tool-render';
-import { isToolRenderKey, resolveToolRender } from '@/shared/lib/chat/tool/render-key';
-import { isRecord } from '@/shared/lib/util/guards';
+import type { ToolRender } from '@kabmo-labs/kabmo-chat-contracts/tool-render';
+import { isToolRenderKey, resolveToolRender } from '@kabmo-labs/kabmo-chat-tool/render-key';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 
 interface ToolCallBlock {
   type: 'toolCall';

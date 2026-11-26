@@ -14,7 +14,7 @@ import { childEnv } from '@/server/lib/fs/child-env';
 import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { join, resolve } from 'path';
-import { pathExists } from '@/server/lib/omp/core/paths';
+import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
 
 async function hasGitCommand(): Promise<boolean> {
   try {

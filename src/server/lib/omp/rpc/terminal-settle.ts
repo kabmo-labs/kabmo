@@ -49,7 +49,7 @@ import { noteChildOutcome } from '@/server/lib/sessions/notify.server';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
 import { publishSidebarStructure } from '@/server/lib/realtime/topics.server';
 import { AGENT_BUSY_REFUSAL_RE } from '@/server/lib/omp/rpc/constants';
-import { deriveTurnError, turnStoppedAbnormally } from '@/shared/lib/omp/session/turn-error';
+import { deriveTurnError, turnStoppedAbnormally } from '@kabmo-labs/kabmo-omp-session-parse/turn-error';
 import type { ChildOutcomeNotice } from '@/server/lib/sessions/notify.server';
 
 /** The wrapper surface a terminal settle touches. */

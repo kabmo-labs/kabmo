@@ -24,7 +24,7 @@
  * mentions JSON is left alone.
  */
 
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 
 export interface NestedPhaseEntry {
   phase: string;

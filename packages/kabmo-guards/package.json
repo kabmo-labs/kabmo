@@ -1,0 +1,24 @@
+{
+  "name": "@kabmo-labs/kabmo-guards",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Shared runtime guards for unknown records.",
+  "exports": {
+    ".": "./src/guards.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-guards"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  }
+}

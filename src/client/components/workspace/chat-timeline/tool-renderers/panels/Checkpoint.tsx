@@ -1,7 +1,7 @@
 import { Camera, RotateCcw } from 'lucide-preact';
 import type { ToolCallData } from '@/shared/types';
 import { FallbackOutput } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/FallbackOutput';
-import { formatTimestamp } from '@/shared/lib/format/time';
+import { formatTimestamp } from '@kabmo-labs/kabmo-format/time';
 
 interface SnapshotInfo {
   id?: unknown;

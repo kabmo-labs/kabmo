@@ -1,9 +1,9 @@
 import { useMemo } from 'preact/hooks';
 import { Boxes, Braces } from 'lucide-preact';
 import type { ToolCallData } from '@/shared/types';
-import { soleToolCommand } from '@/shared/lib/chat/tool/tool-commands';
+import { soleToolCommand } from '@kabmo-labs/kabmo-chat-tool/tool-commands';
 import { tryParseJson } from '@/shared/lib/code/syntax-highlight';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
 import { FallbackOutput } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/FallbackOutput';
 

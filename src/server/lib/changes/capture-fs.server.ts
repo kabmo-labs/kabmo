@@ -15,7 +15,7 @@
 
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
 import type { ShellTrace } from '@/server/lib/changes/capture-types';
 

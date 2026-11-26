@@ -1,0 +1,24 @@
+{
+  "name": "@kabmo-labs/kabmo-harness-session-modes",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Harness session-mode labels and transitions.",
+  "exports": {
+    ".": "./src/session-modes.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-harness-session-modes"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  }
+}

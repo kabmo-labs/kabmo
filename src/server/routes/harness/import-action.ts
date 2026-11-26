@@ -24,12 +24,12 @@
  */
 
 import { json } from '@/server/lib/remix-compat';
-import { isBuiltinHarness, type HarnessId } from '@/shared/lib/harness/catalog';
-import { adaptBaseUrl, planProtocol, supportedProtocols, type CanonicalProtocol } from '@/shared/lib/harness/dialects';
-import { providerFacts } from '@/shared/lib/harness/provider-lookup';
-import { providerEnv, providerLevel, registryLabel } from '@/shared/lib/harness/providers';
-import { providerIdProblem, providerSlugFrom } from '@/shared/lib/harness/provider-slug';
-import { withEnvValues } from '@/shared/lib/harness/config';
+import { isBuiltinHarness, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
+import { adaptBaseUrl, planProtocol, supportedProtocols, type CanonicalProtocol } from '@kabmo-labs/kabmo-harness-provider/dialects';
+import { providerFacts } from '@kabmo-labs/kabmo-harness-provider/provider-lookup';
+import { providerEnv, providerLevel, registryLabel } from '@kabmo-labs/kabmo-harness-provider/providers';
+import { providerIdProblem, providerSlugFrom } from '@kabmo-labs/kabmo-harness-provider-slug';
+import { withEnvValues } from '@kabmo-labs/kabmo-harness-config';
 import { loadHarnessConfig, saveHarnessConfig } from '@/server/lib/harness/config.server';
 import { forgetProbe } from '@/server/lib/harness/probe-cache.server';
 import { probeEndpointProtocols, type EndpointProbe } from '@/server/lib/harness/provider-probe.server';

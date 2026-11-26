@@ -3,7 +3,7 @@ import type { ToolCallData } from '@/shared/types';
 import { FallbackOutput } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/FallbackOutput';
 import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
 import { GoalRecordPanel } from '@/client/components/workspace/chat-timeline/tool-renderers/panels/GoalRecord';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 
 interface GoalItem {
   title?: unknown;

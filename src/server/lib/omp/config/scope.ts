@@ -33,7 +33,7 @@
  * caller never asked about.
  */
 
-import { getAgentDir } from '@/server/lib/omp/core/paths';
+import { getAgentDir } from '@kabmo-labs/kabmo-omp-paths';
 import { resolveRoot } from '@/server/lib/fs/root';
 
 export interface DiscoveryScope {

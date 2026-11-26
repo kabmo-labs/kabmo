@@ -38,7 +38,7 @@ import { useSessionContextTelemetry } from '@/client/hooks/chat/context/telemetr
 import { useModelNames } from '@/client/hooks/models/use-model-names';
 import { useProviderNames } from '@/client/hooks/models/use-provider-names';
 import { providerLabel } from '@/shared/lib/models/provider/label';
-import { formatCompactTokens } from '@/shared/lib/format/number';
+import { formatCompactTokens } from '@kabmo-labs/kabmo-format/number';
 import { CONTEXT_BAND_TONES, contextUsageBand } from '@/shared/lib/chat/context/usage';
 import { ContextRing } from '@/client/components/common/context-usage-button/Ring';
 import { McpSection } from '@/client/components/common/context-usage-button/McpSection';

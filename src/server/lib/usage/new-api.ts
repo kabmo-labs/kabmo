@@ -29,7 +29,7 @@ import { resolveProviderEndpoint, type ProviderEndpoint } from '@/server/lib/usa
 import { fetchProviderJson } from '@/server/lib/usage/vendor-http';
 import type { VendorBalance } from '@/server/lib/usage/vendor-balance.server';
 import { num, usdWindow } from '@/server/lib/usage/window';
-import { isRecord } from '@/shared/lib/util/guards';
+import { isRecord } from '@kabmo-labs/kabmo-guards';
 import type { UsageLimitWindow } from '@/shared/types';
 
 /**

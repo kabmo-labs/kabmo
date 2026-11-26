@@ -17,7 +17,7 @@ import fs from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, join } from 'node:path';
 
-import type { HarnessId } from '@/shared/lib/harness/catalog';
+import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import { localDayKey } from '@/shared/lib/usage/range';
 import { foldUsage, type ParsedUsageEntry, type UsageRollupRow } from '@/server/lib/usage/index-parse';
 

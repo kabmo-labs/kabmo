@@ -18,7 +18,7 @@
  */
 
 import type { SessionTimingStats } from '@/shared/types';
-import { formatSpan } from '@/shared/lib/format/duration';
+import { formatSpan } from '@kabmo-labs/kabmo-format/duration';
 
 interface SessionStatsProps {
   /** User prompts; a run may contain several LLM/tool turns. */

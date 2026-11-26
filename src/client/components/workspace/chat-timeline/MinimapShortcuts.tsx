@@ -1,6 +1,6 @@
 import { useState } from 'preact/hooks';
 import type { UserTurnRef } from '@/shared/types';
-import { formatMessageStamp } from '@/shared/lib/format/time';
+import { formatMessageStamp } from '@kabmo-labs/kabmo-format/time';
 
 interface MinimapShortcutsProps {
   /** Every user turn of the session, oldest first — not just the mounted

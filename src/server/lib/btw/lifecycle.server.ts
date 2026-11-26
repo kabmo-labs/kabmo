@@ -20,9 +20,9 @@ import { buildBtwPrompt } from '@/server/lib/btw/prompt';
 import { boundSideReply } from '@/server/lib/btw/reply';
 import { appendBtwTurn, settleRunningBtwTurns, updateBtwTurn } from '@/server/lib/btw/store.server';
 import type { BtwRuntimeSink } from '@/server/lib/btw/runtime.server';
-import { toChatMessage } from '@/shared/lib/omp/session/mapper';
+import { toChatMessage } from '@kabmo-labs/kabmo-omp-mapper';
 import { describeAssistantPhase, describeToolActivity } from '@/shared/lib/chat/timeline/tool-verbs';
-import { isNoticeRow } from '@/shared/lib/chat/notice-row';
+import { isNoticeRow } from '@kabmo-labs/kabmo-chat-notices/notice-row';
 import type { AgentImage, BtwTurnStatus, ChatMessageData } from '@/shared/types';
 
 /** Longest an aborted turn may stay unsettled before its child is reclaimed. */
