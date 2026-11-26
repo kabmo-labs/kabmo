@@ -229,6 +229,7 @@ describe('package catalog', () => {
       'kabmo-chat-tool',
       'kabmo-chat-notices',
       'kabmo-omp-session-parse',
+      'kabmo-acp-turn',
       'kabmo-omp-mapper',
       'kabmo-omp-messages-map',
       'kabmo-omp-session-messages',

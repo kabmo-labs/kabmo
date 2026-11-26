@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from 'bun:test';
 import { AcpRequestError } from '@kabmo-labs/kabmo-acp-mapper/calls';
-import { AcpTurns, type AcpTurnSeams } from '@/server/lib/harness/acp/turn';
+import { AcpTurns, type AcpTurnSeams } from './turn';
 
 type TurnEnd = Parameters<AcpTurnSeams['onTurnEnd']>[0];
 

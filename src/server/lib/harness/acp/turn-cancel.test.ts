@@ -12,7 +12,7 @@
  */
 
 import { describe, expect, test, vi } from 'bun:test';
-import { CancelSettle } from '@/server/lib/harness/acp/turn-cancel';
+import { CancelSettle } from '@kabmo-labs/kabmo-acp-turn/turn-cancel';
 
 describe('CancelSettle', () => {
   test('settles once the window closes', () => {

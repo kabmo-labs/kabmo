@@ -190,6 +190,10 @@ export const RELEASE_PACKAGES = [
     name: '@kabmo-labs/kabmo-omp-session-parse',
   },
   {
+    dir: 'packages/kabmo-acp-turn',
+    name: '@kabmo-labs/kabmo-acp-turn',
+  },
+  {
     dir: 'packages/kabmo-omp-mapper',
     name: '@kabmo-labs/kabmo-omp-mapper',
   },

@@ -17,8 +17,8 @@
 
 import { describe, expect, test } from 'bun:test';
 import { AcpRequestError } from '@kabmo-labs/kabmo-acp-mapper/calls';
-import { isSessionBusy, promptWithBusyRetry } from '@/server/lib/harness/acp/turn-dispatch';
-import { TurnQueue } from '@/server/lib/harness/acp/turn-queue';
+import { isSessionBusy, promptWithBusyRetry } from './turn-dispatch';
+import { TurnQueue } from './turn-queue';
 
 const busy = () => new AcpRequestError('Session is busy', -32003, { reason: 'session_busy' });
 

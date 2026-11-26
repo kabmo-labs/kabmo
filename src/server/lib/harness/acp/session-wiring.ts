@@ -27,7 +27,7 @@ import type { AcpProcess } from '@kabmo-labs/kabmo-acp-client/client';
 import type { AcpFrameMapper } from '@kabmo-labs/kabmo-acp-mapper/frames';
 import { promptBlocks } from '@/server/lib/harness/acp/prompt';
 import { promptFileLinks } from '@/server/lib/harness/acp/prompt-files';
-import { AcpTurns, type AcpTurnEndInfo } from '@/server/lib/harness/acp/turn';
+import { AcpTurns, type AcpTurnEndInfo } from '@kabmo-labs/kabmo-acp-turn/turn';
 import { stampMessageModel } from '@/server/lib/harness/acp/session-config';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
 import type { IdleReaper } from '@/server/lib/omp/rpc/idle-reaper';

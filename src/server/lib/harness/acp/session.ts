@@ -16,7 +16,7 @@
 
 import { AcpProcess } from '@kabmo-labs/kabmo-acp-client/client';
 import { openSessionProcess } from '@/server/lib/harness/acp/session-process';
-import { AcpTurns, type AcpTurnEndInfo } from '@/server/lib/harness/acp/turn';
+import { AcpTurns, type AcpTurnEndInfo } from '@kabmo-labs/kabmo-acp-turn/turn';
 import { acpBackgroundProbe, acpTurns, acpWiringFor } from '@/server/lib/harness/acp/session-wiring';
 import { AcpFrameMapper } from '@kabmo-labs/kabmo-acp-mapper/frames';
 import { AcpReplay } from '@/server/lib/harness/acp/replay';

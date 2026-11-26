@@ -22,7 +22,7 @@ import { AcpReplay } from '@/server/lib/harness/acp/replay';
 import { AcpSession } from '@/server/lib/harness/acp/session';
 import { AcpUsageMeter } from '@/server/lib/harness/acp/session-usage';
 import { AcpFrameMapper } from '@kabmo-labs/kabmo-acp-mapper/frames';
-import { AcpTurns } from '@/server/lib/harness/acp/turn';
+import { AcpTurns } from '@kabmo-labs/kabmo-acp-turn/turn';
 import { SessionListeners } from '@/server/lib/harness/acp/session-listeners';
 import { RawNotificationSink } from '@kabmo-labs/kabmo-acp-protocol/raw-listeners';
 import { PendingPermissions } from '@kabmo-labs/kabmo-acp-client/permissions';

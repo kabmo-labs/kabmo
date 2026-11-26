@@ -16,14 +16,14 @@
  *    cannot reach a client that already finalized the message.
  */
 
-import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
+import type { AgentEvent } from '@kabmo-labs/kabmo-omp-contracts/events';
 import { AcpRequestError } from '@kabmo-labs/kabmo-acp-mapper/calls';
 import { turnEndFrame } from '@kabmo-labs/kabmo-acp-mapper/frames';
-import { TurnSilence } from '@/server/lib/harness/acp/turn-silence';
-import { CancelSettle } from '@/server/lib/harness/acp/turn-cancel';
-import { TurnQueue } from '@/server/lib/harness/acp/turn-queue';
-import { promptWithBusyRetry, SESSION_BUSY_WAIT_MS } from '@/server/lib/harness/acp/turn-dispatch';
-import { reasonSuppressed, turnVerdict } from '@/server/lib/harness/acp/turn-verdict';
+import { TurnSilence } from './turn-silence';
+import { CancelSettle } from './turn-cancel';
+import { TurnQueue } from './turn-queue';
+import { promptWithBusyRetry, SESSION_BUSY_WAIT_MS } from './turn-dispatch';
+import { reasonSuppressed, turnVerdict } from './turn-verdict';
 
 const STRANDED_REASON = 'The agent stopped reporting progress; the turn was closed after a long silence.';
 

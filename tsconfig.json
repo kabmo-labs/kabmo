@@ -109,6 +109,27 @@
       "@kabmo-labs/kabmo-acp-client/permissions": [
         "./packages/kabmo-acp-client/src/permissions.ts"
       ],
+      "@kabmo-labs/kabmo-acp-turn": [
+        "./packages/kabmo-acp-turn/src/turn.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-turn/turn": [
+        "./packages/kabmo-acp-turn/src/turn.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-turn/turn-cancel": [
+        "./packages/kabmo-acp-turn/src/turn-cancel.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-turn/turn-dispatch": [
+        "./packages/kabmo-acp-turn/src/turn-dispatch.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-turn/turn-queue": [
+        "./packages/kabmo-acp-turn/src/turn-queue.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-turn/turn-silence": [
+        "./packages/kabmo-acp-turn/src/turn-silence.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-turn/turn-verdict": [
+        "./packages/kabmo-acp-turn/src/turn-verdict.ts"
+      ],
       "@kabmo-labs/kabmo-auth": [
         "./packages/kabmo-auth/src/password.ts"
       ],

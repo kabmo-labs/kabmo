@@ -20,6 +20,7 @@
         "@kabmo-labs/kabmo-acp-mapper": "workspace:*",
         "@kabmo-labs/kabmo-acp-protocol": "workspace:*",
         "@kabmo-labs/kabmo-acp-stdio": "workspace:*",
+        "@kabmo-labs/kabmo-acp-turn": "workspace:*",
         "@kabmo-labs/kabmo-auth": "workspace:*",
         "@kabmo-labs/kabmo-bytes": "workspace:*",
         "@kabmo-labs/kabmo-chat-contracts": "workspace:*",
@@ -148,6 +149,15 @@
         "@kabmo-labs/kabmo-process-kill": "workspace:*",
         "@kabmo-labs/kabmo-rpc-lines": "workspace:*",
         "@kabmo-labs/kabmo-sdk": "workspace:*",
+      },
+    },
+    "packages/kabmo-acp-turn": {
+      "name": "@kabmo-labs/kabmo-acp-turn",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kabmo-labs/kabmo-acp-mapper": "workspace:*",
+        "@kabmo-labs/kabmo-omp-contracts": "workspace:*",
+        "@kabmo-labs/kabmo-omp-session-parse": "workspace:*",
       },
     },
     "packages/kabmo-auth": {
@@ -563,6 +573,8 @@
     "@kabmo-labs/kabmo-acp-protocol": ["@kabmo-labs/kabmo-acp-protocol@workspace:packages/kabmo-acp-protocol"],
 
     "@kabmo-labs/kabmo-acp-stdio": ["@kabmo-labs/kabmo-acp-stdio@workspace:packages/kabmo-acp-stdio"],
+
+    "@kabmo-labs/kabmo-acp-turn": ["@kabmo-labs/kabmo-acp-turn@workspace:packages/kabmo-acp-turn"],
 
     "@kabmo-labs/kabmo-auth": ["@kabmo-labs/kabmo-auth@workspace:packages/kabmo-auth"],
 

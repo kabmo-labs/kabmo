@@ -18,7 +18,7 @@ import { cancelAllAcpPermissions } from '@/server/lib/harness/acp/session-permis
 import { endAcpTurn } from '@/server/lib/harness/acp/session-turns';
 import { LOST_SESSION_NOTICE } from '@/server/lib/harness/acp/session-lost';
 import type { AcpSession } from '@/server/lib/harness/acp/session';
-import type { AcpTurnEndInfo } from '@/server/lib/harness/acp/turn';
+import type { AcpTurnEndInfo } from '@kabmo-labs/kabmo-acp-turn/turn';
 
 /** Stop the turn and settle what it parked. */
 export function cancelAcpTurn(session: AcpSession): void {
