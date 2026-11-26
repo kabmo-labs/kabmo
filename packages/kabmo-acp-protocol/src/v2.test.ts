@@ -21,7 +21,7 @@ import {
   normalizeSessionResult,
   planEntries,
   toAcpV2McpServers,
-} from '@/server/lib/harness/acp/v2';
+} from './v2';
 
 const v2Init = {
   protocolVersion: 2,

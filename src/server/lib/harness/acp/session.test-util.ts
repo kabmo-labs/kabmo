@@ -21,12 +21,12 @@
 import { AcpReplay } from '@/server/lib/harness/acp/replay';
 import { AcpSession } from '@/server/lib/harness/acp/session';
 import { AcpUsageMeter } from '@/server/lib/harness/acp/session-usage';
-import { AcpFrameMapper } from '@/server/lib/harness/acp/frames';
+import { AcpFrameMapper } from '@kabmo-labs/kabmo-acp-mapper/frames';
 import { AcpTurns } from '@/server/lib/harness/acp/turn';
 import { SessionListeners } from '@/server/lib/harness/acp/session-listeners';
-import { RawNotificationSink } from '@/server/lib/harness/acp/raw-listeners';
+import { RawNotificationSink } from '@kabmo-labs/kabmo-acp-protocol/raw-listeners';
 import { PendingPermissions } from '@/server/lib/harness/acp/permissions';
-import { AcpSubagents } from '@/server/lib/harness/acp/subagents';
+import { AcpSubagents } from '@kabmo-labs/kabmo-acp-mapper/subagents';
 import { acpConfigView } from '@/server/lib/harness/acp/session-config-view';
 import { stampMessageModel } from '@/server/lib/harness/acp/session-config';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';

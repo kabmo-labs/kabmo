@@ -16,8 +16,8 @@
  *    locally instead of leaving it open for the life of the process.
  */
 
-import type { AcpId, AcpResponse } from '@/server/lib/harness/acp/protocol';
-import { ACP_ERROR } from '@/server/lib/harness/acp/protocol';
+import type { AcpId, AcpResponse } from '@kabmo-labs/kabmo-acp-protocol/protocol';
+import { ACP_ERROR } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 
 /** What the table does when a request's own deadline expires. A timeout is the
  *  client's verdict, not the agent's: without telling it, the agent keeps

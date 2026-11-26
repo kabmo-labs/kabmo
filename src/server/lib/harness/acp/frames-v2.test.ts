@@ -11,7 +11,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { AcpFrameMapper } from '@/server/lib/harness/acp/frames';
+import { AcpFrameMapper } from '@kabmo-labs/kabmo-acp-mapper/frames';
 
 describe('acp v2 updates', () => {
   test('a whole agent_message replaces content and a chunk appends to it', () => {

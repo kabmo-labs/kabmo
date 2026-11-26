@@ -36,9 +36,9 @@ import {
   KABMO_CLIENT_CAPABILITIES,
   assertProtocolVersion,
 } from '@/server/lib/harness/acp/client-capabilities';
-import { AcpRequestError } from '@/server/lib/harness/acp/calls';
-import { asRecord, normalizeInitializeResult } from '@/server/lib/harness/acp/v2';
-import type { AcpInitializeResult } from '@/server/lib/harness/acp/protocol';
+import { AcpRequestError } from '@kabmo-labs/kabmo-acp-mapper/calls';
+import { asRecord, normalizeInitializeResult } from '@kabmo-labs/kabmo-acp-protocol/v2';
+import type { AcpInitializeResult } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 
 /** One request/response round trip; `AcpProcess.call` is one. */
 export type AcpInitializeInvoke = <T>(method: string, params: unknown, timeoutMs: number) => Promise<T>;

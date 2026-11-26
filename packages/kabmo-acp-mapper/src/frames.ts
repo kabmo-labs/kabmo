@@ -38,11 +38,11 @@
  * live stream and a replay.
  */
 
-import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
-import { acpContentText } from '@/server/lib/harness/acp/mapper';
-import { AcpMessageRows } from '@/server/lib/harness/acp/message-rows';
-import { planEntries } from '@/server/lib/harness/acp/v2';
-import { AcpToolCalls } from '@/server/lib/harness/acp/tool-calls';
+import type { AgentEvent } from '@kabmo-labs/kabmo-omp-contracts/events';
+import { acpContentText } from './mapper';
+import { AcpMessageRows } from './message-rows';
+import { planEntries } from '@kabmo-labs/kabmo-acp-protocol/v2';
+import { AcpToolCalls } from './tool-calls';
 
 /** Per-session accumulator; one instance per live ACP session. */
 export class AcpFrameMapper {

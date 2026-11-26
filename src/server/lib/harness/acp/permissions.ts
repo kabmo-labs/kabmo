@@ -17,7 +17,7 @@
  *    be a second answer to one request.
  */
 
-import type { AcpId } from '@/server/lib/harness/acp/protocol';
+import type { AcpId } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 import { PermissionGrants } from '@/server/lib/harness/acp/grants';
 

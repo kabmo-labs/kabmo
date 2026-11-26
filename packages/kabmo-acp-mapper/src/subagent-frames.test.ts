@@ -12,8 +12,8 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { AcpSubagents, subagentCardStatus } from '@/server/lib/harness/acp/subagents';
-import { subagentFrames, subagentRowId, subagentToolCallId } from '@/server/lib/harness/acp/subagent-frames';
+import { AcpSubagents, subagentCardStatus } from './subagents';
+import { subagentFrames, subagentRowId, subagentToolCallId } from './subagent-frames';
 
 function recordOf(fields: Record<string, unknown>) {
   const subagents = new AcpSubagents();

@@ -13,7 +13,7 @@
  */
 
 import { existsSync } from 'fs';
-import { whichOnToolchainPath } from '@/server/lib/fs/toolchain-path';
+import { whichOnToolchainPath } from '@kabmo-labs/kabmo-fs-toolchain';
 
 let cachedBin: string | null = null;
 let binMissAt = 0;

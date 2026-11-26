@@ -13,11 +13,9 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import {
-  AcpSubagents,
-  subagentCardStatus,
-  subagentFinished,
-} from '@/server/lib/harness/acp/subagents';
+import { AcpSubagents,
+subagentCardStatus,
+subagentFinished, } from './subagents';
 
 describe('ACP subagent registry', () => {
   test('an announcement registers the child with its association fields', () => {

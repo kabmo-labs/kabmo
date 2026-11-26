@@ -24,21 +24,19 @@
  *    answering rule lives in `client-requests.ts`.
  */
 
-import { PendingCalls } from '@/server/lib/harness/acp/calls';
+import { PendingCalls } from '@kabmo-labs/kabmo-acp-mapper/calls';
 import { AgentStdio } from '@/server/lib/harness/acp/stdio';
-import * as verbs from '@/server/lib/harness/acp/verbs';
+import * as verbs from '@kabmo-labs/kabmo-acp-protocol/verbs';
 import { initializeAcpAgent } from '@/server/lib/harness/acp/client-initialize';
 import { answerAgentRequest } from '@/server/lib/harness/acp/client-requests';
-import { ACP_ERROR } from '@/server/lib/harness/acp/protocol';
-import type {
-  AcpId,
-  AcpInitializeResult,
-  AcpMcpServerWire,
-  AcpNotification,
-  AcpProtocolVersion,
-  AcpRequest,
-  AcpResponse,
-} from '@/server/lib/harness/acp/protocol';
+import { ACP_ERROR } from '@kabmo-labs/kabmo-acp-protocol/protocol';
+import type { AcpId,
+AcpInitializeResult,
+AcpMcpServerWire,
+AcpNotification,
+AcpProtocolVersion,
+AcpRequest,
+AcpResponse, } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 
 /** Called for every agent→client request this host knows how to answer. The
  *  boolean says "answered"; `false` makes the client reply with a refusal so the

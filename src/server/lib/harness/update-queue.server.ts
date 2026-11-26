@@ -28,7 +28,7 @@
  */
 
 import { probeWithConfig } from '@/server/lib/harness/auto-probe.server';
-import { whichOnToolchainPath } from '@/server/lib/fs/toolchain-path';
+import { whichOnToolchainPath } from '@kabmo-labs/kabmo-fs-toolchain';
 import { forgetProbe, rememberProbe } from '@/server/lib/harness/probe-cache.server';
 import { forgetCliVersion } from '@/server/lib/harness/update-state.server';
 import { loadHarnessConfig, saveHarnessConfig } from '@/server/lib/harness/config.server';

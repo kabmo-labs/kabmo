@@ -18,28 +18,26 @@ import { AcpProcess } from '@/server/lib/harness/acp/client';
 import { openSessionProcess } from '@/server/lib/harness/acp/session-process';
 import { AcpTurns, type AcpTurnEndInfo } from '@/server/lib/harness/acp/turn';
 import { acpBackgroundProbe, acpTurns, acpWiringFor } from '@/server/lib/harness/acp/session-wiring';
-import { AcpFrameMapper } from '@/server/lib/harness/acp/frames';
+import { AcpFrameMapper } from '@kabmo-labs/kabmo-acp-mapper/frames';
 import { AcpReplay } from '@/server/lib/harness/acp/replay';
 import { startAcpSession } from '@/server/lib/harness/acp/session-start';
 import type { AcpHandshakeSelections } from '@/server/lib/harness/acp/session-handshake';
-import type {
-  AcpConfigOption,
-  AcpId,
-  AcpProtocolVersion,
-  AcpSessionModeState,
-  AcpSessionModels,
-} from '@/server/lib/harness/acp/protocol';
+import type { AcpConfigOption,
+AcpId,
+AcpProtocolVersion,
+AcpSessionModeState,
+AcpSessionModels, } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import { promptContent, startAcpPrompt } from '@/server/lib/harness/acp/session-intake';
 import { cancelAcpTurn, dropAcpSession, endAcpSessionTurn } from '@/server/lib/harness/acp/session-stop';
 import { setAcpConfig, setAcpMode, type AcpConfigWriter } from '@/server/lib/harness/acp/session-config';
 import { acpConfigView, type AcpConfigProcess } from '@/server/lib/harness/acp/session-config-view';
-import * as verbs from '@/server/lib/harness/acp/verbs';
+import * as verbs from '@kabmo-labs/kabmo-acp-protocol/verbs';
 import { acpPendingDialogs, answerAcpDialog } from '@/server/lib/harness/acp/session-approvals';
 import { beginAcpTurn } from '@/server/lib/harness/acp/session-turns';
 import { capabilitiesFrom } from '@/server/lib/harness/launch';
 import { PendingPermissions } from '@/server/lib/harness/acp/permissions';
 import { handleAcpNotification } from '@/server/lib/harness/acp/session-notify';
-import { RawNotificationSink, type RawNotificationListener } from '@/server/lib/harness/acp/raw-listeners';
+import { RawNotificationSink, type RawNotificationListener } from '@kabmo-labs/kabmo-acp-protocol/raw-listeners';
 import { AcpUsageMeter, type AcpContextUsage } from '@/server/lib/harness/acp/session-usage';
 import { handleAcpClientRequest, type AcpClientRequestAnswer } from '@/server/lib/harness/acp/session-requests';
 import { reportAcpExit, type AcpExitInfo } from '@/server/lib/harness/acp/session-exit';
@@ -48,13 +46,13 @@ import { SessionListeners } from '@/server/lib/harness/acp/session-listeners';
 import type { AcpBackgroundProbe } from '@/server/lib/harness/acp/background-probe';
 import { acpWebState } from '@/server/lib/harness/acp/session-web-state';
 import { acpIdleReaper } from '@/server/lib/harness/acp/session-idle';
-import { AcpSubagents, type AcpSubagentRecord } from '@/server/lib/harness/acp/subagents';
+import { AcpSubagents, type AcpSubagentRecord } from '@kabmo-labs/kabmo-acp-mapper/subagents';
 import { AcpInbound } from '@/server/lib/harness/acp/session-inbound';
 import { DEFAULT_APPROVAL_MODE, isApprovalMode, type ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 import { dispatchCommand, type AcpCommandHost } from '@/server/lib/harness/acp/commands';
 import { markStreamStatus } from '@/shared/lib/omp/session/stream-state.server';
 import type { AcpSessionOptions } from '@/server/lib/harness/acp/session-options';
-import type { AcpMcpServer } from '@/server/lib/harness/acp/protocol';
+import type { AcpMcpServer } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import type { HarnessCapabilities } from '@/server/lib/harness/capabilities';
 import type { HarnessSession } from '@/server/lib/harness/session';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';

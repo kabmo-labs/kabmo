@@ -13,11 +13,11 @@
 
 import { answerPermissionRequest, cancelAcpPermission } from '@/server/lib/harness/acp/session-permissions';
 import { handleAcpFsRequest, isAcpFsMethod } from '@/server/lib/harness/acp/client-fs';
-import { ACP_ERROR } from '@/server/lib/harness/acp/protocol';
-import { normalizePermissionParams } from '@/server/lib/harness/acp/v2';
-import type { AcpId, AcpProtocolVersion } from '@/server/lib/harness/acp/protocol';
+import { ACP_ERROR } from '@kabmo-labs/kabmo-acp-protocol/protocol';
+import { normalizePermissionParams } from '@kabmo-labs/kabmo-acp-protocol/v2';
+import type { AcpId, AcpProtocolVersion } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import type { PendingPermissions } from '@/server/lib/harness/acp/permissions';
-import type { AcpSubagents } from '@/server/lib/harness/acp/subagents';
+import type { AcpSubagents } from '@kabmo-labs/kabmo-acp-mapper/subagents';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
 import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 

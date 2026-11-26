@@ -20,7 +20,7 @@
  */
 
 import { configOption, modelFromOption } from '@/server/lib/harness/acp/prompt';
-import type { AcpConfigOption, AcpSessionModeState } from '@/server/lib/harness/acp/protocol';
+import type { AcpConfigOption, AcpSessionModeState } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 
 export interface AcpStateView {

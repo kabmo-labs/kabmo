@@ -16,8 +16,8 @@
  * `session/prompt` answer (`stopReason: "cancelled"`).
  */
 
-import type { AcpMcpServerWire, AcpSessionInfo, AcpSessionNewResult } from '@/server/lib/harness/acp/protocol';
-import { normalizeConfigOptions, normalizeSessionResult } from '@/server/lib/harness/acp/v2';
+import type { AcpMcpServerWire, AcpSessionInfo, AcpSessionNewResult } from './protocol';
+import { normalizeConfigOptions, normalizeSessionResult } from './v2';
 
 /** One request/response round trip against an ACP agent. Implemented by
  *  `AcpProcess.call`; a test supplies its own. */

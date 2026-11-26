@@ -16,7 +16,7 @@
 
 import { describe, expect, test } from 'bun:test';
 import { adoptConfigAnswer, adoptConfigList, publishConfigChange } from '@/server/lib/harness/acp/session-config';
-import type { AcpConfigOption } from '@/server/lib/harness/acp/protocol';
+import type { AcpConfigOption } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 
 const option = (id: string, category: string, currentValue: string, values: string[]): AcpConfigOption => ({
   id,

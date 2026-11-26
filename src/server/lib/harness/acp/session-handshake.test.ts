@@ -12,7 +12,7 @@
 
 import { describe, expect, test } from 'bun:test';
 import { handshakeAcpSession, type AcpHandshakeTarget } from '@/server/lib/harness/acp/session-handshake';
-import type { AcpConfigOption } from '@/server/lib/harness/acp/protocol';
+import type { AcpConfigOption } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 
 function target(): AcpHandshakeTarget {
   return {

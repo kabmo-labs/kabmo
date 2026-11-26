@@ -20,7 +20,7 @@ import os from 'node:os';
 import { join } from 'node:path';
 import { blockedProbe, capabilitiesFrom, configByCategory, probeHarness, selectValues, sessionLaunchCommand } from '@/server/lib/harness/launch';
 import { harnessRequirementMet } from '@/server/lib/harness/launch-table';
-import type { AcpInitializeResult, AcpConfigOption } from '@/server/lib/harness/acp/protocol';
+import type { AcpInitializeResult, AcpConfigOption } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 
 const ompInit: AcpInitializeResult = {
   protocolVersion: 1,

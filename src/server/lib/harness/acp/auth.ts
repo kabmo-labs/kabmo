@@ -13,7 +13,7 @@
  * does not host, and asking for one parks the spawn instead of explaining it.
  */
 
-import type { AcpInitializeResult } from '@/server/lib/harness/acp/protocol';
+import type { AcpInitializeResult } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 
 export interface AcpAuthMethod {
   id: string;

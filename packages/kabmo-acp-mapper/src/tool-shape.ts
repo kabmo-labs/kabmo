@@ -21,7 +21,7 @@
  */
 
 import { isRecord } from '@kabmo-labs/kabmo-guards';
-import type { AcpToolKind } from '@/server/lib/harness/acp/protocol';
+import type { AcpToolKind } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 
 /** The message block a tool card renders from. */
 export interface ToolCallBlock {

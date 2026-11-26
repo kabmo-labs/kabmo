@@ -1,0 +1,27 @@
+{
+  "name": "@kabmo-labs/kabmo-fs-toolchain",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Toolchain PATH lookup shared by the server and ACP transport.",
+  "exports": {
+    ".": "./src/toolchain-path.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-fs-toolchain"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  },
+  "dependencies": {
+    "@kabmo-labs/kabmo-sdk": "workspace:*"
+  }
+}

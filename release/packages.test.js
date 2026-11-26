@@ -188,6 +188,10 @@ describe('package catalog', () => {
 
   test('derives the tag prefix the workflow publishes on', () => {
     expect(RELEASE_PACKAGES.map(tagPrefix)).toEqual([
+      'kabmo-sdk',
+      'kabmo-fs-toolchain',
+      'kabmo-acp-protocol',
+      'kabmo-acp-mapper',
       'kabmo-guards',
       'kabmo-bytes',
       'kabmo-platform',
@@ -226,7 +230,6 @@ describe('package catalog', () => {
       'kabmo-harness-config-fields',
       'kabmo-harness-mcp-facts',
       'kabmo-harness-rewind',
-      'kabmo-sdk',
       'kabmo-ui',
     ]);
   });

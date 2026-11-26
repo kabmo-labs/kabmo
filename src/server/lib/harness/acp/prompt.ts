@@ -16,7 +16,7 @@
  *    approve.
  */
 
-import { acpOptionValues, type AcpConfigOption, type AcpSessionModeState, type AcpSessionModels } from '@/server/lib/harness/acp/protocol';
+import { acpOptionValues, type AcpConfigOption, type AcpSessionModeState, type AcpSessionModels } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import type { PromptFileLink } from '@/server/lib/harness/acp/prompt-files';
 
 /** The selector in a `configOptions` list for one ACP category. */

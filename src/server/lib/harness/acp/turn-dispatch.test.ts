@@ -16,7 +16,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { AcpRequestError } from '@/server/lib/harness/acp/calls';
+import { AcpRequestError } from '@kabmo-labs/kabmo-acp-mapper/calls';
 import { isSessionBusy, promptWithBusyRetry } from '@/server/lib/harness/acp/turn-dispatch';
 import { TurnQueue } from '@/server/lib/harness/acp/turn-queue';
 

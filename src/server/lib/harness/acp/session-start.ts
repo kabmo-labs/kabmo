@@ -15,7 +15,7 @@
  */
 
 import type { AcpProcess } from '@/server/lib/harness/acp/client';
-import type { AcpFrameMapper } from '@/server/lib/harness/acp/frames';
+import type { AcpFrameMapper } from '@kabmo-labs/kabmo-acp-mapper/frames';
 import type { AcpReplay } from '@/server/lib/harness/acp/replay';
 import type {
   AcpHandshakeSelections,

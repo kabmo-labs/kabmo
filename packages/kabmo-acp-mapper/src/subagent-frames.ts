@@ -18,8 +18,8 @@
  * what stops it spinning once the child reports `idle`.
  */
 
-import { subagentCardStatus, type AcpSubagentRecord, type SubagentCardStatus } from '@/server/lib/harness/acp/subagents';
-import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
+import { subagentCardStatus, type AcpSubagentRecord, type SubagentCardStatus } from './subagents';
+import type { AgentEvent } from '@kabmo-labs/kabmo-omp-contracts/events';
 
 export function subagentRowId(sessionId: string): string {
   return `subagent-${sessionId}`;

@@ -14,7 +14,7 @@
 
 import { describe, expect, test } from 'bun:test';
 import { initializeAcpAgent, type AcpInitializeInvoke } from '@/server/lib/harness/acp/client-initialize';
-import { AcpRequestError } from '@/server/lib/harness/acp/calls';
+import { AcpRequestError } from '@kabmo-labs/kabmo-acp-mapper/calls';
 
 /**
  * A one-method invoke. The cast is the seam's own shape: `AcpInitializeInvoke`

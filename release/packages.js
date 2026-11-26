@@ -23,6 +23,24 @@
  */
 export const RELEASE_PACKAGES = [
   {
+    /** The published plugin contract. First because `kabmo-fs-toolchain` and
+     *  `kabmo-ui` both pin it at publish time. */
+    dir: 'packages/kabmo-sdk',
+    name: '@kabmo-labs/kabmo-sdk',
+  },
+  {
+    dir: 'packages/kabmo-fs-toolchain',
+    name: '@kabmo-labs/kabmo-fs-toolchain',
+  },
+  {
+    dir: 'packages/kabmo-acp-protocol',
+    name: '@kabmo-labs/kabmo-acp-protocol',
+  },
+  {
+    dir: 'packages/kabmo-acp-mapper',
+    name: '@kabmo-labs/kabmo-acp-mapper',
+  },
+  {
     /** Directory under `packages/`, which is also the tag's prefix. */
     dir: 'packages/kabmo-guards',
     name: '@kabmo-labs/kabmo-guards',
@@ -174,10 +192,6 @@ export const RELEASE_PACKAGES = [
   {
     dir: 'packages/kabmo-harness-rewind',
     name: '@kabmo-labs/kabmo-harness-rewind',
-  },
-  {
-    dir: 'packages/kabmo-sdk',
-    name: '@kabmo-labs/kabmo-sdk',
   },
   {
     dir: 'packages/kabmo-ui',

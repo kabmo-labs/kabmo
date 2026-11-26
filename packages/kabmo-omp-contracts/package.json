@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/session.ts",
     "./instructions": "./src/instructions.ts",
+    "./events": "./src/events.ts",
     "./session": "./src/session.ts",
     "./subagent": "./src/subagent.ts"
   },

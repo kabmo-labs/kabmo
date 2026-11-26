@@ -27,8 +27,8 @@
  * ask about the turn: `turnMessage()` accumulates every closed row.
  */
 
-import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
-import type { ToolCallBlock } from '@/server/lib/harness/acp/tool-shape';
+import type { AgentEvent } from '@kabmo-labs/kabmo-omp-contracts/events';
+import type { ToolCallBlock } from './tool-shape';
 
 /** One block of the accumulated assistant message, in `parseMessageBlocks` shape. */
 export type MessageBlock =

@@ -17,8 +17,8 @@
  */
 
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
-import { AcpRequestError } from '@/server/lib/harness/acp/calls';
-import { turnEndFrame } from '@/server/lib/harness/acp/frames';
+import { AcpRequestError } from '@kabmo-labs/kabmo-acp-mapper/calls';
+import { turnEndFrame } from '@kabmo-labs/kabmo-acp-mapper/frames';
 import { TurnSilence } from '@/server/lib/harness/acp/turn-silence';
 import { CancelSettle } from '@/server/lib/harness/acp/turn-cancel';
 import { TurnQueue } from '@/server/lib/harness/acp/turn-queue';

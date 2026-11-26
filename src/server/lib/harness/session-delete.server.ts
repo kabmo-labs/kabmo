@@ -41,7 +41,7 @@ import { isSinglePathSegment } from '@/server/lib/fs/path-segment';
 import { dshStoreDirs } from '@/server/lib/harness/session-transcript.server';
 import type { HarnessLaunch } from '@/server/lib/harness/launch-table';
 import type { HarnessSessionRecord } from '@/server/lib/harness/session-store.server';
-import type { AcpInitializeResult } from '@/server/lib/harness/acp/protocol';
+import type { AcpInitializeResult } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import { harnessDescriptor, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 
 export interface AgentSessionRemoval {

@@ -20,7 +20,7 @@ import {
   parseChildOutcomeNotice,
   parseOrchestrationBlock,
 } from '@/shared/lib/chat/orchestration/notice';
-import type { AcpConfigOption } from '@/server/lib/harness/acp/protocol';
+import type { AcpConfigOption } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 
 // A prompt reaches the title writer (`harness/session-title.server.ts`), which
 // opens the database. Isolate it: the handle is process-wide, and a suite that

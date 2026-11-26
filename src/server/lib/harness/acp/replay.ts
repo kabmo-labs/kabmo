@@ -22,7 +22,7 @@
  * single turn can carry an unbounded number of frames.
  */
 
-import { AcpFrameMapper } from '@/server/lib/harness/acp/frames';
+import { AcpFrameMapper } from '@kabmo-labs/kabmo-acp-mapper/frames';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
 
 /** How long to wait for a marker when the adapter sends none. Large replays

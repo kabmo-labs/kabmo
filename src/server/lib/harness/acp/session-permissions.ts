@@ -15,14 +15,14 @@
  */
 
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
-import type { AcpId } from '@/server/lib/harness/acp/protocol';
+import type { AcpId } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import type { PendingPermissions } from '@/server/lib/harness/acp/permissions';
 import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 import { allowOption, autoApproval, type PermissionOption } from '@/server/lib/harness/acp/permissions';
 import { permissionGrantKey } from '@/server/lib/harness/acp/grants';
 import { noteAwaitingInput } from '@/server/lib/notifications/feed.server';
 import { isRecord } from '@kabmo-labs/kabmo-guards';
-import type { AcpSubagents } from '@/server/lib/harness/acp/subagents';
+import type { AcpSubagents } from '@kabmo-labs/kabmo-acp-mapper/subagents';
 
 /**
  * The option id to select when the tier (or a standing grant) already allows

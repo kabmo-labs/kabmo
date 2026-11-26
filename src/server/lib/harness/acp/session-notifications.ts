@@ -26,11 +26,11 @@ import {
   stampMessageModel,
   type AcpConfigNotice,
 } from '@/server/lib/harness/acp/session-config';
-import type { AcpConfigOption, AcpProtocolVersion, AcpSessionModeState } from '@/server/lib/harness/acp/protocol';
+import type { AcpConfigOption, AcpProtocolVersion, AcpSessionModeState } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import { saveAcpPlanState } from '@/server/lib/harness/acp/acp-goal-state.server';
-import { normalizeConfigOptions, planEntries } from '@/server/lib/harness/acp/v2';
-import type { AcpSubagentRecord, AcpSubagents } from '@/server/lib/harness/acp/subagents';
+import { normalizeConfigOptions, planEntries } from '@kabmo-labs/kabmo-acp-protocol/v2';
+import type { AcpSubagentRecord, AcpSubagents } from '@kabmo-labs/kabmo-acp-mapper/subagents';
 
 export interface AcpNotificationHost extends AcpConfigNotice {
   /** The ACP session this stream belongs to; a frame naming another one is a

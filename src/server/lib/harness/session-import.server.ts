@@ -28,7 +28,7 @@
  */
 
 import { AcpProcess } from '@/server/lib/harness/acp/client';
-import { listAllSessions } from '@/server/lib/harness/acp/verbs';
+import { listAllSessions } from '@kabmo-labs/kabmo-acp-protocol/verbs';
 import { withGatewayCompatibility } from '@/server/lib/harness/acp/gateway-env';
 import { loadHarnessConfig } from '@/server/lib/harness/config.server';
 import { resolveAccountLaunch } from '@/server/lib/harness/accounts.server';
@@ -41,7 +41,7 @@ import { resolveProjectRoot } from '@/server/lib/omp/core/worktree';
 import { getDb } from '@/server/db.server';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
 import { harnessDescriptor, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
-import type { AcpSessionInfo } from '@/server/lib/harness/acp/protocol';
+import type { AcpSessionInfo } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import type { HarnessSessionImport } from '@/shared/types/harness';
 
 /** One fresh process' worth of listing, disposed whatever happens. */

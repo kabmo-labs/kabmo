@@ -21,9 +21,9 @@
  * shows; it is deliberately not a second transcript.
  */
 
-import { acpContentText } from '@/server/lib/harness/acp/mapper';
+import { acpContentText } from './mapper';
 import { isRecord } from '@kabmo-labs/kabmo-guards';
-import type { AcpSubagentUpdate } from '@/server/lib/harness/acp/protocol';
+import type { AcpSubagentUpdate } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 
 /** One child session, as the parent has described it so far. */
 export interface AcpSubagentRecord {

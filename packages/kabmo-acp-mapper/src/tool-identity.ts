@@ -37,7 +37,7 @@
  */
 
 import { canonicalAgentToolName } from '@kabmo-labs/kabmo-chat-tool/tool-aliases';
-import type { AcpToolKind } from '@/server/lib/harness/acp/protocol';
+import type { AcpToolKind } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 
 const KNOWN_KINDS: Readonly<Record<AcpToolKind, true>> = {
   read: true,

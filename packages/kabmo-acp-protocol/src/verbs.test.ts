@@ -11,7 +11,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { forkSession, listAllSessions, loadSession, newSession, resumeSession } from '@/server/lib/harness/acp/verbs';
+import { forkSession, listAllSessions, loadSession, newSession, resumeSession } from './verbs';
 
 function recorder() {
   const calls: Array<{ method: string; params: unknown }> = [];

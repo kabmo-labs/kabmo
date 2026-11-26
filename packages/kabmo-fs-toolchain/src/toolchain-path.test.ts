@@ -21,7 +21,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import { join } from 'node:path';
 
-import { toolchainPath, whichOnToolchainPath } from '@/server/lib/fs/toolchain-path';
+import { toolchainPath, whichOnToolchainPath } from './toolchain-path';
 
 const home = fs.mkdtempSync(join(os.tmpdir(), 'kabmo-toolchain-'));
 const bunBin = join(home, '.bun', 'bin');

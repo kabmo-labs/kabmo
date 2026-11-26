@@ -17,7 +17,7 @@ import { readCodexRolloutTranscript } from '@/server/lib/harness/codex/transcrip
 import { getLiveRunSessionIds, getLiveSession, harnessOfSession } from '@/server/lib/omp/rpc/session-registry';
 import { loadStreamStates } from '@/shared/lib/omp/session/stream-state.server';
 import { configByCategory, selectValues } from '@/server/lib/harness/launch';
-import type { AcpConfigOption } from '@/server/lib/harness/acp/protocol';
+import type { AcpConfigOption } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import { liveMetaFields, type LiveSessionMeta } from '@/server/routes/chat/live-meta';
 import { hasAssistantRow } from '@/shared/lib/chat/transcript-rows';
 import { normalizeTranscriptRows } from '@kabmo-labs/kabmo-chat-tool/normalize';

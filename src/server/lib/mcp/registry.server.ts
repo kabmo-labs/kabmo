@@ -36,7 +36,7 @@ import { pluginMcpServers, type RegisteredPluginMcpServer } from '@/server/lib/p
 import type { SessionMcpOverrides } from '@/server/lib/mcp/session-state.server';
 import type { McpServerItem, McpTransport } from '@/shared/types';
 import { rowsToRecord } from '@/shared/lib/mcp/key-value';
-import type { AcpMcpServer } from '@/server/lib/harness/acp/protocol';
+import type { AcpMcpServer } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 
 /** One server, in the transport-neutral shape both deliveries read. */
 export interface McpServerDefinition {

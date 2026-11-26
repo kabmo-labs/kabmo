@@ -13,13 +13,11 @@ import { homedir } from 'os';
 import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
 import { kabmoExtensionArgs } from '@/server/lib/omp/extensions/locator';
 import { ensureTitleModelOverlay, titleModelOverlayPath } from '@/server/lib/omp/session/title-model-overlay.server';
+import type { AgentEvent } from '@kabmo-labs/kabmo-omp-contracts/events';
 import type { ApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 import type { SelectedModel } from '@kabmo-labs/kabmo-model-contracts/models';
 
-export interface AgentEvent {
-  type: string;
-  [key: string]: unknown;
-}
+export type { AgentEvent };
 
 export type EventListener = (event: AgentEvent) => void;
 

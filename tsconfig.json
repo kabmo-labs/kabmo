@@ -28,6 +28,51 @@
       "elkjs": [
         "./src/client/stubs/elkjs.ts"
       ],
+      "@kabmo-labs/kabmo-acp-protocol": [
+        "./packages/kabmo-acp-protocol/src/protocol.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-protocol/protocol": [
+        "./packages/kabmo-acp-protocol/src/protocol.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-protocol/raw-listeners": [
+        "./packages/kabmo-acp-protocol/src/raw-listeners.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-protocol/v2": [
+        "./packages/kabmo-acp-protocol/src/v2.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-protocol/verbs": [
+        "./packages/kabmo-acp-protocol/src/verbs.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-mapper": [
+        "./packages/kabmo-acp-mapper/src/frames.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-mapper/calls": [
+        "./packages/kabmo-acp-mapper/src/calls.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-mapper/frames": [
+        "./packages/kabmo-acp-mapper/src/frames.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-mapper/mapper": [
+        "./packages/kabmo-acp-mapper/src/mapper.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-mapper/message-rows": [
+        "./packages/kabmo-acp-mapper/src/message-rows.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-mapper/subagent-frames": [
+        "./packages/kabmo-acp-mapper/src/subagent-frames.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-mapper/subagents": [
+        "./packages/kabmo-acp-mapper/src/subagents.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-mapper/tool-calls": [
+        "./packages/kabmo-acp-mapper/src/tool-calls.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-mapper/tool-identity": [
+        "./packages/kabmo-acp-mapper/src/tool-identity.ts"
+      ],
+      "@kabmo-labs/kabmo-acp-mapper/tool-shape": [
+        "./packages/kabmo-acp-mapper/src/tool-shape.ts"
+      ],
       "@kabmo-labs/kabmo-bytes": [
         "./packages/kabmo-bytes/src/bytes.ts"
       ],
@@ -114,6 +159,9 @@
       ],
       "@kabmo-labs/kabmo-fs-media/paths": [
         "./packages/kabmo-fs-media/src/paths.ts"
+      ],
+      "@kabmo-labs/kabmo-fs-toolchain": [
+        "./packages/kabmo-fs-toolchain/src/toolchain-path.ts"
       ],
       "@kabmo-labs/kabmo-guards": [
         "./packages/kabmo-guards/src/guards.ts"
@@ -207,6 +255,9 @@
       ],
       "@kabmo-labs/kabmo-omp-contracts/instructions": [
         "./packages/kabmo-omp-contracts/src/instructions.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-contracts/events": [
+        "./packages/kabmo-omp-contracts/src/events.ts"
       ],
       "@kabmo-labs/kabmo-omp-contracts/session": [
         "./packages/kabmo-omp-contracts/src/session.ts"

@@ -22,8 +22,8 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { AcpFrameMapper, turnEndFrame } from '@/server/lib/harness/acp/frames';
-import { acpContentText, acpToolOutput, acpToolTarget } from '@/server/lib/harness/acp/mapper';
+import { AcpFrameMapper, turnEndFrame } from './frames';
+import { acpContentText, acpToolOutput, acpToolTarget } from './mapper';
 
 const textChunk = (text: string, messageId = 'm1') => ({
   sessionUpdate: 'agent_message_chunk',

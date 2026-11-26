@@ -13,7 +13,7 @@
  * the one outcome this module must never produce.
  */
 
-import type { AcpId } from '@/server/lib/harness/acp/protocol';
+import type { AcpId } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import type { AcpClientRequestHandler } from '@/server/lib/harness/acp/client';
 
 /** The transport seams one answer needs. */

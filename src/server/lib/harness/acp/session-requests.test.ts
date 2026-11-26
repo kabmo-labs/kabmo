@@ -18,7 +18,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PendingPermissions } from '@/server/lib/harness/acp/permissions';
 import { handleAcpClientRequest, type AcpClientRequestHost } from '@/server/lib/harness/acp/session-requests';
-import { ACP_ERROR } from '@/server/lib/harness/acp/protocol';
+import { ACP_ERROR } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
 
 const scratch: string[] = [];

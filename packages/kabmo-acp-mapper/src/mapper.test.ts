@@ -11,7 +11,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { acpContentText, acpToolDetails, acpToolOutput, acpToolTarget } from '@/server/lib/harness/acp/mapper';
+import { acpContentText, acpToolDetails, acpToolOutput, acpToolTarget } from './mapper';
 
 describe('acp mapper helpers', () => {
   test('both measured content shapes yield text', () => {

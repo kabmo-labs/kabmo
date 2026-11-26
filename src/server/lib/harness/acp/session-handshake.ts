@@ -26,22 +26,20 @@
 
 import { newSessionAfterActivation } from '@/server/lib/harness/acp/activation';
 import { applyLaunchSelections, configOption, modelFromOption, modelsAsSelector } from '@/server/lib/harness/acp/prompt';
-import { toAcpV2McpServers } from '@/server/lib/harness/acp/v2';
-import type { SessionDirs } from '@/server/lib/harness/acp/verbs';
+import { toAcpV2McpServers } from '@kabmo-labs/kabmo-acp-protocol/v2';
+import type { SessionDirs } from '@kabmo-labs/kabmo-acp-protocol/verbs';
 import { authMethodsOf, describeSignIn, headlessAuthMethod, isAuthRequiredError } from '@/server/lib/harness/acp/auth';
 import { additionalDirectoriesFor, sessionRoots } from '@/server/lib/harness/acp/session-roots.server';
 import { capabilitiesFrom } from '@/server/lib/harness/launch';
-import type {
-  AcpAgentCommand,
-  AcpConfigOption,
-  AcpInitializeResult,
-  AcpMcpServer,
-  AcpMcpServerWire,
-  AcpProtocolVersion,
-  AcpSessionModeState,
-  AcpSessionModels,
-  AcpSessionNewResult,
-} from '@/server/lib/harness/acp/protocol';
+import type { AcpAgentCommand,
+AcpConfigOption,
+AcpInitializeResult,
+AcpMcpServer,
+AcpMcpServerWire,
+AcpProtocolVersion,
+AcpSessionModeState,
+AcpSessionModels,
+AcpSessionNewResult, } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import type { HarnessCapabilities } from '@/server/lib/harness/capabilities';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';

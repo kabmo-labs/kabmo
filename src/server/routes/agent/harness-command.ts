@@ -26,7 +26,7 @@ import { selectValues } from '@/server/lib/harness/launch';
 import { harnessOfSession } from '@/server/lib/omp/rpc/session-registry';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
 import { HARNESS_IDS, harnessDescriptor } from '@kabmo-labs/kabmo-harness-catalog';
-import type { AcpConfigOption } from '@/server/lib/harness/acp/protocol';
+import type { AcpConfigOption } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import { applyAcpGoalAction, type AcpGoalHost } from '@/server/lib/harness/acp/acp-goal.server';
 import { saveAcpPlanState } from '@/server/lib/harness/acp/acp-goal-state.server';
 import type { HarnessSession } from '@/server/lib/harness/session';

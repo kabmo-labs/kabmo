@@ -20,7 +20,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { delegationLabel, normalizeKind, resolveToolIdentity } from '@/server/lib/harness/acp/tool-identity';
+import { delegationLabel, normalizeKind, resolveToolIdentity } from './tool-identity';
 import { acpDelegationRow } from '@/client/components/workspace/chat-timeline/tool-renderers/panels/task-rows';
 import { normalizeAgentEvent } from '@/server/lib/chat/normalize-tools.server';
 import { parseMessageBlocks, toToolCallData } from '@kabmo-labs/kabmo-omp-session-parse/parse-message-blocks';
@@ -155,7 +155,7 @@ describe('acpDelegationRow', () => {
 
 describe('the card the frames produce', () => {
   test('grok and cursor both land on the task panel with the child named', async () => {
-    const { AcpFrameMapper } = await import('@/server/lib/harness/acp/frames');
+    const { AcpFrameMapper } = await import('./frames');
     const mapper = new AcpFrameMapper();
     mapper.reset();
     const grok = mapper.mapUpdate({
@@ -188,7 +188,7 @@ describe('the card the frames produce', () => {
   });
 
   test('an adapter kind outside the spec stays generic, not a file read', async () => {
-    const { AcpFrameMapper } = await import('@/server/lib/harness/acp/frames');
+    const { AcpFrameMapper } = await import('./frames');
     const mapper = new AcpFrameMapper();
     mapper.reset();
     const frames = mapper.mapUpdate({

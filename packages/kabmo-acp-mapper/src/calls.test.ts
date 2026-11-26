@@ -13,7 +13,7 @@
  */
 
 import { describe, expect, test, vi } from 'bun:test';
-import { PendingCalls } from '@/server/lib/harness/acp/calls';
+import { PendingCalls } from './calls';
 
 describe('PendingCalls timeouts', () => {
   test('the deadline notifies the agent and rejects the caller', async () => {

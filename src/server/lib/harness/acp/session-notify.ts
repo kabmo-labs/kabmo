@@ -15,7 +15,7 @@
 
 import { handleAcpCancelRequest } from '@/server/lib/harness/acp/session-requests';
 import { handleSessionNotification, type AcpNotificationHost } from '@/server/lib/harness/acp/session-notifications';
-import type { RawNotificationSink } from '@/server/lib/harness/acp/raw-listeners';
+import type { RawNotificationSink } from '@kabmo-labs/kabmo-acp-protocol/raw-listeners';
 
 /** What one routed notification reads. */
 export interface AcpNotifyHost extends AcpNotificationHost {

@@ -21,23 +21,19 @@
  * owns that array and the snapshot; this class never touches either directly.
  */
 
-import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
-import {
-  acpContentDetails,
-  acpContentText,
-  acpToolDetails,
-  acpToolOutput,
-  acpToolTarget,
-} from '@/server/lib/harness/acp/mapper';
-import { delegationLabel, resolveToolIdentity } from '@/server/lib/harness/acp/tool-identity';
-import {
-  blockOf,
-  KIND_TOOL_NAME,
-  terminalMeta,
-  toolArgs,
-  type ToolCallBlock,
-} from '@/server/lib/harness/acp/tool-shape';
-import type { AcpToolKind, AcpToolStatus } from '@/server/lib/harness/acp/protocol';
+import type { AgentEvent } from '@kabmo-labs/kabmo-omp-contracts/events';
+import { acpContentDetails,
+acpContentText,
+acpToolDetails,
+acpToolOutput,
+acpToolTarget, } from './mapper';
+import { delegationLabel, resolveToolIdentity } from './tool-identity';
+import { blockOf,
+KIND_TOOL_NAME,
+terminalMeta,
+toolArgs,
+type ToolCallBlock, } from './tool-shape';
+import type { AcpToolKind, AcpToolStatus } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 
 interface OpenTool {
   id: string;

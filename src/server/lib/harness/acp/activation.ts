@@ -20,7 +20,7 @@
  * reason the settings card can show.
  */
 
-import type { AcpSessionNewResult } from '@/server/lib/harness/acp/protocol';
+import type { AcpSessionNewResult } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 
 /** Enough headroom over the measured 80 s, not an open-ended probe. */

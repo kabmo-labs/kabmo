@@ -28,8 +28,8 @@ import type {
   AcpMcpServerV2,
   AcpMcpServerWire,
   AcpSessionNewResult,
-} from '@/server/lib/harness/acp/protocol';
-import { whichOnToolchainPath } from '@/server/lib/fs/toolchain-path';
+} from './protocol';
+import { whichOnToolchainPath } from '@kabmo-labs/kabmo-fs-toolchain';
 
 /** A parsed JSON object, or undefined when the value is not one. */
 export function asRecord(value: unknown): Record<string, unknown> | undefined {

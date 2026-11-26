@@ -23,7 +23,7 @@
  */
 
 import { commandAvailable } from '@/server/lib/harness/auto-probe.server';
-import { whichOnToolchainPath } from '@/server/lib/fs/toolchain-path';
+import { whichOnToolchainPath } from '@kabmo-labs/kabmo-fs-toolchain';
 import { loadHarnessConfig } from '@/server/lib/harness/config.server';
 import { fetchNpmLatest } from '@/server/lib/updates/npm';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';

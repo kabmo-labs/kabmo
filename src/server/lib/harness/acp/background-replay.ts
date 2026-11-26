@@ -20,8 +20,8 @@
  * does not repeat the same notice.
  */
 
-import { acpContentText } from '@/server/lib/harness/acp/mapper';
-import { resolveToolIdentity } from '@/server/lib/harness/acp/tool-identity';
+import { acpContentText } from '@kabmo-labs/kabmo-acp-mapper/mapper';
+import { resolveToolIdentity } from '@kabmo-labs/kabmo-acp-mapper/tool-identity';
 
 /** One tool call a replay added past the baseline. */
 export interface ReplayTool {

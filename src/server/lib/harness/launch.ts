@@ -24,8 +24,8 @@
 import { AcpProcess } from '@/server/lib/harness/acp/client';
 import { withGatewayCompatibility } from '@/server/lib/harness/acp/gateway-env';
 import { newSessionAfterActivation } from '@/server/lib/harness/acp/activation';
-import type { AcpConfigOption, AcpInitializeResult, AcpSessionModeState } from '@/server/lib/harness/acp/protocol';
-import { acpOptionValues } from '@/server/lib/harness/acp/protocol';
+import type { AcpConfigOption, AcpInitializeResult, AcpSessionModeState } from '@kabmo-labs/kabmo-acp-protocol/protocol';
+import { acpOptionValues } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import { UNPROBED_CAPABILITIES, type HarnessCapabilities, type HarnessProbe } from '@/server/lib/harness/capabilities';
 import { HARNESS_LAUNCH, type HarnessLaunch } from '@/server/lib/harness/launch-table';
 import { kabmoExtensionArgs } from '@/server/lib/omp/extensions/locator';

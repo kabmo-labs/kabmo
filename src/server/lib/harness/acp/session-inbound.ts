@@ -22,8 +22,8 @@
  * are about the transport boundary, not about the chat.
  */
 
-import { subagentCardStatus, type AcpSubagentRecord, type AcpSubagents, type SubagentCardStatus } from '@/server/lib/harness/acp/subagents';
-import { subagentFrames } from '@/server/lib/harness/acp/subagent-frames';
+import { subagentCardStatus, type AcpSubagentRecord, type AcpSubagents, type SubagentCardStatus } from '@kabmo-labs/kabmo-acp-mapper/subagents';
+import { subagentFrames } from '@kabmo-labs/kabmo-acp-mapper/subagent-frames';
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
 
 /** How many setup-time frames may be held. A burst larger than this is a

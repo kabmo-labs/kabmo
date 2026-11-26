@@ -14,7 +14,7 @@
  * naming the old one.
  */
 
-import type { AcpConfigOption, AcpSessionModeState, AcpSessionModels } from '@/server/lib/harness/acp/protocol';
+import type { AcpConfigOption, AcpSessionModeState, AcpSessionModels } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 import type { AcpConfigWriter } from '@/server/lib/harness/acp/session-config';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 

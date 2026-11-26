@@ -15,7 +15,7 @@
  * does not spend seconds asleep.
  */
 
-import { AcpRequestError } from '@/server/lib/harness/acp/calls';
+import { AcpRequestError } from '@kabmo-labs/kabmo-acp-mapper/calls';
 
 export const SESSION_BUSY_CODE = -32003;
 export const SESSION_BUSY_MAX_RETRIES = 3;

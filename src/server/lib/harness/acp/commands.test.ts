@@ -13,7 +13,7 @@
 
 import { describe, expect, test } from 'bun:test';
 import { dispatchCommand, type AcpCommandHost } from '@/server/lib/harness/acp/commands';
-import type { AcpConfigOption } from '@/server/lib/harness/acp/protocol';
+import type { AcpConfigOption } from '@kabmo-labs/kabmo-acp-protocol/protocol';
 
 const option = (id: string, category: string, values: string[]): AcpConfigOption => ({
   id,
