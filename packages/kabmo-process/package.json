@@ -1,6 +1,6 @@
 {
   "name": "@kabmo-labs/kabmo-process",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "type": "module",
   "description": "The process family: 2 previously separate modules in one package.",
   "exports": {

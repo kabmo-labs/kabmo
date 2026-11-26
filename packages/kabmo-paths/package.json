@@ -1,6 +1,6 @@
 {
   "name": "@kabmo-labs/kabmo-paths",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "type": "module",
   "description": "Kabmo data and lease directories plus path-segment helpers.",
   "exports": {

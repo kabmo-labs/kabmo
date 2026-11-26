@@ -1,6 +1,6 @@
 {
   "name": "@kabmo-labs/kabmo-rpc-lines",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "type": "module",
   "description": "Read newline-delimited child output.",
   "exports": {

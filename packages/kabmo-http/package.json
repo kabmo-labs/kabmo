@@ -1,6 +1,6 @@
 {
   "name": "@kabmo-labs/kabmo-http",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "type": "module",
   "description": "The JSON response helper and route argument types every route module speaks.",
   "exports": {

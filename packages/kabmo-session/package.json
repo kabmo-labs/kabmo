@@ -1,6 +1,6 @@
 {
   "name": "@kabmo-labs/kabmo-session",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "type": "module",
   "description": "The session family: 4 previously separate modules in one package.",
   "exports": {

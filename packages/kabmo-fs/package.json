@@ -1,6 +1,6 @@
 {
   "name": "@kabmo-labs/kabmo-fs",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "type": "module",
   "description": "The fs family: 5 previously separate modules in one package.",
   "exports": {

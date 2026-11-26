@@ -1,6 +1,6 @@
 {
   "name": "@kabmo-labs/kabmo-model-contracts",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "type": "module",
   "description": "Model metadata and thinking-level contracts.",
   "exports": {

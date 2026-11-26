@@ -1,6 +1,6 @@
 {
   "name": "@kabmo-labs/kabmo-app-contracts",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "type": "module",
   "description": "The shapes the console, the sidebar and the server all speak: workspace, git, fs, panels, harness, schedule, theme.",
   "exports": {

@@ -1,6 +1,6 @@
 {
   "name": "@kabmo-labs/kabmo-idle-reaper",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "type": "module",
   "description": "Reap idle child sessions after a quiet period.",
   "exports": {

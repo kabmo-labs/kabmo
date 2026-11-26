@@ -1,6 +1,6 @@
 {
   "name": "@kabmo-labs/kabmo-mcp-contracts",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "type": "module",
   "description": "MCP config key/value helpers.",
   "exports": {

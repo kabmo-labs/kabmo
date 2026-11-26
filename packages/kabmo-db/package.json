@@ -1,6 +1,6 @@
 {
   "name": "@kabmo-labs/kabmo-db",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "type": "module",
   "description": "The SQLite client shape every server package reads through.",
   "exports": {

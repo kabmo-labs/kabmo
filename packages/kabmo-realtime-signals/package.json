@@ -1,6 +1,6 @@
 {
   "name": "@kabmo-labs/kabmo-realtime-signals",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "type": "module",
   "description": "Named realtime signals raised by server modules, and their subscriber set.",
   "exports": {

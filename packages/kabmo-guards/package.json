@@ -1,6 +1,6 @@
 {
   "name": "@kabmo-labs/kabmo-guards",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "type": "module",
   "description": "Shared runtime guards for unknown records.",
   "exports": {

@@ -1,6 +1,6 @@
 {
   "name": "@kabmo-labs/kabmo-auth",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "type": "module",
   "description": "Generated UI password and its environment names.",
   "exports": {

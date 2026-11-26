@@ -1,6 +1,6 @@
 {
   "name": "@kabmo-labs/kabmo-live-sessions",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "type": "module",
   "description": "The facts any module may ask about the sessions this process runs.",
   "exports": {

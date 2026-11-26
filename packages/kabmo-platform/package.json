@@ -1,6 +1,6 @@
 {
   "name": "@kabmo-labs/kabmo-platform",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "type": "module",
   "description": "Platform checks shared by client and server.",
   "exports": {
