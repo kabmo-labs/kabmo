@@ -129,7 +129,7 @@ android {
      */
     val notificationSoundRes = layout.buildDirectory.dir("generated/res/notificationSound")
     val copyNotificationSound = tasks.register<Copy>("copyNotificationSound") {
-        from(rootProject.file("../notification-sound")) {
+        from(rootProject.file("../../assets/notification-sound")) {
             include("kabmo_*.wav")
         }
         into(notificationSoundRes.map { it.dir("raw") })
@@ -149,7 +149,7 @@ android {
      */
     val scannerAssets = layout.buildDirectory.dir("generated/assets/qrScanner")
     val copyScannerPage = tasks.register<Copy>("copyScannerPage") {
-        from(rootProject.file("../qr-scanner/qr-scanner.html"))
+        from(rootProject.file("../../assets/qr-scanner/qr-scanner.html"))
         into(scannerAssets)
     }
     sourceSets.getByName("main").assets.srcDir(scannerAssets)
@@ -175,7 +175,7 @@ dependencies {
  */
 tasks.withType<Test>().configureEach {
     inputs.files(
-        rootProject.file("../qr-scanner/page.html"),
-        rootProject.file("../qr-scanner/qr-scanner.html"),
+        rootProject.file("../../assets/qr-scanner/page.html"),
+        rootProject.file("../../assets/qr-scanner/qr-scanner.html"),
     ).withPropertyName("qrScannerPage")
 }

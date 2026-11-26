@@ -36,7 +36,7 @@ use webkit2gtk::{SettingsExt, UserContentManagerExt, WebView, WebViewExt};
 /// Windows and Linux; `assets/qr-scanner/qr-scanner.html` is generated from
 /// `page.html` by `bun assets/qr-scanner/build.mjs`, and it carries jsQR
 /// inlined because WebKitGTK has no `BarcodeDetector`.
-const SCANNER_PAGE: &str = include_str!("../../qr-scanner/qr-scanner.html");
+const SCANNER_PAGE: &str = include_str!("../../../assets/qr-scanner/qr-scanner.html");
 
 /// The base URI that makes the page a secure context. See the module comment.
 const SECURE_BASE: &str = "https://kabmo.local/";

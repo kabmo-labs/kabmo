@@ -125,13 +125,13 @@
          `bun assets/qr-scanner/build.mjs`. It carries jsQR inlined because
          WebView2 on Windows has no `BarcodeDetector` — see that package's
          build script. -->
-    <EmbeddedResource Include="..\..\..\qr-scanner\qr-scanner.html" LogicalName="qr-scanner.html" />
+    <EmbeddedResource Include="..\..\..\..\assets\qr-scanner\qr-scanner.html" LogicalName="qr-scanner.html" />
     <!-- The notification chimes, the same files every shell reads from
          `assets/notification-sound/`. Embedded because a single-file publish
          has no data directory to install them into; `Notifications.cs` writes
          them to `%TEMP%` at first play. -->
-    <EmbeddedResource Include="..\..\..\notification-sound\kabmo_notification.wav" LogicalName="kabmo_notification.wav" />
-    <EmbeddedResource Include="..\..\..\notification-sound\kabmo_attention.wav" LogicalName="kabmo_attention.wav" />
+    <EmbeddedResource Include="..\..\..\..\assets\notification-sound\kabmo_notification.wav" LogicalName="kabmo_notification.wav" />
+    <EmbeddedResource Include="..\..\..\..\assets\notification-sound\kabmo_attention.wav" LogicalName="kabmo_attention.wav" />
   </ItemGroup>
 
 </Project>

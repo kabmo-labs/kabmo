@@ -35,8 +35,8 @@ use crate::system::which;
 /// Two of them, because the console has two cues: a finished run, and an agent
 /// blocked on you. One sound for both would erase the distinction the console
 /// deliberately draws.
-const SOUND: &[u8] = include_bytes!("../../notification-sound/kabmo_notification.wav");
-const ATTENTION_SOUND: &[u8] = include_bytes!("../../notification-sound/kabmo_attention.wav");
+const SOUND: &[u8] = include_bytes!("../../../assets/notification-sound/kabmo_notification.wav");
+const ATTENTION_SOUND: &[u8] = include_bytes!("../../../assets/notification-sound/kabmo_attention.wav");
 
 /// The file names the daemon is pointed at. Shared with the other shells so the
 /// sounds are recognisable in a system's sound settings.
