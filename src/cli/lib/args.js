@@ -5,7 +5,7 @@
  * to a stream. Callers decide how to react to `unknown` flags.
  */
 
-import { ompInstallHintLines } from '@/server/lib/omp/core/install-hint';
+import { ompInstallHintLines } from '@kabmo-labs/kabmo-omp-install/install-hint';
 
 const BOOLEAN_LONG = new Set([
   'lan',

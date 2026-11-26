@@ -23,7 +23,7 @@
  */
 
 import type { LoaderFunctionArgs } from '@/server/lib/remix-compat';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { extractEvalActions } from '@/shared/lib/browser/activity';
 
 import { isRecord } from '@kabmo-labs/kabmo-guards';

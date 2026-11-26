@@ -3,7 +3,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { getDb } from '@/server/db.server';
 import { getSessionData } from '@/client/data/mock/chat';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { findSessionFileById } from '@/server/lib/omp/session/locator';
 import { loadSessionMessages, loadSessionModel, loadSessionThinkingLevel, loadSessionTitle } from '@kabmo-labs/kabmo-omp-session-messages/messages';
 import { mergeOmpAttachments, overlayRowsForOmpSession } from '@/server/lib/omp/session/merge-stored';

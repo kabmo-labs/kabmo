@@ -18,7 +18,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { applyOmpUpdate, checkOmpUpdate } from '@/server/lib/updates/omp';
-import { invalidateOmpCliCache } from '@/server/lib/omp/core/cli';
+import { invalidateOmpCliCache } from '@kabmo-labs/kabmo-omp-cli';
 
 /** Prints `omp --version` from the environment, so the source is constant and the
  * compiled fixture is reused across runs and across answers. */

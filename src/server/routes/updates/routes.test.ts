@@ -23,7 +23,7 @@ import packageJson from '@/../package.json';
 import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
 import { action as applyUpdateRoute } from '@/server/routes/updates/apply';
-import { invalidateOmpCliCache } from '@/server/lib/omp/core/cli';
+import { invalidateOmpCliCache } from '@kabmo-labs/kabmo-omp-cli';
 import { loader as checkRoute } from '@/server/routes/updates/check';
 import { loader as changelogRoute } from '@/server/routes/updates/changelog';
 import { loader as notesRoute } from '@/server/routes/updates/notes';

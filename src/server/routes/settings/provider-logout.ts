@@ -26,7 +26,7 @@
 
 import { json } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { runUtilityCommand } from '@/server/lib/omp/rpc/utility';
 import { invalidateModelsCaches } from '@/shared/lib/models/server-cache';
 

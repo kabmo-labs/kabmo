@@ -2,7 +2,7 @@ import { homedir } from 'os';
 import { json } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import type { PluginCatalogItem, PluginItem, PluginMarketplaceItem, PluginScope } from '@/shared/types';
 import { DEFAULT_PLUGIN_CATALOG, DEFAULT_PLUGIN_MARKETPLACES, DEFAULT_PLUGINS } from '@/client/data/settings/plugin';
 import { resolveDiscoveryScope } from '@/server/lib/omp/config/scope';

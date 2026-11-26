@@ -22,7 +22,7 @@ import path from 'path';
 import { json, type ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { getDefaultFsRoot, resolveRoot } from '@/server/lib/fs/root';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { generateCommitMessage } from '@/server/lib/fs/git-commit-message.server';
 import { readCommitMessageSettings } from '@/server/lib/fs/git-commit-settings.server';
 

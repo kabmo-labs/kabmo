@@ -3,7 +3,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { getDb } from '@/server/db.server';
 import { DEFAULT_MCP_SERVERS } from '@/client/data/settings/mcp';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { mcpStore, readCustomMcpServers, writeCustomMcpServers } from '@/server/lib/mcp/store.server';
 import { resolveRoot } from '@/server/lib/fs/root';
 import type { McpServerItem } from '@/shared/types';

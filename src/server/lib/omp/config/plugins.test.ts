@@ -32,7 +32,7 @@ import fs from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
-import { invalidateOmpCliCache } from '@/server/lib/omp/core/cli';
+import { invalidateOmpCliCache } from '@kabmo-labs/kabmo-omp-cli';
 import { listPlugins } from '@/server/lib/omp/config/plugins';
 
 let root = '';

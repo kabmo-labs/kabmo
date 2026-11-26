@@ -45,7 +45,7 @@ import { runGit } from '@/server/lib/fs/git-run';
 import { expandHome } from '@/server/routes/folders/create';
 import { defaultFolderName, registerWorkspaceFolder } from '@/server/lib/workspace/register-folder.server';
 import { isGitUrl, repoSlug } from '@/shared/lib/git/url';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 
 const CLONE_TIMEOUT_MS = 180_000;
 

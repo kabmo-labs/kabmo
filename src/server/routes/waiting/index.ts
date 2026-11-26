@@ -34,7 +34,7 @@ import { attachmentHasPayload } from '@/shared/lib/chat/attachments';
 import { parseModeSelection } from '@/server/lib/omp/mode/request';
 import { isSinglePathSegment } from '@kabmo-labs/kabmo-paths/path-segment';
 import { resolveSessionRef } from '@/server/lib/sessions/resolve.server';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 
 /** GET — every prompt a client may still need (waiting + recent outcomes). */
 export async function loader(_args: LoaderFunctionArgs) {

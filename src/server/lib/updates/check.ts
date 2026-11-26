@@ -10,7 +10,7 @@
  * the update UI it exists to exercise, and the popup's own gate would never open.
  */
 
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { resolveKabmoVersion } from '@/server/lib/updates/install';
 import { releaseTagUrl } from '@/server/lib/updates/release-url';
 import { checkOmpUpdate } from '@/server/lib/updates/omp';

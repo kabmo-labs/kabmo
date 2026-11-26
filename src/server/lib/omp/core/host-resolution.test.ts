@@ -23,8 +23,8 @@ import fs from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 
-import { invalidateOmpCliCache, resolveOmpBin } from '@/server/lib/omp/core/cli';
-import { resolveProjectRoot } from '@/server/lib/omp/core/worktree';
+import { invalidateOmpCliCache, resolveOmpBin } from '@kabmo-labs/kabmo-omp-cli';
+import { resolveProjectRoot } from '@kabmo-labs/kabmo-omp-worktree';
 import { buildWebState, type WebStateHost } from '@/server/lib/omp/rpc/web-state';
 import type { RpcSessionState } from '@/server/lib/omp/rpc/constants';
 

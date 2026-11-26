@@ -26,7 +26,7 @@
 
 import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { buildTokenUsagePayload } from '@/server/lib/usage/index-query.server';
 import { mockTokenUsagePayload } from '@/client/data/mock/token-usage';
 import type { TimeRangeType } from '@/shared/types';

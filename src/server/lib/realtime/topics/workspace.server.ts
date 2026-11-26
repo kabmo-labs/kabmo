@@ -18,7 +18,7 @@
 
 import { type TopicDescriptor } from '@/server/lib/realtime/hub.server';
 import { getDefaultFsRoot, resolveRoot, resolveWithinRoot } from '@/server/lib/fs/root';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { readGitStatus } from '@/server/lib/fs/git-status-read';
 import { listDirectoryEntries } from '@/server/lib/fs/listing';
 import { discoveredRepos, startRepoScan } from '@/server/lib/fs/git-repos';

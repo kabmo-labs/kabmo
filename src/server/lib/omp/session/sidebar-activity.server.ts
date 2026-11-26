@@ -25,7 +25,7 @@
  * finds the file.
  */
 
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { getLiveRunSessionIds } from '@/server/lib/omp/rpc/session-registry';
 import { findSessionFileById } from '@/server/lib/omp/session/locator';
 import { scanSessionInfoCached } from '@kabmo-labs/kabmo-omp-session-scan/files';

@@ -21,7 +21,7 @@ import { existsSync, rmSync } from 'fs';
 import path from 'path';
 import { canonicalPath, pathHolds } from '@kabmo-labs/kabmo-fs-canonical';
 import { runGit } from '@/server/lib/fs/git-run';
-import { resolveProjectRoot } from '@/server/lib/omp/core/worktree';
+import { resolveProjectRoot } from '@kabmo-labs/kabmo-omp-worktree';
 import { WorktreeError } from '@/server/lib/fs/worktree/errors';
 import { isWorkTree, listWorktrees } from '@/server/lib/fs/worktree/list';
 

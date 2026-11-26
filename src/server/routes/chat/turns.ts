@@ -23,7 +23,7 @@ import { json } from '@/server/lib/remix-compat';
 import type { LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { getDb } from '@/server/db.server';
 import { getSessionData } from '@/client/data/mock/chat';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { findSessionFileById } from '@/server/lib/omp/session/locator';
 import { loadSessionMessages } from '@kabmo-labs/kabmo-omp-session-messages/messages';
 import { mergeOmpAttachments } from '@/server/lib/omp/session/merge-stored';

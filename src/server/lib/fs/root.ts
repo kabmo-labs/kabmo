@@ -16,7 +16,7 @@ import { getDb } from '@/server/db.server';
 import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
 import { canonicalPath } from '@kabmo-labs/kabmo-fs-canonical';
 import { externalRoots, isExternalRoot } from '@/server/lib/fs/external-roots';
-import { resolveProjectRoot } from '@/server/lib/omp/core/worktree';
+import { resolveProjectRoot } from '@kabmo-labs/kabmo-omp-worktree';
 
 const APP_ROOT = process.cwd();
 

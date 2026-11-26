@@ -22,7 +22,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { action as login } from '@/server/routes/omp/login';
-import { invalidateOmpCliCache } from '@/server/lib/omp/core/cli';
+import { invalidateOmpCliCache } from '@kabmo-labs/kabmo-omp-cli';
 
 const AGENT_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'omc-omp-routes-'));
 const ORIGINAL_ENV = {

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-import type { resolveOmpBin } from '@/server/lib/omp/core/cli';
+import type { resolveOmpBin } from '@kabmo-labs/kabmo-omp-cli';
 
 export interface RpcResponseFrame {
   type: 'response';

@@ -31,7 +31,7 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { executableStub } from '@/test-support/executable-stub';
 
-import { invalidateOmpCliCache } from '@/server/lib/omp/core/cli';
+import { invalidateOmpCliCache } from '@kabmo-labs/kabmo-omp-cli';
 import {
   configFailureLine,
   getOmpConfigValue,

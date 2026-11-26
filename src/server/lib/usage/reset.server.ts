@@ -23,8 +23,8 @@
  * none of which this side could reconstruct).
  */
 
-import { resolveOmpBin } from '@/server/lib/omp/core/cli';
-import { isMockMode } from '@/server/mock.server';
+import { resolveOmpBin } from '@kabmo-labs/kabmo-omp-cli';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { isRecord } from '@kabmo-labs/kabmo-guards';
 import type { UsageResetAccount, UsageResetCredit, UsageResetList, UsageResetSpendResult } from '@/shared/types';
 import { childEnv } from '@kabmo-labs/kabmo-fs-child-env';

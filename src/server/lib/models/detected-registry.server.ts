@@ -15,7 +15,7 @@
  * server that is already serving.
  */
 
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { fetchOmpRegistrySnapshot } from '@/server/lib/models/provider-registry.server';
 
 export async function logDetectedRegistry(): Promise<void> {

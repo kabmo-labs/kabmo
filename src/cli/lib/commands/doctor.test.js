@@ -16,7 +16,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { collectReport, exitCodeFor } from '@/cli/lib/commands/doctor.js';
-import { invalidateOmpCliCache } from '@/server/lib/omp/core/cli';
+import { invalidateOmpCliCache } from '@kabmo-labs/kabmo-omp-cli';
 import { testPosix } from '@/test-support/platform';
 
 const originalFetch = Bun.fetch;

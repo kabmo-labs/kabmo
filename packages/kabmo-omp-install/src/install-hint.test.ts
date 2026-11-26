@@ -16,8 +16,8 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { OMP_INSTALL_SCRIPT_URL, ompInstallCommands, ompInstallHintLines } from '@/server/lib/omp/core/install-hint';
-import { OMP_PACKAGE } from '@/server/lib/updates/npm';
+import { OMP_INSTALL_SCRIPT_URL, ompInstallCommands, ompInstallHintLines } from './install-hint';
+import { OMP_PACKAGE } from './package-name';
 
 describe('ompInstallCommands', () => {
   test('the source route names the package the update path already resolves against', () => {

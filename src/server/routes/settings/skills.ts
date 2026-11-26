@@ -3,7 +3,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { getDb } from '@/server/db.server';
 import { DEFAULT_CATALOG_SKILLS, DEFAULT_CATALOG_SOURCES, DEFAULT_SKILLS } from '@/client/data/settings/skill';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import type { SkillItem } from '@/shared/types';
 import { readCatalogSources } from '@/server/lib/omp/config/skill-sources';
 import {

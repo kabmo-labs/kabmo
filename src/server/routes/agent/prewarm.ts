@@ -11,7 +11,7 @@ import { parseModeSelection } from '@/server/lib/omp/mode/request';
 import { isApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
 import { loadPersistedAccessMode } from '@/shared/lib/omp/config/access-mode.server';
 import { rpcErrorResponse } from '@/server/lib/omp/rpc/errors';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { harnessDescriptor, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 
 /** A JSON object, or `{}` for anything else — same read as the spawn route. */

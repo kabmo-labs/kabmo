@@ -28,7 +28,7 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { json } from '@/server/lib/remix-compat';
 import { getDb } from '@/server/db.server';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { deleteProviderIcon } from '@/server/lib/models/provider-icon-store.server';
 import { ensureProviderIcon, providerIconUrl, readProviderIconBytes } from '@/server/lib/models/provider-icon.server';
 import { invalidateModelsCaches } from '@/shared/lib/models/server-cache';

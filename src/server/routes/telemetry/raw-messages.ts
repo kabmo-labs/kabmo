@@ -1,6 +1,6 @@
 import { json } from '@/server/lib/remix-compat';
 import type { LoaderFunctionArgs } from '@/server/lib/remix-compat';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { loadSessionSource } from '@/server/lib/chat/session-store.server';
 import { computeSessionContextTelemetry } from '@/client/data/context-data';
 import { computeRawMessagesPage, type RawMessageRole } from '@/server/lib/omp/session/telemetry-raw';

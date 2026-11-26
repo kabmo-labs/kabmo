@@ -22,7 +22,7 @@ import { json } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { DEFAULT_AGENTS_LIST } from '@/client/data/agent-data';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { join } from 'path';
 import {
   deleteAgentDefinition,

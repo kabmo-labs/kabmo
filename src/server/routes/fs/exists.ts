@@ -20,7 +20,7 @@
  */
 
 import { json, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { getDefaultFsRoot, resolveRoot, resolveWithinRoot } from '@/server/lib/fs/root';
 import { stableMtime } from '@/server/lib/fs/write-conflict';
 

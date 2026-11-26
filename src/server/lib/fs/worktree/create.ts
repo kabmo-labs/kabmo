@@ -28,7 +28,7 @@ import { mkdir } from 'fs/promises';
 import { getDataDir } from '@kabmo-labs/kabmo-paths/paths';
 import { runGit } from '@/server/lib/fs/git-run';
 import { canonicalPath } from '@kabmo-labs/kabmo-fs-canonical';
-import { resolveProjectRoot } from '@/server/lib/omp/core/worktree';
+import { resolveProjectRoot } from '@kabmo-labs/kabmo-omp-worktree';
 import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
 import {
   folderNameForBranch,

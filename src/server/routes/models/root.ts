@@ -2,7 +2,7 @@ import { json } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { getDb } from '@/server/db.server';
 import { INITIAL_MODELS_CATALOG } from '@/client/data/models/catalog';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import type { AIModelOption, ModelsData, ProviderItem } from '@/shared/types';
 import { readSettingsJson, writeSettingsJson } from '@/server/lib/db/settings-store';
 import { modelKey } from '@/shared/lib/models/identity';

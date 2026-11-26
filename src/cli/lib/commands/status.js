@@ -8,7 +8,7 @@
 
 import { findLiveInstance, listLiveInstances, waitForHealth } from '@/cli/lib/runtime.js';
 import { isLoopbackHost, probeHost } from '@/server/lib/lifecycle/probe';
-import { resolveOmpBin } from '@/server/lib/omp/core/cli';
+import { resolveOmpBin } from '@kabmo-labs/kabmo-omp-cli';
 import { log, ok, printJson, isJson, warn } from '@/cli/lib/output.js';
 
 function explicitPort(options) {

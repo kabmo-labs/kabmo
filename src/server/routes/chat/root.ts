@@ -2,7 +2,7 @@ import { json } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { getDb } from '@/server/db.server';
 import { getSessionData } from '@/client/data/mock/chat';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);

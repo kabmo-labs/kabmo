@@ -29,7 +29,7 @@ import { readSettingsJson, writeSettingsJson } from '@/server/lib/db/settings-st
 import { loadProbes } from '@/server/lib/harness/probe-cache.server';
 import { autoProbeTargets } from '@/server/lib/harness/auto-probe.server';
 import { importHarnessSessions } from '@/server/lib/harness/session-import.server';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { harnessDescriptor, harnessIds, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import { ensureCustomHarnesses } from '@/server/lib/harness/custom.server';
 import type { HarnessSessionImport } from '@/shared/types/harness';

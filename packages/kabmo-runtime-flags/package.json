@@ -1,0 +1,24 @@
+{
+  "name": "@kabmo-labs/kabmo-runtime-flags",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Process-wide runtime flags read from the environment.",
+  "exports": {
+    ".": "./src/mock.server.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-runtime-flags"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  }
+}

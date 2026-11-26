@@ -1,7 +1,7 @@
 import { json } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { upsertOmpProviderModels } from '@/server/lib/omp/config/providers';
 import { manualModelSeed } from '@/server/lib/omp/config/provider-seeds';
 import { readNativeProviders } from '@kabmo-labs/kabmo-omp-models-config/models-config';

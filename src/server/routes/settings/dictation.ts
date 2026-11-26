@@ -29,7 +29,7 @@ import {
   invalidateLocalDictationCapability,
   localDictationCapability,
 } from '@/server/lib/dictation/capability.server';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 
 export async function loader({ request: _request }: LoaderFunctionArgs) {
   try {

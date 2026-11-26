@@ -16,7 +16,7 @@
  */
 
 import { getOmpConfigValue } from '@/server/lib/omp/config/config-cli';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 
 const CACHE_TTL_MS = 60_000;
 

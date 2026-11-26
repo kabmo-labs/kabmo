@@ -14,7 +14,7 @@
  * download, launcher retirement, verification — are omp's own.
  */
 
-import { invalidateOmpCliCache, resolveOmpBin } from '@/server/lib/omp/core/cli';
+import { invalidateOmpCliCache, resolveOmpBin } from '@kabmo-labs/kabmo-omp-cli';
 import { fetchNpmLatest, OMP_PACKAGE } from '@/server/lib/updates/npm';
 import { pumpStream } from '@/server/lib/updates/install-steps';
 import { isNewer } from '@/shared/lib/updates/semver';

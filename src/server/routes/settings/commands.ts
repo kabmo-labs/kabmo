@@ -3,7 +3,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { getDb } from '@/server/db.server';
 import { DEFAULT_COMMANDS_LIST } from '@/client/data/settings/command';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import type { CommandItem } from '@/shared/types';
 import { isRecord } from '@kabmo-labs/kabmo-guards';
 import { createSettingsListStore } from '@/server/lib/db/settings-store';

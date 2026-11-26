@@ -27,7 +27,7 @@
  */
 
 import { json } from '@/server/lib/remix-compat';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import type { DiscoveryScope } from '@/server/lib/omp/config/scope';
 import type { SkillCatalogSource } from '@/shared/types';
 import { DEFAULT_CATALOG_SKILLS } from '@/client/data/settings/skill';

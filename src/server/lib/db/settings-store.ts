@@ -1,5 +1,5 @@
 import type { DbClient } from '@/server/lib/db/client';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 
 /**
  * Shared persistence helpers for the `app_settings` key/value table. Every

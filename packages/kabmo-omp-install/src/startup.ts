@@ -18,10 +18,10 @@
  * without a real omp install.
  */
 
-import { resolveOmpBin } from '@/server/lib/omp/core/cli';
-import { ompInstallHintLines } from '@/server/lib/omp/core/install-hint';
+import { resolveOmpBin } from '@kabmo-labs/kabmo-omp-cli';
+import { ompInstallHintLines } from './install-hint';
 import { getAgentDir, getConfigRoot } from '@kabmo-labs/kabmo-omp-paths';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 
 /** Null when the app may start; otherwise the message to print before exiting. */
 export function ompStartupError(): string | null {

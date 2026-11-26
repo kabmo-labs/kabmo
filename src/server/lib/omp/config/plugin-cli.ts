@@ -17,7 +17,7 @@
  * stdout alone would report every failure as an empty success.
  */
 
-import { resolveOmpBin } from '@/server/lib/omp/core/cli';
+import { resolveOmpBin } from '@kabmo-labs/kabmo-omp-cli';
 import { childEnv } from '@kabmo-labs/kabmo-fs-child-env';
 
 export const LIST_TIMEOUT_MS = 30_000;

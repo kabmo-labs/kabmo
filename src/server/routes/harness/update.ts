@@ -43,7 +43,7 @@ import { harnessUpdateFacts, latestSourceFor } from '@kabmo-labs/kabmo-harness-u
 import { loadProbes } from '@/server/lib/harness/probe-cache.server';
 import { harnessVersionState, type HarnessVersionState } from '@/server/lib/harness/update-state.server';
 import { planHarnessUpdate, type HarnessUpdateStep } from '@/shared/lib/harness/update-plan';
-import { resolveOmpBin } from '@/server/lib/omp/core/cli';
+import { resolveOmpBin } from '@kabmo-labs/kabmo-omp-cli';
 import {
   startHarnessUpdateJob,
   unfinishedUpdateJob,

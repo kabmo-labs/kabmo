@@ -17,7 +17,7 @@
  */
 
 import { sttWorker } from '@/server/lib/dictation/omp-stt-worker';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { LOCAL_DICTATION_UNAVAILABLE } from '@/shared/lib/dictation/engines';
 import type { LocalDictationCapability } from '@/shared/lib/dictation/capability';
 

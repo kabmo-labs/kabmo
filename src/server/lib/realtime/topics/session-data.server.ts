@@ -29,7 +29,7 @@ import { getLiveSession, harnessOfSession } from '@/server/lib/omp/rpc/session-r
 import { loadAcpSessions } from '@/server/lib/harness/session-store.server';
 import { acpTelemetryFor } from '@/server/lib/harness/acp/acp-telemetry.server';
 import { buildAcpTodos } from '@/server/lib/harness/acp/acp-todos.server';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import type { SessionTodosPayload } from '@/shared/types/todo';
 import type { SessionPlanPayload } from '@/shared/types/plan';
 

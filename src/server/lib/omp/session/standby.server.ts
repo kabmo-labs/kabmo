@@ -38,7 +38,7 @@ import { restartPrewarmedSessions } from '@/server/lib/omp/rpc/prewarm-pool';
 import { restartPrewarmedAcpSessions } from '@/server/lib/harness/acp/prewarm.server';
 import { restartUtilityProcesses } from '@/server/lib/omp/rpc/utility';
 import { invalidateSkillCache } from '@/server/lib/omp/config/skills';
-import { invalidateOmpCliCache } from '@/server/lib/omp/core/cli';
+import { invalidateOmpCliCache } from '@kabmo-labs/kabmo-omp-cli';
 import { invalidateModelsCaches } from '@/shared/lib/models/server-cache';
 import { invalidateUsageCache } from '@/server/lib/usage/omp-usage.server';
 

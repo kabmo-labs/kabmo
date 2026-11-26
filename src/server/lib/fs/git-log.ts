@@ -2,7 +2,7 @@ import path from 'path';
 import type { GitCommit, GitCommitFile } from '@/shared/types/git';
 import { COMMIT_PAGE_SIZE } from '@/shared/lib/fs/commit-page';
 import { SAMPLE_GIT_COMMITS } from '@/client/data/mock/git-commits';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { runShell, shellOk } from '@/server/lib/fs/shell';
 import { GIT_ENV, runGit } from '@/server/lib/fs/git-run';
 

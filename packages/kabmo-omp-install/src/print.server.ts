@@ -21,7 +21,7 @@
  */
 
 import { stripKabmoHostEnv } from '@kabmo-labs/kabmo-sdk';
-import { resolveOmpBin } from '@/server/lib/omp/core/cli';
+import { resolveOmpBin } from '@kabmo-labs/kabmo-omp-cli';
 
 export interface OmpPrintRequest {
   prompt: string;

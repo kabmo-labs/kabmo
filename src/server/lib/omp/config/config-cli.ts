@@ -25,8 +25,8 @@
  * `codeModeDirectTools`, removed upstream in 18.10.4 — failed exactly this way.
  */
 
-import { isMockMode } from '@/server/mock.server';
-import { resolveOmpBin } from '@/server/lib/omp/core/cli';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
+import { resolveOmpBin } from '@kabmo-labs/kabmo-omp-cli';
 import { childEnv } from '@kabmo-labs/kabmo-fs-child-env';
 
 export interface ConfigEntry {

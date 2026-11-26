@@ -24,7 +24,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { getDb } from '@/server/db.server';
-import { invalidateOmpCliCache } from '@/server/lib/omp/core/cli';
+import { invalidateOmpCliCache } from '@kabmo-labs/kabmo-omp-cli';
 import { disposeUtilityRpc } from '@/server/lib/omp/rpc/utility';
 import { invalidateUsageCache } from '@/server/lib/usage/omp-usage.server';
 import { buildUsageProviders } from '@/server/lib/usage/providers.server';

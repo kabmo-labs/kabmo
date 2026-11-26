@@ -1,6 +1,6 @@
 import { json } from '@/server/lib/remix-compat';
 import type { LoaderFunctionArgs } from '@/server/lib/remix-compat';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { findSessionFileById } from '@/server/lib/omp/session/locator';
 import { extractSubagentHistory } from '@/server/lib/omp/subagent/history';
 import { SUBAGENT_ID_MAX_LENGTH, SUBAGENT_ID_RE } from '@/server/lib/omp/subagent/history/paths';

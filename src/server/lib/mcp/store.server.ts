@@ -14,7 +14,7 @@
 
 import { DEFAULT_MCP_SERVERS } from '@/client/data/settings/mcp';
 import { createSettingsListStore } from '@/server/lib/db/settings-store';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { normalizeMcpItem } from '@/shared/lib/mcp/item';
 import type { DbClient } from '@/server/lib/db/client';
 import type { McpServerItem } from '@/shared/types';

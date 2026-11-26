@@ -25,7 +25,7 @@
 
 import { getDb } from '@/server/db.server';
 import { readSettingsJson, writeSettingsJson } from '@/server/lib/db/settings-store';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { normalizeRoleMap } from '@/shared/lib/omp/config/model-roles';
 import type { ModelRolePreset } from '@/shared/types/model-roles';
 

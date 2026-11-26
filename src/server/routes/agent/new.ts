@@ -12,7 +12,7 @@ import { projectModelForCwd } from '@/server/lib/workspace/project-model.server'
 import { harnessDescriptor, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import { startAcpSession } from '@/server/lib/harness/spawn.server';
 import { mintAgentEnvironment, rememberAgentToken } from '@/server/lib/sessions/agent-token.server';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { recordPrompt } from '@/server/lib/chat/prompt-history.server';
 
 /** The model-dropdown persists its selection here (actionType 'selectModel');

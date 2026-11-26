@@ -17,7 +17,7 @@
 import { promises as fsp } from 'fs';
 import { dirname, join } from 'path';
 import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
-import { GIT_ENV } from '@/server/lib/fs/git-run';
+import { GIT_ENV } from '@kabmo-labs/kabmo-git-env';
 
 declare global {
   var __kabmoProjectCache: Map<string, { root: string; expiresAt: number }> | undefined;

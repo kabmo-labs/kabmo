@@ -1,6 +1,6 @@
 import { json } from '@/server/lib/remix-compat';
 import type { LoaderFunctionArgs } from '@/server/lib/remix-compat';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { runUtilityCommand } from '@/server/lib/omp/rpc/utility';
 
 /**

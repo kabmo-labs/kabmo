@@ -2,7 +2,7 @@ import { json, type ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { errorResponse } from '@/server/lib/route-adapter';
 import fs from 'fs';
 import path from 'path';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { getDefaultFsRoot, isWithinRoot, resolveRoot, resolveWithinRoot } from '@/server/lib/fs/root';
 import { runShell } from '@/server/lib/fs/shell';
 import { revealInFileManager } from '@/server/lib/fs/reveal';

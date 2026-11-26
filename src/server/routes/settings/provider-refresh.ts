@@ -26,7 +26,7 @@
 import { json } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { getDb } from '@/server/db.server';
 import { refreshModelCatalog } from '@/server/lib/models/catalog.server';
 import { mergeProviders, PROVIDERS_SETTINGS_KEY } from '@/server/lib/models/provider-registry.server';

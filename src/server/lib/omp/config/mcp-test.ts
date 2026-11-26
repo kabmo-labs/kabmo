@@ -16,7 +16,7 @@ import type { Subprocess } from 'bun';
 import { stripKabmoHostEnv } from '@kabmo-labs/kabmo-sdk';
 import { killProcessTree } from '@kabmo-labs/kabmo-process-kill';
 import { readLines } from '@kabmo-labs/kabmo-rpc-lines';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import type { McpServerItem } from '@/shared/types';
 import { isRecord } from '@kabmo-labs/kabmo-guards';
 import { REDACTED_SENTINEL, rowsToRecord } from '@/shared/lib/mcp/key-value';

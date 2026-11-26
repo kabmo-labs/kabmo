@@ -20,10 +20,10 @@
  * user instead of looking like a no-op.
  */
 
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import type { CatalogSkillItem } from '@/shared/types';
 import { childEnv } from '@kabmo-labs/kabmo-fs-child-env';
-import { resolveOmpBin } from '@/server/lib/omp/core/cli';
+import { resolveOmpBin } from '@kabmo-labs/kabmo-omp-cli';
 
 const SEARCH_TIMEOUT_MS = 30_000;
 const INSTALL_TIMEOUT_MS = 180_000;

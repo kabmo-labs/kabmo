@@ -42,7 +42,7 @@ import fs from 'fs';
 import { isSinglePathSegment } from '@kabmo-labs/kabmo-paths/path-segment';
 import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
 import { expandHome } from '@/server/routes/folders/create';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 
 export async function action({ request, params }: ActionFunctionArgs) {
   if (request.method !== 'POST') {

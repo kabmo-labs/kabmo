@@ -22,7 +22,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-
 import { methodNotAllowedResponse } from '@/server/lib/route-adapter';
 import { getDefaultFsRoot, resolveRoot, resolveWithinRoot } from '@/server/lib/fs/root';
 import { normalizeRelativePath } from '@/server/lib/fs/relative-path';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { deleteAnnotation, listAnnotations, saveAnnotation } from '@/server/lib/review/store.server';
 import type { BlockVerdict } from '@/shared/lib/markdown/blocks/types';
 

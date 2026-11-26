@@ -11,7 +11,7 @@
  * and the sidebar merge are the details two copies would drift on.
  */
 
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { scopeToRepo } from '@/server/lib/fs/repo-scope';
 import { firstLine, gitRun } from '@/server/lib/wiki/git';
 import { ensureWikiMirror, listWikiPaths, readWikiPage } from '@/server/lib/wiki/mirror.server';

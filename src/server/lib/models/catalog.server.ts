@@ -19,8 +19,8 @@
  * `invalidateModelsCaches` like every other registry snapshot.
  */
 
-import { readOmpModelsJson, type OmpModelsRow } from '@/server/lib/omp/core/models-json';
-import { isMockMode } from '@/server/mock.server';
+import { readOmpModelsJson, type OmpModelsRow } from '@kabmo-labs/kabmo-omp-install/models-json';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { formatContextWindow } from '@/shared/lib/code/format';
 import { modelKindOf } from '@/shared/lib/models/provider/dialect';
 import { isRecord } from '@kabmo-labs/kabmo-guards';

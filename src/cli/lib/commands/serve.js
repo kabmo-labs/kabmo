@@ -31,7 +31,7 @@ import { PASSWORD_HANDOVER_ENV, PASSWORD_HANDOVER_STDIN } from '@/shared/lib/aut
 import { UI_PASSWORD_ENV } from '@kabmo-labs/kabmo-auth';
 import { getLogFilePath } from '@/cli/lib/paths.js';
 import { resolveServeMode } from '@/cli/lib/serve-mode.js';
-import { ompStartupError } from '@/server/lib/omp/core/startup';
+import { ompStartupError } from '@kabmo-labs/kabmo-omp-install/startup';
 import { offerOmpInstall } from '@/cli/lib/omp-setup.js';
 import { installAutostart, removeLegacyAutostart, uninstallAutostart, getAutostartEntryPath } from '@/server/lib/tray/autostart';
 import { getAutostartCredentialPath, removeAutostartCredential, writeAutostartCredential } from '@/server/lib/tray/credential';

@@ -19,7 +19,7 @@ import { createDb, type DbClient } from '@/server/lib/db/client';
 import { initSchema } from '@/server/lib/db/schema';
 import { seedMockData } from '@/server/lib/db/seed';
 import { syncWorkspaceFoldersFromDiscovery } from '@/server/lib/db/workspace-sync';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { pathExists } from '@kabmo-labs/kabmo-omp-paths';
 import { migrateLegacyProjectSettings } from '@/shared/lib/workspace/project-settings-migration';
 import { getDataDir } from '@kabmo-labs/kabmo-paths/paths';

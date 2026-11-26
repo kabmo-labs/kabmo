@@ -19,7 +19,7 @@
  * provider's endpoint, so it is far too expensive to run per panel read.
  */
 
-import { resolveOmpBin } from '@/server/lib/omp/core/cli';
+import { resolveOmpBin } from '@kabmo-labs/kabmo-omp-cli';
 import { isRecord } from '@kabmo-labs/kabmo-guards';
 import type { UsageLimitWindow, UsageUnit, UsageWindowStatus } from '@/shared/types';
 import { childEnv } from '@kabmo-labs/kabmo-fs-child-env';

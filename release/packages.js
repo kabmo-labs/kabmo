@@ -89,6 +89,26 @@ export const RELEASE_PACKAGES = [
     name: '@kabmo-labs/kabmo-process-probe',
   },
   {
+    dir: 'packages/kabmo-runtime-flags',
+    name: '@kabmo-labs/kabmo-runtime-flags',
+  },
+  {
+    dir: 'packages/kabmo-git-env',
+    name: '@kabmo-labs/kabmo-git-env',
+  },
+  {
+    dir: 'packages/kabmo-omp-cli',
+    name: '@kabmo-labs/kabmo-omp-cli',
+  },
+  {
+    dir: 'packages/kabmo-omp-worktree',
+    name: '@kabmo-labs/kabmo-omp-worktree',
+  },
+  {
+    dir: 'packages/kabmo-omp-install',
+    name: '@kabmo-labs/kabmo-omp-install',
+  },
+  {
     /** Directory under `packages/`, which is also the tag's prefix. */
     dir: 'packages/kabmo-guards',
     name: '@kabmo-labs/kabmo-guards',

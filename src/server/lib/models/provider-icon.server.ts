@@ -34,7 +34,7 @@ import {
   writeProviderIcon,
   type StoredProviderIcon,
 } from '@/server/lib/models/provider-icon-store.server';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 
 const HIT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const MISS_TTL_MS = 24 * 60 * 60 * 1000;

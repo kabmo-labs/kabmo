@@ -27,7 +27,7 @@
 
 import { json, type ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { parseJsonBody, requireParam } from '@/server/lib/route-adapter';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { getRpcSession } from '@/server/lib/omp/rpc/session-registry';
 import { findProjectRuntimeDir, readOwnedTargetIds } from '@/server/lib/browser/runtime';
 import { acquireConnection, releaseConnection } from '@/shared/lib/browser/connection';

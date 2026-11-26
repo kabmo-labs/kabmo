@@ -1,6 +1,6 @@
 import { json } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { upsertOmpProviderModels } from '@/server/lib/omp/config/providers';
 import { readOmpProviderApiKey } from '@/server/lib/omp/core/auth-credentials';
 import { refreshModelRegistryAfterWrite } from '@/server/lib/models/registry-refresh.server';

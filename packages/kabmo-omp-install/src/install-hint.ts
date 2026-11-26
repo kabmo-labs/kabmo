@@ -28,7 +28,7 @@
  * route is found without a restart (see ./cli.ts).
  */
 
-import { OMP_PACKAGE } from '@/server/lib/updates/npm';
+import { OMP_PACKAGE } from './package-name';
 
 /** omp's own installer, which fetches a sha256-verified prebuilt binary. */
 export const OMP_INSTALL_SCRIPT_URL = 'https://omp.sh/install';

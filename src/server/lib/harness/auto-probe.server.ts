@@ -44,7 +44,7 @@ import { loadDisabledHarnesses } from '@/server/lib/harness/enabled.server';
 import { blockedProbe, probeHarness } from '@kabmo-labs/kabmo-harness-launch/launch';
 import { HARNESS_LAUNCH, harnessRequirementMet, type HarnessLaunch } from '@kabmo-labs/kabmo-harness-launch/launch-table';
 import { customLaunch } from '@/server/lib/harness/custom.server';
-import { resolveOmpBin } from '@/server/lib/omp/core/cli';
+import { resolveOmpBin } from '@kabmo-labs/kabmo-omp-cli';
 import { whichOnToolchainPath } from '@kabmo-labs/kabmo-fs-toolchain';
 import { rememberProbe } from '@/server/lib/harness/probe-cache.server';
 import { harnessDescriptor, harnessIds, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';

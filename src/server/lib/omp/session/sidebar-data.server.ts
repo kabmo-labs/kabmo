@@ -19,7 +19,7 @@
  */
 
 import { getDb } from '@/server/db.server';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { DEFAULT_SESSION_SORT_OPTION, isValidSessionSortOption, sortFolders } from '@/shared/lib/workspace/sidebar-sort';
 import { groupSessionsByRoot, sessionTitleFor } from '@/shared/lib/omp/session/sidebar';
 import { loadOmpSidebarData } from '@/server/lib/omp/session/reader';

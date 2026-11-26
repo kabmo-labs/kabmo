@@ -19,7 +19,7 @@
  * the shape was unified, crash it outright).
  */
 
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { buildUsageProviders } from '@/server/lib/usage/providers.server';
 import type { UsageProviderSummary, UsageReport } from '@/shared/types';
 

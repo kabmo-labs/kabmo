@@ -3,7 +3,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { getDb } from '@/server/db.server';
 import { DEFAULT_BEHAVIOR_RULES } from '@/client/data/settings/behavior';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { parseApprovalRules, writeToolsApproval } from '@/server/lib/omp/config/behavior';
 import { isInstructionFileKind, readInstructionFile, saveInstructionFile } from '@/server/lib/omp/config/instructions';
 import type { InstructionFileKind } from '@/shared/types';

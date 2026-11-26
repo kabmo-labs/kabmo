@@ -6,7 +6,7 @@ import { snapshot as memorySnapshot } from '@/server/lib/lifecycle/memory';
 import { resolveLaunchMode } from '@/server/lib/lifecycle/launch-mode';
 import { isTrayEnabledByArgv } from '@/server/lib/lifecycle/argv-flags';
 import { isTlsEnabledByArgv } from '@/server/lib/lifecycle/tls';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { pluginPlatformReady } from '@/server/lib/plugins/loader.server';
 import { connectIdentity } from '@/server/lib/connect/identity.server';
 

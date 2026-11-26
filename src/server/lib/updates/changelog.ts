@@ -16,7 +16,7 @@
  * which is what "showing 12 of 29" means.
  */
 
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { fetchChangelogNotes } from '@/server/lib/updates/changelog-file';
 import { isManualMethod, manualUpdateCommand } from '@/server/lib/updates/install-method';
 import { resolveInstallContext, resolveKabmoVersion } from '@/server/lib/updates/install';

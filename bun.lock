@@ -35,6 +35,7 @@
         "@kabmo-labs/kabmo-fs-config": "workspace:*",
         "@kabmo-labs/kabmo-fs-media": "workspace:*",
         "@kabmo-labs/kabmo-fs-toolchain": "workspace:*",
+        "@kabmo-labs/kabmo-git-env": "workspace:*",
         "@kabmo-labs/kabmo-guards": "workspace:*",
         "@kabmo-labs/kabmo-harness-accounts": "workspace:*",
         "@kabmo-labs/kabmo-harness-catalog": "workspace:*",
@@ -54,9 +55,11 @@
         "@kabmo-labs/kabmo-idle-reaper": "workspace:*",
         "@kabmo-labs/kabmo-model-contracts": "workspace:*",
         "@kabmo-labs/kabmo-omp-access-mode": "workspace:*",
+        "@kabmo-labs/kabmo-omp-cli": "workspace:*",
         "@kabmo-labs/kabmo-omp-config-doc": "workspace:*",
         "@kabmo-labs/kabmo-omp-contracts": "workspace:*",
         "@kabmo-labs/kabmo-omp-extensions": "workspace:*",
+        "@kabmo-labs/kabmo-omp-install": "workspace:*",
         "@kabmo-labs/kabmo-omp-mapper": "workspace:*",
         "@kabmo-labs/kabmo-omp-messages-map": "workspace:*",
         "@kabmo-labs/kabmo-omp-mode": "workspace:*",
@@ -70,11 +73,13 @@
         "@kabmo-labs/kabmo-omp-session-messages": "workspace:*",
         "@kabmo-labs/kabmo-omp-session-parse": "workspace:*",
         "@kabmo-labs/kabmo-omp-session-scan": "workspace:*",
+        "@kabmo-labs/kabmo-omp-worktree": "workspace:*",
         "@kabmo-labs/kabmo-paths": "workspace:*",
         "@kabmo-labs/kabmo-platform": "workspace:*",
         "@kabmo-labs/kabmo-process-kill": "workspace:*",
         "@kabmo-labs/kabmo-process-probe": "workspace:*",
         "@kabmo-labs/kabmo-rpc-lines": "workspace:*",
+        "@kabmo-labs/kabmo-runtime-flags": "workspace:*",
         "@kabmo-labs/kabmo-sdk": "workspace:*",
         "@kabmo-labs/kabmo-ui": "workspace:*",
         "@shikijs/langs": "^4.4.3",
@@ -268,6 +273,10 @@
         "@kabmo-labs/kabmo-sdk": "workspace:*",
       },
     },
+    "packages/kabmo-git-env": {
+      "name": "@kabmo-labs/kabmo-git-env",
+      "version": "0.0.1",
+    },
     "packages/kabmo-guards": {
       "name": "@kabmo-labs/kabmo-guards",
       "version": "0.0.1",
@@ -384,6 +393,13 @@
         "@kabmo-labs/kabmo-guards": "workspace:*",
       },
     },
+    "packages/kabmo-omp-cli": {
+      "name": "@kabmo-labs/kabmo-omp-cli",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kabmo-labs/kabmo-fs-toolchain": "workspace:*",
+      },
+    },
     "packages/kabmo-omp-config-doc": {
       "name": "@kabmo-labs/kabmo-omp-config-doc",
       "version": "0.0.1",
@@ -403,6 +419,17 @@
       "version": "0.0.1",
       "dependencies": {
         "@kabmo-labs/kabmo-omp-mode": "workspace:*",
+      },
+    },
+    "packages/kabmo-omp-install": {
+      "name": "@kabmo-labs/kabmo-omp-install",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kabmo-labs/kabmo-fs-child-env": "workspace:*",
+        "@kabmo-labs/kabmo-omp-cli": "workspace:*",
+        "@kabmo-labs/kabmo-omp-paths": "workspace:*",
+        "@kabmo-labs/kabmo-runtime-flags": "workspace:*",
+        "@kabmo-labs/kabmo-sdk": "workspace:*",
       },
     },
     "packages/kabmo-omp-mapper": {
@@ -516,6 +543,14 @@
         "@kabmo-labs/kabmo-omp-session-core": "workspace:*",
       },
     },
+    "packages/kabmo-omp-worktree": {
+      "name": "@kabmo-labs/kabmo-omp-worktree",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kabmo-labs/kabmo-git-env": "workspace:*",
+        "@kabmo-labs/kabmo-omp-paths": "workspace:*",
+      },
+    },
     "packages/kabmo-paths": {
       "name": "@kabmo-labs/kabmo-paths",
       "version": "0.0.1",
@@ -537,6 +572,10 @@
     },
     "packages/kabmo-rpc-lines": {
       "name": "@kabmo-labs/kabmo-rpc-lines",
+      "version": "0.0.1",
+    },
+    "packages/kabmo-runtime-flags": {
+      "name": "@kabmo-labs/kabmo-runtime-flags",
       "version": "0.0.1",
     },
     "packages/kabmo-sdk": {
@@ -674,6 +713,8 @@
 
     "@kabmo-labs/kabmo-fs-toolchain": ["@kabmo-labs/kabmo-fs-toolchain@workspace:packages/kabmo-fs-toolchain"],
 
+    "@kabmo-labs/kabmo-git-env": ["@kabmo-labs/kabmo-git-env@workspace:packages/kabmo-git-env"],
+
     "@kabmo-labs/kabmo-guards": ["@kabmo-labs/kabmo-guards@workspace:packages/kabmo-guards"],
 
     "@kabmo-labs/kabmo-harness-accounts": ["@kabmo-labs/kabmo-harness-accounts@workspace:packages/kabmo-harness-accounts"],
@@ -712,11 +753,15 @@
 
     "@kabmo-labs/kabmo-omp-access-mode": ["@kabmo-labs/kabmo-omp-access-mode@workspace:packages/kabmo-omp-access-mode"],
 
+    "@kabmo-labs/kabmo-omp-cli": ["@kabmo-labs/kabmo-omp-cli@workspace:packages/kabmo-omp-cli"],
+
     "@kabmo-labs/kabmo-omp-config-doc": ["@kabmo-labs/kabmo-omp-config-doc@workspace:packages/kabmo-omp-config-doc"],
 
     "@kabmo-labs/kabmo-omp-contracts": ["@kabmo-labs/kabmo-omp-contracts@workspace:packages/kabmo-omp-contracts"],
 
     "@kabmo-labs/kabmo-omp-extensions": ["@kabmo-labs/kabmo-omp-extensions@workspace:packages/kabmo-omp-extensions"],
+
+    "@kabmo-labs/kabmo-omp-install": ["@kabmo-labs/kabmo-omp-install@workspace:packages/kabmo-omp-install"],
 
     "@kabmo-labs/kabmo-omp-mapper": ["@kabmo-labs/kabmo-omp-mapper@workspace:packages/kabmo-omp-mapper"],
 
@@ -744,6 +789,8 @@
 
     "@kabmo-labs/kabmo-omp-session-scan": ["@kabmo-labs/kabmo-omp-session-scan@workspace:packages/kabmo-omp-session-scan"],
 
+    "@kabmo-labs/kabmo-omp-worktree": ["@kabmo-labs/kabmo-omp-worktree@workspace:packages/kabmo-omp-worktree"],
+
     "@kabmo-labs/kabmo-paths": ["@kabmo-labs/kabmo-paths@workspace:packages/kabmo-paths"],
 
     "@kabmo-labs/kabmo-platform": ["@kabmo-labs/kabmo-platform@workspace:packages/kabmo-platform"],
@@ -753,6 +800,8 @@
     "@kabmo-labs/kabmo-process-probe": ["@kabmo-labs/kabmo-process-probe@workspace:packages/kabmo-process-probe"],
 
     "@kabmo-labs/kabmo-rpc-lines": ["@kabmo-labs/kabmo-rpc-lines@workspace:packages/kabmo-rpc-lines"],
+
+    "@kabmo-labs/kabmo-runtime-flags": ["@kabmo-labs/kabmo-runtime-flags@workspace:packages/kabmo-runtime-flags"],
 
     "@kabmo-labs/kabmo-sdk": ["@kabmo-labs/kabmo-sdk@workspace:packages/kabmo-sdk"],
 

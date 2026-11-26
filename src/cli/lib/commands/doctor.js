@@ -14,10 +14,10 @@ import { join } from 'node:path';
 
 import { color, formatTable, isJson, log, printJson } from '@/cli/lib/output.js';
 import { listLiveInstances, resolveBunBin } from '@/cli/lib/runtime.js';
-import { resolveOmpBin } from '@/server/lib/omp/core/cli';
-import { ompInstallCommands } from '@/server/lib/omp/core/install-hint';
+import { resolveOmpBin } from '@kabmo-labs/kabmo-omp-cli';
+import { ompInstallCommands } from '@kabmo-labs/kabmo-omp-install/install-hint';
 import { getAgentDir, getConfigRoot } from '@kabmo-labs/kabmo-omp-paths';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { getDataDir } from '@kabmo-labs/kabmo-paths/paths';
 import { checkOmpUpdate } from '@/server/lib/updates/omp';
 import { resolveInstallContext, resolveKabmoVersion } from '@/server/lib/updates/install';

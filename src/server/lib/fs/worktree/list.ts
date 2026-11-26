@@ -22,7 +22,7 @@
 import { existsSync } from 'fs';
 import { canonicalPath } from '@kabmo-labs/kabmo-fs-canonical';
 import { runGit } from '@/server/lib/fs/git-run';
-import { resolveProjectRoot } from '@/server/lib/omp/core/worktree';
+import { resolveProjectRoot } from '@kabmo-labs/kabmo-omp-worktree';
 
 export interface WorktreeEntry {
   path: string;

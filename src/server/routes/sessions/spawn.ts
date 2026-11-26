@@ -21,7 +21,7 @@ import { methodNotAllowed, parseJsonBody } from '@/server/lib/route-adapter';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
 import { readImages, readModel, readString } from '@/server/routes/sessions/body-readers';
 import { isApprovalMode } from '@kabmo-labs/kabmo-omp-access-mode';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import {
   SessionSpawnError,
   spawnChildSession,

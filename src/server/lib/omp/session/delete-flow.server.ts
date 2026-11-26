@@ -34,7 +34,7 @@ import { purgeSessionData } from '@/server/lib/omp/session/delete.server';
 import { dependentsDeepestFirst } from '@/server/lib/sessions/lifecycle.server';
 import { purgeBtwForSession } from '@/server/lib/btw/purge.server';
 import { isSinglePathSegment } from '@kabmo-labs/kabmo-paths/path-segment';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 
 export interface SessionRemoval {
   /** True when the session was removed (or would have been, in mock mode). */

@@ -26,7 +26,7 @@
  * window it occupies is real time the UI can honestly report as "evaluating".
  */
 
-import { runOmpPrint } from '@/server/lib/omp/core/print.server';
+import { runOmpPrint } from '@kabmo-labs/kabmo-omp-install/print.server';
 
 export interface GoalAuditAnswers {
   allDone: boolean;

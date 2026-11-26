@@ -26,7 +26,7 @@ import { pathHolds } from '@kabmo-labs/kabmo-fs-canonical';
 import { removeWorktreeRow, worktreeRowFor } from '@/server/lib/db/worktree-registry.server';
 import { removeWorktree } from '@/server/lib/fs/worktree/remove';
 import { invalidateWorktreeTopology } from '@/server/lib/fs/worktree/topology';
-import { resolveProjectRoot } from '@/server/lib/omp/core/worktree';
+import { resolveProjectRoot } from '@kabmo-labs/kabmo-omp-worktree';
 import { listRpcSessions } from '@/server/lib/omp/rpc/session-registry';
 import { removeSession } from '@/server/lib/omp/session/delete-flow.server';
 import { isMock, mockRefusal, resolveWorktreeProject, worktreeFailureResponse } from '@/server/routes/worktrees/shared';

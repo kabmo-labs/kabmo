@@ -1,5 +1,5 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { handleSimulatedStreaming } from '@/shared/lib/chat/stream-service';
 import { createSseStream } from '@/server/lib/sse';
 import { markStreamStatus } from '@/shared/lib/omp/session/stream-state.server';

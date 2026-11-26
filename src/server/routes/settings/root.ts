@@ -2,7 +2,7 @@ import { json } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { getDb } from '@/server/db.server';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { isPlainObject, mergeSettingsJson, readAllSettingsJson, writeSettingsJson, writeSettingsRaw } from '@/server/lib/db/settings-store';
 import { packageDir } from '@/server/lib/fs/package-root';
 import { refreshTrayIcon } from '@/server/lib/tray/runtime.server';

@@ -466,8 +466,41 @@
       "@kabmo-labs/kabmo-omp-operator-title": [
         "./packages/kabmo-omp-operator-title/src/operator-title.ts"
       ],
+      "@kabmo-labs/kabmo-omp-cli": [
+        "./packages/kabmo-omp-cli/src/cli.ts"
+      ],
+      "@kabmo-labs/kabmo-git-env": [
+        "./packages/kabmo-git-env/src/env.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-worktree": [
+        "./packages/kabmo-omp-worktree/src/worktree.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-install": [
+        "./packages/kabmo-omp-install/src/install-hint.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-install/install-hint": [
+        "./packages/kabmo-omp-install/src/install-hint.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-install/models-json": [
+        "./packages/kabmo-omp-install/src/models-json.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-install/package-name": [
+        "./packages/kabmo-omp-install/src/package-name.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-install/print": [
+        "./packages/kabmo-omp-install/src/print.server.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-install/print.server": [
+        "./packages/kabmo-omp-install/src/print.server.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-install/startup": [
+        "./packages/kabmo-omp-install/src/startup.ts"
+      ],
       "@kabmo-labs/kabmo-omp-paths": [
         "./packages/kabmo-omp-paths/src/paths.ts"
+      ],
+      "@kabmo-labs/kabmo-runtime-flags": [
+        "./packages/kabmo-runtime-flags/src/mock.server.ts"
       ],
       "@kabmo-labs/kabmo-omp-proc": [
         "./packages/kabmo-omp-proc/src/proc.ts"

@@ -18,7 +18,7 @@ import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@/server
 import path from 'path';
 import { COMMIT_PAGE_SIZE } from '@/shared/lib/fs/commit-page';
 import { getDefaultFsRoot, resolveRoot } from '@/server/lib/fs/root';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { discoveredRepos, rescanRepos, startRepoScan } from '@/server/lib/fs/git-repos';
 import { readRepoDetails } from '@/server/lib/fs/git-repo-details';
 import { fetchGitCommits, readHeadCommitMessage } from '@/server/lib/fs/git-log';

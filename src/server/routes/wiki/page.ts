@@ -15,7 +15,7 @@
  */
 
 import { json, NO_STORE_HEADERS, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { resolveRoot } from '@/server/lib/fs/root';
 import { scopeToRepo } from '@/server/lib/fs/repo-scope';
 import { gitRun } from '@/server/lib/wiki/git';

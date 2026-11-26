@@ -2,7 +2,7 @@ import { json, type ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { scheduleSelfRestart, withRestartPlan } from '@/server/lib/lifecycle/restart';
 import { createSseStream } from '@/server/lib/sse';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { applyUpdate } from '@/server/lib/updates/apply';
 import { runningUpdate, updateBusyMessage } from '@/server/lib/updates/single-flight';
 

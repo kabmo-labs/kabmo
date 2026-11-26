@@ -22,9 +22,9 @@ import fs from 'fs';
 import { homedir, tmpdir } from 'os';
 import { join } from 'path';
 
-import { invalidateOmpCliCache } from '@/server/lib/omp/core/cli';
+import { invalidateOmpCliCache } from '@kabmo-labs/kabmo-omp-cli';
 import { getAgentDir, getConfigRoot } from '@kabmo-labs/kabmo-omp-paths';
-import { ompStartupError, ompStartupLogLines } from '@/server/lib/omp/core/startup';
+import { ompStartupError, ompStartupLogLines } from './startup';
 
 const tempDirs: string[] = [];
 const realEnv = {

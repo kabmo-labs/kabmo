@@ -22,7 +22,7 @@
 import { json } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
-import { isMockMode } from '@/server/mock.server';
+import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { scheduleSelfRestart } from '@/server/lib/lifecycle/restart';
 
 export async function action({ request, params }: ActionFunctionArgs) {
