@@ -32,12 +32,12 @@
 
 import { flockAvailable, tryFlock, type FlockHandle } from '@/server/lib/lifecycle/flock';
 import { OUTPUT_LIMIT } from '@/server/lib/updates/install-steps';
-import { readUpdateJob, writeUpdateJob } from '@/server/lib/harness/update-job-store';
+import { readUpdateJob, writeUpdateJob } from '@kabmo-labs/kabmo-harness-lease/update-job-store';
 import type {
   HarnessUpdateJob,
   HarnessUpdateJobSpec,
   HarnessUpdateJobStep,
-} from '@/shared/types/harness-update';
+} from '@kabmo-labs/kabmo-harness-update-job/types';
 
 /**
  * Longest one step may run. Deliberately generous: `npm install -g` of a native

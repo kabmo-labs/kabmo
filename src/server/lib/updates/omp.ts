@@ -17,7 +17,7 @@
 import { invalidateOmpCliCache, resolveOmpBin } from '@kabmo-labs/kabmo-omp-cli';
 import { fetchNpmLatest, OMP_PACKAGE } from '@/server/lib/updates/npm';
 import { pumpStream } from '@/server/lib/updates/install-steps';
-import { isNewer } from '@/shared/lib/updates/semver';
+import { isNewer } from '@kabmo-labs/kabmo-harness-update-job/semver';
 import type { UpdateTargetInfo } from '@/shared/types/updates';
 
 /** Runs a command, capturing stdout/stderr separately. Non-zero exits keep the captured output. */

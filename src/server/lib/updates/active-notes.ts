@@ -18,7 +18,7 @@ import { fetchChangelogNotes, fetchOmpChangelogNotes } from '@/server/lib/update
 import { readInstalledVersion } from '@/server/lib/updates/install';
 import { readOmpInstalledVersion } from '@/server/lib/updates/omp';
 import { CHANGELOG_PAGE, OMP_CHANGELOG_PAGE } from '@/server/lib/updates/release-url';
-import { normalizeVersion } from '@/shared/lib/updates/semver';
+import { normalizeVersion } from '@kabmo-labs/kabmo-harness-update-job/semver';
 import type { ActiveReleaseNotes, ReleaseNote, UpdateTarget } from '@/shared/types/updates';
 
 /**

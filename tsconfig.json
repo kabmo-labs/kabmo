@@ -775,6 +775,30 @@
       "@kabmo-labs/kabmo-provider-contracts/vendors": [
         "./packages/kabmo-provider-contracts/src/vendors.ts"
       ],
+      "@kabmo-labs/kabmo-harness-update-job": [
+        "./packages/kabmo-harness-update-job/src/update-job.ts"
+      ],
+      "@kabmo-labs/kabmo-harness-update-job/semver": [
+        "./packages/kabmo-harness-update-job/src/semver.ts"
+      ],
+      "@kabmo-labs/kabmo-harness-update-job/update-plan": [
+        "./packages/kabmo-harness-update-job/src/update-plan.ts"
+      ],
+      "@kabmo-labs/kabmo-harness-update-job/types": [
+        "./packages/kabmo-harness-update-job/src/types.ts"
+      ],
+      "@kabmo-labs/kabmo-harness-update-job/update-job": [
+        "./packages/kabmo-harness-update-job/src/update-job.ts"
+      ],
+      "@kabmo-labs/kabmo-harness-lease": [
+        "./packages/kabmo-harness-lease/src/session-lease.server.ts"
+      ],
+      "@kabmo-labs/kabmo-harness-lease/session-lease.server": [
+        "./packages/kabmo-harness-lease/src/session-lease.server.ts"
+      ],
+      "@kabmo-labs/kabmo-harness-lease/update-job-store": [
+        "./packages/kabmo-harness-lease/src/update-job-store.ts"
+      ],
       "@kabmo-labs/kabmo-ui": [
         "./packages/kabmo-ui/src/index.tsx"
       ],

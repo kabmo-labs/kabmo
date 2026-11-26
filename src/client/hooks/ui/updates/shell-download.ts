@@ -28,7 +28,7 @@
  */
 
 import { useEffect, useState } from 'preact/hooks';
-import { isNewer } from '@/shared/lib/updates/semver';
+import { isNewer } from '@kabmo-labs/kabmo-harness-update-job/semver';
 import { parseShellArch, type ShellArch } from '@/shared/lib/updates/shell-arch';
 import {
   isDesktopShellKind,

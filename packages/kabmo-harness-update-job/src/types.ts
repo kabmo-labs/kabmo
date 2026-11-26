@@ -18,7 +18,7 @@
  * route answers it, and the About card polls it.
  */
 
-import type { HarnessUpdateStep } from '@/shared/lib/harness/update-plan';
+import type { HarnessUpdateStep } from './update-plan';
 
 /** Where one step is in its life. `pending` exists on the record before the
  *  worker reaches it, so a reader sees the whole plan from the first poll. */

@@ -20,10 +20,10 @@
 import { Download, Loader2 } from 'lucide-preact';
 import { HarnessGlyph, HARNESS_GLYPH_SIZE } from '@/client/components/common/harness-glyph';
 import { UpdateLogLine } from '@/client/components/layout/session-sidebar/about-modal/UpdateLogLine';
-import { jobQueued, jobRunning, runningStepOf } from '@/shared/lib/harness/update-job';
+import { jobQueued, jobRunning, runningStepOf } from '@kabmo-labs/kabmo-harness-update-job/update-job';
 import { harnessStatus, type HarnessState } from '@/shared/lib/harness/status';
 import type { HarnessSummary } from '@/shared/types/harness';
-import type { HarnessUpdateJob } from '@/shared/types/harness-update';
+import type { HarnessUpdateJob } from '@kabmo-labs/kabmo-harness-update-job/types';
 import type { HarnessVersionRow } from '@/shared/types/harness-version';
 
 export interface HarnessRowProps {

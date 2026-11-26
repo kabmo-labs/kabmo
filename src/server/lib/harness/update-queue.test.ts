@@ -31,14 +31,14 @@ import {
   readAllUpdateJobs,
 } from '@/server/lib/harness/update-queue.server';
 import { startHarnessUpdateJob, unfinishedUpdateJob } from '@/server/lib/harness/update-job.server';
-import { readUpdateJob, writeUpdateJob } from '@/server/lib/harness/update-job-store';
+import { readUpdateJob, writeUpdateJob } from '@kabmo-labs/kabmo-harness-lease/update-job-store';
 import { getHarnessUpdateStatusPath } from '@kabmo-labs/kabmo-paths/paths';
-import { jobQueued, jobRunning } from '@/shared/lib/harness/update-job';
+import { jobQueued, jobRunning } from '@kabmo-labs/kabmo-harness-update-job/update-job';
 import { UNPROBED_CAPABILITIES, type HarnessProbe } from '@kabmo-labs/kabmo-harness-launch/capabilities';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { describePosix } from '@/test-support/platform';
-import type { HarnessUpdateStep } from '@/shared/lib/harness/update-plan';
-import type { HarnessUpdateJob } from '@/shared/types/harness-update';
+import type { HarnessUpdateStep } from '@kabmo-labs/kabmo-harness-update-job/update-plan';
+import type { HarnessUpdateJob } from '@kabmo-labs/kabmo-harness-update-job/types';
 
 let dir = '';
 let originalDataDir: string | undefined;

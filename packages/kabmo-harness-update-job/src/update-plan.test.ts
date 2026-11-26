@@ -24,7 +24,7 @@ import {
   repointAdapterLaunch,
   type HarnessUpdateStep,
   type UpdatePlanState,
-} from '@/shared/lib/harness/update-plan';
+} from './update-plan';
 import { harnessUpdateFacts } from '@kabmo-labs/kabmo-harness-updates';
 
 const CLAUDE = harnessUpdateFacts('claude');

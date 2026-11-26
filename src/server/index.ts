@@ -22,7 +22,7 @@ import { ensureTlsCertificate, isTlsEnabledByArgv } from '@/server/lib/lifecycle
 import { SHELL_ROUTE } from '@/server/lib/lifecycle/shell-route';
 import { isMockMode } from '@kabmo-labs/kabmo-runtime-flags';
 import { migrateLegacyDataDir } from '@kabmo-labs/kabmo-paths/paths';
-import { pruneHarnessLeases } from '@/server/lib/harness/session-lease.server';
+import { pruneHarnessLeases } from '@kabmo-labs/kabmo-harness-lease/session-lease.server';
 import { seedDefaultMarketplace } from '@/server/lib/panels/seed.server';
 import { installRejectionGuard } from '@/server/lib/lifecycle/rejection-guard';
 import { installShutdownHandlers, runAfterListenTasks } from '@/server/lib/lifecycle/after-listen';

@@ -22,8 +22,8 @@
  */
 
 import fs from 'node:fs';
-import { isHarnessUpdateJob, jobQueued } from '@/shared/lib/harness/update-job';
-import type { HarnessUpdateJob } from '@/shared/types/harness-update';
+import { isHarnessUpdateJob, jobQueued } from '@kabmo-labs/kabmo-harness-update-job/update-job';
+import type { HarnessUpdateJob } from '@kabmo-labs/kabmo-harness-update-job/types';
 
 /**
  * How long a just-started job is trusted without a live pid.

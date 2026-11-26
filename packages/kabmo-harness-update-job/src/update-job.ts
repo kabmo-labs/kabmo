@@ -15,7 +15,7 @@
  * render. The guard IS the check, so a payload that fails it reads as "no run".
  */
 
-import type { HarnessUpdateJob } from '@/shared/types/harness-update';
+import type { HarnessUpdateJob } from './types';
 
 export function isHarnessUpdateJob(value: unknown): value is HarnessUpdateJob {
   if (!value || typeof value !== 'object') return false;

@@ -109,6 +109,8 @@
     "@kabmo-labs/kabmo-harness-enabled": "workspace:*",
     "@kabmo-labs/kabmo-harness-launch": "workspace:*",
     "@kabmo-labs/kabmo-harness-mcp-facts": "workspace:*",
+    "@kabmo-labs/kabmo-harness-lease": "workspace:*",
+    "@kabmo-labs/kabmo-harness-update-job": "workspace:*",
     "@kabmo-labs/kabmo-harness-provider": "workspace:*",
     "@kabmo-labs/kabmo-harness-provider-slug": "workspace:*",
     "@kabmo-labs/kabmo-harness-provider-runtime": "workspace:*",

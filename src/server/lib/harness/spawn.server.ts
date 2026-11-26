@@ -34,7 +34,7 @@ import { harnessProbeModels } from '@/server/lib/harness/probe-cache.server';
 import { claimHarness } from '@kabmo-labs/kabmo-harness-registry';
 import { registerAcpSession } from '@/server/lib/harness/register.server';
 import { loadHarnessSessionTitle, saveHarnessSession } from '@/server/lib/harness/session-store.server';
-import { noteHarnessLease, removeHarnessLease } from '@/server/lib/harness/session-lease.server';
+import { noteHarnessLease, removeHarnessLease } from '@kabmo-labs/kabmo-harness-lease/session-lease.server';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
 import { harnessDescriptor, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import { mcpDelivery } from '@kabmo-labs/kabmo-harness-mcp-facts';

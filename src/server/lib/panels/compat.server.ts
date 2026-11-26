@@ -23,7 +23,7 @@ import type { PanelPluginManifest } from '@/shared/types';
 import { packageDir } from '@/server/lib/fs/package-root';
 import { kabmoPackageDirs } from '@/server/lib/panels/link.server';
 import { missingCapabilities } from '@/shared/lib/panels/capabilities';
-import { satisfiesRange } from '@/shared/lib/updates/semver';
+import { satisfiesRange } from '@kabmo-labs/kabmo-harness-update-job/semver';
 
 /** The versions a plugin's `engines` is compared against; null means unknown. */
 export interface RunningVersions {

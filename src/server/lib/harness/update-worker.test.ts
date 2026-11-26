@@ -20,9 +20,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { packageDir } from '@/server/lib/fs/package-root';
 import { flockAvailable, tryFlock } from '@/server/lib/lifecycle/flock';
-import { writeUpdateJob } from '@/server/lib/harness/update-job-store';
+import { writeUpdateJob } from '@kabmo-labs/kabmo-harness-lease/update-job-store';
 import { describePosix } from '@/test-support/platform';
-import type { HarnessUpdateJob, HarnessUpdateJobSpec } from '@/shared/types/harness-update';
+import type { HarnessUpdateJob, HarnessUpdateJobSpec } from '@kabmo-labs/kabmo-harness-update-job/types';
 
 const WORKER = join(packageDir(), 'src', 'server', 'lib', 'harness', 'update-worker.ts');
 let dir = '';

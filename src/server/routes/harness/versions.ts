@@ -35,7 +35,7 @@ import { harnessUpdateFacts, type HarnessUpdateFacts } from '@kabmo-labs/kabmo-h
 import type { HarnessPartRow, HarnessVersionRow } from '@/shared/types/harness-version';
 import { loadProbes } from '@/server/lib/harness/probe-cache.server';
 import { harnessVersionState, type HarnessVersionState } from '@/server/lib/harness/update-state.server';
-import { isNewer } from '@/shared/lib/updates/semver';
+import { isNewer } from '@kabmo-labs/kabmo-harness-update-job/semver';
 
 /** One part's row, with the comparison the UI is not allowed to guess at. */
 function partRow(part: { version: string | null; latest: string | null }): HarnessPartRow {

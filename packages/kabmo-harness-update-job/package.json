@@ -1,0 +1,31 @@
+{
+  "name": "@kabmo-labs/kabmo-harness-update-job",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Harness update job shapes and the semver comparison they use.",
+  "exports": {
+    ".": "./src/update-job.ts",
+    "./semver": "./src/semver.ts",
+    "./types": "./src/types.ts",
+    "./update-job": "./src/update-job.ts",
+    "./update-plan": "./src/update-plan.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-harness-update-job"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  },
+  "dependencies": {
+    "@kabmo-labs/kabmo-harness-updates": "workspace:*"
+  }
+}

@@ -42,13 +42,13 @@ import { harnessDescriptor, isBuiltinHarness, type HarnessId } from '@kabmo-labs
 import { harnessUpdateFacts, latestSourceFor } from '@kabmo-labs/kabmo-harness-updates';
 import { loadProbes } from '@/server/lib/harness/probe-cache.server';
 import { harnessVersionState, type HarnessVersionState } from '@/server/lib/harness/update-state.server';
-import { planHarnessUpdate, type HarnessUpdateStep } from '@/shared/lib/harness/update-plan';
+import { planHarnessUpdate, type HarnessUpdateStep } from '@kabmo-labs/kabmo-harness-update-job/update-plan';
 import { resolveOmpBin } from '@kabmo-labs/kabmo-omp-cli';
 import {
   startHarnessUpdateJob,
   unfinishedUpdateJob,
 } from '@/server/lib/harness/update-job.server';
-import { jobQueued } from '@/shared/lib/harness/update-job';
+import { jobQueued } from '@kabmo-labs/kabmo-harness-update-job/update-job';
 
 /** The answer to a press that has nothing to move, still plain JSON. */
 interface HarnessUpdateOutcome {

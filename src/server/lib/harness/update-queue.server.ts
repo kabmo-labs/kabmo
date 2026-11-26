@@ -34,14 +34,14 @@ import { forgetCliVersion } from '@/server/lib/harness/update-state.server';
 import { loadHarnessConfig, saveHarnessConfig } from '@/server/lib/harness/config.server';
 import { invalidateOmpCliCache } from '@kabmo-labs/kabmo-omp-cli';
 import { getHarnessUpdateStatusPath } from '@kabmo-labs/kabmo-paths/paths';
-import { readUpdateJob, settleDeadJob, writeUpdateJob } from '@/server/lib/harness/update-job-store';
+import { readUpdateJob, settleDeadJob, writeUpdateJob } from '@kabmo-labs/kabmo-harness-lease/update-job-store';
 import { spawnUpdateWorker } from '@/server/lib/harness/update-spawn.server';
 import { HARNESS_IDS, isBuiltinHarness, type HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 import { harnessUpdateFacts, type HarnessUpdateFacts } from '@kabmo-labs/kabmo-harness-updates';
-import { repointAdapterLaunch, type HarnessUpdateStep } from '@/shared/lib/harness/update-plan';
-import { jobMoving, jobQueued, jobRunning } from '@/shared/lib/harness/update-job';
+import { repointAdapterLaunch, type HarnessUpdateStep } from '@kabmo-labs/kabmo-harness-update-job/update-plan';
+import { jobMoving, jobQueued, jobRunning } from '@kabmo-labs/kabmo-harness-update-job/update-job';
 import type { HarnessProbe } from '@kabmo-labs/kabmo-harness-launch/capabilities';
-import type { HarnessUpdateJob } from '@/shared/types/harness-update';
+import type { HarnessUpdateJob } from '@kabmo-labs/kabmo-harness-update-job/types';
 
 declare global {
   // eslint-disable-next-line no-var

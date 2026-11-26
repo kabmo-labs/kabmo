@@ -35,9 +35,9 @@ import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed, parseJsonBody } from '@/server/lib/route-adapter';
 import { getHarnessUpdateStatusPath } from '@kabmo-labs/kabmo-paths/paths';
 import { pumpUpdateQueue, serializeUpdateWork } from '@/server/lib/harness/update-queue.server';
-import { readUpdateJob, removeUpdateJob } from '@/server/lib/harness/update-job-store';
+import { readUpdateJob, removeUpdateJob } from '@kabmo-labs/kabmo-harness-lease/update-job-store';
 import { isBuiltinHarness } from '@kabmo-labs/kabmo-harness-catalog';
-import { jobUnfinished } from '@/shared/lib/harness/update-job';
+import { jobUnfinished } from '@kabmo-labs/kabmo-harness-update-job/update-job';
 
 export async function loader() {
   const jobs = await pumpUpdateQueue();

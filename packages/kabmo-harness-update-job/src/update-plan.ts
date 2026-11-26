@@ -31,7 +31,7 @@
  * runs the argv this returns.
  */
 
-import { isNewer } from '@/shared/lib/updates/semver';
+import { isNewer } from './semver';
 import type { HarnessUpdateFacts } from '@kabmo-labs/kabmo-harness-updates';
 
 /** One part's installed and latest version. */

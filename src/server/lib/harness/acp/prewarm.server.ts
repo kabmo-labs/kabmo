@@ -38,7 +38,7 @@ import { sessionLaunchCommand } from '@kabmo-labs/kabmo-harness-launch/launch';
 import { AcpProcess } from '@kabmo-labs/kabmo-acp-client/client';
 import { IDLE_REAP_MS } from '@/server/lib/omp/rpc/constants';
 import { withGatewayCompatibility } from '@kabmo-labs/kabmo-acp-client/gateway-env';
-import { noteHarnessLease, removeHarnessLease } from '@/server/lib/harness/session-lease.server';
+import { noteHarnessLease, removeHarnessLease } from '@kabmo-labs/kabmo-harness-lease/session-lease.server';
 import type { HarnessId } from '@kabmo-labs/kabmo-harness-catalog';
 
 /** How long an unclaimed warm agent is kept. Long enough to write a prompt,

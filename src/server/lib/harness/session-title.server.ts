@@ -26,7 +26,7 @@
  */
 
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
-import { updateHarnessLeaseTitle } from '@/server/lib/harness/session-lease.server';
+import { updateHarnessLeaseTitle } from '@kabmo-labs/kabmo-harness-lease/session-lease.server';
 import {
   saveHarnessSessionTitle,
   saveHarnessSessionTitleIfEmpty,

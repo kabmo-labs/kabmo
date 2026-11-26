@@ -15,7 +15,7 @@ import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { HarnessTable } from '@/client/components/layout/session-sidebar/about-modal/HarnessTable';
-import type { HarnessUpdateJob } from '@/shared/types/harness-update';
+import type { HarnessUpdateJob } from '@kabmo-labs/kabmo-harness-update-job/types';
 import type { HarnessVersionRow } from '@/shared/types/harness-version';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
 import type { HarnessSummary } from '@/shared/types/harness';

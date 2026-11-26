@@ -178,6 +178,14 @@ export const RELEASE_PACKAGES = [
     name: '@kabmo-labs/kabmo-harness-provider-runtime',
   },
   {
+    dir: 'packages/kabmo-harness-update-job',
+    name: '@kabmo-labs/kabmo-harness-update-job',
+  },
+  {
+    dir: 'packages/kabmo-harness-lease',
+    name: '@kabmo-labs/kabmo-harness-lease',
+  },
+  {
     dir: 'packages/kabmo-harness-provider-slug',
     name: '@kabmo-labs/kabmo-harness-provider-slug',
   },

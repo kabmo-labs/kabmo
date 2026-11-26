@@ -22,8 +22,8 @@ import { useEffect, useRef } from 'preact/hooks';
 import { createPortal } from 'preact/compat';
 import { Ban, CheckCircle2, CircleDashed, Loader2 } from 'lucide-preact';
 import { Modal } from '@/client/components/common/Modal';
-import { jobQueued, jobRunning } from '@/shared/lib/harness/update-job';
-import type { HarnessUpdateJob, HarnessUpdateJobStep } from '@/shared/types/harness-update';
+import { jobQueued, jobRunning } from '@kabmo-labs/kabmo-harness-update-job/update-job';
+import type { HarnessUpdateJob, HarnessUpdateJobStep } from '@kabmo-labs/kabmo-harness-update-job/types';
 
 export interface UpdateLogDialogProps {
   job: HarnessUpdateJob;

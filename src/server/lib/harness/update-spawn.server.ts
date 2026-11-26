@@ -25,8 +25,8 @@ import { join } from 'node:path';
 import { resolveBunBin } from '@/server/lib/lifecycle/bun';
 import { packageDir } from '@/server/lib/fs/package-root';
 import { getHarnessUpdateLockPath, getHarnessUpdateSpecPath, getHarnessUpdateStatusPath } from '@kabmo-labs/kabmo-paths/paths';
-import { writeUpdateJob } from '@/server/lib/harness/update-job-store';
-import type { HarnessUpdateJob, HarnessUpdateJobSpec } from '@/shared/types/harness-update';
+import { writeUpdateJob } from '@kabmo-labs/kabmo-harness-lease/update-job-store';
+import type { HarnessUpdateJob, HarnessUpdateJobSpec } from '@kabmo-labs/kabmo-harness-update-job/types';
 
 /**
  * Where the worker's source lives inside this package.

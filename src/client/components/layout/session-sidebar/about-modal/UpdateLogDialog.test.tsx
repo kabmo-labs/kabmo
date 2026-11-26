@@ -19,7 +19,7 @@ import { render } from 'preact';
 import { act } from 'preact/test-utils';
 import { UpdateLogDialog } from '@/client/components/layout/session-sidebar/about-modal/UpdateLogDialog';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
-import type { HarnessUpdateJob } from '@/shared/types/harness-update';
+import type { HarnessUpdateJob } from '@kabmo-labs/kabmo-harness-update-job/types';
 
 beforeAll(() => {
   installDomGlobals(new Window({ url: 'http://localhost' }));

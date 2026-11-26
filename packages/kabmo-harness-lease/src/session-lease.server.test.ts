@@ -23,7 +23,7 @@ import {
   pruneHarnessLeases,
   removeHarnessLease,
   updateHarnessLeaseTitle,
-} from '@/server/lib/harness/session-lease.server';
+} from './session-lease.server';
 
 let dir = '';
 let originalDataDir: string | undefined;

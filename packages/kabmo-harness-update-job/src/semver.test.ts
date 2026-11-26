@@ -23,7 +23,7 @@ import {
   isValidRange,
   normalizeVersion,
   satisfiesRange,
-} from '@/shared/lib/updates/semver';
+} from '@kabmo-labs/kabmo-harness-update-job/semver';
 
 describe('normalizeVersion', () => {
   test('strips a single leading v/V and surrounding whitespace', () => {
