@@ -16,7 +16,7 @@ import { RpcProcess, type RpcFrame } from '@kabmo-labs/kabmo-omp-rpc-process/pro
 import { configureChild } from '@kabmo-labs/kabmo-omp-rpc-process/child-config';
 import { PendingUiDialogs } from '@kabmo-labs/kabmo-omp-rpc-process/pending-ui-dialogs';
 import { foldSessionFrame } from '@/server/lib/omp/rpc/frame-fold';
-import { dispatchSessionCommand } from '@/server/lib/omp/rpc/session-commands';
+import { dispatchSessionCommand } from '@kabmo-labs/kabmo-omp-rpc-commands/session-commands';
 import { SubagentLiveness } from '@kabmo-labs/kabmo-omp-rpc-util/subagent-liveness';
 import { ModeMirror } from '@kabmo-labs/kabmo-omp-rpc-events/mode-mirror';
 import { IdleReaper } from '@kabmo-labs/kabmo-idle-reaper';

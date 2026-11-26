@@ -16,7 +16,7 @@
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
-import { dispatchSessionCommand } from '@/server/lib/omp/rpc/session-commands';
+import { dispatchSessionCommand } from '@kabmo-labs/kabmo-omp-rpc-commands/session-commands';
 import { foldSessionFrame } from '@/server/lib/omp/rpc/frame-fold';
 import type { SessionFrameHost } from '@/server/lib/omp/rpc/frame-fold-contract';
 import type { AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
@@ -24,7 +24,7 @@ import { RpcCommandError, RpcCommandTimeoutError } from '@kabmo-labs/kabmo-omp-r
 import { AGENT_BUSY_MESSAGE, AWAITING_AGENT_START_TIMEOUT_MS, RESTARTING_MESSAGE, SESSION_BUSY_MESSAGE, WebRpcError } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 import { cancelQueuedDelivery } from '@/server/lib/queue/delivery.server';
 import { makeHarness, rejectionOf } from '@/server/lib/omp/rpc/session-commands-harness';
-import { getDb } from '@/server/db.server';
+import { getDb } from '@kabmo-labs/kabmo-db/lifecycle';
 import { loadStreamStates } from '@kabmo-labs/kabmo-session-stream-state';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 

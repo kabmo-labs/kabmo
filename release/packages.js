@@ -161,6 +161,10 @@ export const RELEASE_PACKAGES = [
     name: '@kabmo-labs/kabmo-harness-session',
   },
   {
+    dir: 'packages/kabmo-omp-rpc-commands',
+    name: '@kabmo-labs/kabmo-omp-rpc-commands',
+  },
+  {
     dir: 'packages/kabmo-omp-rpc-events',
     name: '@kabmo-labs/kabmo-omp-rpc-events',
   },

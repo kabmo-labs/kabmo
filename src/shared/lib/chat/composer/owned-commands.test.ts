@@ -19,7 +19,7 @@ import {
   KABMO_OWNED_SLASH_COMMANDS,
   TUI_ONLY_SLASH_COMMANDS,
   isTuiOnlySlashCommand,
-} from '@/shared/lib/chat/composer/tui-only';
+} from '@kabmo-labs/kabmo-omp-rpc-commands/tui-only';
 import { KABMO_COMMANDS } from '@/shared/lib/chat/composer/trigger';
 
 describe('chamber-owned slash commands', () => {
@@ -29,10 +29,10 @@ describe('chamber-owned slash commands', () => {
     }
   });
 
-  test('the exemption set is derived from the command list, not restated', () => {
-    for (const command of KABMO_COMMANDS) {
-      expect(KABMO_OWNED_SLASH_COMMANDS[command.name.toLowerCase()]).toBe(true);
-    }
+  test('the exemption set lists exactly the catalog, so neither drifts silently', () => {
+    // The set lives in the commands package (the server imports it, so it may
+    // not load the client catalog). This assertion is what keeps the two in
+    // step: a name added to KABMO_COMMANDS without a row there fails HERE.
     expect(Object.keys(KABMO_OWNED_SLASH_COMMANDS).sort()).toEqual(
       KABMO_COMMANDS.map((c) => c.name.toLowerCase()).sort(),
     );

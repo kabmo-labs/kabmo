@@ -24,6 +24,7 @@ import { claimHeadQueueItem, hasQueuedItem, requeueHeadQueueItem } from '@/serve
 import { applyModelSnapshot, promptCommand } from '@/server/lib/queue/payload';
 import { requestWaitingSweep } from '@/server/lib/waiting/sweep-trigger';
 import type { QueuedMessage } from '@kabmo-labs/kabmo-chat-contracts/chat';
+import { registerQueueNudge } from '@kabmo-labs/kabmo-omp-rpc-commands/queue-nudge';
 
 /** Settling time between agent_end and the next prompt dispatch. Small on
  *  purpose: omp's own turn-end bookkeeping (JSONL flush, title slot) runs on
@@ -296,3 +297,13 @@ export function cancelQueuedDelivery(sessionId: string): void {
 export function forgetQueuedDelivery(sessionId: string): void {
   clearPendingTimer(sessionId);
 }
+
+/**
+ * The command layer raises "a run boundary happened" through a registered
+ * nudge, not an import: it sits under this scheduler, and importing the queue
+ * from a command dispatch would drag the store, the payload builder and the
+ * waiting sweep onto every RPC command. Registering here is what makes the
+ * nudge reach the real scheduler; the module loads at boot through
+ * `waiting/runtime.server.ts`.
+ */
+registerQueueNudge(scheduleQueueDelivery);

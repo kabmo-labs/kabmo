@@ -40,21 +40,23 @@
  * so the two never conflict.
  */
 
-import { KABMO_COMMANDS } from '@/shared/lib/chat/composer/trigger';
-
 /**
- * Commands Kabmo answers itself, derived from the one list that defines
- * them. They are in omp's TUI-only set (omp implements `/btw` with `handleTui`
+ * Commands Kabmo answers itself. They are in omp's TUI-only set (omp implements `/btw` with `handleTui`
  * only) but they are NOT unavailable here — the composer intercepts them before
  * any guard runs.
  *
- * Derived rather than restated: a second hand-kept list is exactly what drifts,
- * and a name that moved into `KABMO_COMMANDS` without a matching row here
- * would be refused by the very guard that exists to protect it.
+ * Restated rather than derived because the catalog that defines them is the
+ * composer's, and this module is imported by the SERVER too — deriving here
+ * would mean loading the client command list on the frame path. The drift that
+ * derivation prevented is now pinned by a test: `owned-commands.test.ts` asserts
+ * this set equals `KABMO_COMMANDS`, so a name added to the catalog without a row
+ * here fails the suite instead of being refused by the guard that protects it.
  */
-export const KABMO_OWNED_SLASH_COMMANDS: Record<string, true> = Object.fromEntries(
-  KABMO_COMMANDS.map((command) => [command.name.toLowerCase(), true as const]),
-);
+export const KABMO_OWNED_SLASH_COMMANDS: Record<string, true> = {
+  btw: true,
+  plan: true,
+  goal: true,
+};
 
 /** Every TUI-only builtin name and alias, lowercased. */
 export const TUI_ONLY_SLASH_COMMANDS: Record<string, true> = {

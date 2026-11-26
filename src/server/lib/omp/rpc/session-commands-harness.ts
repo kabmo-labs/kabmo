@@ -9,7 +9,7 @@
  * that suite stays under the repo's per-file size ceiling.
  */
 
-import type { SessionCommandHost } from '@/server/lib/omp/rpc/session-commands';
+import type { SessionCommandHost } from '@kabmo-labs/kabmo-omp-rpc-commands/session-commands';
 import type { RpcProcess } from '@kabmo-labs/kabmo-omp-rpc-process/process';
 import type { AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 

@@ -13,7 +13,7 @@ import { RpcCommandError, RpcCommandTimeoutError } from '@kabmo-labs/kabmo-omp-r
 import { AGENT_BUSY_MESSAGE, AGENT_BUSY_REFUSAL_RE, AWAITING_AGENT_START_TIMEOUT_MS, GET_STATE_TIMEOUT_MS, IMAGE_BEARING_COMMANDS, PASSTHROUGH_COMMANDS, RESTARTING_MESSAGE, STEER_ACK_TIMEOUT_MS, WebRpcError, promptAckTimeoutMs, toImageContents, type RpcSessionState, validateAgentImages } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
 import { clearSessionFileCaches } from '@kabmo-labs/kabmo-omp-session-scan/files';
 import { awaitTitleDispatch } from '@kabmo-labs/kabmo-omp-session-runtime/title-request.server';
-import { scheduleQueueDelivery } from '@/server/lib/queue/delivery.server';
+import { nudgeQueueDelivery } from './queue-nudge';
 import { clearStreamStatus, markStreamStatus } from '@kabmo-labs/kabmo-session-stream-state';
 import { buildWebState } from '@kabmo-labs/kabmo-omp-rpc-process/web-state';
 import {
@@ -21,9 +21,9 @@ import {
   refuseWhenBlockedOnDialog,
   settleCommandTimeout,
   type SessionCommandHost,
-} from '@/server/lib/omp/rpc/session-command-guards';
+} from './session-command-guards';
 
-export type { SessionCommandHost } from '@/server/lib/omp/rpc/session-command-guards';
+export type { SessionCommandHost } from './session-command-guards';
 
 export async function dispatchSessionCommand(host: SessionCommandHost, command: Record<string, unknown>): Promise<unknown> {
   if (host.restarting) throw new WebRpcError(RESTARTING_MESSAGE, 'session_restarting');
@@ -131,7 +131,7 @@ export async function dispatchSessionCommand(host: SessionCommandHost, command: 
             host.emit({ type: 'prompt_result', agentInvoked: false });
             // Nothing ran (agent was idle and declined) — the queue may hold the
             // next item; give it the same delivery window a run end would.
-            scheduleQueueDelivery(host);
+            nudgeQueueDelivery(host);
           }
         } else if (!streamingBehavior && ack?.agentInvoked !== false && ownsStreamRow) {
           host.awaitingAgentStart = true;

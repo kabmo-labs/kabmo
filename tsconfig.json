@@ -1084,6 +1084,21 @@
       "@kabmo-labs/kabmo-omp-session-runtime/transcript-copy": [
         "./packages/kabmo-omp-session-runtime/src/transcript-copy.ts"
       ],
+      "@kabmo-labs/kabmo-omp-rpc-commands": [
+        "./packages/kabmo-omp-rpc-commands/src/session-commands.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-rpc-commands/queue-nudge": [
+        "./packages/kabmo-omp-rpc-commands/src/queue-nudge.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-rpc-commands/session-command-guards": [
+        "./packages/kabmo-omp-rpc-commands/src/session-command-guards.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-rpc-commands/session-commands": [
+        "./packages/kabmo-omp-rpc-commands/src/session-commands.ts"
+      ],
+      "@kabmo-labs/kabmo-omp-rpc-commands/tui-only": [
+        "./packages/kabmo-omp-rpc-commands/src/tui-only.ts"
+      ],
       "@kabmo-labs/kabmo-ui": [
         "./packages/kabmo-ui/src/index.tsx"
       ],

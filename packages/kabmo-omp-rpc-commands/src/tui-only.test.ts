@@ -14,7 +14,7 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { isTuiOnlySlashCommand, slashCommandName, tuiOnlyCommandNotice } from '@/shared/lib/chat/composer/tui-only';
+import { isTuiOnlySlashCommand, slashCommandName, tuiOnlyCommandNotice } from './tui-only';
 
 describe('slashCommandName', () => {
   test('reads the token omp would dispatch on', () => {

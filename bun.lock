@@ -83,6 +83,7 @@
         "@kabmo-labs/kabmo-omp-paths": "workspace:*",
         "@kabmo-labs/kabmo-omp-proc": "workspace:*",
         "@kabmo-labs/kabmo-omp-registry": "workspace:*",
+        "@kabmo-labs/kabmo-omp-rpc-commands": "workspace:*",
         "@kabmo-labs/kabmo-omp-rpc-events": "workspace:*",
         "@kabmo-labs/kabmo-omp-rpc-process": "workspace:*",
         "@kabmo-labs/kabmo-omp-rpc-protocol": "workspace:*",
@@ -707,6 +708,17 @@
         "@kabmo-labs/kabmo-omp-paths": "workspace:*",
       },
     },
+    "packages/kabmo-omp-rpc-commands": {
+      "name": "@kabmo-labs/kabmo-omp-rpc-commands",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kabmo-labs/kabmo-omp-rpc-process": "workspace:*",
+        "@kabmo-labs/kabmo-omp-rpc-protocol": "workspace:*",
+        "@kabmo-labs/kabmo-omp-session-runtime": "workspace:*",
+        "@kabmo-labs/kabmo-omp-session-scan": "workspace:*",
+        "@kabmo-labs/kabmo-session-stream-state": "workspace:*",
+      },
+    },
     "packages/kabmo-omp-rpc-events": {
       "name": "@kabmo-labs/kabmo-omp-rpc-events",
       "version": "0.0.1",
@@ -1153,6 +1165,8 @@
     "@kabmo-labs/kabmo-omp-proc": ["@kabmo-labs/kabmo-omp-proc@workspace:packages/kabmo-omp-proc"],
 
     "@kabmo-labs/kabmo-omp-registry": ["@kabmo-labs/kabmo-omp-registry@workspace:packages/kabmo-omp-registry"],
+
+    "@kabmo-labs/kabmo-omp-rpc-commands": ["@kabmo-labs/kabmo-omp-rpc-commands@workspace:packages/kabmo-omp-rpc-commands"],
 
     "@kabmo-labs/kabmo-omp-rpc-events": ["@kabmo-labs/kabmo-omp-rpc-events@workspace:packages/kabmo-omp-rpc-events"],
 

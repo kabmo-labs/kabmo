@@ -17,8 +17,8 @@
 
 import type { RpcProcess } from '@kabmo-labs/kabmo-omp-rpc-process/process';
 import { SESSION_BLOCKED_ON_DIALOG_MESSAGE, SESSION_BUSY_MESSAGE, WebRpcError, type AgentEvent } from '@kabmo-labs/kabmo-omp-rpc-protocol/constants';
-import { scheduleQueueDelivery } from '@/server/lib/queue/delivery.server';
-import { isTuiOnlySlashCommand, tuiOnlyCommandNotice } from '@/shared/lib/chat/composer/tui-only';
+import { nudgeQueueDelivery } from './queue-nudge';
+import { isTuiOnlySlashCommand, tuiOnlyCommandNotice } from './tui-only';
 import type { SessionRunModel } from '@kabmo-labs/kabmo-session-stream-state';
 import type { WebStateHost } from '@kabmo-labs/kabmo-omp-rpc-process/web-state';
 
@@ -128,7 +128,7 @@ export function refuseTuiOnlyPrompt(host: SessionCommandHost, message: unknown, 
     host.emit({ type: 'prompt_result', agentInvoked: false });
     // Nothing ran, so the queue may hold the next item — give it the same
     // delivery window a real consumed builtin or a run end would.
-    scheduleQueueDelivery(host);
+    nudgeQueueDelivery(host);
   }
   return true;
 }
