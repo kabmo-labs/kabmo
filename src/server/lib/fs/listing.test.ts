@@ -133,6 +133,25 @@ describe('single-child chains', () => {
     expect(pair.map((entry) => entry.name)).toEqual(['one', 'two']);
   });
 
+  test('a root that is not a repository does not inherit the repository above it', async () => {
+    const outer = makeRoot();
+    Bun.spawnSync({ cmd: ['git', 'init', '-q'], cwd: outer });
+    fs.writeFileSync(path.join(outer, '.gitignore'), 'projects/\n');
+    const root = path.join(outer, 'projects');
+    mkdirs(root, ['child-one', 'child-two']);
+    // A file in each child keeps the single-child collapse from folding them.
+    fs.writeFileSync(path.join(root, 'child-one', 'README.md'), 'x\n');
+    fs.writeFileSync(path.join(root, 'child-two', 'README.md'), 'x\n');
+    Bun.spawnSync({ cmd: ['git', 'init', '-q'], cwd: path.join(root, 'child-one') });
+
+    const entries = await listDirectoryEntries(root, root);
+
+    expect(entries.map((entry) => entry.name)).toEqual(['child-one', 'child-two']);
+    // One child is a repository, the other is not; neither is ignored. The
+    // parent's rules belong to a repository this workspace root is not part of.
+    expect(entries.some((entry) => entry.ignored)).toBe(false);
+  });
+
   test('a git-ignored chain is dimmed from its deepest directory', async () => {
     const root = makeRoot();
     fs.mkdirSync(path.join(root, 'a/b/c'), { recursive: true });

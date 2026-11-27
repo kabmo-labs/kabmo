@@ -21,10 +21,8 @@
  * `LOCK_TIMEOUT_MS`) are the one place real wall-clock time is exercised.
  *
  * `git-repos` walks a TEMP tree (`git init` in a couple of subdirs) to pin the
- * pruning and depth rules that keep the walk bounded; `git-ignore` drives a
- * real `git check-ignore` against fixture `.gitignore` files to pin pattern,
- * negation and directory matching, plus the "not a repository" (exit 128)
- * non-answer.
+ * pruning and depth rules that keep the walk bounded. `git-ignore` has its own
+ * file (`git-ignore.test.ts`), next to the module whose scope it pins.
  */
 
 import { afterAll, beforeEach, describe, expect, test } from 'bun:test';
@@ -48,7 +46,6 @@ import { execFileSync } from 'node:child_process';
 import { writeFileAtomic } from '@kabmo-labs/kabmo-fs/config/atomic-write';
 import { withConfigLock } from '@kabmo-labs/kabmo-fs/config/config-lock';
 import { discoveredRepos, rescanRepos, startRepoScan } from '@/server/lib/fs/git-repos';
-import { collectIgnoredPaths } from '@/server/lib/fs/git-ignore';
 import { testPosix } from '@/test-support/platform';
 
 const tempDirs: string[] = [];
@@ -282,51 +279,5 @@ describe('git-repos discovery', () => {
     gitInit(join(root, 'two'));
     rescanRepos(root);
     expect((await settled(root)).repos).toContain('two');
-  });
-});
-
-describe('collectIgnoredPaths', () => {
-  test('no paths means no git call and an empty answer', async () => {
-    expect(await collectIgnoredPaths(tempDir('ignore'), [])).toEqual(new Set());
-  });
-
-  test('patterns, negation and directory patterns match what git refuses', async () => {
-    const dir = tempDir('ignore');
-    execFileSync('git', ['init', '-q'], { cwd: dir });
-    writeFileSync(join(dir, '.gitignore'), 'build/\n*.log\n!keep.log\n');
-    mkdirSync(join(dir, 'build'), { recursive: true });
-    writeFileSync(join(dir, 'build', 'x.txt'), '');
-    writeFileSync(join(dir, 'a.log'), '');
-    writeFileSync(join(dir, 'keep.log'), '');
-    mkdirSync(join(dir, 'src'), { recursive: true });
-    writeFileSync(join(dir, 'src', 'main.ts'), '');
-
-    const ignored = await collectIgnoredPaths(dir, ['build/x.txt', 'a.log', 'keep.log', 'src/main.ts']);
-    expect(ignored.has('build/x.txt')).toBe(true); // directory pattern
-    expect(ignored.has('a.log')).toBe(true); // extension pattern
-    expect(ignored.has('keep.log')).toBe(false); // negated
-    expect(ignored.has('src/main.ts')).toBe(false);
-  });
-
-  test('a non-repository (exit 128) is not cached as an answer', async () => {
-    const dir = tempDir('ignore');
-    writeFileSync(join(dir, 'a.log'), '');
-    expect(await collectIgnoredPaths(dir, ['a.log'])).toEqual(new Set());
-    // Same path, now inside a repository with a rule that matches it: had the
-    // 128 answer been cached, this would still be empty.
-    execFileSync('git', ['init', '-q'], { cwd: dir });
-    writeFileSync(join(dir, '.gitignore'), '*.log\n');
-    expect((await collectIgnoredPaths(dir, ['a.log'])).has('a.log')).toBe(true);
-  });
-
-  test('an answer is cached for the TTL, so a just-edited rule is briefly stale', async () => {
-    const dir = tempDir('ignore');
-    execFileSync('git', ['init', '-q'], { cwd: dir });
-    writeFileSync(join(dir, '.gitignore'), '*.log\n');
-    writeFileSync(join(dir, 'a.log'), '');
-    expect((await collectIgnoredPaths(dir, ['a.log'])).has('a.log')).toBe(true);
-    rmSync(join(dir, '.gitignore'));
-    // Within the 5s TTL the memoized "ignored" answer is still returned.
-    expect((await collectIgnoredPaths(dir, ['a.log'])).has('a.log')).toBe(true);
   });
 });

@@ -16,6 +16,20 @@
  * Paths must be relative to `dir` and must exist on disk: git resolves
  * directory-only patterns (`build/`) by stat-ing the path.
  *
+ * Repository DISCOVERY stops at `dir`'s parent (`GIT_CEILING_DIRECTORIES`), so
+ * the rules that answer are the ones of a repository rooted at `dir` — never an
+ * enclosing repository's. Without the ceiling git walks up from `dir` and a
+ * workspace that is merely a subdirectory of some other repository answers with
+ * that repository's rules: measured on `~/JatisMobile/Workspace/projects`
+ * (a folder OF repositories, `.git` only in its children) whose parent repo
+ * ignores `projects/` — every row, the nested repositories included, came back
+ * `ignored: true` and the whole tree rendered faded. The ceiling is the parent
+ * rather than `dir` itself because git treats a ceiling equal to the starting
+ * directory as no ceiling at all (verified on git 2.56: `dir` still discovered
+ * the repository above, `dirname(dir)` exited 128), while a repository rooted
+ * AT `dir` is still found with the ceiling there — so a real workspace root
+ * keeps its own `.gitignore`, `.git/info/exclude` and global excludes.
+ *
  * Answers are memoized per path: the panel asks again every time a folder is
  * re-listed or re-expanded, and each question costs a `git` subprocess
  * (measured 5.6 ms). The TTL is short because a `.gitignore` the user just
@@ -24,6 +38,8 @@
  * nothing at all.
  */
 
+import fs from 'node:fs';
+import path from 'node:path';
 import { GIT_ENV } from '@kabmo-labs/kabmo-git/runner/git-run';
 
 const CACHE_TTL_MS = 5_000;
@@ -39,6 +55,25 @@ const cache = new Map<string, IgnoreAnswer>();
 
 function cacheKey(dir: string, rel: string): string {
   return `${dir}\0${rel}`;
+}
+
+/**
+ * Where git's repository discovery must stop: the parent of the browsed root.
+ *
+ * Resolved first, because git compares the ceiling against the real path of its
+ * working directory — a workspace root reached through a symlink would other-
+ * wise name a ceiling that is not an ancestor of `dir` and the walk would leak
+ * the enclosing repository back in.
+ */
+function discoveryCeiling(dir: string): string {
+  let real = dir;
+  try {
+    real = fs.realpathSync(dir);
+  } catch {
+    // Vanished between `readdir` and here: the unresolved path is still
+    // absolute, and the listing is about to fail anyway.
+  }
+  return path.dirname(real);
 }
 
 export async function collectIgnoredPaths(dir: string, relPaths: string[]): Promise<Set<string>> {
@@ -68,7 +103,9 @@ export async function collectIgnoredPaths(dir: string, relPaths: string[]): Prom
       // The same three variables every other git spawn gets — `GIT_ENV` in
       // `lib/fs/git-run.ts` names what each prevents. This call site spawns
       // directly rather than through `runGit`/`runShell`, so it has to opt in.
-      env: { ...Bun.env, ...GIT_ENV },
+      // The ceiling is this module's own rule: only the repository rooted at
+      // the browsed root may answer (see the header).
+      env: { ...Bun.env, ...GIT_ENV, GIT_CEILING_DIRECTORIES: discoveryCeiling(dir) },
     });
 
     // Drain stdout while the listing is written: a directory big enough to
