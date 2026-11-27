@@ -51,7 +51,7 @@ afterAll(() => {
   restoreDomGlobals();
 });
 
-async function mount(repos: string[]): Promise<void> {
+async function mount(repos: string[], activeRepo = '.'): Promise<void> {
   (globalThis as unknown as Record<string, unknown>).fetch = async () =>
     new Response(JSON.stringify({ success: true, details: [] }), {
       status: 200,
@@ -64,7 +64,7 @@ async function mount(repos: string[]): Promise<void> {
     render(
       h(GitRepoPicker, {
         rootPath: ROOT,
-        activeRepo: '.',
+        activeRepo,
         onSelectRepo: (repo: string) => selections.push(repo),
         repos,
         scanning: false,
@@ -93,6 +93,33 @@ describe('GitRepoPicker', () => {
   test('names the active repo in the trigger', async () => {
     await mount(['.']);
     expect(trigger().textContent).toContain('Workspace');
+  });
+
+  test('names the selected repo before discovery has listed it', async () => {
+    // A reload starts discovery from scratch: the topic answers `['.']` until
+    // the walk finishes, while the session still holds the nested pick. Looking
+    // the selection up from the rows alone drew the workspace root — the PARENT
+    // folder, labelled with the workspace's own name — as if that were the
+    // chosen repository, and the repo the panel was reading was not even listed.
+    await mount(['.'], 'projects/a/token');
+    expect(trigger().textContent).toContain('token');
+    expect(trigger().textContent).not.toContain('Workspace');
+
+    await act(async () => {
+      trigger().click();
+    });
+    const active = menu().querySelector('button[aria-selected="true"]') as HTMLButtonElement | null;
+    expect(active?.textContent).toContain('projects/a/token');
+    // The root row is still a real choice beside it.
+    const rootRow = [...document.querySelectorAll('button[role="option"]')].find(
+      (b) => b.textContent?.trim() === 'Workspace',
+    );
+    expect(rootRow).toBeDefined();
+
+    await act(async () => {
+      active?.click();
+    });
+    expect(selections).toEqual(['projects/a/token']);
   });
 
   test('offers the root row when discovery found only nested repos', async () => {

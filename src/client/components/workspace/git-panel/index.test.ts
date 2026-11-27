@@ -27,6 +27,8 @@ import { GitPanel } from '@/client/components/workspace/git-panel';
 import { ToastStack } from '@/client/components/common/ToastStack';
 import { resetToasts } from '@/client/hooks/ui/toasts';
 import { SessionStateProvider } from '@/client/components/common/session-state-provider/index';
+import { REPO_SCOPE_STATE_KEY } from '@/client/hooks/workspace/repo-scope';
+import { getSessionValue, resetSessionStateStore } from '@/shared/lib/workspace/session-state/store';
 import { resetRealtimeClient } from '@/shared/lib/realtime/client';
 import { gitTopic, reposTopic } from '@/shared/lib/realtime/protocol';
 import { startRealtimeTestServer, type RealtimeTestServer } from '@/test-support/realtime-server';
@@ -75,6 +77,9 @@ afterEach(() => {
   reads = [];
   resetRealtimeClient();
   resetToasts();
+  // A pick written by one case must not move the next case's panel: the slot
+  // is process state, keyed by session id, and every case here uses one id.
+  resetSessionStateStore();
   server?.stop();
 });
 
@@ -89,11 +94,30 @@ async function mount(options: {
   httpSync?: { ahead: number; behind: number };
   /** What a POST to `/api/fs/git` answers — the action channel. */
   action?: unknown;
+  /** Discovered repos. A list without `'.'` makes the first entry the fallback. */
+  repos?: string[];
+  /**
+   * Workspace root. A case that WRITES a pick needs its own: the repo discovery
+   * store is process state keyed by root, so a snapshot left under one root
+   * would answer the next case's mount.
+   */
+  root?: string;
 } = {}): Promise<void> {
-  server = await startRealtimeTestServer(new Map<string, TopicResolver>([
-    [TOPIC, async () => statusOf(1, options.topicSync)],
-    [reposTopic(ROOT), async () => ({ repos: ['.'], reposPending: false })],
-  ]));
+  const root = options.root ?? ROOT;
+  const repos = options.repos ?? ['.'];
+  // The panel resolves `'.'` when the list holds it, else the first repo — the
+  // same rule as `resolveRepoForPanel` — and subscribes to THAT scope's topic.
+  const fallback = repos.includes('.') ? '.' : (repos[0] ?? '.');
+  const rootTopic = gitTopic(`${root}\u0000.`);
+  const topics = new Map<string, TopicResolver>([
+    [rootTopic, async () => statusOf(1, options.topicSync)],
+    [reposTopic(root), async () => ({ repos, reposPending: false })],
+  ]);
+  for (const repo of repos) {
+    const topic = gitTopic(`${root}\u0000${repo}`);
+    if (!topics.has(topic)) topics.set(topic, async () => statusOf(0));
+  }
+  server = await startRealtimeTestServer(topics);
   const win = new Window({ url: `http://127.0.0.1:${server.port}` });
   installDomGlobals(win);
   const target = globalThis as unknown as Record<string, unknown>;
@@ -102,7 +126,7 @@ async function mount(options: {
     const url = String(input);
     const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
     if (url.includes('/state')) return json({ sessionId: SESSION, state: {} });
-    if (url.includes('reposOnly')) return json({ repos: ['.'], reposPending: false });
+    if (url.includes('reposOnly')) return json({ repos, reposPending: false });
     // The action channel, before the status read: a mutation and a read share
     // `/api/fs/git` and differ only by method.
     if (init?.method === 'POST' && options.action !== undefined) return json(options.action);
@@ -122,7 +146,7 @@ async function mount(options: {
           null,
           // The panel raises into the page's ONE queue; the host is mounted
           // beside it, so the assertion covers the assembled path.
-          h(GitPanel, { rootPath: ROOT, enabled: true }),
+          h(GitPanel, { rootPath: root, enabled: true }),
           h(ToastStack, {}),
         ),
       }),
@@ -131,7 +155,7 @@ async function mount(options: {
   });
   // Both reads must land before the assertion: with `fetched` still undefined
   // the old precedence would accidentally pass.
-  await server.waitForTopic(TOPIC, (value) => value !== null);
+  await server.waitForTopic(gitTopic(`${root}\u0000${fallback}`), (value) => value !== null);
   for (let i = 0; i < 20; i += 1) await act(async () => {});
 }
 
@@ -157,6 +181,31 @@ describe('GitPanel change list', () => {
     });
     for (let i = 0; i < 20; i += 1) await act(async () => {});
     expect(container.textContent).toContain('file-1.txt');
+  });
+
+  test('choosing the repo the panel already resolved to pins the pick', async () => {
+    // With no stored pick and a root that is not a repository, the panel shows
+    // discovery's FIRST repo. Clicking that row used to be dropped as a no-op
+    // (`r !== activeRepo`), so the choice was never stored: the next list change
+    // resolved to whichever repo came first and the panel moved to a different
+    // working tree — the reported "it falls back to another workspace".
+    await mount({ repos: ['projects/alpha'], root: '/ws-pick' });
+    expect(getSessionValue(SESSION, REPO_SCOPE_STATE_KEY)).toBeUndefined();
+
+    const trigger = container.querySelector('button[title="Switch git project"]') as HTMLButtonElement;
+    expect(trigger.textContent).toContain('alpha');
+    await act(async () => {
+      trigger.click();
+    });
+    const row = [...document.querySelectorAll('button[role="option"]')].find((b) =>
+      b.textContent?.includes('projects/alpha'),
+    ) as HTMLButtonElement | undefined;
+    expect(row).toBeDefined();
+    await act(async () => {
+      row?.click();
+    });
+
+    expect(getSessionValue(SESSION, REPO_SCOPE_STATE_KEY)).toEqual({ root: '/ws-pick', repo: 'projects/alpha' });
   });
 });
 

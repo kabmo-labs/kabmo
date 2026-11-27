@@ -280,4 +280,21 @@ describe('git-repos discovery', () => {
     rescanRepos(root);
     expect((await settled(root)).repos).toContain('two');
   });
+
+  test('a rescan keeps the previous list while its walk runs', async () => {
+    // The topic answers whatever `discoveredRepos` holds, and every picker on
+    // the root renders it. Blanking the cache to `['.']` for the length of the
+    // walk made a refresh drop every nested row — including the selected one,
+    // whose absence made the picker name the workspace ROOT instead.
+    const root = tempDir('repos');
+    gitInit(join(root, 'one'));
+    startRepoScan(root);
+    const first = await settled(root);
+
+    rescanRepos(root);
+    expect(discoveredRepos(root)).toEqual({ repos: first.repos, pending: true });
+
+    const second = await settled(root);
+    expect(second.repos).toContain('one');
+  });
 });

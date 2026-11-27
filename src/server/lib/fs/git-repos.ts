@@ -86,32 +86,53 @@ interface RepoDiscovery {
 
 const repoDiscovery = new Map<string, RepoDiscovery>();
 
-/** Begin the background walk for `rootDir`; a no-op once one has started. */
-export function startRepoScan(rootDir: string): void {
-  if (repoDiscovery.has(rootDir)) return;
-  const d: RepoDiscovery = { repos: ['.'], done: false };
+/**
+ * Begin a background walk for `rootDir`, seeded with the list the client should
+ * see while it runs.
+ *
+ * The seed is why this is not inlined into `startRepoScan`: a FORCED rescan
+ * answers with the previous list, so the picker keeps the rows (and the pick's
+ * own row) instead of collapsing to the bare root for the length of the walk.
+ */
+function beginScan(rootDir: string, seed: string[]): void {
+  const d: RepoDiscovery = { repos: seed, done: false };
   repoDiscovery.set(rootDir, d);
   void getRepos(rootDir)
-    .then(repos => { d.repos = repos; d.done = true; })
-    .catch(() => { d.repos = ['.']; d.done = true; })
+    // A newer scan may have replaced this entry (two rescans in flight, or a
+    // walk that outlived a rescan): only the CURRENT walk owns the cache.
+    .then(repos => { if (repoDiscovery.get(rootDir) === d) { d.repos = repos; d.done = true; } })
+    .catch(() => { if (repoDiscovery.get(rootDir) === d) { d.repos = ['.']; d.done = true; } })
     // The walk is STARTED by a read, so this completion is the only moment the
     // list becomes final — the `repos:` topic is re-snapshotted from it, and a
     // client watching the root never has to poll for the answer.
-    .finally(() => emitRealtimeSignal('repos-scanned', undefined, rootDir));
+    .finally(() => {
+      if (repoDiscovery.get(rootDir) === d) emitRealtimeSignal('repos-scanned', undefined, rootDir);
+    });
+}
+
+/** Begin the background walk for `rootDir`; a no-op once one has started. */
+export function startRepoScan(rootDir: string): void {
+  if (repoDiscovery.has(rootDir)) return;
+  beginScan(rootDir, ['.']);
 }
 
 /**
- * Drop the cached result for `rootDir` and start a fresh walk. Used by the
+ * Start a fresh walk for `rootDir`, ignoring the cached result. Used by the
  * repo-switcher's refresh button, which must not serve the previous answer.
+ *
+ * The PREVIOUS list is published while the new walk runs: the topic would
+ * otherwise report `['.']` as if discovery had found one repository, and every
+ * picker on the root dropped its nested rows — including the selected one —
+ * until the walk finished.
  */
 export function rescanRepos(rootDir: string): void {
-  repoDiscovery.delete(rootDir);
-  startRepoScan(rootDir);
+  const previous = repoDiscovery.get(rootDir)?.repos ?? ['.'];
+  beginScan(rootDir, previous);
 }
 
 /** The discovered repos for `rootDir`, and whether the walk is still running. */
 export function discoveredRepos(rootDir: string): { repos: string[]; pending: boolean } {
   const d = repoDiscovery.get(rootDir);
   if (!d) return { repos: ['.'], pending: false };
-  return { repos: d.done ? d.repos : ['.'], pending: !d.done };
+  return { repos: d.repos, pending: !d.done };
 }

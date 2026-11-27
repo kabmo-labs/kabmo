@@ -153,7 +153,12 @@ export function useCommitBox({ rootPath, repo, execute }: UseCommitBoxOptions): 
 
     const params = new URLSearchParams({ headMessage: '1' });
     if (rootPath) params.set('root', rootPath);
-    if (repo && repo !== '.') params.set('repo', repo);
+    // ALWAYS send the repo, including `'.'`. The route's implicit-repo
+    // fallback (`repos.includes('.') ? '.' : repos[0]`) exists for a request
+    // that names none, so omitting the root pick made amend read the FIRST
+    // nested repo's HEAD message while the panel was on the workspace root —
+    // a different repository's commit seeded into the draft.
+    if (repo) params.set('repo', repo);
 
     let cancelled = false;
     void fetch(`/api/fs/git?${params.toString()}`)

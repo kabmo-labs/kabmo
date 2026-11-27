@@ -239,10 +239,15 @@ export function GitPanel({ className = '', enabled = true, rootPath, refreshKey 
         rootPath={rootPath}
         reposScanning={reposScanning}
         onSelectRepo={(r) => {
-          // The reload is the scope effect's job: it fires on the resolved
-          // `activeRepo` change, so selecting here would fetch the same repo
-          // twice.
-          if (r !== activeRepo) setActiveRepo(r);
+          // ALWAYS store the choice, even when it equals the repo the panel
+          // already resolved to. A repo shown because it is the first of an
+          // empty/fallback list is NOT a pick, so skipping the write left the
+          // selection unpinned and the next list change (a walk finishing, a
+          // rescan) moved the panel to whichever repo came first — the
+          // reported "it fell back to another workspace". The reload stays the
+          // scope effect's job: the resolved value does not change here, so
+          // nothing is fetched twice.
+          setActiveRepo(r);
         }}
         onRefresh={() => {
           // The list comes from the TOPIC, so refreshing it is what updates the

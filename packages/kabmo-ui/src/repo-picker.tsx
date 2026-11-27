@@ -163,11 +163,29 @@ export function RepoPicker({ scope, className, disabled = false, onManage, manag
 
   // `'.'` always leads, so the root is the first row whatever order discovery
   // returned. The rest keep discovery's order.
+  //
+  // The SELECTED repo may not be in that list: discovery answers `['.']` for a
+  // root whose background walk has not finished (a reload, a rescan, a server
+  // restart), while the session still holds a nested pick. Looking the
+  // selection up from the list alone then drew the ROOT — the parent folder,
+  // named as the workspace's own directory — as if the user had chosen it, and
+  // the repo the panel was actually reading was not even offered. Keep the
+  // active repo as a row of its own, named by the same rule the host uses for a
+  // list row (the whole root-relative path, last segment in the trigger).
   const options = useMemo(() => {
     const rest = scope.rows.filter((row) => row.repo !== '.');
     const root = scope.rows.find((row) => row.repo === '.');
-    return root ? [root, ...rest] : rest;
-  }, [scope.rows]);
+    const rows = root ? [root, ...rest] : rest;
+    if (scope.repo !== '.' && !rows.some((row) => row.repo === scope.repo)) {
+      const active = {
+        repo: scope.repo,
+        label: scope.repo,
+        short: scope.repo.split('/').pop() || scope.repo,
+      };
+      rows.splice(root ? 1 : 0, 0, active);
+    }
+    return rows;
+  }, [scope.rows, scope.repo]);
 
   const selected = options.find((row) => row.repo === scope.repo) ?? options[0];
 
