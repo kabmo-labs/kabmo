@@ -26,7 +26,7 @@ import type { Dispatch, SetStateAction } from 'preact/compat';
 import type { Attachment, ChatMessageData, PromptDispatchResult, WorkspaceFolderData } from '@/shared/types';
 import type { SetSearchParams } from '@/client/lib/router/search-params';
 import { clearBranchParams } from '@/client/lib/router/branch-params';
-import { activeProjectForSession } from '@/shared/lib/workspace/active-project';
+import { newChatFolderId } from '@/shared/lib/workspace/active-project';
 import { startPendingSession, patchPendingEntry } from '@/client/hooks/chat/omp/pending-sessions';
 import { setHarnessPick } from '@/client/hooks/chat/timeline/session-harness';
 
@@ -69,10 +69,14 @@ export function useNewChatSubmit(
   }, [sessionId, executeSend]);
 
   return useCallback((text, attachments, harness) => {
+    // The workspace this chat will RUN in: the folder owning the chat the card
+    // was opened from, else the composer's pick. Resolved ONCE here — the
+    // pending row, the prewarm (`useNewChatOpen`) and the spawn all read it.
+    const folderId = newChatFolderId(folders, sessionId, selectedFolderId);
     // The store mints the pending id and owns the row it stands for: the
     // sidebar/navbar show a default title immediately, and the row survives the
     // `new-…` → omp-UUID switch when the first send spawns.
-    const pendingId = startPendingSession(activeProjectForSession(folders, sessionId).folder?.id ?? selectedFolderId);
+    const pendingId = startPendingSession(folderId);
     // The card's agent becomes the PENDING chat's agent now, not at the send:
     // the composer's mode surface and the prewarm both read the pick, and a
     // harness that only appears when the prompt lands showed omp's toggles over
@@ -87,16 +91,13 @@ export function useNewChatSubmit(
       // `forkFrom`/`forkAt` in the URL, and this chat would be drawn as it.
       const next = clearBranchParams(prev);
       next.set('sessionId', pendingId);
-      // Carry the workspace the chat was started from: the first send SPAWNS a
-      // real omp session in that folder's cwd, and a dialog opened from a
-      // session picked in the sidebar has no `folderId` in the URL (the
-      // sidebar's own New Session copies it from the current session, which is
-      // exactly this). Without one the spawn has no cwd and the send falls back
-      // to the simulated stream.
-      if (!next.get('folderId')) {
-        const folderId = activeProjectForSession(folders, sessionId).folder?.id ?? selectedFolderId;
-        if (folderId !== null && folderId !== undefined) next.set('folderId', String(folderId));
-      }
+      // The chat runs in `folderId` — that is where the prewarm fired and where
+      // the first send spawns. A `folderId` the URL already carried is the
+      // right panel's scope, not this chat's target, and it must not veto the
+      // workspace the chat was started from: keeping it spawned the prompt in
+      // the previous workspace while the warm child sat in this one.
+      if (folderId !== null && folderId !== undefined) next.set('folderId', String(folderId));
+      else next.delete('folderId');
       return next;
     }, { replace: true });
     setLocalMessages([]);

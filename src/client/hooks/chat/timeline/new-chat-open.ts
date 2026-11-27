@@ -21,7 +21,7 @@
 
 import { useCallback, useState } from 'preact/hooks';
 import type { Attachment, WorkspaceFolderData } from '@/shared/types';
-import { activeProjectForSession } from '@/shared/lib/workspace/active-project';
+import { newChatFolderId } from '@/shared/lib/workspace/active-project';
 import { spawnCwdForNewSession, triggerSessionPrewarm } from '@/shared/lib/omp/session/prewarm';
 
 export interface NewChatOpen {
@@ -57,8 +57,10 @@ export function useNewChatOpen({ folders, sessionId, selectedFolderId, harness }
   const [openedHarness, setOpenedHarness] = useState<string | undefined>(undefined);
 
   const open = useCallback((next: string, rows?: Attachment[]) => {
-    const folderId = activeProjectForSession(folders, sessionId).folder?.id ?? selectedFolderId ?? undefined;
-    const cwd = spawnCwdForNewSession(folders, sessionId, folderId);
+    const folderId = newChatFolderId(folders, sessionId, selectedFolderId);
+    // The send's cwd, resolved the same way — not `spawnCwdForNewSession`'s
+    // fallback chain, which would warm a folder the pending chat never names.
+    const cwd = folderId === null ? null : spawnCwdForNewSession(folders, sessionId, folderId);
     // Warm the agent the card will spawn on. A card opened from an ACP chat now
     // warms THAT agent — it used to be skipped entirely, because the only pool
     // was omp's and warming omp for a `claude` chat started a child the send

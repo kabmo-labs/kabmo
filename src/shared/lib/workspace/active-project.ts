@@ -47,6 +47,27 @@ export function effectiveRootFor(
 }
 
 /**
+ * The workspace a NEW chat started from `sessionId` will run in: the folder
+ * owning that session, else the composer's pick.
+ *
+ * Stated once because three places must name the same folder — the prewarm's
+ * cwd, the pending chat's `?folderId=`, and its first send's spawn — and they
+ * did not: `useNewChatSubmit` wrote a folder only when the URL carried none, so
+ * the right panel's scope survived and the prompt spawned in the PREVIOUS
+ * workspace while the warmed child waited in the one the chat was started from.
+ *
+ * The raw pick is returned even when the sidebar's list has not loaded that
+ * folder yet: the id is the user's choice, and the send resolves it later.
+ */
+export function newChatFolderId(
+  folders: WorkspaceFolderData[],
+  sessionId: string | number | null | undefined,
+  selectedFolderId: number | string | null | undefined,
+): number | string | null {
+  return activeProjectForSession(folders, sessionId).folder?.id ?? selectedFolderId ?? null;
+}
+
+/**
  * Resolve the workspace root the composer should scope `@` file mentions to:
  * the active session's bound project first, then the explicitly selected
  * folder, else null (client falls back to the app root).

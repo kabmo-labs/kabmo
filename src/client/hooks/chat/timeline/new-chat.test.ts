@@ -186,14 +186,30 @@ describe('useNewChatSubmit', () => {
     expect(opened.searchParams.get('folderId')).toBe('3');
   });
 
-  test('a folder already in the URL is never overwritten', async () => {
+  test('a folder already in the URL does not veto the workspace the chat was started from', async () => {
+    // The URL's `folderId` is the RIGHT PANEL's scope, not this chat's target.
+    // Keeping it spawned the prompt in the previous workspace while the warm
+    // child waited in the one the chat was started from (the sidebar row and
+    // the prewarm both name folder 7).
     const opened = makeDeps({ sessionId: 'sess-aaa', folders: folderOwning('sess-aaa') });
     opened.searchParams.set('folderId', '9');
     await mount(opened.deps);
 
     await act(async () => { submit?.('halo', []); });
 
-    expect(opened.searchParams.get('folderId')).toBe('9');
+    expect(opened.searchParams.get('folderId')).toBe('7');
+  });
+
+  test('a stale folderId is dropped when no workspace resolves', async () => {
+    // No owning folder and no pick: the chat has no target, and leaving the old
+    // scope in place would spawn it in that other workspace on the first send.
+    const opened = makeDeps({ sessionId: 'sess-unknown', selectedFolderId: null });
+    opened.searchParams.set('folderId', '9');
+    await mount(opened.deps);
+
+    await act(async () => { submit?.('halo', []); });
+
+    expect(opened.searchParams.get('folderId')).toBeNull();
   });
 
   test('the composer is cleared for the pending view it opens', async () => {

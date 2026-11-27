@@ -13,8 +13,8 @@
  * so both readers move together.
  */
 
-import { useCallback, useEffect, useState } from 'preact/hooks';
-import { useSearchParams } from '@/client/lib/router/search-params';
+import { useCallback } from 'preact/hooks';
+import { useSearchParams, type SetSearchParams } from '@/client/lib/router/search-params';
 
 export interface TimelineScope {
   sessionId: string | null;
@@ -23,22 +23,22 @@ export interface TimelineScope {
   selectContextFolder: (id: number | null) => void;
   /** The raw URL setter, for the send path: adopting a freshly spawned session
    *  rewrites `sessionId` in place, and the layout reads the same params. */
-  setSearchParams: ReturnType<typeof useSearchParams>[1];
+  setSearchParams: SetSearchParams;
 }
 
 export function useTimelineScope(): TimelineScope {
   const [searchParams, setSearchParams] = useSearchParams();
   const sessionId = searchParams.get('sessionId');
   const folderId = searchParams.get('folderId');
-  const [selectedFolderId, setSelectedFolderId] = useState<number | null>(null);
-
-  useEffect(() => {
-    setSelectedFolderId(folderId ? parseInt(folderId, 10) : null);
-  }, [folderId]);
+  // DERIVED, never mirrored into state. The URL is the one value the picker,
+  // the prewarm and the send all read; a copy in `useState` synced by an effect
+  // lagged it by one render — and the New Chat dialog's first send is
+  // dispatched in the very commit that writes `?folderId=`, so it read the
+  // PREVIOUS folder and spawned the prompt in another workspace.
+  const selectedFolderId = folderId ? parseInt(folderId, 10) : null;
 
   const selectContextFolder = useCallback(
     (id: number | null) => {
-      setSelectedFolderId(id);
       setSearchParams(
         (prev) => {
           if (id) prev.set('folderId', String(id));
