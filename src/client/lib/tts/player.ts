@@ -12,17 +12,18 @@
  * snapshot so the speaker button can follow the run it started.
  *
  * An answer is read as a stream. `speechChunks` cuts it at paragraph and
- * sentence boundaries, two requests stay in flight, and each chunk plays as
- * soon as it lands — that is the difference between a 14-second silence before
- * a long local answer and audio starting after the first paragraph. Pause
- * suspends the current element and never starts the next chunk, so a paused
- * read costs no synthesis; resume continues from the same sample.
+ * sentence boundaries, two requests stay in flight, and each chunk is decoded
+ * into `GaplessAudio` as soon as it lands. The scheduler starts a chunk at the
+ * previous one's exact end, so a paragraph boundary is not an audio boundary.
+ * Pause suspends the shared audio context, which freezes every scheduled
+ * source at its current sample; resume continues from there.
  */
 
 import { readKabmoSetting } from '@/shared/lib/settings/client';
 import { ttsEngine } from '@/shared/lib/tts/engines';
 import { normalizeTtsConfig, type TtsConfig } from '@/shared/lib/tts/settings';
 import { speechChunks } from '@/shared/lib/tts/speakable';
+import { GaplessAudio } from '@/client/lib/tts/gapless';
 
 export type TtsStatus = 'idle' | 'loading' | 'playing' | 'paused' | 'error';
 
@@ -67,11 +68,8 @@ class TtsPlayer {
   private snapshot: TtsSnapshot = IDLE;
   private readonly listeners = new Set<() => void>();
   private readonly cache = new Map<string, Blob>();
-  private audio: HTMLAudioElement | null = null;
-  private objectUrl: string | null = null;
+  private playback: GaplessAudio | null = null;
   private abort: AbortController | null = null;
-  /** Ends the chunk in flight; an argument reports it as a failure. */
-  private finishPlayback: ((message?: string) => void) | null = null;
   private paused = false;
   private run = 0;
 
@@ -98,35 +96,46 @@ class TtsPlayer {
       return;
     }
 
+    const playback = this.playback ??= GaplessAudio.create();
+    if (!playback) {
+      this.publish('error', key, 'This browser cannot play synthesized speech.');
+      return;
+    }
+
     const run = ++this.run;
     const controller = new AbortController();
     this.abort = controller;
     this.publish('loading', key, null);
 
-    void this.playChunks(chunks, config, key, run, controller);
+    void this.playChunks(playback, chunks, config, key, run, controller);
   }
 
-  /** Hold the read where it is; the next chunk is not started. */
+  /** Hold the read where it is; the audio context freezes every scheduled chunk. */
   pause(): void {
     const status = this.snapshot.status;
     if (this.paused || (status !== 'playing' && status !== 'loading')) return;
     this.paused = true;
-    this.audio?.pause();
+    this.playback?.pause();
     this.publish('paused', this.snapshot.activeKey, null);
   }
 
-  /** Continue a paused read from the sample it stopped on. */
+  /** Continue a paused read from the sample where the context froze. */
   resume(): void {
     if (!this.paused) return;
     this.paused = false;
-    const audio = this.audio;
+    const playback = this.playback;
     const key = this.snapshot.activeKey;
-    if (!audio) {
-      this.publish('loading', key, null);
+    if (!playback) {
+      this.publish('error', key, 'This browser cannot play synthesized speech.');
       return;
     }
-    this.publish('playing', key, null);
-    this.startPlayback(audio, this.run);
+
+    const run = this.run;
+    this.publish(playback.hasAudio ? 'playing' : 'loading', key, null);
+    void playback.resume().catch((error: unknown) => {
+      if (run !== this.run || this.paused) return;
+      this.failRun(error instanceof Error ? error.message : 'The audio could not be played.');
+    });
   }
 
   stop(): void {
@@ -134,27 +143,14 @@ class TtsPlayer {
     this.abort?.abort();
     this.abort = null;
     this.paused = false;
-    const finish = this.finishPlayback;
-    this.finishPlayback = null;
-    const audio = this.audio;
-    this.audio = null;
-    const url = this.objectUrl;
-    this.objectUrl = null;
-    if (audio) {
-      audio.onended = null;
-      audio.onerror = null;
-      audio.pause();
-      audio.removeAttribute('src');
-      audio.load();
-    }
-    if (url) URL.revokeObjectURL(url);
-    finish?.();
+    this.playback?.stop();
     if (this.snapshot.status !== 'idle' || this.snapshot.activeKey !== null) {
       this.publish('idle', null, null);
     }
   }
 
   private async playChunks(
+    playback: GaplessAudio,
     chunks: string[],
     config: TtsConfig,
     key: string,
@@ -168,21 +164,35 @@ class TtsPlayer {
       promise.catch(() => undefined);
       pending.set(index, promise);
     };
-    for (let index = 0; index < PREFETCH_WINDOW; index += 1) startFetch(index);
 
     try {
+      // A blocked autoplay must not spend a provider request before it fails.
+      await playback.ensure();
+      if (run !== this.run) return;
+      for (let index = 0; index < PREFETCH_WINDOW; index += 1) startFetch(index);
+
       for (let index = 0; index < chunks.length; index += 1) {
         if (run !== this.run) return;
         const blob = await pending.get(index);
         pending.delete(index);
         if (!blob || run !== this.run) return;
         startFetch(index + PREFETCH_WINDOW);
-        await this.playBlob(blob, run);
+        await playback.schedule(blob);
         if (run !== this.run) return;
+        if (this.snapshot.status === 'loading') this.publish('playing', key, null);
       }
-      if (run === this.run) this.publish('idle', null, null);
-    } catch (error) {
+
+      await playback.finish();
       if (run !== this.run) return;
+      playback.idle();
+      this.abort = null;
+      this.publish('idle', null, null);
+    } catch (error: unknown) {
+      if (run !== this.run) return;
+      controller.abort();
+      if (this.abort === controller) this.abort = null;
+      this.paused = false;
+      playback.stop();
       const message = error instanceof Error ? error.message : 'Could not read the answer aloud.';
       this.publish('error', key, message);
     }
@@ -224,68 +234,8 @@ class TtsPlayer {
     this.abort?.abort();
     this.abort = null;
     this.paused = false;
+    this.playback?.stop();
     this.publish('error', this.snapshot.activeKey, message);
-  }
-
-  private startPlayback(audio: HTMLAudioElement, run: number): void {
-    void audio.play().then(() => {
-      if (run !== this.run || this.paused) return;
-      const status = this.snapshot.status;
-      if (status === 'loading' || status === 'paused') {
-        this.publish('playing', this.snapshot.activeKey, null);
-      }
-    }).catch((error: unknown) => {
-      if (run !== this.run || this.paused) return;
-      if (error instanceof Error && error.name === 'AbortError') return;
-      const blocked = error instanceof Error && error.name === 'NotAllowedError';
-      this.finishPlayback?.(
-        blocked
-          ? 'The browser blocked autoplay. Press the speaker button to hear this answer.'
-          : 'The audio could not be played.',
-      );
-    });
-  }
-
-  private playBlob(blob: Blob, run: number): Promise<void> {
-    if (run !== this.run) return Promise.resolve();
-    const audio = this.audio ?? new Audio();
-    this.audio = audio;
-
-    const url = URL.createObjectURL(blob);
-    const stale = this.objectUrl;
-    this.objectUrl = url;
-    audio.src = url;
-    if (stale) URL.revokeObjectURL(stale);
-
-    const finished = Promise.withResolvers<void>();
-    let settled = false;
-    const done = (): void => {
-      if (settled) return;
-      settled = true;
-      if (this.finishPlayback === fail) this.finishPlayback = null;
-      audio.onended = null;
-      audio.onerror = null;
-      audio.removeAttribute('src');
-      audio.load();
-      if (this.audio === audio) this.audio = null;
-      if (this.objectUrl === url) this.objectUrl = null;
-      URL.revokeObjectURL(url);
-      finished.resolve();
-    };
-    const fail = (message?: string): void => {
-      if (message) this.failRun(message);
-      done();
-    };
-
-    this.finishPlayback = fail;
-    audio.onended = done;
-    audio.onerror = () => {
-      if (run === this.run) fail('The audio could not be played.');
-      else done();
-    };
-    // A paused read never starts the next chunk; `resume` starts this one.
-    if (!this.paused) this.startPlayback(audio, run);
-    return finished.promise;
   }
 }
 

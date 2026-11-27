@@ -5,67 +5,82 @@
 
 /**
  * The player's own contract: an answer is split at the engine's budget, each
- * chunk is fetched once, playback runs in order, and the snapshot returns to
- * idle at the end.
+ * chunk is fetched once, chunk audio is scheduled back-to-back, and the
+ * snapshot returns to idle at the end.
  *
- * Audio and fetch are fakes. What is pinned is the sequence Kabmo controls —
- * chunk boundaries, the `/api/tts/speak` body, and the cache — not the browser's
- * decoder.
+ * Audio is a fake AudioContext. What is pinned is the sequence Kabmo controls —
+ * chunk boundaries, the `/api/tts/speak` body, the cache, and the contiguous
+ * start times that remove the gap between chunks — not the browser's decoder.
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { GaplessAudio } from '@/client/lib/tts/gapless';
 import { ttsPlayer, type TtsSnapshot } from '@/client/lib/tts/player';
 import { DEFAULT_TTS_CONFIG } from '@/shared/lib/tts/settings';
 
 const originalFetch = globalThis.fetch;
-const originalAudio = globalThis.Audio;
-const originalCreate = URL.createObjectURL;
-const originalRevoke = URL.revokeObjectURL;
+const originalAudioContext = globalThis.AudioContext;
 
 let requests: Array<{ text: string; config: Record<string, unknown> }> = [];
 
-class FakeAudio {
+class FakeSource {
   onended: (() => void) | null = null;
-  onerror: (() => void) | null = null;
-  src = '';
-  play(): Promise<void> {
-    queueMicrotask(() => this.onended?.());
-    return Promise.resolve();
+  buffer: AudioBuffer | null = null;
+  startedAt: number | null = null;
+  stopped = false;
+
+  connect(): void {}
+  disconnect(): void {}
+
+  start(when: number): void {
+    this.startedAt = when;
   }
-  pause(): void {}
-  removeAttribute(name: string): void {
-    if (name === 'src') this.src = '';
+
+  stop(): void {
+    this.stopped = true;
   }
-  load(): void {}
+
+  end(): void {
+    if (this.stopped) return;
+    this.stopped = true;
+    this.onended?.();
+  }
 }
 
-/** An element whose playback only ends when the test says so. */
-class ManualAudio {
-  static instances: ManualAudio[] = [];
-  /** Fires for each element the player creates, so a test can await the next chunk. */
-  static created: ((audio: ManualAudio) => void) | null = null;
-  onended: (() => void) | null = null;
-  onerror: (() => void) | null = null;
-  src = '';
-  playCalls = 0;
-  pauseCalls = 0;
+class FakeAudioContext {
+  static instances: FakeAudioContext[] = [];
+  static autoEnd = true;
+
+  state: AudioContextState = 'running';
+  currentTime = 0;
+  destination = {} as AudioDestinationNode;
+  sources: FakeSource[] = [];
+
   constructor() {
-    ManualAudio.instances.push(this);
-    ManualAudio.created?.(this);
+    FakeAudioContext.instances.push(this);
   }
-  play(): Promise<void> {
-    this.playCalls += 1;
-    return Promise.resolve();
+
+  createBufferSource(): AudioBufferSourceNode {
+    const source = new FakeSource();
+    this.sources.push(source);
+    if (FakeAudioContext.autoEnd) queueMicrotask(() => source.end());
+    return source as unknown as AudioBufferSourceNode;
   }
-  pause(): void {
-    this.pauseCalls += 1;
+
+  async decodeAudioData(_bytes: ArrayBuffer): Promise<AudioBuffer> {
+    return { duration: 1 } as AudioBuffer;
   }
-  removeAttribute(name: string): void {
-    if (name === 'src') this.src = '';
+
+  async suspend(): Promise<void> {
+    this.state = 'suspended';
   }
-  load(): void {}
-  end(): void {
-    this.onended?.();
+
+  async resume(): Promise<void> {
+    this.state = 'running';
+  }
+
+  async close(): Promise<void> {
+    this.state = 'closed';
   }
 }
 
@@ -82,25 +97,21 @@ function waitFor(predicate: (snapshot: TtsSnapshot) => boolean): Promise<TtsSnap
 
 beforeEach(() => {
   requests = [];
-  ManualAudio.instances = [];
-  ManualAudio.created = null;
+  FakeAudioContext.instances = [];
+  FakeAudioContext.autoEnd = true;
   ttsPlayer.stop();
   globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
     const body = JSON.parse(String(init?.body)) as { text: string; config: Record<string, unknown> };
     requests.push(body);
     return new Response(new Blob([new Uint8Array([1])]), { headers: { 'content-type': 'audio/mpeg' } });
   }) as unknown as typeof fetch;
-  globalThis.Audio = FakeAudio as unknown as typeof Audio;
-  URL.createObjectURL = () => 'blob:test';
-  URL.revokeObjectURL = () => {};
+  globalThis.AudioContext = FakeAudioContext as unknown as typeof AudioContext;
 });
 
 afterEach(() => {
   ttsPlayer.stop();
   globalThis.fetch = originalFetch;
-  globalThis.Audio = originalAudio;
-  URL.createObjectURL = originalCreate;
-  URL.revokeObjectURL = originalRevoke;
+  globalThis.AudioContext = originalAudioContext;
 });
 
 describe('ttsPlayer', () => {
@@ -112,6 +123,7 @@ describe('ttsPlayer', () => {
     const snapshot = await settled;
 
     expect(snapshot).toEqual({ status: 'idle', activeKey: null, error: null });
+    expect(FakeAudioContext.instances).toHaveLength(1);
     expect(requests.length).toBeGreaterThan(1);
     for (const request of requests) {
       expect(request.text.length).toBeLessThanOrEqual(4096);
@@ -133,32 +145,39 @@ describe('ttsPlayer', () => {
     expect(requests).toHaveLength(1);
   });
 
-  test('pause holds the read and never starts the next chunk', async () => {
-    globalThis.Audio = ManualAudio as unknown as typeof Audio;
-    const nextChunk = Promise.withResolvers<ManualAudio>();
-    ManualAudio.created = () => {
-      if (ManualAudio.instances.length === 2) nextChunk.resolve(ManualAudio.instances[1]!);
-    };
+  test('pause suspends the audio context and resume continues it', async () => {
+    FakeAudioContext.autoEnd = false;
     const text = Array.from({ length: 30 }, (_, index) => `Sentence number ${index + 1} is here.`).join(' ');
 
     ttsPlayer.speak(text, 'run-1', { ...DEFAULT_TTS_CONFIG, engine: 'openai' });
     await waitFor((snapshot) => snapshot.status === 'playing');
-    const first = ManualAudio.instances[0];
-    expect(first).toBeDefined();
+    const context = FakeAudioContext.instances.at(-1);
+    expect(context).toBeDefined();
+    expect(context!.sources.length).toBeGreaterThan(0);
 
     ttsPlayer.pause();
     expect(ttsPlayer.getSnapshot()).toEqual({ status: 'paused', activeKey: 'run-1', error: null });
-    expect(first!.pauseCalls).toBe(1);
-
-    // The chunk ends while paused: the next one must be loaded but silent.
-    first!.end();
-    const second = await nextChunk.promise;
-    expect(ttsPlayer.getSnapshot().status).toBe('paused');
-    expect(second.playCalls).toBe(0);
+    expect(context!.state).toBe('suspended');
 
     ttsPlayer.resume();
     expect(ttsPlayer.getSnapshot().status).toBe('playing');
-    expect(second.playCalls).toBe(1);
+    expect(context!.state).toBe('running');
     ttsPlayer.stop();
+  });
+
+  test('starts each chunk at the previous chunk end', async () => {
+    FakeAudioContext.autoEnd = false;
+    const context = new FakeAudioContext();
+    const audio = new GaplessAudio(() => context as unknown as AudioContext);
+
+    await audio.ensure();
+    await audio.schedule(new Blob([new Uint8Array([1])]));
+    await audio.schedule(new Blob([new Uint8Array([2])]));
+
+    expect(context.sources).toHaveLength(2);
+    expect(context.sources[0]!.startedAt).toBeCloseTo(0.05, 5);
+    expect(context.sources[1]!.startedAt).toBeCloseTo(1.05, 5);
+
+    audio.stop();
   });
 });
