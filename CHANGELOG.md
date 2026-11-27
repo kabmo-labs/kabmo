@@ -4,6 +4,14 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.53.1](https://github.com/kabmo-labs/kabmo/compare/v0.53.0...v0.53.1) — 2026-11-27
+
+### Fixed
+
+* **chat:** spawn a new chat in the workspace it was started from ([44d6491](https://github.com/kabmo-labs/kabmo/commit/44d6491ddc3b2ed0fc097f022b39061e294b8394)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **files:** stop dimming a root with rules from the repository above it ([dfdbfe4](https://github.com/kabmo-labs/kabmo/commit/dfdbfe44d1eb81428ca7afd0ffeaeb3bb917ae5a)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **tts:** play speech chunks without a boundary gap ([656d85d](https://github.com/kabmo-labs/kabmo/commit/656d85da9ca2f34d6ff07a7a5072dbe81aab8f2d)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.53.0](https://github.com/kabmo-labs/kabmo/compare/v0.52.0...v0.53.0) — 2026-11-26
 
 ### Added
