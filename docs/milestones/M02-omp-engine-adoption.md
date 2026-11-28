@@ -2899,3 +2899,49 @@ model-facing.
 | R127 | RPC form validation dropped all field rules | `buildFormData` no longer blocks `required`; card hint and tests updated | `ask-frames-form.test.ts` partly answered form sends; mounted `FormDialog` test submits with the required control empty |
 | R128 | `BashResult.movedCwd` / `.errexit` | none; additive, text notice already rendered | wire diff 77 commands / 308 definitions, 2 added leaves |
 | R129 | host/TUI/model-facing changes | none | roles, tool names, slash registry, tab labels identical; schema diff 644 → 647 settings / 483 → 486 entries |
+
+## 19.2.1 outcomes
+
+### R130 — `bash.reapBackground` arrives, but RPC never reaps (schema only)
+
+The schema's `source` line moves to 648 settings and the panel gains ONE row,
+`bash.reapBackground` (shell / Bash, boolean, default true), net +1. Its own
+description ends with “off in RPC mode”: the reminder about processes a bash
+call left running, and the session-end kill of `&` jobs, do not run under the
+mode Kabmo speaks. The row is regenerated so the panel can still edit it
+(`schema-releases.test.ts` pins type, tab, group, default and that sentence);
+no code reads it.
+
+The release's `o2ctl services add|ls|stop` shell command is a bash TOOL COMMAND
+when services can launch, but omp runs it through its own handler rather than
+the tool-command recorder, so it never appears in `details.toolCommands[]`.
+Kabmo's Bash card renders its text as-is; `soleToolCommand` cannot misclassify
+it, and no panel key names it.
+
+### R131 — the queue-chip descriptions moved, the shape did not (no code)
+
+`QueueState.liveSteered` and `QueueChip.text` now say that input the agent has
+already taken leads the list until the transcript records it — live steering
+inside the streaming response OR steering on its way into the next request. The
+RPC schema keeps its 77 commands and 308 definitions, and the only three changed
+lines are those descriptions. Kabmo's queue is its own SQLite table
+(`queued_messages`), not omp's queue state, and no module reads `liveSteered`.
+
+### R132 — host-side, TUI and model-facing changes (no action)
+
+Session identity reaching every command's environment (`PI_SESSION_ID` and the
+session-file path), `history://`'s budgeted transcript view and
+`archive.transcript`, `agent://<id>/model` and `/effort`, Tern's image annotator
+and collab links, fast-tier credential selection, the `agents`/`ovnfs` session
+stamps, the rules-overlay rebuild fix, idle follow-ups after extension messages
+or compaction, exhausted-goal budget preservation, LSP import ordering, checkout
+containment for `..`-prefixed directory names, Copilot 1M ACP resume, extension
+OAuth catalog modifiers rerunning on refresh, SVG/HTML embeds returning inline
+on graphics terminals, and the shell/PTY descendant cleanup — host-side, TUI or
+model-facing.
+
+| # | Finding | Action | Verification |
+|---|---|---|---|
+| R130 | `bash.reapBackground` added; reaping is off in RPC | schema regenerated (647 → 648 settings / 486 → 487 entries); `schema-releases.test.ts` pins the row | `omp:schema:check`; `omp config list --json` answers 648 keys and `omp config get bash.reapBackground` returns `true` |
+| R131 | queue-chip docs only; wire shape unchanged | none | wire diff 77 commands / 308 definitions, 0 added/removed/changed leaves, 3 description lines |
+| R132 | host/TUI/model-facing changes | none | `BUILTIN_TOOL_NAMES` (29), `MODEL_ROLES`, the 89-spec slash registry and its 47 TUI-only names identical; tabs and `settings-defs.ts` unchanged |

@@ -304,4 +304,19 @@ describe('OMP_SCHEMA release rows', () => {
     // panel's own dropdown.
     expect(OMP_SCHEMA.entries['prewalk.auto']?.values).toContain('escalate');
   });
+
+  test("19.2.1's background-reaping row is offered", () => {
+    // One net row. The reminder and session-end reaping are off under RPC (the
+    // description says so), so nothing in Kabmo reads it — but the panel is the
+    // only place an omp setting is reachable, and a schema regenerated without
+    // the row removes it entirely.
+    const entry = OMP_SCHEMA.entries['bash.reapBackground'];
+    expect(entry && { type: entry.type, tab: entry.ui.tab, group: entry.ui.group, default: entry.default }).toEqual({
+      type: 'boolean',
+      tab: 'shell',
+      group: 'Bash',
+      default: true,
+    });
+    expect(entry?.ui.description).toContain('off in RPC mode');
+  });
 });

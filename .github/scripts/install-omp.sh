@@ -842,7 +842,40 @@ fi
 # the rewind-to-new-session change (Kabmo forwards no `/rewind`) and the
 # `fileToUri`/`uriToFile`/`EquivalentUriMap` removal from `lsp/utils` (nothing
 # here imports it) — host-side, TUI or model-facing.
-OMP_VERSION="${OMP_VERSION:-19.2.0}"
+#
+# 19.2.1 (2026-11-28): the schema's `source` line moves to 648 settings and the
+# panel gains ONE row, `bash.reapBackground` (shell / Bash, boolean default
+# true), net +1. Its description says the reminder and the session-end reaping
+# are OFF in RPC mode, which is the mode Kabmo speaks, so the row is offered but
+# nothing here reads it. The RPC wire keeps its 77 commands and 308 definitions
+# byte-for-byte: the only schema changes are three descriptions, the queue
+# chip's (`QueueChip.text` / `QueueState.liveSteered`), which now state that
+# input the agent already took leads the list until the transcript records it.
+# `BUILTIN_TOOL_NAMES` (29), `MODEL_ROLES`, the 89-spec slash registry and the
+# 47 TUI-only names are identical.
+#
+# One new shell command DOES reach a Kabmo surface and needs no code: `o2ctl
+# services add|ls|stop` is a bash TOOL COMMAND when services can launch. It runs
+# through omp's own handler rather than the tool-command recorder, so it never
+# appears in `details.toolCommands[]`; its text still renders in the Bash card,
+# and no panel key names it.
+#
+# Also adopted with no code: a command run inside a session now sees
+# `PI_SESSION_ID` / the session-file path (host-side env), and an assistant
+# reply's SVG fences and HTML embeds render inline again on graphics terminals
+# (TUI only — Kabmo has its own markdown renderer).
+#
+# Not adopted, deliberately: `o2ctl` itself (Kabmo's own service controls own
+# `proc://`), background-process detection and reaping (off under RPC),
+# `archive.transcript` and the budgeted `history://` view (eval and TUI
+# surfaces), the `agent://<id>/model` and `/effort` controls (Kabmo's own
+# composer), Tern/TSP image annotation and collab links, the fast-tier account
+# selection, `agents`/`ovnfs` session stamps, `bash.reapBackground` as a
+# behaviour (row only), the rules-overlay rebuild fix, the idle-follow-up fix,
+# the goal budget resume, LSP import ordering, checkout containment for
+# `..`-prefixed directory names, Copilot 1M ACP resume, model-catalog modifiers
+# and the shell/PTY descendant cleanup — host-side, TUI or model-facing.
+OMP_VERSION="${OMP_VERSION:-19.2.1}"
 PACKAGE="@oh-my-pi/pi-coding-agent"
 WANTED="omp/${OMP_VERSION}"
 

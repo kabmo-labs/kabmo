@@ -1,5 +1,5 @@
 {
-  "source": "@oh-my-pi/pi-coding-agent 10 tabs / 647 settings",
+  "source": "@oh-my-pi/pi-coding-agent 10 tabs / 648 settings",
   "tabs": [
     {
       "id": "appearance",
@@ -7487,6 +7487,16 @@
         "group": "Bash",
         "label": "Bash Auto-Background",
         "description": "Automatically background long-running bash commands and deliver the result later"
+      }
+    },
+    "bash.reapBackground": {
+      "type": "boolean",
+      "default": true,
+      "ui": {
+        "tab": "shell",
+        "group": "Bash",
+        "label": "Reap Background Processes",
+        "description": "Remind the agent about processes its bash calls left running (`cmd &`, `nohup`) when it stops, and kill the `&` ones at session end unless registered as services; off in RPC mode"
       }
     },
     "bash.gitGuard": {
