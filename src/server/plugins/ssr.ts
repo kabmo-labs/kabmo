@@ -31,6 +31,8 @@ import { windowChromeColor } from '@/shared/lib/theme/chrome';
 import { THEME_CSS_ROUTE, serveThemeCss } from '@/server/lib/assets/theme-css.server';
 import { THEME_CSS_LINK_ATTRIBUTE } from '@/shared/lib/theme/css';
 import { isAndroidDevice, shellVersion } from '@/shared/lib/updates/shell-ua';
+import { lastOpenedSession } from '@/server/lib/sessions/last-opened.server';
+import { resolveClientIdentity } from '@/server/lib/sessions/last-opened-client.server';
 
 /** HTML-escape a string for interpolation into the failure page's `<pre>`. */
 function escapeHtmlText(value: string): string {
@@ -223,6 +225,21 @@ export const ssrRoutes = new Elysia({ name: 'ssr' }).get('*', async ({ request }
   const androidVersion = shellVersion(userAgent, 'android');
   const iosVersion = shellVersion(userAgent, 'ios');
   const isAndroid = isAndroidDevice(userAgent);
+  // The session THIS install would restore, resolved BEFORE the page exists so
+  // the client can select it in its first render. The id is per WebView/app
+  // cookie jar, so a phone and a desktop never overwrite each other. Validated
+  // here rather than by the page: a stale id must not become a launch into a
+  // 404. Skipped for an unauthenticated request — the client shows the login
+  // screen and has no workspace to restore into.
+  const clientIdentity = resolveClientIdentity(request);
+  const lastOpenedSessionId = authenticated
+    ? await lastOpenedSession(clientIdentity.clientId).catch((error: unknown) => {
+        // The record is what makes a relaunch resume; failing to read it must
+        // leave the landing, never take the whole document down.
+        console.warn('[ssr] last-opened session read failed:', error);
+        return null;
+      })
+    : null;
 
   const rendered = await renderShell();
   if (!rendered.ok) return shellUnavailableResponse(rendered.reason);
@@ -234,7 +251,7 @@ export const ssrRoutes = new Elysia({ name: 'ssr' }).get('*', async ({ request }
   // questions: "this browser has a session" versus "there is a session to have".
   // A Kabmo running open answers `authenticated: true` for every visitor, so
   // the navbar cannot use it to decide whether a sign-out control applies.
-  const bootstrap = JSON.stringify({ initialIsMobile, shellVersion: androidVersion, iosShellVersion: iosVersion, isAndroid, authenticated, authEnabled: isAuthEnabled(), production: !DEV_ASSETS_ENABLED, appSettings: publishedSettings }).replace(/</g, '\\u003c');
+  const bootstrap = JSON.stringify({ initialIsMobile, shellVersion: androidVersion, iosShellVersion: iosVersion, isAndroid, authenticated, authEnabled: isAuthEnabled(), production: !DEV_ASSETS_ENABLED, lastOpenedSessionId, appSettings: publishedSettings }).replace(/</g, '\\u003c');
   // The template's own `<meta name="theme-color">` is REWRITTEN, not joined by
   // a second tag: with both present Chrome reads the first one, so an appended
   // tag would leave a dark theme painting light browser chrome.
@@ -269,23 +286,29 @@ export const ssrRoutes = new Elysia({ name: 'ssr' }).get('*', async ({ request }
   // bundled copy (which no route can vary) is replaced by the themed route.
   const shellHtml = rewriteManifestLink(served);
 
+  const document = new Response(
+    applyShellDocumentFacts(shellHtml, {
+      palette: theme,
+      // The presentation styles are read from the same blob as the palette,
+      // so the FIRST frame is already the material, the hairline set and the
+      // paint the user chose: without this a glass install paints one opaque
+      // frame and swaps, and a borderless one paints every separator first.
+      surfaceStyle: readSettingsBlob(settings)[SURFACE_STYLE_SETTING_KEY],
+      borderStyle: readSettingsBlob(settings)[BORDER_STYLE_SETTING_KEY],
+      iconStyle: readSettingsBlob(settings)[ICON_STYLE_SETTING_KEY],
+      chromeColor: chrome,
+    })
+      .replace('<!--app-head-->', firstFrame + themeLink + fontLink)
+      .replace(SHELL_MARKER, `<script>window.__OMP_BOOTSTRAP__=${bootstrap}</script>`),
+    { headers: HTML_HEADERS },
+  );
+  // The FIRST document a shell/webview ever loads is where its client id is
+  // minted. Every later request (the recorder's POST included) carries it, so
+  // the last-opened row belongs to this install and not to the server.
+  if (clientIdentity.setCookie) document.headers.append('set-cookie', clientIdentity.setCookie);
+
   return maybeCompress(
-    new Response(
-      applyShellDocumentFacts(shellHtml, {
-        palette: theme,
-        // The presentation styles are read from the same blob as the palette,
-        // so the FIRST frame is already the material, the hairline set and the
-        // paint the user chose: without this a glass install paints one opaque
-        // frame and swaps, and a borderless one paints every separator first.
-        surfaceStyle: readSettingsBlob(settings)[SURFACE_STYLE_SETTING_KEY],
-        borderStyle: readSettingsBlob(settings)[BORDER_STYLE_SETTING_KEY],
-        iconStyle: readSettingsBlob(settings)[ICON_STYLE_SETTING_KEY],
-        chromeColor: chrome,
-      })
-        .replace('<!--app-head-->', firstFrame + themeLink + fontLink)
-        .replace(SHELL_MARKER, `<script>window.__OMP_BOOTSTRAP__=${bootstrap}</script>`),
-      { headers: HTML_HEADERS },
-    ),
+    document,
     // 24 KB of markup the browser can never store (`no-store`), so every
     // navigation pays for it again — compressed, it is about a fifth of that.
     // `maybeCompress` adds the `Vary` this response needs for the same reason

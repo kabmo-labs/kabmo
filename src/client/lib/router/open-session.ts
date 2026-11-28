@@ -16,7 +16,7 @@
  * subagent view of a SESSION would hide the transcript the notification named.
  */
 
-export function openSessionInUrl(sessionId: string): boolean {
+export function openSessionInUrl(sessionId: string, options: { replace?: boolean } = {}): boolean {
   if (typeof window === 'undefined') return false;
   const id = sessionId.trim();
   if (!id) return false;
@@ -24,9 +24,14 @@ export function openSessionInUrl(sessionId: string): boolean {
   const url = new URL(window.location.href);
   url.searchParams.set('sessionId', id);
   url.searchParams.delete('subagent');
-  window.history.pushState(null, '', url);
-  // `pushState` does not fire `popstate`, so the search-param store has to be
-  // told; otherwise only a reload would show the new selection. A plain Event is
+  // `replace` is for a selection the user did not make — the session a native
+  // shell restored on launch. A history entry there would make Back return to
+  // the empty workspace the restore just replaced, which is not a place the
+  // user went.
+  if (options.replace) window.history.replaceState(null, '', url);
+  else window.history.pushState(null, '', url);
+  // Changing history does NOT fire `popstate`, so the search-param store has to
+  // be told; otherwise only a reload would show the new selection. A plain Event is
   // enough — the store re-reads `location.search`, which pushState already moved
   // — and it avoids depending on a constructor some environments lack.
   window.dispatchEvent(new Event('popstate'));

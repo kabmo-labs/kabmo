@@ -21,6 +21,7 @@ import { CommandPalette } from '@/client/components/common/command-palette';
 import { ChordHint } from '@/client/components/common/command-palette/ChordHint';
 import { KeyBindingCheatsheet } from '@/client/components/common/key-binding-cheatsheet';
 import { closeKeyBindingHelp } from '@/client/lib/commands/overlays';
+import { useSessionOpenRecorder } from '@/client/hooks/shell/last-opened-session';
 
 /**
  * The mobile and desktop layouts are mutually exclusive screen trees — exactly
@@ -60,6 +61,9 @@ export function App({ initialIsMobile = false, production = false, appSettings =
   useCommandRuntime();
   usePluginCommands();
   const overlays = useOverlays();
+  // What a native shell restores on its next launch. One call per page: an
+  // unauthenticated screen has no session to record.
+  useSessionOpenRecorder(authState !== 'required');
 
   // Initialize with server-detected User-Agent to eliminate SSR flash. The
   // device decides the layout on every load — the manual switch below is

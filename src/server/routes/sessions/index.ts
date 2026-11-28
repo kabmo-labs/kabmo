@@ -24,6 +24,10 @@ import { serveSessionImage } from '@/server/routes/sessions/local-image';
 import { exportSessionMarkdown } from '@/server/routes/sessions/export';
 import { getSessionMcp, probeSessionMcp, setSessionMcp } from '@/server/routes/sessions/mcp';
 import { getSessionChangeDiff, getSessionChanges, getSessionChangeStats } from '@/server/routes/sessions/changes';
+import {
+  getLastOpenedSession,
+  markSessionOpened,
+} from '@/server/routes/sessions/last-opened';
 
 export const sessionsBindings: HandlerBinding[] = [
   ...bindingsFor(sessionsList, '/api/sessions/list'),
@@ -37,6 +41,10 @@ export const sessionsBindings: HandlerBinding[] = [
   // The archive batch is static too, and must be registered before the
   // `:sessionId` routes for the same reason as batch-delete.
   { method: 'POST', path: '/api/sessions/batch-archive', handler: batchArchiveSessions },
+  // The static segment must be registered BEFORE the `:sessionId` folder
+  // loader: Elysia matches in registration order, and a parameter route winning
+  // would answer this path as a session named "last-opened".
+  { method: 'GET', path: '/api/sessions/last-opened', handler: getLastOpenedSession },
   ...bindingsFor(sessionsFolder, '/api/sessions/:sessionId'),
   // The tree around one session. Both are static suffixes under the same
   // `:sessionId` position, whose name must stay `sessionId` — Elysia requires
@@ -82,6 +90,12 @@ export const sessionsBindings: HandlerBinding[] = [
   ...actionBindings(renameSession, '/api/sessions/:sessionId/rename'),
   ...actionBindings(renameWithAi, '/api/sessions/:sessionId/rename-with-ai'),
   ...actionBindings(putSessionState, '/api/sessions/:sessionId/state', getSessionState),
+  // What a native shell restores on its next launch. POST-only: the write is a
+  // side effect of opening, and a GET on the path is the ported route shape's
+  // 405 rather than a 404 that hides its existence.
+  ...bindingsFor({ action: markSessionOpened }, '/api/sessions/:sessionId/opened', {
+    mutating: ['POST'],
+  }),
   { method: 'GET', path: '/api/sessions/:sessionId/modes', handler: getSessionModes },
   ...actionBindings(markSeen, '/api/sessions/:sessionId/stream-seen'),
   { method: 'GET', path: '/api/sessions/:sessionId/subagents', handler: listSubagents },

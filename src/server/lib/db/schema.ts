@@ -92,6 +92,16 @@ export async function initSchema(db: DbClient): Promise<void> {
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
+    -- The session each CLIENT opens last — one row per WebView/app install,
+    -- identified by the kabmo_client cookie. A native shell restores its own
+    -- row on a cold start, so a phone and a desktop pointed at the same console
+    -- do not fight over one pointer. See lib/sessions/last-opened.server.ts.
+    CREATE TABLE IF NOT EXISTS last_opened_sessions (
+      client_id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
     -- The sidebar's subagent badge, saved per file version so a restart does
     -- not re-derive it by streaming every transcript (see
     -- lib/omp/session/subagent-presence-store). Derived data: deleting the

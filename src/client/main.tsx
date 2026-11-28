@@ -24,6 +24,7 @@ import { installFileLaunchHandler } from '@/client/lib/launch/file-handlers';
 import { installOpenPaths } from '@/client/lib/native/open-paths';
 import { installCommandRunner } from '@/client/lib/native/run-command';
 import { installDeviceFiles } from '@/client/lib/launch/device-files';
+import { restoreLastOpenedSession } from '@/client/hooks/shell/last-opened-session';
 
 import '@/client/tailwind.css';
 import '@/client/glass.css';
@@ -174,6 +175,12 @@ installDeviceFiles();
 void bootSyntax().then(() => warmSyntaxTokenizers());
 
 if (root) {
+  // BEFORE hydration: a shell relaunch with no query in the URL resumes the
+  // session this console opened last, so the first render already names it.
+  // After `installShellTransport`, which is what lets a phone identify itself,
+  // and before `hydrate`, so no component ever paints the empty workspace on
+  // the way to the restored chat.
+  restoreLastOpenedSession(bootstrap?.lastOpenedSessionId);
   hydrate(
     <App
       initialIsMobile={bootstrap?.initialIsMobile}

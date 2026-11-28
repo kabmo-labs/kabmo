@@ -58,6 +58,14 @@ describe('openSessionInUrl', () => {
     expect(events).toBe(1);
   });
 
+  test('a restore replaces the entry instead of adding one', () => {
+    go('');
+    const before = window.history.length;
+    expect(openSessionInUrl('restored', { replace: true })).toBe(true);
+    expect(new URL(window.location.href).searchParams.get('sessionId')).toBe('restored');
+    expect(window.history.length).toBe(before);
+  });
+
   test('a blank id changes nothing', () => {
     go('?sessionId=keep');
     expect(openSessionInUrl('   ')).toBe(false);

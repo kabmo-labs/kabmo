@@ -50,6 +50,17 @@ export interface KabmoBootstrap {
    * tell them from a desktop where an APK is useless.
    */
   isAndroid?: boolean;
+  /**
+   * The session this install opened last, when it still exists.
+   *
+   * Keyed by the request's `kabmo_client` cookie, so a phone and a desktop
+   * pointed at one console keep separate pointers. The native shells load the
+   * console with no query, so this is what lets a cold start select the previous
+   * chat in its FIRST render instead of painting the empty workspace and
+   * navigating afterwards. A browser ignores it (its landing stays), and an
+   * unauthenticated request carries `null`.
+   */
+  lastOpenedSessionId?: string | null;
 }
 
 declare global {
