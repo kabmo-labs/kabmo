@@ -5,6 +5,7 @@
   "license": "MIT",
   "author": "Wijanarko Putra Rajeb <wijanarko.rajeb@gmail.com>",
   "type": "module",
+  "types": "./src/server/index.ts",
   "engines": {
     "bun": ">=1.4.0"
   },
